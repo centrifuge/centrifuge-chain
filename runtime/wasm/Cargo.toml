@@ -1,0 +1,21 @@
+[package]
+authors = ['Parity Technologies <admin@parity.io>']
+edition = '2018'
+name = 'centrifuge-chain-runtime-wasm'
+version = '1.0.0'
+
+[lib]
+crate-type = ['cdylib']
+[dependencies.centrifuge-chain-runtime]
+default-features = false
+path = '..'
+
+[features]
+default = []
+std = ['centrifuge-chain-runtime/std']
+[profile.release]
+lto = true
+panic = 'abort'
+
+[workspace]
+members = []
