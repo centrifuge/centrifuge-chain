@@ -16,11 +16,14 @@ rustup --version
 cargo --version
 
 case $TARGET in
-	"native")
+	"build-client")
 		sudo apt-get -y update
 		sudo apt-get install -y cmake pkg-config libssl-dev
 
-		cargo test --all --release --locked "$@"
+		./scripts/init.sh
+		./scripts/build.sh --locked "$@"
+
+		cargo build --release --locked "$@"
 		;;
 
 	"wasm-build")
