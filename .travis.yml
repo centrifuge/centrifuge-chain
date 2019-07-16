@@ -15,8 +15,8 @@ env:
   matrix:
     # set RUST_TOOLCHAIN either 'stable' or 'nightly'
     - RUST_TOOLCHAIN=nightly TARGET=wasm-build
-    - RUST_TOOLCHAIN=stable TARGET=runtime-test
     - RUST_TOOLCHAIN=nightly TARGET=build-client
+    - RUST_TOOLCHAIN=stable TARGET=runtime-test
 
 before_install:
   # Check how much space we've got on this machine.
