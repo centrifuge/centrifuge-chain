@@ -23,9 +23,13 @@ case $TARGET in
 		cargo test --all --release --locked "$@"
 		;;
 
-	"wasm")
+	"wasm-build")
 		# Install prerequisites and build all wasm projects
 		./scripts/init.sh
 		./scripts/build.sh --locked "$@"
 		;;
+		
+	"runtime-test")
+		cargo test -p centrifuge-chain-runtime
+		;;		
 esac

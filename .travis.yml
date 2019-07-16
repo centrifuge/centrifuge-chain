@@ -13,7 +13,8 @@ env:
   global:
     - RUST_BACKTRACE=1
   matrix:
-    - RUST_TOOLCHAIN=nightly TARGET=wasm
+    - RUST_TOOLCHAIN=stable TARGET=wasm-build
+    - RUST_TOOLCHAIN=stable TARGET=runtime-test
     - RUST_TOOLCHAIN=stable TARGET=native
 
 before_install:
