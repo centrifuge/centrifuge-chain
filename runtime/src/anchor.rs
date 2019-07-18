@@ -152,6 +152,7 @@ mod tests {
 	}
 
 	type Anchor = Module<Test>;
+	type System = system::Module<Test>;
 
 	// This function basically just builds a genesis storage key/value store according to
 	// our desired mockup.
@@ -209,7 +210,11 @@ mod tests {
 			assert_eq!(a.expiration_block, 481);
 
 			// fail, pre anchor exists
-			assert_err!(Anchor::pre_commit(Origin::signed(2), anchor_id, signing_root), "A valid pre anchor already exists");
+			assert_err!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root), "A valid pre anchor already exists");
+
+			// expire the pre commit
+			System::set_block_number(482);
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
 		});
 	}
 
