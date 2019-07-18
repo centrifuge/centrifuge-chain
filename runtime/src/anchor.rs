@@ -1,8 +1,19 @@
 use support::{decl_module, decl_storage, decl_event, StorageMap, dispatch::Result, ensure};
 
 use system::{ensure_signed};
-use runtime_primitives::traits::{Hash};
+use runtime_primitives::traits::{As, Hash};
 use parity_codec::{Encode, Decode};
+
+// expiration duration in blocks of a pre commit
+const EXPIRATION_DURATION_BLOCKS: u64 = 480;
+
+#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
+	signing_root: Hash,
+	identity: AccountId,
+	expiration_block: BlockNumber,
+}
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -21,6 +32,9 @@ pub trait Trait: system::Trait {
 
 decl_event!(
 	pub enum Event<T> where <T as system::Trait>::Hash, <T as system::Trait>::AccountId, <T as system::Trait>::BlockNumber {
+		// AnchorPreCommitted event with account, anchor_id and expiration block number info
+		AnchorPreCommitted(AccountId, Hash, BlockNumber),
+
 		// AnchorCommitted event with account, anchor_id, doc_root and block number info
 		AnchorCommitted(AccountId, Hash, Hash, BlockNumber),
 	}
@@ -28,6 +42,9 @@ decl_event!(
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Anchor {
+
+		// Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
+		PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
 
 		// Anchors store the map of anchor Id to the anchor
 		Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
@@ -38,6 +55,23 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		// Initializing events
 		fn deposit_event<T>() = default;
+
+		pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
+			let who = ensure_signed(origin)?;
+			ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
+
+			ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
+
+			let expiration_block = <system::Module<T>>::block_number()  + As::sa(EXPIRATION_DURATION_BLOCKS);
+			<PreAnchors<T>>::insert(anchor_id, PreAnchorData {
+				signing_root: signing_root,
+				identity: who.clone(),
+				expiration_block: expiration_block,
+			});
+
+			Self::deposit_event(RawEvent::AnchorPreCommitted(who, anchor_id, expiration_block));
+			Ok(())
+		}
 	
 		pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, _proof: T::Hash) -> Result {
 			let who = ensure_signed(origin)?;
@@ -45,6 +79,13 @@ decl_module! {
 			let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as system::Trait>::Hashing::hash);
 			ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
+
+			if Self::has_valid_pre_commit(anchor_id) {
+			    ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Precommit owned by someone else")
+
+			    // TODO research sha256 usage + merkle proof validation
+			}
+
 
 			let block_num = <system::Module<T>>::block_number();
 			<Anchors<T>>::insert(anchor_id, AnchorData {
@@ -56,6 +97,17 @@ decl_module! {
 			Self::deposit_event(RawEvent::AnchorCommitted(who, anchor_id, doc_root, block_num));
 			Ok(())
 		}
+	}
+}
+
+impl<T: Trait> Module<T> {
+
+	fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
+		if !<PreAnchors<T>>::exists(&anchor_id) {
+			return false
+		}
+
+		!(<PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number())
 	}
 }
 
@@ -109,7 +161,7 @@ mod tests {
 	}
 
 	#[test]
-	fn it_works_for_default_value() {
+	fn basic_anchor() {
 		with_externalities(&mut new_test_ext(), || {
 			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
 			let anchor_id = (pre_image)
