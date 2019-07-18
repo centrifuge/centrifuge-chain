@@ -59,7 +59,6 @@ decl_module! {
 		pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
 			let who = ensure_signed(origin)?;
 			ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
-
 			ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
 
 			let expiration_block = <system::Module<T>>::block_number()  + As::sa(EXPIRATION_DURATION_BLOCKS);
@@ -107,7 +106,7 @@ impl<T: Trait> Module<T> {
 			return false
 		}
 
-		!(<PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number())
+		<PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
 	}
 }
 
@@ -119,7 +118,7 @@ mod tests {
 
 	use runtime_io::with_externalities;
 	use primitives::{H256, Blake2Hasher};
-	use support::{impl_outer_origin, assert_ok};
+	use support::{impl_outer_origin, assert_ok, assert_err};
 	use runtime_primitives::{
 		BuildStorage,
 		traits::{BlakeTwo256, IdentityLookup},
@@ -161,18 +160,81 @@ mod tests {
 	}
 
 	#[test]
-	fn basic_anchor() {
+	fn basic_pre_commit() {
+		with_externalities(&mut new_test_ext(), || {
+			let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+			let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+
+			// reject unsigned
+			assert_err!(Anchor::pre_commit(Origin::INHERENT, anchor_id, signing_root), "bad origin: expected to be a signed origin");
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+			// asserting that the stored pre anchor has the intended values set
+			let a = Anchor::get_pre_anchor(anchor_id);
+			assert_eq!(a.identity, 1);
+			assert_eq!(a.signing_root, signing_root);
+			assert_eq!(a.expiration_block, 481);
+		});
+	}
+
+	#[test]
+	fn pre_commit_fail_anchor_exists() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+			// anchor
+			assert_ok!(Anchor::commit(Origin::signed(1), pre_image,
+				<Test as system::Trait>::Hashing::hash_of(&0), <Test as system::Trait>::Hashing::hash_of(&0)));
+
+			// fails because of existing anchor
+			let signed = Origin::signed(1);
+			assert_err!(Anchor::pre_commit(signed, anchor_id, signing_root), "Anchor already exists");
+		});
+	}
+
+	#[test]
+	fn pre_commit_fail_pre_anchor_exists() {
+		with_externalities(&mut new_test_ext(), || {
+			let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+			let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+
+			// first pre-anchor
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+			let a = Anchor::get_pre_anchor(anchor_id);
+			assert_eq!(a.identity, 1);
+			assert_eq!(a.signing_root, signing_root);
+			assert_eq!(a.expiration_block, 481);
+
+			// fail, pre anchor exists
+			assert_err!(Anchor::pre_commit(Origin::signed(2), anchor_id, signing_root), "A valid pre anchor already exists");
+		});
+	}
+
+	#[test]
+	fn basic_commit() {
 		with_externalities(&mut new_test_ext(), || {
 			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
 			let anchor_id = (pre_image)
 				.using_encoded(<Test as system::Trait>::Hashing::hash);
 			let doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+			// reject unsigned
+			assert_err!(Anchor::commit(Origin::INHERENT, pre_image,
+				doc_root, <Test as system::Trait>::Hashing::hash_of(&0)), "bad origin: expected to be a signed origin");
+
+			// happy
 			assert_ok!(Anchor::commit(Origin::signed(1), pre_image,
 				doc_root, <Test as system::Trait>::Hashing::hash_of(&0)));
 			// asserting that the stored anchor id is what we sent the pre-image for
 			let a = Anchor::get_anchor(anchor_id);
 			assert_eq!(a.id, anchor_id);
 			assert_eq!(a.doc_root, doc_root);
+
+
 		});
 	}
+
+	// TODO pre-commit + commit tests
 }
