@@ -92,6 +92,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn expiration_duration_blocks() -> u64 {
+		// TODO this needs to come from governance
 		EXPIRATION_DURATION_BLOCKS
 	}
 }
