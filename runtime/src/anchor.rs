@@ -1,11 +1,11 @@
-use support::{decl_module, decl_storage, decl_event, StorageMap, dispatch::Result, ensure};
+use support::{decl_module, decl_storage, StorageMap, dispatch::Result, ensure};
 
 use system::{ensure_signed};
 use runtime_primitives::traits::{As, Hash};
 use parity_codec::{Encode, Decode};
 
 // expiration duration in blocks of a pre commit
-const EXPIRATION_DURATION_BLOCKS: u64 = 480;
+const EXPIRATION_DURATION_BLOCKS: u64 = 240;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -24,21 +24,7 @@ pub struct AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait {
-
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-}
-
-decl_event!(
-	pub enum Event<T> where <T as system::Trait>::Hash, <T as system::Trait>::AccountId, <T as system::Trait>::BlockNumber {
-		// AnchorPreCommitted event with account, anchor_id and expiration block number info
-		AnchorPreCommitted(AccountId, Hash, BlockNumber),
-
-		// AnchorCommitted event with account, anchor_id, doc_root and block number info
-		AnchorCommitted(AccountId, Hash, Hash, BlockNumber),
-	}
-);
+pub trait Trait: system::Trait {}
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Anchor {
@@ -53,22 +39,19 @@ decl_storage! {
 
 decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		// Initializing events
-		fn deposit_event<T>() = default;
 
 		pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
 			let who = ensure_signed(origin)?;
 			ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
 			ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
 
-			let expiration_block = <system::Module<T>>::block_number()  + As::sa(EXPIRATION_DURATION_BLOCKS);
+			let expiration_block = <system::Module<T>>::block_number()  + As::sa(Self::expiration_duration_blocks());
 			<PreAnchors<T>>::insert(anchor_id, PreAnchorData {
 				signing_root: signing_root,
 				identity: who.clone(),
 				expiration_block: expiration_block,
 			});
 
-			Self::deposit_event(RawEvent::AnchorPreCommitted(who, anchor_id, expiration_block));
 			Ok(())
 		}
 	
@@ -93,7 +76,6 @@ decl_module! {
 				anchored_block: block_num,
 			});
 
-			Self::deposit_event(RawEvent::AnchorCommitted(who, anchor_id, doc_root, block_num));
 			Ok(())
 		}
 	}
@@ -107,6 +89,10 @@ impl<T: Trait> Module<T> {
 		}
 
 		<PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
+	}
+
+	fn expiration_duration_blocks() -> u64 {
+		EXPIRATION_DURATION_BLOCKS
 	}
 }
 
@@ -147,9 +133,7 @@ mod tests {
 		type Event = ();
 		type Log = DigestItem;
 	}
-	impl Trait for Test {
-		type Event = ();
-	}
+	impl Trait for Test {}
 
 	type Anchor = Module<Test>;
 	type System = system::Module<Test>;
@@ -175,7 +159,7 @@ mod tests {
 			let a = Anchor::get_pre_anchor(anchor_id);
 			assert_eq!(a.identity, 1);
 			assert_eq!(a.signing_root, signing_root);
-			assert_eq!(a.expiration_block, 481);
+			assert_eq!(a.expiration_block, Anchor::expiration_duration_blocks() + 1);
 		});
 	}
 
@@ -191,8 +175,23 @@ mod tests {
 				<Test as system::Trait>::Hashing::hash_of(&0), <Test as system::Trait>::Hashing::hash_of(&0)));
 
 			// fails because of existing anchor
-			let signed = Origin::signed(1);
-			assert_err!(Anchor::pre_commit(signed, anchor_id, signing_root), "Anchor already exists");
+			assert_err!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root), "Anchor already exists");
+		});
+	}
+
+	#[test]
+	fn pre_commit_fail_anchor_exists_different_acc() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+			// anchor
+			assert_ok!(Anchor::commit(Origin::signed(2), pre_image,
+				<Test as system::Trait>::Hashing::hash_of(&0), <Test as system::Trait>::Hashing::hash_of(&0)));
+
+			// fails because of existing anchor
+			assert_err!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root), "Anchor already exists");
 		});
 	}
 
@@ -207,14 +206,36 @@ mod tests {
 			let a = Anchor::get_pre_anchor(anchor_id);
 			assert_eq!(a.identity, 1);
 			assert_eq!(a.signing_root, signing_root);
-			assert_eq!(a.expiration_block, 481);
+			assert_eq!(a.expiration_block, Anchor::expiration_duration_blocks() + 1);
 
 			// fail, pre anchor exists
 			assert_err!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root), "A valid pre anchor already exists");
 
 			// expire the pre commit
-			System::set_block_number(482);
+			System::set_block_number(Anchor::expiration_duration_blocks() + 2);
 			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+		});
+	}
+
+	#[test]
+	fn pre_commit_fail_pre_anchor_exists_different_acc() {
+		with_externalities(&mut new_test_ext(), || {
+			let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+			let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+
+			// first pre-anchor
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+			let a = Anchor::get_pre_anchor(anchor_id);
+			assert_eq!(a.identity, 1);
+			assert_eq!(a.signing_root, signing_root);
+			assert_eq!(a.expiration_block, Anchor::expiration_duration_blocks() + 1);
+
+			// fail, pre anchor exists
+			assert_err!(Anchor::pre_commit(Origin::signed(2), anchor_id, signing_root), "A valid pre anchor already exists");
+
+			// expire the pre commit
+			System::set_block_number(Anchor::expiration_duration_blocks() + 2);
+			assert_ok!(Anchor::pre_commit(Origin::signed(2), anchor_id, signing_root));
 		});
 	}
 
@@ -237,7 +258,31 @@ mod tests {
 			assert_eq!(a.id, anchor_id);
 			assert_eq!(a.doc_root, doc_root);
 
+		});
+	}
 
+	#[test]
+	fn commit_fail_anchor_exists() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+
+			// happy
+			assert_ok!(Anchor::commit(Origin::signed(1), pre_image,
+				doc_root, <Test as system::Trait>::Hashing::hash_of(&0)));
+			// asserting that the stored anchor id is what we sent the pre-image for
+			let a = Anchor::get_anchor(anchor_id);
+			assert_eq!(a.id, anchor_id);
+			assert_eq!(a.doc_root, doc_root);
+
+			assert_err!(Anchor::commit(Origin::signed(1), pre_image,
+				doc_root, <Test as system::Trait>::Hashing::hash_of(&0)), "Anchor already exists");
+
+			// different acc
+			assert_err!(Anchor::commit(Origin::signed(2), pre_image,
+            	doc_root, <Test as system::Trait>::Hashing::hash_of(&0)), "Anchor already exists");
 		});
 	}
 
