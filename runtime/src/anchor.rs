@@ -4,8 +4,11 @@ use system::{ensure_signed};
 use runtime_primitives::traits::{As, Hash};
 use parity_codec::{Encode, Decode};
 
-// expiration duration in blocks of a pre commit
-const EXPIRATION_DURATION_BLOCKS: u64 = 240;
+// expiration duration in blocks of a pre commit,
+// This is maximum expected time for document consensus to take place after a pre-commit of
+// an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
+// Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
+const EXPIRATION_DURATION_BLOCKS: u64 = 480;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -65,7 +68,7 @@ decl_module! {
 			if Self::has_valid_pre_commit(anchor_id) {
 			    ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Precommit owned by someone else")
 
-			    // TODO research sha256 usage + merkle proof validation
+			    // TODO merkle proof verification
 			}
 
 
