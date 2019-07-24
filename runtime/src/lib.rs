@@ -189,7 +189,6 @@ impl sudo::Trait for Runtime {
 
 /// Used for the module template in `./template.rs`
 impl anchor::Trait for Runtime {
-	type Event = Event;
 }
 
 construct_runtime!(
@@ -206,7 +205,7 @@ construct_runtime!(
 		Balances: balances,
 		Sudo: sudo,
 		// Used for the anchor module
-		AnchorModule: anchor::{Module, Call, Storage, Event<T>},
+		AnchorModule: anchor::{Module, Call, Storage},
 	}
 );
 
