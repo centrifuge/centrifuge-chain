@@ -58,7 +58,7 @@ decl_module! {
 			Ok(())
 		}
 	
-		pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, _proof: T::Hash) -> Result {
+		pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash) -> Result {
 			let who = ensure_signed(origin)?;
 
 			let anchor_id = (anchor_id_preimage)
@@ -66,9 +66,8 @@ decl_module! {
 			ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
 
 			if Self::has_valid_pre_commit(anchor_id) {
-			    ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Precommit owned by someone else")
-
-			    // TODO merkle proof verification
+			    ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Precommit owned by someone else");
+			    ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Precommit proof not valid");
 			}
 
 
@@ -92,6 +91,25 @@ impl<T: Trait> Module<T> {
 		}
 
 		<PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
+	}
+
+	fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
+		let pre_commit = <PreAnchors<T>>::get(anchor_id).signing_root;
+
+		let calculated_root: T::Hash;
+		if pre_commit.to_string() < proof.to_string() {
+			calculated_root = (proof, pre_commit).using_encoded(<T as system::Trait>::Hashing::hash);
+			let cc: [u8; 64] = [95, 118, 211, 155, 4, 44, 27, 96, 0, 4, 30, 123, 163, 116, 108, 143, 29, 71, 7, 66, 92, 87, 28, 235, 215, 12, 171, 15, 135, 49, 126, 255, 203, 250, 223, 249, 27, 115, 232, 229, 79, 70, 48, 213, 131, 211, 224, 59, 36, 72, 219, 197, 150, 119, 36, 28, 63, 186, 152, 102, 8, 240, 225, 212];
+			//let proof: <T as system::Trait>::Hash = [203, 250, 223, 249, 27, 115, 232, 229, 79, 70, 48, 213, 131, 211, 224, 59, 36, 72, 219, 197, 150, 119, 36, 28, 63, 186, 152, 102, 8, 240, 225, 212].into();
+
+			let calculated_root2 = <T as system::Trait>::Hashing::hash(&cc);
+			println!("precommit {}, proof {}, doc_root {}, croot {}, , croot2 {}", pre_commit, proof, doc_root, calculated_root, calculated_root2);
+		} else {
+			calculated_root = (proof, pre_commit).using_encoded(<T as system::Trait>::Hashing::hash);
+		}
+
+		return doc_root == calculated_root;
+
 	}
 
 	fn expiration_duration_blocks() -> u64 {
@@ -257,6 +275,33 @@ mod tests {
 			// happy
 			assert_ok!(Anchor::commit(Origin::signed(1), pre_image,
 				doc_root, <Test as system::Trait>::Hashing::hash_of(&0)));
+			// asserting that the stored anchor id is what we sent the pre-image for
+			let a = Anchor::get_anchor(anchor_id);
+			assert_eq!(a.id, anchor_id);
+			assert_eq!(a.doc_root, doc_root);
+
+		});
+	}
+
+	#[test]
+	fn basic_pre_commit_commit() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let random_doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+			let doc_root: <Test as system::Trait>::Hash = [35, 228, 40, 32, 247, 92, 60, 72, 169, 148, 172, 10, 211, 148, 229, 98, 226, 162, 62, 108, 117, 181, 117, 117, 158, 251, 58, 115, 120, 187, 250, 241].into();
+			let signing_root: <Test as system::Trait>::Hash = [95, 118, 211, 155, 4, 44, 27, 96, 0, 4, 30, 123, 163, 116, 108, 143, 29, 71, 7, 66, 92, 87, 28, 235, 215, 12, 171, 15, 135, 49, 126, 255].into();
+			let proof: <Test as system::Trait>::Hash = [203, 250, 223, 249, 27, 115, 232, 229, 79, 70, 48, 213, 131, 211, 224, 59, 36, 72, 219, 197, 150, 119, 36, 28, 63, 186, 152, 102, 8, 240, 225, 212].into();
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+
+			// wrong doc root
+			assert_err!(Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof), "Precommit proof not valid");
+
+			// happy
+			assert_ok!(Anchor::commit(Origin::signed(1), pre_image, doc_root, proof));
 			// asserting that the stored anchor id is what we sent the pre-image for
 			let a = Anchor::get_anchor(anchor_id);
 			assert_eq!(a.id, anchor_id);
