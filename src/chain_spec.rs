@@ -20,7 +20,7 @@ pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
 pub enum Alternative {
 	/// Whatever the current runtime is, with just Alice as an auth.
 	Development,
-	/// Whatever the current runtime is, with simple Alice/Babette auths.
+	/// Whatever the current runtime is, with simple Alice/Bob auths.
 	LocalTestnet,
 }
 
