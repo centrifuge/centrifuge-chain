@@ -3,7 +3,7 @@
 /// Initially being hard-coded, later coming from the governance module
 
 use support::{decl_module, decl_storage, ensure, StorageMap, decl_event, dispatch::Result, traits::{WithdrawReason, Currency, ExistenceRequirement}};
-use runtime_primitives::traits::{Hash, As};
+use runtime_primitives::traits::{Hash};
 use parity_codec::{Encode, Decode};
 use system::{ensure_signed};
 
@@ -26,7 +26,7 @@ pub struct Fee<Hash, Balance> {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as FeesStorage {
+	trait Store for Module<T: Trait> as Fees {
 		Fees get(fee) : map T::Hash => Fee<T::Hash, T::Balance>;
 	}
 }
