@@ -64,7 +64,7 @@ decl_module! {
 impl<T: Trait> Module<T> {
     // Called by any other module who wants to trigger a fee payment
     // for a given account.
-    // The fee price can be retrieved via Fees::fee()
+    // The current fee price can be retrieved via Fees::price_of()
     pub fn pay_fee(who: T::AccountId, key: T::Hash) -> Result {
         ensure!(<Fees<T>>::exists(key), "fee not found for key");
 
@@ -80,6 +80,15 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    pub fn price_of(key: T::Hash) -> Option<T::Balance> {
+        if <Fees<T>>::exists(key.clone()) {
+            let single_fee = <Fees<T>>::get(key.clone());
+            Some(single_fee.price)
+        } else {
+            None
+        }
+    }
+
     fn can_change_fee(_who: T::AccountId) -> Result {
         //TODO add auth who can change fees
 //        ensure!(<validatorset::Module<T>>::is_validator(who), "Not authorized to change fees.");
@@ -88,6 +97,7 @@ impl<T: Trait> Module<T> {
 }
 
 
+/// ============================== TESTS ==============================
 /// tests for this module
 #[cfg(test)]
 mod tests {
@@ -253,6 +263,29 @@ mod tests {
             assert_err!(Fees::pay_fee(1, fee_key), "too few free funds in account");
         });
     }
+
+    #[test]
+    fn fee_is_gettable() {
+        with_externalities(&mut new_test_ext(), || {
+            let fee_key= <Test as system::Trait>::Hashing::hash_of(&111111 );
+            let fee_price: <Test as balances::Trait>::Balance = 90000;
+
+            //First run, the fee is not set yet and should return None
+            match Fees::price_of(fee_key) {
+                Some(_x) => assert!(false, "Should not have a fee set yet"),
+                None    => assert!(true)
+            }
+
+            //After setting the fee, the correct fee should be returned
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
+            //First run, the fee is not set yet and should return None
+            match Fees::price_of(fee_key) {
+                Some(x) => assert_eq!(fee_price, x),
+                None    => assert!(false, "Fee should have been set")
+            }
+
+        });
+    }    
 }
 
 
