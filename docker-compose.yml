@@ -19,12 +19,12 @@ services:
       - 9944
       - 30333
     networks:
-      kerplunk-network:
+      centchain-network:
         ipv4_address: 172.42.0.2
     volumes:
       - "~/tmp/centrifuge-chain/alice/:/data"
     entrypoint:
-      - vegansteak
+      - centrifuge-chain
       - --dev
       - --ws-external
       - --validator
@@ -35,7 +35,7 @@ services:
       - --chain=local
       - --bootnodes=/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq
   babette:
-    image: centrifugeio/kerplunk-chain:latest
+    image: centrifugeio/centrifuge-chain:latest
     deploy:
       replicas: 1
       resources:
@@ -53,12 +53,12 @@ services:
       - 9944
       - 30333
     networks:
-      kerplunk-network:
+      centchain-network:
         ipv4_address: 172.42.0.3
     volumes:
-      - "~tmp/centrifuge-chain/babette/:/data"
+      - "~/tmp/centrifuge-chain/babette/:/data"
     entrypoint:
-      - vegansteak
+      - centrifuge-chain
       - --dev
       - --ws-external
       - --validator
@@ -68,45 +68,8 @@ services:
       # - --chain=/var/local/chainSpec.raw.json
       - --chain=local
       - --bootnodes=/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6
-
-# Note here that Charlie is not part of the initial validators of the chainspec
-# Charlie is a node that is just a client but could be voted in/added as an authorituy to validate 
-  # charlie:
-  #   image: centrifugeio/kerplunk-chain:latest
-  #   deploy:
-  #     replicas: 1
-  #     resources:
-  #       limits:
-  #         cpus: "1"
-  #         memory: 2000M
-  #     restart_policy:
-  #       condition: on-failure
-  #   ports:
-  #     - 9935:9933
-  #     - 9946:9944
-  #     - 30335:30333
-  #   expose:
-  #     - 9933
-  #     - 9944
-  #     - 30333
-  #   networks:
-  #     kerplunk-network:
-  #       ipv4_address: 172.42.0.4
-  #   volumes:
-  #     - "/tmp/kerplunk/charlie/:/data"
-  #   entrypoint:
-  #     - kerplunk
-  #     - --dev
-  #     - --ws-external
-  #     - --validator
-  #     - --name=Charlie
-  #     - --key=//Charlie
-  #     - --node-key=5c3a2dd5322eec93508741c986dc35b31b292efb4deeb66af735760119b9002b
-  #     # - --chain=/var/local/chainSpec.raw.json
-  #     - --chain=local
-  #     - --bootnodes=/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6      
 networks:
-  kerplunk-network:
+  centchain-network:
     ipam:
       driver: default
       config:
