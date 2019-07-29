@@ -66,3 +66,16 @@ cargo run -- \
 ```
 
 Additional CLI usage options are available and may be shown by running `cargo run -- --help`.
+
+# Build and Run Docker image/container
+
+build docker image
+`(docker build -t "centrifugeio/centrifuge-chain:latest" . && docker push centrifugeio/centrifuge-chain:latest)`
+
+To run a single docker image
+`docker run --rm -it -p 9933:9933 -p 9944:9944 -p 30333:30333 -v ~/tmp/centrifuge-chain/alice:/data centrifugeio/centrifuge-chain:latest centrifuge-chain --dev --ws-external --validator --name=Alice --key=//Alice --chain=local`
+
+
+To run multiple validators at once
+`docker-compose up`
+
