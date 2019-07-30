@@ -1,5 +1,6 @@
 use parity_codec::{Decode, Encode};
 use runtime_primitives::traits::{As, Hash};
+use rstd::{vec::Vec};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap};
 use system::ensure_signed;
 
@@ -93,31 +94,21 @@ impl<T: Trait> Module<T> {
 
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
         let signing_root = <PreAnchors<T>>::get(anchor_id).signing_root;
-        let signing_root_bytes = signing_root.as_ref();
-        let proof_bytes = proof.as_ref();
+        let mut signing_root_bytes = signing_root.as_ref().to_vec();
+        let mut proof_bytes = proof.as_ref().to_vec();
 
         // order and concat hashes
-        let mut concatenated_bytes: [u8; 64] = [0; 64];
+        let concatenated_bytes: Vec<u8>;
         if signing_root_bytes < proof_bytes {
-            Self::concat_arr_cpy(&mut concatenated_bytes, signing_root_bytes, proof_bytes);
+            signing_root_bytes.extend(proof_bytes);
+            concatenated_bytes = signing_root_bytes;
         } else {
-            Self::concat_arr_cpy(&mut concatenated_bytes, proof_bytes, signing_root_bytes);
+            proof_bytes.extend(signing_root_bytes);
+            concatenated_bytes = proof_bytes;
         }
 
         let calculated_root = <T as system::Trait>::Hashing::hash(&concatenated_bytes);
         return doc_root == calculated_root;
-    }
-
-    fn concat_arr_cpy(concatenated_bytes: &mut [u8; 64], first: &[u8], second: &[u8]) {
-        let mut index: usize = 0;
-        for x in first {
-            concatenated_bytes[index] = *x;
-            index += 1;
-        }
-        for x in second {
-            concatenated_bytes[index] = *x;
-            index += 1;
-        }
     }
 
     fn expiration_duration_blocks() -> u64 {
@@ -170,7 +161,7 @@ mod tests {
             <Test as system::Trait>::Hash,
             <Test as system::Trait>::Hash,
         ) {
-            // first is the hash of concatenated last two sorted order
+            // first is the hash of concatenated last two in sorted order
             (
                 [
                     86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113,
