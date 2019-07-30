@@ -156,6 +156,15 @@ mod tests {
 	}
 	impl Trait for Test {}
 
+	impl Test {
+		fn test_hashes() -> (<Test as system::Trait>::Hash, <Test as system::Trait>::Hash, <Test as system::Trait>::Hash) {
+			// first is the hash of concatenated last two sorted order
+			([86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113, 241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78].into(),
+			 [17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192, 142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218].into(),
+			 [40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124, 145, 37, 1,1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52].into())
+		}
+	}
+
 	type Anchor = Module<Test>;
 	type System = system::Module<Test>;
 
@@ -283,43 +292,6 @@ mod tests {
 	}
 
 	#[test]
-	fn basic_pre_commit_commit() {
-		with_externalities(&mut new_test_ext(), || {
-			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-			let anchor_id = (pre_image)
-				.using_encoded(<Test as system::Trait>::Hashing::hash);
-			let random_doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
-			let doc_root: <Test as system::Trait>::Hash = [86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113, 241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78].into();
-			let signing_root: <Test as system::Trait>::Hash = [17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192, 142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218].into();
-			let proof: <Test as system::Trait>::Hash = [40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124, 145, 37, 1,1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52].into();
-
-			// happy
-			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
-
-			// wrong doc root
-			assert_err!(Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof), "Precommit proof not valid");
-
-			// happy
-			assert_ok!(Anchor::commit(Origin::signed(1), pre_image, doc_root, proof));
-			// asserting that the stored anchor id is what we sent the pre-image for
-			let a = Anchor::get_anchor(anchor_id);
-			assert_eq!(a.id, anchor_id);
-			assert_eq!(a.doc_root, doc_root);
-
-			// reverse order
-			let pre_image = <Test as system::Trait>::Hashing::hash_of(&1);
-			let anchor_id = (pre_image)
-				.using_encoded(<Test as system::Trait>::Hashing::hash);
-			let proof: <Test as system::Trait>::Hash = [17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192, 142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218].into();
-			let signing_root: <Test as system::Trait>::Hash = [40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124, 145, 37, 1,1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52].into();
-
-			// happy
-			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
-			assert_ok!(Anchor::commit(Origin::signed(1), pre_image, doc_root, proof));
-		});
-	}
-
-	#[test]
 	fn commit_fail_anchor_exists() {
 		with_externalities(&mut new_test_ext(), || {
 			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
@@ -344,5 +316,80 @@ mod tests {
 		});
 	}
 
-	// TODO pre-commit + commit tests
+	#[test]
+	fn basic_pre_commit_commit() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let random_doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+			let (doc_root, signing_root, proof) = Test::test_hashes();
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+
+			// wrong doc root
+			assert_err!(Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof), "Precommit proof not valid");
+
+			// happy
+			assert_ok!(Anchor::commit(Origin::signed(1), pre_image, doc_root, proof));
+			// asserting that the stored anchor id is what we sent the pre-image for
+			let a = Anchor::get_anchor(anchor_id);
+			assert_eq!(a.id, anchor_id);
+			assert_eq!(a.doc_root, doc_root);
+
+			// reverse order
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&1);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			// reverse the proof and signing root hashes
+			let (doc_root, proof, signing_root) = Test::test_hashes();
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+			assert_ok!(Anchor::commit(Origin::signed(1), pre_image, doc_root, proof));
+		});
+	}
+
+	#[test]
+	fn pre_commit_expired_when_anchoring() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let (doc_root, signing_root, proof) = Test::test_hashes();
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+			// expire the pre commit
+			System::set_block_number(Anchor::expiration_duration_blocks() + 2);
+
+
+			// happy from a different account
+			assert_ok!(Anchor::commit(Origin::signed(2), pre_image, doc_root, proof));
+			// asserting that the stored anchor id is what we sent the pre-image for
+			let a = Anchor::get_anchor(anchor_id);
+			assert_eq!(a.id, anchor_id);
+			assert_eq!(a.doc_root, doc_root);
+		});
+	}
+
+	#[test]
+	fn pre_commit_commit_fail_from_another_acc() {
+		with_externalities(&mut new_test_ext(), || {
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let (doc_root, signing_root, proof) = Test::test_hashes();
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+
+
+			// fail from a different account
+			assert_err!(Anchor::commit(Origin::signed(2), pre_image, doc_root, proof), "Precommit owned by someone else");
+		});
+	}
+
+
 }
