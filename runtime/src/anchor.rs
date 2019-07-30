@@ -97,19 +97,27 @@ impl<T: Trait> Module<T> {
         let proof_bytes = proof.as_ref();
 
         // order and concat hashes
-        let concatenated_bytes: Vec<u8>;
+        let mut concatenated_bytes: [u8; 64] = [0; 64];
         if signing_root_bytes < proof_bytes {
-            concatenated_bytes = [signing_root_bytes, proof_bytes].concat();
+            Self::concat_arr_cpy(&mut concatenated_bytes, signing_root_bytes, proof_bytes);
         } else {
-            concatenated_bytes = [proof_bytes, signing_root_bytes].concat();
+            Self::concat_arr_cpy(&mut concatenated_bytes, proof_bytes, signing_root_bytes);
         }
 
         let calculated_root = <T as system::Trait>::Hashing::hash(&concatenated_bytes);
-        println!(
-            "precommit {}, proof {}, doc_root {}, croot {}",
-            signing_root, proof, doc_root, calculated_root
-        );
         return doc_root == calculated_root;
+    }
+
+    fn concat_arr_cpy(concatenated_bytes: &mut [u8; 64], first: &[u8], second: &[u8]) {
+        let mut index: usize = 0;
+        for x in first {
+            concatenated_bytes[index] = *x;
+            index += 1;
+        }
+        for x in second {
+            concatenated_bytes[index] = *x;
+            index += 1;
+        }
     }
 
     fn expiration_duration_blocks() -> u64 {
