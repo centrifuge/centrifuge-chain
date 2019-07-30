@@ -1,8 +1,7 @@
-use support::{decl_module, decl_storage, StorageMap, dispatch::Result, ensure};
-
-use system::{ensure_signed};
+use parity_codec::{Decode, Encode};
 use runtime_primitives::traits::{As, Hash};
-use parity_codec::{Encode, Decode};
+use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap};
+use system::ensure_signed;
 
 // expiration duration in blocks of a pre commit,
 // This is maximum expected time for document consensus to take place after a pre-commit of
@@ -94,20 +93,20 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
-		let pre_commit = <PreAnchors<T>>::get(anchor_id).signing_root;
+		let signing_root = <PreAnchors<T>>::get(anchor_id).signing_root;
+		let signing_root_bytes = signing_root.as_ref();
+		let proof_bytes = proof.as_ref();
 
-		let calculated_root: T::Hash;
-		if pre_commit.to_string() < proof.to_string() {
-			calculated_root = (proof, pre_commit).using_encoded(<T as system::Trait>::Hashing::hash);
-			let cc: [u8; 64] = [95, 118, 211, 155, 4, 44, 27, 96, 0, 4, 30, 123, 163, 116, 108, 143, 29, 71, 7, 66, 92, 87, 28, 235, 215, 12, 171, 15, 135, 49, 126, 255, 203, 250, 223, 249, 27, 115, 232, 229, 79, 70, 48, 213, 131, 211, 224, 59, 36, 72, 219, 197, 150, 119, 36, 28, 63, 186, 152, 102, 8, 240, 225, 212];
-			//let proof: <T as system::Trait>::Hash = [203, 250, 223, 249, 27, 115, 232, 229, 79, 70, 48, 213, 131, 211, 224, 59, 36, 72, 219, 197, 150, 119, 36, 28, 63, 186, 152, 102, 8, 240, 225, 212].into();
-
-			let calculated_root2 = <T as system::Trait>::Hashing::hash(&cc);
-			println!("precommit {}, proof {}, doc_root {}, croot {}, , croot2 {}", pre_commit, proof, doc_root, calculated_root, calculated_root2);
+		// order and concat hashes
+		let concatenated_bytes: Vec<u8>;
+		if signing_root_bytes < proof_bytes {
+			concatenated_bytes = [signing_root_bytes, proof_bytes].concat();
 		} else {
-			calculated_root = (proof, pre_commit).using_encoded(<T as system::Trait>::Hashing::hash);
+			concatenated_bytes = [proof_bytes, signing_root_bytes].concat();
 		}
 
+		let calculated_root = <T as system::Trait>::Hashing::hash(&concatenated_bytes);
+		println!("precommit {}, proof {}, doc_root {}, croot {}", signing_root, proof, doc_root, calculated_root);
 		return doc_root == calculated_root;
 
 	}
@@ -122,16 +121,16 @@ impl<T: Trait> Module<T> {
 /// tests for anchor module
 #[cfg(test)]
 mod tests {
-	use super::*;
-
+	use primitives::{Blake2Hasher, H256};
 	use runtime_io::with_externalities;
-	use primitives::{H256, Blake2Hasher};
-	use support::{impl_outer_origin, assert_ok, assert_err};
 	use runtime_primitives::{
 		BuildStorage,
-		traits::{BlakeTwo256, IdentityLookup},
-		testing::{Digest, DigestItem, Header}
+		testing::{Digest, DigestItem, Header},
+		traits::{BlakeTwo256, IdentityLookup}
 	};
+	use support::{assert_err, assert_ok, impl_outer_origin};
+
+	use super::*;
 
 	impl_outer_origin! {
 		pub enum Origin for Test {}
@@ -290,9 +289,9 @@ mod tests {
 			let anchor_id = (pre_image)
 				.using_encoded(<Test as system::Trait>::Hashing::hash);
 			let random_doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
-			let doc_root: <Test as system::Trait>::Hash = [35, 228, 40, 32, 247, 92, 60, 72, 169, 148, 172, 10, 211, 148, 229, 98, 226, 162, 62, 108, 117, 181, 117, 117, 158, 251, 58, 115, 120, 187, 250, 241].into();
-			let signing_root: <Test as system::Trait>::Hash = [95, 118, 211, 155, 4, 44, 27, 96, 0, 4, 30, 123, 163, 116, 108, 143, 29, 71, 7, 66, 92, 87, 28, 235, 215, 12, 171, 15, 135, 49, 126, 255].into();
-			let proof: <Test as system::Trait>::Hash = [203, 250, 223, 249, 27, 115, 232, 229, 79, 70, 48, 213, 131, 211, 224, 59, 36, 72, 219, 197, 150, 119, 36, 28, 63, 186, 152, 102, 8, 240, 225, 212].into();
+			let doc_root: <Test as system::Trait>::Hash = [86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113, 241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78].into();
+			let signing_root: <Test as system::Trait>::Hash = [17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192, 142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218].into();
+			let proof: <Test as system::Trait>::Hash = [40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124, 145, 37, 1,1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52].into();
 
 			// happy
 			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
@@ -307,6 +306,16 @@ mod tests {
 			assert_eq!(a.id, anchor_id);
 			assert_eq!(a.doc_root, doc_root);
 
+			// reverse order
+			let pre_image = <Test as system::Trait>::Hashing::hash_of(&1);
+			let anchor_id = (pre_image)
+				.using_encoded(<Test as system::Trait>::Hashing::hash);
+			let proof: <Test as system::Trait>::Hash = [17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192, 142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218].into();
+			let signing_root: <Test as system::Trait>::Hash = [40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124, 145, 37, 1,1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52].into();
+
+			// happy
+			assert_ok!(Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root));
+			assert_ok!(Anchor::commit(Origin::signed(1), pre_image, doc_root, proof));
 		});
 	}
 
