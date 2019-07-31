@@ -66,8 +66,8 @@ decl_module! {
             ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
 
             if Self::has_valid_pre_commit(anchor_id) {
-                ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Precommit owned by someone else");
-                ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Precommit proof not valid");
+                ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Pre-commit owned by someone else");
+                ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
 
 
@@ -156,18 +156,20 @@ mod tests {
     impl Trait for Test {}
 
     impl Test {
-        fn test_hashes() -> (
+        fn test_document_hashes() -> (
             <Test as system::Trait>::Hash,
             <Test as system::Trait>::Hash,
             <Test as system::Trait>::Hash,
         ) {
             // first is the hash of concatenated last two in sorted order
             (
+                // doc_root
                 [
                     86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113,
                     241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78,
                 ]
                 .into(),
+                // proof or signing root
                 [
                     17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192,
                     142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218,
@@ -410,7 +412,7 @@ mod tests {
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
             let random_doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
-            let (doc_root, signing_root, proof) = Test::test_hashes();
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
             // happy
             assert_ok!(Anchor::pre_commit(
@@ -422,7 +424,7 @@ mod tests {
             // wrong doc root
             assert_err!(
                 Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof),
-                "Precommit proof not valid"
+                "Pre-commit proof not valid"
             );
 
             // happy
@@ -441,7 +443,7 @@ mod tests {
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&1);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
             // reverse the proof and signing root hashes
-            let (doc_root, proof, signing_root) = Test::test_hashes();
+            let (doc_root, proof, signing_root) = Test::test_document_hashes();
 
             // happy
             assert_ok!(Anchor::pre_commit(
@@ -463,7 +465,7 @@ mod tests {
         with_externalities(&mut new_test_ext(), || {
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let (doc_root, signing_root, proof) = Test::test_hashes();
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
             // happy
             assert_ok!(Anchor::pre_commit(
@@ -493,7 +495,7 @@ mod tests {
         with_externalities(&mut new_test_ext(), || {
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let (doc_root, signing_root, proof) = Test::test_hashes();
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
             // happy
             assert_ok!(Anchor::pre_commit(
@@ -505,7 +507,7 @@ mod tests {
             // fail from a different account
             assert_err!(
                 Anchor::commit(Origin::signed(2), pre_image, doc_root, proof),
-                "Precommit owned by someone else"
+                "Pre-commit owned by someone else"
             );
         });
     }
