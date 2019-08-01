@@ -7,6 +7,8 @@ WORKDIR /centrifuge-chain
 
 COPY . /centrifuge-chain
 
+# This needs to be repeated(can't use init.sh either) here because of
+# rustup bug inside docker builds - https://github.com/rust-lang/rustup.rs/issues/1239
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
 	rustup toolchain install nightly && \
@@ -16,7 +18,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	rustup default stable
 
 RUN export PATH=$PATH:$HOME/.cargo/bin && \
-    bash ./scripts/image.sh
+    bash ./scripts/build.sh
 
 RUN export PATH=$PATH:$HOME/.cargo/bin && \
 	cargo build "--$PROFILE"
