@@ -34,7 +34,7 @@ addons:
       - cmake
       - gcc
       - binutils-dev
-      - libiberty-de
+      - libiberty-dev
 
 after_script:
   # Check how much free disk space left after the build
