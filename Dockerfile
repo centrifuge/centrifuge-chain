@@ -1,5 +1,6 @@
-FROM pstehlik/substrate-builder:latest as builder
-LABEL maintainer "philip@centrifuge.io"
+# https://github.com/centrifuge/substrate-builder
+FROM substrate-builder:latest as builder
+LABEL maintainer="philip@centrifuge.io"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
 
 ARG PROFILE=release
@@ -7,16 +8,8 @@ WORKDIR /centrifuge-chain
 
 COPY . /centrifuge-chain
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
-	export PATH="$PATH:$HOME/.cargo/bin" && \
-	rustup toolchain install nightly && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly && \
-	cargo install --git https://github.com/alexcrichton/wasm-gc && \
-	rustup default nightly && \
-	rustup default stable
-
 RUN export PATH=$PATH:$HOME/.cargo/bin && \
-    bash ./scripts/image.sh
+    bash ./scripts/build.sh
 
 RUN export PATH=$PATH:$HOME/.cargo/bin && \
 	cargo build "--$PROFILE"
