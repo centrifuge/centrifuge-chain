@@ -3,6 +3,9 @@
 sudo: true
 language: minimal
 
+services:
+  - docker
+
 cache: cargo
 
 branches:
@@ -41,3 +44,9 @@ addons:
 after_script:
   # Check how much free disk space left after the build
   - df -h
+
+deploy:
+  provider: script
+  script: ./ci/docker.sh
+  on:
+    branch: master
