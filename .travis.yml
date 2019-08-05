@@ -27,8 +27,20 @@ before_install:
   # Check how much space we've got on this machine.
   - df -h
 
-script:
-  - ./ci/script.sh
+jobs:
+  include:
+    - stage: "Wasm"
+      name: "Wasm Build"
+      script: RUST_TOOLCHAIN=nightly TARGET=wasm-build ./ci/script.sh
+    - stage: "Native"
+      name: "Native Build"
+      script: RUST_TOOLCHAIN=nightly TARGET=build-client ./ci/script.sh
+    - stage: "Tests"
+      name: "Run Tests"
+      script: RUST_TOOLCHAIN=stable TARGET=runtime-test ./ci/script.sh
+    - stage: deploy
+      if: (NOT type IN (pull_request)) AND (branch = master)
+      script: ./ci/docker.sh
 
 addons:
   apt:
@@ -44,9 +56,3 @@ addons:
 after_script:
   # Check how much free disk space left after the build
   - df -h
-
-deploy:
-  provider: script
-  script: ./ci/docker.sh
-  on:
-    branch: master
