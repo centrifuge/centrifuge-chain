@@ -1,6 +1,6 @@
 use parity_codec::{Decode, Encode};
+use rstd::vec::Vec;
 use runtime_primitives::traits::{As, Hash};
-use rstd::{vec::Vec};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap};
 use system::ensure_signed;
 
@@ -120,7 +120,6 @@ impl<T: Trait> Module<T> {
 /// tests for anchor module
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
     use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
     use runtime_primitives::{
@@ -128,6 +127,7 @@ mod tests {
         traits::{BlakeTwo256, IdentityLookup},
         BuildStorage,
     };
+    use std::time::Instant;
     use support::{assert_err, assert_ok, impl_outer_origin};
 
     use super::*;
@@ -520,7 +520,8 @@ mod tests {
             let mut elapsed: u128 = 0;
             for i in 0..100000 {
                 let random_seed = <system::Module<Test>>::random_seed();
-                let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
+                let pre_image =
+                    (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
                 let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
                 let (doc_root, signing_root, proof) = Test::test_document_hashes();
 

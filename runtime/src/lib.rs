@@ -60,6 +60,9 @@ pub type Nonce = u64;
 /// Used for anchor module
 mod anchor;
 
+/// Fees for TXs
+mod fees;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -196,6 +199,11 @@ impl sudo::Trait for Runtime {
 /// Used for the module template in `./template.rs`
 impl anchor::Trait for Runtime {}
 
+/// Fees modulke implementation
+impl fees::Trait for Runtime {
+    type Event = Event;
+}
+
 construct_runtime!(
 	pub enum Runtime with Log(InternalLog: DigestItem<Hash, AuthorityId, AuthoritySignature>) where
 		Block = Block,
@@ -211,6 +219,7 @@ construct_runtime!(
 		Sudo: sudo,
 		// Used for the anchor module
 		AnchorModule: anchor::{Module, Call, Storage},
+		Fees: fees::{Module, Call, Storage, Event<T>},
 	}
 );
 
