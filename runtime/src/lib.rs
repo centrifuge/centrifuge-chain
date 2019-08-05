@@ -201,7 +201,7 @@ impl anchor::Trait for Runtime {}
 
 /// Fees modulke implementation
 impl fees::Trait for Runtime {
-	type Event = Event;
+    type Event = Event;
 }
 
 construct_runtime!(

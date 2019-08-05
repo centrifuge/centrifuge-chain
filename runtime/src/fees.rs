@@ -1,11 +1,15 @@
-
+use parity_codec::{Decode, Encode};
+use runtime_primitives::traits::Hash;
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
-
-use support::{decl_module, decl_storage, ensure, StorageMap, decl_event, dispatch::Result, traits::{WithdrawReason, Currency, ExistenceRequirement}};
-use runtime_primitives::traits::{Hash};
-use parity_codec::{Encode, Decode};
-use system::{ensure_signed};
+use support::{
+    decl_event, decl_module, decl_storage,
+    dispatch::Result,
+    ensure,
+    traits::{Currency, ExistenceRequirement, WithdrawReason},
+    StorageMap,
+};
+use system::ensure_signed;
 
 // TODO tie in governance
 //use super::validatorset;
@@ -26,9 +30,9 @@ pub struct Fee<Hash, Balance> {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Fees {
-		Fees get(fee) : map T::Hash => Fee<T::Hash, T::Balance>;
-	}
+    trait Store for Module<T: Trait> as Fees {
+        Fees get(fee) : map T::Hash => Fee<T::Hash, T::Balance>;
+    }
 }
 
 decl_event!(
@@ -37,28 +41,27 @@ decl_event!(
 	}
 );
 
-
 decl_module! {
-	/// The module declaration.
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-		// Initializing events
-		// this is needed only if you are using events in your module
-	    fn deposit_event<T>() = default;
+    /// The module declaration.
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        // Initializing events
+        // this is needed only if you are using events in your module
+        fn deposit_event<T>() = default;
 
-		pub fn set_fee(origin, new_price: T::Balance, key: T::Hash) -> Result {
+        pub fn set_fee(origin, new_price: T::Balance, key: T::Hash) -> Result {
             let sender = ensure_signed(origin)?;
-			Self::can_change_fee(sender.clone())?;
+            Self::can_change_fee(sender.clone())?;
 
              let new_fee = Fee{
                  key: key,
                  price: new_price,
              };
-			 <Fees<T>>::insert(key, new_fee);
+             <Fees<T>>::insert(key, new_fee);
 
-			Self::deposit_event(RawEvent::FeeChanged(sender, key, new_price));
+            Self::deposit_event(RawEvent::FeeChanged(sender, key, new_price));
             Ok(())
         }
-	}
+    }
 }
 
 impl<T: Trait> Module<T> {
@@ -74,7 +77,7 @@ impl<T: Trait> Module<T> {
             &who,
             single_fee.price,
             WithdrawReason::Fee,
-            ExistenceRequirement::KeepAlive
+            ExistenceRequirement::KeepAlive,
         )?;
 
         Ok(())
@@ -91,11 +94,10 @@ impl<T: Trait> Module<T> {
 
     fn can_change_fee(_who: T::AccountId) -> Result {
         //TODO add auth who can change fees
-//        ensure!(<validatorset::Module<T>>::is_validator(who), "Not authorized to change fees.");
+        //        ensure!(<validatorset::Module<T>>::is_validator(who), "Not authorized to change fees.");
         Ok(())
     }
 }
-
 
 /// ============================== TESTS ==============================
 /// tests for this module
@@ -103,18 +105,18 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
+    use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
-    use primitives::{H256, Blake2Hasher};
-    use support::{impl_outer_origin, assert_ok, assert_err};
     use runtime_primitives::{
-        BuildStorage,
+        testing::{Digest, DigestItem, Header},
         traits::{BlakeTwo256, IdentityLookup},
-        testing::{Digest, DigestItem, Header}
+        BuildStorage,
     };
+    use support::{assert_err, assert_ok, impl_outer_origin};
 
     impl_outer_origin! {
-		pub enum Origin for Test {}
-	}
+        pub enum Origin for Test {}
+    }
 
     // For testing the module, we construct most of a mock runtime. This means
     // first constructing a configuration type (`Test`) which `impl`s each of the
@@ -148,23 +150,28 @@ mod tests {
     }
     type Fees = Module<Test>;
 
-
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
     fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-        let mut t = system::GenesisConfig::<Test>::default().build_storage().unwrap().0;
+        let mut t = system::GenesisConfig::<Test>::default()
+            .build_storage()
+            .unwrap()
+            .0;
 
         // pre-fill balances
         t.extend(
-            balances::GenesisConfig::<Test>{
+            balances::GenesisConfig::<Test> {
                 balances: vec![(1, 100000), (2, 100000)],
                 transaction_base_fee: 0,
                 transaction_byte_fee: 0,
                 existential_deposit: 1,
                 transfer_fee: 0,
                 creation_fee: 0,
-                vesting: vec![]
-            }.build_storage().unwrap().0
+                vesting: vec![],
+            }
+            .build_storage()
+            .unwrap()
+            .0,
         );
 
         t.into()
@@ -180,8 +187,8 @@ mod tests {
     #[test]
     fn multiple_new_fees_are_setable() {
         with_externalities(&mut new_test_ext(), || {
-            let fee_key1= <Test as system::Trait>::Hashing::hash_of(&11111);
-            let fee_key2= <Test as system::Trait>::Hashing::hash_of(&22222);
+            let fee_key1 = <Test as system::Trait>::Hashing::hash_of(&11111);
+            let fee_key2 = <Test as system::Trait>::Hashing::hash_of(&22222);
 
             let price1: <Test as balances::Trait>::Balance = 666;
             let price2: <Test as balances::Trait>::Balance = 777;
@@ -200,7 +207,7 @@ mod tests {
     #[test]
     fn fee_is_re_setable() {
         with_externalities(&mut new_test_ext(), || {
-            let fee_key= <Test as system::Trait>::Hashing::hash_of(&11111);
+            let fee_key = <Test as system::Trait>::Hashing::hash_of(&11111);
 
             let initial_price: <Test as balances::Trait>::Balance = 666;
             assert_ok!(Fees::set_fee(Origin::signed(1), initial_price, fee_key));
@@ -213,14 +220,13 @@ mod tests {
             assert_ok!(Fees::set_fee(Origin::signed(2), new_price, fee_key));
             let again_loaded_fee = Fees::fee(fee_key);
             assert_eq!(again_loaded_fee.price, new_price);
-
         });
     }
 
     #[test]
     fn fee_payment_errors_if_not_set() {
         with_externalities(&mut new_test_ext(), || {
-            let fee_key= <Test as system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
             assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
@@ -238,7 +244,7 @@ mod tests {
     #[test]
     fn fee_payment_errors_if_insufficient_balance() {
         with_externalities(&mut new_test_ext(), || {
-            let fee_key= <Test as system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
@@ -251,7 +257,7 @@ mod tests {
     #[test]
     fn fee_payment_subtracts_fees_from_account() {
         with_externalities(&mut new_test_ext(), || {
-            let fee_key= <Test as system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
 
@@ -267,13 +273,13 @@ mod tests {
     #[test]
     fn fee_is_gettable() {
         with_externalities(&mut new_test_ext(), || {
-            let fee_key= <Test as system::Trait>::Hashing::hash_of(&111111 );
+            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
             //First run, the fee is not set yet and should return None
             match Fees::price_of(fee_key) {
                 Some(_x) => assert!(false, "Should not have a fee set yet"),
-                None    => assert!(true)
+                None => assert!(true),
             }
 
             //After setting the fee, the correct fee should be returned
@@ -281,11 +287,8 @@ mod tests {
             //First run, the fee is not set yet and should return None
             match Fees::price_of(fee_key) {
                 Some(x) => assert_eq!(fee_price, x),
-                None    => assert!(false, "Fee should have been set")
+                None => assert!(false, "Fee should have been set"),
             }
-
         });
-    }    
+    }
 }
-
-
