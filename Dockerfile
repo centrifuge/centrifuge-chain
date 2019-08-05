@@ -1,5 +1,6 @@
-FROM pstehlik/substrate-builder:latest as builder
-LABEL maintainer "philip@centrifuge.io"
+# https://github.com/centrifuge/substrate-builder
+FROM centrifugeio/substrate-builder:latest as builder
+LABEL maintainer="philip@centrifuge.io"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
 
 ARG PROFILE=release
@@ -8,13 +9,16 @@ WORKDIR /centrifuge-chain
 COPY . /centrifuge-chain
 
 RUN export PATH=$PATH:$HOME/.cargo/bin && \
-	cargo build --$PROFILE
+    bash ./scripts/build.sh
+
+RUN export PATH=$PATH:$HOME/.cargo/bin && \
+	cargo build "--$PROFILE"
 
 # ===== SECOND STAGE ======
 
 FROM phusion/baseimage:0.10.0
-LABEL maintainer "philip@centrifuge.io"
-LABEL description="This is the 2nd stage: a very small image that contains the substrate binary and will be used by users."
+LABEL maintainer="philip@centrifuge.io"
+LABEL description="This is the 2nd stage: a very small image that contains the centrifuge-chain binary and will be used by users."
 ARG PROFILE=release
 COPY --from=builder /centrifuge-chain/target/$PROFILE/centrifuge-chain /usr/local/bin
 
