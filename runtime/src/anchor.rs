@@ -120,6 +120,7 @@ impl<T: Trait> Module<T> {
 /// tests for anchor module
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
     use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
     use runtime_primitives::{
@@ -509,6 +510,40 @@ mod tests {
                 Anchor::commit(Origin::signed(2), pre_image, doc_root, proof),
                 "Pre-commit owned by someone else"
             );
+        });
+    }
+
+    #[test]
+    #[ignore]
+    fn basic_commit_perf() {
+        with_externalities(&mut new_test_ext(), || {
+            let mut elapsed: u128 = 0;
+            for i in 0..100000 {
+                let random_seed = <system::Module<Test>>::random_seed();
+                let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
+                let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+                let (doc_root, signing_root, proof) = Test::test_document_hashes();
+
+                // happy
+                assert_ok!(Anchor::pre_commit(
+                    Origin::signed(1),
+                    anchor_id,
+                    signing_root
+                ));
+
+                let now = Instant::now();
+
+                assert_ok!(Anchor::commit(
+                    Origin::signed(1),
+                    pre_image,
+                    doc_root,
+                    proof
+                ));
+
+                elapsed = elapsed + now.elapsed().as_micros();
+            }
+
+            println!("time {}", elapsed);
         });
     }
 

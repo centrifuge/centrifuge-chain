@@ -27,6 +27,17 @@ before_install:
 script:
   - ./ci/script.sh
 
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - cmake
+      - gcc
+      - binutils-dev
+      - libiberty-dev
+
 after_script:
   # Check how much free disk space left after the build
   - df -h
