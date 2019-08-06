@@ -1,7 +1,7 @@
 use parity_codec::{Decode, Encode};
 use rstd::vec::Vec;
 use runtime_primitives::traits::{As, Hash};
-use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap};
+use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 
 // expiration duration in blocks of a pre commit,
@@ -45,7 +45,7 @@ decl_storage! {
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-        fn on_initialize(now: T::BlockNumber) {
+        fn on_initialize(_now: T::BlockNumber) {
             if <Version<T>>::get() == 0 {
                 // do first upgrade
                 // ...

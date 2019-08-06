@@ -1,5 +1,4 @@
 use parity_codec::{Decode, Encode};
-use runtime_primitives::traits::Hash;
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
 use support::{
@@ -8,6 +7,7 @@ use support::{
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     StorageMap,
+    StorageValue,
 };
 use system::ensure_signed;
 
@@ -50,7 +50,7 @@ decl_module! {
         // this is needed only if you are using events in your module
         fn deposit_event<T>() = default;
 
-        fn on_initialize(now: T::BlockNumber) {
+        fn on_initialize(_now: T::BlockNumber) {
             if <Version<T>>::get() == 0 {
                 // do first upgrade
                 // ...
