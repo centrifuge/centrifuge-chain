@@ -35,6 +35,9 @@ decl_storage! {
         // Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
         PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
 
+//        PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map <T::BlockNumber: u64> => T::Hash;
+//        PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber: u64;
+
         // Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
     }
@@ -114,6 +117,18 @@ impl<T: Trait> Module<T> {
     fn expiration_duration_blocks() -> u64 {
         // TODO this needs to come from governance
         EXPIRATION_DURATION_BLOCKS
+    }
+
+    //    Determines the next eviction bucket number based on the given BlockNumber
+    //    This can be used to determine which eviction bucket a pre-commit
+    //     should be put into for later eviction.
+    fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
+        let u64_current_block: u64 = current_block.as_();
+        let twice_duration: u64 = Self::expiration_duration_blocks() * 2;
+        let put_into_bucket =
+            u64_current_block - (u64_current_block % twice_duration) + twice_duration;
+
+        T::BlockNumber::sa(put_into_bucket)
     }
 }
 
@@ -512,6 +527,37 @@ mod tests {
             );
         });
     }
+
+    // #### Pre Commit Eviction Tests
+    #[test]
+    fn pre_anchor_commit_bucket_gets_determined_correctly() {
+        with_externalities(&mut new_test_ext(), || {
+            // All assuming EXPIRATION_DURATION_BLOCKS of 480
+
+            let current_block: <Test as system::Trait>::BlockNumber = 1;
+            let expected_evict_bucket: <Test as system::Trait>::BlockNumber = 960;
+            assert_eq!(
+                expected_evict_bucket,
+                Anchor::determine_pre_anchor_eviction_bucket(current_block)
+            );
+
+            let current_block2: <Test as system::Trait>::BlockNumber = 966;
+            let expected_evict_bucket2: <Test as system::Trait>::BlockNumber = 1920;
+            assert_eq!(
+                expected_evict_bucket2,
+                Anchor::determine_pre_anchor_eviction_bucket(current_block2)
+            );
+
+            //testing with current bucket being multiplier of EXPIRATION_DURATION_BLOCKS
+            let current_block3: <Test as system::Trait>::BlockNumber = 1920;
+            let expected_evict_bucket3: <Test as system::Trait>::BlockNumber = 2880;
+            assert_eq!(
+                expected_evict_bucket3,
+                Anchor::determine_pre_anchor_eviction_bucket(current_block3)
+            );
+        });
+    }
+    // #### End Pre Commit Eviction Tests
 
     #[test]
     #[ignore]
