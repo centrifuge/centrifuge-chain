@@ -1,4 +1,5 @@
 use parity_codec::{Decode, Encode};
+use runtime_primitives::traits::Hash;
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
 use support::{
