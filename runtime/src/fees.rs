@@ -8,6 +8,7 @@ use support::{
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     StorageMap,
+    StorageValue,
 };
 use system::ensure_signed;
 
@@ -32,6 +33,8 @@ pub struct Fee<Hash, Balance> {
 decl_storage! {
     trait Store for Module<T: Trait> as Fees {
         Fees get(fee) : map T::Hash => Fee<T::Hash, T::Balance>;
+
+        Version: u64;
     }
 }
 
@@ -47,6 +50,16 @@ decl_module! {
         // Initializing events
         // this is needed only if you are using events in your module
         fn deposit_event<T>() = default;
+
+        fn on_initialize(_now: T::BlockNumber) {
+            if <Version<T>>::get() == 0 {
+                // do first upgrade
+                // ...
+
+                // uncomment when upgraded
+                // <Version<T>>::put(1);
+            }
+        }
 
         pub fn set_fee(origin, new_price: T::Balance, key: T::Hash) -> Result {
             let sender = ensure_signed(origin)?;

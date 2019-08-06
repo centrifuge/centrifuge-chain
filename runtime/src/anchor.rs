@@ -1,7 +1,7 @@
 use parity_codec::{Decode, Encode};
 use rstd::vec::Vec;
 use runtime_primitives::traits::{As, Hash};
-use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap};
+use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 
 // expiration duration in blocks of a pre commit,
@@ -37,11 +37,23 @@ decl_storage! {
 
         // Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
+
+        Version: u64;
     }
 }
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+        fn on_initialize(_now: T::BlockNumber) {
+            if <Version<T>>::get() == 0 {
+                // do first upgrade
+                // ...
+
+                // uncomment when upgraded
+                // <Version<T>>::put(1);
+            }
+        }
 
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
             let who = ensure_signed(origin)?;
