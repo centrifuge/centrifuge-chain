@@ -50,7 +50,8 @@ decl_module! {
                 // do first upgrade
                 // ...
 
-                <Version<T>>::put(1);
+                // uncomment when upgraded
+                // <Version<T>>::put(1);
             }
         }
 
