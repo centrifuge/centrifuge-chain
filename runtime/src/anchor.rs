@@ -35,8 +35,8 @@ decl_storage! {
         // Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
         PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
 
-//        PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map <T::BlockNumber: u64> => T::Hash;
-//        PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber: u64;
+        PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
+        PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
         // Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
@@ -57,6 +57,8 @@ decl_module! {
                 identity: who.clone(),
                 expiration_block: expiration_block,
             });
+
+            Self::put_pre_anchor_into_eviction_bucket(anchor_id)?;
 
             Ok(())
         }
@@ -119,9 +121,25 @@ impl<T: Trait> Module<T> {
         EXPIRATION_DURATION_BLOCKS
     }
 
-    //    Determines the next eviction bucket number based on the given BlockNumber
-    //    This can be used to determine which eviction bucket a pre-commit
-    //     should be put into for later eviction.
+    // Puts the pre-anchor (based on anchor_id) into the correct eviction bucket
+    fn put_pre_anchor_into_eviction_bucket(anchor_id: T::Hash) -> Result {
+        // determine which eviction bucket to put into
+        let evict_after_block = Self::determine_pre_anchor_eviction_bucket(
+            <system::Module<T>>::block_number()
+        );
+        // get current index in eviction bucket and increment
+        let mut eviction_bucket_size = Self::get_pre_anchors_count_in_evict_bucket(evict_after_block);
+
+        // add to eviction bucket and update bucket counter
+        eviction_bucket_size += 1;
+        <PreAnchorEvictionBuckets<T>>::insert((evict_after_block.clone(), eviction_bucket_size.clone()), anchor_id);
+        <PreAnchorEvictionBucketIndex<T>>::insert(evict_after_block, eviction_bucket_size);
+        Ok(())
+    }
+
+    // Determines the next eviction bucket number based on the given BlockNumber
+    // This can be used to determine which eviction bucket a pre-commit
+    // should be put into for later eviction.
     fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
         let u64_current_block: u64 = current_block.as_();
         let twice_duration: u64 = Self::expiration_duration_blocks() * 2;
