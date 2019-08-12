@@ -42,6 +42,7 @@ decl_storage! {
         // Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
         PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
 
+        // Pre-anchor eviction buckets keep track of which pre-anchor can be evicted at which point
         PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
