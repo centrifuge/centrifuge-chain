@@ -1,6 +1,6 @@
-use parity_codec::{Decode, Encode};
+use codec::{Decode, Encode};
 use rstd::vec::Vec;
-use runtime_primitives::traits::{As, Hash};
+use sr_primitives::traits::{Hash};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 
@@ -57,13 +57,13 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
         fn on_initialize(_now: T::BlockNumber) {
-            if <Version<T>>::get() == 0 {
+//            if <Version<T>>::get() == 0 {
                 // do first upgrade
                 // ...
 
                 // uncomment when upgraded
                 // <Version<T>>::put(1);
-            }
+//            }
         }
 
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
@@ -72,7 +72,7 @@ decl_module! {
             ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
             ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
 
-            let expiration_block = <system::Module<T>>::block_number()  + As::sa(Self::expiration_duration_blocks());
+            let expiration_block = <system::Module<T>>::block_number()  + T::BlockNumber::from(Self::expiration_duration_blocks() as u32);
             <PreAnchors<T>>::insert(anchor_id, PreAnchorData {
                 signing_root: signing_root,
                 identity: who.clone(),
@@ -194,13 +194,14 @@ impl<T: Trait> Module<T> {
     // This can be used to determine which eviction bucket a pre-commit
     // should be put into for later eviction.
     fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
-        let u64_current_block: u64 = current_block.as_();
-        let expiration_horizon: u64 =
-            Self::expiration_duration_blocks() * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER;
+        let result: Result(u32, _)= current_block.try_into();
+
+        let expiration_horizon =
+            Self::expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
         let put_into_bucket =
             u64_current_block - (u64_current_block % expiration_horizon) + expiration_horizon;
 
-        T::BlockNumber::sa(put_into_bucket)
+        T::BlockNumber::from(put_into_bucket)
     }
 }
 
@@ -211,12 +212,14 @@ mod tests {
 
     use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
-    use runtime_primitives::{
+    use sr_primitives::{
         testing::{Digest, DigestItem, Header},
         traits::{BlakeTwo256, IdentityLookup},
         BuildStorage,
     };
-    use support::{assert_err, assert_ok, impl_outer_origin};
+    use sr_primitives::weights::Weight;
+    use sr_primitives::Perbill;
+    use support::{impl_outer_origin, assert_ok, parameter_types, assert_err};
 
     use super::*;
 
@@ -229,18 +232,28 @@ mod tests {
     // configuration traits of modules we want to use.
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
+    parameter_types! {
+		pub const BlockHashCount: u64 = 250;
+		pub const MaximumBlockWeight: Weight = 1024;
+		pub const MaximumBlockLength: u32 = 2 * 1024;
+		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	}
     impl system::Trait for Test {
         type Origin = Origin;
+        type Call = ();
         type Index = u64;
         type BlockNumber = u64;
         type Hash = H256;
         type Hashing = BlakeTwo256;
-        type Digest = Digest;
         type AccountId = u64;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
+        type WeightMultiplierUpdate = ();
         type Event = ();
-        type Log = DigestItem;
+        type BlockHashCount = BlockHashCount;
+        type MaximumBlockWeight = MaximumBlockWeight;
+        type MaximumBlockLength = MaximumBlockLength;
+        type AvailableBlockRatio = AvailableBlockRatio;
     }
     impl Trait for Test {}
 

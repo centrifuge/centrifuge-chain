@@ -60,7 +60,7 @@ pub type Balance = u128;
 mod template;
 
 ///// Used for anchor module
-//mod anchor;
+mod anchor;
 //
 /// Fees for TXs
 mod fees;
@@ -217,7 +217,7 @@ impl template::Trait for Runtime {
 	type Event = Event;
 }
 
-//impl anchor::Trait for Runtime {}
+impl anchor::Trait for Runtime {}
 
 /// Fees module implementation
 impl fees::Trait for Runtime {
@@ -238,7 +238,7 @@ construct_runtime!(
 		Sudo: sudo,
 		// Used for the module template in `./template.rs`
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
-//		AnchorModule: anchor::{Module, Call, Storage},
+		AnchorModule: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>},
 
 	}
