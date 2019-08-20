@@ -24,11 +24,8 @@ before_install:
 
 jobs:
   include:
-    - stage: "Wasm"
-      name: "Wasm Build"
-      script: RUST_TOOLCHAIN=nightly TARGET=wasm-build ./ci/script.sh
-    - stage: "Native"
-      name: "Native Build"
+    - stage: "WASM + Native"
+      name: "WASM + Native Build"
       script: RUST_TOOLCHAIN=nightly TARGET=build-client ./ci/script.sh
     - stage: "Tests"
       name: "Run Tests"
