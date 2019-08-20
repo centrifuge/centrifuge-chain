@@ -26,6 +26,9 @@ case $TARGET in
 		;;
 		
 	"runtime-test")
+	    sudo apt-get -y update
+		sudo apt-get install -y cmake pkg-config libssl-dev
+		./scripts/init.sh
 		cargo test -p centrifuge-chain-runtime
 		wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
         tar xzf master.tar.gz &&
