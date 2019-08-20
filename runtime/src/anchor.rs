@@ -1,7 +1,8 @@
 use codec::{Decode, Encode};
 use rstd::vec::Vec;
+use rstd::convert::TryInto;
 use sr_primitives::traits::{Hash};
-use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
+use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap};
 use system::ensure_signed;
 
 // expiration duration in blocks of a pre commit,
@@ -193,39 +194,42 @@ impl<T: Trait> Module<T> {
     // Determines the next eviction bucket number based on the given BlockNumber
     // This can be used to determine which eviction bucket a pre-commit
     // should be put into for later eviction.
+    // TODO return err
     fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
-        let result: Result(u32, _)= current_block.try_into();
+        let result = TryInto::<u32>::try_into(current_block);
+        match result {
+            Ok(u32_current_block)  => {
+                let expiration_horizon =
+                    Self::expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
+                let put_into_bucket =
+                    u32_current_block - (u32_current_block % expiration_horizon) + expiration_horizon;
 
-        let expiration_horizon =
-            Self::expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
-        let put_into_bucket =
-            u64_current_block - (u64_current_block % expiration_horizon) + expiration_horizon;
-
-        T::BlockNumber::from(put_into_bucket)
+                T::BlockNumber::from(put_into_bucket)
+            },
+            Err(_e) => T::BlockNumber::from(0),
+        }
     }
 }
 
 /// tests for anchor module
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
-
-    use primitives::{Blake2Hasher, H256};
-    use runtime_io::with_externalities;
-    use sr_primitives::{
-        testing::{Digest, DigestItem, Header},
-        traits::{BlakeTwo256, IdentityLookup},
-        BuildStorage,
-    };
-    use sr_primitives::weights::Weight;
-    use sr_primitives::Perbill;
-    use support::{impl_outer_origin, assert_ok, parameter_types, assert_err};
-
     use super::*;
 
+    use std::time::Instant;
+    use runtime_io::with_externalities;
+    use primitives::{H256, Blake2Hasher};
+    use support::{impl_outer_origin, assert_ok, assert_err, parameter_types};
+    use sr_primitives::{
+        testing::Header,
+        traits::{BlakeTwo256, IdentityLookup},
+        Perbill,
+        weights::Weight,
+    };
+
     impl_outer_origin! {
-        pub enum Origin for Test {}
-    }
+		pub enum Origin for Test {}
+	}
 
     // For testing the module, we construct most of a mock runtime. This means
     // first constructing a configuration type (`Test`) which `impl`s each of the
@@ -254,7 +258,9 @@ mod tests {
         type MaximumBlockWeight = MaximumBlockWeight;
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
+        type Version = ();
     }
+
     impl Trait for Test {}
 
     impl Test {
@@ -270,18 +276,18 @@ mod tests {
                     86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113,
                     241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78,
                 ]
-                .into(),
+                    .into(),
                 // proof or signing root
                 [
                     17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192,
                     142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218,
                 ]
-                .into(),
+                    .into(),
                 [
                     40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124,
                     145, 37, 1, 1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52,
                 ]
-                .into(),
+                    .into(),
             )
         }
     }
@@ -292,11 +298,7 @@ mod tests {
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
     fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-        system::GenesisConfig::<Test>::default()
-            .build_storage()
-            .unwrap()
-            .0
-            .into()
+        system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
     }
 
     #[test]
@@ -307,7 +309,7 @@ mod tests {
 
             // reject unsigned
             assert_err!(
-                Anchor::pre_commit(Origin::INHERENT, anchor_id, signing_root),
+                Anchor::pre_commit(Origin::NONE, anchor_id, signing_root),
                 "bad origin: expected to be a signed origin"
             );
 
@@ -444,7 +446,7 @@ mod tests {
             // reject unsigned
             assert_err!(
                 Anchor::commit(
-                    Origin::INHERENT,
+                    Origin::NONE,
                     pre_image,
                     doc_root,
                     <Test as system::Trait>::Hashing::hash_of(&0)
@@ -944,5 +946,4 @@ mod tests {
             println!("time {}", elapsed);
         });
     }
-
 }

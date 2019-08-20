@@ -8,7 +8,6 @@ use support::{
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     StorageMap,
-    StorageValue,
 };
 use system::ensure_signed;
 
@@ -112,8 +111,7 @@ impl<T: Trait> Module<T> {
     }
 }
 
-/// ============================== TESTS ==============================
-/// tests for this module
+/// tests for fees module
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,15 +122,6 @@ mod tests {
     use sr_primitives::{traits::{BlakeTwo256, IdentityLookup}, testing::Header};
     use sr_primitives::weights::Weight;
     use sr_primitives::Perbill;
-
-//    use primitives::{Blake2Hasher, H256};
-//    use runtime_io::with_externalities;
-//    use sr_primitives::{
-//        testing::{Digest, DigestItem, Header},
-//        traits::{BlakeTwo256, IdentityLookup},
-//        BuildStorage,
-//    };
-//    use support::{assert_err, assert_ok, impl_outer_origin};
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -165,6 +154,7 @@ mod tests {
         type MaximumBlockWeight = MaximumBlockWeight;
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
+        type Version = ();
     }
     impl Trait for Test {
         type Event = ();
