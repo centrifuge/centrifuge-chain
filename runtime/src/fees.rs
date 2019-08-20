@@ -8,6 +8,7 @@ use support::{
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     StorageMap,
+    StorageValue
 };
 use system::ensure_signed;
 
@@ -51,13 +52,13 @@ decl_module! {
         fn deposit_event<T>() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
-//            if <Version<T>>::get() == 0 {
-//                // do first upgrade
-//                // ...
-//
-//                // uncomment when upgraded
-//                // <Version<T>>::put(1);
-//            }
+            if <Version>::get() == 0 {
+                // do first upgrade
+                // ...
+
+                // uncomment when upgraded
+                // <Version<T>>::put(1);
+            }
         }
 
         pub fn set_fee(origin, new_price: T::Balance, key: T::Hash) -> Result {
