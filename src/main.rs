@@ -9,17 +9,19 @@ mod service;
 
 pub use substrate_cli::{error, IntoExit, VersionInfo};
 
-fn run() -> cli::error::Result<()> {
+fn main() {
     let version = VersionInfo {
-        name: "Substrate Node",
+        name: "Centrifuge Chain Node",
         commit: env!("VERGEN_SHA_SHORT"),
         version: env!("CARGO_PKG_VERSION"),
         executable_name: "centrifuge-chain",
         author: "Centrifuge",
-        description: "centrifuge-chain",
-        support_url: "support.anonymous.an",
+        description: "Centrifuge Chain Node",
+        support_url: "centrifuge.io",
     };
-    cli::run(::std::env::args(), cli::Exit, version)
-}
 
-error_chain::quick_main!(run);
+    if let Err(e) = cli::run(::std::env::args(), cli::Exit, version) {
+        eprintln!("Fatal error: {}\n\n{:?}", e, e);
+        std::process::exit(1)
+    }
+}

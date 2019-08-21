@@ -15,21 +15,14 @@ rustc --version
 rustup --version
 cargo --version
 
+sudo apt-get -y update
+sudo apt-get install -y cmake pkg-config libssl-dev
+
+./scripts/init.sh
+
 case $TARGET in
 	"build-client")
-		sudo apt-get -y update
-		sudo apt-get install -y cmake pkg-config libssl-dev
-
-		./scripts/init.sh
-		./scripts/build.sh --locked "$@"
-
 		cargo build --release --locked "$@"
-		;;
-
-	"wasm-build")
-		# Install prerequisites and build all wasm projects
-		./scripts/init.sh
-		./scripts/build.sh --locked "$@"
 		;;
 		
 	"runtime-test")

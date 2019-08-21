@@ -1,6 +1,7 @@
-use parity_codec::{Decode, Encode};
+use codec::{Decode, Encode};
 use rstd::vec::Vec;
-use runtime_primitives::traits::{As, Hash};
+use rstd::convert::TryInto;
+use sr_primitives::traits::{Hash};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 
@@ -57,7 +58,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
         fn on_initialize(_now: T::BlockNumber) {
-            if <Version<T>>::get() == 0 {
+            if <Version>::get() == 0 {
                 // do first upgrade
                 // ...
 
@@ -72,7 +73,7 @@ decl_module! {
             ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
             ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
 
-            let expiration_block = <system::Module<T>>::block_number()  + As::sa(Self::expiration_duration_blocks());
+            let expiration_block = <system::Module<T>>::block_number()  + T::BlockNumber::from(Self::expiration_duration_blocks() as u32);
             <PreAnchors<T>>::insert(anchor_id, PreAnchorData {
                 signing_root: signing_root,
                 identity: who.clone(),
@@ -193,55 +194,73 @@ impl<T: Trait> Module<T> {
     // Determines the next eviction bucket number based on the given BlockNumber
     // This can be used to determine which eviction bucket a pre-commit
     // should be put into for later eviction.
+    // TODO return err
     fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
-        let u64_current_block: u64 = current_block.as_();
-        let expiration_horizon: u64 =
-            Self::expiration_duration_blocks() * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER;
-        let put_into_bucket =
-            u64_current_block - (u64_current_block % expiration_horizon) + expiration_horizon;
+        let result = TryInto::<u32>::try_into(current_block);
+        match result {
+            Ok(u32_current_block)  => {
+                let expiration_horizon =
+                    Self::expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
+                let put_into_bucket =
+                    u32_current_block - (u32_current_block % expiration_horizon) + expiration_horizon;
 
-        T::BlockNumber::sa(put_into_bucket)
+                T::BlockNumber::from(put_into_bucket)
+            },
+            Err(_e) => T::BlockNumber::from(0),
+        }
     }
 }
 
 /// tests for anchor module
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
-
-    use primitives::{Blake2Hasher, H256};
-    use runtime_io::with_externalities;
-    use runtime_primitives::{
-        testing::{Digest, DigestItem, Header},
-        traits::{BlakeTwo256, IdentityLookup},
-        BuildStorage,
-    };
-    use support::{assert_err, assert_ok, impl_outer_origin};
-
     use super::*;
 
+    use std::time::Instant;
+    use runtime_io::with_externalities;
+    use primitives::{H256, Blake2Hasher};
+    use support::{impl_outer_origin, assert_ok, assert_err, parameter_types};
+    use sr_primitives::{
+        testing::Header,
+        traits::{BlakeTwo256, IdentityLookup},
+        Perbill,
+        weights::Weight,
+    };
+
     impl_outer_origin! {
-        pub enum Origin for Test {}
-    }
+		pub enum Origin for Test {}
+	}
 
     // For testing the module, we construct most of a mock runtime. This means
     // first constructing a configuration type (`Test`) which `impl`s each of the
     // configuration traits of modules we want to use.
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
+    parameter_types! {
+		pub const BlockHashCount: u64 = 250;
+		pub const MaximumBlockWeight: Weight = 1024;
+		pub const MaximumBlockLength: u32 = 2 * 1024;
+		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	}
     impl system::Trait for Test {
         type Origin = Origin;
+        type Call = ();
         type Index = u64;
         type BlockNumber = u64;
         type Hash = H256;
         type Hashing = BlakeTwo256;
-        type Digest = Digest;
         type AccountId = u64;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
+        type WeightMultiplierUpdate = ();
         type Event = ();
-        type Log = DigestItem;
+        type BlockHashCount = BlockHashCount;
+        type MaximumBlockWeight = MaximumBlockWeight;
+        type MaximumBlockLength = MaximumBlockLength;
+        type AvailableBlockRatio = AvailableBlockRatio;
+        type Version = ();
     }
+
     impl Trait for Test {}
 
     impl Test {
@@ -257,18 +276,18 @@ mod tests {
                     86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113,
                     241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78,
                 ]
-                .into(),
+                    .into(),
                 // proof or signing root
                 [
                     17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192,
                     142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218,
                 ]
-                .into(),
+                    .into(),
                 [
                     40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124,
                     145, 37, 1, 1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52,
                 ]
-                .into(),
+                    .into(),
             )
         }
     }
@@ -279,11 +298,7 @@ mod tests {
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
     fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-        system::GenesisConfig::<Test>::default()
-            .build_storage()
-            .unwrap()
-            .0
-            .into()
+        system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
     }
 
     #[test]
@@ -294,7 +309,7 @@ mod tests {
 
             // reject unsigned
             assert_err!(
-                Anchor::pre_commit(Origin::INHERENT, anchor_id, signing_root),
+                Anchor::pre_commit(Origin::NONE, anchor_id, signing_root),
                 "bad origin: expected to be a signed origin"
             );
 
@@ -431,7 +446,7 @@ mod tests {
             // reject unsigned
             assert_err!(
                 Anchor::commit(
-                    Origin::INHERENT,
+                    Origin::NONE,
                     pre_image,
                     doc_root,
                     <Test as system::Trait>::Hashing::hash_of(&0)
@@ -931,5 +946,4 @@ mod tests {
             println!("time {}", elapsed);
         });
     }
-
 }

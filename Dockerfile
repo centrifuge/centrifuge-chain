@@ -9,9 +9,6 @@ WORKDIR /centrifuge-chain
 COPY . /centrifuge-chain
 
 RUN export PATH=$PATH:$HOME/.cargo/bin && \
-    bash ./scripts/build.sh
-
-RUN export PATH=$PATH:$HOME/.cargo/bin && \
 	cargo build "--$PROFILE"
 
 # ===== SECOND STAGE ======

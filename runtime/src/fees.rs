@@ -1,5 +1,5 @@
-use parity_codec::{Decode, Encode};
-use runtime_primitives::traits::Hash;
+use codec::{Decode, Encode};
+use sr_primitives::traits::Hash;
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
 use support::{
@@ -8,7 +8,7 @@ use support::{
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     StorageMap,
-    StorageValue,
+    StorageValue
 };
 use system::ensure_signed;
 
@@ -52,7 +52,7 @@ decl_module! {
         fn deposit_event<T>() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
-            if <Version<T>>::get() == 0 {
+            if <Version>::get() == 0 {
                 // do first upgrade
                 // ...
 
@@ -112,20 +112,17 @@ impl<T: Trait> Module<T> {
     }
 }
 
-/// ============================== TESTS ==============================
-/// tests for this module
+/// tests for fees module
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
-    use runtime_primitives::{
-        testing::{Digest, DigestItem, Header},
-        traits::{BlakeTwo256, IdentityLookup},
-        BuildStorage,
-    };
-    use support::{assert_err, assert_ok, impl_outer_origin};
+    use primitives::{H256, Blake2Hasher};
+    use support::{impl_outer_origin, assert_ok, parameter_types, assert_err};
+    use sr_primitives::{traits::{BlakeTwo256, IdentityLookup}, testing::Header};
+    use sr_primitives::weights::Weight;
+    use sr_primitives::Perbill;
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -136,57 +133,68 @@ mod tests {
     // configuration traits of modules we want to use.
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
+    parameter_types! {
+		pub const BlockHashCount: u64 = 250;
+		pub const MaximumBlockWeight: Weight = 1024;
+		pub const MaximumBlockLength: u32 = 2 * 1024;
+		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	}
     impl system::Trait for Test {
         type Origin = Origin;
+        type Call = ();
         type Index = u64;
         type BlockNumber = u64;
         type Hash = H256;
         type Hashing = BlakeTwo256;
-        type Digest = Digest;
         type AccountId = u64;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
+        type WeightMultiplierUpdate = ();
         type Event = ();
-        type Log = DigestItem;
+        type BlockHashCount = BlockHashCount;
+        type MaximumBlockWeight = MaximumBlockWeight;
+        type MaximumBlockLength = MaximumBlockLength;
+        type AvailableBlockRatio = AvailableBlockRatio;
+        type Version = ();
     }
     impl Trait for Test {
         type Event = ();
     }
+    parameter_types! {
+		pub const ExistentialDeposit: u64 = 0;
+		pub const TransferFee: u64 = 0;
+		pub const CreationFee: u64 = 0;
+		pub const TransactionBaseFee: u64 = 0;
+		pub const TransactionByteFee: u64 = 0;
+	}
     impl balances::Trait for Test {
         type Balance = u64;
         type OnFreeBalanceZero = ();
         type OnNewAccount = ();
         type Event = ();
         type TransactionPayment = ();
-        type DustRemoval = ();
         type TransferPayment = ();
+        type DustRemoval = ();
+        type ExistentialDeposit = ExistentialDeposit;
+        type TransferFee = TransferFee;
+        type CreationFee = CreationFee;
+        type TransactionBaseFee = TransactionBaseFee;
+        type TransactionByteFee = TransactionByteFee;
+        type WeightToFee = ();
     }
     type Fees = Module<Test>;
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
     fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-        let mut t = system::GenesisConfig::<Test>::default()
-            .build_storage()
-            .unwrap()
-            .0;
+
+        let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
 
         // pre-fill balances
-        t.extend(
-            balances::GenesisConfig::<Test> {
-                balances: vec![(1, 100000), (2, 100000)],
-                transaction_base_fee: 0,
-                transaction_byte_fee: 0,
-                existential_deposit: 1,
-                transfer_fee: 0,
-                creation_fee: 0,
-                vesting: vec![],
-            }
-            .build_storage()
-            .unwrap()
-            .0,
-        );
-
+        balances::GenesisConfig::<Test> {
+            balances: vec![(1, 100000), (2, 100000)],
+            vesting: vec![],
+        }.assimilate_storage(&mut t).unwrap();
         t.into()
     }
 
