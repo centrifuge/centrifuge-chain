@@ -68,3 +68,13 @@ cargo run -- \
 ```
 
 Additional CLI usage options are available and may be shown by running `cargo run -- --help`.
+
+## Testnets
+
+### Fulvous 
+
+To generate the chain spec,
+`./target/debug/centrifuge-chain build-spec --chain=fulvous > testnets/fulvous.json`
+
+To generate the raw chain spec,
+`./target/debug/centrifuge-chain build-spec --chain testnets/fulvous.json --raw > testnets/fulvous.raw.json`

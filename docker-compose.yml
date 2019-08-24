@@ -25,14 +25,12 @@ services:
       - "~/tmp/centrifuge-chain/alice/:/data"
     entrypoint:
       - centrifuge-chain
-      - --dev
       - --ws-external
       - --validator
-      - --name=Alice
-      - --key=//Alice
+      # TODO remove alice here and call the RPC method to start validating with a proper account
+      - --alice
       - --node-key=2a654a0958cd0e10626c36057c46a08018eaf2901f9bab74ecc1144f714300ac
-      # - --chain=/var/local/chainSpec.raw.json
-      - --chain=local
+      - --chain=/var/local/testnets/fulvous.raw.json
       - --bootnodes=/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq
   babette:
     image: centrifugeio/centrifuge-chain:latest
@@ -59,14 +57,12 @@ services:
       - "~/tmp/centrifuge-chain/babette/:/data"
     entrypoint:
       - centrifuge-chain
-      - --dev
       - --ws-external
       - --validator
-      - --name=Babette
       - --node-key=66ef62065cfdc48929b5cb9c1bbc0a728e6d1d43b4ba1de13ccf76c7ecec66e9
-      - --key=//Bob
-      # - --chain=/var/local/chainSpec.raw.json
-      - --chain=local
+      # TODO remove bob here and call the RPC method to start validating with a proper account
+      - --bob
+      - --chain=/var/local/testnets/fulvous.raw.json
       - --bootnodes=/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6
 networks:
   centchain-network:
