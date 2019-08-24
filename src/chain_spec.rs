@@ -7,9 +7,6 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use primitives::{Pair, Public};
 use substrate_service;
 
-// Note this is the URL for the telemetry server
-//const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
-
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
 
@@ -20,8 +17,8 @@ pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
 pub enum Alternative {
     /// Whatever the current runtime is, with just Alice as an auth.
     Development,
-    /// Whatever the current runtime is, with simple Alice/Bob auths.
-    LocalTestnet,
+    /// Fulvous testnet with whatever the current runtime is, with simple Alice/Bob auths and sudo account set by environment.
+    Fulvous,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -67,36 +64,31 @@ impl Alternative {
                 None,
                 None,
             ),
-            Alternative::LocalTestnet => ChainSpec::from_genesis(
-                "Local Testnet",
-                "local_testnet",
+            // Fulvous initial config
+            Alternative::Fulvous => ChainSpec::from_genesis(
+                "Fulvous Testnet",
+                "fulvous",
                 || {
                     testnet_genesis(
                         vec![
+                            // TODO remove Alice and Bob here and setup proper validator accounts. Then following RPC methods needs to be called on a validator node to start validating.
+                            // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["gran", "seed"],"id":1 }' localhost:9933
+                            // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["babe", "seed"],"id":1 }' localhost:9933
                             get_authority_keys_from_seed("Alice"),
                             get_authority_keys_from_seed("Bob"),
                         ],
+                        // This is not the actual seed for the root key of Fulvous. Find it out your self.
                         get_from_seed::<AccountId>("Alice"),
-                        vec![
-                            get_from_seed::<AccountId>("Alice"),
-                            get_from_seed::<AccountId>("Bob"),
-                            get_from_seed::<AccountId>("Charlie"),
-                            get_from_seed::<AccountId>("Dave"),
-                            get_from_seed::<AccountId>("Eve"),
-                            get_from_seed::<AccountId>("Ferdie"),
-                            get_from_seed::<AccountId>("Alice//stash"),
-                            get_from_seed::<AccountId>("Bob//stash"),
-                            get_from_seed::<AccountId>("Charlie//stash"),
-                            get_from_seed::<AccountId>("Dave//stash"),
-                            get_from_seed::<AccountId>("Eve//stash"),
-                            get_from_seed::<AccountId>("Ferdie//stash"),
-                        ],
+                        vec![],
                         true,
                     )
                 },
-                vec![],
+                vec![
+                    String::from("/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq"),
+                    String::from("/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6"),
+                ],
                 None,
-                None,
+                Some("centrifuge-chain"),
                 None,
                 None,
             ),
@@ -106,7 +98,7 @@ impl Alternative {
     pub(crate) fn from(s: &str) -> Option<Self> {
         match s {
             "dev" => Some(Alternative::Development),
-            "" | "local" => Some(Alternative::LocalTestnet),
+            "fulvous" => Some(Alternative::Fulvous),
             _ => None,
         }
     }

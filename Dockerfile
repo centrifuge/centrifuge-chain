@@ -19,6 +19,9 @@ LABEL description="This is the 2nd stage: a very small image that contains the c
 ARG PROFILE=release
 COPY --from=builder /centrifuge-chain/target/$PROFILE/centrifuge-chain /usr/local/bin
 
+# Add testnet chain specs
+COPY ./testnets /var/local/testnets
+
 RUN mv /usr/share/ca* /tmp && \
 	rm -rf /usr/share/*  && \
 	mv /tmp/ca-certificates /usr/share/ && \
