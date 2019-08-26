@@ -78,3 +78,12 @@ To generate the chain spec,
 
 To generate the raw chain spec,
 `./target/debug/centrifuge-chain build-spec --chain testnets/fulvous.json --raw > testnets/fulvous.raw.json`
+
+
+### Running locally
+For Fulvous
+Validator Bob:
+`./target/debug/centrifuge-chain --ws-external --validator --node-key=66ef62065cfdc48929b5cb9c1bbc0a728e6d1d43b4ba1de13ccf76c7ecec66e9 --bob --rpc-cors=all --chain=testts/fulvous.raw.json --base-path /tmp/tbob`
+
+Validator Alice (Pass libp2p address of bobs node above as the bootnode here)
+`./target/debug/centrifuge-chain --ws-external --validator --node-key=2a654a0958cd0e10626c36057c46a08018eaf2901f9bab74ecc1144f714300ac --alice --rpc-cors=all --chain=testnets/fulvous.raw.json --base-path /tmp/talice --bootnodes=/ip4/127.0.0.1/tcp/30333/p2p/QmNpeu3bJhESzriWMLRcxRgSCYDGQ6GdBHnJAf8bJexAd5 --port=30334`
