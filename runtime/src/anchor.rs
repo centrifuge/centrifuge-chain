@@ -1,7 +1,11 @@
 use codec::{Decode, Encode};
+use sr_primitives::{
+    traits::{Extrinsic as ExtrinsicT, Hash},
+};
+use runtime_io::{Printable, print, submit_transaction};
+use rstd::prelude::*;
 use rstd::vec::Vec;
 use rstd::convert::TryInto;
-use sr_primitives::traits::{Hash};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 
@@ -17,6 +21,29 @@ const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
 // Determines how many pre-anchors are evicted at maximum per eviction TX
 const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
+
+
+// Error which may occur while executing the off-chain code.
+#[cfg_attr(feature = "std", derive(Debug))]
+enum OffchainErr {
+    DecodeWorkerStatus,
+    ExtrinsicCreation,
+    FailedSigning,
+    NetworkState,
+    SubmitTransaction,
+}
+
+impl Printable for OffchainErr {
+    fn print(self) {
+        match self {
+            OffchainErr::DecodeWorkerStatus => print("Offchain error: decoding WorkerStatus failed!"),
+            OffchainErr::ExtrinsicCreation => print("Offchain error: extrinsic creation failed!"),
+            OffchainErr::FailedSigning => print("Offchain error: signing failed!"),
+            OffchainErr::NetworkState => print("Offchain error: fetching network state failed!"),
+            OffchainErr::SubmitTransaction => print("Offchain error: submitting transaction failed!"),
+        }
+    }
+}
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -35,7 +62,15 @@ pub struct AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait {}
+pub trait Trait: system::Trait {
+
+    /// The function call.
+    type Call: From<Call<Self>>;
+
+    /// A extrinsic right from the external world. This is unchecked and so
+	/// can contain a signature.
+    type UncheckedExtrinsic: ExtrinsicT<Call=<Self as Trait>::Call> + Encode + Decode;
+}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -136,7 +171,36 @@ decl_module! {
             }
             Ok(())
         }
+
+        fn offchain_worker(now: T::BlockNumber) {
+            print("starting pre-commit evict offchain worker ");
+            let call = Call::evict_pre_commits(now);
+            match T::UncheckedExtrinsic::new_unsigned(call.into())
+                    .ok_or(OffchainErr::ExtrinsicCreation) {
+                Ok(ex)  => {
+                    match submit_transaction(&ex).map_err(|_| OffchainErr::SubmitTransaction) {
+                        Ok(_)  => {},
+                        Err(e) => print(e),
+                    }
+                },
+                Err(e) => print(e),
+            }
+//            match submit_transaction(&ex).map_err(|_| OffchainErr::SubmitTransaction) {
+//                Ok(_)  => {},
+//                Err(e) => print(e),
+//            }
+//            let result = TryInto::<u32>::try_into(now);
+//            match result {
+//                Ok(u32_current_block)  => {
+//                    runtime_io::print(u32_current_block.to_string());
+//                },
+//                Err(e) => runtime_io::print(e),
+//            }
+
+        }
     }
+
+
 }
 
 impl<T: Trait> Module<T> {
@@ -261,7 +325,10 @@ mod tests {
         type Version = ();
     }
 
-    impl Trait for Test {}
+    impl Trait for Test {
+        type Call = ();
+        type UncheckedExtrinsic = ();
+    }
 
     impl Test {
         fn test_document_hashes() -> (
