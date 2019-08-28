@@ -185,17 +185,6 @@ decl_module! {
                 },
                 Err(e) => print(e),
             }
-//            match submit_transaction(&ex).map_err(|_| OffchainErr::SubmitTransaction) {
-//                Ok(_)  => {},
-//                Err(e) => print(e),
-//            }
-//            let result = TryInto::<u32>::try_into(now);
-//            match result {
-//                Ok(u32_current_block)  => {
-//                    runtime_io::print(u32_current_block.to_string());
-//                },
-//                Err(e) => runtime_io::print(e),
-//            }
 
         }
     }
