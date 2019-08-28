@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use sr_primitives::{
-    traits::{Extrinsic as ExtrinsicT, Hash},
+    traits::{Extrinsic as ExtrinsicT, Hash}, generic, AnySignature
 };
 use runtime_io::{Printable, print, submit_transaction};
 use rstd::prelude::*;
@@ -315,8 +315,9 @@ mod tests {
     }
 
     impl Trait for Test {
-        type Call = ();
-        type UncheckedExtrinsic = ();
+        type Call = Call<Self>;
+
+        type UncheckedExtrinsic = generic::UncheckedExtrinsic<u64, Call<Self>, AnySignature, ()>;
     }
 
     impl Test {

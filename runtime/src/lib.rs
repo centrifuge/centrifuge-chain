@@ -257,7 +257,6 @@ impl sudo::Trait for Runtime {
 
 impl anchor::Trait for Runtime {
 	type Call = Call;
-
 	type UncheckedExtrinsic = UncheckedExtrinsic;
 }
 
