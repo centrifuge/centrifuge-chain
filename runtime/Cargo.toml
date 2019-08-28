@@ -8,6 +8,7 @@ version = '2.0.0'
 default = ['std']
 no_std = []
 std = [
+    "app-crypto/std",
     'codec/std',
     'client/std',
     'rstd/std',
@@ -20,6 +21,7 @@ std = [
     'indices/std',
     'grandpa/std',
     'primitives/std',
+    "session/std",
     'sr-primitives/std',
     'system/std',
     'timestamp/std',
@@ -31,6 +33,13 @@ std = [
     'offchain-primitives/std',
     'substrate-session/std',
 ]
+
+[dependencies.app-crypto]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'substrate-application-crypto'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
 [dependencies.babe]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -83,6 +92,12 @@ rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 default_features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'srml-indices'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.session]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = "srml-session"
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
 [dependencies.offchain-primitives]

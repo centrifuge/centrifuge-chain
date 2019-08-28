@@ -1,6 +1,8 @@
 use codec::{Decode, Encode};
+use app_crypto::RuntimeAppPublic;
+use babe::AuthorityId;
 use sr_primitives::{
-    traits::{Extrinsic as ExtrinsicT, Hash}, generic, AnySignature
+    traits::{Extrinsic as ExtrinsicT, Hash}
 };
 use runtime_io::{Printable, print, submit_transaction};
 use rstd::prelude::*;
@@ -26,20 +28,16 @@ const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
 // Error which may occur while executing the off-chain code.
 #[cfg_attr(feature = "std", derive(Debug))]
 enum OffchainErr {
-    DecodeWorkerStatus,
     ExtrinsicCreation,
     FailedSigning,
-    NetworkState,
     SubmitTransaction,
 }
 
 impl Printable for OffchainErr {
     fn print(self) {
         match self {
-            OffchainErr::DecodeWorkerStatus => print("Offchain error: decoding WorkerStatus failed!"),
             OffchainErr::ExtrinsicCreation => print("Offchain error: extrinsic creation failed!"),
             OffchainErr::FailedSigning => print("Offchain error: signing failed!"),
-            OffchainErr::NetworkState => print("Offchain error: fetching network state failed!"),
             OffchainErr::SubmitTransaction => print("Offchain error: submitting transaction failed!"),
         }
     }
@@ -75,15 +73,18 @@ pub trait Trait: system::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
 
-        // Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
+        /// Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
         PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
 
-        // Pre-anchor eviction buckets keep track of which pre-anchor can be evicted at which point
+        /// Pre-anchor eviction buckets keep track of which pre-anchor can be evicted at which point
         PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
-        // Anchors store the map of anchor Id to the anchor
+        /// Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
+
+        /// The current set of keys that can sign transactions on behalf of off-chain workers.
+		SigningKeys get(keys): Vec<AuthorityId>;
 
         Version: u64;
     }
@@ -146,7 +147,7 @@ decl_module! {
 
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
             // TODO make payable
-            ensure_signed(origin)?;
+            //ensure_signed(origin)?;
             ensure!((<system::Module<T>>::block_number() >= evict_bucket), "eviction only possible for bucket expiring < current block height");
 
             let pre_anchors_count = Self::get_pre_anchors_count_in_evict_bucket(evict_bucket);
@@ -173,8 +174,15 @@ decl_module! {
         }
 
         fn offchain_worker(now: T::BlockNumber) {
+            let authorities = SigningKeys::get();
             print("starting pre-commit evict offchain worker ");
+            // TODO configure purpose specific key and call evict_from_worker
+            for authority in authorities.into_iter() {
+                let signature = authority.sign(&"blah".encode()).ok_or(OffchainErr::FailedSigning);
+            }
+
             let call = Call::evict_pre_commits(now);
+            // TODO signed
             match T::UncheckedExtrinsic::new_unsigned(call.into())
                     .ok_or(OffchainErr::ExtrinsicCreation) {
                 Ok(ex)  => {
@@ -262,6 +270,47 @@ impl<T: Trait> Module<T> {
             Err(_e) => T::BlockNumber::from(0),
         }
     }
+
+    fn initialize_keys(keys: &[AuthorityId]) {
+        if !keys.is_empty() {
+            assert!(SigningKeys::get().is_empty(), "Keys are already initialized!");
+            SigningKeys::put_ref(keys);
+        }
+    }
+
+    fn evict_from_worker(block_number: T::BlockNumber) -> Result {
+        // we run only when a local authority key is configured
+        Ok(())
+    }
+}
+
+// implementing this trait allows us to listen to authority set changes.
+impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
+
+    type Key = AuthorityId;
+
+    fn on_genesis_session<'a, I: 'a>(validators: I)
+        where I: Iterator<Item=(&'a T::AccountId, AuthorityId)>
+    {
+        let keys = validators.map(|x| x.1).collect::<Vec<_>>();
+        Self::initialize_keys(&keys);
+    }
+
+    fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_validators: I)
+        where I: Iterator<Item=(&'a T::AccountId, AuthorityId)>
+    {
+
+        // Remember who the authorities are for the new session.
+        SigningKeys::put(validators.map(|x| x.1).collect::<Vec<_>>());
+    }
+
+    fn on_before_session_ending() {
+
+    }
+
+    fn on_disabled(_i: usize) {
+        // ignore
+    }
 }
 
 /// tests for anchor module
@@ -274,6 +323,8 @@ mod tests {
     use primitives::{H256, Blake2Hasher};
     use support::{impl_outer_origin, assert_ok, assert_err, parameter_types};
     use sr_primitives::{
+        generic,
+        AnySignature,
         testing::Header,
         traits::{BlakeTwo256, IdentityLookup},
         Perbill,
