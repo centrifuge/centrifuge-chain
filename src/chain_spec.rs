@@ -1,11 +1,12 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
-    AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SudoConfig,
+    AccountId, opaque::SessionKeys, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SessionConfig, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
 use primitives::{Pair, Public};
 use substrate_service;
+use centrifuge_chain_runtime::opaque::AnchorAuthorityId;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -29,12 +30,13 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 /// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId) {
+pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId, AnchorAuthorityId) {
     (
         get_from_seed::<AccountId>(&format!("{}//stash", seed)),
         get_from_seed::<AccountId>(seed),
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<BabeId>(seed),
+        get_from_seed::<AnchorAuthorityId>(seed),
     )
 }
 
@@ -105,7 +107,7 @@ impl Alternative {
 }
 
 fn testnet_genesis(
-    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId)>,
+    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, AnchorAuthorityId)>,
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
@@ -125,6 +127,16 @@ fn testnet_genesis(
                 .map(|k| (k, 1 << 60))
                 .collect(),
             vesting: vec![],
+        }),
+        session: Some(SessionConfig {
+            keys: initial_authorities
+                .iter()
+                .map(|x| (x.1.clone(), SessionKeys {
+                    grandpa: x.2.clone(),
+                    babe: x.3.clone(),
+                    anchor: x.4.clone(),
+                }))
+                .collect()
         }),
         sudo: Some(SudoConfig { key: root_key }),
         babe: Some(BabeConfig {

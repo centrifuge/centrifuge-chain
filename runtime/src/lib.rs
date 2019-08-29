@@ -35,6 +35,18 @@ pub use balances::Call as BalancesCall;
 pub use sr_primitives::{Permill, Perbill};
 pub use support::{StorageValue, construct_runtime, parameter_types};
 
+
+mod app {
+
+	pub use app_crypto::sr25519 as crypto;
+	use app_crypto::{app_crypto, KeyTypeId, sr25519};
+
+	/// Key type for Anchor module, built-in.
+	pub const ANCHOR: KeyTypeId = KeyTypeId(*b"anch");
+
+	app_crypto!(sr25519, ANCHOR);
+}
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -83,7 +95,10 @@ pub mod opaque {
 	/// Opaque block identifier type.
 	pub type BlockId = generic::BlockId<Block>;
 
-	pub type SessionHandlers = (Grandpa, Babe);
+	pub type SessionHandlers = (Grandpa, Babe, Anchor);
+
+	/// A anchor evict authority identifier.
+	pub type AnchorAuthorityId = app::Public;
 
 	impl_opaque_keys! {
 		pub struct SessionKeys {
@@ -91,6 +106,8 @@ pub mod opaque {
 			pub grandpa: GrandpaId,
 			#[id(key_types::BABE)]
 			pub babe: BabeId,
+			#[id(crate::app::ANCHOR)]
+			pub anchor: AnchorAuthorityId,
 		}
 	}
 }
@@ -255,6 +272,23 @@ impl sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
+// NOTE: `SessionHandler` and `SessionKeys` are co-dependent: One key will be used for each handler.
+// The number and order of items in `SessionHandler` *MUST* be the same number and order of keys in
+// `SessionKeys`.
+// TODO: Introduce some structure to tie these together to make it a bit less of a footgun. This
+// should be easy, since OneSessionHandler trait provides the `Key` as an associated type. #2858
+
+impl session::Trait for Runtime {
+	type OnSessionEnding = ();
+	type SessionHandler = opaque::SessionHandlers;
+	type ShouldEndSession = Babe;
+	type Event = Event;
+	type Keys = opaque::SessionKeys;
+	type ValidatorId = AccountId;
+	type ValidatorIdOf = ConvertInto;
+	type SelectInitialValidators = ();
+}
+
 impl anchor::Trait for Runtime {
 	type Call = Call;
 	type UncheckedExtrinsic = UncheckedExtrinsic;
@@ -277,8 +311,9 @@ construct_runtime!(
 		Grandpa: grandpa::{Module, Call, Storage, Config, Event},
 		Indices: indices::{default, Config<T>},
 		Balances: balances,
+		Session: session::{Module, Call, Storage, Event, Config<T>},
 		Sudo: sudo,
-		AnchorModule: anchor::{Module, Call, Storage},
+		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>},
 	}
 );

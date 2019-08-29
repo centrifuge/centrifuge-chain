@@ -178,7 +178,10 @@ decl_module! {
             print("starting pre-commit evict offchain worker ");
             // TODO configure purpose specific key and call evict_from_worker
             for authority in authorities.into_iter() {
-                let signature = authority.sign(&"blah".encode()).ok_or(OffchainErr::FailedSigning);
+                match authority.sign(&"blah".encode()).ok_or(OffchainErr::FailedSigning) {
+                    Ok(_)  => print("signing ok"),
+                    Err(e) => print(e),
+                }
             }
 
             let call = Call::evict_pre_commits(now);
