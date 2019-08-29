@@ -1,6 +1,6 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
-    AccountId, opaque::SessionKeys, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SessionConfig, SudoConfig,
+    AccountId, opaque::SessionKeys, BalancesConfig, GenesisConfig, IndicesConfig, SessionConfig, SudoConfig,
     SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
@@ -139,17 +139,7 @@ fn testnet_genesis(
                 .collect()
         }),
         sudo: Some(SudoConfig { key: root_key }),
-        babe: Some(BabeConfig {
-            authorities: initial_authorities
-                .iter()
-                .map(|x| (x.3.clone(), 1))
-                .collect(),
-        }),
-        grandpa: Some(GrandpaConfig {
-            authorities: initial_authorities
-                .iter()
-                .map(|x| (x.2.clone(), 1))
-                .collect(),
-        }),
+        babe: Some(Default::default()),
+        grandpa: Some(Default::default()),
     }
 }

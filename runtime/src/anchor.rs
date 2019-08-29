@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
 use app_crypto::RuntimeAppPublic;
-use babe::AuthorityId;
+use crate::opaque::{AnchorAuthorityId as AuthorityId};
 use sr_primitives::{
     traits::{Extrinsic as ExtrinsicT, Hash}
 };
