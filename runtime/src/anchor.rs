@@ -4,7 +4,7 @@ use crate::opaque::{AnchorAuthorityId as AuthorityId};
 use sr_primitives::{
     traits::{Extrinsic as ExtrinsicT, Hash}
 };
-use runtime_io::{Printable, print, submit_transaction};
+use runtime_io::{Printable, print, submit_transaction, is_validator};
 use rstd::prelude::*;
 use rstd::vec::Vec;
 use rstd::convert::TryInto;
@@ -174,27 +174,11 @@ decl_module! {
         }
 
         fn offchain_worker(now: T::BlockNumber) {
-            let authorities = SigningKeys::get();
-            print("starting pre-commit evict offchain worker ");
-            // TODO configure purpose specific key and call evict_from_worker
-            for authority in authorities.into_iter() {
-                match authority.sign(&"blah".encode()).ok_or(OffchainErr::FailedSigning) {
-                    Ok(_)  => print("signing ok"),
+            if is_validator() {
+                match Self::evict_from_worker(now) {
+                    Ok(_)  => {},
                     Err(e) => print(e),
                 }
-            }
-
-            let call = Call::evict_pre_commits(now);
-            // TODO signed
-            match T::UncheckedExtrinsic::new_unsigned(call.into())
-                    .ok_or(OffchainErr::ExtrinsicCreation) {
-                Ok(ex)  => {
-                    match submit_transaction(&ex).map_err(|_| OffchainErr::SubmitTransaction) {
-                        Ok(_)  => {},
-                        Err(e) => print(e),
-                    }
-                },
-                Err(e) => print(e),
             }
 
         }
@@ -282,7 +266,7 @@ impl<T: Trait> Module<T> {
     }
 
     fn evict_from_worker(block_number: T::BlockNumber) -> Result {
-        // we run only when a local authority key is configured
+        // TODO sign and send evict tx
         Ok(())
     }
 }
