@@ -24,25 +24,6 @@ const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 // Determines how many pre-anchors are evicted at maximum per eviction TX
 const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
 
-
-// Error which may occur while executing the off-chain code.
-#[cfg_attr(feature = "std", derive(Debug))]
-enum OffchainErr {
-    ExtrinsicCreation,
-    FailedSigning,
-    SubmitTransaction,
-}
-
-impl Printable for OffchainErr {
-    fn print(self) {
-        match self {
-            OffchainErr::ExtrinsicCreation => print("Offchain error: extrinsic creation failed!"),
-            OffchainErr::FailedSigning => print("Offchain error: signing failed!"),
-            OffchainErr::SubmitTransaction => print("Offchain error: submitting transaction failed!"),
-        }
-    }
-}
-
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
@@ -147,7 +128,7 @@ decl_module! {
 
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
             // TODO make payable
-            //ensure_signed(origin)?;
+            ensure_signed(origin)?;
             ensure!((<system::Module<T>>::block_number() >= evict_bucket), "eviction only possible for bucket expiring < current block height");
 
             let pre_anchors_count = Self::get_pre_anchors_count_in_evict_bucket(evict_bucket);
