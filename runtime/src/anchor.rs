@@ -1,13 +1,11 @@
-use codec::{Decode, Encode};
+use crate::opaque::AnchorAuthorityId as AuthorityId;
 use app_crypto::RuntimeAppPublic;
-use crate::opaque::{AnchorAuthorityId as AuthorityId};
-use sr_primitives::{
-    traits::{Extrinsic as ExtrinsicT, Hash}
-};
-use runtime_io::{Printable, print, submit_transaction, is_validator};
+use codec::{Decode, Encode};
+use rstd::convert::TryInto;
 use rstd::prelude::*;
 use rstd::vec::Vec;
-use rstd::convert::TryInto;
+use runtime_io::{is_validator, print, submit_transaction, Printable};
+use sr_primitives::traits::{Extrinsic as ExtrinsicT, Hash};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 
@@ -42,13 +40,12 @@ pub struct AnchorData<Hash, BlockNumber> {
 
 /// The module's configuration trait.
 pub trait Trait: system::Trait {
-
     /// The function call.
     type Call: From<Call<Self>>;
 
     /// A extrinsic right from the external world. This is unchecked and so
-	/// can contain a signature.
-    type UncheckedExtrinsic: ExtrinsicT<Call=<Self as Trait>::Call> + Encode + Decode;
+    /// can contain a signature.
+    type UncheckedExtrinsic: ExtrinsicT<Call = <Self as Trait>::Call> + Encode + Decode;
 }
 
 decl_storage! {
@@ -65,7 +62,7 @@ decl_storage! {
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
 
         /// The current set of keys that can sign transactions on behalf of off-chain workers.
-		SigningKeys get(keys): Vec<AuthorityId>;
+        SigningKeys get(keys): Vec<AuthorityId>;
 
         Version: u64;
     }
@@ -227,21 +224,24 @@ impl<T: Trait> Module<T> {
     fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
         let result = TryInto::<u32>::try_into(current_block);
         match result {
-            Ok(u32_current_block)  => {
-                let expiration_horizon =
-                    Self::expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
-                let put_into_bucket =
-                    u32_current_block - (u32_current_block % expiration_horizon) + expiration_horizon;
+            Ok(u32_current_block) => {
+                let expiration_horizon = Self::expiration_duration_blocks() as u32
+                    * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
+                let put_into_bucket = u32_current_block - (u32_current_block % expiration_horizon)
+                    + expiration_horizon;
 
                 T::BlockNumber::from(put_into_bucket)
-            },
+            }
             Err(_e) => T::BlockNumber::from(0),
         }
     }
 
     fn initialize_keys(keys: &[AuthorityId]) {
         if !keys.is_empty() {
-            assert!(SigningKeys::get().is_empty(), "Keys are already initialized!");
+            assert!(
+                SigningKeys::get().is_empty(),
+                "Keys are already initialized!"
+            );
             SigningKeys::put_ref(keys);
         }
     }
@@ -254,27 +254,25 @@ impl<T: Trait> Module<T> {
 
 // implementing this trait allows us to listen to authority set changes.
 impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
-
     type Key = AuthorityId;
 
     fn on_genesis_session<'a, I: 'a>(validators: I)
-        where I: Iterator<Item=(&'a T::AccountId, AuthorityId)>
+    where
+        I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
     {
         let keys = validators.map(|x| x.1).collect::<Vec<_>>();
         Self::initialize_keys(&keys);
     }
 
     fn on_new_session<'a, I: 'a>(_changed: bool, validators: I, _queued_validators: I)
-        where I: Iterator<Item=(&'a T::AccountId, AuthorityId)>
+    where
+        I: Iterator<Item = (&'a T::AccountId, AuthorityId)>,
     {
-
         // Remember who the authorities are for the new session.
         SigningKeys::put(validators.map(|x| x.1).collect::<Vec<_>>());
     }
 
-    fn on_before_session_ending() {
-
-    }
+    fn on_before_session_ending() {}
 
     fn on_disabled(_i: usize) {
         // ignore
@@ -286,22 +284,21 @@ impl<T: Trait> session::OneSessionHandler<T::AccountId> for Module<T> {
 mod tests {
     use super::*;
 
-    use std::time::Instant;
+    use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
-    use primitives::{H256, Blake2Hasher};
-    use support::{impl_outer_origin, assert_ok, assert_err, parameter_types};
     use sr_primitives::{
         generic,
-        AnySignature,
         testing::Header,
         traits::{BlakeTwo256, IdentityLookup},
-        Perbill,
         weights::Weight,
+        AnySignature, Perbill,
     };
+    use std::time::Instant;
+    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types};
 
     impl_outer_origin! {
-		pub enum Origin for Test {}
-	}
+        pub enum Origin for Test {}
+    }
 
     // For testing the module, we construct most of a mock runtime. This means
     // first constructing a configuration type (`Test`) which `impl`s each of the
@@ -309,11 +306,11 @@ mod tests {
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
     parameter_types! {
-		pub const BlockHashCount: u64 = 250;
-		pub const MaximumBlockWeight: Weight = 1024;
-		pub const MaximumBlockLength: u32 = 2 * 1024;
-		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-	}
+        pub const BlockHashCount: u64 = 250;
+        pub const MaximumBlockWeight: Weight = 1024;
+        pub const MaximumBlockLength: u32 = 2 * 1024;
+        pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    }
     impl system::Trait for Test {
         type Origin = Origin;
         type Call = ();
@@ -352,18 +349,18 @@ mod tests {
                     86, 200, 105, 208, 164, 75, 251, 93, 233, 196, 84, 216, 68, 179, 91, 55, 113,
                     241, 229, 76, 16, 181, 40, 32, 205, 207, 120, 172, 147, 210, 53, 78,
                 ]
-                    .into(),
+                .into(),
                 // proof or signing root
                 [
                     17, 192, 231, 155, 113, 195, 151, 108, 205, 12, 2, 209, 49, 14, 37, 22, 192,
                     142, 220, 157, 139, 111, 87, 204, 214, 128, 214, 58, 77, 142, 114, 218,
                 ]
-                    .into(),
+                .into(),
                 [
                     40, 156, 122, 201, 153, 204, 227, 25, 246, 138, 183, 211, 31, 191, 130, 124,
                     145, 37, 1, 1, 66, 168, 3, 230, 83, 111, 50, 108, 163, 179, 63, 52,
                 ]
-                    .into(),
+                .into(),
             )
         }
     }
@@ -374,7 +371,10 @@ mod tests {
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
     fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-        system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+        system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap()
+            .into()
     }
 
     #[test]
