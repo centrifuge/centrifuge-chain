@@ -77,7 +77,7 @@ To generate the chain spec,
 `cargo run -- build-spec --chain=fulvous > testnets/fulvous.json`
 
 To generate the raw chain spec,
-`cargo run -- --chain testnets/fulvous.json --raw > testnets/fulvous.raw.json`
+`cargo run -- build-spec --chain=fulvous --raw > testnets/fulvous.raw.json`
 
 
 ### Running locally
