@@ -74,10 +74,10 @@ Additional CLI usage options are available and may be shown by running `cargo ru
 ### Fulvous 
 
 To generate the chain spec,
-`./target/debug/centrifuge-chain build-spec --chain=fulvous > testnets/fulvous.json`
+`cargo run -- build-spec --chain=fulvous > testnets/fulvous.json`
 
 To generate the raw chain spec,
-`./target/debug/centrifuge-chain build-spec --chain testnets/fulvous.json --raw > testnets/fulvous.raw.json`
+`cargo run -- --chain testnets/fulvous.json --raw > testnets/fulvous.raw.json`
 
 
 ### Running locally
