@@ -6,6 +6,7 @@ use centrifuge_chain_runtime::{
 use grandpa_primitives::AuthorityId as GrandpaId;
 use primitives::{Pair, Public};
 use substrate_service;
+use hex::FromHex;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -17,6 +18,8 @@ pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
 pub enum Alternative {
     /// Whatever the current runtime is, with just Alice as an auth.
     Development,
+    /// Whatever the current runtime is, with simple Alice/Bob auths.
+    LocalTestnet,
     /// Fulvous testnet with whatever the current runtime is, with simple Alice/Bob auths and sudo account set by environment.
     Fulvous,
 }
@@ -26,6 +29,20 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
     TPublic::Pair::from_string(&format!("//{}", seed), None)
         .expect("static values are valid; qed")
         .public()
+}
+
+pub fn get_from_pub_str<TPublic: Public>(pubkey_hex: &str) -> AccountId {
+    primitives::sr25519::Public::from_raw(
+        byte32_from_slice(Vec::from_hex(pubkey_hex)
+            .expect("a static hex string is valid")
+            .as_slice()))
+}
+
+fn byte32_from_slice(bytes: &[u8]) -> [u8; 32] {
+    let mut array = [0; 32];
+    let bytes = &bytes[..array.len()];
+    array.copy_from_slice(bytes);
+    array
 }
 
 /// Helper function to generate stash, controller and session key from seed
@@ -64,6 +81,35 @@ impl Alternative {
                 None,
                 None,
             ),
+            Alternative::LocalTestnet => ChainSpec::from_genesis(
+                "Local Testnet",
+                "local_testnet",
+                || testnet_genesis(vec![
+                    get_authority_keys_from_seed("Alice"),
+                    get_authority_keys_from_seed("Bob"),
+                ],
+                                   get_from_seed::<AccountId>("Alice"),
+                                   vec![
+                                       get_from_seed::<AccountId>("Alice"),
+                                       get_from_seed::<AccountId>("Bob"),
+                                       get_from_seed::<AccountId>("Charlie"),
+                                       get_from_seed::<AccountId>("Dave"),
+                                       get_from_seed::<AccountId>("Eve"),
+                                       get_from_seed::<AccountId>("Ferdie"),
+                                       get_from_seed::<AccountId>("Alice//stash"),
+                                       get_from_seed::<AccountId>("Bob//stash"),
+                                       get_from_seed::<AccountId>("Charlie//stash"),
+                                       get_from_seed::<AccountId>("Dave//stash"),
+                                       get_from_seed::<AccountId>("Eve//stash"),
+                                       get_from_seed::<AccountId>("Ferdie//stash"),
+                                   ],
+                                   true),
+                vec![],
+                None,
+                None,
+                None,
+                None
+            ),
             // Fulvous initial config
             Alternative::Fulvous => ChainSpec::from_genesis(
                 "Fulvous Testnet",
@@ -77,13 +123,17 @@ impl Alternative {
                             get_authority_keys_from_seed("Alice"),
                             get_authority_keys_from_seed("Bob"),
                         ],
-                        // This is not the actual seed for the root key of Fulvous. Find it out your self.
-                        get_from_seed::<AccountId>("Alice"),
-                        vec![],
+                        get_from_pub_str::<AccountId>("c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"),
+                        vec![
+                            get_from_pub_str::<AccountId>("c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e")
+                        ],
                         true,
                     )
                 },
-                vec![],
+                vec![
+                    String::from("/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq"),
+                    String::from("/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6")
+                ],
                 None,
                 Some("centrifuge-chain"),
                 None,
@@ -95,6 +145,7 @@ impl Alternative {
     pub(crate) fn from(s: &str) -> Option<Self> {
         match s {
             "dev" => Some(Alternative::Development),
+            "" | "local" => Some(Alternative::LocalTestnet),
             "fulvous" => Some(Alternative::Fulvous),
             _ => None,
         }
