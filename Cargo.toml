@@ -47,6 +47,10 @@ version = '1.0.0'
 features = ['termination']
 version = '3.0'
 
+[dependencies.hex]
+package = 'hex'
+version = "0.3.2"
+
 [dependencies.grandpa]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-finality-grandpa'
