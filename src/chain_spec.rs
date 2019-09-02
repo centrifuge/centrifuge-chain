@@ -131,6 +131,7 @@ impl Alternative {
                     )
                 },
                 vec![
+                    // TODO define permanant bootnodes for the network
                     String::from("/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq"),
                     String::from("/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6")
                 ],
