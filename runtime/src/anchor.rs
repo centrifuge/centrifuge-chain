@@ -1,6 +1,5 @@
 use codec::{Decode, Encode};
-use rstd::vec::Vec;
-use rstd::convert::TryInto;
+use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::{Hash};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
@@ -17,6 +16,12 @@ const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
 // Determines how many pre-anchors are evicted at maximum per eviction TX
 const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
+
+// date 3000-01-01 -> 376200 days from unix epoch
+const STORAGE_MAX_DAYS: u32 = 376200;
+
+// default substrate child storage root
+const CHILD_STORAGE_DEFAULT_PREFIX: &[u8] = b":child_storage:default:";
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -35,7 +40,7 @@ pub struct AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait {}
+pub trait Trait: system::Trait + timestamp::Trait {}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -50,6 +55,15 @@ decl_storage! {
         // Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
 
+        // index to find the eviction date given and anchor id
+        AnchorsEvictDates get(get_anchor_evict_date): map T::Hash => u32;
+
+        // incrementing index for anchors for iteration purposes
+        AnchorIndexes get(get_anchor_index): map u64 => T::Hash;
+
+        // latest anchored index
+        CurrentAnchorIndex: u64;
+
         Version: u64;
     }
 }
@@ -58,7 +72,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
         fn on_initialize(_now: T::BlockNumber) {
-            if <Version>::get() == 0 {
+            if Version::get() == 0 {
                 // do first upgrade
                 // ...
 
@@ -70,7 +84,7 @@ decl_module! {
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
             // TODO make payable
             let who = ensure_signed(origin)?;
-            ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
+            ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
             ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
 
             let expiration_block = <system::Module<T>>::block_number()  + T::BlockNumber::from(Self::expiration_duration_blocks() as u32);
@@ -85,13 +99,19 @@ decl_module! {
             Ok(())
         }
 
-        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash) -> Result {
-            // TODO make payable
+        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, eviction_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
+
+            // validate the eviction date
+            let eviction_date_u64 = TryInto::<u64>::try_into(eviction_date)
+                .map_err(|_e| "Can not convert eviction date to u64")
+                .unwrap();
+            let storage_days = (eviction_date_u64 / (1000 * 3600 * 24)) as u32 + 1; // +1 here is to always round up
+            ensure!(STORAGE_MAX_DAYS >= storage_days, "Not a valid storage date");
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as system::Trait>::Hashing::hash);
-            ensure!(!<Anchors<T>>::exists(anchor_id), "Anchor already exists");
+            ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
 
             if Self::has_valid_pre_commit(anchor_id) {
                 ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Pre-commit owned by someone else");
@@ -100,11 +120,17 @@ decl_module! {
 
 
             let block_num = <system::Module<T>>::block_number();
-            <Anchors<T>>::insert(anchor_id, AnchorData {
+            let mut child_storage_key = child_storage_key(storage_days);
+            let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
-                anchored_block: block_num,
-            });
+                anchored_block: block_num
+            };
+
+            let anchor_data_encoded = anchor_data.encode();
+            runtime_io::set_child_storage(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
+            <AnchorsEvictDates<T>>::insert(&anchor_id, &storage_days);
+            CurrentAnchorIndex::put(CurrentAnchorIndex::get() + 1);
 
             Ok(())
         }
@@ -140,6 +166,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
         if !<PreAnchors<T>>::exists(&anchor_id) {
             return false;
@@ -209,6 +236,20 @@ impl<T: Trait> Module<T> {
             Err(_e) => T::BlockNumber::from(0),
         }
     }
+
+     pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
+         let anchor_evict_date = <AnchorsEvictDates<T>>::get(anchor_id);
+         let storage_key = child_storage_key(anchor_evict_date);
+
+         runtime_io::child_storage(&storage_key, anchor_id.as_ref())
+             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
+     }
+}
+
+fn child_storage_key(specific_key: u32) -> Vec<u8> {
+    let mut child_storage_key = CHILD_STORAGE_DEFAULT_PREFIX.to_vec();
+    child_storage_key.extend_from_slice(&specific_key.encode());
+    child_storage_key
 }
 
 /// tests for anchor module
@@ -259,6 +300,12 @@ mod tests {
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
+    }
+
+    impl timestamp::Trait for Test {
+        type Moment = u64;
+        type OnTimestampSet = ();
+        type MinimumPeriod = ();
     }
 
     impl Trait for Test {}
@@ -338,7 +385,8 @@ mod tests {
                 Origin::signed(1),
                 pre_image,
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                <Test as system::Trait>::Hashing::hash_of(&0)
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                1
             ));
 
             // fails because of existing anchor
@@ -360,7 +408,8 @@ mod tests {
                 Origin::signed(2),
                 pre_image,
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                <Test as system::Trait>::Hashing::hash_of(&0)
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                1
             ));
 
             // fails because of existing anchor
@@ -449,7 +498,8 @@ mod tests {
                     Origin::NONE,
                     pre_image,
                     doc_root,
-                    <Test as system::Trait>::Hashing::hash_of(&0)
+                    <Test as system::Trait>::Hashing::hash_of(&0),
+                    1
                 ),
                 "bad origin: expected to be a signed origin"
             );
@@ -459,10 +509,11 @@ mod tests {
                 Origin::signed(1),
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0)
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
-            let a = Anchor::get_anchor(anchor_id);
+            let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
             assert_eq!(a.id, anchor_id);
             assert_eq!(a.doc_root, doc_root);
         });
@@ -480,10 +531,11 @@ mod tests {
                 Origin::signed(1),
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0)
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
-            let a = Anchor::get_anchor(anchor_id);
+            let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
             assert_eq!(a.id, anchor_id);
             assert_eq!(a.doc_root, doc_root);
 
@@ -492,7 +544,8 @@ mod tests {
                     Origin::signed(1),
                     pre_image,
                     doc_root,
-                    <Test as system::Trait>::Hashing::hash_of(&0)
+                    <Test as system::Trait>::Hashing::hash_of(&0),
+                    1
                 ),
                 "Anchor already exists"
             );
@@ -503,7 +556,8 @@ mod tests {
                     Origin::signed(2),
                     pre_image,
                     doc_root,
-                    <Test as system::Trait>::Hashing::hash_of(&0)
+                    <Test as system::Trait>::Hashing::hash_of(&0),
+                    1
                 ),
                 "Anchor already exists"
             );
@@ -527,7 +581,7 @@ mod tests {
 
             // wrong doc root
             assert_err!(
-                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof),
+                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, 0),
                 "Pre-commit proof not valid"
             );
 
@@ -536,10 +590,11 @@ mod tests {
                 Origin::signed(1),
                 pre_image,
                 doc_root,
-                proof
+                proof,
+                1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
-            let a = Anchor::get_anchor(anchor_id);
+            let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
             assert_eq!(a.id, anchor_id);
             assert_eq!(a.doc_root, doc_root);
 
@@ -559,7 +614,8 @@ mod tests {
                 Origin::signed(1),
                 pre_image,
                 doc_root,
-                proof
+                proof,
+                1
             ));
         });
     }
@@ -585,10 +641,11 @@ mod tests {
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                proof
+                proof,
+                1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
-            let a = Anchor::get_anchor(anchor_id);
+            let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
             assert_eq!(a.id, anchor_id);
             assert_eq!(a.doc_root, doc_root);
         });
@@ -610,7 +667,7 @@ mod tests {
 
             // fail from a different account
             assert_err!(
-                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof),
+                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, 1),
                 "Pre-commit owned by someone else"
             );
         });
@@ -937,7 +994,8 @@ mod tests {
                     Origin::signed(1),
                     pre_image,
                     doc_root,
-                    proof
+                    proof,
+                    1
                 ));
 
                 elapsed = elapsed + now.elapsed().as_micros();
