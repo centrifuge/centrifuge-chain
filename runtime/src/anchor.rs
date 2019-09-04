@@ -53,7 +53,7 @@ decl_storage! {
         // Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
 
-        // index to find the eviction date given and anchor id
+        // index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
         // incrementing index for anchors for iteration purposes

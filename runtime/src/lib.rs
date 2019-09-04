@@ -21,7 +21,7 @@ use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use grandpa::fg_primitives::{self, ScheduledChange};
 use client::{
 	block_builder::api::{CheckInherentsResult, InherentData, self as block_builder_api},
-	runtime_api as client_api, impl_runtime_apis
+	runtime_api as client_api, decl_runtime_apis, impl_runtime_apis
 };
 use version::RuntimeVersion;
 #[cfg(feature = "std")]
@@ -309,7 +309,22 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 /// Executive: handles dispatch to the various modules.
 pub type Executive = executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
 
+decl_runtime_apis! {
+	/// The API to query anchoring info.
+	pub trait AnchorApi {
+		/// blahh.
+		fn get_anchor_by_id() -> u64;
+	}
+}
+
 impl_runtime_apis! {
+
+	impl self::AnchorApi<Block> for Runtime {
+		fn get_anchor_by_id() -> u64 {
+			10011001
+		}
+	}
+
 	impl client_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION
