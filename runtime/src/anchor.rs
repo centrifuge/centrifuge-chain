@@ -3,6 +3,7 @@ use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::{Hash};
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
+use crate::{common as common};
 
 // expiration duration in blocks of a pre commit,
 // This is maximum expected time for document consensus to take place after a pre-commit of
@@ -19,9 +20,6 @@ const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
 
 // date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
-
-// default substrate child storage root
-const CHILD_STORAGE_DEFAULT_PREFIX: &[u8] = b":child_storage:default:";
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -56,13 +54,13 @@ decl_storage! {
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
 
         // index to find the eviction date given and anchor id
-        AnchorsEvictDates get(get_anchor_evict_date): map T::Hash => u32;
+        AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
         // incrementing index for anchors for iteration purposes
-        AnchorIndexes get(get_anchor_index): map u64 => T::Hash;
+        AnchorIndexes get(get_anchor_id_by_index): map u64 => T::Hash;
 
         // latest anchored index
-        CurrentAnchorIndex: u64;
+        CurrentAnchorIndex get(get_current_index): u64;
 
         Version: u64;
     }
@@ -101,13 +99,14 @@ decl_module! {
 
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, eviction_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
+            ensure!(<timestamp::Module<T>>::get() < eviction_date, "Not a valid storage date");
 
             // validate the eviction date
             let eviction_date_u64 = TryInto::<u64>::try_into(eviction_date)
                 .map_err(|_e| "Can not convert eviction date to u64")
                 .unwrap();
-            let storage_days = (eviction_date_u64 / (1000 * 3600 * 24)) as u32 + 1; // +1 here is to always round up
-            ensure!(STORAGE_MAX_DAYS >= storage_days, "Not a valid storage date");
+            let storage_days = common::get_days_since_epoch(eviction_date_u64);
+            ensure!(Self::storage_max_days() >= storage_days, "Not a valid storage date");
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as system::Trait>::Hashing::hash);
@@ -120,7 +119,7 @@ decl_module! {
 
 
             let block_num = <system::Module<T>>::block_number();
-            let mut child_storage_key = child_storage_key(storage_days);
+            let child_storage_key = common::child_storage_key(storage_days);
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
@@ -129,8 +128,11 @@ decl_module! {
 
             let anchor_data_encoded = anchor_data.encode();
             runtime_io::set_child_storage(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
-            <AnchorsEvictDates<T>>::insert(&anchor_id, &storage_days);
-            CurrentAnchorIndex::put(CurrentAnchorIndex::get() + 1);
+            // update indexes
+            <AnchorEvictDates<T>>::insert(&anchor_id, &storage_days);
+            let idx = CurrentAnchorIndex::get() + 1;
+            <AnchorIndexes<T>>::insert(idx, &anchor_id);
+            CurrentAnchorIndex::put(idx);
 
             Ok(())
         }
@@ -199,6 +201,11 @@ impl<T: Trait> Module<T> {
         PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
     }
 
+    fn storage_max_days() -> u32 {
+        // TODO this needs to come from governance
+        STORAGE_MAX_DAYS
+    }
+
     // Puts the pre-anchor (based on anchor_id) into the correct eviction bucket
     fn put_pre_anchor_into_eviction_bucket(anchor_id: T::Hash) -> Result {
         // determine which eviction bucket to put into
@@ -238,18 +245,12 @@ impl<T: Trait> Module<T> {
     }
 
      pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
-         let anchor_evict_date = <AnchorsEvictDates<T>>::get(anchor_id);
-         let storage_key = child_storage_key(anchor_evict_date);
+         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
+         let storage_key = common::child_storage_key(anchor_evict_date);
 
          runtime_io::child_storage(&storage_key, anchor_id.as_ref())
              .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
      }
-}
-
-fn child_storage_key(specific_key: u32) -> Vec<u8> {
-    let mut child_storage_key = CHILD_STORAGE_DEFAULT_PREFIX.to_vec();
-    child_storage_key.extend_from_slice(&specific_key.encode());
-    child_storage_key
 }
 
 /// tests for anchor module
@@ -491,6 +492,8 @@ mod tests {
         with_externalities(&mut new_test_ext(), || {
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let pre_image2 = <Test as system::Trait>::Hashing::hash_of(&1);
+            let anchor_id2 = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
             let doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
             // reject unsigned
             assert_err!(
@@ -510,12 +513,32 @@ mod tests {
                 pre_image,
                 doc_root,
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                1567589834087
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
-            let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
+            let mut a = Anchor::get_anchor_by_id(anchor_id).unwrap();
             assert_eq!(a.id, anchor_id);
             assert_eq!(a.doc_root, doc_root);
+            assert_eq!(Anchor::get_anchor_evict_date(anchor_id), 18144);
+            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id);
+            assert_eq!(Anchor::get_anchor_id_by_index(1), anchor_id);
+
+            // commit second anchor to test index updates
+            assert_ok!(Anchor::commit(
+                Origin::signed(1),
+                pre_image2,
+                doc_root,
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                1567589844087
+            ));
+            a = Anchor::get_anchor_by_id(anchor_id2).unwrap();
+            assert_eq!(a.id, anchor_id2);
+            assert_eq!(a.doc_root, doc_root);
+            assert_eq!(Anchor::get_anchor_evict_date(anchor_id2), 18144);
+            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id2);
+            assert_eq!(Anchor::get_anchor_id_by_index(2), anchor_id2);
+            
+
         });
     }
 

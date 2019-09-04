@@ -67,6 +67,9 @@ mod anchor;
 /// Fees for TXs
 mod fees;
 
+/// common utilities
+mod common;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
