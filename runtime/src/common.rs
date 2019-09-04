@@ -24,7 +24,6 @@ pub fn child_storage_key(specific_key: u32) -> Vec<u8> {
     child_storage_key
 }
 
-/// tests for anchor module
 #[cfg(test)]
 mod tests {
 
