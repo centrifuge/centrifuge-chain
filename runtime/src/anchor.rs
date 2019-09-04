@@ -493,7 +493,7 @@ mod tests {
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
             let pre_image2 = <Test as system::Trait>::Hashing::hash_of(&1);
-            let anchor_id2 = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let anchor_id2 = (pre_image2).using_encoded(<Test as system::Trait>::Hashing::hash);
             let doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
             // reject unsigned
             assert_err!(
@@ -535,10 +535,8 @@ mod tests {
             assert_eq!(a.id, anchor_id2);
             assert_eq!(a.doc_root, doc_root);
             assert_eq!(Anchor::get_anchor_evict_date(anchor_id2), 18144);
-            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id2);
             assert_eq!(Anchor::get_anchor_id_by_index(2), anchor_id2);
-            
-
+            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id2);
         });
     }
 
@@ -604,7 +602,7 @@ mod tests {
 
             // wrong doc root
             assert_err!(
-                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, 0),
+                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, 1),
                 "Pre-commit proof not valid"
             );
 
