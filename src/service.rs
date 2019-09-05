@@ -267,11 +267,11 @@ construct_service_factory! {
         }},
         RpcExtensions = jsonrpc_core::IoHandler<substrate_rpc::Metadata>
 		{ |client, _pool| {
-			use crate::api::{Anchors, AnchorApi};
+			use crate::api::{Anchors, AnchorRpcApi};
 
 			let mut io = jsonrpc_core::IoHandler::default();
 			io.extend_with(
-				AnchorApi::to_delegate(Anchors::new(client))
+				AnchorRpcApi::to_delegate(Anchors::new(client))
 			);
 			io
 		}},

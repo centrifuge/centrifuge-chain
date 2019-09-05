@@ -5,6 +5,9 @@ use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, S
 use system::ensure_signed;
 use crate::{common as common};
 
+#[cfg(feature = "std")]
+use serde::{Serialize, Deserialize};
+
 // expiration duration in blocks of a pre commit,
 // This is maximum expected time for document consensus to take place after a pre-commit of
 // an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
@@ -30,7 +33,7 @@ pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
     id: Hash,
     doc_root: Hash,
