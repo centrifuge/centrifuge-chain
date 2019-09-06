@@ -99,7 +99,7 @@ decl_module! {
 
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
-            ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY) < stored_until_date,
+            ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
                 "Stored until date must be at least a day later than the current date");
 
             // validate the eviction date
@@ -120,7 +120,7 @@ decl_module! {
 
 
             let block_num = <system::Module<T>>::block_number();
-            let child_storage_key = common::child_storage_key(stored_until_date_from_epoch);
+            let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
@@ -390,7 +390,7 @@ mod tests {
                 pre_image,
                 <Test as system::Trait>::Hashing::hash_of(&0),
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                common::MS_PER_DAY + 1
             ));
 
             // fails because of existing anchor
@@ -413,7 +413,7 @@ mod tests {
                 pre_image,
                 <Test as system::Trait>::Hashing::hash_of(&0),
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                common::MS_PER_DAY + 1
             ));
 
             // fails because of existing anchor
@@ -540,6 +540,18 @@ mod tests {
             assert_eq!(Anchor::get_anchor_evict_date(anchor_id2), 18144);
             assert_eq!(Anchor::get_anchor_id_by_index(2), anchor_id2);
             assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id2);
+
+            // commit anchor with a less than required number of minimum storage days
+            assert_err!(
+                Anchor::commit(
+                    Origin::signed(1),
+                    pre_image2,
+                    doc_root,
+                    <Test as system::Trait>::Hashing::hash_of(&0),
+                    2 // some arbitrary store until date that is less than the required minimum
+                ),
+                "Stored until date must be at least a day later than the current date"
+            );
         });
     }
 
@@ -556,7 +568,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                common::MS_PER_DAY + 1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
             let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
@@ -569,7 +581,7 @@ mod tests {
                     pre_image,
                     doc_root,
                     <Test as system::Trait>::Hashing::hash_of(&0),
-                    1
+                    common::MS_PER_DAY + 1
                 ),
                 "Anchor already exists"
             );
@@ -581,7 +593,7 @@ mod tests {
                     pre_image,
                     doc_root,
                     <Test as system::Trait>::Hashing::hash_of(&0),
-                    1
+                    common::MS_PER_DAY + 1
                 ),
                 "Anchor already exists"
             );
@@ -605,7 +617,7 @@ mod tests {
 
             // wrong doc root
             assert_err!(
-                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, 1),
+                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, common::MS_PER_DAY + 1),
                 "Pre-commit proof not valid"
             );
 
@@ -615,7 +627,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                common::MS_PER_DAY + 1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
             let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
@@ -639,7 +651,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                common::MS_PER_DAY + 1
             ));
         });
     }
@@ -666,7 +678,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                common::MS_PER_DAY + 1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
             let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
@@ -691,7 +703,7 @@ mod tests {
 
             // fail from a different account
             assert_err!(
-                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, 1),
+                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, common::MS_PER_DAY + 1),
                 "Pre-commit owned by someone else"
             );
         });

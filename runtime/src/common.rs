@@ -9,7 +9,7 @@ pub const MS_PER_DAY: u64 = 86400000;
 /// get days(round up) since epoch given the timestamp in ms
 pub fn get_days_since_epoch(ts: u64) -> u32 {
     let remainder = ts % MS_PER_DAY;
-    let days = (child_storage_keyts / MS_PER_DAY) as u32;
+    let days = (ts / MS_PER_DAY) as u32;
     if remainder == 0 {
         days
     } else {
