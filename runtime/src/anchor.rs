@@ -53,7 +53,7 @@ decl_storage! {
         // Anchors store the map of anchor Id to the anchor
         Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
 
-        // index to find the eviction date given and anchor id
+        // index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
         // incrementing index for anchors for iteration purposes
@@ -97,16 +97,17 @@ decl_module! {
             Ok(())
         }
 
-        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, eviction_date: T::Moment) -> Result {
+        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
-            ensure!(<timestamp::Module<T>>::get() < eviction_date, "Not a valid storage date");
+            ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY) < stored_until_date,
+                "Stored until date must be at least a day later than the current date");
 
             // validate the eviction date
-            let eviction_date_u64 = TryInto::<u64>::try_into(eviction_date)
+            let eviction_date_u64 = TryInto::<u64>::try_into(stored_until_date)
                 .map_err(|_e| "Can not convert eviction date to u64")
                 .unwrap();
-            let storage_days = common::get_days_since_epoch(eviction_date_u64);
-            ensure!(Self::storage_max_days() >= storage_days, "Not a valid storage date");
+            let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
+            ensure!(Self::storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as system::Trait>::Hashing::hash);
@@ -119,7 +120,7 @@ decl_module! {
 
 
             let block_num = <system::Module<T>>::block_number();
-            let child_storage_key = common::child_storage_key(storage_days);
+            let child_storage_key = common::child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
@@ -129,7 +130,7 @@ decl_module! {
             let anchor_data_encoded = anchor_data.encode();
             runtime_io::set_child_storage(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
             // update indexes
-            <AnchorEvictDates<T>>::insert(&anchor_id, &storage_days);
+            <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
             let idx = CurrentAnchorIndex::get() + 1;
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
             CurrentAnchorIndex::put(idx);
@@ -201,8 +202,10 @@ impl<T: Trait> Module<T> {
         PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
     }
 
-    fn storage_max_days() -> u32 {
+    fn storage_max_days_from_now() -> u32 {
         // TODO this needs to come from governance
+        // this also needs to be calculated from a value from governance that provides the maximum days
+        // from now on instead of taking an absolute date from unix epoch through governance.
         STORAGE_MAX_DAYS
     }
 
@@ -246,7 +249,7 @@ impl<T: Trait> Module<T> {
 
      pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
          let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-         let storage_key = common::child_storage_key(anchor_evict_date);
+         let storage_key = common::generate_child_storage_key(anchor_evict_date);
 
          runtime_io::child_storage(&storage_key, anchor_id.as_ref())
              .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
