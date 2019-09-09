@@ -53,9 +53,6 @@ decl_storage! {
         PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
-        // Anchors store the map of anchor Id to the anchor
-        Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
-
         // index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
@@ -100,16 +97,17 @@ decl_module! {
             Ok(())
         }
 
-        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, eviction_date: T::Moment) -> Result {
+        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
-            ensure!(<timestamp::Module<T>>::get() < eviction_date, "Not a valid storage date");
+            ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
+                "Stored until date must be at least a day later than the current date");
 
             // validate the eviction date
-            let eviction_date_u64 = TryInto::<u64>::try_into(eviction_date)
+            let eviction_date_u64 = TryInto::<u64>::try_into(stored_until_date)
                 .map_err(|_e| "Can not convert eviction date to u64")
                 .unwrap();
-            let storage_days = common::get_days_since_epoch(eviction_date_u64);
-            ensure!(Self::storage_max_days() >= storage_days, "Not a valid storage date");
+            let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
+            ensure!(Self::storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as system::Trait>::Hashing::hash);
@@ -122,7 +120,7 @@ decl_module! {
 
 
             let block_num = <system::Module<T>>::block_number();
-            let child_storage_key = common::child_storage_key(storage_days);
+            let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
@@ -132,7 +130,7 @@ decl_module! {
             let anchor_data_encoded = anchor_data.encode();
             runtime_io::set_child_storage(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
             // update indexes
-            <AnchorEvictDates<T>>::insert(&anchor_id, &storage_days);
+            <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
             let idx = CurrentAnchorIndex::get() + 1;
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
             CurrentAnchorIndex::put(idx);
@@ -204,8 +202,10 @@ impl<T: Trait> Module<T> {
         PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
     }
 
-    fn storage_max_days() -> u32 {
+    fn storage_max_days_from_now() -> u32 {
         // TODO this needs to come from governance
+        // this also needs to be calculated from a value from governance that provides the maximum days
+        // from now on instead of taking an absolute date from unix epoch through governance.
         STORAGE_MAX_DAYS
     }
 
@@ -249,7 +249,7 @@ impl<T: Trait> Module<T> {
 
      pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
          let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-         let storage_key = common::child_storage_key(anchor_evict_date);
+         let storage_key = common::generate_child_storage_key(anchor_evict_date);
 
          runtime_io::child_storage(&storage_key, anchor_id.as_ref())
              .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
@@ -390,7 +390,7 @@ mod tests {
                 pre_image,
                 <Test as system::Trait>::Hashing::hash_of(&0),
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                common::MS_PER_DAY + 1
             ));
 
             // fails because of existing anchor
@@ -413,7 +413,7 @@ mod tests {
                 pre_image,
                 <Test as system::Trait>::Hashing::hash_of(&0),
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                common::MS_PER_DAY + 1
             ));
 
             // fails because of existing anchor
@@ -540,6 +540,18 @@ mod tests {
             assert_eq!(Anchor::get_anchor_evict_date(anchor_id2), 18144);
             assert_eq!(Anchor::get_anchor_id_by_index(2), anchor_id2);
             assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id2);
+
+            // commit anchor with a less than required number of minimum storage days
+            assert_err!(
+                Anchor::commit(
+                    Origin::signed(1),
+                    pre_image2,
+                    doc_root,
+                    <Test as system::Trait>::Hashing::hash_of(&0),
+                    2 // some arbitrary store until date that is less than the required minimum
+                ),
+                "Stored until date must be at least a day later than the current date"
+            );
         });
     }
 
@@ -556,7 +568,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 <Test as system::Trait>::Hashing::hash_of(&0),
-                1
+                common::MS_PER_DAY + 1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
             let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
@@ -569,7 +581,7 @@ mod tests {
                     pre_image,
                     doc_root,
                     <Test as system::Trait>::Hashing::hash_of(&0),
-                    1
+                    common::MS_PER_DAY + 1
                 ),
                 "Anchor already exists"
             );
@@ -581,7 +593,7 @@ mod tests {
                     pre_image,
                     doc_root,
                     <Test as system::Trait>::Hashing::hash_of(&0),
-                    1
+                    common::MS_PER_DAY + 1
                 ),
                 "Anchor already exists"
             );
@@ -605,7 +617,7 @@ mod tests {
 
             // wrong doc root
             assert_err!(
-                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, 1),
+                Anchor::commit(Origin::signed(1), pre_image, random_doc_root, proof, common::MS_PER_DAY + 1),
                 "Pre-commit proof not valid"
             );
 
@@ -615,7 +627,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                common::MS_PER_DAY + 1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
             let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
@@ -639,7 +651,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                common::MS_PER_DAY + 1
             ));
         });
     }
@@ -666,7 +678,7 @@ mod tests {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                common::MS_PER_DAY + 1
             ));
             // asserting that the stored anchor id is what we sent the pre-image for
             let a = Anchor::get_anchor_by_id(anchor_id).unwrap();
@@ -691,7 +703,7 @@ mod tests {
 
             // fail from a different account
             assert_err!(
-                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, 1),
+                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, common::MS_PER_DAY + 1),
                 "Pre-commit owned by someone else"
             );
         });
