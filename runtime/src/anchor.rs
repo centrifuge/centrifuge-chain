@@ -14,7 +14,7 @@ use serde::{Serialize, Deserialize};
 // Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
 const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 480;
 
-// MUST be higher than 1 to assure that pre-commits are around during their validity timeframe
+// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
 // The higher the number, the more pre-commits will be collected in a single eviction bucket
 const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
@@ -739,9 +739,9 @@ mod tests {
             // three different block heights that will put anchors into different eviction buckets
             let block_height_0 = 1;
             let block_height_1 =
-                Anchor::determine_pre_anchor_eviction_bucket(block_height_0) + block_height_0;;
+                Anchor::determine_pre_anchor_eviction_bucket(block_height_0) + block_height_0;
             let block_height_2 =
-                Anchor::determine_pre_anchor_eviction_bucket(block_height_1) + block_height_0;;
+                Anchor::determine_pre_anchor_eviction_bucket(block_height_1) + block_height_0;
 
 
             // ------ First run ------

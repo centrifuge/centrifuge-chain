@@ -12,11 +12,12 @@ const RUNTIME_ERROR: i64 = 1;
 /// Anchor RPC methods.
 #[rpc]
 pub trait AnchorRpcApi {
-    /// Returns the next valid index (aka nonce) for given account.
+    /// Returns an anchor given an anchor id from the runtime storage
     #[rpc(name = "anchor_getAnchorById")]
     fn get_anchor_by_id(&self, id: Hash) -> Result<AnchorData<Hash, BlockNumber>>;
 }
 
+/// Anchors api with support for querying anchor child storage
 pub struct Anchors<B, E, Block: BlockT, RA> {
     client: Arc<Client<B, E, Block, RA>>,
 }
