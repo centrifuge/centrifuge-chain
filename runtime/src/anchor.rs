@@ -50,9 +50,6 @@ decl_storage! {
         PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
-        // Anchors store the map of anchor Id to the anchor
-        Anchors get(get_anchor): map T::Hash => AnchorData<T::Hash, T::BlockNumber>;
-
         // index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
