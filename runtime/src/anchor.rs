@@ -1,3 +1,8 @@
+//! A module for implementing Centrifuge document anchoring(merklized document commitments) on substrate for
+//! Centrifuge chain.
+//!
+//! For a more formally detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+
 use codec::{Decode, Encode};
 use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::{Hash};
@@ -8,22 +13,23 @@ use crate::{common as common};
 #[cfg(feature = "std")]
 use serde::{Serialize, Deserialize};
 
-// expiration duration in blocks of a pre commit,
-// This is maximum expected time for document consensus to take place after a pre-commit of
-// an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
-// Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
+/// expiration duration in blocks of a pre commit,
+/// This is maximum expected time for document consensus to take place after a pre-commit of
+/// an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
+/// Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
 const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 480;
 
-// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
-// The higher the number, the more pre-commits will be collected in a single eviction bucket
+/// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
+/// The higher the number, the more pre-commits will be collected in a single eviction bucket
 const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
-// Determines how many pre-anchors are evicted at maximum per eviction TX
+/// Determines how many pre-anchors are evicted at maximum per eviction TX
 const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
 
-// date 3000-01-01 -> 376200 days from unix epoch
+/// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
 
+/// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
@@ -32,6 +38,7 @@ pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
     expiration_block: BlockNumber,
 }
 
+/// The data structure for storing committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
@@ -46,20 +53,20 @@ pub trait Trait: system::Trait + timestamp::Trait {}
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
 
-        // Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
+        /// Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
         PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
 
-        // Pre-anchor eviction buckets keep track of which pre-anchor can be evicted at which point
+        /// Pre-anchor eviction buckets keep track of which pre-anchor can be evicted at which point
         PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
-        // index to find the eviction date given an anchor id
+        /// index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
-        // incrementing index for anchors for iteration purposes
+        /// incrementing index for anchors for iteration purposes
         AnchorIndexes get(get_anchor_id_by_index): map u64 => T::Hash;
 
-        // latest anchored index
+        /// latest anchored index
         CurrentAnchorIndex get(get_current_index): u64;
 
         Version: u64;
@@ -79,13 +86,25 @@ decl_module! {
             }
         }
 
+        /// Obtains an exclusive lock to make the next update to a certain document version
+        /// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
+        /// by `pre_anchor_expiration_duration_blocks` function. `signing_root` is a child node of
+        /// the off-chain merkle tree of that document. In Centrifuge protocol, A document is
+        /// committed only after reaching consensus with the other collaborators on the document.
+        /// Consensus is reached by getting a cryptographic signature from other parties by
+        /// sending them the `signing_root`. To deny the counter-party the free option of publishing
+        /// its own state commitment upon receiving a request for signature, the node can first
+        /// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
+        /// allowed to `commit` a corresponding anchor before the pre-commit has expired.
+        /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
             // TODO make payable
             let who = ensure_signed(origin)?;
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
             ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
 
-            let expiration_block = <system::Module<T>>::block_number()  + T::BlockNumber::from(Self::expiration_duration_blocks() as u32);
+            let expiration_block = <system::Module<T>>::block_number()  +
+                T::BlockNumber::from(Self::pre_anchor_expiration_duration_blocks() as u32);
             <PreAnchors<T>>::insert(anchor_id, PreAnchorData {
                 signing_root: signing_root,
                 identity: who.clone(),
@@ -97,6 +116,13 @@ decl_module! {
             Ok(())
         }
 
+        /// Commits a `document_root` of a merklized off chain document in Centrifuge p2p network as
+        /// the latest version id(`anchor_id`) obtained by hashing `anchor_id_preimage`. If a
+        /// pre-commit exists for the obtained `anchor_id`, hash of pre-committed
+        /// `signing_root + proof` must match the given `doc_root`. To avoid state bloat on chain,
+        /// the committed anchor would be evicted after the given `stored_until_date`. The calling
+        /// account would be charged accordingly for the storage period.
+        /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
             ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
@@ -107,7 +133,7 @@ decl_module! {
                 .map_err(|_e| "Can not convert eviction date to u64")
                 .unwrap();
             let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
-            ensure!(Self::storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
+            ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as system::Trait>::Hashing::hash);
@@ -138,28 +164,31 @@ decl_module! {
             Ok(())
         }
 
+        /// Initiates eviction of pre-commits that has expired given that the current block number
+        /// has progressed past the block number provided in `evict_bucket`. `evict_bucket` is also
+        /// the index to find the pre anchors stored in storage to be evicted when the
+        /// `evict_bucket` number of blocks has expired.
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
             // TODO make payable
             ensure_signed(origin)?;
-            ensure!((<system::Module<T>>::block_number() >= evict_bucket), "eviction only possible for bucket expiring < current block height");
+            ensure!(<system::Module<T>>::block_number() >= evict_bucket, "eviction only possible for bucket expiring < current block height");
 
             let pre_anchors_count = Self::get_pre_anchors_count_in_evict_bucket(evict_bucket);
-
             for idx in (0..pre_anchors_count).rev() {
                 if pre_anchors_count - idx > PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX {
                     break;
                 }
 
-                let pre_anchor_id = Self::get_pre_anchors_in_evict_bucket_by_index((evict_bucket, idx));
+                let pre_anchor_id =
+                    Self::get_pre_anchors_in_evict_bucket_by_index(evict_bucket, idx);
                 <PreAnchors<T>>::remove(pre_anchor_id);
 
-                <PreAnchorEvictionBuckets<T>>::remove((evict_bucket, idx));
+                <PreAnchorEvictionBuckets<T>>::remove(evict_bucket, idx);
 
-                //decreases the evict bucket item count or remove index completely if empty
+                // decreases the evict bucket item count or remove index completely if empty
                 if idx == 0 {
                     <PreAnchorEvictionBucketIndex<T>>::remove(evict_bucket);
                 } else {
-
                     <PreAnchorEvictionBucketIndex<T>>::insert(evict_bucket, idx);
                 }
             }
@@ -170,6 +199,8 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 
+    /// checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
+    /// `expiration_block` < `current_block_number`.
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
         if !<PreAnchors<T>>::exists(&anchor_id) {
             return false;
@@ -178,6 +209,9 @@ impl<T: Trait> Module<T> {
         <PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
     }
 
+    /// checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
+    /// of `signing_root` and `proof` is done in ascending order, according to the protocol defined
+    /// by Centrifuge precise-proofs library for merklizing documents.
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
         let signing_root = <PreAnchors<T>>::get(anchor_id).signing_root;
         let mut signing_root_bytes = signing_root.as_ref().to_vec();
@@ -197,19 +231,21 @@ impl<T: Trait> Module<T> {
         return doc_root == calculated_root;
     }
 
-    fn expiration_duration_blocks() -> u64 {
-        // TODO this needs to come from governance
+    /// TODO this needs to come from governance
+    /// How long before we expire a pre anchor
+    fn pre_anchor_expiration_duration_blocks() -> u64 {
         PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
     }
 
-    fn storage_max_days_from_now() -> u32 {
-        // TODO this needs to come from governance
-        // this also needs to be calculated from a value from governance that provides the maximum days
-        // from now on instead of taking an absolute date from unix epoch through governance.
+    /// Get the maximum days allowed for an anchor to be stored on chain from unix epoch onwards.
+    /// TODO this needs to come from governance
+    /// TODO this also needs to be calculated from a value from governance that provides the maximum days
+    /// from now on instead of taking an absolute date from unix epoch through governance.
+    fn anchor_storage_max_days_from_now() -> u32 {
         STORAGE_MAX_DAYS
     }
 
-    // Puts the pre-anchor (based on anchor_id) into the correct eviction bucket
+    /// Puts the pre-anchor (based on anchor_id) into the correct eviction bucket
     fn put_pre_anchor_into_eviction_bucket(anchor_id: T::Hash) -> Result {
         // determine which eviction bucket to put into
         let evict_after_block =
@@ -228,16 +264,16 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    // Determines the next eviction bucket number based on the given BlockNumber
-    // This can be used to determine which eviction bucket a pre-commit
-    // should be put into for later eviction.
-    // TODO return err
+    /// Determines the next eviction bucket number based on the given BlockNumber
+    /// This can be used to determine which eviction bucket a pre-commit
+    /// should be put into for later eviction.
+    /// TODO return err
     fn determine_pre_anchor_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
         let result = TryInto::<u32>::try_into(current_block);
         match result {
             Ok(u32_current_block)  => {
                 let expiration_horizon =
-                    Self::expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
+                    Self::pre_anchor_expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
                 let put_into_bucket =
                     u32_current_block - (u32_current_block % expiration_horizon) + expiration_horizon;
 
@@ -247,13 +283,14 @@ impl<T: Trait> Module<T> {
         }
     }
 
-     pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
-         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-         let storage_key = common::generate_child_storage_key(anchor_evict_date);
+    /// get an anchor by its id in the child storage
+    pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
+        let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
+        let storage_key = common::generate_child_storage_key(anchor_evict_date);
 
-         runtime_io::child_storage(&storage_key, anchor_id.as_ref())
-             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
-     }
+        runtime_io::child_storage(&storage_key, anchor_id.as_ref())
+            .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
+    }
 }
 
 /// tests for anchor module
@@ -374,7 +411,7 @@ mod tests {
             let a = Anchor::get_pre_anchor(anchor_id);
             assert_eq!(a.identity, 1);
             assert_eq!(a.signing_root, signing_root);
-            assert_eq!(a.expiration_block, Anchor::expiration_duration_blocks() + 1);
+            assert_eq!(a.expiration_block, Anchor::pre_anchor_expiration_duration_blocks() + 1);
         });
     }
 
@@ -439,7 +476,7 @@ mod tests {
             let a = Anchor::get_pre_anchor(anchor_id);
             assert_eq!(a.identity, 1);
             assert_eq!(a.signing_root, signing_root);
-            assert_eq!(a.expiration_block, Anchor::expiration_duration_blocks() + 1);
+            assert_eq!(a.expiration_block, Anchor::pre_anchor_expiration_duration_blocks() + 1);
 
             // fail, pre anchor exists
             assert_err!(
@@ -448,7 +485,7 @@ mod tests {
             );
 
             // expire the pre commit
-            System::set_block_number(Anchor::expiration_duration_blocks() + 2);
+            System::set_block_number(Anchor::pre_anchor_expiration_duration_blocks() + 2);
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(1),
                 anchor_id,
@@ -472,7 +509,7 @@ mod tests {
             let a = Anchor::get_pre_anchor(anchor_id);
             assert_eq!(a.identity, 1);
             assert_eq!(a.signing_root, signing_root);
-            assert_eq!(a.expiration_block, Anchor::expiration_duration_blocks() + 1);
+            assert_eq!(a.expiration_block, Anchor::pre_anchor_expiration_duration_blocks() + 1);
 
             // fail, pre anchor exists
             assert_err!(
@@ -481,7 +518,7 @@ mod tests {
             );
 
             // expire the pre commit
-            System::set_block_number(Anchor::expiration_duration_blocks() + 2);
+            System::set_block_number(Anchor::pre_anchor_expiration_duration_blocks() + 2);
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(2),
                 anchor_id,
@@ -670,7 +707,7 @@ mod tests {
                 signing_root
             ));
             // expire the pre commit
-            System::set_block_number(Anchor::expiration_duration_blocks() + 2);
+            System::set_block_number(Anchor::pre_anchor_expiration_duration_blocks() + 2);
 
             // happy from a different account
             assert_ok!(Anchor::commit(
@@ -874,7 +911,7 @@ mod tests {
             assert_eq!(pre_commit_0.identity, 1);
             assert_eq!(
                 pre_commit_0.expiration_block,
-                block_height_0 + Anchor::expiration_duration_blocks()
+                block_height_0 + Anchor::pre_anchor_expiration_duration_blocks()
             );
 
             // verify the registration in evict bucket of anchor 0
