@@ -970,6 +970,46 @@ mod tests {
     }
 
     #[test]
+    fn pre_commit_at_4799_and_then_evict_before_expire_and_collaborator_succeed_commit() {
+        with_externalities(&mut new_test_ext(), || {
+            let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
+            let start_block = 4799;
+            // expected expiry block of pre-commit
+            let expiry_block = start_block + Anchor::expiration_duration_blocks(); // i.e 4799 + 480
+
+            System::set_block_number(start_block);
+            // happy
+            assert_ok!(Anchor::pre_commit(
+                Origin::signed(1),
+                anchor_id,
+                signing_root
+            ));
+
+            assert_eq!(Anchor::determine_pre_anchor_eviction_bucket(start_block), 4800);
+            let a = Anchor::get_pre_anchor(anchor_id);
+            assert_eq!(a.expiration_block, expiry_block);
+            // the edge case bug - pre-commit eviction time is less than its expiry time
+            assert_eq!(Anchor::determine_pre_anchor_eviction_bucket(start_block) < a.expiration_block, true);
+
+            // this would evict the pre-commit before its expired
+            System::set_block_number(Anchor::determine_pre_anchor_eviction_bucket(start_block) + 1);
+            assert_ok!(
+                Anchor::evict_pre_commits(
+                    Origin::signed(1),
+                    Anchor::determine_pre_anchor_eviction_bucket(start_block)
+                )
+            );
+
+            // this should fail but it succeeds because pre-commit is evicted before it expires
+            assert_ok!(
+                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, common::MS_PER_DAY + 1)
+            );
+        });
+    }
+
+    #[test]
     fn pre_commit_and_then_evict_larger_than_max_evict() {
         with_externalities(&mut new_test_ext(), || {
             let block_height_0 = 1;
