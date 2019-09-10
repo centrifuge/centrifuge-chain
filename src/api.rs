@@ -46,7 +46,7 @@ impl<B, E, Block, RA> AnchorRpcApi for Anchors<B, E, Block, RA>
         let at = BlockId::hash(best);
         api.get_anchor_by_id(&at, id).ok().unwrap().ok_or(Error {
             code: ErrorCode::ServerError(RUNTIME_ERROR),
-            message: "Unable to find anchor ".into(),
+            message: "Unable to find anchor".into(),
             data: Some(format!("{:?}", id).into()),
         })
     }
