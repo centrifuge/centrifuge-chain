@@ -13,7 +13,7 @@ use crate::{common as common};
 #[cfg(feature = "std")]
 use serde::{Serialize, Deserialize};
 
-/// expiration duration in blocks of a pre commit,
+/// expiration duration in blocks of a pre-commit,
 /// This is maximum expected time for document consensus to take place after a pre-commit of
 /// an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
 /// Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
@@ -32,7 +32,7 @@ const STORAGE_MAX_DAYS: u32 = 376200;
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
+pub struct PreCommitData<Hash, AccountId, BlockNumber> {
     signing_root: Hash,
     identity: AccountId,
     expiration_block: BlockNumber,
@@ -53,12 +53,12 @@ pub trait Trait: system::Trait + timestamp::Trait {}
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
 
-        /// Pre Anchors store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
-        PreAnchors get(get_pre_anchor): map T::Hash => PreAnchorData<T::Hash, T::AccountId, T::BlockNumber>;
+        /// PreCommits store the map of anchor Id to the pre anchor, which is a lock on an anchor id to be committed later
+        PreCommits get(get_pre_anchor): map T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
-        /// Pre-anchor eviction buckets keep track of which pre-anchor can be evicted at which point
-        PreAnchorEvictionBuckets get(get_pre_anchors_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
-        PreAnchorEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
+        /// Pre-commit eviction buckets keep track of which pre-anchor can be evicted at which point
+        PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
+        PreCommitEvictionBucketIndex get(get_pre_anchors_count_in_evict_bucket): map T::BlockNumber => u64;
 
         /// index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
@@ -101,11 +101,11 @@ decl_module! {
             // TODO make payable
             let who = ensure_signed(origin)?;
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
-            ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre anchor already exists");
+            ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre-commit already exists");
 
             let expiration_block = <system::Module<T>>::block_number()  +
                 T::BlockNumber::from(Self::pre_anchor_expiration_duration_blocks() as u32);
-            <PreAnchors<T>>::insert(anchor_id, PreAnchorData {
+            <PreCommits<T>>::insert(anchor_id, PreCommitData {
                 signing_root: signing_root,
                 identity: who.clone(),
                 expiration_block: expiration_block,
@@ -140,7 +140,7 @@ decl_module! {
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
 
             if Self::has_valid_pre_commit(anchor_id) {
-                ensure!(<PreAnchors<T>>::get(anchor_id).identity == who, "Pre-commit owned by someone else");
+                ensure!(<PreCommits<T>>::get(anchor_id).identity == who, "Pre-commit owned by someone else");
                 ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
 
@@ -180,16 +180,16 @@ decl_module! {
                 }
 
                 let pre_anchor_id =
-                    Self::get_pre_anchors_in_evict_bucket_by_index((evict_bucket, idx));
-                <PreAnchors<T>>::remove(pre_anchor_id);
+                    Self::get_pre_commit_in_evict_bucket_by_index((evict_bucket, idx));
+                <PreCommits<T>>::remove(pre_anchor_id);
 
-                <PreAnchorEvictionBuckets<T>>::remove((evict_bucket, idx));
+                <PreCommitEvictionBuckets<T>>::remove((evict_bucket, idx));
 
                 // decreases the evict bucket item count or remove index completely if empty
                 if idx == 0 {
-                    <PreAnchorEvictionBucketIndex<T>>::remove(evict_bucket);
+                    <PreCommitEvictionBucketIndex<T>>::remove(evict_bucket);
                 } else {
-                    <PreAnchorEvictionBucketIndex<T>>::insert(evict_bucket, idx);
+                    <PreCommitEvictionBucketIndex<T>>::insert(evict_bucket, idx);
                 }
             }
             Ok(())
@@ -202,18 +202,18 @@ impl<T: Trait> Module<T> {
     /// checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
     /// `expiration_block` < `current_block_number`.
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
-        if !<PreAnchors<T>>::exists(&anchor_id) {
+        if !<PreCommits<T>>::exists(&anchor_id) {
             return false;
         }
 
-        <PreAnchors<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
+        <PreCommits<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
     }
 
     /// checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
     /// of `signing_root` and `proof` is done in ascending order, according to the protocol defined
     /// by Centrifuge precise-proofs library for merklizing documents.
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
-        let signing_root = <PreAnchors<T>>::get(anchor_id).signing_root;
+        let signing_root = <PreCommits<T>>::get(anchor_id).signing_root;
         let mut signing_root_bytes = signing_root.as_ref().to_vec();
         let mut proof_bytes = proof.as_ref().to_vec();
 
@@ -255,12 +255,12 @@ impl<T: Trait> Module<T> {
             Self::get_pre_anchors_count_in_evict_bucket(evict_after_block);
 
         // add to eviction bucket and update bucket counter
-        <PreAnchorEvictionBuckets<T>>::insert(
+        <PreCommitEvictionBuckets<T>>::insert(
             (evict_after_block.clone(), eviction_bucket_size.clone()),
             anchor_id,
         );
         eviction_bucket_size += 1;
-        <PreAnchorEvictionBucketIndex<T>>::insert(evict_after_block, eviction_bucket_size);
+        <PreCommitEvictionBucketIndex<T>>::insert(evict_after_block, eviction_bucket_size);
         Ok(())
     }
 
@@ -481,10 +481,10 @@ mod tests {
             // fail, pre anchor exists
             assert_err!(
                 Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root),
-                "A valid pre anchor already exists"
+                "A valid pre-commit already exists"
             );
 
-            // expire the pre commit
+            // expire the pre-commit
             System::set_block_number(Anchor::pre_anchor_expiration_duration_blocks() + 2);
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(1),
@@ -514,10 +514,10 @@ mod tests {
             // fail, pre anchor exists
             assert_err!(
                 Anchor::pre_commit(Origin::signed(2), anchor_id, signing_root),
-                "A valid pre anchor already exists"
+                "A valid pre-commit already exists"
             );
 
-            // expire the pre commit
+            // expire the pre-commit
             System::set_block_number(Anchor::pre_anchor_expiration_duration_blocks() + 2);
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(2),
@@ -706,7 +706,7 @@ mod tests {
                 anchor_id,
                 signing_root
             ));
-            // expire the pre commit
+            // expire the pre-commit
             System::set_block_number(Anchor::pre_anchor_expiration_duration_blocks() + 2);
 
             // happy from a different account
@@ -805,7 +805,7 @@ mod tests {
             let mut pre_anchors_count =
                 Anchor::get_pre_anchors_count_in_evict_bucket(current_pre_commit_evict_bucket);
             assert_eq!(pre_anchors_count, 1);
-            let mut stored_pre_anchor_id = Anchor::get_pre_anchors_in_evict_bucket_by_index((
+            let mut stored_pre_anchor_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 0,
             ));
@@ -825,13 +825,13 @@ mod tests {
                 Anchor::get_pre_anchors_count_in_evict_bucket(current_pre_commit_evict_bucket);
             assert_eq!(pre_anchors_count, 2);
             // first pre anchor
-            stored_pre_anchor_id = Anchor::get_pre_anchors_in_evict_bucket_by_index((
+            stored_pre_anchor_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 0,
             ));
             assert_eq!(stored_pre_anchor_id, anchor_id_1);
             // second pre anchor
-            stored_pre_anchor_id = Anchor::get_pre_anchors_in_evict_bucket_by_index((
+            stored_pre_anchor_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 1,
             ));
@@ -848,7 +848,7 @@ mod tests {
             pre_anchors_count =
                 Anchor::get_pre_anchors_count_in_evict_bucket(current_pre_commit_evict_bucket);
             assert_eq!(pre_anchors_count, 1);
-            stored_pre_anchor_id = Anchor::get_pre_anchors_in_evict_bucket_by_index((
+            stored_pre_anchor_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 0,
             ));
@@ -861,7 +861,7 @@ mod tests {
             pre_anchors_count =
                 Anchor::get_pre_anchors_count_in_evict_bucket(current_pre_commit_evict_bucket);
             assert_eq!(pre_anchors_count, 1);
-            stored_pre_anchor_id = Anchor::get_pre_anchors_in_evict_bucket_by_index((
+            stored_pre_anchor_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 0,
             ));
@@ -921,7 +921,7 @@ mod tests {
                 Anchor::get_pre_anchors_count_in_evict_bucket(pre_commit_evict_bucket);
             assert_eq!(pre_anchors_count, 1);
             let stored_pre_anchor_id =
-                Anchor::get_pre_anchors_in_evict_bucket_by_index((pre_commit_evict_bucket, 0));
+                Anchor::get_pre_commit_in_evict_bucket_by_index((pre_commit_evict_bucket, 0));
             assert_eq!(stored_pre_anchor_id, anchor_id_0);
 
             // verify the expected numbers on the evict bucket IDx
