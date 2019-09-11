@@ -265,6 +265,15 @@ construct_service_factory! {
         FinalityProofProvider = { |client: Arc<FullClient<Self>>| {
             Ok(Some(Arc::new(GrandpaFinalityProofProvider::new(client.clone(), client)) as _))
         }},
-        RpcExtensions = (),
+        RpcExtensions = jsonrpc_core::IoHandler<substrate_rpc::Metadata>
+		{ |client, _pool| {
+			use crate::api::{Anchors, AnchorRpcApi};
+
+			let mut io = jsonrpc_core::IoHandler::default();
+			io.extend_with(
+				AnchorRpcApi::to_delegate(Anchors::new(client))
+			);
+			io
+		}},
     }
 }

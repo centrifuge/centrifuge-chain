@@ -43,6 +43,23 @@ rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 package = 'parity-scale-codec'
 version = '1.0.0'
 
+[dependencies.jsonrpc-core]
+package = 'jsonrpc-core'
+version = '13.0.0'
+
+[dependencies.jsonrpc-core-client]
+package = 'jsonrpc-core-client'
+version = '13.0.0'
+
+[dependencies.jsonrpc-derive]
+package = 'jsonrpc-derive'
+version = '13.0.0'
+
+[dependencies.serde]
+package = 'serde'
+version = '1.0'
+features = ["derive"]
+
 [dependencies.ctrlc]
 features = ['termination']
 version = '3.0'
@@ -83,6 +100,10 @@ rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 git = 'https://github.com/paritytech/substrate.git'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
+[dependencies.sr-primitives]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
 [dependencies.substrate-cli]
 git = 'https://github.com/paritytech/substrate.git'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
@@ -92,6 +113,10 @@ git = 'https://github.com/paritytech/substrate.git'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
 [dependencies.substrate-executor]
+git = 'https://github.com/paritytech/substrate.git'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.substrate-rpc]
 git = 'https://github.com/paritytech/substrate.git'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 

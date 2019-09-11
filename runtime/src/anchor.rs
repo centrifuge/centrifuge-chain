@@ -5,13 +5,16 @@ use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, S
 use system::ensure_signed;
 use crate::{common as common};
 
+#[cfg(feature = "std")]
+use serde::{Serialize, Deserialize};
+
 // expiration duration in blocks of a pre commit,
 // This is maximum expected time for document consensus to take place after a pre-commit of
 // an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
 // Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
 const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 480;
 
-// MUST be higher than 1 to assure that pre-commits are around during their validity timeframe
+// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
 // The higher the number, the more pre-commits will be collected in a single eviction bucket
 const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
@@ -30,7 +33,7 @@ pub struct PreAnchorData<Hash, AccountId, BlockNumber> {
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
     id: Hash,
     doc_root: Hash,
@@ -748,9 +751,9 @@ mod tests {
             // three different block heights that will put anchors into different eviction buckets
             let block_height_0 = 1;
             let block_height_1 =
-                Anchor::determine_pre_anchor_eviction_bucket(block_height_0) + block_height_0;;
+                Anchor::determine_pre_anchor_eviction_bucket(block_height_0) + block_height_0;
             let block_height_2 =
-                Anchor::determine_pre_anchor_eviction_bucket(block_height_1) + block_height_0;;
+                Anchor::determine_pre_anchor_eviction_bucket(block_height_1) + block_height_0;
 
 
             // ------ First run ------
