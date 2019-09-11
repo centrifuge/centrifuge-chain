@@ -23,7 +23,7 @@ const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 480;
 /// The higher the number, the more pre-commits will be collected in a single eviction bucket
 const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
-/// Determines how many pre-anchors are evicted at maximum per eviction TX
+/// Determines how many pre-commits are evicted at maximum per eviction TX
 const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
@@ -56,7 +56,7 @@ decl_storage! {
         /// PreCommits store the map of anchor Id to the pre commit, which is a lock on an anchor id to be committed later
         PreCommits get(get_pre_commit): map T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
-        /// Pre-commit eviction buckets keep track of which pre-anchor can be evicted at which point
+        /// Pre-commit eviction buckets keep track of which pre-commit can be evicted at which point
         PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map T::BlockNumber => u64;
 
@@ -245,7 +245,7 @@ impl<T: Trait> Module<T> {
         STORAGE_MAX_DAYS
     }
 
-    /// Puts the pre-anchor (based on anchor_id) into the correct eviction bucket
+    /// Puts the pre-commit (based on anchor_id) into the correct eviction bucket
     fn put_pre_commit_into_eviction_bucket(anchor_id: T::Hash) -> Result {
         // determine which eviction bucket to put into
         let evict_after_block =
@@ -467,7 +467,7 @@ mod tests {
             let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
             let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
 
-            // first pre-anchor
+            // first pre-commit
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(1),
                 anchor_id,
@@ -500,7 +500,7 @@ mod tests {
             let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
             let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
 
-            // first pre-anchor
+            // first pre-commit
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(1),
                 anchor_id,
