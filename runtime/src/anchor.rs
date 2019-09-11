@@ -180,10 +180,10 @@ decl_module! {
                 }
 
                 let pre_anchor_id =
-                    Self::get_pre_anchors_in_evict_bucket_by_index(evict_bucket, idx);
+                    Self::get_pre_anchors_in_evict_bucket_by_index((evict_bucket, idx));
                 <PreAnchors<T>>::remove(pre_anchor_id);
 
-                <PreAnchorEvictionBuckets<T>>::remove(evict_bucket, idx);
+                <PreAnchorEvictionBuckets<T>>::remove((evict_bucket, idx));
 
                 // decreases the evict bucket item count or remove index completely if empty
                 if idx == 0 {
