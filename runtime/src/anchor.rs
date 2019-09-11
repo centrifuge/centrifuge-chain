@@ -53,7 +53,7 @@ pub trait Trait: system::Trait + timestamp::Trait {}
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
 
-        /// PreCommits store the map of anchor Id to the pre commit, which is a lock on an anchor id to be committed later
+        /// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
         PreCommits get(get_pre_commit): map T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
         /// Pre-commit eviction buckets keep track of which pre-commit can be evicted at which point
@@ -166,7 +166,7 @@ decl_module! {
 
         /// Initiates eviction of pre-commits that has expired given that the current block number
         /// has progressed past the block number provided in `evict_bucket`. `evict_bucket` is also
-        /// the index to find the pre commits stored in storage to be evicted when the
+        /// the index to find the pre-commits stored in storage to be evicted when the
         /// `evict_bucket` number of blocks has expired.
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
             // TODO make payable
@@ -232,7 +232,7 @@ impl<T: Trait> Module<T> {
     }
 
     /// TODO this needs to come from governance
-    /// How long before we expire a pre commit
+    /// How long before we expire a pre-commit
     fn pre_commit_expiration_duration_blocks() -> u64 {
         PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
     }
@@ -407,7 +407,7 @@ mod tests {
                 anchor_id,
                 signing_root
             ));
-            // asserting that the stored pre commit has the intended values set
+            // asserting that the stored pre-commit has the intended values set
             let a = Anchor::get_pre_commit(anchor_id);
             assert_eq!(a.identity, 1);
             assert_eq!(a.signing_root, signing_root);
@@ -478,7 +478,7 @@ mod tests {
             assert_eq!(a.signing_root, signing_root);
             assert_eq!(a.expiration_block, Anchor::pre_commit_expiration_duration_blocks() + 1);
 
-            // fail, pre commit exists
+            // fail, pre-commit exists
             assert_err!(
                 Anchor::pre_commit(Origin::signed(1), anchor_id, signing_root),
                 "A valid pre-commit already exists"
@@ -511,7 +511,7 @@ mod tests {
             assert_eq!(a.signing_root, signing_root);
             assert_eq!(a.expiration_block, Anchor::pre_commit_expiration_duration_blocks() + 1);
 
-            // fail, pre commit exists
+            // fail, pre-commit exists
             assert_err!(
                 Anchor::pre_commit(Origin::signed(2), anchor_id, signing_root),
                 "A valid pre-commit already exists"
@@ -824,13 +824,13 @@ mod tests {
             pre_commits_count =
                 Anchor::get_pre_commits_count_in_evict_bucket(current_pre_commit_evict_bucket);
             assert_eq!(pre_commits_count, 2);
-            // first pre commit
+            // first pre-commit
             stored_pre_commit_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 0,
             ));
             assert_eq!(stored_pre_commit_id, anchor_id_1);
-            // second pre commit
+            // second pre-commit
             stored_pre_commit_id = Anchor::get_pre_commit_in_evict_bucket_by_index((
                 current_pre_commit_evict_bucket,
                 1,
@@ -906,7 +906,7 @@ mod tests {
             ));
 
             // verify the pre-commits were registered
-            // asserting that the stored pre commit has the intended values set
+            // asserting that the stored pre-commit has the intended values set
             let pre_commit_0 = Anchor::get_pre_commit(anchor_id_0);
             assert_eq!(pre_commit_0.identity, 1);
             assert_eq!(
