@@ -21,7 +21,7 @@ use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use grandpa::fg_primitives::{self, ScheduledChange};
 use client::{
 	block_builder::api::{CheckInherentsResult, InherentData, self as block_builder_api},
-	runtime_api as client_api, impl_runtime_apis
+	runtime_api as client_api, decl_runtime_apis, impl_runtime_apis
 };
 use version::RuntimeVersion;
 #[cfg(feature = "std")]
@@ -34,6 +34,8 @@ pub use timestamp::Call as TimestampCall;
 pub use balances::Call as BalancesCall;
 pub use sr_primitives::{Permill, Perbill};
 pub use support::{StorageValue, construct_runtime, parameter_types};
+
+use crate::anchor::AnchorData;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -62,7 +64,7 @@ pub type Hash = primitives::H256;
 pub type DigestItem = generic::DigestItem<Hash>;
 
 ///// Used for anchor module
-mod anchor;
+pub mod anchor;
 //
 /// Fees for TXs
 mod fees;
@@ -309,7 +311,21 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 /// Executive: handles dispatch to the various modules.
 pub type Executive = executive::Executive<Runtime, Block, system::ChainContext<Runtime>, Runtime, AllModules>;
 
+decl_runtime_apis! {
+	/// The API to query anchoring info.
+	pub trait AnchorApi {
+		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
+	}
+}
+
 impl_runtime_apis! {
+
+	impl self::AnchorApi<Block> for Runtime {
+		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
+			AnchorModule::get_anchor_by_id(id)
+		}
+	}
+
 	impl client_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
 			VERSION
