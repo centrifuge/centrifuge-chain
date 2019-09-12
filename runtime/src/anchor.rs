@@ -5,7 +5,7 @@
 
 use codec::{Decode, Encode};
 use rstd::{vec::Vec, convert::TryInto};
-use sr_primitives::traits::{Hash};
+use sr_primitives::traits::Hash;
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 use crate::{common as common};
@@ -111,7 +111,7 @@ decl_module! {
                 expiration_block: expiration_block,
             });
 
-            Self::put_pre_commit_into_eviction_bucket(anchor_id)?;
+            Self::put_pre_commit_into_eviction_bucket(anchor_id, expiration_block)?;
 
             Ok(())
         }
@@ -246,10 +246,10 @@ impl<T: Trait> Module<T> {
     }
 
     /// Puts the pre-commit (based on anchor_id) into the correct eviction bucket
-    fn put_pre_commit_into_eviction_bucket(anchor_id: T::Hash) -> Result {
+    fn put_pre_commit_into_eviction_bucket(anchor_id: T::Hash, expiration_block: T::BlockNumber) -> Result {
         // determine which eviction bucket to put into
         let evict_after_block =
-            Self::determine_pre_commit_eviction_bucket(<system::Module<T>>::block_number());
+            Self::determine_pre_commit_eviction_bucket(expiration_block);
         // get current index in eviction bucket and increment
         let mut eviction_bucket_size =
             Self::get_pre_commits_count_in_evict_bucket(evict_after_block);
@@ -268,14 +268,14 @@ impl<T: Trait> Module<T> {
     /// This can be used to determine which eviction bucket a pre-commit
     /// should be put into for later eviction.
     /// TODO return err
-    fn determine_pre_commit_eviction_bucket(current_block: T::BlockNumber) -> T::BlockNumber {
-        let result = TryInto::<u32>::try_into(current_block);
+    fn determine_pre_commit_eviction_bucket(pre_commit_expiration_block: T::BlockNumber) -> T::BlockNumber {
+        let result = TryInto::<u32>::try_into(pre_commit_expiration_block);
         match result {
-            Ok(u32_current_block)  => {
+            Ok(u32_expiration_block)  => {
                 let expiration_horizon =
                     Self::pre_commit_expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
                 let put_into_bucket =
-                    u32_current_block - (u32_current_block % expiration_horizon) + expiration_horizon;
+                    u32_expiration_block - (u32_expiration_block % expiration_horizon) + expiration_horizon;
 
                 T::BlockNumber::from(put_into_bucket)
             },
@@ -796,7 +796,7 @@ mod tests {
             // ------ First run ------
             // register anchor_id_0 into block_height_0
             System::set_block_number(block_height_0);
-            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_0));
+            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_0, block_height_0));
 
             let mut current_pre_commit_evict_bucket =
                 Anchor::determine_pre_commit_eviction_bucket(block_height_0);
@@ -814,8 +814,8 @@ mod tests {
             // ------ Second run ------
             // register anchor_id_1 and anchor_id_2 into block_height_1
             System::set_block_number(block_height_1);
-            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_1));
-            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_2));
+            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_1, block_height_1));
+            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_2, block_height_1));
 
             current_pre_commit_evict_bucket =
                 Anchor::determine_pre_commit_eviction_bucket(block_height_1);
@@ -840,7 +840,7 @@ mod tests {
             // ------ Third run ------
             // register anchor_id_3 into block_height_2
             System::set_block_number(block_height_2);
-            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_3));
+            assert_ok!(Anchor::put_pre_commit_into_eviction_bucket(anchor_id_3, block_height_2));
             current_pre_commit_evict_bucket =
                 Anchor::determine_pre_commit_eviction_bucket(block_height_2);
 
@@ -1017,7 +1017,7 @@ mod tests {
             let (doc_root, signing_root, proof) = Test::test_document_hashes();
             let start_block = 4799;
             // expected expiry block of pre-commit
-            let expiry_block = start_block + Anchor::expiration_duration_blocks(); // i.e 4799 + 480
+            let expiration_block = start_block + Anchor::pre_commit_expiration_duration_blocks(); // i.e 4799 + 480
 
             System::set_block_number(start_block);
             // happy
@@ -1027,24 +1027,24 @@ mod tests {
                 signing_root
             ));
 
-            assert_eq!(Anchor::determine_pre_anchor_eviction_bucket(start_block), 4800);
-            let a = Anchor::get_pre_anchor(anchor_id);
-            assert_eq!(a.expiration_block, expiry_block);
-            // the edge case bug - pre-commit eviction time is less than its expiry time
-            assert_eq!(Anchor::determine_pre_anchor_eviction_bucket(start_block) < a.expiration_block, true);
+            let a = Anchor::get_pre_commit(anchor_id);
+            assert_eq!(a.expiration_block, expiration_block);
+            // the edge case bug we had - pre-commit eviction time is less than its expiry time
+            assert_eq!(Anchor::determine_pre_commit_eviction_bucket(expiration_block) > a.expiration_block, true);
 
-            // this would evict the pre-commit before its expired
-            System::set_block_number(Anchor::determine_pre_anchor_eviction_bucket(start_block) + 1);
+            // this should not evict the pre-commit before its expired
+            System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(start_block) + 1);
             assert_ok!(
                 Anchor::evict_pre_commits(
                     Origin::signed(1),
-                    Anchor::determine_pre_anchor_eviction_bucket(start_block)
+                    Anchor::determine_pre_commit_eviction_bucket(start_block)
                 )
             );
 
-            // this should fail but it succeeds because pre-commit is evicted before it expires
-            assert_ok!(
-                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, common::MS_PER_DAY + 1)
+            // fails
+            assert_err!(
+                Anchor::commit(Origin::signed(2), pre_image, doc_root, proof, common::MS_PER_DAY + 1),
+                "Pre-commit owned by someone else"
             );
         });
     }
