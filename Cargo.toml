@@ -9,11 +9,11 @@ path = 'src/main.rs'
 vergen = '3'
 
 [package]
-authors = ['philip@centrifuge.io']
+authors = ['philip@centrifuge.io', 'vimukthi@centrifuge.io']
 build = 'build.rs'
-edition = '2018'
+edition = '2019'
 name = 'centrifuge-chain'
-version = '2.0.0'
+version = '2.0.1'
 
 [dependencies]
 derive_more = '0.14.0'

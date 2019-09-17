@@ -104,7 +104,7 @@ pub mod opaque {
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-chain"),
 	impl_name: create_runtime_str!("centrifuge-chain"),
-	authoring_version: 3,
+	authoring_version: 5,
 	spec_version: 5,
 	impl_version: 5,
 	apis: RUNTIME_API_VERSIONS,
