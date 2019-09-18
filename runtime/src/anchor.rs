@@ -67,7 +67,16 @@ decl_storage! {
         AnchorIndexes get(get_anchor_id_by_index): map u64 => T::Hash;
 
         /// latest anchored index
-        CurrentAnchorIndex get(get_current_index): u64;
+        CurrentAnchorIndex get(get_current_anchor_index): u64;
+
+        /// latest evicted anchor index. This would keep track of the latest evicted anchor index so
+        /// that we can start the removal of AnchorEvictDates index from that index onwards. going
+        /// from AnchorIndexes => AnchorEvictDates
+        LatestEvictedAnchorIndex get(get_latest_evicted_anchor_index): u64;
+
+        /// This is to keep track of the date when a child trie of anchors was evicted last. It is
+        /// to evict historic anchor data child tries if they weren't evicted in a timely manner.
+        LatestEvictedDate get(get_latest_evicted_date): u32;
 
         Version: u64;
     }
@@ -193,6 +202,34 @@ decl_module! {
                 }
             }
             Ok(())
+        }
+
+        /// Initiates eviction of anchors. Since anchors are stored on a child trie indexed by
+        /// their eviction date, what this function does is to remove those child tries which has
+        /// date_represented_by_root < current_date. Additionally it needs to take care of indexes
+        /// created for accessing anchors, eg: to find an anchor given an id.
+        pub fn evict_anchors(origin) -> Result {
+            let who = ensure_signed(origin)?;
+            let current_timestamp = <timestamp::Module<T>>::get();
+            let current_time_u64 = TryInto::<u64>::try_into(current_timestamp)
+                .map_err(|_e| "Can not convert timestamp to u64")
+                .unwrap();
+
+            // get the previous day counting epoch, so that we can remove the corresponding child trie
+            let previous_day_from_epoch = common::get_days_since_epoch(current_time_u64) - 1;
+            let evict_date = LatestEvictedDate::get();
+
+            // remove child tries
+            for day in (evict_date..previous_day_from_epoch + 1) {
+                 let storage_key = common::generate_child_storage_key(day);
+                 runtime_io::kill_child_storage(&storage_key);
+            }
+            // store yesterday as the last day of eviction
+            LatestEvictedDate::put(previous_day_from_epoch);
+
+            // TODO remove indexes
+            // for idx in LatestEvictedAnchorIndex::get()..
+
         }
     }
 }
