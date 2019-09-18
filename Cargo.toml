@@ -11,7 +11,7 @@ vergen = '3'
 [package]
 authors = ['philip@centrifuge.io', 'vimukthi@centrifuge.io']
 build = 'build.rs'
-edition = '2019'
+edition = '2018'
 name = 'centrifuge-chain'
 version = '2.0.1'
 
