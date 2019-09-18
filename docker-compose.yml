@@ -30,6 +30,7 @@ services:
       # TODO remove alice here and call the RPC method to start validating with a proper account
       - --alice
       - --rpc-cors=all
+      # TODO bitte!! remove this private key and read a key file
       - --node-key=2a654a0958cd0e10626c36057c46a08018eaf2901f9bab74ecc1144f714300ac
       - --chain=/var/local/testnets/fulvous.raw.json
       - --bootnodes=/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq
@@ -60,6 +61,7 @@ services:
       - centrifuge-chain
       - --ws-external
       - --validator
+      # TODO bitte!! remove this private key and read a key file
       - --node-key=66ef62065cfdc48929b5cb9c1bbc0a728e6d1d43b4ba1de13ccf76c7ecec66e9
       # TODO remove bob here and call the RPC method to start validating with a proper account
       - --bob
