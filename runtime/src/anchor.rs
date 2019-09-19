@@ -6,7 +6,7 @@
 use codec::{Decode, Encode};
 use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::Hash;
-use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
+use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue, print};
 use system::ensure_signed;
 use crate::{common as common};
 
@@ -204,45 +204,36 @@ decl_module! {
             Ok(())
         }
 
-        /// Initiates eviction of anchors. Since anchors are stored on a child trie indexed by
+        /// Initiates eviction of expired anchors. Since anchors are stored on a child trie indexed by
         /// their eviction date, what this function does is to remove those child tries which has
         /// date_represented_by_root < current_date. Additionally it needs to take care of indexes
         /// created for accessing anchors, eg: to find an anchor given an id.
         pub fn evict_anchors(origin) -> Result {
-            let who = ensure_signed(origin)?;
+            ensure_signed(origin)?;
             let current_timestamp = <timestamp::Module<T>>::get();
-            let current_time_u64 = TryInto::<u64>::try_into(current_timestamp)
+
+            // get the today counting epoch, so that we can remove the corresponding child trie
+            let today_in_days_from_epoch = TryInto::<u64>::try_into(current_timestamp)
+                .map(common::get_days_since_epoch)
                 .map_err(|_e| "Can not convert timestamp to u64")
                 .unwrap();
-
-            // get the previous day counting epoch, so that we can remove the corresponding child trie
-            let previous_day_from_epoch = common::get_days_since_epoch(current_time_u64) - 1;
             let evict_date = LatestEvictedDate::get();
 
-            // remove child tries
-            for day in (evict_date..previous_day_from_epoch + 1) {
-                 let storage_key = common::generate_child_storage_key(day);
-                 runtime_io::kill_child_storage(&storage_key);
-            }
+            // remove child tries starting from last evicted days trie
+            let evicted_trie_count = (evict_date..today_in_days_from_epoch)
+                .map(common::generate_child_storage_key)
+                .map(|key| runtime_io::kill_child_storage(&key))
+                .count();
             // store yesterday as the last day of eviction
-            LatestEvictedDate::put(previous_day_from_epoch);
+            let yesterday = today_in_days_from_epoch - 1;
+            LatestEvictedDate::put(yesterday);
 
             // iterate from the last evicted anchor to latest anchor, while removing indexes that
             // are no longer valid because they belong to an expired/evicted anchor. The loop is
             // only allowed to run MAX_LOOP_IN_TX at a time.
-            for idx in LatestEvictedAnchorIndex::get()..LatestAnchorIndex::get() {
-                let anchor_evict_date = <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx));
-                if anchor_evict_date > LatestEvictedDate::get() || idx == MAX_LOOP_IN_TX  {
-                    LatestEvictedAnchorIndex::put(idx - 1);
-                    break;
-                }
-                // remove indexes
-                <AnchorEvictDates<T>>::remove(<AnchorIndexes<T>>::get(idx));
-                <AnchorIndexes<T>>::remove(idx);
-            }
+            let evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday);
 
             Ok(())
-
         }
     }
 }
@@ -331,6 +322,26 @@ impl<T: Trait> Module<T> {
             },
             Err(_e) => T::BlockNumber::from(0),
         }
+    }
+
+    /// iterate from the last evicted anchor to latest anchor, while removing indexes that
+    /// are no longer valid because they belong to an expired/evicted anchor. The loop is
+    /// only allowed to run MAX_LOOP_IN_TX at a time.
+    fn remove_anchor_indexes(yesterday: u32) -> usize {
+        (LatestEvictedAnchorIndex::get()..LatestAnchorIndex::get() + 1)
+            // limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
+            .take(MAX_LOOP_IN_TX as usize)
+            // get eviction date of the anchor given by index
+            .map(|idx| {(idx, <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx)))})
+            // filter out evictable anchors
+            .filter(|(_, anchor_evict_date)| anchor_evict_date <= &yesterday)
+            // remove indexes
+            .map(|(idx, _)| {
+                <AnchorEvictDates<T>>::remove(<AnchorIndexes<T>>::get(idx));
+                <AnchorIndexes<T>>::remove(idx);
+                LatestEvictedAnchorIndex::put(idx);
+            })
+            .count()
     }
 
     /// get an anchor by its id in the child storage
@@ -1133,8 +1144,57 @@ mod tests {
     // #### End Pre Commit Eviction Tests
 
     #[test]
-    fn anchor_evict() {
+    fn basic_commit_evict() {
+        with_externalities(&mut new_test_ext(), || {
+            let random_seed = <system::Module<Test>>::random_seed();
+            let pre_image =
+                (random_seed, 1).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
+            // happy pre-commit->commit
+            assert_ok!(Anchor::pre_commit(
+                        Origin::signed(1),
+                        anchor_id,
+                        signing_root
+            ));
+
+            assert_ok!(Anchor::commit(
+                        Origin::signed(1),
+                        pre_image,
+                        doc_root,
+                        proof,
+                        common::MS_PER_DAY + 1
+            ));
+
+            // verify anchor and indexes
+            assert!(Anchor::get_anchor_by_id(anchor_id).is_some());
+            assert_eq!(Anchor::get_latest_anchor_index(), 1);
+            assert_eq!(Anchor::get_anchor_id_by_index(1), anchor_id);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 0);
+            assert_eq!(Anchor::get_anchor_evict_date(anchor_id), 2);
+
+
+            // eviction
+            <timestamp::Module<Test>>::set_timestamp((common::MS_PER_DAY + 1) * 1000);
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            assert!(Anchor::get_anchor_by_id(anchor_id).is_none());
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1);
+            assert_eq!(Anchor::get_anchor_id_by_index(1), H256([0;32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchor_id), 0);
+
+
+
+//            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 0);
+//            assert!(Anchor::get_anchor_by_id(anchor_id).is_none());
+//            let removed = Anchor::remove_anchor_indexes(1);
+//            assert_eq!(removed, 1);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1);
+
+
+
+        });
     }
 
     #[test]
