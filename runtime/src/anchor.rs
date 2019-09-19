@@ -23,8 +23,8 @@ const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 480;
 /// The higher the number, the more pre-commits will be collected in a single eviction bucket
 const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
 
-/// Determines how many pre-commits are evicted at maximum per eviction TX
-const PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX: u64 = 500;
+/// Determines how many loop iterations are allowed to run at a time inside the runtime.
+const MAX_LOOP_IN_TX: u64 = 500;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
@@ -67,7 +67,7 @@ decl_storage! {
         AnchorIndexes get(get_anchor_id_by_index): map u64 => T::Hash;
 
         /// latest anchored index
-        CurrentAnchorIndex get(get_current_anchor_index): u64;
+        LatestAnchorIndex get(get_latest_anchor_index): u64;
 
         /// latest evicted anchor index. This would keep track of the latest evicted anchor index so
         /// that we can start the removal of AnchorEvictDates index from that index onwards. going
@@ -166,9 +166,9 @@ decl_module! {
             runtime_io::set_child_storage(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
             // update indexes
             <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
-            let idx = CurrentAnchorIndex::get() + 1;
+            let idx = LatestAnchorIndex::get() + 1;
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
-            CurrentAnchorIndex::put(idx);
+            LatestAnchorIndex::put(idx);
 
             Ok(())
         }
@@ -184,7 +184,7 @@ decl_module! {
 
             let pre_commits_count = Self::get_pre_commits_count_in_evict_bucket(evict_bucket);
             for idx in (0..pre_commits_count).rev() {
-                if pre_commits_count - idx > PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX {
+                if pre_commits_count - idx > MAX_LOOP_IN_TX {
                     break;
                 }
 
@@ -227,8 +227,21 @@ decl_module! {
             // store yesterday as the last day of eviction
             LatestEvictedDate::put(previous_day_from_epoch);
 
-            // TODO remove indexes
-            // for idx in LatestEvictedAnchorIndex::get()..
+            // iterate from the last evicted anchor to latest anchor, while removing indexes that
+            // are no longer valid because they belong to an expired/evicted anchor. The loop is
+            // only allowed to run MAX_LOOP_IN_TX at a time.
+            for idx in LatestEvictedAnchorIndex::get()..LatestAnchorIndex::get() {
+                let anchor_evict_date = <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx));
+                if anchor_evict_date > LatestEvictedDate::get() || idx == MAX_LOOP_IN_TX  {
+                    LatestEvictedAnchorIndex::put(idx - 1);
+                    break;
+                }
+                // remove indexes
+                <AnchorEvictDates<T>>::remove(<AnchorIndexes<T>>::get(idx));
+                <AnchorIndexes<T>>::remove(idx);
+            }
+
+            Ok(())
 
         }
     }
@@ -597,7 +610,7 @@ mod tests {
             assert_eq!(a.id, anchor_id);
             assert_eq!(a.doc_root, doc_root);
             assert_eq!(Anchor::get_anchor_evict_date(anchor_id), 18144);
-            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id);
+            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_latest_anchor_index()), anchor_id);
             assert_eq!(Anchor::get_anchor_id_by_index(1), anchor_id);
 
             // commit second anchor to test index updates
@@ -613,7 +626,7 @@ mod tests {
             assert_eq!(a.doc_root, doc_root);
             assert_eq!(Anchor::get_anchor_evict_date(anchor_id2), 18144);
             assert_eq!(Anchor::get_anchor_id_by_index(2), anchor_id2);
-            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_current_index()), anchor_id2);
+            assert_eq!(Anchor::get_anchor_id_by_index(Anchor::get_latest_anchor_index()), anchor_id2);
 
             // commit anchor with a less than required number of minimum storage days
             assert_err!(
@@ -1095,7 +1108,7 @@ mod tests {
             let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
 
             System::set_block_number(block_height_0);
-            for idx in 0..PRE_COMMIT_EVICTION_MAX_LOOP_IN_TX + 6 {
+            for idx in 0..MAX_LOOP_IN_TX + 6 {
                 assert_ok!(Anchor::pre_commit(
                     Origin::signed(1),
                     <Test as system::Trait>::Hashing::hash_of(&idx),
@@ -1118,6 +1131,11 @@ mod tests {
         });
     }
     // #### End Pre Commit Eviction Tests
+
+    #[test]
+    fn anchor_evict() {
+
+    }
 
     #[test]
     #[ignore]
