@@ -20,8 +20,10 @@ pub enum Alternative {
     Development,
     /// Whatever the current runtime is, with simple Alice/Bob auths.
     LocalTestnet,
-    /// Fulvous testnet with whatever the current runtime is, with simple Alice/Bob auths and sudo account set by environment.
+    /// Fulvous testnet with whatever the current runtime is and with Alice/Bob as validators.
     Fulvous,
+    /// Amber testnet with whatever the current runtime is and persistent disks and with Alice/Bob as validators.
+    Amber,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -110,16 +112,13 @@ impl Alternative {
                 None,
                 None
             ),
-            // Fulvous initial config
+            // Fulvous initial spec
             Alternative::Fulvous => ChainSpec::from_genesis(
                 "Fulvous Testnet",
                 "fulvous",
                 || {
                     testnet_genesis(
                         vec![
-                            // TODO remove Alice and Bob here and setup proper validator accounts. Then following RPC methods needs to be called on a validator node to start validating.
-                            // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["gran", "seed"],"id":1 }' localhost:9933
-                            // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["babe", "seed"],"id":1 }' localhost:9933
                             get_authority_keys_from_seed("Alice"),
                             get_authority_keys_from_seed("Bob"),
                         ],
@@ -132,7 +131,42 @@ impl Alternative {
                 },
                 vec![],
                 None,
-                Some("centrifuge-chain"),
+                Some("flvs"),
+                None,
+                None,
+            ),
+            // Amber initial spec
+            Alternative::Amber => ChainSpec::from_genesis(
+                "Amber Testnet",
+                "amber",
+                || {
+                    testnet_genesis(
+                        vec![
+                            // TODO remove Alice and Bob here and setup proper validator accounts. Then following RPC methods needs to be called on a validator node to start validating.
+                            // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["gran", "seed"],"id":1 }' localhost:9933
+                            // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["babe", "seed"],"id":1 }' localhost:9933
+                            get_authority_keys_from_seed("Alice"),
+                            get_authority_keys_from_seed("Bob"),
+                        ],
+                        get_from_pub_str::<AccountId>("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"),
+                        vec![
+                            get_from_pub_str::<AccountId>("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"),
+                            get_from_pub_str::<AccountId>("c40526b6cb4c2ab991f5065b599a7313ba98ea6995786539ca05186adb30b34c"),
+                            get_from_pub_str::<AccountId>("f0415b8cdfcd189c5636f3c1d0b65637b97fdd926af8132a38f963361f293b0f"),
+                            get_from_pub_str::<AccountId>("c40524c8d2a97e347ba3f9c75395dabcad0ef7304c4804838f20ec05ef76b32a"),
+                            get_from_pub_str::<AccountId>("f0415a742977038943db5f619a2101d790e8a588ba33d671044a10ea332b9f7f"),
+                            get_from_pub_str::<AccountId>("f041601cc759ea533c386a0391344e82b6efb645c07a66355411cbc657aa8c66"),
+                            get_from_pub_str::<AccountId>("f04162650738ed2e19b0240419f9680ba9d3dc6b40ccf4ad8993fcbf61ca6720"),
+                            get_from_pub_str::<AccountId>("f0415b3730410e05516cbfcdc3eb2909d373dcaf205dc1889f4455d9dc0c7222"),
+                            get_from_pub_str::<AccountId>("c4052280dcd37bc6c5148307fda2ade1be9c2d555ec49f59de27c730ca43d80d"),
+                            get_from_pub_str::<AccountId>("f04157ad160c8e5c2847f74837b1c59ad6a927bd3feb517a16e12b59a4704c7a"),
+                        ],
+                        true,
+                    )
+                },
+                vec![],
+                None,
+                Some("ambr"),
                 None,
                 None,
             ),
@@ -144,6 +178,7 @@ impl Alternative {
             "dev" => Some(Alternative::Development),
             "" | "local" => Some(Alternative::LocalTestnet),
             "fulvous" => Some(Alternative::Fulvous),
+            "amber" => Some(Alternative::Amber),
             _ => None,
         }
     }
