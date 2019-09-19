@@ -1,5 +1,8 @@
 # centrifuge-chain
 
+[![Build Status](https://travis-ci.com/centrifuge/centrifuge-chain.svg?branch=master)](https://travis-ci.com/centrifuge/centrifuge-chain)
+[![codecov](https://codecov.io/gh/centrifuge/centrifuge-chain/branch/master/graph/badge.svg)](https://codecov.io/gh/centrifuge/centrifuge-chain)
+
 Centrifuge-chain is a substrate based chain.
 
 ## Build
