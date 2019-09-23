@@ -1158,6 +1158,20 @@ mod tests {
         with_externalities(&mut new_test_ext(), || {
             let day = |n| common::MS_PER_DAY * n + 1;
             let mut anchors = vec![];
+            let verify_anchor_eviction = |day: usize, anchors: &Vec<H256>| {
+                assert!(Anchor::get_anchor_by_id(anchors[day - 2]).is_none());
+                assert_eq!(Anchor::get_latest_evicted_anchor_index(), (day - 1) as u64);
+                assert_eq!(Anchor::get_anchor_id_by_index((day - 1) as u64), H256([0; 32]));
+                assert!(Anchor::get_evicted_anchor_root_by_day((day - 1) as u32) != [0; 32]);
+                assert_eq!(Anchor::get_anchor_evict_date(anchors[day - 2]), 0);
+            };
+            let verify_next_anchor_after_eviction = |day: usize, anchors: &Vec<H256>| {
+                assert!(Anchor::get_anchor_by_id(anchors[day - 1]).is_some());
+                assert_eq!(Anchor::get_anchor_id_by_index(day as u64), anchors[day - 1]);
+                assert_eq!(Anchor::get_anchor_evict_date(anchors[day - 1]), (day + 1) as u32);
+            };
+
+            // create 1000 anchors one per day
             for i in 0..1000 {
                 let random_seed = <system::Module<Test>>::random_seed();
                 let pre_image =
@@ -1184,23 +1198,52 @@ mod tests {
             }
 
             // eviction on day 2
-            assert!(Anchor::get_anchor_by_id(anchors[0]).is_some());
             <timestamp::Module<Test>>::set_timestamp(day(2));
+            assert!(Anchor::get_anchor_by_id(anchors[0]).is_some());
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
-            assert!(Anchor::get_anchor_by_id(anchors[0]).is_none());
-            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1);
-            assert_eq!(Anchor::get_anchor_id_by_index(1), H256([0;32]));
+            verify_anchor_eviction(2, &anchors);
             assert_eq!(Anchor::get_evicted_anchor_root_by_day(1),
                        [
                            3, 23, 10, 46, 117, 151, 183, 183, 227, 216, 76, 5, 57, 29, 19,
                            154, 98, 177, 87, 231, 135, 134, 216, 192, 130, 242, 157, 207,
                            76, 17, 19, 20
                        ]);
-            assert_eq!(Anchor::get_anchor_evict_date(anchors[0]), 0);
 
-            assert!(Anchor::get_anchor_by_id(anchors[1]).is_some());
-            assert_eq!(Anchor::get_anchor_id_by_index(2), anchors[1]);
-            assert_eq!(Anchor::get_anchor_evict_date(anchors[1]), 3);
+            verify_next_anchor_after_eviction(2, &anchors);
+
+            // do the same as above for for 20 days without child trie root verification
+            for i in 3..23 {
+                <timestamp::Module<Test>>::set_timestamp(day(i as u64));
+                assert!(Anchor::get_anchor_by_id(anchors[i - 2]).is_some());
+
+                // evict
+                assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+                verify_anchor_eviction(i, &anchors);
+                verify_next_anchor_after_eviction(i, &anchors);
+            }
+
+            // test out limit on the number of anchors removed at a time
+            // eviction on day 523, i.e 501 anchors to be removed one anchor
+            // per day from the last eviction on day 21
+            //let day_num: usize = 522;
+            <timestamp::Module<Test>>::set_timestamp(day(522));
+            assert!(Anchor::get_anchor_by_id(anchors[520]).is_some());
+            // evict
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            // verify anchor data has been removed
+            assert!(Anchor::get_anchor_by_id(anchors[520]).is_none());
+            assert!(Anchor::get_evicted_anchor_root_by_day(521) != [0; 32]);
+            // verify that 521st anchors indexes are left still because of 500 limit
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 520);
+            assert!(Anchor::get_anchor_id_by_index(521) != H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[520]), 522);
+
+            // call evict on same day to remove the remaining indexes
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            // verify that 521st anchors indexes are removed since we called a second time
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 521);
+            assert_eq!(Anchor::get_anchor_id_by_index(521), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[520]), 0);
         });
     }
 
