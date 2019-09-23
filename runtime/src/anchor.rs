@@ -225,8 +225,8 @@ decl_module! {
                 .unwrap();
             let evict_date = LatestEvictedDate::get();
 
-            // remove child tries starting from last evicted days trie
-            let evicted_trie_count = (evict_date..today_in_days_from_epoch)
+            // remove child tries starting from day next to last evicted day
+            let evicted_trie_count = (evict_date + 1..today_in_days_from_epoch)
                 .map(|day| {(day, common::generate_child_storage_key(day))})
                 // store the root of child trie for the day on chain before eviction. Checks if it
                 // exists before hand to ensure that it doesn't overwrite a root.
@@ -1198,16 +1198,15 @@ mod tests {
                 anchors.push(anchor_id);
             }
 
-            // eviction on day 2
+            // eviction on day 3
             <timestamp::Module<Test>>::set_timestamp(day(2));
             assert!(Anchor::get_anchor_by_id(anchors[0]).is_some());
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
             verify_anchor_eviction(2, &anchors);
-            assert_eq!(Anchor::get_evicted_anchor_root_by_day(1),
+            assert_eq!(Anchor::get_evicted_anchor_root_by_day(2),
                        [
-                           3, 23, 10, 46, 117, 151, 183, 183, 227, 216, 76, 5, 57, 29, 19,
-                           154, 98, 177, 87, 231, 135, 134, 216, 192, 130, 242, 157, 207,
-                           76, 17, 19, 20
+                           159, 183, 44, 117, 34, 66, 8, 221, 84, 27, 226, 237, 170, 17, 75, 57,
+                           171, 140, 65, 234, 14, 217, 51, 245, 38, 19, 101, 199, 23, 210, 58, 163
                        ]);
 
             verify_next_anchor_after_eviction(2, &anchors);
@@ -1352,6 +1351,11 @@ mod tests {
             assert_eq!(Anchor::get_latest_evicted_anchor_index(), 500);
             assert_eq!(Anchor::get_anchor_id_by_index(500), H256([0; 32]));
             assert_eq!(Anchor::get_anchor_evict_date(anchors[499]), 0);
+            assert_eq!(Anchor::get_evicted_anchor_root_by_day(2),
+                       [
+                           50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110,
+                           187, 42, 101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167
+                       ]);
 
             // second 500
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
