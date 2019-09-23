@@ -1230,13 +1230,19 @@ mod tests {
             assert!(Anchor::get_anchor_by_id(anchors[520]).is_some());
             // evict
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
-            // verify anchor data has been removed
-            assert!(Anchor::get_anchor_by_id(anchors[520]).is_none());
-            assert!(Anchor::get_evicted_anchor_root_by_day(521) != [0; 32]);
-            // verify that 521st anchors indexes are left still because of 500 limit
+            // verify anchor data has been removed until 520th anchor
+            for i in 23..522 {
+                assert!(Anchor::get_anchor_by_id(anchors[i - 2]).is_none());
+                assert!(Anchor::get_evicted_anchor_root_by_day(i as u32) != [0; 32]);
+            }
+
+            // verify that 521st anchors indexes are left still because of 500 limit while
+            // 520th anchors indexes have been removed
             assert_eq!(Anchor::get_latest_evicted_anchor_index(), 520);
             assert!(Anchor::get_anchor_id_by_index(521) != H256([0; 32]));
             assert_eq!(Anchor::get_anchor_evict_date(anchors[520]), 522);
+            assert_eq!(Anchor::get_anchor_id_by_index(520), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[519]), 0);
 
             // call evict on same day to remove the remaining indexes
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
@@ -1249,12 +1255,30 @@ mod tests {
 
     #[test]
     fn test_remove_anchor_indexes() {
-//        assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
-//        assert_eq!(Anchor::get_latest_evicted_anchor_index(), 0);
-//        assert!(Anchor::get_anchor_by_id(anchor_id).is_none());
-//        let removed = Anchor::remove_anchor_indexes(1);
-//        assert_eq!(removed, 1);
-//        assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1);
+//        with_externalities(&mut new_test_ext(), || {
+//            let random_seed = <system::Module<Test>>::random_seed();
+//            let pre_image =
+//                (random_seed, 1).using_encoded(<Test as system::Trait>::Hashing::hash);
+//            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+//            let (doc_root, signing_root, proof) = Test::test_document_hashes();
+//
+//
+//            assert_ok!(Anchor::commit(
+//                    Origin::signed(1),
+//                    pre_image,
+//                    doc_root,
+//                    proof,
+//                    day(2)
+//                ));
+//
+//            <timestamp::Module<Test>>::set_timestamp(day(522));
+//            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 0);
+//            assert!(Anchor::get_anchor_by_id(anchor_id).is_none());
+//            let removed = Anchor::remove_anchor_indexes(1);
+//            assert_eq!(removed, 1);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1);
+//        });
     }
 
     #[test]
