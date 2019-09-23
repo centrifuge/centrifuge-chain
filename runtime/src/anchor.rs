@@ -1292,24 +1292,24 @@ mod tests {
             }
             assert_eq!(Anchor::get_latest_anchor_index(), 2000);
 
-            // first 500
+            // first MAX_LOOP_IN_TX items
             let removed = Anchor::remove_anchor_indexes(2);
-            assert_eq!(removed, 500);
+            assert_eq!(removed as u64, MAX_LOOP_IN_TX);
             assert_eq!(Anchor::get_latest_evicted_anchor_index(), 500);
 
-            // second 500
+            // second MAX_LOOP_IN_TX items
             let removed = Anchor::remove_anchor_indexes(2);
-            assert_eq!(removed, 500);
+            assert_eq!(removed as u64, MAX_LOOP_IN_TX);
             assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1000);
 
-            // third 500
+            // third MAX_LOOP_IN_TX items
             let removed = Anchor::remove_anchor_indexes(2);
-            assert_eq!(removed, 500);
+            assert_eq!(removed as u64, MAX_LOOP_IN_TX);
             assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1500);
 
-            // fourth 500
+            // fourth MAX_LOOP_IN_TX items
             let removed = Anchor::remove_anchor_indexes(2);
-            assert_eq!(removed, 500);
+            assert_eq!(removed as u64, MAX_LOOP_IN_TX);
             assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
 
             // all done
@@ -1319,55 +1319,57 @@ mod tests {
         });
     }
 
-//    #[test]
-//    fn test_same_day_1001_anchors() {
-//        with_externalities(&mut new_test_ext(), || {
-//            let day = |n| common::MS_PER_DAY * n + 1;
-//            let (doc_root, signing_root, proof) = Test::test_document_hashes();
-//
-//            // create 1001 anchors that expire on same day
-//            for i in 0..1001 {
-//                let random_seed = <system::Module<Test>>::random_seed();
-//                let pre_image =
-//                    (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
-//                let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-//                assert_ok!(Anchor::commit(
-//                    Origin::signed(1),
-//                    pre_image,
-//                    doc_root,
-//                    proof,
-//                    // all anchors expire on same day
-//                    day(1)
-//                ));
-//            }
-//            assert_eq!(Anchor::get_latest_anchor_index(), 1001);
-//
-//            // first 500
-//            let removed = Anchor::remove_anchor_indexes(2);
-//            assert_eq!(removed, 500);
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 500);
-//
-//            // second 500
-//            let removed = Anchor::remove_anchor_indexes(2);
-//            assert_eq!(removed, 500);
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1000);
-//
-//            // third 500
-//            let removed = Anchor::remove_anchor_indexes(2);
-//            assert_eq!(removed, 500);
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1500);
-//
-//            // fourth 500
-//            let removed = Anchor::remove_anchor_indexes(2);
-//            assert_eq!(removed, 500);
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
-//
-//            // all done
-//            let removed = Anchor::remove_anchor_indexes(2);
-//            assert_eq!(removed, 0);
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
-//        });
-//    }
+    #[test]
+    fn test_same_day_1001_anchors() {
+        with_externalities(&mut new_test_ext(), || {
+            let day = |n| common::MS_PER_DAY * n + 1;
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
+            let mut anchors = vec![];
+
+            // create 1001 anchors that expire on same day
+            for i in 0..1001 {
+                let random_seed = <system::Module<Test>>::random_seed();
+                let pre_image =
+                    (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
+                let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+                assert_ok!(Anchor::commit(
+                    Origin::signed(1),
+                    pre_image,
+                    doc_root,
+                    proof,
+                    // all anchors expire on same day
+                    day(1)
+                ));
+                anchors.push(anchor_id);
+            }
+            assert_eq!(Anchor::get_latest_anchor_index(), 1001);
+
+            // first 500
+            <timestamp::Module<Test>>::set_timestamp(day(2));
+            assert!(Anchor::get_anchor_by_id(anchors[999]).is_some());
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            assert!(Anchor::get_anchor_by_id(anchors[999]).is_none());
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 500);
+            assert_eq!(Anchor::get_anchor_id_by_index(500), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[499]), 0);
+
+            // second 500
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1000);
+            assert_eq!(Anchor::get_anchor_id_by_index(1000), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[999]), 0);
+
+            // remaining
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1001);
+            assert_eq!(Anchor::get_anchor_id_by_index(1001), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[1000]), 0);
+
+            // all done
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1001);
+        });
+    }
 
     #[test]
     #[ignore]
