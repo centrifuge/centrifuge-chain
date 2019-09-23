@@ -243,6 +243,8 @@ decl_module! {
             LatestEvictedDate::put(yesterday);
             let evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday);
 
+            // TODO emit an event for this so that the process which triggers can know how many anchor indexes got purged
+
             Ok(())
         }
     }
@@ -338,13 +340,13 @@ impl<T: Trait> Module<T> {
     /// are no longer valid because they belong to an expired/evicted anchor. The loop is
     /// only allowed to run MAX_LOOP_IN_TX at a time.
     fn remove_anchor_indexes(yesterday: u32) -> usize {
-        (LatestEvictedAnchorIndex::get()..LatestAnchorIndex::get() + 1)
+        (LatestEvictedAnchorIndex::get() + 1..LatestAnchorIndex::get() + 1)
             // limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
             .take(MAX_LOOP_IN_TX as usize)
             // get eviction date of the anchor given by index
             .map(|idx| {(idx, <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx)))})
-            // filter out evictable anchors
-            .filter(|(_, anchor_evict_date)| anchor_evict_date <= &yesterday)
+            // filter out evictable anchors, anchor_evict_date can be 0 when evicting before any anchors are created
+            .filter(|(_, anchor_evict_date)| anchor_evict_date <= &yesterday && anchor_evict_date > &0)
             // remove indexes
             .map(|(idx, _)| {
                 <AnchorEvictDates<T>>::remove(<AnchorIndexes<T>>::get(idx));
@@ -1157,6 +1159,7 @@ mod tests {
     fn anchor_evict_single_anchor_per_day_1000_days() {
         with_externalities(&mut new_test_ext(), || {
             let day = |n| common::MS_PER_DAY * n + 1;
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
             let mut anchors = vec![];
             let verify_anchor_eviction = |day: usize, anchors: &Vec<H256>| {
                 assert!(Anchor::get_anchor_by_id(anchors[day - 2]).is_none());
@@ -1177,8 +1180,6 @@ mod tests {
                 let pre_image =
                     (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
                 let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-                let (doc_root, signing_root, proof) = Test::test_document_hashes();
-
 
                 assert_ok!(Anchor::commit(
                     Origin::signed(1),
@@ -1211,8 +1212,8 @@ mod tests {
 
             verify_next_anchor_after_eviction(2, &anchors);
 
-            // do the same as above for for 20 days without child trie root verification
-            for i in 3..23 {
+            // do the same as above for next 99 days without child trie root verification
+            for i in 3..102 {
                 <timestamp::Module<Test>>::set_timestamp(day(i as u64));
                 assert!(Anchor::get_anchor_by_id(anchors[i - 2]).is_some());
 
@@ -1221,65 +1222,152 @@ mod tests {
                 verify_anchor_eviction(i, &anchors);
                 verify_next_anchor_after_eviction(i, &anchors);
             }
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 100);
 
             // test out limit on the number of anchors removed at a time
-            // eviction on day 523, i.e 501 anchors to be removed one anchor
-            // per day from the last eviction on day 21
-            //let day_num: usize = 522;
-            <timestamp::Module<Test>>::set_timestamp(day(522));
-            assert!(Anchor::get_anchor_by_id(anchors[520]).is_some());
+            // eviction on day 602, i.e 501 anchors to be removed one anchor
+            // per day from the last eviction on day 102
+            <timestamp::Module<Test>>::set_timestamp(day(602));
+            assert!(Anchor::get_anchor_by_id(anchors[600]).is_some());
             // evict
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
             // verify anchor data has been removed until 520th anchor
-            for i in 23..522 {
+            for i in 102..602 {
                 assert!(Anchor::get_anchor_by_id(anchors[i - 2]).is_none());
                 assert!(Anchor::get_evicted_anchor_root_by_day(i as u32) != [0; 32]);
             }
 
-            // verify that 521st anchors indexes are left still because of 500 limit while
-            // 520th anchors indexes have been removed
-            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 520);
-            assert!(Anchor::get_anchor_id_by_index(521) != H256([0; 32]));
-            assert_eq!(Anchor::get_anchor_evict_date(anchors[520]), 522);
-            assert_eq!(Anchor::get_anchor_id_by_index(520), H256([0; 32]));
-            assert_eq!(Anchor::get_anchor_evict_date(anchors[519]), 0);
+            assert!(Anchor::get_anchor_by_id(anchors[600]).is_none());
+            assert!(Anchor::get_anchor_by_id(anchors[601]).is_some());
+
+            // verify that 601st anchors` indexes are left still because of 500 limit while
+            // 600th anchors` indexes have been removed
+            // 600th anchor
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 600);
+            assert_eq!(Anchor::get_anchor_id_by_index(600), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[599]), 0);
+            // 601st anchor indexes are left
+            assert!(Anchor::get_anchor_id_by_index(601) != H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[600]), 602);
+
 
             // call evict on same day to remove the remaining indexes
             assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
             // verify that 521st anchors indexes are removed since we called a second time
-            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 521);
-            assert_eq!(Anchor::get_anchor_id_by_index(521), H256([0; 32]));
-            assert_eq!(Anchor::get_anchor_evict_date(anchors[520]), 0);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 601);
+            assert_eq!(Anchor::get_anchor_id_by_index(601), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[600]), 0);
+
+            // remove remaining anchors
+            <timestamp::Module<Test>>::set_timestamp(day(1001));
+            assert!(Anchor::get_anchor_by_id(anchors[999]).is_some());
+            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
+            assert!(Anchor::get_anchor_by_id(anchors[999]).is_none());
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1000);
+            assert_eq!(Anchor::get_anchor_id_by_index(1000), H256([0; 32]));
+            assert_eq!(Anchor::get_anchor_evict_date(anchors[999]), 0);
         });
     }
 
     #[test]
     fn test_remove_anchor_indexes() {
+        with_externalities(&mut new_test_ext(), || {
+            let day = |n| common::MS_PER_DAY * n + 1;
+            let (doc_root, signing_root, proof) = Test::test_document_hashes();
+
+            // create 2000 anchors that expire on same day
+            for i in 0..2000 {
+                let random_seed = <system::Module<Test>>::random_seed();
+                let pre_image =
+                    (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
+                let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+                assert_ok!(Anchor::commit(
+                    Origin::signed(1),
+                    pre_image,
+                    doc_root,
+                    proof,
+                    // all anchors expire on same day
+                    day(1)
+                ));
+            }
+            assert_eq!(Anchor::get_latest_anchor_index(), 2000);
+
+            // first 500
+            let removed = Anchor::remove_anchor_indexes(2);
+            assert_eq!(removed, 500);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 500);
+
+            // second 500
+            let removed = Anchor::remove_anchor_indexes(2);
+            assert_eq!(removed, 500);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1000);
+
+            // third 500
+            let removed = Anchor::remove_anchor_indexes(2);
+            assert_eq!(removed, 500);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1500);
+
+            // fourth 500
+            let removed = Anchor::remove_anchor_indexes(2);
+            assert_eq!(removed, 500);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
+
+            // all done
+            let removed = Anchor::remove_anchor_indexes(2);
+            assert_eq!(removed, 0);
+            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
+        });
+    }
+
+//    #[test]
+//    fn test_same_day_1001_anchors() {
 //        with_externalities(&mut new_test_ext(), || {
-//            let random_seed = <system::Module<Test>>::random_seed();
-//            let pre_image =
-//                (random_seed, 1).using_encoded(<Test as system::Trait>::Hashing::hash);
-//            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+//            let day = |n| common::MS_PER_DAY * n + 1;
 //            let (doc_root, signing_root, proof) = Test::test_document_hashes();
 //
-//
-//            assert_ok!(Anchor::commit(
+//            // create 1001 anchors that expire on same day
+//            for i in 0..1001 {
+//                let random_seed = <system::Module<Test>>::random_seed();
+//                let pre_image =
+//                    (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
+//                let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+//                assert_ok!(Anchor::commit(
 //                    Origin::signed(1),
 //                    pre_image,
 //                    doc_root,
 //                    proof,
-//                    day(2)
+//                    // all anchors expire on same day
+//                    day(1)
 //                ));
+//            }
+//            assert_eq!(Anchor::get_latest_anchor_index(), 1001);
 //
-//            <timestamp::Module<Test>>::set_timestamp(day(522));
-//            assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 0);
-//            assert!(Anchor::get_anchor_by_id(anchor_id).is_none());
-//            let removed = Anchor::remove_anchor_indexes(1);
-//            assert_eq!(removed, 1);
-//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1);
+//            // first 500
+//            let removed = Anchor::remove_anchor_indexes(2);
+//            assert_eq!(removed, 500);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 500);
+//
+//            // second 500
+//            let removed = Anchor::remove_anchor_indexes(2);
+//            assert_eq!(removed, 500);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1000);
+//
+//            // third 500
+//            let removed = Anchor::remove_anchor_indexes(2);
+//            assert_eq!(removed, 500);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1500);
+//
+//            // fourth 500
+//            let removed = Anchor::remove_anchor_indexes(2);
+//            assert_eq!(removed, 500);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
+//
+//            // all done
+//            let removed = Anchor::remove_anchor_indexes(2);
+//            assert_eq!(removed, 0);
+//            assert_eq!(Anchor::get_latest_evicted_anchor_index(), 2000);
 //        });
-    }
+//    }
 
     #[test]
     #[ignore]
