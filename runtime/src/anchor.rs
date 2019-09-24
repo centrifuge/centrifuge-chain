@@ -226,12 +226,12 @@ decl_module! {
             let evict_date = LatestEvictedDate::get();
 
             // remove child tries starting from day next to last evicted day
-            let evicted_trie_count = Self::evict_anchor_child_tries(evict_date + 1, today_in_days_from_epoch);
+            let _evicted_trie_count = Self::evict_anchor_child_tries(evict_date + 1, today_in_days_from_epoch);
 
             // store yesterday as the last day of eviction
             let yesterday = today_in_days_from_epoch - 1;
             LatestEvictedDate::put(yesterday);
-            let evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday);
+            let _evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday);
 
             // TODO emit an event for this so that the process which triggers can know how many anchor indexes got purged
 
