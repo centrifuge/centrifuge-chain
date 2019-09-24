@@ -6,7 +6,7 @@
 use codec::{Decode, Encode};
 use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::Hash;
-use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue, print};
+use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 use crate::{common as common};
 
