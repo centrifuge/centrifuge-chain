@@ -226,18 +226,8 @@ decl_module! {
             let evict_date = LatestEvictedDate::get();
 
             // remove child tries starting from day next to last evicted day
-            let evicted_trie_count = (evict_date + 1..today_in_days_from_epoch)
-                .map(|day| {(day, common::generate_child_storage_key(day))})
-                // store the root of child trie for the day on chain before eviction. Checks if it
-                // exists before hand to ensure that it doesn't overwrite a root.
-                .map(|(day, key)| {
-                    if !EvictedAnchorRoots::exists(day) {
-                        EvictedAnchorRoots::insert(day, runtime_io::child_storage_root(&key));
-                    }
-                    key
-                })
-                .map(|key| runtime_io::kill_child_storage(&key))
-                .count();
+            let evicted_trie_count = Self::evict_anchor_child_tries(evict_date + 1, today_in_days_from_epoch);
+
             // store yesterday as the last day of eviction
             let yesterday = today_in_days_from_epoch - 1;
             LatestEvictedDate::put(yesterday);
@@ -336,6 +326,23 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    /// remove child tries starting with `from` day to `until` day returning the
+    /// count of tries removed.
+    fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
+        (from..until)
+            .map(|day| {(day, common::generate_child_storage_key(day))})
+            // store the root of child trie for the day on chain before eviction. Checks if it
+            // exists before hand to ensure that it doesn't overwrite a root.
+            .map(|(day, key)| {
+                if !EvictedAnchorRoots::exists(day) {
+                    EvictedAnchorRoots::insert(day, runtime_io::child_storage_root(&key));
+                }
+                key
+            })
+            .map(|key| runtime_io::kill_child_storage(&key))
+            .count()
+    }
+
     /// iterate from the last evicted anchor to latest anchor, while removing indexes that
     /// are no longer valid because they belong to an expired/evicted anchor. The loop is
     /// only allowed to run MAX_LOOP_IN_TX at a time.
@@ -346,7 +353,7 @@ impl<T: Trait> Module<T> {
             // get eviction date of the anchor given by index
             .map(|idx| {(idx, <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx)))})
             // filter out evictable anchors, anchor_evict_date can be 0 when evicting before any anchors are created
-            .filter(|(_, anchor_evict_date)| anchor_evict_date <= &yesterday && anchor_evict_date > &0)
+            .filter(|(_, anchor_evict_date)| anchor_evict_date <= &yesterday)
             // remove indexes
             .map(|(idx, _)| {
                 <AnchorEvictDates<T>>::remove(<AnchorIndexes<T>>::get(idx));
