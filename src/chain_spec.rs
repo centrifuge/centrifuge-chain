@@ -1,7 +1,7 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
-    AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SudoConfig,
-    SystemConfig, WASM_BINARY,
+    AccountId, Hash, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SudoConfig,
+    SystemConfig, FeesConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
 use primitives::{Pair, Public};
@@ -218,6 +218,19 @@ fn testnet_genesis(
                 .iter()
                 .map(|x| (x.2.clone(), 1))
                 .collect(),
+        }),
+        fees: Some(FeesConfig {
+            initial_fees: vec![
+                (
+                    // anchoring state rent fee per day. TODO Define in a more human friendly way.
+                    Hash::from(&[
+                        50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110,
+                        187, 42, 101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167
+                    ]),
+                    // a very large amount
+                    1 << 60
+                )
+            ],
         }),
     }
 }

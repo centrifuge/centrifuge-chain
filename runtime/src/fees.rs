@@ -11,6 +11,7 @@ use support::{
     StorageValue
 };
 use system::ensure_signed;
+use rstd::vec::Vec;
 
 // TODO tie in governance
 //use super::validatorset;
@@ -36,6 +37,18 @@ decl_storage! {
 
         Version: u64;
     }
+    add_extra_genesis {
+		config(initial_fees): Vec<(T::Hash, T::Balance)>;
+		build(|
+			storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
+			config: &GenesisConfig<T>
+		| {
+			runtime_io::with_storage(
+				storage,
+				|| Module::<T>::initialize_fees(config.initial_fees.clone()),
+			);
+		})
+	}
 }
 
 decl_event!(
@@ -61,15 +74,11 @@ decl_module! {
             }
         }
 
-        pub fn set_fee(origin, new_price: T::Balance, key: T::Hash) -> Result {
+        /// Set the given fee for the key
+        pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> Result {
             let sender = ensure_signed(origin)?;
             Self::can_change_fee(sender.clone())?;
-
-             let new_fee = Fee{
-                 key: key,
-                 price: new_price,
-             };
-             <Fees<T>>::insert(key, new_fee);
+            Self::change_fee(key, new_price);
 
             Self::deposit_event(RawEvent::FeeChanged(sender, key, new_price));
             Ok(())
@@ -78,27 +87,33 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    // Called by any other module who wants to trigger a fee payment
-    // for a given account.
-    // The current fee price can be retrieved via Fees::price_of()
+
+    /// Called by any other module who wants to trigger a fee payment
+    /// for a given account.
+    /// The current fee price can be retrieved via Fees::price_of()
     pub fn pay_fee(who: T::AccountId, key: T::Hash) -> Result {
         ensure!(<Fees<T>>::exists(key), "fee not found for key");
 
         let single_fee = <Fees<T>>::get(key);
-
-        let _ = <balances::Module<T> as Currency<_>>::withdraw(
-            &who,
-            single_fee.price,
-            WithdrawReason::Fee,
-            ExistenceRequirement::KeepAlive,
-        )?;
+        Self::pay_fee_given(who, single_fee.price)?;
 
         Ok(())
     }
 
+    /// Pay the given fee
+    pub fn pay_fee_given(who: T::AccountId, fee: T::Balance) -> Result {
+        let _ = <balances::Module<T> as Currency<_>>::withdraw(
+            &who,
+            fee,
+            WithdrawReason::Fee,
+            ExistenceRequirement::KeepAlive,
+        )?;
+        Ok(())
+    }
+
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
-        if <Fees<T>>::exists(key.clone()) {
-            let single_fee = <Fees<T>>::get(key.clone());
+        if <Fees<T>>::exists(&key) {
+            let single_fee = <Fees<T>>::get(&key);
             Some(single_fee.price)
         } else {
             None
@@ -109,6 +124,22 @@ impl<T: Trait> Module<T> {
         //TODO add auth who can change fees
         //        ensure!(<validatorset::Module<T>>::is_validator(who), "Not authorized to change fees.");
         Ok(())
+    }
+
+    /// Initialise fees for a fixed set of keys. i.e. For use in genesis
+    fn initialize_fees(fees: Vec<(T::Hash, T::Balance)>) {
+        fees.iter()
+            .map(|(key, fee)| Self::change_fee(key.clone(), fee.clone()))
+            .count();
+    }
+
+    /// change the fee for the given key
+    fn change_fee(key: T::Hash, fee: T::Balance) {
+        let new_fee = Fee{
+            key: key.clone(),
+            price: fee,
+        };
+        <Fees<T>>::insert(key, new_fee);
     }
 }
 
@@ -214,8 +245,8 @@ mod tests {
             let price1: <Test as balances::Trait>::Balance = 666;
             let price2: <Test as balances::Trait>::Balance = 777;
 
-            assert_ok!(Fees::set_fee(Origin::signed(1), price1, fee_key1));
-            assert_ok!(Fees::set_fee(Origin::signed(1), price2, fee_key2));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key1, price1));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key2, price2));
 
             let loaded_fee1 = Fees::fee(fee_key1);
             assert_eq!(loaded_fee1.price, price1);
@@ -231,14 +262,14 @@ mod tests {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&11111);
 
             let initial_price: <Test as balances::Trait>::Balance = 666;
-            assert_ok!(Fees::set_fee(Origin::signed(1), initial_price, fee_key));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, initial_price));
 
             let loaded_fee = Fees::fee(fee_key);
             assert_eq!(loaded_fee.price, initial_price);
 
             // set fee to different price, set by different account
             let new_price: <Test as balances::Trait>::Balance = 777;
-            assert_ok!(Fees::set_fee(Origin::signed(2), new_price, fee_key));
+            assert_ok!(Fees::set_fee(Origin::signed(2), fee_key, new_price));
             let again_loaded_fee = Fees::fee(fee_key);
             assert_eq!(again_loaded_fee.price, new_price);
         });
@@ -252,7 +283,7 @@ mod tests {
 
             assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
 
-            assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // initial time paying will succeed as sufficient balance + fee is set
             assert_ok!(Fees::pay_fee(1, fee_key));
@@ -268,7 +299,7 @@ mod tests {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
-            assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // account 3 is not endowed in the test setup
             assert_err!(Fees::pay_fee(3, fee_key), "too few free funds in account");
@@ -280,7 +311,7 @@ mod tests {
         with_externalities(&mut new_test_ext(), || {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
-            assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // account 1 is endowed in test setup
             // initial time paying will succeed as sufficient balance + fee is set
@@ -304,7 +335,7 @@ mod tests {
             }
 
             //After setting the fee, the correct fee should be returned
-            assert_ok!(Fees::set_fee(Origin::signed(1), fee_price, fee_key));
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
             //First run, the fee is not set yet and should return None
             match Fees::price_of(fee_key) {
                 Some(x) => assert_eq!(fee_price, x),

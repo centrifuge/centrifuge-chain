@@ -8,7 +8,7 @@ use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::Hash;
 use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
-use crate::{common as common};
+use crate::{common as common, fees};
 
 #[cfg(feature = "std")]
 use serde::{Serialize, Deserialize};
@@ -48,7 +48,7 @@ pub struct AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait + timestamp::Trait {}
+pub trait Trait: system::Trait + timestamp::Trait + fees::Trait + balances::Trait {}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -175,6 +175,19 @@ decl_module! {
             let idx = LatestAnchorIndex::get() + 1;
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
             LatestAnchorIndex::put(idx);
+
+            // pay the state rent
+            let today_in_days_from_epoch = TryInto::<u64>::try_into(<timestamp::Module<T>>::get())
+                .map(common::get_days_since_epoch)
+                .map_err(|_e| "Can not convert timestamp to u64")
+                .unwrap();
+
+            // we use the fee config setup on genesis for anchoring to calculate the state rent
+            let fee = <fees::Module<T>>::price_of(<T as system::Trait>::Hashing::hash(&[
+                        50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110,
+                        187, 42, 101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167
+                    ])).unwrap() * <T as balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            <fees::Module<T>>::pay_fee_given(who, fee)?;
 
             Ok(())
         }

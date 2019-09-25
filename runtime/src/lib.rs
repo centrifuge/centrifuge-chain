@@ -281,7 +281,7 @@ construct_runtime!(
 		Balances: balances,
 		Sudo: sudo,
 		AnchorModule: anchor::{Module, Call, Storage},
-		Fees: fees::{Module, Call, Storage, Event<T>},
+		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
