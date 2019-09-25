@@ -280,7 +280,7 @@ construct_runtime!(
 		Indices: indices::{default, Config<T>},
 		Balances: balances,
 		Sudo: sudo,
-		AnchorModule: anchor::{Module, Call, Storage},
+		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>},
 	}
 );
@@ -322,7 +322,7 @@ impl_runtime_apis! {
 
 	impl self::AnchorApi<Block> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
-			AnchorModule::get_anchor_by_id(id)
+			Anchor::get_anchor_by_id(id)
 		}
 	}
 
