@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use jsonrpc_core::{Result, Error, ErrorCode};
+use centrifuge_chain_runtime::{anchor::AnchorData, AnchorApi, BlockNumber, Hash};
+use jsonrpc_core::{Error, ErrorCode, Result};
 use jsonrpc_derive::rpc;
-use substrate_client::{Client, CallExecutor, backend};
-use sr_primitives::{traits::Block as BlockT, traits::ProvideRuntimeApi, generic::BlockId};
 use primitives::Blake2Hasher;
-use centrifuge_chain_runtime::{Hash, AnchorApi, anchor::AnchorData, BlockNumber};
+use sr_primitives::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
+use substrate_client::{backend, CallExecutor, Client};
 
 const RUNTIME_ERROR: i64 = 1;
 
@@ -22,23 +22,20 @@ pub struct Anchors<B, E, Block: BlockT, RA> {
     client: Arc<Client<B, E, Block, RA>>,
 }
 
-impl<B, E, Block:BlockT, RA> Anchors<B, E, Block, RA> {
-
+impl<B, E, Block: BlockT, RA> Anchors<B, E, Block, RA> {
     pub fn new(client: Arc<Client<B, E, Block, RA>>) -> Self {
-        Anchors {
-            client,
-        }
+        Anchors { client }
     }
 }
 
 impl<B, E, Block, RA> AnchorRpcApi for Anchors<B, E, Block, RA>
-    where
-        Block: BlockT<Hash=Hash> + 'static,
-        B: backend::Backend<Block, Blake2Hasher> + Send + Sync + 'static,
-        E: CallExecutor<Block, Blake2Hasher> + Send + Sync + 'static + Clone,
-        RA: Send + Sync + 'static,
-        Client<B, E, Block, RA>: ProvideRuntimeApi,
-        <Client<B, E, Block, RA> as ProvideRuntimeApi>::Api: AnchorApi<Block>
+where
+    Block: BlockT<Hash = Hash> + 'static,
+    B: backend::Backend<Block, Blake2Hasher> + Send + Sync + 'static,
+    E: CallExecutor<Block, Blake2Hasher> + Send + Sync + 'static + Clone,
+    RA: Send + Sync + 'static,
+    Client<B, E, Block, RA>: ProvideRuntimeApi,
+    <Client<B, E, Block, RA> as ProvideRuntimeApi>::Api: AnchorApi<Block>,
 {
     fn get_anchor_by_id(&self, id: Hash) -> Result<AnchorData<Hash, BlockNumber>> {
         let api = self.client.runtime_api();

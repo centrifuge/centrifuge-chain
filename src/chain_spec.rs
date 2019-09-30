@@ -1,12 +1,12 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
-    AccountId, Hash, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SudoConfig,
-    SystemConfig, FeesConfig, WASM_BINARY,
+    AccountId, BabeConfig, BalancesConfig, FeesConfig, GenesisConfig, GrandpaConfig, Hash,
+    IndicesConfig, SudoConfig, SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
+use hex::FromHex;
 use primitives::{Pair, Public};
 use substrate_service;
-use hex::FromHex;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -34,10 +34,11 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 pub fn get_from_pub_str<TPublic: Public>(pubkey_hex: &str) -> AccountId {
-    primitives::sr25519::Public::from_raw(
-        byte32_from_slice(Vec::from_hex(pubkey_hex)
+    primitives::sr25519::Public::from_raw(byte32_from_slice(
+        Vec::from_hex(pubkey_hex)
             .expect("a static hex string is valid")
-            .as_slice()))
+            .as_slice(),
+    ))
 }
 
 fn byte32_from_slice(bytes: &[u8]) -> [u8; 32] {
@@ -86,31 +87,35 @@ impl Alternative {
             Alternative::LocalTestnet => ChainSpec::from_genesis(
                 "Local Testnet",
                 "local_testnet",
-                || testnet_genesis(vec![
-                    get_authority_keys_from_seed("Alice"),
-                    get_authority_keys_from_seed("Bob"),
-                ],
-                                   get_from_seed::<AccountId>("Alice"),
-                                   vec![
-                                       get_from_seed::<AccountId>("Alice"),
-                                       get_from_seed::<AccountId>("Bob"),
-                                       get_from_seed::<AccountId>("Charlie"),
-                                       get_from_seed::<AccountId>("Dave"),
-                                       get_from_seed::<AccountId>("Eve"),
-                                       get_from_seed::<AccountId>("Ferdie"),
-                                       get_from_seed::<AccountId>("Alice//stash"),
-                                       get_from_seed::<AccountId>("Bob//stash"),
-                                       get_from_seed::<AccountId>("Charlie//stash"),
-                                       get_from_seed::<AccountId>("Dave//stash"),
-                                       get_from_seed::<AccountId>("Eve//stash"),
-                                       get_from_seed::<AccountId>("Ferdie//stash"),
-                                   ],
-                                   true),
+                || {
+                    testnet_genesis(
+                        vec![
+                            get_authority_keys_from_seed("Alice"),
+                            get_authority_keys_from_seed("Bob"),
+                        ],
+                        get_from_seed::<AccountId>("Alice"),
+                        vec![
+                            get_from_seed::<AccountId>("Alice"),
+                            get_from_seed::<AccountId>("Bob"),
+                            get_from_seed::<AccountId>("Charlie"),
+                            get_from_seed::<AccountId>("Dave"),
+                            get_from_seed::<AccountId>("Eve"),
+                            get_from_seed::<AccountId>("Ferdie"),
+                            get_from_seed::<AccountId>("Alice//stash"),
+                            get_from_seed::<AccountId>("Bob//stash"),
+                            get_from_seed::<AccountId>("Charlie//stash"),
+                            get_from_seed::<AccountId>("Dave//stash"),
+                            get_from_seed::<AccountId>("Eve//stash"),
+                            get_from_seed::<AccountId>("Ferdie//stash"),
+                        ],
+                        true,
+                    )
+                },
                 vec![],
                 None,
                 None,
                 None,
-                None
+                None,
             ),
             // Fulvous initial spec
             Alternative::Fulvous => ChainSpec::from_genesis(
@@ -122,10 +127,12 @@ impl Alternative {
                             get_authority_keys_from_seed("Alice"),
                             get_authority_keys_from_seed("Bob"),
                         ],
-                        get_from_pub_str::<AccountId>("c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"),
-                        vec![
-                            get_from_pub_str::<AccountId>("c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e")
-                        ],
+                        get_from_pub_str::<AccountId>(
+                            "c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e",
+                        ),
+                        vec![get_from_pub_str::<AccountId>(
+                            "c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e",
+                        )],
                         true,
                     )
                 },
@@ -136,11 +143,12 @@ impl Alternative {
                 None,
             ),
             // Amber initial spec
-            Alternative::Amber => ChainSpec::from_genesis(
-                "Amber Testnet",
-                "amber",
-                || {
-                    testnet_genesis(
+            Alternative::Amber => {
+                ChainSpec::from_genesis(
+                    "Amber Testnet",
+                    "amber",
+                    || {
+                        testnet_genesis(
                         vec![
                             // TODO remove Alice and Bob here and setup proper validator accounts. Then following RPC methods needs to be called on a validator node to start validating.
                             // curl -H 'Content-Type: application/json' --data '{ "jsonrpc":"2.0", "method":"author_insertKey", "params":["gran", "seed"],"id":1 }' localhost:9933
@@ -163,13 +171,14 @@ impl Alternative {
                         ],
                         true,
                     )
-                },
-                vec![],
-                None,
-                Some("ambr"),
-                None,
-                None,
-            ),
+                    },
+                    vec![],
+                    None,
+                    Some("ambr"),
+                    None,
+                    None,
+                )
+            }
         })
     }
 
@@ -220,17 +229,15 @@ fn testnet_genesis(
                 .collect(),
         }),
         fees: Some(FeesConfig {
-            initial_fees: vec![
-                (
-                    // anchoring state rent fee per day. TODO Define in a more human friendly way.
-                    Hash::from(&[
-                        50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110,
-                        187, 42, 101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167
-                    ]),
-                    // a very large amount
-                    1 << 60
-                )
-            ],
+            initial_fees: vec![(
+                // anchoring state rent fee per day. TODO Define in a more human friendly way.
+                Hash::from(&[
+                    50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110, 187, 42,
+                    101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167,
+                ]),
+                // a very large amount
+                1 << 60,
+            )],
         }),
     }
 }
