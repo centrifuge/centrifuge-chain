@@ -4,9 +4,9 @@ use centrifuge_chain_runtime::{
     SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
+use hex::FromHex;
 use primitives::{Pair, Public};
 use substrate_service;
-use hex::FromHex;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -35,9 +35,11 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 
 /// Helper function to obtain key from pubkey string
 fn get_from_pubkey_hex<TPublic: Public>(pubkey_hex: &str) -> <TPublic::Pair as Pair>::Public {
-    <TPublic::Pair as Pair>::Public::from_slice(Vec::from_hex(pubkey_hex)
-        .expect("a static hex string is valid")
-        .as_slice())
+    <TPublic::Pair as Pair>::Public::from_slice(
+        Vec::from_hex(pubkey_hex)
+            .expect("a static hex string is valid")
+            .as_slice(),
+    )
 }
 
 /// Helper function to generate stash, controller and session key from seed
@@ -85,38 +87,43 @@ impl Alternative {
             Alternative::LocalTestnet => ChainSpec::from_genesis(
                 "Local Testnet",
                 "local_testnet",
-                || testnet_genesis(vec![
-                    get_authority_keys_from_seed("Alice"),
-                    get_authority_keys_from_seed("Bob"),
-                ],
-                                   get_from_seed::<AccountId>("Alice"),
-                                   vec![
-                                       get_from_seed::<AccountId>("Alice"),
-                                       get_from_seed::<AccountId>("Bob"),
-                                       get_from_seed::<AccountId>("Charlie"),
-                                       get_from_seed::<AccountId>("Dave"),
-                                       get_from_seed::<AccountId>("Eve"),
-                                       get_from_seed::<AccountId>("Ferdie"),
-                                       get_from_seed::<AccountId>("Alice//stash"),
-                                       get_from_seed::<AccountId>("Bob//stash"),
-                                       get_from_seed::<AccountId>("Charlie//stash"),
-                                       get_from_seed::<AccountId>("Dave//stash"),
-                                       get_from_seed::<AccountId>("Eve//stash"),
-                                       get_from_seed::<AccountId>("Ferdie//stash"),
-                                   ],
-                                   true),
+                || {
+                    testnet_genesis(
+                        vec![
+                            get_authority_keys_from_seed("Alice"),
+                            get_authority_keys_from_seed("Bob"),
+                        ],
+                        get_from_seed::<AccountId>("Alice"),
+                        vec![
+                            get_from_seed::<AccountId>("Alice"),
+                            get_from_seed::<AccountId>("Bob"),
+                            get_from_seed::<AccountId>("Charlie"),
+                            get_from_seed::<AccountId>("Dave"),
+                            get_from_seed::<AccountId>("Eve"),
+                            get_from_seed::<AccountId>("Ferdie"),
+                            get_from_seed::<AccountId>("Alice//stash"),
+                            get_from_seed::<AccountId>("Bob//stash"),
+                            get_from_seed::<AccountId>("Charlie//stash"),
+                            get_from_seed::<AccountId>("Dave//stash"),
+                            get_from_seed::<AccountId>("Eve//stash"),
+                            get_from_seed::<AccountId>("Ferdie//stash"),
+                        ],
+                        true,
+                    )
+                },
                 vec![],
                 None,
                 None,
                 None,
-                None
+                None,
             ),
             // Fulvous initial spec
-            Alternative::Fulvous => ChainSpec::from_genesis(
-                "Fulvous Testnet",
-                "fulvous",
-                || {
-                    testnet_genesis(
+            Alternative::Fulvous => {
+                ChainSpec::from_genesis(
+                    "Fulvous Testnet",
+                    "fulvous",
+                    || {
+                        testnet_genesis(
                         vec![
                             get_authority_keys_from_pubkey_hex("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842",
                                                                "c40526b6cb4c2ab991f5065b599a7313ba98ea6995786539ca05186adb30b34c"),
@@ -129,19 +136,21 @@ impl Alternative {
                         ],
                         true,
                     )
-                },
-                vec![],
-                None,
-                Some("flvs"),
-                None,
-                None,
-            ),
+                    },
+                    vec![],
+                    None,
+                    Some("flvs"),
+                    None,
+                    None,
+                )
+            }
             // Amber initial spec
-            Alternative::Amber => ChainSpec::from_genesis(
-                "Amber Testnet",
-                "amber",
-                || {
-                    testnet_genesis(
+            Alternative::Amber => {
+                ChainSpec::from_genesis(
+                    "Amber Testnet",
+                    "amber",
+                    || {
+                        testnet_genesis(
                         vec![
                             get_authority_keys_from_pubkey_hex("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842",
                                                                "c40526b6cb4c2ab991f5065b599a7313ba98ea6995786539ca05186adb30b34c"),
@@ -163,13 +172,14 @@ impl Alternative {
                         ],
                         true,
                     )
-                },
-                vec![],
-                None,
-                Some("ambr"),
-                None,
-                None,
-            ),
+                    },
+                    vec![],
+                    None,
+                    Some("ambr"),
+                    None,
+                    None,
+                )
+            }
         })
     }
 
