@@ -1054,7 +1054,7 @@ fn test_move_anchor_without_origin() {
 fn test_move_anchor_missing_anchor() {
     with_externalities(&mut new_test_ext(), || {
         let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
-        assert_err!(Anchor::move_anchor(Origin::signed(0), anchor_id), "Anchor doesn't exists");
+        assert_err!(Anchor::move_anchor(Origin::signed(0), anchor_id), "Anchor doesn't exist");
     });
 }
 
