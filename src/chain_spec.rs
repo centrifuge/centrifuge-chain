@@ -125,10 +125,10 @@ impl Alternative {
                     || {
                         testnet_genesis(
                         vec![
-                            get_authority_keys_from_pubkey_hex("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842",
-                                                               "c40526b6cb4c2ab991f5065b599a7313ba98ea6995786539ca05186adb30b34c"),
-                            get_authority_keys_from_pubkey_hex("f0415b8cdfcd189c5636f3c1d0b65637b97fdd926af8132a38f963361f293b0f",
-                                                               "c40524c8d2a97e347ba3f9c75395dabcad0ef7304c4804838f20ec05ef76b32a"),
+                            get_authority_keys_from_pubkey_hex("8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"),
+                            get_authority_keys_from_pubkey_hex("be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"),
                         ],
                         get_from_pubkey_hex::<AccountId>("c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"),
                         vec![
@@ -152,10 +152,10 @@ impl Alternative {
                     || {
                         testnet_genesis(
                         vec![
-                            get_authority_keys_from_pubkey_hex("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842",
-                                                               "c40526b6cb4c2ab991f5065b599a7313ba98ea6995786539ca05186adb30b34c"),
-                            get_authority_keys_from_pubkey_hex("f0415b8cdfcd189c5636f3c1d0b65637b97fdd926af8132a38f963361f293b0f",
-                                                               "c40524c8d2a97e347ba3f9c75395dabcad0ef7304c4804838f20ec05ef76b32a"),
+                            get_authority_keys_from_pubkey_hex("8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"),
+                            get_authority_keys_from_pubkey_hex("be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"),
                         ],
                         get_from_pubkey_hex::<AccountId>("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"),
                         vec![
