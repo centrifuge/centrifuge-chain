@@ -3,10 +3,10 @@
 #![warn(missing_docs)]
 #![warn(unused_extern_crates)]
 
+mod api;
 mod chain_spec;
 mod cli;
 mod service;
-mod api;
 
 pub use substrate_cli::{error, IntoExit, VersionInfo};
 

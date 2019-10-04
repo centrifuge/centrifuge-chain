@@ -266,14 +266,14 @@ construct_service_factory! {
             Ok(Some(Arc::new(GrandpaFinalityProofProvider::new(client.clone(), client)) as _))
         }},
         RpcExtensions = jsonrpc_core::IoHandler<substrate_rpc::Metadata>
-		{ |client, _pool| {
-			use crate::api::{Anchors, AnchorRpcApi};
+        { |client, _pool| {
+            use crate::api::{Anchors, AnchorRpcApi};
 
-			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(
-				AnchorRpcApi::to_delegate(Anchors::new(client))
-			);
-			io
-		}},
+            let mut io = jsonrpc_core::IoHandler::default();
+            io.extend_with(
+                AnchorRpcApi::to_delegate(Anchors::new(client))
+            );
+            io
+        }},
     }
 }
