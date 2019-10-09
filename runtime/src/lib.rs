@@ -260,7 +260,9 @@ impl sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
-impl anchor::Trait for Runtime {}
+impl anchor::Trait for Runtime {
+    type Event = Event;
+}
 
 /// Fees module implementation
 impl fees::Trait for Runtime {
@@ -280,7 +282,7 @@ construct_runtime!(
 		Indices: indices::{default, Config<T>},
 		Balances: balances,
 		Sudo: sudo,
-		Anchor: anchor::{Module, Call, Storage},
+		Anchor: anchor::{Module, Call, Storage, Event<T>},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );

@@ -78,7 +78,9 @@ impl balances::Trait for Test {
     type WeightToFee = ();
 }
 
-impl Trait for Test {}
+impl Trait for Test {
+    type Event = ();
+}
 
 impl Test {
     fn test_document_hashes() -> (
@@ -1064,5 +1066,39 @@ fn basic_commit_perf() {
         }
 
         println!("time {}", elapsed);
+    });
+}
+
+#[test]
+fn test_move_anchor_without_origin() {
+    with_externalities(&mut new_test_ext(), || {
+        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+        assert_err!(Anchor::move_anchor(Origin::NONE, anchor_id), "bad origin: expected to be a signed origin");
+    });
+}
+
+#[test]
+fn test_move_anchor_missing_anchor() {
+    with_externalities(&mut new_test_ext(), || {
+        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+        assert_err!(Anchor::move_anchor(Origin::signed(0), anchor_id), "Anchor doesn't exist");
+    });
+}
+
+#[test]
+fn test_move_anchor_success() {
+    with_externalities(&mut new_test_ext(), || {
+        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+        // commit anchor
+        assert_ok!(Anchor::commit(
+                Origin::signed(2),
+                pre_image,
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as system::Trait>::Hashing::hash_of(&0),
+                common::MS_PER_DAY + 1
+        ));
+
+        assert_ok!(Anchor::move_anchor(Origin::signed(0), anchor_id));
     });
 }

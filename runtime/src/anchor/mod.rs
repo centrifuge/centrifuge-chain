@@ -6,7 +6,7 @@
 use codec::{Decode, Encode};
 use rstd::{vec::Vec, convert::TryInto};
 use sr_primitives::traits::Hash;
-use support::{decl_module, decl_storage, dispatch::Result, ensure, StorageMap, StorageValue};
+use support::{decl_module, decl_storage, decl_event, dispatch::Result, ensure, StorageMap, StorageValue};
 use system::ensure_signed;
 use crate::{common as common, fees};
 
@@ -48,7 +48,21 @@ pub struct AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait + timestamp::Trait + fees::Trait + balances::Trait {}
+pub trait Trait: system::Trait + timestamp::Trait + fees::Trait + balances::Trait {
+    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+}
+
+decl_event! (
+    pub enum Event<T>
+    where
+        <T as system::Trait>::Hash,
+    {
+        /// MoveAnchor event is triggered when the anchor should be moved to a different chain.
+        /// AnchorID and its DocRoot are sent as part of the event.
+        MoveAnchor(Hash, Hash),
+    }
+);
+
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -90,6 +104,8 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+        fn deposit_event<T>() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
             if Version::get() == 0 {
@@ -248,6 +264,17 @@ decl_module! {
 
             // TODO emit an event for this so that the process which triggers can know how many anchor indexes got purged
 
+            Ok(())
+        }
+
+        /// Dispatch call when anchor by anchor_id is to be moved to another chain.
+        pub fn move_anchor(origin, anchor_id: T::Hash) -> Result {
+            // ensure signed origin
+            ensure_signed(origin)?;
+
+            // fetch anchor data by anchor_id or fail if not present
+            let anchor_data = Self::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
+            Self::deposit_event(RawEvent::MoveAnchor(anchor_data.id, anchor_data.doc_root));
             Ok(())
         }
     }
