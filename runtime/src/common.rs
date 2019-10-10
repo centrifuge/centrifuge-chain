@@ -1,4 +1,4 @@
-use codec::{Encode};
+use codec::Encode;
 use rstd::vec::Vec;
 
 // default substrate child storage root
@@ -27,7 +27,7 @@ pub fn generate_child_storage_key(specific_key: u32) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
 
-    use crate::common::{get_days_since_epoch, generate_child_storage_key};
+    use crate::common::{generate_child_storage_key, get_days_since_epoch};
 
     #[test]
     fn test_get_days_since_epoch() {
@@ -43,8 +43,12 @@ mod tests {
 
     #[test]
     fn test_child_storage_key() {
-        assert_eq!(generate_child_storage_key(1),
-                   vec![58, 99, 104, 105, 108, 100, 95, 115, 116, 111, 114, 97, 103,
-                        101, 58, 100, 101, 102, 97, 117, 108, 116, 58, 1, 0, 0, 0]);
+        assert_eq!(
+            generate_child_storage_key(1),
+            vec![
+                58, 99, 104, 105, 108, 100, 95, 115, 116, 111, 114, 97, 103, 101, 58, 100, 101,
+                102, 97, 117, 108, 116, 58, 1, 0, 0, 0
+            ]
+        );
     }
 }
