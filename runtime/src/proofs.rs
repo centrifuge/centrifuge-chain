@@ -9,10 +9,10 @@ pub struct Proof {
 
 /// validates each proof and return true if all the proofs are valid
 /// else returns false
-pub fn validate_proofs(doc_root: Vec<u8>, proofs: Vec<Proof>) -> bool {
+pub fn validate_proofs(doc_root: &Vec<u8>, proofs: &Vec<Proof>) -> bool {
     let mut res = false;
     for proof in proofs.iter() {
-        res = res & validate_proof(&doc_root, proof)
+        res = res & validate_proof(doc_root, proof)
     }
 
     res
