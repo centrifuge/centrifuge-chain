@@ -255,8 +255,9 @@ mod tests {
 
     #[test]
     fn validate_proofs_success() {
-        let (vp, doc_root) = get_valid_proof();
-        let proofs = vec![vp];
+        let (vp1, doc_root) = get_valid_proof();
+        let (vp2, _) = get_valid_proof();
+        let proofs = vec![vp1, vp2];
         assert!(validate_proofs(doc_root, &proofs))
     }
 
