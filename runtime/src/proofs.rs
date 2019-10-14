@@ -17,13 +17,7 @@ pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>) -> bool {
     matches.push(doc_root);
     return proofs
         .iter()
-        .map(|proof| {
-            validate_proof(
-                &mut matches,
-                proof.hash.clone(),
-                proof.sorted_hashes.clone(),
-            )
-        })
+        .map(|proof| validate_proof(&mut matches, proof.hash, proof.sorted_hashes.clone()))
         .fold(true, |acc, b| acc && b);
 }
 
@@ -46,14 +40,14 @@ fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 
         return true;
     }
 
-    let mut hash = hash.clone();
+    let mut hash = hash;
     for proof in proofs.into_iter() {
         matches.push(proof);
         hash = hash_of(hash, proof);
         if matches.contains(&hash) {
             return true;
         }
-        matches.push(hash.clone())
+        matches.push(hash)
     }
 
     false
