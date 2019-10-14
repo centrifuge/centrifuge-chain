@@ -199,10 +199,8 @@ decl_module! {
                 .unwrap();
 
             // we use the fee config setup on genesis for anchoring to calculate the state rent
-            let fee = <fees::Module<T>>::price_of(<T as system::Trait>::Hashing::hash(&[
-                        50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110,
-                        187, 42, 101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167
-                    ])).unwrap() * <T as balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
+                <T as balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
             <fees::Module<T>>::pay_fee_given(who, fee)?;
 
             Ok(())
@@ -410,6 +408,10 @@ impl<T: Trait> Module<T> {
 
         runtime_io::child_storage(&storage_key, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
+    }
+
+    fn fee_key() -> <T as system::Trait>::Hash {
+        <T as system::Trait>::Hashing::hash_of(&0)
     }
 }
 

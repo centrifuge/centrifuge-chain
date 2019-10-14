@@ -11,7 +11,6 @@ use support::{
     StorageValue
 };
 use system::ensure_signed;
-use rstd::vec::Vec;
 
 // TODO tie in governance
 //use super::validatorset;
@@ -45,7 +44,7 @@ decl_storage! {
 		| {
 			runtime_io::with_storage(
 				storage,
-				|| Module::<T>::initialize_fees(config.initial_fees.clone()),
+				|| Module::<T>::initialize_fees(&config.initial_fees),
 			);
 		})
 	}
@@ -112,6 +111,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
+        //why this has been hashed again after passing to the function? runtime_io::print(key.as_ref());
         if <Fees<T>>::exists(&key) {
             let single_fee = <Fees<T>>::get(&key);
             Some(single_fee.price)
@@ -127,9 +127,10 @@ impl<T: Trait> Module<T> {
     }
 
     /// Initialise fees for a fixed set of keys. i.e. For use in genesis
-    fn initialize_fees(fees: Vec<(T::Hash, T::Balance)>) {
+    fn initialize_fees(fees: &[(T::Hash, T::Balance)]) {
         fees.iter()
-            .map(|(key, fee)| Self::change_fee(key.clone(), fee.clone()))
+            .map(|(ref key, ref fee)|
+                Self::change_fee(*key, *fee))
             .count();
     }
 

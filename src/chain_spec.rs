@@ -212,7 +212,8 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                .map(|k| (k, 1 << 60))
+                // endowed in nano, for 1,000,000 Dev (~1,000,000,000 Rad)
+                .map(|k| (k, 10_000_000_000_000_000_000))
                 .collect(),
             vesting: vec![],
         }),
@@ -232,12 +233,14 @@ fn testnet_genesis(
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // anchoring state rent fee per day. TODO Define in a more human friendly way.
+                // pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+                // hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
                 Hash::from(&[
-                    50, 46, 7, 230, 27, 31, 182, 47, 154, 182, 204, 174, 29, 71, 116, 110, 187, 42,
-                    101, 13, 79, 220, 149, 142, 34, 4, 93, 112, 209, 17, 24, 167,
-                ]),
-                // a very large amount
-                1 << 60,
+                    17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235,
+                    212, 31, 97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233]),
+                // define this based on the expected value of 1 Rad in the given testnet
+                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet)
+                1,
             )],
         }),
     }
