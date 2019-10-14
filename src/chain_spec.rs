@@ -212,7 +212,7 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                // endowed in nano, for 1,000,000 Dev (~1,000,000,000 Rad)
+                // endowed in nano, for 1,000,000,000 Dev (=1,000,000,000 Rad)
                 .map(|k| (k, 10_000_000_000_000_000_000))
                 .collect(),
             vesting: vec![],
@@ -239,7 +239,7 @@ fn testnet_genesis(
                     17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235,
                     212, 31, 97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233]),
                 // define this based on the expected value of 1 Rad in the given testnet
-                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet)
+                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet =0.0000000008219178082 USD)
                 1,
             )],
         }),
