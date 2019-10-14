@@ -9,7 +9,7 @@ pub struct Proof {
 /// validates each proof and return true if all the proofs are valid
 /// else returns false
 pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>) -> bool {
-    if proofs.len() < 1 || doc_root.len() < 1 {
+    if proofs.len() < 1 {
         return false;
     }
 
@@ -59,11 +59,11 @@ fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 
     false
 }
 
-// appends all the hashes from the proofs and returns keccak hash of the result.
-pub fn bundled_hash(proofs: Vec<Proof>) -> [u8; 32] {
+// appends deposit_address and all the hashes from the proofs and returns keccak hash of the result.
+pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
     let hash = proofs
         .into_iter()
-        .fold(Vec::new(), |mut acc, proof: Proof| {
+        .fold(deposit_address.to_vec(), |mut acc, proof: Proof| {
             acc.extend_from_slice(&proof.hash);
             acc
         });
@@ -139,11 +139,15 @@ mod tests {
             ]),
         ];
 
-        let res = [
-            188, 15, 195, 125, 35, 113, 141, 89, 32, 22, 122, 57, 68, 106, 224, 40, 255, 233, 239,
-            61, 31, 123, 119, 181, 238, 145, 82, 93, 130, 187, 130, 12,
+        let deposit_address = [
+            75, 151, 92, 119, 170, 193, 75, 255, 44, 88, 202, 225, 39, 220, 51, 9, 230, 2, 121, 129,
         ];
-        let got = bundled_hash(proofs);
+
+        let res = [
+            92, 231, 93, 51, 106, 224, 159, 91, 206, 250, 124, 26, 16, 236, 141, 56, 42, 126, 225,
+            64, 28, 191, 37, 51, 131, 63, 224, 233, 24, 207, 211, 182,
+        ];
+        let got = bundled_hash(proofs, deposit_address);
         assert!(res == got, "{:?} {:?}", res, got)
     }
 
@@ -274,11 +278,5 @@ mod tests {
         let (_, doc_root) = get_valid_proof();
         let proofs = vec![];
         assert!(!validate_proofs(doc_root, &proofs))
-    }
-
-    #[test]
-    fn validate_proofs_no_doc_root() {
-        let proofs = vec![];
-        assert!(!validate_proofs([0; 32], &proofs))
     }
 }
