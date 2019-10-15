@@ -1,7 +1,7 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
-    AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SudoConfig,
-    SystemConfig, WASM_BINARY,
+    AccountId, BabeConfig, BalancesConfig, FeesConfig, GenesisConfig, GrandpaConfig, Hash,
+    IndicesConfig, SudoConfig, SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex::FromHex;
@@ -212,7 +212,8 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                .map(|k| (k, 1 << 60))
+                // endowed in nano, for 1,000,000,000 Dev (=1,000,000,000 Rad)
+                .map(|k| (k, 10_000_000_000_000_000_000))
                 .collect(),
             vesting: vec![],
         }),
@@ -228,6 +229,19 @@ fn testnet_genesis(
                 .iter()
                 .map(|x| (x.0.clone(), 1))
                 .collect(),
+        }),
+        fees: Some(FeesConfig {
+            initial_fees: vec![(
+                // anchoring state rent fee per day. TODO Define in a more human friendly way.
+                // pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+                // hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+                Hash::from(&[
+                    17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235,
+                    212, 31, 97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233]),
+                // define this based on the expected value of 1 Rad in the given testnet
+                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet =0.0000000008219178082 USD)
+                1,
+            )],
         }),
     }
 }

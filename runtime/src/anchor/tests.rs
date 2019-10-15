@@ -9,6 +9,7 @@ use sr_primitives::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
     weights::Weight,
+    BuildStorage,
 };
 
 impl_outer_origin! {
@@ -51,6 +52,33 @@ impl timestamp::Trait for Test {
     type MinimumPeriod = ();
 }
 
+impl fees::Trait for Test {
+    type Event = ();
+}
+
+parameter_types! {
+		pub const ExistentialDeposit: u64 = 0;
+		pub const TransferFee: u64 = 0;
+		pub const CreationFee: u64 = 0;
+		pub const TransactionBaseFee: u64 = 0;
+		pub const TransactionByteFee: u64 = 0;
+	}
+impl balances::Trait for Test {
+    type Balance = u64;
+    type OnFreeBalanceZero = ();
+    type OnNewAccount = ();
+    type Event = ();
+    type TransactionPayment = ();
+    type TransferPayment = ();
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type TransferFee = TransferFee;
+    type CreationFee = CreationFee;
+    type TransactionBaseFee = TransactionBaseFee;
+    type TransactionByteFee = TransactionByteFee;
+    type WeightToFee = ();
+}
+
 impl Trait for Test {
     type Event = ();
 }
@@ -90,7 +118,18 @@ type System = system::Module<Test>;
 // This function basically just builds a genesis storage key/value store according to
 // our desired mockup.
 fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-    system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+    let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+    fees::GenesisConfig::<Test> {
+        initial_fees: vec![(
+            // anchoring state rent fee per day
+            H256::from(&[
+                17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235,
+                212, 31, 97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233]),
+            // state rent 0 for tests
+            0,
+        )],
+    }.assimilate_storage(&mut t).unwrap();
+    t.into()
 }
 
 #[test]
