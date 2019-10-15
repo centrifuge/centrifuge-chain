@@ -9,16 +9,22 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use rstd::prelude::*;
+use primitives::u32_trait::{_1, _2, _3, _4};
 use primitives::{OpaqueMetadata, crypto::key_types};
+use babe_primitives::{AuthorityId as BabeId, AuthoritySignature as BabeSignature};
 use sr_primitives::{
 	ApplyResult, transaction_validity::TransactionValidity, generic, create_runtime_str,
 	impl_opaque_keys, AnySignature
 };
+// TODO add after updating substrate
+// use sr_primitives::curve::PiecewiseLinear;
 use sr_primitives::traits::{NumberFor, BlakeTwo256, Block as BlockT, DigestFor, StaticLookup, Verify, ConvertInto};
 use sr_primitives::weights::Weight;
 use babe::{AuthorityId as BabeId};
 use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use grandpa::fg_primitives::{self, ScheduledChange};
+use im_online::sr25519::{AuthorityId as ImOnlineId};
+use authority_discovery_primitives::{AuthorityId as EncodedAuthorityId, Signature as EncodedSignature};
 use client::{
 	block_builder::api::{CheckInherentsResult, InherentData, self as block_builder_api},
 	runtime_api as client_api, decl_runtime_apis, impl_runtime_apis
@@ -34,8 +40,13 @@ pub use timestamp::Call as TimestampCall;
 pub use balances::Call as BalancesCall;
 pub use sr_primitives::{Permill, Perbill};
 pub use support::{StorageValue, construct_runtime, parameter_types};
+// pub use staking::StakerStatus;
 
 use crate::anchor::AnchorData;
+
+/// Implementations of some helper traits passed into runtime modules as associated types.
+pub mod impls;
+use impls::{CurrencyToVoteHandler};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -241,7 +252,7 @@ impl balances::Trait for Runtime {
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	/// What to do if an account's free balance gets zeroed.
-	type OnFreeBalanceZero = ();
+	type OnFreeBalanceZero = ((Staking), Session);
 	/// What to do if a new account is created.
 	type OnNewAccount = Indices;
 	/// The ubiquitous event type.
@@ -258,9 +269,152 @@ impl balances::Trait for Runtime {
 	type WeightToFee = ConvertInto;
 }
 
+parameter_types! {
+	pub const UncleGenerations: BlockNumber = 5;
+}
+
+impl authorship::Trait for Runtime {
+	type FindAuthor = session::FindAccountFromAuthorIndex<Self, Babe>;
+	type UncleGenerations = UncleGenerations;
+	type FilterUncle = ();
+	type EventHandler = Staking;
+}
+
+type SessionHandlers = (Grandpa, Babe, ImOnline, AuthorityDiscovery);
+
+impl_opaque_keys! {
+	pub struct SessionKeys {
+		#[id(key_types::GRANDPA)]
+		pub grandpa: GrandpaId,
+		#[id(key_types::BABE)]
+		pub babe: BabeId,
+		#[id(key_types::IM_ONLINE)]
+		pub im_online: ImOnlineId,
+	}
+}
+
+// NOTE: `SessionHandler` and `SessionKeys` are co-dependent: One key will be used for each handler.
+// The number and order of items in `SessionHandler` *MUST* be the same number and order of keys in
+// `SessionKeys`.
+// TODO: Introduce some structure to tie these together to make it a bit less of a footgun. This
+// should be easy, since OneSessionHandler trait provides the `Key` as an associated type. #2858
+parameter_types! {
+	// TODO add after updating substrate
+	// pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+}
+
+impl session::Trait for Runtime {
+	type OnSessionEnding = Staking;
+	type SessionHandler = SessionHandlers;
+	type ShouldEndSession = Babe;
+	type Event = Event;
+	type Keys = SessionKeys;
+	type ValidatorId = <Self as system::Trait>::AccountId;
+	type ValidatorIdOf = staking::StashOf<Self>;
+	type SelectInitialValidators = Staking;
+	// TODO add after updating substrate
+	// type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+}
+
+impl session::historical::Trait for Runtime {
+	type FullIdentification = staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = staking::ExposureOf<Runtime>;
+}
+
+// TODO add after updating substrate
+// srml_staking_reward_curve::build! {
+// 	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
+// 		min_inflation: 0_025_000,
+// 		max_inflation: 0_100_000,
+// 		ideal_stake: 0_500_000,
+// 		falloff: 0_050_000,
+// 		max_piece_count: 40,
+// 		test_precision: 0_005_000,
+// 	);
+// }
+
+parameter_types! {
+	pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 6;
+	pub const BondingDuration: staking::EraIndex = 24 * 28;
+	// TODO add after updating substrate
+	// pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+}
+
+impl staking::Trait for Runtime {
+	type Currency = Balances;
+	type Time = Timestamp;
+	type CurrencyToVote = CurrencyToVoteHandler;
+	type OnRewardMinted = Treasury;
+	type Event = Event;
+	type Slash = Treasury; // send the slashed funds to the treasury.
+	type Reward = (); // rewards are minted from the void
+	type SessionsPerEra = SessionsPerEra;
+	type BondingDuration = BondingDuration;
+	type SessionInterface = Self;
+	// TODO add after updating substrate
+	// type RewardCurve = RewardCurve;
+}
+
+type CouncilCollective = collective::Instance1;
+impl collective::Trait<CouncilCollective> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+}
+
+impl membership::Trait<membership::Instance1> for Runtime {
+	type Event = Event;
+	type AddOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type RemoveOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type SwapOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type ResetOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type MembershipInitialized = CouncilCollective;  // TODO: verify what this does
+	type MembershipChanged = CouncilCollective;  // TODO: verify what this does
+}
+
+parameter_types! {
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+	pub const ProposalBondMinimum: Balance = 1;
+	pub const SpendPeriod: BlockNumber = 1 * DAYS;
+	pub const Burn: Permill = Permill::from_percent(50);
+}
+
+impl treasury::Trait for Runtime {
+	type Currency = Balances;
+	type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>;
+	type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>;
+	type Event = Event;
+	type MintedForSpending = ();
+	type ProposalRejection = ();
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+}
+
 impl sudo::Trait for Runtime {
 	type Event = Event;
 	type Proposal = Call;
+}
+
+type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, UncheckedExtrinsic>;
+
+impl im_online::Trait for Runtime {
+	type AuthorityId = ImOnlineId;
+	type Call = Call;
+	type Event = Event;
+	type SubmitTransaction = SubmitTransaction;
+	type ReportUnresponsiveness = Offences;
+}
+
+impl offences::Trait for Runtime {
+	type Event = Event;
+	type IdentificationTuple = session::historical::IdentificationTuple<Self>;
+	type OnOffenceHandler = Staking;
+}
+
+impl authority_discovery::Trait for Runtime {
+    type AuthorityId = BabeId;
 }
 
 impl anchor::Trait for Runtime {
@@ -282,9 +436,17 @@ construct_runtime!(
 		Timestamp: timestamp::{Module, Call, Storage, Inherent},
 		Babe: babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
 		Grandpa: grandpa::{Module, Call, Storage, Config, Event},
+		Authorship: authorship::{Module, Call, Storage, Inherent},
 		Indices: indices::{default, Config<T>},
 		Balances: balances,
+		Session: session::{Module, Call, Storage, Event, Config<T>},
+		Staking: staking::{default, OfflineWorker},
+		Council: collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		Treasury: treasury::{Module, Call, Storage, Event<T>},
 		Sudo: sudo,
+		ImOnline: im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+		AuthorityDiscovery: authority_discovery::{Module, Call, Config<T>},
+		Offences: offences::{Module, Call, Storage, Event},
 		Anchor: anchor::{Module, Call, Storage, Event<T>},
 		Fees: fees::{Module, Call, Storage, Event<T>},
 	}
@@ -426,6 +588,35 @@ impl_runtime_apis! {
 				duration: EpochDuration::get(),
 				secondary_slots: Babe::secondary_slots().0,
 			}
+		}
+	}
+
+	impl authority_discovery_primitives::AuthorityDiscoveryApi<Block> for Runtime {
+		fn authorities() -> Vec<EncodedAuthorityId> {
+			AuthorityDiscovery::authorities().into_iter()
+				.map(|id| id.encode())
+				.map(EncodedAuthorityId)
+				.collect()
+		}
+
+		fn sign(payload: &Vec<u8>) -> Option<(EncodedSignature, EncodedAuthorityId)> {
+			  AuthorityDiscovery::sign(payload).map(|(sig, id)| {
+            (EncodedSignature(sig.encode()), EncodedAuthorityId(id.encode()))
+        })
+		}
+
+		fn verify(payload: &Vec<u8>, signature: &EncodedSignature, authority_id: &EncodedAuthorityId) -> bool {
+			let signature = match BabeSignature::decode(&mut &signature.0[..]) {
+				Ok(s) => s,
+				_ => return false,
+			};
+
+			let authority_id = match BabeId::decode(&mut &authority_id.0[..]) {
+				Ok(id) => id,
+				_ => return false,
+			};
+
+			AuthorityDiscovery::verify(payload, signature, authority_id)
 		}
 	}
 

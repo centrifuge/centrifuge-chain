@@ -1,12 +1,13 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
-    AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, IndicesConfig, SudoConfig,
-    SystemConfig, WASM_BINARY,
+    AuthorityDiscoveryConfig, AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig, ImOnlineConfig,
+    IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex::FromHex;
 use primitives::{Pair, Public};
 use substrate_service;
+use im_online::sr25519::{AuthorityId as ImOnlineId};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -43,18 +44,20 @@ fn get_from_pubkey_hex<TPublic: Public>(pubkey_hex: &str) -> <TPublic::Pair as P
 }
 
 /// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (GrandpaId, BabeId) {
+pub fn get_authority_keys_from_seed(seed: &str) -> (GrandpaId, BabeId, ImOnlineId) {
     (
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<BabeId>(seed),
+        get_from_seed::<ImOnlineId>(seed),
     )
 }
 
 /// Helper function to obtain grandpa and babe keys from pubkey strings
-pub fn get_authority_keys_from_pubkey_hex(grandpa: &str, babe: &str) -> (GrandpaId, BabeId) {
+pub fn get_authority_keys_from_pubkey_hex(grandpa: &str, babe: &str) -> (GrandpaId, BabeId, ImOnlineId) {
     (
         get_from_pubkey_hex::<GrandpaId>(grandpa),
         get_from_pubkey_hex::<BabeId>(babe),
+        get_from_pubkey_hex::<ImOnlineId>(seed),
     )
 }
 
@@ -194,8 +197,12 @@ impl Alternative {
     }
 }
 
+fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
+	SessionKeys { grandpa, babe, im_online, }
+}
+
 fn testnet_genesis(
-    initial_authorities: Vec<(GrandpaId, BabeId)>,
+    initial_authorities: Vec<(GrandpaId, BabeId, ImOnlineId)>,
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
@@ -216,6 +223,36 @@ fn testnet_genesis(
                 .collect(),
             vesting: vec![],
         }),
+        session: Some(SessionConfig {
+			keys: initial_authorities.iter().map(|x| {
+				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone()))
+			}).collect::<Vec<_>>(),
+		}),
+		staking: Some(StakingConfig {
+            // The current era index.
+			current_era: 0,
+            // Minimum number of staking participants before emergency conditions are imposed.
+			minimum_validator_count: 1,
+            // The ideal number of staking participants.
+			validator_count: 2,
+			stakers: initial_authorities.iter().map(|x| {
+				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
+			}).collect(),
+            // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
+            // easy to initialize and the performance hit is minimal (we expect no more than four
+            // invulnerables) and restricted to testnets.
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+            // The percentage of the slash that is distributed to reporters.
+		    // The rest of the slashed value is handled by the `Slash`.
+			slash_reward_fraction: Perbill::from_percent(10),
+            // True if the next session change will be a new era regardless of index.
+            force_era: NotForcing
+			.. Default::default()
+		}),
+        collective_Instance1: Some(CouncilConfig {
+			members: vec![],
+			phantom: Default::default(),
+		}),
         sudo: Some(SudoConfig { key: root_key }),
         babe: Some(BabeConfig {
             authorities: initial_authorities
@@ -223,11 +260,18 @@ fn testnet_genesis(
                 .map(|x| (x.1.clone(), 1))
                 .collect(),
         }),
+        im_online: Some(ImOnlineConfig {
+			keys: vec![],
+		}),
+        authority_discovery: Some(AuthorityDiscoveryConfig{
+			keys: vec![],
+		}),
         grandpa: Some(GrandpaConfig {
             authorities: initial_authorities
                 .iter()
                 .map(|x| (x.0.clone(), 1))
                 .collect(),
         }),
+        membership_Instance1: Some(Default::default()),
     }
 }

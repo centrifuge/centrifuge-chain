@@ -8,7 +8,11 @@ version = '2.0.0'
 default = ['std']
 no_std = []
 std = [
+    'authority-discovery-primitives/std',
+    'authority-discovery/std',
+    'authorship/std',
     'codec/std',
+    'collective/std',
     'client/std',
     'rstd/std',
     'runtime-io/std',
@@ -17,12 +21,20 @@ std = [
     'babe/std',
     'babe-primitives/std',
     'executive/std',
+    'im-online/std',
     'indices/std',
     'grandpa/std',
+    'membership/std',
+    'node-primitives/std',
+    'offences/std',
     'primitives/std',
+    'session/std',
     'sr-primitives/std',
+    'sr-staking-primitives/std',
+    'staking/std',
     'system/std',
     'timestamp/std',
+    'treasury/std',
     'sudo/std',
     'version/std',
     'serde',
@@ -31,6 +43,25 @@ std = [
     'offchain-primitives/std',
     'substrate-session/std',
 ]
+
+[dependencies.authority-discovery-primitives]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'substrate-authority-discovery-primitives'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.authority-discovery]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-authority-discovery'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.authorship]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-authorship'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
 [dependencies.babe]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -47,6 +78,12 @@ rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 default_features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'srml-balances'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.collective]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-collective'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
 [dependencies.client]
@@ -79,16 +116,40 @@ git = 'https://github.com/paritytech/substrate.git'
 package = 'srml-grandpa'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
+[dependencies.im-online]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-im-online'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
 [dependencies.indices]
 default_features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'srml-indices'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
+[dependencies.membership]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-membership'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.node-primitives]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'node-primitives'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
 [dependencies.offchain-primitives]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-offchain-primitives'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.offences]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-offences'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
 [dependencies.primitives]
@@ -118,9 +179,34 @@ features = ['derive']
 optional = true
 version = '1.0'
 
+[dependencies.session]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-session'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+features = ["historical"]
+
 [dependencies.sr-primitives]
 default_features = false
 git = 'https://github.com/paritytech/substrate.git'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.sr-staking-primitives]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'sr-staking-primitives'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+# [dependencies.srml-staking-reward-curve]
+# default_features = false
+# git = 'https://github.com/paritytech/substrate.git'
+# package = 'srml-staking-reward-curve'
+# rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.staking]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-staking'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
 [dependencies.substrate-session]
@@ -150,6 +236,12 @@ rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 default_features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'srml-timestamp'
+rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
+
+[dependencies.treasury]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-treasury'
 rev = '4e1d637bf64e3437fa40f9e9e8460a5a0c0d9324'
 
 [dependencies.version]
