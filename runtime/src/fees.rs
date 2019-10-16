@@ -38,7 +38,6 @@ decl_storage! {
     add_extra_genesis {
         config(initial_fees): Vec<(T::Hash, T::Balance)>;
         build(
-            //storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
             |config| Module::<T>::initialize_fees(&config.initial_fees))
     }
 }
