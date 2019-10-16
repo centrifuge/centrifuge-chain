@@ -7,7 +7,7 @@ use support::{
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
-    StorageMap, StorageValue,
+    StorageValue,
 };
 use system::ensure_signed;
 
@@ -140,8 +140,7 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
-    use primitives::{Blake2Hasher, H256};
-    use runtime_io::with_externalities;
+    use primitives::H256;
     use sr_primitives::weights::Weight;
     use sr_primitives::Perbill;
     use sr_primitives::{
@@ -212,7 +211,7 @@ mod tests {
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
-    fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
+    fn new_test_ext() -> runtime_io::TestExternalities {
         let mut t = system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
@@ -229,14 +228,14 @@ mod tests {
 
     #[test]
     fn can_change_fee_allows_all() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             assert_ok!(Fees::can_change_fee(123));
         });
     }
 
     #[test]
     fn multiple_new_fees_are_setable() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key1 = <Test as system::Trait>::Hashing::hash_of(&11111);
             let fee_key2 = <Test as system::Trait>::Hashing::hash_of(&22222);
 
@@ -256,7 +255,7 @@ mod tests {
 
     #[test]
     fn fee_is_re_setable() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&11111);
 
             let initial_price: <Test as balances::Trait>::Balance = 666;
@@ -275,7 +274,7 @@ mod tests {
 
     #[test]
     fn fee_payment_errors_if_not_set() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
@@ -293,7 +292,7 @@ mod tests {
 
     #[test]
     fn fee_payment_errors_if_insufficient_balance() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
@@ -306,7 +305,7 @@ mod tests {
 
     #[test]
     fn fee_payment_subtracts_fees_from_account() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
@@ -322,7 +321,7 @@ mod tests {
 
     #[test]
     fn fee_is_gettable() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
