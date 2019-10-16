@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use centrifuge_chain_runtime::{anchor::AnchorData, AnchorApi, BlockNumber, Hash};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
-use centrifuge_chain_runtime::{anchor::AnchorData, AnchorApi, BlockNumber, Hash};
 use primitives::Blake2Hasher;
 use sr_primitives::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
+use std::sync::Arc;
 use substrate_client::{backend, CallExecutor, Client};
 
 /// Anchor RPC methods.
@@ -38,10 +38,13 @@ where
         let api = self.client.runtime_api();
         let best = self.client.info().chain.best_hash;
         let at = BlockId::hash(best);
-        api.get_anchor_by_id(&at, id).ok().unwrap().ok_or(jsonrpc_core::Error {
-            code: jsonrpc_core::ErrorCode::InternalError,
-            message: "Unable to find anchor".into(),
-            data: Some(format!("{:?}", id).into()),
-        })
+        api.get_anchor_by_id(&at, id)
+            .ok()
+            .unwrap()
+            .ok_or(jsonrpc_core::Error {
+                code: jsonrpc_core::ErrorCode::InternalError,
+                message: "Unable to find anchor".into(),
+                data: Some(format!("{:?}", id).into()),
+            })
     }
 }

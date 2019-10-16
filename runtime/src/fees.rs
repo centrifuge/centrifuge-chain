@@ -7,8 +7,7 @@ use support::{
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
-    StorageMap,
-    StorageValue
+    StorageMap, StorageValue,
 };
 use system::ensure_signed;
 
@@ -37,11 +36,11 @@ decl_storage! {
         Version: u64;
     }
     add_extra_genesis {
-		config(initial_fees): Vec<(T::Hash, T::Balance)>;
-		build(
-			//storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
-			|config| Module::<T>::initialize_fees(&config.initial_fees))
-	}
+        config(initial_fees): Vec<(T::Hash, T::Balance)>;
+        build(
+            //storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
+            |config| Module::<T>::initialize_fees(&config.initial_fees))
+    }
 }
 
 decl_event!(
@@ -80,7 +79,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-
     /// Called by any other module who wants to trigger a fee payment
     /// for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
@@ -123,14 +121,13 @@ impl<T: Trait> Module<T> {
     /// Initialise fees for a fixed set of keys. i.e. For use in genesis
     fn initialize_fees(fees: &[(T::Hash, T::Balance)]) {
         fees.iter()
-            .map(|(ref key, ref fee)|
-                Self::change_fee(*key, *fee))
+            .map(|(ref key, ref fee)| Self::change_fee(*key, *fee))
             .count();
     }
 
     /// change the fee for the given key
     fn change_fee(key: T::Hash, fee: T::Balance) {
-        let new_fee = Fee{
+        let new_fee = Fee {
             key: key.clone(),
             price: fee,
         };
@@ -143,12 +140,15 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
+    use primitives::{Blake2Hasher, H256};
     use runtime_io::with_externalities;
-    use primitives::{H256, Blake2Hasher};
-    use support::{impl_outer_origin, assert_ok, parameter_types, assert_err};
-    use sr_primitives::{traits::{BlakeTwo256, IdentityLookup}, testing::Header};
     use sr_primitives::weights::Weight;
     use sr_primitives::Perbill;
+    use sr_primitives::{
+        testing::Header,
+        traits::{BlakeTwo256, IdentityLookup},
+    };
+    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types};
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -160,11 +160,11 @@ mod tests {
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
     parameter_types! {
-		pub const BlockHashCount: u64 = 250;
-		pub const MaximumBlockWeight: Weight = 1024;
-		pub const MaximumBlockLength: u32 = 2 * 1024;
-		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-	}
+        pub const BlockHashCount: u64 = 250;
+        pub const MaximumBlockWeight: Weight = 1024;
+        pub const MaximumBlockLength: u32 = 2 * 1024;
+        pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    }
     impl system::Trait for Test {
         type Origin = Origin;
         type Call = ();
@@ -187,12 +187,12 @@ mod tests {
         type Event = ();
     }
     parameter_types! {
-		pub const ExistentialDeposit: u64 = 0;
-		pub const TransferFee: u64 = 0;
-		pub const CreationFee: u64 = 0;
-		pub const TransactionBaseFee: u64 = 0;
-		pub const TransactionByteFee: u64 = 0;
-	}
+        pub const ExistentialDeposit: u64 = 0;
+        pub const TransferFee: u64 = 0;
+        pub const CreationFee: u64 = 0;
+        pub const TransactionBaseFee: u64 = 0;
+        pub const TransactionByteFee: u64 = 0;
+    }
     impl balances::Trait for Test {
         type Balance = u64;
         type OnFreeBalanceZero = ();
@@ -213,14 +213,17 @@ mod tests {
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
     fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-
-        let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+        let mut t = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
 
         // pre-fill balances
         balances::GenesisConfig::<Test> {
             balances: vec![(1, 100000), (2, 100000)],
             vesting: vec![],
-        }.assimilate_storage(&mut t).unwrap();
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
         t.into()
     }
 
