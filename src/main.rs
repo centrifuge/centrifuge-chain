@@ -5,8 +5,10 @@
 
 mod api;
 mod chain_spec;
-mod cli;
+
+#[macro_use]
 mod service;
+mod cli;
 
 pub use substrate_cli::{error, IntoExit, VersionInfo};
 
@@ -21,8 +23,8 @@ fn main() {
         support_url: "centrifuge.io",
     };
 
-    if let Err(e) = cli::run(::std::env::args(), cli::Exit, version) {
-        eprintln!("Fatal error: {}\n\n{:?}", e, e);
-        std::process::exit(1)
-    }
+	if let Err(e) = cli::run(::std::env::args(), cli::Exit, version) {
+		eprintln!("Fatal error: {}\n\n{:?}", e, e);
+		std::process::exit(1)
+	}
 }

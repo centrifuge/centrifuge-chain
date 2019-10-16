@@ -1,12 +1,12 @@
-use babe_primitives::AuthorityId as BabeId;
-use centrifuge_chain_runtime::{
-    AccountId, BabeConfig, BalancesConfig, FeesConfig, GenesisConfig, GrandpaConfig, Hash,
-    IndicesConfig, SudoConfig, SystemConfig, WASM_BINARY,
-};
-use grandpa_primitives::AuthorityId as GrandpaId;
-use hex::FromHex;
 use primitives::{Pair, Public};
+use centrifuge_chain_runtime::{
+	AccountId, BabeConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
+	SudoConfig, IndicesConfig, SystemConfig, FeesConfig, WASM_BINARY, Hash
+};
+use babe_primitives::{AuthorityId as BabeId};
+use grandpa_primitives::{AuthorityId as GrandpaId};
 use substrate_service;
+use hex::FromHex;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;

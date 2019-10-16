@@ -38,15 +38,9 @@ decl_storage! {
     }
     add_extra_genesis {
 		config(initial_fees): Vec<(T::Hash, T::Balance)>;
-		build(|
-			storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
-			config: &GenesisConfig<T>
-		| {
-			runtime_io::with_storage(
-				storage,
-				|| Module::<T>::initialize_fees(&config.initial_fees),
-			);
-		})
+		build(
+			//storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
+			|config| Module::<T>::initialize_fees(&config.initial_fees))
 	}
 }
 
@@ -61,7 +55,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         // Initializing events
         // this is needed only if you are using events in your module
-        fn deposit_event<T>() = default;
+        fn deposit_event() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
             if <Version>::get() == 0 {
