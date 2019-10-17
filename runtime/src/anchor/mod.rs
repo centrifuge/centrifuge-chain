@@ -3,15 +3,17 @@
 //!
 //! For a more formally detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 
+use crate::{common, fees};
 use codec::{Decode, Encode};
-use rstd::{vec::Vec, convert::TryInto};
+use rstd::{convert::TryInto, vec::Vec};
 use sr_primitives::traits::Hash;
-use support::{decl_module, decl_storage, decl_event, dispatch::Result, ensure, StorageMap, StorageValue};
+use support::{
+    decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue,
+};
 use system::ensure_signed;
-use crate::{common as common};
 
 #[cfg(feature = "std")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// expiration duration in blocks of a pre-commit,
 /// This is maximum expected time for document consensus to take place after a pre-commit of
@@ -48,7 +50,7 @@ pub struct AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait + timestamp::Trait {
+pub trait Trait: system::Trait + timestamp::Trait + fees::Trait + balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
@@ -62,7 +64,6 @@ decl_event! (
         MoveAnchor(Hash, Hash),
     }
 );
-
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -105,7 +106,7 @@ decl_storage! {
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 
-        fn deposit_event<T>() = default;
+        fn deposit_event() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
             if Version::get() == 0 {
@@ -192,6 +193,17 @@ decl_module! {
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
             LatestAnchorIndex::put(idx);
 
+            // pay the state rent
+            let today_in_days_from_epoch = TryInto::<u64>::try_into(<timestamp::Module<T>>::get())
+                .map(common::get_days_since_epoch)
+                .map_err(|_e| "Can not convert timestamp to u64")
+                .unwrap();
+
+            // we use the fee config setup on genesis for anchoring to calculate the state rent
+            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
+                <T as balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            <fees::Module<T>>::pay_fee_given(who, fee)?;
+
             Ok(())
         }
 
@@ -268,7 +280,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-
     /// checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
     /// `expiration_block` < `current_block_number`.
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
@@ -316,10 +327,12 @@ impl<T: Trait> Module<T> {
     }
 
     /// Puts the pre-commit (based on anchor_id) into the correct eviction bucket
-    fn put_pre_commit_into_eviction_bucket(anchor_id: T::Hash, expiration_block: T::BlockNumber) -> Result {
+    fn put_pre_commit_into_eviction_bucket(
+        anchor_id: T::Hash,
+        expiration_block: T::BlockNumber,
+    ) -> Result {
         // determine which eviction bucket to put into
-        let evict_after_block =
-            Self::determine_pre_commit_eviction_bucket(expiration_block);
+        let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block);
         // get current index in eviction bucket and increment
         let mut eviction_bucket_size =
             Self::get_pre_commits_count_in_evict_bucket(evict_after_block);
@@ -338,17 +351,20 @@ impl<T: Trait> Module<T> {
     /// This can be used to determine which eviction bucket a pre-commit
     /// should be put into for later eviction.
     /// TODO return err
-    fn determine_pre_commit_eviction_bucket(pre_commit_expiration_block: T::BlockNumber) -> T::BlockNumber {
+    fn determine_pre_commit_eviction_bucket(
+        pre_commit_expiration_block: T::BlockNumber,
+    ) -> T::BlockNumber {
         let result = TryInto::<u32>::try_into(pre_commit_expiration_block);
         match result {
-            Ok(u32_expiration_block)  => {
-                let expiration_horizon =
-                    Self::pre_commit_expiration_duration_blocks() as u32 * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
-                let put_into_bucket =
-                    u32_expiration_block - (u32_expiration_block % expiration_horizon) + expiration_horizon;
+            Ok(u32_expiration_block) => {
+                let expiration_horizon = Self::pre_commit_expiration_duration_blocks() as u32
+                    * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
+                let put_into_bucket = u32_expiration_block
+                    - (u32_expiration_block % expiration_horizon)
+                    + expiration_horizon;
 
                 T::BlockNumber::from(put_into_bucket)
-            },
+            }
             Err(_e) => T::BlockNumber::from(0),
         }
     }
@@ -357,7 +373,7 @@ impl<T: Trait> Module<T> {
     /// count of tries removed.
     fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
         (from..until)
-            .map(|day| {(day, common::generate_child_storage_key(day))})
+            .map(|day| (day, common::generate_child_storage_key(day)))
             // store the root of child trie for the day on chain before eviction. Checks if it
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
@@ -378,7 +394,12 @@ impl<T: Trait> Module<T> {
             // limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
             .take(MAX_LOOP_IN_TX as usize)
             // get eviction date of the anchor given by index
-            .map(|idx| {(idx, <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx)))})
+            .map(|idx| {
+                (
+                    idx,
+                    <AnchorEvictDates<T>>::get(<AnchorIndexes<T>>::get(idx)),
+                )
+            })
             // filter out evictable anchors, anchor_evict_date can be 0 when evicting before any anchors are created
             .filter(|(_, anchor_evict_date)| anchor_evict_date <= &yesterday)
             // remove indexes
@@ -391,12 +412,16 @@ impl<T: Trait> Module<T> {
     }
 
     /// get an anchor by its id in the child storage
-    pub fn get_anchor_by_id(anchor_id: T::Hash)  -> Option<AnchorData<T::Hash, T::BlockNumber>> {
+    pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
         let storage_key = common::generate_child_storage_key(anchor_evict_date);
 
         runtime_io::child_storage(&storage_key, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
+    }
+
+    fn fee_key() -> <T as system::Trait>::Hash {
+        <T as system::Trait>::Hashing::hash_of(&0)
     }
 }
 
