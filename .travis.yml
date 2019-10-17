@@ -26,7 +26,7 @@ jobs:
   include:
     - stage: "WASM + Native"
       name: "WASM + Native Build"
-      script: RUST_TOOLCHAIN=nightly TARGET=build-client ./ci/script.sh
+      script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=build-client ./ci/script.sh
     - stage: "Tests"
       name: "Run Tests"
       script: RUST_TOOLCHAIN=stable TARGET=runtime-test ./ci/script.sh
