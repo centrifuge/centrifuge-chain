@@ -7,8 +7,7 @@ use support::{
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
-    StorageMap,
-    StorageValue
+    StorageValue,
 };
 use system::ensure_signed;
 
@@ -37,17 +36,10 @@ decl_storage! {
         Version: u64;
     }
     add_extra_genesis {
-		config(initial_fees): Vec<(T::Hash, T::Balance)>;
-		build(|
-			storage: &mut (sr_primitives::StorageOverlay, sr_primitives::ChildrenStorageOverlay),
-			config: &GenesisConfig<T>
-		| {
-			runtime_io::with_storage(
-				storage,
-				|| Module::<T>::initialize_fees(&config.initial_fees),
-			);
-		})
-	}
+        config(initial_fees): Vec<(T::Hash, T::Balance)>;
+        build(
+            |config| Module::<T>::initialize_fees(&config.initial_fees))
+    }
 }
 
 decl_event!(
@@ -61,7 +53,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         // Initializing events
         // this is needed only if you are using events in your module
-        fn deposit_event<T>() = default;
+        fn deposit_event() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
             if <Version>::get() == 0 {
@@ -86,7 +78,6 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-
     /// Called by any other module who wants to trigger a fee payment
     /// for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
@@ -129,14 +120,13 @@ impl<T: Trait> Module<T> {
     /// Initialise fees for a fixed set of keys. i.e. For use in genesis
     fn initialize_fees(fees: &[(T::Hash, T::Balance)]) {
         fees.iter()
-            .map(|(ref key, ref fee)|
-                Self::change_fee(*key, *fee))
+            .map(|(ref key, ref fee)| Self::change_fee(*key, *fee))
             .count();
     }
 
     /// change the fee for the given key
     fn change_fee(key: T::Hash, fee: T::Balance) {
-        let new_fee = Fee{
+        let new_fee = Fee {
             key: key.clone(),
             price: fee,
         };
@@ -149,12 +139,14 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
-    use runtime_io::with_externalities;
-    use primitives::{H256, Blake2Hasher};
-    use support::{impl_outer_origin, assert_ok, parameter_types, assert_err};
-    use sr_primitives::{traits::{BlakeTwo256, IdentityLookup}, testing::Header};
+    use primitives::H256;
     use sr_primitives::weights::Weight;
     use sr_primitives::Perbill;
+    use sr_primitives::{
+        testing::Header,
+        traits::{BlakeTwo256, IdentityLookup},
+    };
+    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types};
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -166,11 +158,11 @@ mod tests {
     #[derive(Clone, Eq, PartialEq)]
     pub struct Test;
     parameter_types! {
-		pub const BlockHashCount: u64 = 250;
-		pub const MaximumBlockWeight: Weight = 1024;
-		pub const MaximumBlockLength: u32 = 2 * 1024;
-		pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-	}
+        pub const BlockHashCount: u64 = 250;
+        pub const MaximumBlockWeight: Weight = 1024;
+        pub const MaximumBlockLength: u32 = 2 * 1024;
+        pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    }
     impl system::Trait for Test {
         type Origin = Origin;
         type Call = ();
@@ -193,12 +185,12 @@ mod tests {
         type Event = ();
     }
     parameter_types! {
-		pub const ExistentialDeposit: u64 = 0;
-		pub const TransferFee: u64 = 0;
-		pub const CreationFee: u64 = 0;
-		pub const TransactionBaseFee: u64 = 0;
-		pub const TransactionByteFee: u64 = 0;
-	}
+        pub const ExistentialDeposit: u64 = 0;
+        pub const TransferFee: u64 = 0;
+        pub const CreationFee: u64 = 0;
+        pub const TransactionBaseFee: u64 = 0;
+        pub const TransactionByteFee: u64 = 0;
+    }
     impl balances::Trait for Test {
         type Balance = u64;
         type OnFreeBalanceZero = ();
@@ -218,28 +210,31 @@ mod tests {
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
-    fn new_test_ext() -> runtime_io::TestExternalities<Blake2Hasher> {
-
-        let mut t = system::GenesisConfig::default().build_storage::<Test>().unwrap();
+    fn new_test_ext() -> runtime_io::TestExternalities {
+        let mut t = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
 
         // pre-fill balances
         balances::GenesisConfig::<Test> {
             balances: vec![(1, 100000), (2, 100000)],
             vesting: vec![],
-        }.assimilate_storage(&mut t).unwrap();
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
         t.into()
     }
 
     #[test]
     fn can_change_fee_allows_all() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             assert_ok!(Fees::can_change_fee(123));
         });
     }
 
     #[test]
     fn multiple_new_fees_are_setable() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key1 = <Test as system::Trait>::Hashing::hash_of(&11111);
             let fee_key2 = <Test as system::Trait>::Hashing::hash_of(&22222);
 
@@ -259,7 +254,7 @@ mod tests {
 
     #[test]
     fn fee_is_re_setable() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&11111);
 
             let initial_price: <Test as balances::Trait>::Balance = 666;
@@ -278,7 +273,7 @@ mod tests {
 
     #[test]
     fn fee_payment_errors_if_not_set() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
@@ -296,7 +291,7 @@ mod tests {
 
     #[test]
     fn fee_payment_errors_if_insufficient_balance() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 
@@ -309,7 +304,7 @@ mod tests {
 
     #[test]
     fn fee_payment_subtracts_fees_from_account() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
@@ -325,7 +320,7 @@ mod tests {
 
     #[test]
     fn fee_is_gettable() {
-        with_externalities(&mut new_test_ext(), || {
+        new_test_ext().execute_with(|| {
             let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as balances::Trait>::Balance = 90000;
 

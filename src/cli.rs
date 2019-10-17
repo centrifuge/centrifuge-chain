@@ -3,10 +3,9 @@ use crate::service;
 use futures::{future, sync::oneshot, Future};
 use log::info;
 use std::cell::RefCell;
-use std::ops::Deref;
 pub use substrate_cli::{error, IntoExit, VersionInfo};
 use substrate_cli::{informant, parse_and_prepare, NoCustom, ParseAndPrepare};
-use substrate_service::{Roles as ServiceRoles, ServiceFactory};
+use substrate_service::{AbstractService, Configuration, Roles as ServiceRoles};
 use tokio::runtime::Runtime;
 
 /// Parse command line arguments into service configuration.
@@ -16,9 +15,12 @@ where
     T: Into<std::ffi::OsString> + Clone,
     E: IntoExit,
 {
+    type Config<T> = Configuration<(), T>;
     match parse_and_prepare::<NoCustom, NoCustom, _>(&version, "substrate-node", args) {
-        ParseAndPrepare::Run(cmd) => {
-            cmd.run(load_spec, exit, |exit, _cli_args, _custom_args, config| {
+        ParseAndPrepare::Run(cmd) => cmd.run(
+            load_spec,
+            exit,
+            |exit, _cli_args, _custom_args, config: Config<_>| {
                 info!("{}", version.name);
                 info!("  version {}", config.full_version());
                 info!("  by {}, 2017, 2018", version.author);
@@ -29,23 +31,33 @@ where
                 match config.roles {
                     ServiceRoles::LIGHT => run_until_exit(
                         runtime,
-                        service::Factory::new_light(config).map_err(|e| format!("{:?}", e))?,
+                        service::new_light(config).map_err(|e| format!("{:?}", e))?,
                         exit,
                     ),
                     _ => run_until_exit(
                         runtime,
-                        service::Factory::new_full(config).map_err(|e| format!("{:?}", e))?,
+                        service::new_full(config).map_err(|e| format!("{:?}", e))?,
                         exit,
                     ),
                 }
                 .map_err(|e| format!("{:?}", e))
-            })
-        }
+            },
+        ),
         ParseAndPrepare::BuildSpec(cmd) => cmd.run(load_spec),
-        ParseAndPrepare::ExportBlocks(cmd) => cmd.run::<service::Factory, _, _>(load_spec, exit),
-        ParseAndPrepare::ImportBlocks(cmd) => cmd.run::<service::Factory, _, _>(load_spec, exit),
+        ParseAndPrepare::ExportBlocks(cmd) => cmd.run_with_builder(
+            |config: Config<_>| Ok(new_full_start!(config).0),
+            load_spec,
+            exit,
+        ),
+        ParseAndPrepare::ImportBlocks(cmd) => cmd.run_with_builder(
+            |config: Config<_>| Ok(new_full_start!(config).0),
+            load_spec,
+            exit,
+        ),
         ParseAndPrepare::PurgeChain(cmd) => cmd.run(load_spec),
-        ParseAndPrepare::RevertChain(cmd) => cmd.run::<service::Factory, _>(load_spec),
+        ParseAndPrepare::RevertChain(cmd) => {
+            cmd.run_with_builder(|config: Config<_>| Ok(new_full_start!(config).0), load_spec)
+        }
         ParseAndPrepare::CustomCommand(_) => Ok(()),
     }?;
 
@@ -59,11 +71,9 @@ fn load_spec(id: &str) -> Result<Option<chain_spec::ChainSpec>, String> {
     })
 }
 
-fn run_until_exit<T, C, E>(mut runtime: Runtime, service: T, e: E) -> error::Result<()>
+fn run_until_exit<T, E>(mut runtime: Runtime, service: T, e: E) -> error::Result<()>
 where
-    T: Deref<Target = substrate_service::Service<C>>,
-    T: Future<Item = (), Error = substrate_service::error::Error> + Send + 'static,
-    C: substrate_service::Components,
+    T: AbstractService,
     E: IntoExit,
 {
     let (exit_send, exit) = exit_future::signal();
@@ -102,11 +112,11 @@ impl IntoExit for Exit {
 
         let exit_send_cell = RefCell::new(Some(exit_send));
         ctrlc::set_handler(move || {
-            if let Some(exit_send) = exit_send_cell
+            let exit_send = exit_send_cell
                 .try_borrow_mut()
                 .expect("signal handler not reentrant; qed")
-                .take()
-            {
+                .take();
+            if let Some(exit_send) = exit_send {
                 exit_send.send(()).expect("Error sending exit notification");
             }
         })
