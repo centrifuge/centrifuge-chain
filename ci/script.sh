@@ -6,7 +6,9 @@ set -eux
 export RUSTFLAGS=" -W unused-extern-crates"
 
 # Install rustup and the specified rust toolchain.
-curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=$RUST_TOOLCHAIN -y
+curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+rustup toolchain install $RUST_TOOLCHAIN
 
 # Load cargo environment. Specifically, put cargo into PATH.
 source ~/.cargo/env
