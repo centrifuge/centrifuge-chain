@@ -176,7 +176,6 @@ decl_module! {
                 ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
 
-
             let block_num = <system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
