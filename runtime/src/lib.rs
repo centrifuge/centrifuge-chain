@@ -18,27 +18,21 @@ use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use primitives::{crypto::key_types, OpaqueMetadata};
 use rstd::prelude::*;
 use primitives::u32_trait::{_1, _2, _3, _4};
-use primitives::{OpaqueMetadata, crypto::key_types};
-use babe_primitives::{AuthorityId as BabeId, AuthoritySignature as BabeSignature};
+use babe_primitives::{AuthoritySignature as BabeSignature};
 use sr_primitives::{
 	create_runtime_str, generic, impl_opaque_keys, transaction_validity::TransactionValidity,
     AnySignature, ApplyResult,
 };
-// TODO add after updating substrate
-// use sr_primitives::curve::PiecewiseLinear;
+use sr_primitives::curve::PiecewiseLinear;
 use sr_primitives::traits::{
 	BlakeTwo256, Block as BlockT, ConvertInto, DigestFor, NumberFor, StaticLookup, Verify,
 };
 use sr_primitives::weights::Weight;
-use babe::{AuthorityId as BabeId};
-use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
-use grandpa::fg_primitives::{self, ScheduledChange};
+use grandpa::fg_primitives::{ScheduledChange};
 use im_online::sr25519::{AuthorityId as ImOnlineId};
 use authority_discovery_primitives::{AuthorityId as EncodedAuthorityId, Signature as EncodedSignature};
-use client::{
-	block_builder::api::{CheckInherentsResult, InherentData, self as block_builder_api},
-	runtime_api as client_api, decl_runtime_apis, impl_runtime_apis
-};
+use codec::{Encode, Decode};
+use system::offchain::TransactionSubmitter;
 #[cfg(feature = "std")]
 use version::NativeVersion;
 use version::RuntimeVersion;
@@ -51,12 +45,7 @@ pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
 pub use support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
 pub use timestamp::Call as TimestampCall;
-pub use balances::Call as BalancesCall;
-pub use sr_primitives::{Permill, Perbill};
-pub use support::{StorageValue, construct_runtime, parameter_types};
 // pub use staking::StakerStatus;
-
-use crate::anchor::AnchorData;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
@@ -314,8 +303,7 @@ impl_opaque_keys! {
 // TODO: Introduce some structure to tie these together to make it a bit less of a footgun. This
 // should be easy, since OneSessionHandler trait provides the `Key` as an associated type. #2858
 parameter_types! {
-	// TODO add after updating substrate
-	// pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
 }
 
 impl session::Trait for Runtime {
@@ -327,8 +315,7 @@ impl session::Trait for Runtime {
 	type ValidatorId = <Self as system::Trait>::AccountId;
 	type ValidatorIdOf = staking::StashOf<Self>;
 	type SelectInitialValidators = Staking;
-	// TODO add after updating substrate
-	// type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 }
 
 impl session::historical::Trait for Runtime {
@@ -336,23 +323,21 @@ impl session::historical::Trait for Runtime {
 	type FullIdentificationOf = staking::ExposureOf<Runtime>;
 }
 
-// TODO add after updating substrate
-// srml_staking_reward_curve::build! {
-// 	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
-// 		min_inflation: 0_025_000,
-// 		max_inflation: 0_100_000,
-// 		ideal_stake: 0_500_000,
-// 		falloff: 0_050_000,
-// 		max_piece_count: 40,
-// 		test_precision: 0_005_000,
-// 	);
-// }
+srml_staking_reward_curve::build! {
+	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
+		min_inflation: 0_025_000,
+		max_inflation: 0_100_000,
+		ideal_stake: 0_500_000,
+		falloff: 0_050_000,
+		max_piece_count: 40,
+		test_precision: 0_005_000,
+	);
+}
 
 parameter_types! {
 	pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 6;
 	pub const BondingDuration: staking::EraIndex = 24 * 28;
-	// TODO add after updating substrate
-	// pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }
 
 impl staking::Trait for Runtime {
@@ -366,26 +351,25 @@ impl staking::Trait for Runtime {
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
 	type SessionInterface = Self;
-	// TODO add after updating substrate
-	// type RewardCurve = RewardCurve;
+	type RewardCurve = RewardCurve;
 }
 
-type CouncilCollective = collective::Instance1;
-impl collective::Trait<CouncilCollective> for Runtime {
-	type Origin = Origin;
-	type Proposal = Call;
-	type Event = Event;
-}
+// type CouncilCollective = collective::Instance1;
+// impl collective::Trait<CouncilCollective> for Runtime {
+// 	type Origin = Origin;
+// 	type Proposal = Call;
+// 	type Event = Event;
+// }
 
-impl membership::Trait<membership::Instance1> for Runtime {
-	type Event = Event;
-	type AddOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type RemoveOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type SwapOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type ResetOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type MembershipInitialized = CouncilCollective;  // TODO: verify what this does
-	type MembershipChanged = CouncilCollective;  // TODO: verify what this does
-}
+// impl membership::Trait<membership::Instance1> for Runtime {
+// 	type Event = Event;
+// 	type AddOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+// 	type RemoveOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+// 	type SwapOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+// 	type ResetOrigin = collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+// 	// type MembershipInitialized = CouncilCollective;  // TODO: verify what this does
+// 	// type MembershipChanged = CouncilCollective;  // TODO: verify what this does
+// }
 
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
@@ -396,8 +380,10 @@ parameter_types! {
 
 impl treasury::Trait for Runtime {
 	type Currency = Balances;
-	type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>;
-	type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>;
+	// type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>;
+	// type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>;
+	type ApproveOrigin = system::EnsureRoot<AccountId>;
+	type RejectOrigin = system::EnsureRoot<AccountId>;
 	type Event = Event;
 	type MintedForSpending = ();
 	type ProposalRejection = ();
@@ -456,7 +442,7 @@ construct_runtime!(
 		Balances: balances::{default, Error},
 		Session: session::{Module, Call, Storage, Event, Config<T>},
 		Staking: staking::{default, OfflineWorker},
-		Council: collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		// Council: collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Treasury: treasury::{Module, Call, Storage, Event<T>},
 		Sudo: sudo,
 		ImOnline: im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
@@ -548,8 +534,8 @@ impl_runtime_apis! {
         }
 
         fn random_seed() -> <Block as BlockT>::Hash {
-            // RandomnessCollectiveFlip::random_seed() // // TODO this was before migration, can we delete this?
-			System::random_seed()
+            RandomnessCollectiveFlip::random_seed() // // TODO this was before migration, can we delete this?
+			// System::random_seed()
         }
     }
 
@@ -662,11 +648,11 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl consensus_primitives::ConsensusApi<Block, babe_primitives::AuthorityId> for Runtime {
-		fn authorities() -> Vec<babe_primitives::AuthorityId> {
-			Babe::authorities().into_iter().map(|(a, _)| a).collect()
-		}
-	}
+	// impl consensus_primitives::ConsensusApi<Block, babe_primitives::AuthorityId> for Runtime {
+	// 	fn authorities() -> Vec<babe_primitives::AuthorityId> {
+	// 		Babe::authorities().into_iter().map(|(a, _)| a).collect()
+	// 	}
+	// }
 
 	impl substrate_session::SessionKeys<Block> for Runtime {
         fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {

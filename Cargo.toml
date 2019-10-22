@@ -56,6 +56,12 @@ git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-finality-grandpa-primitives'
 rev = '67b73c468e44839c5809245703d067dc75940076'
 
+[dependencies.im-online]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'srml-im-online'
+rev = '67b73c468e44839c5809245703d067dc75940076'
+
 [dependencies.inherents]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-inherents'

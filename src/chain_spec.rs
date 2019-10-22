@@ -9,6 +9,7 @@ use hex::FromHex;
 use primitives::{Pair, Public};
 use substrate_service;
 use im_online::sr25519::{AuthorityId as ImOnlineId};
+use sr_primitives::Perbill;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -54,11 +55,11 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (GrandpaId, BabeId, ImOnlineI
 }
 
 /// Helper function to obtain grandpa and babe keys from pubkey strings
-pub fn get_authority_keys_from_pubkey_hex(grandpa: &str, babe: &str) -> (GrandpaId, BabeId, ImOnlineId) {
+pub fn get_authority_keys_from_pubkey_hex(grandpa: &str, babe: &str, imOnlineId: &str) -> (GrandpaId, BabeId, ImOnlineId) {
     (
         get_from_pubkey_hex::<GrandpaId>(grandpa),
         get_from_pubkey_hex::<BabeId>(babe),
-        get_from_pubkey_hex::<ImOnlineId>(seed),
+        get_from_pubkey_hex::<ImOnlineId>(imOnlineId),
     )
 }
 
@@ -130,9 +131,11 @@ impl Alternative {
                         testnet_genesis(
                         vec![
                             get_authority_keys_from_pubkey_hex("8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
-                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"),
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639",
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"), // TODO replace with other AccountId
                             get_authority_keys_from_pubkey_hex("be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
-                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"),
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d",
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"), // TODO replace with other AccountId
                         ],
                         get_from_pubkey_hex::<AccountId>("c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"),
                         vec![
@@ -208,6 +211,8 @@ fn testnet_genesis(
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
+    const STASH: Balance = 100; // TODO adjust
+
     GenesisConfig {
         system: Some(SystemConfig {
             code: WASM_BINARY.to_vec(),
@@ -248,13 +253,13 @@ fn testnet_genesis(
 		    // The rest of the slashed value is handled by the `Slash`.
 			slash_reward_fraction: Perbill::from_percent(10),
             // True if the next session change will be a new era regardless of index.
-            force_era: NotForcing
+            // force_era: NotForcing
 			.. Default::default()
 		}),
-        collective_Instance1: Some(CouncilConfig {
-			members: vec![],
-			phantom: Default::default(),
-		}),
+        // collective_Instance1: Some(CouncilConfig {
+		// 	members: vec![],
+		// 	phantom: Default::default(),
+		// }),
         sudo: Some(SudoConfig { key: root_key }),
         babe: Some(BabeConfig {
             authorities: initial_authorities
