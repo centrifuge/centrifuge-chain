@@ -7,9 +7,7 @@ use crate::{common, fees};
 use codec::{Decode, Encode};
 use rstd::{convert::TryInto, vec::Vec};
 use sr_primitives::traits::Hash;
-use support::{
-    decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue,
-};
+use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure};
 use system::ensure_signed;
 
 #[cfg(feature = "std")]
@@ -47,6 +45,12 @@ pub struct AnchorData<Hash, BlockNumber> {
     id: Hash,
     doc_root: Hash,
     anchored_block: BlockNumber,
+}
+
+impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
+    pub fn get_doc_root(self) -> Hash {
+        self.doc_root
+    }
 }
 
 /// The module's configuration trait.

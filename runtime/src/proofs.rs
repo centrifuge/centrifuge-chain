@@ -1,6 +1,8 @@
+use codec::{Decode, Encode};
 use rstd::vec::Vec;
 
-#[derive(Debug)]
+#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
     hash: [u8; 32],
     sorted_hashes: Vec<[u8; 32]>,

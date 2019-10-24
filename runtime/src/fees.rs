@@ -1,5 +1,4 @@
 use codec::{Decode, Encode};
-use sr_primitives::traits::Hash;
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
 use support::{
@@ -7,7 +6,6 @@ use support::{
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
-    StorageValue,
 };
 use system::ensure_signed;
 
