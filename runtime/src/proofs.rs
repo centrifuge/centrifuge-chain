@@ -8,6 +8,15 @@ pub struct Proof {
     sorted_hashes: Vec<[u8; 32]>,
 }
 
+impl Proof {
+    pub fn new(hash: [u8; 32], sorted_hashes: Vec<[u8; 32]>) -> Self {
+        Self {
+            hash,
+            sorted_hashes,
+        }
+    }
+}
+
 /// validates each proof and return true if all the proofs are valid
 /// else returns false
 pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>) -> bool {
