@@ -7,7 +7,7 @@ use crate::{common, fees};
 use codec::{Decode, Encode};
 use rstd::{convert::TryInto, vec::Vec};
 use sr_primitives::traits::Hash;
-use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure};
+use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue};
 use system::ensure_signed;
 
 #[cfg(feature = "std")]
