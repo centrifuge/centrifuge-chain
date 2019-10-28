@@ -17,6 +17,9 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin  {
         fn deposit_event() = default;
 
+        /// validates the proofs provided against the document root associated with the anchor_id.
+        /// Once the proofs are verified, we create a bundled hash (deposit_address + [proof[i].hash])
+        /// Bundled Hash is deposited to an DepositAsset event for bridging purposes.
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<proofs::Proof>) -> Result {
             ensure_signed(origin)?;
 
@@ -27,9 +30,9 @@ decl_module! {
             ensure!(Self::validate_proofs(anchor_data.get_doc_root(), &pfs), "Invalid proofs");
 
             // get the bundled hash
-            let bh = Self::get_bundled_hash(pfs, deposit_address);
+            let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
 
-            Self::deposit_event(RawEvent::DepositAsset(bh));
+            Self::deposit_event(RawEvent::DepositAsset(bundled_hash));
 
             Ok(())
         }
@@ -37,12 +40,15 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
+    /// validates the proofs again the provided doc_root.
+    /// returns false if any proofs are invalid.
     fn validate_proofs(doc_root: T::Hash, pfs: &Vec<proofs::Proof>) -> bool {
         let mut dr: [u8; 32] = Default::default();
         dr.clone_from_slice(doc_root.as_ref());
         proofs::validate_proofs(dr, pfs)
     }
 
+    /// returns a Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
     fn get_bundled_hash(pfs: Vec<proofs::Proof>, deposit_address: [u8; 20]) -> T::Hash {
         let bh = proofs::bundled_hash(pfs, deposit_address);
         let mut res: T::Hash = Default::default();
