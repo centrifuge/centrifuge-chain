@@ -318,7 +318,7 @@ impl Convert<(Weight, WeightMultiplier), WeightMultiplier> for WeightMultiplierU
 parameter_types! {
     /// fees params in nRad
     pub const ExistentialDeposit: u128 = 500;
-    pub const TransferFee: u128 = 1;
+    pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
     pub const TransactionBaseFee: u128 = 0;
     pub const TransactionByteFee: u128 = 0;
