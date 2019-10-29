@@ -18,7 +18,7 @@ use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use primitives::{crypto::key_types, OpaqueMetadata};
 use rstd::prelude::*;
 use sr_primitives::traits::{
-    BlakeTwo256, Block as BlockT, ConvertInto, NumberFor, StaticLookup, Verify, Convert, Saturating,
+    BlakeTwo256, Block as BlockT, NumberFor, StaticLookup, Verify, Convert, Saturating,
 };
 use sr_primitives::weights::{Weight, WeightMultiplier};
 use sr_primitives::{
@@ -179,7 +179,7 @@ impl system::Trait for Runtime {
     /// The ubiquitous event type.
     type Event = Event;
     /// Update weight (to fee) multiplier per-block.
-    type WeightMultiplierUpdate = ();
+    type WeightMultiplierUpdate = (); // replace () with WeightMultiplierUpdateHandler to run the gas market
     /// The ubiquitous origin type.
     type Origin = Origin;
     /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -244,12 +244,14 @@ impl timestamp::Trait for Runtime {
 pub struct WeightToFee;
 impl Convert<Weight, Balance> for WeightToFee {
     fn convert(x: Weight) -> Balance {
-        // in Polkadot a weight of 10_000 (smallest non-zero weight) to be mapped to 10^7 units of
+        // in Centrifuge chain a weight of 10_000 (smallest non-zero weight) to be mapped to 10^7 units of
         // fees (1/10 CENT), hence:
         Balance::from(x).saturating_mul(1_000)
     }
 }
 
+/// Weight multiplier updater (i.e gas market) copied over from Polkadot.
+///
 /// A struct that updates the weight multiplier based on the saturation level of the previous block.
 /// This should typically be called once per-block.
 ///
@@ -265,6 +267,9 @@ impl Convert<Weight, Balance> for WeightToFee {
 ///
 /// https://research.web3.foundation/en/latest/polkadot/Token%20Economics/#relay-chain-transaction-fees
 pub struct WeightMultiplierUpdateHandler;
+
+/// The block saturation level. Fees will be updates based on this value.
+pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
 
 impl Convert<(Weight, WeightMultiplier), WeightMultiplier> for WeightMultiplierUpdateHandler {
     fn convert(previous_state: (Weight, WeightMultiplier)) -> WeightMultiplier {
