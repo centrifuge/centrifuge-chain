@@ -20,10 +20,10 @@ pub enum Alternative {
     Development,
     /// Whatever the current runtime is, with simple Alice/Bob auths.
     LocalTestnet,
-    /// Fulvous testnet with whatever the current runtime is and with Alice/Bob as validators.
+    /// Fulvous testnet with whatever the current runtime is.
     Fulvous,
-    /// Amber testnet with whatever the current runtime is and persistent disks and with Alice/Bob as validators.
-    Amber,
+    /// Flint testnet with whatever the current runtime is and persistent disks.
+    Flint,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -144,11 +144,11 @@ impl Alternative {
                     None,
                 )
             }
-            // Amber initial spec
-            Alternative::Amber => {
+            // Flint initial spec
+            Alternative::Flint => {
                 ChainSpec::from_genesis(
-                    "Amber Testnet",
-                    "amber",
+                    "Flint Testnet",
+                    "flint",
                     || {
                         testnet_genesis(
                         vec![
@@ -175,7 +175,7 @@ impl Alternative {
                     },
                     vec![],
                     None,
-                    Some("ambr"),
+                    Some("flnt"),
                     None,
                     None,
                 )
@@ -188,7 +188,7 @@ impl Alternative {
             "dev" => Some(Alternative::Development),
             "" | "local" => Some(Alternative::LocalTestnet),
             "fulvous" => Some(Alternative::Fulvous),
-            "amber" => Some(Alternative::Amber),
+            "flint" => Some(Alternative::Flint),
             _ => None,
         }
     }
