@@ -52,6 +52,12 @@ pub struct AnchorData<Hash, BlockNumber> {
     anchored_block: BlockNumber,
 }
 
+impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
+    pub fn get_doc_root(self) -> Hash {
+        self.doc_root
+    }
+}
+
 /// The module's configuration trait.
 pub trait Trait: system::Trait + timestamp::Trait + fees::Trait + balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;

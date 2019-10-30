@@ -76,6 +76,9 @@ mod common;
 /// proofs utilities
 mod proofs;
 
+/// nft module
+mod nfts;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -358,6 +361,10 @@ impl fees::Trait for Runtime {
     type Event = Event;
 }
 
+impl nfts::Trait for Runtime {
+    type Event = Event;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -374,6 +381,7 @@ construct_runtime!(
 		Anchor: anchor::{Module, Call, Storage, Event<T>},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		RandomnessCollectiveFlip: randomness_collective_flip::{Module, Call, Storage},
+		Nfts: nfts::{Module, Call, Event<T>},
 	}
 );
 
