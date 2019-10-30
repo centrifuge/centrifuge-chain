@@ -10,9 +10,7 @@ use sr_primitives::{
     traits::Hash,
     weights::{SimpleDispatchInfo, Weight},
 };
-use support::{
-    decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue,
-};
+use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue};
 use system::ensure_signed;
 
 #[cfg(feature = "std")]
@@ -165,12 +163,12 @@ decl_module! {
         /// account would be charged accordingly for the storage period.
         /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
         /// # <weight>
-		/// State rent takes into account the storage cost depending on `stored_until_date`.
-		/// Otherwise independant of the inputs. The weight cost is important as it helps avoid DOS
-		/// using smaller `stored_until_date`s. Computation cost involves timestamp calculations
-		/// and state rent calculations, which we take here to be equivalent to a transfer transaction.
-		///
-		/// # </weight>
+        /// State rent takes into account the storage cost depending on `stored_until_date`.
+        /// Otherwise independant of the inputs. The weight cost is important as it helps avoid DOS
+        /// using smaller `stored_until_date`s. Computation cost involves timestamp calculations
+        /// and state rent calculations, which we take here to be equivalent to a transfer transaction.
+        ///
+        /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;

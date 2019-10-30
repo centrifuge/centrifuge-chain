@@ -18,12 +18,12 @@ use grandpa::{AuthorityId as GrandpaId, AuthorityWeight as GrandpaWeight};
 use primitives::{crypto::key_types, OpaqueMetadata};
 use rstd::prelude::*;
 use sr_primitives::traits::{
-    BlakeTwo256, Block as BlockT, NumberFor, StaticLookup, Verify, Convert, Saturating,
+    BlakeTwo256, Block as BlockT, Convert, NumberFor, Saturating, StaticLookup, Verify,
 };
 use sr_primitives::weights::{Weight, WeightMultiplier};
 use sr_primitives::{
     create_runtime_str, generic, impl_opaque_keys, transaction_validity::TransactionValidity,
-    AnySignature, ApplyResult, Fixed64
+    AnySignature, ApplyResult, Fixed64,
 };
 #[cfg(feature = "std")]
 use version::NativeVersion;
@@ -307,7 +307,8 @@ impl Convert<(Weight, WeightMultiplier), WeightMultiplier> for WeightMultiplierU
         } else {
             // first_term > second_term
             let negative = first_term - second_term;
-            multiplier.saturating_sub(WeightMultiplier::from_fixed(negative))
+            multiplier
+                .saturating_sub(WeightMultiplier::from_fixed(negative))
                 // despite the fact that apply_to saturates weight (final fee cannot go below 0)
                 // it is crucially important to stop here and don't further reduce the weight fee
                 // multiplier. While at -1, it means that the network is so un-congested that all
