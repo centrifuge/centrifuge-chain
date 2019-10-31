@@ -136,6 +136,10 @@ decl_module! {
         /// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
         /// allowed to `commit` a corresponding anchor before the pre-commit has expired.
         /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        /// # <weight>
+        /// minimal logic, also needs to be consume less block capacity + cheaper to make the pre-commits viable.
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
             // TODO make payable
             let who = ensure_signed(origin)?;
@@ -225,6 +229,10 @@ decl_module! {
         /// has progressed past the block number provided in `evict_bucket`. `evict_bucket` is also
         /// the index to find the pre-commits stored in storage to be evicted when the
         /// `evict_bucket` number of blocks has expired.
+        /// # <weight>
+        /// - discourage DoS
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
             // TODO make payable
             ensure_signed(origin)?;
@@ -256,6 +264,10 @@ decl_module! {
         /// their eviction date, what this function does is to remove those child tries which has
         /// date_represented_by_root < current_date. Additionally it needs to take care of indexes
         /// created for accessing anchors, eg: to find an anchor given an id.
+        /// # <weight>
+        /// - discourage DoS
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn evict_anchors(origin) -> Result {
             ensure_signed(origin)?;
             let current_timestamp = <timestamp::Module<T>>::get();
@@ -281,6 +293,8 @@ decl_module! {
         }
 
         /// Dispatch call when anchor by anchor_id is to be moved to another chain.
+        /// TODO remove?
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn move_anchor(origin, anchor_id: T::Hash) -> Result {
             // ensure signed origin
             ensure_signed(origin)?;

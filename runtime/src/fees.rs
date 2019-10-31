@@ -1,5 +1,8 @@
 use codec::{Decode, Encode};
-use sr_primitives::traits::Hash;
+use sr_primitives::{
+    traits::Hash,
+    weights::{SimpleDispatchInfo, Weight},
+};
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
 use support::{
@@ -66,6 +69,11 @@ decl_module! {
         }
 
         /// Set the given fee for the key
+        /// # <weight>
+        /// - Independent of the arguments.
+        /// - Contains a limited number of reads and writes.
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> Result {
             let sender = ensure_signed(origin)?;
             Self::can_change_fee(sender.clone())?;

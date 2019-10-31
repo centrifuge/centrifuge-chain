@@ -2,6 +2,7 @@ use crate::{anchor, proofs};
 use rstd::vec::Vec;
 use support::{decl_event, decl_module, dispatch::Result, ensure};
 use system::ensure_signed;
+use sr_primitives::weights::{SimpleDispatchInfo, Weight};
 
 pub trait Trait: anchor::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -20,6 +21,10 @@ decl_module! {
         /// validates the proofs provided against the document root associated with the anchor_id.
         /// Once the proofs are verified, we create a bundled hash (deposit_address + [proof[i].hash])
         /// Bundled Hash is deposited to an DepositAsset event for bridging purposes.
+        /// # <weight>
+        /// - depends on the arguments
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<proofs::Proof>) -> Result {
             ensure_signed(origin)?;
 

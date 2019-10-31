@@ -324,7 +324,9 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 500;
     pub const TransferFee: u128 = 0;
     pub const CreationFee: u128 = 0;
+    /// No need of a base fee for now as all transactions are priced with their weight + state rent
     pub const TransactionBaseFee: u128 = 0;
+    /// Per byte fee would discourage larger bandwidth transactions like
     pub const TransactionByteFee: u128 = 0;
 }
 
