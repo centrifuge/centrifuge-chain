@@ -1,7 +1,7 @@
 use codec::{Decode, Encode};
 use sr_primitives::{
     traits::Hash,
-    weights::{SimpleDispatchInfo, Weight},
+    weights::SimpleDispatchInfo,
 };
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
