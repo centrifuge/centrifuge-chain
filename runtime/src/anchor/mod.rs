@@ -6,7 +6,10 @@
 use crate::{common, fees};
 use codec::{Decode, Encode};
 use rstd::{convert::TryInto, vec::Vec};
-use sr_primitives::traits::Hash;
+use sr_primitives::{
+    traits::Hash,
+    weights::SimpleDispatchInfo,
+};
 use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue};
 use system::ensure_signed;
 
@@ -133,6 +136,10 @@ decl_module! {
         /// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
         /// allowed to `commit` a corresponding anchor before the pre-commit has expired.
         /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        /// # <weight>
+        /// minimal logic, also needs to be consume less block capacity + cheaper to make the pre-commits viable.
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
             // TODO make payable
             let who = ensure_signed(origin)?;
@@ -159,6 +166,14 @@ decl_module! {
         /// the committed anchor would be evicted after the given `stored_until_date`. The calling
         /// account would be charged accordingly for the storage period.
         /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        /// # <weight>
+        /// State rent takes into account the storage cost depending on `stored_until_date`.
+        /// Otherwise independant of the inputs. The weight cost is important as it helps avoid DOS
+        /// using smaller `stored_until_date`s. Computation cost involves timestamp calculations
+        /// and state rent calculations, which we take here to be equivalent to a transfer transaction.
+        ///
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
             let who = ensure_signed(origin)?;
             ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
@@ -179,7 +194,6 @@ decl_module! {
                 ensure!(<PreCommits<T>>::get(anchor_id).identity == who, "Pre-commit owned by someone else");
                 ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
-
 
             let block_num = <system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
@@ -215,6 +229,10 @@ decl_module! {
         /// has progressed past the block number provided in `evict_bucket`. `evict_bucket` is also
         /// the index to find the pre-commits stored in storage to be evicted when the
         /// `evict_bucket` number of blocks has expired.
+        /// # <weight>
+        /// - discourage DoS
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
             // TODO make payable
             ensure_signed(origin)?;
@@ -246,6 +264,10 @@ decl_module! {
         /// their eviction date, what this function does is to remove those child tries which has
         /// date_represented_by_root < current_date. Additionally it needs to take care of indexes
         /// created for accessing anchors, eg: to find an anchor given an id.
+        /// # <weight>
+        /// - discourage DoS
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn evict_anchors(origin) -> Result {
             ensure_signed(origin)?;
             let current_timestamp = <timestamp::Module<T>>::get();
@@ -271,6 +293,8 @@ decl_module! {
         }
 
         /// Dispatch call when anchor by anchor_id is to be moved to another chain.
+        /// TODO remove?
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn move_anchor(origin, anchor_id: T::Hash) -> Result {
             // ensure signed origin
             ensure_signed(origin)?;

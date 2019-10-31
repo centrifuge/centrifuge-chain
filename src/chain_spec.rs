@@ -81,7 +81,7 @@ impl Alternative {
                 vec![],
                 None,
                 None,
-                None,
+                Some(get_default_properties("DRAD")),
                 None,
             ),
             Alternative::LocalTestnet => ChainSpec::from_genesis(
@@ -140,7 +140,7 @@ impl Alternative {
                     vec![],
                     None,
                     Some("flvs"),
-                    None,
+                    Some(get_default_properties("TRAD")),
                     None,
                 )
             }
@@ -176,7 +176,7 @@ impl Alternative {
                     vec![],
                     None,
                     Some("flnt"),
-                    None,
+                    Some(get_default_properties("FRAD")),
                     None,
                 )
             }
@@ -245,4 +245,13 @@ fn testnet_genesis(
             )],
         }),
     }
+}
+
+fn get_default_properties(token: &str) -> substrate_service::Properties {
+    let data = format!("\
+		{{
+			\"tokenDecimals\": 18,\
+			\"tokenSymbol\": \"{}\"\
+		}}", token);
+    serde_json::from_str(&data).unwrap()
 }
