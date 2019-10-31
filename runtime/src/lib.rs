@@ -45,7 +45,7 @@ pub use sr_primitives::BuildStorage;
 pub use sr_primitives::{Perbill, Permill};
 pub use support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
 pub use timestamp::Call as TimestampCall;
-// pub use staking::StakerStatus;
+pub use staking::StakerStatus;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;

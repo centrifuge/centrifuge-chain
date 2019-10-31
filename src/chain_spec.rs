@@ -10,6 +10,7 @@ use primitives::{Pair, Public};
 use substrate_service;
 use im_online::sr25519::{AuthorityId as ImOnlineId};
 use sr_primitives::Perbill;
+pub use node_primitives::{Balance};
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig>;
@@ -46,8 +47,10 @@ fn get_from_pubkey_hex<TPublic: Public>(pubkey_hex: &str) -> <TPublic::Pair as P
 }
 
 /// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (GrandpaId, BabeId, ImOnlineId) {
+pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
     (
+        get_from_seed::<AccountId>(&format!("{}//stash", seed)),
+		get_from_seed::<AccountId>(seed),
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<BabeId>(seed),
         get_from_seed::<ImOnlineId>(seed),
@@ -55,8 +58,10 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (GrandpaId, BabeId, ImOnlineI
 }
 
 /// Helper function to obtain grandpa and babe keys from pubkey strings
-pub fn get_authority_keys_from_pubkey_hex(grandpa: &str, babe: &str, imOnlineId: &str) -> (GrandpaId, BabeId, ImOnlineId) {
+pub fn get_authority_keys_from_pubkey_hex(stash: &str, controller: &str, grandpa: &str, babe: &str, imOnlineId: &str) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
     (
+        get_from_pubkey_hex::<AccountId>(stash),
+        get_from_pubkey_hex::<AccountId>(controller),
         get_from_pubkey_hex::<GrandpaId>(grandpa),
         get_from_pubkey_hex::<BabeId>(babe),
         get_from_pubkey_hex::<ImOnlineId>(imOnlineId),
@@ -130,10 +135,14 @@ impl Alternative {
                     || {
                         testnet_genesis(
                         vec![
-                            get_authority_keys_from_pubkey_hex("8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
+                            get_authority_keys_from_pubkey_hex("a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639", // TODO replace with other AccountId
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639", // TODO replace with other AccountId
+                                                               "8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
                                                                "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639",
                                                                "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"), // TODO replace with other AccountId
-                            get_authority_keys_from_pubkey_hex("be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
+                            get_authority_keys_from_pubkey_hex("42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d", // TODO replace with other AccountId
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d", // TODO replace with other AccountId
+                                                               "be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
                                                                "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d",
                                                                "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"), // TODO replace with other AccountId
                         ],
@@ -159,10 +168,16 @@ impl Alternative {
                     || {
                         testnet_genesis(
                         vec![
-                            get_authority_keys_from_pubkey_hex("8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
-                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"),
-                            get_authority_keys_from_pubkey_hex("be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
-                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"),
+                            get_authority_keys_from_pubkey_hex("a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639", // TODO replace with other AccountId
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639", // TODO replace with other AccountId
+                                                               "8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639",
+                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"), // TODO replace with other AccountId
+                            get_authority_keys_from_pubkey_hex("42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d", // TODO replace with other AccountId
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d", // TODO replace with other AccountId
+                                                               "be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d",
+                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"), // TODO replace with other AccountId
                         ],
                         get_from_pubkey_hex::<AccountId>("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"),
                         vec![
@@ -206,12 +221,13 @@ fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> Sess
 }
 
 fn testnet_genesis(
-    initial_authorities: Vec<(GrandpaId, BabeId, ImOnlineId)>,
+    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
-    const STASH: Balance = 100; // TODO adjust
+    const ENDOWMENT: Balance = 10_000_000_000_000_000_000; // endowed in nano, for 1,000,000,000 Dev (=1,000,000,000 Rad)
+    const STASH: Balance = 100_000_000_000_000; // TODO adjust
 
     GenesisConfig {
         system: Some(SystemConfig {
@@ -225,11 +241,12 @@ fn testnet_genesis(
             balances: endowed_accounts
                 .iter()
                 .cloned()
-                // endowed in nano, for 1,000,000,000 Dev (=1,000,000,000 Rad)
-                .map(|k| (k, 10_000_000_000_000_000_000))
+                .map(|k| (k, ENDOWMENT))
+                .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
                 .collect(),
             vesting: vec![],
         }),
+        // TODO do we want/need indices? See substrate's `node/cli/src/chain_spec.rs`
         session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
 				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone()))
@@ -262,10 +279,7 @@ fn testnet_genesis(
 		// }),
         sudo: Some(SudoConfig { key: root_key }),
         babe: Some(BabeConfig {
-            authorities: initial_authorities
-                .iter()
-                .map(|x| (x.1.clone(), 1))
-                .collect(),
+            authorities: vec![],
         }),
         im_online: Some(ImOnlineConfig {
 			keys: vec![],
@@ -274,12 +288,9 @@ fn testnet_genesis(
 			keys: vec![],
 		}),
         grandpa: Some(GrandpaConfig {
-            authorities: initial_authorities
-                .iter()
-                .map(|x| (x.0.clone(), 1))
-                .collect(),
+            authorities: vec![],
         }),
-        membership_Instance1: Some(Default::default()),
+        // membership_Instance1: Some(Default::default()),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // anchoring state rent fee per day. TODO Define in a more human friendly way.

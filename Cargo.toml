@@ -72,6 +72,12 @@ git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-network'
 rev = '67b73c468e44839c5809245703d067dc75940076'
 
+[dependencies.node-primitives]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'node-primitives'
+rev = '67b73c468e44839c5809245703d067dc75940076'
+
 [dependencies.centrifuge-chain-runtime]
 path = 'runtime'
 
