@@ -1,76 +1,98 @@
 version: "3.7"
 services:
-  alice:
+  validator-alice:
     image: centrifugeio/centrifuge-chain:latest
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          cpus: "1"
-          memory: 2000M
-      restart_policy:
-        condition: on-failure
+    # deploy:
+    #   replicas: 1
+    #   resources:
+    #     limits:
+    #       cpus: "1"
+    #       memory: 2000M
+    #   restart_policy:
+    #     condition: on-failure
     ports:
       - 9933:9933
       - 9944:9944
       - 30333:30333
-    expose:
-      - 9933
-      - 9944
-      - 30333
     networks:
-      centchain-network:
-        ipv4_address: 172.42.0.2
+      - internet
     volumes:
       - "~/tmp/centrifuge-chain/alice/:/data"
     entrypoint:
       - centrifuge-chain
-      - --ws-external
-      - --validator
-      # TODO remove alice here and call the RPC method to start validating with a proper account
+      # Local node id: QmRpheLN4JWdAnY7HGJfWFNbfkQCb6tFf4vvA6hgjMZKrR
+      - --node-key=0000000000000000000000000000000000000000000000000000000000000001
+      - --chain=local
       - --alice
+      - --bootnodes=/dns4/validator-bob/tcp/30333/p2p/QmSVnNf9HwVMT1Y4cK1P6aoJcEZjmoTXpjKBmAABLMnZEk
+      - --bootnodes=/dns4/validator-charlie/tcp/30333/p2p/QmV7EhW6J6KgmNdr558RH1mPx2xGGznW7At4BhXzntRFsi
+      - --ws-external
+      - --rpc-external
+      - --no-telemetry
       - --rpc-cors=all
-      # TODO bitte!! remove this private key and read a key file
-      - --node-key=2a654a0958cd0e10626c36057c46a08018eaf2901f9bab74ecc1144f714300ac
-      - --chain=/var/local/testnets/fulvous.raw.json
-      - --bootnodes=/ip4/172.42.0.3/tcp/30333/p2p/QmSqbcHcJh7DvKDdMYxWREtnAfqqxLiX7J2YDGiV6e5LQq
-  babette:
+  validator-bob:
     image: centrifugeio/centrifuge-chain:latest
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          cpus: "1"
-          memory: 2000M
-      restart_policy:
-        condition: on-failure
+    # deploy:
+    #   replicas: 1
+    #   resources:
+    #     limits:
+    #       cpus: "1"
+    #       memory: 2000M
+    #   restart_policy:
+    #     condition: on-failure
     ports:
       - 9934:9933
       - 9945:9944
       - 30334:30333
-    expose:
-      - 9933
-      - 9944
-      - 30333
     networks:
-      centchain-network:
-        ipv4_address: 172.42.0.3
+      - internet
     volumes:
-      - "~/tmp/centrifuge-chain/babette/:/data"
+      - "~/tmp/centrifuge-chain/bob/:/data"
     entrypoint:
       - centrifuge-chain
-      - --ws-external
-      - --validator
-      # TODO bitte!! remove this private key and read a key file
-      - --node-key=66ef62065cfdc48929b5cb9c1bbc0a728e6d1d43b4ba1de13ccf76c7ecec66e9
-      # TODO remove bob here and call the RPC method to start validating with a proper account
+      # Local node id: QmSVnNf9HwVMT1Y4cK1P6aoJcEZjmoTXpjKBmAABLMnZEk
+      - --node-key=0000000000000000000000000000000000000000000000000000000000000002
+      - --chain=local
       - --bob
+      - --bootnodes=/dns4/validator-alice/tcp/30333/p2p/QmRpheLN4JWdAnY7HGJfWFNbfkQCb6tFf4vvA6hgjMZKrR
+      - --bootnodes=/dns4/validator-charlie/tcp/30333/p2p/QmV7EhW6J6KgmNdr558RH1mPx2xGGznW7At4BhXzntRFsi
+      - --ws-external
+      - --rpc-external
+      - --no-telemetry
       - --rpc-cors=all
-      - --chain=/var/local/testnets/fulvous.raw.json
-      - --bootnodes=/ip4/172.42.0.2/tcp/30333/p2p/QmctF8dCW8LBr6zqVEUJHmjmqFcsxjV91tuUL7rVLg3Zd6
+  validator-charlie:
+    image: centrifugeio/centrifuge-chain:latest
+    # deploy:
+    #   replicas: 1
+    #   resources:
+    #     limits:
+    #       cpus: "1"
+    #       memory: 2000M
+    #   restart_policy:
+    #     condition: on-failure
+    ports:
+      - 9935:9933
+      - 9946:9944
+      - 30335:30333
+    networks:
+      - internet
+    volumes:
+      - "~/tmp/centrifuge-chain/charlie/:/data"
+    entrypoint:
+      - centrifuge-chain
+      # Local node id: QmV7EhW6J6KgmNdr558RH1mPx2xGGznW7At4BhXzntRFsi
+      - --node-key=0000000000000000000000000000000000000000000000000000000000000003
+      - --chain=local
+      - --charlie
+      - --bootnodes=/dns4/validator-alice/tcp/30333/p2p/QmRpheLN4JWdAnY7HGJfWFNbfkQCb6tFf4vvA6hgjMZKrR
+      - --bootnodes=/dns4/validator-bob/tcp/30333/p2p/QmSVnNf9HwVMT1Y4cK1P6aoJcEZjmoTXpjKBmAABLMnZEk
+      - --ws-external
+      - --rpc-external
+      - --no-telemetry
+      - --rpc-cors=all
+  # ui:
+  #   image: polkadot-js/apps
+  #   ports:
+  #     - "3000:80"
 networks:
-  centchain-network:
-    ipam:
-      driver: default
-      config:
-          - subnet: 172.42.0.0/16
+  internet:
