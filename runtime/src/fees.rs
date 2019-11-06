@@ -1,5 +1,7 @@
 use codec::{Decode, Encode};
-use sr_primitives::traits::Hash;
+use sr_primitives::{
+    weights::SimpleDispatchInfo,
+};
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
 use support::{
@@ -7,16 +9,10 @@ use support::{
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
-    StorageValue,
 };
 use system::ensure_signed;
 
-// TODO tie in governance
-//use super::validatorset;
-
 /// The module's configuration trait.
-/// TODO tie in governance
-//pub trait Trait: system::Trait + balances::Trait + validatorset::Trait{
 pub trait Trait: system::Trait + balances::Trait {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -66,6 +62,11 @@ decl_module! {
         }
 
         /// Set the given fee for the key
+        /// # <weight>
+        /// - Independent of the arguments.
+        /// - Contains a limited number of reads and writes.
+        /// # </weight>
+        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> Result {
             let sender = ensure_signed(origin)?;
             Self::can_change_fee(sender.clone())?;

@@ -655,8 +655,7 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
         let block_height_1 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;;
-
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
 
         // ------ Register the pre-commits ------
         // register anchor_id_0 into block_height_0
@@ -719,10 +718,9 @@ fn pre_commit_and_then_evict() {
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
         let block_height_1 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
         let block_height_2 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_1) + block_height_0;;
-
+            Anchor::determine_pre_commit_eviction_bucket(block_height_1) + block_height_0;
 
         // ------ Register the pre-commits ------
         // register anchor_id_0 into block_height_0

@@ -24,10 +24,10 @@ pub enum Alternative {
     Development,
     /// Whatever the current runtime is, with simple Alice/Bob auths.
     LocalTestnet,
-    /// Fulvous testnet with whatever the current runtime is and with Alice/Bob as validators.
+    /// Fulvous testnet with whatever the current runtime is.
     Fulvous,
-    /// Amber testnet with whatever the current runtime is and persistent disks and with Alice/Bob as validators.
-    Amber,
+    /// Flint testnet with whatever the current runtime is and persistent disks.
+    Flint,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -58,13 +58,13 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, Grandp
 }
 
 /// Helper function to obtain grandpa and babe keys from pubkey strings
-pub fn get_authority_keys_from_pubkey_hex(stash: &str, controller: &str, grandpa: &str, babe: &str, imOnlineId: &str) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
+pub fn get_authority_keys_from_pubkey_hex(stash: &str, controller: &str, grandpa: &str, babe: &str, im_online_id: &str) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
     (
         get_from_pubkey_hex::<AccountId>(stash),
         get_from_pubkey_hex::<AccountId>(controller),
         get_from_pubkey_hex::<GrandpaId>(grandpa),
         get_from_pubkey_hex::<BabeId>(babe),
-        get_from_pubkey_hex::<ImOnlineId>(imOnlineId),
+        get_from_pubkey_hex::<ImOnlineId>(im_online_id),
     )
 }
 
@@ -91,7 +91,7 @@ impl Alternative {
                 vec![],
                 None,
                 None,
-                None,
+                Some(get_default_properties("DRAD")),
                 None,
             ),
             Alternative::LocalTestnet => ChainSpec::from_genesis(
@@ -156,15 +156,15 @@ impl Alternative {
                     vec![],
                     None,
                     Some("flvs"),
-                    None,
+                    Some(get_default_properties("TRAD")),
                     None,
                 )
             }
-            // Amber initial spec
-            Alternative::Amber => {
+            // Flint initial spec
+            Alternative::Flint => {
                 ChainSpec::from_genesis(
-                    "Amber Testnet",
-                    "amber",
+                    "Flint Testnet",
+                    "flint",
                     || {
                         testnet_genesis(
                         vec![
@@ -197,8 +197,8 @@ impl Alternative {
                     },
                     vec![],
                     None,
-                    Some("ambr"),
-                    None,
+                    Some("flnt"),
+                    Some(get_default_properties("FRAD")),
                     None,
                 )
             }
@@ -210,7 +210,7 @@ impl Alternative {
             "dev" => Some(Alternative::Development),
             "" | "local" => Some(Alternative::LocalTestnet),
             "fulvous" => Some(Alternative::Fulvous),
-            "amber" => Some(Alternative::Amber),
+            "flint" => Some(Alternative::Flint),
             _ => None,
         }
     }
@@ -227,7 +227,7 @@ fn testnet_genesis(
     _enable_println: bool,
 ) -> GenesisConfig {
     const ENDOWMENT: Balance = 10_000_000_000_000_000_000; // endowed in nano, for 1,000,000,000 Dev (=1,000,000,000 Rad)
-    const STASH: Balance = 100_000_000_000_000; // TODO adjust
+    const STASH: Balance = 100_000_000_000_000;
 
     GenesisConfig {
         system: Some(SystemConfig {
@@ -306,4 +306,13 @@ fn testnet_genesis(
             )],
         }),
     }
+}
+
+fn get_default_properties(token: &str) -> substrate_service::Properties {
+    let data = format!("\
+		{{
+			\"tokenDecimals\": 18,\
+			\"tokenSymbol\": \"{}\"\
+		}}", token);
+    serde_json::from_str(&data).unwrap()
 }
