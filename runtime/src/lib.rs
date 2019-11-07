@@ -391,7 +391,7 @@ impl session::Trait for Runtime {
 	type SessionHandler = SessionHandlers;
 	type ShouldEndSession = Babe;
 	type Event = Event;
-	type Keys = SessionKeys;
+	type Keys = opaque::SessionKeys;
 	type ValidatorId = <Self as system::Trait>::AccountId;
 	type ValidatorIdOf = staking::StashOf<Self>;
 	type SelectInitialValidators = Staking;
