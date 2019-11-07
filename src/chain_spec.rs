@@ -168,16 +168,16 @@ impl Alternative {
                     || {
                         testnet_genesis(
                         vec![
-                            get_authority_keys_from_pubkey_hex("a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639", // TODO replace with other AccountId
-                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639", // TODO replace with other AccountId
-                                                               "8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8",
-                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639",
-                                                               "a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"), // TODO replace with other AccountId
-                            get_authority_keys_from_pubkey_hex("42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d", // TODO replace with other AccountId
-                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d", // TODO replace with other AccountId
-                                                               "be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d",
-                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d",
-                                                               "42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"), // TODO replace with other AccountId
+                            get_authority_keys_from_pubkey_hex("e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d",
+                                                               "163fd93fd76775a38ee5d12f5e6ee2c106a92e5aa725a41e427a4f278887dc4c",
+                                                               "4f5d54c1796633251f9600b51e1961dec3939ceb0f927584f357c38b5463c95e",
+                                                               "709c81a5ada8288f8c22b9605e9f8fba5034e13110799fdd7418bff37932c130",
+                                                               "524d4cae76a0354c7adf531c61c2e1269ecef63154cfc5d513c554bbd705fc68"),
+                            get_authority_keys_from_pubkey_hex("6c8f1e49c090d4998b23cc68d52453563785df4e84f3a10024b77d8b4649d51c",
+                                                               "2eaf31854d0d09ebbb920bf0bf4ff02570fa4f01d4557b5e1753bb70e5e6f25c",
+                                                               "9eb9733ca20fa497d0b6e502a9030fc9037ad2943e2b27057816632fcc7d2237",
+                                                               "18291e4e4ca96f95d1014935880392dfd51ee99c1e9fd01e0255302f2984ef4a",
+                                                               "922719894768d1e78efdb286e8f2bb118165332ff6c5b4ea3beb9ed43cea2718"),
                         ],
                         get_from_pubkey_hex::<AccountId>("c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"),
                         vec![
