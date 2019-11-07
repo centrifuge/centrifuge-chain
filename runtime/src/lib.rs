@@ -114,7 +114,9 @@ pub mod opaque {
             pub grandpa: GrandpaId,
             #[id(key_types::BABE)]
             pub babe: BabeId,
-        }
+            #[id(key_types::IM_ONLINE)]
+            pub im_online: ImOnlineId,
+	    }
     }
 }
 
@@ -374,17 +376,6 @@ impl authorship::Trait for Runtime {
 }
 
 type SessionHandlers = (Grandpa, Babe, ImOnline, AuthorityDiscovery);
-
-impl_opaque_keys! {
-	pub struct SessionKeys {
-		#[id(key_types::GRANDPA)]
-		pub grandpa: GrandpaId,
-		#[id(key_types::BABE)]
-		pub babe: BabeId,
-		#[id(key_types::IM_ONLINE)]
-		pub im_online: ImOnlineId,
-	}
-}
 
 // NOTE: `SessionHandler` and `SessionKeys` are co-dependent: One key will be used for each handler.
 // The number and order of items in `SessionHandler` *MUST* be the same number and order of keys in
