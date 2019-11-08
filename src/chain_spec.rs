@@ -1,8 +1,8 @@
 use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::{
     AuthorityDiscoveryConfig, AccountId, BabeConfig, BalancesConfig, FeesConfig, GenesisConfig, GrandpaConfig, Hash,
-    ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig, SystemConfig,
-    WASM_BINARY,
+    ImOnlineConfig, IndicesConfig, SessionConfig, opaque::SessionKeys, StakerStatus, StakingConfig, SudoConfig,
+    SystemConfig, WASM_BINARY,
 };
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex::FromHex;
