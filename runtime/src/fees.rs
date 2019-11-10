@@ -1,7 +1,7 @@
 use codec::{Decode, Encode};
 use sr_primitives::{
-    traits::Hash,
     weights::SimpleDispatchInfo,
+    traits::Hash,
 };
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
@@ -10,16 +10,10 @@ use support::{
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
-    StorageValue,
 };
 use system::ensure_signed;
 
-// TODO tie in governance
-//use super::validatorset;
-
 /// The module's configuration trait.
-/// TODO tie in governance
-//pub trait Trait: system::Trait + balances::Trait + validatorset::Trait{
 pub trait Trait: system::Trait + balances::Trait {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;

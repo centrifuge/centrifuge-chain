@@ -863,7 +863,7 @@ fn pre_commit_and_then_evict_larger_than_max_evict() {
 fn anchor_evict_single_anchor_per_day_1000_days() {
     new_test_ext().execute_with(|| {
         let day = |n| common::MS_PER_DAY * n + 1;
-        let (doc_root, signing_root, proof) = Test::test_document_hashes();
+        let (doc_root, _signing_root, proof) = Test::test_document_hashes();
         let mut anchors = vec![];
         let verify_anchor_eviction = |day: usize, anchors: &Vec<H256>| {
             assert!(Anchor::get_anchor_by_id(anchors[day - 2]).is_none());
@@ -982,13 +982,13 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 fn test_remove_anchor_indexes() {
     new_test_ext().execute_with(|| {
         let day = |n| common::MS_PER_DAY * n + 1;
-        let (doc_root, signing_root, proof) = Test::test_document_hashes();
+        let (doc_root, _signing_root, proof) = Test::test_document_hashes();
 
         // create 2000 anchors that expire on same day
         for i in 0..2000 {
             let random_seed = <randomness_collective_flip::Module<Test>>::random_seed();
             let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let _anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
             assert_ok!(Anchor::commit(
                 Origin::signed(1),
                 pre_image,
@@ -1031,7 +1031,7 @@ fn test_remove_anchor_indexes() {
 fn test_same_day_1001_anchors() {
     new_test_ext().execute_with(|| {
         let day = |n| common::MS_PER_DAY * n + 1;
-        let (doc_root, signing_root, proof) = Test::test_document_hashes();
+        let (doc_root, _signing_root, proof) = Test::test_document_hashes();
         let mut anchors = vec![];
 
         // create 1001 anchors that expire on same day
