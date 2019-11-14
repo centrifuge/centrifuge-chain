@@ -148,7 +148,7 @@ pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
-pub const EPOCH_DURATION_IN_BLOCKS: u32 = 2; // 10 * MINUTES;
+pub const EPOCH_DURATION_IN_BLOCKS: u32 = 30; // 10 * MINUTES;
 
 // These time units are defined in number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
@@ -415,7 +415,7 @@ srml_staking_reward_curve::build! {
 }
 
 parameter_types! {
-	pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 6; // number of epochs/sessions per era
+	pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 2; // number of epochs/sessions per era
 	pub const BondingDuration: staking::EraIndex = 24 * 28;
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }

@@ -258,7 +258,7 @@ fn testnet_genesis(
             // Minimum number of staking participants before emergency conditions are imposed.
 			minimum_validator_count: 1,
             // The ideal number of staking participants.
-			validator_count: 2,
+			validator_count: 5,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
