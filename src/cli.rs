@@ -4,7 +4,7 @@ use futures::{future, sync::oneshot, Future};
 use log::info;
 use std::cell::RefCell;
 pub use substrate_cli::{error, IntoExit, VersionInfo};
-use substrate_cli::{informant, parse_and_prepare, NoCustom, ParseAndPrepare};
+use substrate_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
 use substrate_service::{AbstractService, Configuration, Roles as ServiceRoles};
 use tokio::runtime::Runtime;
 
@@ -26,24 +26,23 @@ where
                 info!("  by {}, 2017, 2018", version.author);
                 info!("Chain specification: {}", config.chain_spec.name());
                 info!("Node name: {}", config.name);
-                info!("Roles: {:?}", config.roles);
+                info!("Roles: {}", display_role(&config));
                 let runtime = Runtime::new().map_err(|e| format!("{:?}", e))?;
                 match config.roles {
                     ServiceRoles::LIGHT => run_until_exit(
                         runtime,
-                        service::new_light(config).map_err(|e| format!("{:?}", e))?,
-                        exit,
+                        service::new_light(config)?,
+                        exit
                     ),
                     _ => run_until_exit(
                         runtime,
-                        service::new_full(config).map_err(|e| format!("{:?}", e))?,
-                        exit,
+                        service::new_full(config)?,
+                        exit
                     ),
                 }
-                .map_err(|e| format!("{:?}", e))
             },
         ),
-        ParseAndPrepare::BuildSpec(cmd) => cmd.run(load_spec),
+        ParseAndPrepare::BuildSpec(cmd) => cmd.run::<NoCustom, _, _, _>(load_spec),
         ParseAndPrepare::ExportBlocks(cmd) => cmd.run_with_builder(
             |config: Config<_>| Ok(new_full_start!(config).0),
             load_spec,
@@ -57,8 +56,8 @@ where
         ParseAndPrepare::PurgeChain(cmd) => cmd.run(load_spec),
         ParseAndPrepare::RevertChain(cmd) => {
             cmd.run_with_builder(|config: Config<_>| Ok(new_full_start!(config).0), load_spec)
-        }
-        ParseAndPrepare::CustomCommand(_) => Ok(()),
+        },
+        ParseAndPrepare::CustomCommand(_) => Ok(())
     }?;
 
     Ok(())

@@ -1,7 +1,9 @@
 use codec::{Decode, Encode};
 use rstd::vec::Vec;
+use sr_primitives::RuntimeDebug;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[cfg_attr(not(feature = "std"), derive(RuntimeDebug))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
     hash: [u8; 32],
@@ -42,7 +44,7 @@ fn hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
         h.extend_from_slice(&a);
     }
 
-    runtime_io::blake2_256(&h)
+    runtime_io::hashing::blake2_256(&h)
 }
 
 fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 32]>) -> bool {
@@ -73,7 +75,7 @@ pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
             acc
         });
 
-    runtime_io::keccak_256(hash.as_slice())
+        runtime_io::hashing::keccak_256(hash.as_slice())
 }
 
 #[cfg(test)]

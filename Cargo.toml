@@ -7,6 +7,7 @@ version = '2.0.1'
 
 [build-dependencies]
 vergen = '3.0.4'
+build-script-utils = { git = 'https://github.com/paritytech/substrate.git', package = 'substrate-build-script-utils', rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc' }
 
 [dependencies]
 derive_more = '0.15.0'
@@ -26,17 +27,33 @@ hex = "0.3.2"
 [dependencies.babe]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-consensus-babe'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.babe-primitives]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-consensus-babe-primitives'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.basic-authorship]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-basic-authorship'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
+[dependencies.chain-spec]
+git = 'https://github.com/paritytech/substrate.git'
+package = 'substrate-chain-spec'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
+[dependencies.client]
+git = 'https://github.com/paritytech/substrate.git'
+package = 'substrate-client'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
+[dependencies.client_db]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = "substrate-client-db"
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.codec]
 package = 'parity-scale-codec'
@@ -49,34 +66,46 @@ version = '3.1.3'
 [dependencies.grandpa]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-finality-grandpa'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.grandpa-primitives]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-finality-grandpa-primitives'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
+[dependencies.hex-literal]
+version = "0.2.1"
 
 [dependencies.im-online]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'srml-im-online'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.inherents]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-inherents'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.network]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-network'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
+[dependencies.node-executor]
+git = 'https://github.com/paritytech/substrate.git'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.node-primitives]
 default_features = false
 git = 'https://github.com/paritytech/substrate.git'
 package = 'node-primitives'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
+[dependencies.offchain]
+git = 'https://github.com/paritytech/substrate.git'
+package = "substrate-offchain"
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.centrifuge-chain-runtime]
 path = 'runtime'
@@ -84,40 +113,36 @@ path = 'runtime'
 [dependencies.primitives]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-primitives'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.sr-io]
 git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.sr-primitives]
 git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.substrate-rpc]
 git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.substrate-cli]
 git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
-
-[dependencies.substrate-client]
-git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.substrate-executor]
 git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.substrate-service]
 git = 'https://github.com/paritytech/substrate.git'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [dependencies.transaction-pool]
 git = 'https://github.com/paritytech/substrate.git'
 package = 'substrate-transaction-pool'
-rev = '67b73c468e44839c5809245703d067dc75940076'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
 [[bin]]
 name = 'centrifuge-chain'

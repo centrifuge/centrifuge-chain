@@ -204,7 +204,7 @@ decl_module! {
             };
 
             let anchor_data_encoded = anchor_data.encode();
-            runtime_io::set_child_storage(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
+            runtime_io::storage::child_set(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
             // update indexes
             <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
             let idx = LatestAnchorIndex::get() + 1;
@@ -406,11 +406,11 @@ impl<T: Trait> Module<T> {
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
                 if !EvictedAnchorRoots::exists(day) {
-                    EvictedAnchorRoots::insert(day, runtime_io::child_storage_root(&key));
+                    EvictedAnchorRoots::insert(day, runtime_io::storage::child_root(&key));
                 }
                 key
             })
-            .map(|key| runtime_io::kill_child_storage(&key))
+            .map(|key| runtime_io::storage::child_storage_kill(&key))
             .count()
     }
 
@@ -444,7 +444,7 @@ impl<T: Trait> Module<T> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
         let storage_key = common::generate_child_storage_key(anchor_evict_date);
 
-        runtime_io::child_storage(&storage_key, anchor_id.as_ref())
+        runtime_io::storage::child_get(&storage_key, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
     }
 
