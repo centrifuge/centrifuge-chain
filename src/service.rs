@@ -11,7 +11,8 @@ use substrate_service::{
 };
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
 use inherents::InherentDataProviders;
-use network::{construct_simple_protocol};
+use futures::sync::mpsc;
+use network::{construct_simple_protocol, DhtEvent};
 use substrate_executor::native_executor_instance;
 pub use substrate_executor::NativeExecutor;
 
@@ -33,7 +34,7 @@ construct_simple_protocol! {
 /// be able to perform chain operations.
 macro_rules! new_full_start {
     ($config:expr) => {{
-		// type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
+		type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
         let mut import_setup = None;
         let inherent_data_providers = inherents::InherentDataProviders::new();
 
@@ -76,13 +77,17 @@ macro_rules! new_full_start {
 
             import_setup = Some((babe_block_import, grandpa_link, babe_link));
             Ok(import_queue)
-        // })?
-        // .with_rpc_extensions(|client, _pool, _backend| -> RpcExtension {
-        //     use crate::api::{AnchorRpcApi, Anchors};
+        })?
+        .with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
+            use crate::api::{AnchorRpcApi, Anchors};
+            use srml_system_rpc::{System, SystemApi};
+            // use srml_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 
-        //     let mut io = jsonrpc_core::IoHandler::default();
-        //     io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
-        //     io // TODO Upgrade: comment back in
+            let mut io = jsonrpc_core::IoHandler::default();
+            io.extend_with(SystemApi::to_delegate(System::new(client.clone(), pool)));
+            // io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client)));
+            io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
+            io
         })?;
 
         (builder, import_setup, inherent_data_providers)
@@ -112,14 +117,14 @@ pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
     // back-pressure. Authority discovery is triggering one event per authority within the current authority set.
     // This estimates the authority set size to be somewhere below 10 000 thereby setting the channel buffer size to
     // 10 000.
-    // let (dht_event_tx, _dht_event_rx) =
-    //     mpsc::channel::<DhtEvent>(10_000);
+    let (dht_event_tx, _dht_event_rx) =
+        mpsc::channel::<DhtEvent>(10_000);
 
     let service = builder.with_network_protocol(|_| Ok(crate::service::NodeProtocol::new()))?
         .with_finality_proof_provider(|client, backend|
             Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
         )?
-        // .with_dht_event_tx(dht_event_tx)? // TODO Upgrade: needed?
+        .with_dht_event_tx(dht_event_tx)?
         .build()?;
 
     let (block_import, grandpa_link, babe_link) = import_setup.take()
@@ -213,7 +218,7 @@ pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
     -> Result<impl AbstractService, ServiceError>
 {
-	// type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
+	type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
 	let inherent_data_providers = InherentDataProviders::new();
 
 	let service = ServiceBuilder::new_light::<Block, RuntimeApi, Executor>(config)?
@@ -260,13 +265,17 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 		.with_finality_proof_provider(|client, backend|
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
         )?
-        // .with_rpc_extensions(|client, _pool, _backend| -> RpcExtension {
-        //     use crate::api::{AnchorRpcApi, Anchors};
+        .with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
+            use crate::api::{AnchorRpcApi, Anchors};
+            use srml_system_rpc::{System, SystemApi};
+            // use srml_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 
-        //     let mut io = jsonrpc_core::IoHandler::default();
-        //     io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
-        //     io
-        // })? // TODO Upgrade: comment back in
+            let mut io = jsonrpc_core::IoHandler::default();
+            io.extend_with(SystemApi::to_delegate(System::new(client.clone(), pool)));
+            // io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client)));
+            io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
+            io
+        })?
 		.build()?;
 
 	Ok(service)
