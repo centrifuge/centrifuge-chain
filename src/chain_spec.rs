@@ -22,16 +22,16 @@ type AccountPublic = <Signature as Verify>::Signer;
 ///
 /// Additional parameters for some Substrate core modules,
 /// customizable from the chain spec.
-// #[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
-// pub struct Extensions {
-// 	/// Block numbers with known hashes.
-// 	pub fork_blocks: client::ForkBlocks<Block>,
-// }
+#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
+pub struct Extensions {
+	/// Block numbers with known hashes.
+	pub fork_blocks: client::ForkBlocks<Block>,
+}
 
 /// Specialized `ChainSpec`.
 pub type ChainSpec = substrate_service::ChainSpec<
 	GenesisConfig,
-	// Extensions, // TODO Upgrade: add?
+	Extensions,
 >;
 
 fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
@@ -102,7 +102,7 @@ impl Alternative {
                 None,
                 None,
                 Some(get_default_properties("DRAD")),
-                None,
+                Default::default(),
             ),
             Alternative::LocalTestnet => ChainSpec::from_genesis(
                 "Local Testnet",
@@ -135,7 +135,7 @@ impl Alternative {
                 None,
                 None,
                 None,
-                None,
+                Default::default(),
             ),
             // Fulvous initial spec
             Alternative::Fulvous => {
@@ -171,7 +171,7 @@ impl Alternative {
                     None,
                     Some("flvs"),
                     Some(get_default_properties("TRAD")),
-                    None,
+                    Default::default(),
                 )
             }
             // Flint initial spec
@@ -217,7 +217,7 @@ impl Alternative {
                     None,
                     Some("flnt"),
                     Some(get_default_properties("FRAD")),
-                    None,
+                    Default::default(),
                 )
             }
         })

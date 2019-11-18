@@ -15,12 +15,12 @@ where
     T: Into<std::ffi::OsString> + Clone,
     E: IntoExit,
 {
-    type Config<T> = Configuration<(), T>;
+    type Config<A, B> = Configuration<(), A, B>;
     match parse_and_prepare::<NoCustom, NoCustom, _>(&version, "substrate-node", args) {
         ParseAndPrepare::Run(cmd) => cmd.run(
             load_spec,
             exit,
-            |exit, _cli_args, _custom_args, config: Config<_>| {
+            |exit, _cli_args, _custom_args, config: Config<_, _>| {
                 info!("{}", version.name);
                 info!("  version {}", config.full_version());
                 info!("  by {}, 2017, 2018", version.author);
@@ -44,18 +44,18 @@ where
         ),
         ParseAndPrepare::BuildSpec(cmd) => cmd.run::<NoCustom, _, _, _>(load_spec),
         ParseAndPrepare::ExportBlocks(cmd) => cmd.run_with_builder(
-            |config: Config<_>| Ok(new_full_start!(config).0),
+            |config: Config<_, _>| Ok(new_full_start!(config).0),
             load_spec,
             exit,
         ),
         ParseAndPrepare::ImportBlocks(cmd) => cmd.run_with_builder(
-            |config: Config<_>| Ok(new_full_start!(config).0),
+            |config: Config<_, _>| Ok(new_full_start!(config).0),
             load_spec,
             exit,
         ),
         ParseAndPrepare::PurgeChain(cmd) => cmd.run(load_spec),
         ParseAndPrepare::RevertChain(cmd) => {
-            cmd.run_with_builder(|config: Config<_>| Ok(new_full_start!(config).0), load_spec)
+            cmd.run_with_builder(|config: Config<_, _>| Ok(new_full_start!(config).0), load_spec)
         },
         ParseAndPrepare::CustomCommand(_) => Ok(())
     }?;
