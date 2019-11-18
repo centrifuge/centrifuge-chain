@@ -10,8 +10,9 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 use primitives::OpaqueMetadata;
 use rstd::prelude::*;
+use primitives::u32_trait::{_1, _2, _3, _4};
 use sr_primitives::traits::{
-    BlakeTwo256, Block as BlockT, ConvertInto, NumberFor, StaticLookup, Verify, OpaqueKeys,
+    BlakeTwo256, Block as BlockT, NumberFor, StaticLookup, Verify, OpaqueKeys,
 };
 use sr_primitives::weights::Weight;
 use sr_primitives::{
@@ -22,7 +23,7 @@ use sr_api::{decl_runtime_apis, impl_runtime_apis};
 use sr_primitives::{Permill, Perbill, ApplyResult, impl_opaque_keys, generic, create_runtime_str};
 use sr_primitives::curve::PiecewiseLinear;
 use im_online::sr25519::{AuthorityId as ImOnlineId};
-// use transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
+use transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use codec::{Encode, Decode};
 use system::offchain::TransactionSubmitter;
 use inherents::{InherentData, CheckInherentsResult};
@@ -37,13 +38,13 @@ use crate::anchor::AnchorData;
 pub use balances::Call as BalancesCall;
 #[cfg(any(feature = "std", test))]
 pub use sr_primitives::BuildStorage;
-pub use support::{construct_runtime, parameter_types, traits::Randomness, StorageValue};
+pub use support::{construct_runtime, parameter_types, traits::{SplitTwoWays, Currency, Randomness}, StorageValue};
 pub use timestamp::Call as TimestampCall;
 pub use staking::StakerStatus;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
-use impls::{CurrencyToVoteHandler};
+use impls::{CurrencyToVoteHandler, Author, LinearWeightToFee, TargetedFeeAdjustment};
 
 /// Used for anchor module
 pub mod anchor;
@@ -136,6 +137,15 @@ pub fn native_version() -> NativeVersion {
         can_author_with: Default::default(),
     }
 }
+
+type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
+
+pub type DealWithFees = SplitTwoWays<
+	Balance,
+	NegativeImbalance,
+	_4, Treasury,   // 4 parts (80%) goes to the treasury.
+	_1, Author,     // 1 part (20%) goes to the block author.
+>;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
@@ -252,11 +262,11 @@ parameter_types! {
 
 impl transaction_payment::Trait for Runtime {
 	type Currency = balances::Module<Runtime>;
-	type OnTransactionPayment = ();
+	type OnTransactionPayment = DealWithFees;
 	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = ConvertInto;
-	type FeeMultiplierUpdate = ();
+	type WeightToFee = LinearWeightToFee<WeightFeeCoefficient>;
+	type FeeMultiplierUpdate = TargetedFeeAdjustment<TargetBlockFullness>;
 }
 
 parameter_types! {
@@ -420,6 +430,7 @@ construct_runtime!(
 		Authorship: authorship::{Module, Call, Storage, Inherent},
 		Indices: indices::{default, Config<T>},
 		Balances: balances::{default, Error},
+		TransactionPayment: transaction_payment::{Module, Storage},
 		Session: session::{Module, Call, Storage, Event, Config<T>},
 		Staking: staking::{default, OfflineWorker},
 		// Council: collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
@@ -564,21 +575,15 @@ impl_runtime_apis! {
         }
     }
 
-    // impl transaction_payment_rpc_runtime_api::TransactionPaymentApi<
-	// 	Block,
-	// 	Balance,
-	// 	UncheckedExtrinsic,
-	// > for Runtime {
-	// 	fn query_info(uxt: UncheckedExtrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
-	// 		TransactionPayment::query_info(uxt, len)
-	// 	}
-	// }
-
-	// impl consensus_primitives::ConsensusApi<Block, babe_primitives::AuthorityId> for Runtime {
-	// 	fn authorities() -> Vec<babe_primitives::AuthorityId> {
-	// 		Babe::authorities().into_iter().map(|(a, _)| a).collect()
-	// 	}
-	// }
+    impl transaction_payment_rpc_runtime_api::TransactionPaymentApi<
+		Block,
+		Balance,
+		UncheckedExtrinsic,
+	> for Runtime {
+		fn query_info(uxt: UncheckedExtrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
+			TransactionPayment::query_info(uxt, len)
+		}
+	}
 
 	impl substrate_session::SessionKeys<Block> for Runtime {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {

@@ -137,6 +137,11 @@ git = 'https://github.com/paritytech/substrate.git'
 package = 'node-primitives'
 rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
+[dependencies.node-runtime]
+default_features = false
+git = 'https://github.com/paritytech/substrate.git'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
 [dependencies.offchain-primitives]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'

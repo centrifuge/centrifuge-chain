@@ -123,6 +123,10 @@ rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 git = 'https://github.com/paritytech/substrate.git'
 rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
 
+[dependencies.srml-transaction-payment-rpc]
+git = 'https://github.com/paritytech/substrate.git'
+rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'
+
 [dependencies.sr-primitives]
 git = 'https://github.com/paritytech/substrate.git'
 rev = 'aa937d9b4e5767f224cf9d5dfbd9a537e97efcfc'

@@ -81,11 +81,11 @@ macro_rules! new_full_start {
         .with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
             use crate::api::{AnchorRpcApi, Anchors};
             use srml_system_rpc::{System, SystemApi};
-            // use srml_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+            use srml_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 
             let mut io = jsonrpc_core::IoHandler::default();
             io.extend_with(SystemApi::to_delegate(System::new(client.clone(), pool)));
-            // io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client)));
+            io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client.clone())));
             io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
             io
         })?;
@@ -268,11 +268,11 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
         .with_rpc_extensions(|client, pool, _backend| -> RpcExtension {
             use crate::api::{AnchorRpcApi, Anchors};
             use srml_system_rpc::{System, SystemApi};
-            // use srml_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+            use srml_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 
             let mut io = jsonrpc_core::IoHandler::default();
             io.extend_with(SystemApi::to_delegate(System::new(client.clone(), pool)));
-            // io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client)));
+            io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client.clone())));
             io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
             io
         })?
