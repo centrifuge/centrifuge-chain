@@ -366,8 +366,8 @@ parameter_types! {
 
 impl treasury::Trait for Runtime {
 	type Currency = Balances;
-	// type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>; // TODO add council/mechanism that does not rely on root later
-	// type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>; // TODO add council/mechanism that does not rely on root later
+	// type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>; // TODO: add council/mechanism that does not rely on root later
+	// type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>; // TODO: add council/mechanism that does not rely on root later
 	type ApproveOrigin = system::EnsureRoot<AccountId>;
 	type RejectOrigin = system::EnsureRoot<AccountId>;
 	type Event = Event;
