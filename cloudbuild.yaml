@@ -1,4 +1,6 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/peak-vista-185616/centrifuge-chain', '.']
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME:$REVISION_ID', '.']
 timeout: 10800s
+images:
+- 'gcr.io/$PROJECT_ID/$REPO_NAME:$REVISION_ID'
