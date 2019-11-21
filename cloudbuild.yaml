@@ -1,4 +1,4 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'gcr.io/peak-vista-185616/centrifuge-chain', '.']
-timeout: 3600s
+timeout: 10800s
