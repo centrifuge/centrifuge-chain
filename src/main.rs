@@ -5,14 +5,13 @@
 
 mod api;
 mod chain_spec;
-
 #[macro_use]
 mod service;
 mod cli;
 
 pub use substrate_cli::{error, IntoExit, VersionInfo};
 
-fn main() {
+fn main() -> Result<(), cli::error::Error> {
     let version = VersionInfo {
         name: "Centrifuge Chain Node",
         commit: env!("VERGEN_SHA_SHORT"),
@@ -23,8 +22,5 @@ fn main() {
         support_url: "centrifuge.io",
     };
 
-    if let Err(e) = cli::run(::std::env::args(), cli::Exit, version) {
-        eprintln!("Fatal error: {}\n\n{:?}", e, e);
-        std::process::exit(1)
-    }
+    cli::run(std::env::args(), cli::Exit, version)
 }

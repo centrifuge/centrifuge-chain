@@ -26,17 +26,16 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 impl system::Trait for Test {
-    type Origin = Origin;
+    type AccountId = u64;
     type Call = ();
+    type Lookup = IdentityLookup<Self::AccountId>;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type WeightMultiplierUpdate = ();
     type Event = ();
+    type Origin = Origin;
     type BlockHashCount = BlockHashCount;
     type MaximumBlockWeight = MaximumBlockWeight;
     type MaximumBlockLength = MaximumBlockLength;
@@ -66,15 +65,12 @@ impl balances::Trait for Test {
     type OnFreeBalanceZero = ();
     type OnNewAccount = ();
     type Event = ();
-    type TransactionPayment = ();
-    type TransferPayment = ();
+
     type DustRemoval = ();
+    type TransferPayment = ();
     type ExistentialDeposit = ExistentialDeposit;
     type TransferFee = TransferFee;
     type CreationFee = CreationFee;
-    type TransactionBaseFee = TransactionBaseFee;
-    type TransactionByteFee = TransactionByteFee;
-    type WeightToFee = ();
 }
 
 impl Trait for Test {

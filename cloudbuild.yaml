@@ -1,0 +1,11 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/$REPO_NAME:$REVISION_ID',
+      '--cache-from', 'gcr.io/$PROJECT_ID/$REPO_NAME',
+      '.'
+    ]
+timeout: 10800s
+images:
+- 'gcr.io/$PROJECT_ID/$REPO_NAME:$REVISION_ID'
