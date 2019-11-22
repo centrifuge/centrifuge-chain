@@ -29,7 +29,7 @@ jobs:
       script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=runtime-test ./ci/script.sh
     - stage: "WASM + Native"
       name: "WASM + Native Build"
-      script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=build-client ./ci/script.sh
+      script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=build-client travis_wait 30 ./ci/script.sh
     - stage: deploy
       if: (NOT type IN (pull_request)) AND (branch = master)
       script: ./ci/docker.sh
