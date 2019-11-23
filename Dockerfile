@@ -35,8 +35,9 @@ RUN mv /usr/share/ca* /tmp && \
 	rm -rf /usr/share/*  && \
 	mv /tmp/ca-certificates /usr/share/ && \
 	mkdir -p /root/.local/share/centrifuge-chain && \
-	ln -s /root/.local/share/centrifuge-chain /data && \
-	useradd -m -u 1000 -U -s /bin/sh -d /centrifuge-chain centrifuge-chain
+	ln -s /root/.local/share/centrifuge-chain /data
+	# && \
+	# useradd -m -u 1000 -U -s /bin/sh -d /centrifuge-chain centrifuge-chain # commented out since users do not seem to work with PVCs we currently use: https://stackoverflow.com/questions/46873796/allowing-access-to-a-persistentvolumeclaim-to-non-root-user/46907452
 
 COPY --from=builder /centrifuge-chain/target/$PROFILE/centrifuge-chain /usr/local/bin
 
@@ -48,7 +49,7 @@ RUN ldd /usr/local/bin/centrifuge-chain && \
 RUN rm -rf /usr/lib/python* && \
 	rm -rf /usr/bin /usr/sbin /usr/share/man
 
-USER centrifuge-chain
+# USER centrifuge-chain # see above
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
 
