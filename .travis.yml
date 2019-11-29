@@ -32,7 +32,7 @@ jobs:
       script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=build-client travis_wait 180 ./ci/script.sh
     - stage: deploy
       if: (NOT type IN (pull_request)) AND (branch = master)
-      script: ./ci/docker.sh
+      script: travis_wait 180 ./ci/docker.sh
 
 addons:
   apt:
