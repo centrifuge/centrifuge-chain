@@ -1,8 +1,8 @@
 use crate::{anchor, proofs};
 use rstd::vec::Vec;
+use sr_primitives::weights::SimpleDispatchInfo;
 use support::{decl_event, decl_module, dispatch::Result, ensure};
 use system::ensure_signed;
-use sr_primitives::weights::SimpleDispatchInfo;
 
 pub trait Trait: anchor::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;

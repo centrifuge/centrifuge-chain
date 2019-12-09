@@ -8,29 +8,29 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use codec::{Decode, Encode};
+use grandpa::fg_primitives;
+use grandpa::AuthorityList as GrandpaAuthorityList;
+use im_online::sr25519::AuthorityId as ImOnlineId;
+use inherents::{CheckInherentsResult, InherentData};
+use node_primitives::{
+    AccountId, AccountIndex, Balance, BlockNumber, Hash, Index, Moment, Signature,
+};
+use primitives::u32_trait::{_1, _2, _3, _4};
 use primitives::OpaqueMetadata;
 use rstd::prelude::*;
-use primitives::u32_trait::{_1, _2, _3, _4};
+use sr_api::{decl_runtime_apis, impl_runtime_apis};
+use sr_primitives::curve::PiecewiseLinear;
 use sr_primitives::traits::{
-    BlakeTwo256, Block as BlockT, NumberFor, StaticLookup, Verify, OpaqueKeys,
+    BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, StaticLookup, Verify,
 };
 use sr_primitives::weights::Weight;
-use sr_primitives::{
-    transaction_validity::TransactionValidity, AnySignature,
-};
-use node_primitives::{AccountId, AccountIndex, Balance, BlockNumber, Hash, Index, Moment, Signature};
-use sr_api::{decl_runtime_apis, impl_runtime_apis};
-use sr_primitives::{Permill, Perbill, ApplyResult, impl_opaque_keys, generic, create_runtime_str};
-use sr_primitives::curve::PiecewiseLinear;
-use im_online::sr25519::{AuthorityId as ImOnlineId};
-use transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
-use codec::{Encode, Decode};
+use sr_primitives::{create_runtime_str, generic, impl_opaque_keys, ApplyResult, Perbill, Permill};
+use sr_primitives::{transaction_validity::TransactionValidity, AnySignature};
 use system::offchain::TransactionSubmitter;
-use inherents::{InherentData, CheckInherentsResult};
+use transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 #[cfg(feature = "std")]
 use version::NativeVersion;
-use grandpa::AuthorityList as GrandpaAuthorityList;
-use grandpa::fg_primitives;
 use version::RuntimeVersion;
 
 // A few exports that help ease life for downstream crates.
@@ -38,13 +38,17 @@ use crate::anchor::AnchorData;
 pub use balances::Call as BalancesCall;
 #[cfg(any(feature = "std", test))]
 pub use sr_primitives::BuildStorage;
-pub use support::{construct_runtime, parameter_types, traits::{SplitTwoWays, Currency, Randomness}, StorageValue};
-pub use timestamp::Call as TimestampCall;
 pub use staking::StakerStatus;
+pub use support::{
+    construct_runtime, parameter_types,
+    traits::{Currency, Randomness, SplitTwoWays},
+    StorageValue,
+};
+pub use timestamp::Call as TimestampCall;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
-use impls::{CurrencyToVoteHandler, Author, LinearWeightToFee, TargetedFeeAdjustment};
+use impls::{Author, CurrencyToVoteHandler, LinearWeightToFee, TargetedFeeAdjustment};
 
 /// Used for anchor module
 pub mod anchor;
@@ -141,10 +145,12 @@ pub fn native_version() -> NativeVersion {
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 pub type DealWithFees = SplitTwoWays<
-	Balance,
-	NegativeImbalance,
-	_4, Treasury,   // 4 parts (80%) goes to the treasury.
-	_1, Author,     // 1 part (20%) goes to the block author.
+    Balance,
+    NegativeImbalance,
+    _4,
+    Treasury, // 4 parts (80%) goes to the treasury.
+    _1,
+    Author, // 1 part (20%) goes to the block author.
 >;
 
 parameter_types! {
@@ -233,19 +239,19 @@ parameter_types! {
 }
 
 impl balances::Trait for Runtime {
-	/// The type for recording an account's balance.
-	type Balance = Balance;
-	/// What to do if an account's free balance gets zeroed.
-	type OnFreeBalanceZero = ((Staking), Session);
-	/// What to do if a new account is created.
-	type OnNewAccount = Indices;
-	/// The ubiquitous event type.
-	type Event = Event;
+    /// The type for recording an account's balance.
+    type Balance = Balance;
+    /// What to do if an account's free balance gets zeroed.
+    type OnFreeBalanceZero = ((Staking), Session);
+    /// What to do if a new account is created.
+    type OnNewAccount = Indices;
+    /// The ubiquitous event type.
+    type Event = Event;
 
-	type DustRemoval = ();
-	type TransferPayment = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type TransferFee = TransferFee;
+    type DustRemoval = ();
+    type TransferPayment = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type TransferFee = TransferFee;
     type CreationFee = CreationFee;
 }
 
@@ -254,30 +260,30 @@ parameter_types! {
     pub const TransactionBaseFee: Balance = 0;
     /// Per byte fee would discourage larger bandwidth transactions like
     pub const TransactionByteFee: Balance = 0;
-	// setting this to zero will disable the weight fee.
-	pub const WeightFeeCoefficient: Balance = 1_000;
-	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
-	pub const TargetBlockFullness: Perbill = Perbill::from_percent(25);
+    // setting this to zero will disable the weight fee.
+    pub const WeightFeeCoefficient: Balance = 1_000;
+    // for a sane configuration, this should always be less than `AvailableBlockRatio`.
+    pub const TargetBlockFullness: Perbill = Perbill::from_percent(25);
 }
 
 impl transaction_payment::Trait for Runtime {
-	type Currency = balances::Module<Runtime>;
-	type OnTransactionPayment = DealWithFees;
-	type TransactionBaseFee = TransactionBaseFee;
-	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = LinearWeightToFee<WeightFeeCoefficient>;
-	type FeeMultiplierUpdate = TargetedFeeAdjustment<TargetBlockFullness>;
+    type Currency = balances::Module<Runtime>;
+    type OnTransactionPayment = DealWithFees;
+    type TransactionBaseFee = TransactionBaseFee;
+    type TransactionByteFee = TransactionByteFee;
+    type WeightToFee = LinearWeightToFee<WeightFeeCoefficient>;
+    type FeeMultiplierUpdate = TargetedFeeAdjustment<TargetBlockFullness>;
 }
 
 parameter_types! {
-	pub const UncleGenerations: BlockNumber = 5;
+    pub const UncleGenerations: BlockNumber = 5;
 }
 
 impl authorship::Trait for Runtime {
-	type FindAuthor = session::FindAccountFromAuthorIndex<Self, Babe>;
-	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
-	type EventHandler = (Staking, ImOnline);
+    type FindAuthor = session::FindAccountFromAuthorIndex<Self, Babe>;
+    type UncleGenerations = UncleGenerations;
+    type FilterUncle = ();
+    type EventHandler = (Staking, ImOnline);
 }
 
 impl_opaque_keys! {
@@ -289,55 +295,55 @@ impl_opaque_keys! {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+    pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
 }
 
 impl session::Trait for Runtime {
-	type OnSessionEnding = Staking;
-	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type ShouldEndSession = Babe;
-	type Event = Event;
-	type Keys = SessionKeys;
-	type ValidatorId = <Self as system::Trait>::AccountId;
-	type ValidatorIdOf = staking::StashOf<Self>;
-	type SelectInitialValidators = Staking;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+    type OnSessionEnding = Staking;
+    type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+    type ShouldEndSession = Babe;
+    type Event = Event;
+    type Keys = SessionKeys;
+    type ValidatorId = <Self as system::Trait>::AccountId;
+    type ValidatorIdOf = staking::StashOf<Self>;
+    type SelectInitialValidators = Staking;
+    type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 }
 
 impl session::historical::Trait for Runtime {
-	type FullIdentification = staking::Exposure<AccountId, Balance>;
-	type FullIdentificationOf = staking::ExposureOf<Runtime>;
+    type FullIdentification = staking::Exposure<AccountId, Balance>;
+    type FullIdentificationOf = staking::ExposureOf<Runtime>;
 }
 
 srml_staking_reward_curve::build! {
-	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
-		min_inflation: 0_025_000,
-		max_inflation: 0_100_000,
-		ideal_stake: 0_500_000,
-		falloff: 0_050_000,
-		max_piece_count: 40,
-		test_precision: 0_005_000,
-	);
+    const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
+        min_inflation: 0_025_000,
+        max_inflation: 0_100_000,
+        ideal_stake: 0_500_000,
+        falloff: 0_050_000,
+        max_piece_count: 40,
+        test_precision: 0_005_000,
+    );
 }
 
 parameter_types! {
-	pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 2; // number of epochs/sessions per era
-	pub const BondingDuration: staking::EraIndex = 24 * 28;
-	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+    pub const SessionsPerEra: sr_staking_primitives::SessionIndex = 2; // number of epochs/sessions per era
+    pub const BondingDuration: staking::EraIndex = 24 * 28;
+    pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }
 
 impl staking::Trait for Runtime {
-	type Currency = Balances;
-	type Time = Timestamp;
-	type CurrencyToVote = CurrencyToVoteHandler;
-	type RewardRemainder = Treasury;
-	type Event = Event;
-	type Slash = Treasury; // send the slashed funds to the treasury.
-	type Reward = (); // rewards are minted from the void
-	type SessionsPerEra = SessionsPerEra;
-	type BondingDuration = BondingDuration;
-	type SessionInterface = Self;
-	type RewardCurve = RewardCurve;
+    type Currency = Balances;
+    type Time = Timestamp;
+    type CurrencyToVote = CurrencyToVoteHandler;
+    type RewardRemainder = Treasury;
+    type Event = Event;
+    type Slash = Treasury; // send the slashed funds to the treasury.
+    type Reward = (); // rewards are minted from the void
+    type SessionsPerEra = SessionsPerEra;
+    type BondingDuration = BondingDuration;
+    type SessionInterface = Self;
+    type RewardCurve = RewardCurve;
 }
 
 // type CouncilCollective = collective::Instance1;
@@ -358,24 +364,24 @@ impl staking::Trait for Runtime {
 // }
 
 parameter_types! {
-	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 1;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
-	pub const Burn: Permill = Permill::from_percent(50);
+    pub const ProposalBond: Permill = Permill::from_percent(5);
+    pub const ProposalBondMinimum: Balance = 1;
+    pub const SpendPeriod: BlockNumber = 1 * DAYS;
+    pub const Burn: Permill = Permill::from_percent(50);
 }
 
 impl treasury::Trait for Runtime {
-	type Currency = Balances;
-	// type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>; // TODO: add council/mechanism that does not rely on root later
-	// type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>; // TODO: add council/mechanism that does not rely on root later
-	type ApproveOrigin = system::EnsureRoot<AccountId>;
-	type RejectOrigin = system::EnsureRoot<AccountId>;
-	type Event = Event;
-	type ProposalRejection = ();
-	type ProposalBond = ProposalBond;
-	type ProposalBondMinimum = ProposalBondMinimum;
-	type SpendPeriod = SpendPeriod;
-	type Burn = Burn;
+    type Currency = Balances;
+    // type ApproveOrigin = collective::EnsureMembers<_4, AccountId, CouncilCollective>; // TODO: add council/mechanism that does not rely on root later
+    // type RejectOrigin = collective::EnsureMembers<_2, AccountId, CouncilCollective>; // TODO: add council/mechanism that does not rely on root later
+    type ApproveOrigin = system::EnsureRoot<AccountId>;
+    type RejectOrigin = system::EnsureRoot<AccountId>;
+    type Event = Event;
+    type ProposalRejection = ();
+    type ProposalBond = ProposalBond;
+    type ProposalBondMinimum = ProposalBondMinimum;
+    type SpendPeriod = SpendPeriod;
+    type Burn = Burn;
 }
 
 impl sudo::Trait for Runtime {
@@ -386,22 +392,22 @@ impl sudo::Trait for Runtime {
 type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
-	pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_SLOTS as _;
+    pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_SLOTS as _;
 }
 
 impl im_online::Trait for Runtime {
-	type AuthorityId = ImOnlineId;
-	type Call = Call;
-	type Event = Event;
-	type SubmitTransaction = SubmitTransaction;
+    type AuthorityId = ImOnlineId;
+    type Call = Call;
+    type Event = Event;
+    type SubmitTransaction = SubmitTransaction;
     type ReportUnresponsiveness = Offences;
     type SessionDuration = SessionDuration;
 }
 
 impl offences::Trait for Runtime {
-	type Event = Event;
-	type IdentificationTuple = session::historical::IdentificationTuple<Self>;
-	type OnOffenceHandler = Staking;
+    type Event = Event;
+    type IdentificationTuple = session::historical::IdentificationTuple<Self>;
+    type OnOffenceHandler = Staking;
 }
 
 impl anchor::Trait for Runtime {
@@ -482,76 +488,76 @@ decl_runtime_apis! {
 }
 
 impl_runtime_apis! {
-	impl self::AnchorApi<Block> for Runtime {
-		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
-			Anchor::get_anchor_by_id(id)
-		}
-	}
+    impl self::AnchorApi<Block> for Runtime {
+        fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
+            Anchor::get_anchor_by_id(id)
+        }
+    }
 
-	impl sr_api::Core<Block> for Runtime {
-		fn version() -> RuntimeVersion {
-			VERSION
-		}
+    impl sr_api::Core<Block> for Runtime {
+        fn version() -> RuntimeVersion {
+            VERSION
+        }
 
-		fn execute_block(block: Block) {
-			Executive::execute_block(block)
-		}
+        fn execute_block(block: Block) {
+            Executive::execute_block(block)
+        }
 
-		fn initialize_block(header: &<Block as BlockT>::Header) {
-			Executive::initialize_block(header)
-		}
-	}
+        fn initialize_block(header: &<Block as BlockT>::Header) {
+            Executive::initialize_block(header)
+        }
+    }
 
-	impl sr_api::Metadata<Block> for Runtime {
-		fn metadata() -> OpaqueMetadata {
-			Runtime::metadata().into()
-		}
-	}
+    impl sr_api::Metadata<Block> for Runtime {
+        fn metadata() -> OpaqueMetadata {
+            Runtime::metadata().into()
+        }
+    }
 
-	impl block_builder_api::BlockBuilder<Block> for Runtime {
-		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
-			Executive::apply_extrinsic(extrinsic)
-		}
+    impl block_builder_api::BlockBuilder<Block> for Runtime {
+        fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyResult {
+            Executive::apply_extrinsic(extrinsic)
+        }
 
-		fn finalize_block() -> <Block as BlockT>::Header {
-			Executive::finalize_block()
-		}
+        fn finalize_block() -> <Block as BlockT>::Header {
+            Executive::finalize_block()
+        }
 
-		fn inherent_extrinsics(data: inherents::InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
-			data.create_extrinsics()
-		}
+        fn inherent_extrinsics(data: inherents::InherentData) -> Vec<<Block as BlockT>::Extrinsic> {
+            data.create_extrinsics()
+        }
 
-		fn check_inherents(
-			block: Block,
-			data: inherents::InherentData,
-		) -> inherents::CheckInherentsResult {
-			data.check_extrinsics(&block)
-		}
+        fn check_inherents(
+            block: Block,
+            data: inherents::InherentData,
+        ) -> inherents::CheckInherentsResult {
+            data.check_extrinsics(&block)
+        }
 
-		fn random_seed() -> <Block as BlockT>::Hash {
-			RandomnessCollectiveFlip::random_seed()
-		}
-	}
+        fn random_seed() -> <Block as BlockT>::Hash {
+            RandomnessCollectiveFlip::random_seed()
+        }
+    }
 
-	impl tx_pool_api::TaggedTransactionQueue<Block> for Runtime {
-		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			Executive::validate_transaction(tx)
-		}
-	}
+    impl tx_pool_api::TaggedTransactionQueue<Block> for Runtime {
+        fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
+            Executive::validate_transaction(tx)
+        }
+    }
 
-	impl offchain_primitives::OffchainWorkerApi<Block> for Runtime {
-		fn offchain_worker(number: NumberFor<Block>) {
-			Executive::offchain_worker(number)
-		}
+    impl offchain_primitives::OffchainWorkerApi<Block> for Runtime {
+        fn offchain_worker(number: NumberFor<Block>) {
+            Executive::offchain_worker(number)
+        }
     }
 
     impl fg_primitives::GrandpaApi<Block> for Runtime {
-		fn grandpa_authorities() -> GrandpaAuthorityList {
-			Grandpa::grandpa_authorities()
-		}
-	}
+        fn grandpa_authorities() -> GrandpaAuthorityList {
+            Grandpa::grandpa_authorities()
+        }
+    }
 
-	impl babe_primitives::BabeApi<Block> for Runtime {
+    impl babe_primitives::BabeApi<Block> for Runtime {
         fn configuration() -> babe_primitives::BabeConfiguration {
             // The choice of `c` parameter (where `1 - c` represents the
             // probability of a slot being empty), is done in accordance to the
@@ -576,18 +582,18 @@ impl_runtime_apis! {
     }
 
     impl transaction_payment_rpc_runtime_api::TransactionPaymentApi<
-		Block,
-		Balance,
-		UncheckedExtrinsic,
-	> for Runtime {
-		fn query_info(uxt: UncheckedExtrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
-			TransactionPayment::query_info(uxt, len)
-		}
-	}
+        Block,
+        Balance,
+        UncheckedExtrinsic,
+    > for Runtime {
+        fn query_info(uxt: UncheckedExtrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
+            TransactionPayment::query_info(uxt, len)
+        }
+    }
 
-	impl substrate_session::SessionKeys<Block> for Runtime {
-		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
-			SessionKeys::generate(seed)
-		}
-	}
+    impl substrate_session::SessionKeys<Block> for Runtime {
+        fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
+            SessionKeys::generate(seed)
+        }
+    }
 }

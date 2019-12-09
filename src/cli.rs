@@ -3,8 +3,8 @@ use crate::service;
 use futures::{future, sync::oneshot, Future};
 use log::info;
 use std::cell::RefCell;
-pub use substrate_cli::{error, IntoExit, VersionInfo};
 use substrate_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
+pub use substrate_cli::{error, IntoExit, VersionInfo};
 use substrate_service::{AbstractService, Configuration, Roles as ServiceRoles};
 use tokio::runtime::Runtime;
 
@@ -29,16 +29,10 @@ where
                 info!("Roles: {}", display_role(&config));
                 let runtime = Runtime::new().map_err(|e| format!("{:?}", e))?;
                 match config.roles {
-                    ServiceRoles::LIGHT => run_until_exit(
-                        runtime,
-                        service::new_light(config)?,
-                        exit
-                    ),
-                    _ => run_until_exit(
-                        runtime,
-                        service::new_full(config)?,
-                        exit
-                    ),
+                    ServiceRoles::LIGHT => {
+                        run_until_exit(runtime, service::new_light(config)?, exit)
+                    }
+                    _ => run_until_exit(runtime, service::new_full(config)?, exit),
                 }
             },
         ),
@@ -54,10 +48,11 @@ where
             exit,
         ),
         ParseAndPrepare::PurgeChain(cmd) => cmd.run(load_spec),
-        ParseAndPrepare::RevertChain(cmd) => {
-            cmd.run_with_builder(|config: Config<_, _>| Ok(new_full_start!(config).0), load_spec)
-        },
-        ParseAndPrepare::CustomCommand(_) => Ok(())
+        ParseAndPrepare::RevertChain(cmd) => cmd.run_with_builder(
+            |config: Config<_, _>| Ok(new_full_start!(config).0),
+            load_spec,
+        ),
+        ParseAndPrepare::CustomCommand(_) => Ok(()),
     }?;
 
     Ok(())

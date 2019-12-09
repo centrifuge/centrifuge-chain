@@ -75,7 +75,7 @@ pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
             acc
         });
 
-        runtime_io::hashing::keccak_256(hash.as_slice())
+    runtime_io::hashing::keccak_256(hash.as_slice())
 }
 
 #[cfg(test)]

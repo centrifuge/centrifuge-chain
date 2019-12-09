@@ -1,20 +1,23 @@
-use chain_spec::ChainSpecExtension;
-use primitives::{Pair, Public, crypto::UncheckedInto, sr25519};
-use serde::{Serialize, Deserialize};
-use centrifuge_chain_runtime::{
-    BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
-};
+use babe_primitives::AuthorityId as BabeId;
 use centrifuge_chain_runtime::Block;
-use substrate_service;
+use centrifuge_chain_runtime::{
+    BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig,
+    SessionConfig, SessionKeys, StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
+};
+use chain_spec::ChainSpecExtension;
+use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
-use grandpa_primitives::{AuthorityId as GrandpaId};
-use babe_primitives::{AuthorityId as BabeId};
-use im_online::sr25519::{AuthorityId as ImOnlineId};
-use sr_primitives::{Perbill, traits::{Verify, IdentifyAccount}};
+use im_online::sr25519::AuthorityId as ImOnlineId;
+use primitives::{crypto::UncheckedInto, sr25519, Pair, Public};
+use serde::{Deserialize, Serialize};
+use sr_primitives::{
+    traits::{IdentifyAccount, Verify},
+    Perbill,
+};
+use substrate_service;
 
-pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use centrifuge_chain_runtime::GenesisConfig;
+pub use node_primitives::{AccountId, Balance, Hash, Signature};
 
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -24,18 +27,19 @@ type AccountPublic = <Signature as Verify>::Signer;
 /// customizable from the chain spec.
 #[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
 pub struct Extensions {
-	/// Block numbers with known hashes.
-	pub fork_blocks: client::ForkBlocks<Block>,
+    /// Block numbers with known hashes.
+    pub fork_blocks: client::ForkBlocks<Block>,
 }
 
 /// Specialized `ChainSpec`.
-pub type ChainSpec = substrate_service::ChainSpec<
-	GenesisConfig,
-	Extensions,
->;
+pub type ChainSpec = substrate_service::ChainSpec<GenesisConfig, Extensions>;
 
 fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, }
+    SessionKeys {
+        grandpa,
+        babe,
+        im_online,
+    }
 }
 
 /// The chain specification option. This is expected to come in from the CLI and
@@ -61,17 +65,20 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 }
 
 /// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
-	AccountPublic: From<<TPublic::Pair as Pair>::Public>
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
+where
+    AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
-	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
+    AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
 /// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
+pub fn get_authority_keys_from_seed(
+    seed: &str,
+) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
-		get_account_id_from_seed::<sr25519::Public>(seed),
+        get_account_id_from_seed::<sr25519::Public>(seed),
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<BabeId>(seed),
         get_from_seed::<ImOnlineId>(seed),
@@ -175,12 +182,11 @@ impl Alternative {
                 )
             }
             // Flint initial spec
-            Alternative::Flint => {
-                ChainSpec::from_genesis(
-                    "Flint Testnet",
-                    "flint",
-                    || {
-                        testnet_genesis(
+            Alternative::Flint => ChainSpec::from_genesis(
+                "Flint Testnet",
+                "flint",
+                || {
+                    testnet_genesis(
                         vec![
                             (
                                 hex!["e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d"].into(),
@@ -212,14 +218,13 @@ impl Alternative {
                         ],
                         true,
                     )
-                    },
-                    vec![],
-                    None,
-                    Some("flnt"),
-                    Some(get_default_properties("FRAD")),
-                    Default::default(),
-                )
-            }
+                },
+                vec![],
+                None,
+                Some("flnt"),
+                Some(get_default_properties("FRAD")),
+                Default::default(),
+            ),
         })
     }
 
@@ -249,56 +254,63 @@ fn testnet_genesis(
             changes_trie_config: Default::default(),
         }),
         balances: Some(BalancesConfig {
-            balances: endowed_accounts.iter().cloned()
-            .map(|k| (k, ENDOWMENT))
-            .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
-            .collect(),
+            balances: endowed_accounts
+                .iter()
+                .cloned()
+                .map(|k| (k, ENDOWMENT))
+                .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+                .collect(),
             vesting: vec![],
         }),
         indices: Some(IndicesConfig {
-            ids: endowed_accounts.iter().cloned()
+            ids: endowed_accounts
+                .iter()
+                .cloned()
                 .chain(initial_authorities.iter().map(|x| x.0.clone()))
                 .collect::<Vec<_>>(),
         }),
         session: Some(SessionConfig {
-			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone()))
-			}).collect::<Vec<_>>(),
-		}),
-		staking: Some(StakingConfig {
+            keys: initial_authorities
+                .iter()
+                .map(|x| {
+                    (
+                        x.0.clone(),
+                        session_keys(x.2.clone(), x.3.clone(), x.4.clone()),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        }),
+        staking: Some(StakingConfig {
             // The current era index.
-			current_era: 0,
+            current_era: 0,
             // Minimum number of staking participants before emergency conditions are imposed.
-			minimum_validator_count: 1,
+            minimum_validator_count: 1,
             // The ideal number of staking participants.
-			validator_count: 5,
-			stakers: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
-			}).collect(),
+            validator_count: 5,
+            stakers: initial_authorities
+                .iter()
+                .map(|x| (x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator))
+                .collect(),
             // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
             // easy to initialize and the performance hit is minimal (we expect no more than four
             // invulnerables) and restricted to testnets.
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+            invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
             // The percentage of the slash that is distributed to reporters.
-		    // The rest of the slashed value is handled by the `Slash`.
-			slash_reward_fraction: Perbill::from_percent(10),
+            // The rest of the slashed value is handled by the `Slash`.
+            slash_reward_fraction: Perbill::from_percent(10),
             // True if the next session change will be a new era regardless of index.
             // force_era: NotForcing
-			.. Default::default()
-		}),
-        // collective_Instance1: Some(CouncilConfig {
-		// 	members: vec![],
-		// 	phantom: Default::default(),
-		// }),
-        sudo: Some(SudoConfig {
-            key: root_key,
+            ..Default::default()
         }),
+        // collective_Instance1: Some(CouncilConfig {
+        // 	members: vec![],
+        // 	phantom: Default::default(),
+        // }),
+        sudo: Some(SudoConfig { key: root_key }),
         babe: Some(BabeConfig {
             authorities: vec![],
         }),
-        im_online: Some(ImOnlineConfig {
-			keys: vec![],
-		}),
+        im_online: Some(ImOnlineConfig { keys: vec![] }),
         grandpa: Some(GrandpaConfig {
             authorities: vec![],
         }),
@@ -322,10 +334,13 @@ fn testnet_genesis(
 }
 
 fn get_default_properties(token: &str) -> substrate_service::Properties {
-    let data = format!("\
+    let data = format!(
+        "\
 		{{
 			\"tokenDecimals\": 18,\
 			\"tokenSymbol\": \"{}\"\
-		}}", token);
+		}}",
+        token
+    );
     serde_json::from_str(&data).unwrap()
 }
