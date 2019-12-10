@@ -319,23 +319,14 @@ impl<T: Trait> Module<T> {
     }
 
     /// checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
-    /// of `signing_root` and `proof` is done in ascending order, according to the protocol defined
-    /// by Centrifuge precise-proofs library for merklizing documents.
+    /// of `signing_root` and `proof` is done in a fixed order (signing_root + proof).
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
         let signing_root = <PreCommits<T>>::get(anchor_id).signing_root;
-        let mut signing_root_bytes = signing_root.as_ref().to_vec();
+        let mut concatenated_bytes = signing_root.as_ref().to_vec();
         let mut proof_bytes = proof.as_ref().to_vec();
 
-        // order and concat hashes
-        let concatenated_bytes: Vec<u8>;
-        if signing_root_bytes < proof_bytes {
-            signing_root_bytes.extend(proof_bytes);
-            concatenated_bytes = signing_root_bytes;
-        } else {
-            proof_bytes.extend(signing_root_bytes);
-            concatenated_bytes = proof_bytes;
-        }
-
+        // concat hashes
+        concatenated_bytes.extend(proof_bytes);
         let calculated_root = <T as system::Trait>::Hashing::hash(&concatenated_bytes);
         return doc_root == calculated_root;
     }
