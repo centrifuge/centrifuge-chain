@@ -233,7 +233,7 @@ fn testnet_genesis(
 ) -> GenesisConfig {
     const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000; // 3% of total supply (10^9 + 18 decimals)
     const STASH: Balance =            1_000_000_000000000000000;
-    const ENDOWMENT: Balance = (INITIAL_SUPPLY - STASH * initial_authorities.len()) / endowed_accounts.len()
+    const ENDOWMENT: Balance = (INITIAL_SUPPLY - STASH * initial_authorities.len()) / endowed_accounts.len();
 
     GenesisConfig {
         system: Some(SystemConfig {
