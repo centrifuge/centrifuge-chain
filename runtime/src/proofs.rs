@@ -121,7 +121,7 @@ pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
-    use crate::proofs::{bundled_hash, sort_hash_of, validate_proof, validate_proofs, Proof};
+    use crate::proofs::{bundled_hash, sort_hash_of, validate_proof, validate_proofs, Proof, pre_matches};
 
     fn proof_from_hash(a: [u8; 32]) -> Proof {
         Proof {
@@ -276,9 +276,8 @@ mod tests {
 
     #[test]
     fn validate_proof_success() {
-        let (proof, root) = get_valid_proof();
-        let mut matches = vec![root];
-
+        let (proof, root, static_proofs) = get_valid_proof();
+        let (_, mut matches) = pre_matches(static_proofs, root);
         assert!(validate_proof(
             &mut matches,
             proof.leaf_hash,
@@ -323,7 +322,7 @@ mod tests {
     #[test]
     fn validate_proofs_success() {
         let (vp1, doc_root, static_proofs) = get_valid_proof();
-        let (vp2, _) = get_valid_proof();
+        let (vp2, _, _) = get_valid_proof();
         let proofs = vec![vp1, vp2];
         assert!(validate_proofs(doc_root, &proofs, static_proofs))
     }
