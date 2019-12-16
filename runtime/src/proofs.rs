@@ -93,12 +93,12 @@ fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 
 // prefill the required matches before proof validation
 fn pre_matches(static_proofs: [[u8; 32]; 3], doc_root: [u8; 32]) -> (bool, Vec<[u8; 32]>) {
     let mut matches = Vec::new();
-    let data_root = static_proofs[0];
-    let sibling_root = static_proofs[1];
+    let basic_data_root = static_proofs[0];
+    let zk_data_root = static_proofs[1];
     let signature_root = static_proofs[2];
-    matches.push(data_root);
-    matches.push(sibling_root);
-    let signing_root = hash_of(data_root, sibling_root);
+    matches.push(basic_data_root);
+    matches.push(zk_data_root);
+    let signing_root = hash_of(basic_data_root, zk_data_root);
     matches.push(signing_root);
     matches.push(signature_root);
     let calc_doc_root = hash_of(signing_root, signature_root);
