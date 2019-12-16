@@ -1,8 +1,7 @@
 use crate::{anchor, proofs};
-use rstd::vec::Vec;
-use support::{decl_event, decl_module, dispatch::Result, ensure};
+use sp_std::vec::Vec;
+use support::{decl_event, decl_module, dispatch::Result, ensure, weights::SimpleDispatchInfo};
 use system::ensure_signed;
-use sr_primitives::weights::SimpleDispatchInfo;
 
 pub trait Trait: anchor::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -71,7 +70,7 @@ mod tests {
     use crate::proofs::Proof;
     use codec::Encode;
     use primitives::H256;
-    use sr_primitives::{
+    use sp_runtime::{
         testing::Header,
         traits::{BlakeTwo256, Hash, IdentityLookup},
         weights::Weight,

@@ -1,6 +1,6 @@
 use codec::{Decode, Encode};
-use rstd::vec::Vec;
-use sr_primitives::RuntimeDebug;
+use sp_std::vec::Vec;
+use sp_runtime::RuntimeDebug;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(not(feature = "std"), derive(RuntimeDebug))]

@@ -1,20 +1,20 @@
 use chain_spec::ChainSpecExtension;
 use primitives::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
-use centrifuge_chain_runtime::{
+use runtime::{
     BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
 };
-use centrifuge_chain_runtime::Block;
-use substrate_service;
+use runtime::Block;
+use sc_service;
 use hex_literal::hex;
 use grandpa_primitives::{AuthorityId as GrandpaId};
 use babe_primitives::{AuthorityId as BabeId};
 use im_online::sr25519::{AuthorityId as ImOnlineId};
-use sr_primitives::{Perbill, traits::{Verify, IdentifyAccount}};
+use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
-pub use centrifuge_chain_runtime::GenesisConfig;
+pub use runtime::GenesisConfig;
 
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -29,7 +29,7 @@ pub struct Extensions {
 }
 
 /// Specialized `ChainSpec`.
-pub type ChainSpec = substrate_service::ChainSpec<
+pub type ChainSpec = sc_service::ChainSpec<
 	GenesisConfig,
 	Extensions,
 >;
@@ -321,7 +321,7 @@ fn testnet_genesis(
     }
 }
 
-fn get_default_properties(token: &str) -> substrate_service::Properties {
+fn get_default_properties(token: &str) -> sc_service::Properties {
     let data = format!("\
 		{{
 			\"tokenDecimals\": 18,\

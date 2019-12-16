@@ -1,7 +1,7 @@
 use super::*;
 
 use primitives::H256;
-use sr_primitives::{
+use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     weights::Weight,

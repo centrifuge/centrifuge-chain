@@ -5,22 +5,22 @@ use std::sync::Arc;
 use babe;
 use client::{self, LongestChain};
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
-use centrifuge_chain_runtime::{GenesisConfig, opaque::Block, RuntimeApi};
-use substrate_service::{
+use runtime::{GenesisConfig, opaque::Block, RuntimeApi};
+use sc_service::{
     AbstractService, ServiceBuilder, Configuration, error::{Error as ServiceError},
 };
 use transaction_pool::{self, txpool::{Pool as TransactionPool}};
 use inherents::InherentDataProviders;
 use futures::sync::mpsc;
 use network::{construct_simple_protocol, DhtEvent};
-use substrate_executor::native_executor_instance;
-pub use substrate_executor::NativeExecutor;
+use sc_executor::native_executor_instance;
+pub use sc_executor::NativeExecutor;
 
 // Our native executor instance.
 native_executor_instance!(
 	pub Executor,
-	centrifuge_chain_runtime::api::dispatch,
-	centrifuge_chain_runtime::native_version,
+	runtime::api::dispatch,
+	runtime::native_version,
 );
 
 construct_simple_protocol! {
@@ -34,12 +34,12 @@ construct_simple_protocol! {
 /// be able to perform chain operations.
 macro_rules! new_full_start {
     ($config:expr) => {{
-		type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
+		type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
         let mut import_setup = None;
         let inherent_data_providers = inherents::InherentDataProviders::new();
 
-        let builder = substrate_service::ServiceBuilder::new_full::<
-            centrifuge_chain_runtime::opaque::Block, centrifuge_chain_runtime::RuntimeApi, crate::service::Executor
+        let builder = sc_service::ServiceBuilder::new_full::<
+            runtime::opaque::Block, runtime::RuntimeApi, crate::service::Executor
         >($config)?
         .with_select_chain(|_config, backend| {
             Ok(client::LongestChain::new(backend.clone()))
@@ -49,9 +49,9 @@ macro_rules! new_full_start {
         )?
         .with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
             let select_chain = select_chain.take()
-                .ok_or_else(|| substrate_service::Error::SelectChainRequired)?;
+                .ok_or_else(|| sc_service::Error::SelectChainRequired)?;
             let (grandpa_block_import, grandpa_link) = grandpa::block_import::<_, _, _,
-                centrifuge_chain_runtime::RuntimeApi, _>(
+                runtime::RuntimeApi, _>(
                     client.clone(),
                     &*client,
                     select_chain,
@@ -140,7 +140,7 @@ pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 
         let client = service.client();
         let select_chain = service.select_chain()
-            .ok_or(substrate_service::Error::SelectChainRequired)?;
+            .ok_or(sc_service::Error::SelectChainRequired)?;
 
         let babe_config = babe::BabeParams {
             keystore: service.keystore(),
@@ -218,7 +218,7 @@ pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
     -> Result<impl AbstractService, ServiceError>
 {
-	type RpcExtension = jsonrpc_core::IoHandler<substrate_rpc::Metadata>;
+	type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 	let inherent_data_providers = InherentDataProviders::new();
 
 	let service = ServiceBuilder::new_light::<Block, RuntimeApi, Executor>(config)?

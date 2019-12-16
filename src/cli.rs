@@ -3,9 +3,9 @@ use crate::service;
 use futures::{future, sync::oneshot, Future};
 use log::info;
 use std::cell::RefCell;
-pub use substrate_cli::{error, IntoExit, VersionInfo};
-use substrate_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
-use substrate_service::{AbstractService, Configuration, Roles as ServiceRoles};
+pub use sc_cli::{error, IntoExit, VersionInfo};
+use sc_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
+use sc_service::{AbstractService, Configuration, Roles as ServiceRoles};
 use tokio::runtime::Runtime;
 
 /// Parse command line arguments into service configuration.
