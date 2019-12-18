@@ -140,13 +140,12 @@ mod tests {
     use super::*;
 
     use primitives::H256;
-    use sp_runtime::weights::Weight;
     use sp_runtime::Perbill;
     use sp_runtime::{
         testing::Header,
-        traits::{BlakeTwo256, IdentityLookup},
+        traits::{BlakeTwo256, IdentityLookup, Hash},
     };
-    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types};
+    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
 
     impl_outer_origin! {
         pub enum Origin for Test {}

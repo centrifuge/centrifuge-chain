@@ -5,7 +5,6 @@ use std::sync::Arc;
 use babe;
 use client::{self, LongestChain};
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
-use crate::executor;
 use node_primitives::{Block, AccountId, Index};
 use node_runtime::{GenesisConfig, RuntimeApi};
 use sc_service::{

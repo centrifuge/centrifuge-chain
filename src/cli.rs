@@ -1,11 +1,10 @@
 pub use sc_cli::VersionInfo;
 use tokio::prelude::Future;
 use tokio::runtime::{Builder as RuntimeBuilder, Runtime};
-use sc_cli::{IntoExit, NoCustom, SharedParams, ImportParams, error};
+use sc_cli::{IntoExit, NoCustom, error};
 use sc_service::{AbstractService, Roles as ServiceRoles, Configuration};
 use log::info;
-use structopt::{StructOpt, clap::App};
-use sc_cli::{display_role, parse_and_prepare, AugmentClap, GetLogFilter, ParseAndPrepare};
+use sc_cli::{display_role, parse_and_prepare, ParseAndPrepare};
 use crate::{service, chain_spec};
 
 fn load_spec(id: &str) -> Result<Option<chain_spec::ChainSpec>, String> {

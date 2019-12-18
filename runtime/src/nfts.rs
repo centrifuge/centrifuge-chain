@@ -73,10 +73,9 @@ mod tests {
     use sp_runtime::{
         testing::Header,
         traits::{BlakeTwo256, Hash, IdentityLookup},
-        weights::Weight,
         Perbill,
     };
-    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types};
+    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
 
     impl_outer_origin! {
         pub enum Origin for Test {}
