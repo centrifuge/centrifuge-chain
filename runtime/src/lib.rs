@@ -30,7 +30,6 @@ use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
 use transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use system::offchain::TransactionSubmitter;
 use inherents::{InherentData, CheckInherentsResult};
-// use codec::{Encode, Decode};
 use crate::anchor::AnchorData;
 
 #[cfg(any(feature = "std", test))]

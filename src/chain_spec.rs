@@ -1,22 +1,26 @@
 use chain_spec::ChainSpecExtension;
 use primitives::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
-use runtime::{
-    BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
+use node_runtime::{
+    AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
 };
-use runtime::Block;
+use node_runtime::Block;
 use sc_service;
 use hex_literal::hex;
+use sc_telemetry::TelemetryEndpoints;
 use grandpa_primitives::{AuthorityId as GrandpaId};
 use babe_primitives::{AuthorityId as BabeId};
 use im_online::sr25519::{AuthorityId as ImOnlineId};
+use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
 use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
-pub use runtime::GenesisConfig;
+pub use node_runtime::GenesisConfig;
 
 type AccountPublic = <Signature as Verify>::Signer;
+
+const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Node `ChainSpec` extensions.
 ///
@@ -34,8 +38,13 @@ pub type ChainSpec = sc_service::ChainSpec<
 	Extensions,
 >;
 
-fn session_keys(grandpa: GrandpaId, babe: BabeId, im_online: ImOnlineId) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, }
+fn session_keys(
+    grandpa: GrandpaId,
+    babe: BabeId,
+    im_online: ImOnlineId,
+    authority_discovery: AuthorityDiscoveryId,
+) -> SessionKeys {
+	SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
 /// The chain specification option. This is expected to come in from the CLI and
@@ -68,13 +77,21 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
 }
 
 /// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId) {
+pub fn get_authority_keys_from_seed(seed: &str) -> (
+    AccountId,
+    AccountId,
+    GrandpaId,
+    BabeId,
+    ImOnlineId,
+    AuthorityDiscoveryId,
+) {
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
         get_from_seed::<GrandpaId>(seed),
         get_from_seed::<BabeId>(seed),
         get_from_seed::<ImOnlineId>(seed),
+        get_from_seed::<AuthorityDiscoveryId>(seed),
     )
 }
 
@@ -151,12 +168,14 @@ impl Alternative {
                                 hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].unchecked_into(),
                                 hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
                                 hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(), // TODO replace with other AccountId
+                                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(), // TODO replace with other AccountId
                             ),
                             (
                                 hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(), // TODO replace with other AccountId
                                 hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(), // TODO replace with other AccountId
                                 hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].unchecked_into(),
                                 hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
+                                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
                                 hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
                             ),
                         ],
@@ -188,6 +207,7 @@ impl Alternative {
                                 hex!["4f5d54c1796633251f9600b51e1961dec3939ceb0f927584f357c38b5463c95e"].unchecked_into(),
                                 hex!["709c81a5ada8288f8c22b9605e9f8fba5034e13110799fdd7418bff37932c130"].unchecked_into(),
                                 hex!["524d4cae76a0354c7adf531c61c2e1269ecef63154cfc5d513c554bbd705fc68"].unchecked_into(),
+                                hex!["145139c78b70aadb6202cfdf2220d26a466ee39110812303b119a71f40f60571"].unchecked_into(),
                             ),
                             (
                                 hex!["6c8f1e49c090d4998b23cc68d52453563785df4e84f3a10024b77d8b4649d51c"].into(),
@@ -195,6 +215,7 @@ impl Alternative {
                                 hex!["9eb9733ca20fa497d0b6e502a9030fc9037ad2943e2b27057816632fcc7d2237"].unchecked_into(),
                                 hex!["18291e4e4ca96f95d1014935880392dfd51ee99c1e9fd01e0255302f2984ef4a"].unchecked_into(),
                                 hex!["922719894768d1e78efdb286e8f2bb118165332ff6c5b4ea3beb9ed43cea2718"].unchecked_into(),
+                                hex!["16cde0520759b2ac5bc63c0a5a5ca4f8b97e2757bd8e8484c25aa73fb0f93955"].unchecked_into(),
                             ),
                         ],
                         hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
@@ -214,8 +235,8 @@ impl Alternative {
                     )
                     },
                     vec![],
-                    None,
-                    Some("flnt"),
+                    Some(TelemetryEndpoints::new(vec![(STAGING_TELEMETRY_URL.to_string(), 0)])),
+                    Some("flint"),
                     Some(get_default_properties("FRAD")),
                     Default::default(),
                 )
@@ -235,7 +256,7 @@ impl Alternative {
 }
 
 fn testnet_genesis(
-    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId
+    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
     root_key: AccountId,
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
@@ -262,16 +283,16 @@ fn testnet_genesis(
         }),
         session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone()))
+				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
 			}).collect::<Vec<_>>(),
 		}),
 		staking: Some(StakingConfig {
             // The current era index.
 			current_era: 0,
-            // Minimum number of staking participants before emergency conditions are imposed.
-			minimum_validator_count: 1,
             // The ideal number of staking participants.
 			validator_count: 5,
+            // Minimum number of staking participants before emergency conditions are imposed.
+			minimum_validator_count: 1,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
@@ -286,10 +307,6 @@ fn testnet_genesis(
             // force_era: NotForcing
 			.. Default::default()
 		}),
-        // collective_Instance1: Some(CouncilConfig {
-		// 	members: vec![],
-		// 	phantom: Default::default(),
-		// }),
         sudo: Some(SudoConfig {
             key: root_key,
         }),
@@ -297,6 +314,9 @@ fn testnet_genesis(
             authorities: vec![],
         }),
         im_online: Some(ImOnlineConfig {
+			keys: vec![],
+        }),
+        authority_discovery: Some(AuthorityDiscoveryConfig {
 			keys: vec![],
 		}),
         grandpa: Some(GrandpaConfig {

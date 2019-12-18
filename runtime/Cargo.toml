@@ -63,9 +63,6 @@ runtime-io = { package = "sp-io", git = "https://github.com/paritytech/substrate
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", git = "https://github.com/paritytech/substrate.git", rev = "c6fc2e6240edeb31233b07748c6bf968c7c15553", version = "1.0.4" }
 
-[dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate.git", rev = "c6fc2e6240edeb31233b07748c6bf968c7c15553" }
-
 [features]
 default = ["std"]
 std = [

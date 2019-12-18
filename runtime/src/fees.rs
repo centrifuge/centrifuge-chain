@@ -1,7 +1,7 @@
-use codec::{Decode, Encode};
-// use sp_runtime::traits::Hash;
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
+
+use codec::{Decode, Encode};
 use support::{
     decl_event, decl_module, decl_storage,
     dispatch::Result,
