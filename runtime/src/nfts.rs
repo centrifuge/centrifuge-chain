@@ -1,7 +1,8 @@
-use crate::{anchor, proofs};
+use crate::{anchor, proofs, proofs::Proof};
 use sp_std::vec::Vec;
 use support::{decl_event, decl_module, dispatch::Result, ensure, weights::SimpleDispatchInfo};
 use system::ensure_signed;
+use primitives::H256;
 
 pub trait Trait: anchor::Trait {
     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -24,7 +25,7 @@ decl_module! {
         /// - depends on the arguments
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
-        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<proofs::Proof>, static_proofs: [[u8;32];3]) -> Result {
+        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3]) -> Result {
             ensure_signed(origin)?;
 
             // get the anchor data from anchor ID
@@ -46,17 +47,15 @@ decl_module! {
 impl<T: Trait> Module<T> {
     /// validates the proofs again the provided doc_root.
     /// returns false if any proofs are invalid.
-    fn validate_proofs(doc_root: T::Hash, pfs: &Vec<proofs::Proof>, static_proofs: [[u8; 32]; 3]) -> bool {
-        let mut dr: [u8; 32] = Default::default();
-        dr.clone_from_slice(doc_root.as_ref());
-        proofs::validate_proofs(dr, pfs, static_proofs)
+    fn validate_proofs(doc_root: T::Hash, pfs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {
+        proofs::validate_proofs(H256::from_slice(doc_root.as_ref()), pfs, static_proofs)
     }
 
     /// returns a Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
-    fn get_bundled_hash(pfs: Vec<proofs::Proof>, deposit_address: [u8; 20]) -> T::Hash {
+    fn get_bundled_hash(pfs: Vec<Proof>, deposit_address: [u8; 20]) -> T::Hash {
         let bh = proofs::bundled_hash(pfs, deposit_address);
         let mut res: T::Hash = Default::default();
-        res.as_mut().copy_from_slice(&bh);
+        res.as_mut().copy_from_slice(&bh[..]);
         res
     }
 }
@@ -171,7 +170,7 @@ mod tests {
         t.into()
     }
 
-    fn get_invalid_proof() -> (Proof, H256, [[u8; 32]; 3]) {
+    fn get_invalid_proof() -> (Proof, H256, [H256; 3]) {
         let proof = Proof::new(
             [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -214,7 +213,7 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_valid_proof() -> (Proof, primitives::H256, [[u8; 32]; 3]) {
+    fn get_valid_proof() -> (Proof, primitives::H256, [H256; 3]) {
         let proof = Proof::new(
             [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -264,11 +263,11 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (primitives::H256, [u8; 20], Vec<Proof>, [[u8; 32]; 3]) {
+    fn get_params() -> (primitives::H256, [u8; 20], Vec<Proof>, [H256; 3]) {
         let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
-        let static_proofs: [[u8; 32]; 3] = [[0;32], [0;32], [0;32]];
+        let static_proofs: [H256; 3] = [[0;32], [0;32], [0;32]];
         (anchor_id, deposit_address, pfs, static_proofs)
     }
 

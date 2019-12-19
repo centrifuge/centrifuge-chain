@@ -1,17 +1,18 @@
 use codec::{Decode, Encode};
 use sp_std::vec::Vec;
 use sp_runtime::RuntimeDebug;
+use primitives::H256;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(not(feature = "std"), derive(RuntimeDebug))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
-    leaf_hash: [u8; 32],
-    sorted_hashes: Vec<[u8; 32]>,
+    leaf_hash: H256,
+    sorted_hashes: Vec<H256>,
 }
 
 impl Proof {
-    pub fn new(hash: [u8; 32], sorted_hashes: Vec<[u8; 32]>) -> Self {
+    pub fn new(hash: H256, sorted_hashes: Vec<H256>) -> Self {
         Self {
             leaf_hash: hash,
             sorted_hashes,
@@ -35,7 +36,7 @@ impl Proof {
 /// In the first call to verify(), you should pass in the matches containing document root, signing root
 /// signature root,  sibling root, data root hash. For any subsequent call, the return values from the
 /// previous call to verify should be used.
-pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>, static_proofs: [[u8; 32]; 3]) -> bool {
+pub fn validate_proofs(doc_root: H256, proofs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {
     if proofs.len() < 1 {
         return false;
     }
@@ -51,27 +52,27 @@ pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>, static_proofs: [
         .fold(true, |acc, b| acc && b);
 }
 
-fn sort_hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+fn sort_hash_of(a: H256, b: H256) -> H256 {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     if a < b {
-        h.extend_from_slice(&a);
-        h.extend_from_slice(&b);
+        h.extend_from_slice(&a[..]);
+        h.extend_from_slice(&b[..]);
     } else {
-        h.extend_from_slice(&b);
-        h.extend_from_slice(&a);
+        h.extend_from_slice(&b[..]);
+        h.extend_from_slice(&a[..]);
     }
 
-    runtime_io::hashing::blake2_256(&h)
+    runtime_io::hashing::blake2_256(&h).into()
 }
 
-fn hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+fn hash_of(a: H256, b: H256) -> H256 {
     let mut h: Vec<u8> = Vec::with_capacity(64);
-    h.extend_from_slice(&a);
-    h.extend_from_slice(&b);
-    runtime_io::hashing::blake2_256(&h)
+    h.extend_from_slice(&a[..]);
+    h.extend_from_slice(&b[..]);
+    runtime_io::hashing::blake2_256(&h).into()
 }
 
-fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 32]>) -> bool {
+fn validate_proof(matches: &mut Vec<H256>, hash: H256, proofs: Vec<H256>) -> bool {
     // if hash is already cached earlier
     if matches.contains(&hash) {
         return true;
@@ -91,7 +92,7 @@ fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 
 }
 
 // prefill the required matches before proof validation
-fn pre_matches(static_proofs: [[u8; 32]; 3], doc_root: [u8; 32]) -> (bool, Vec<[u8; 32]>) {
+fn pre_matches(static_proofs: [H256; 3], doc_root: H256) -> (bool, Vec<H256>) {
     let mut matches = Vec::new();
     let basic_data_root = static_proofs[0];
     let zk_data_root = static_proofs[1];
@@ -108,22 +109,22 @@ fn pre_matches(static_proofs: [[u8; 32]; 3], doc_root: [u8; 32]) -> (bool, Vec<[
 
 
 // appends deposit_address and all the hashes from the proofs and returns keccak hash of the result.
-pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
+pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> H256 {
     let hash = proofs
         .into_iter()
         .fold(deposit_address.to_vec(), |mut acc, proof: Proof| {
-            acc.extend_from_slice(&proof.leaf_hash);
+            acc.extend_from_slice(&proof.leaf_hash[..]);
             acc
         });
 
-        runtime_io::hashing::keccak_256(hash.as_slice())
+        runtime_io::hashing::keccak_256(hash.as_slice()).into()
 }
 
 #[cfg(test)]
 mod tests {
     use crate::proofs::{bundled_hash, sort_hash_of, validate_proof, validate_proofs, Proof, pre_matches};
 
-    fn proof_from_hash(a: [u8; 32]) -> Proof {
+    fn proof_from_hash(a: H256) -> Proof {
         Proof {
             leaf_hash: a,
             sorted_hashes: Vec::new(),
@@ -199,7 +200,7 @@ mod tests {
         assert!(res == got, "{:?} {:?}", res, got)
     }
 
-    fn get_valid_proof() -> (Proof, [u8; 32], [[u8;32];3]) {
+    fn get_valid_proof() -> (Proof, H256, [H256;3]) {
         let proof = Proof {
             leaf_hash: [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -248,7 +249,7 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_invalid_proof() -> (Proof, [u8; 32]) {
+    fn get_invalid_proof() -> (Proof, H256) {
         let proof = Proof {
             leaf_hash: [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -307,7 +308,7 @@ mod tests {
             sorted_hashes: vec![],
         };
 
-        let mut matches: Vec<[u8; 32]> = vec![[
+        let mut matches: Vec<H256> = vec![[
             25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
             161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
         ]];
