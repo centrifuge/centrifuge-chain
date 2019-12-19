@@ -6,14 +6,14 @@ use sp_runtime::RuntimeDebug;
 #[cfg_attr(not(feature = "std"), derive(RuntimeDebug))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
-    hash: [u8; 32],
+    leaf_hash: [u8; 32],
     sorted_hashes: Vec<[u8; 32]>,
 }
 
 impl Proof {
     pub fn new(hash: [u8; 32], sorted_hashes: Vec<[u8; 32]>) -> Self {
         Self {
-            hash,
+            leaf_hash: hash,
             sorted_hashes,
         }
     }
@@ -21,20 +21,37 @@ impl Proof {
 
 /// validates each proof and return true if all the proofs are valid
 /// else returns false
-pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>) -> bool {
+/// This is an optimized Merkle proof checker. It caches all valid leaves in an array called
+/// matches. If a proof is validated, all the intermediate hashes will be added to the array.
+/// When validating a subsequent proof, that proof will stop being validated as soon as a hash
+/// has been computed that has been a computed hash in a previously validated proof.
+///
+/// When submitting a list of proof, the client can thus choose to chop of all the already proven
+/// nodes when submitting multiple proofs.
+///
+/// matches: matches must be initialized with length = sum of all proof hashes to ensure all
+///          computed hashes can be stored.
+///
+/// In the first call to verify(), you should pass in the matches containing document root, signing root
+/// signature root,  sibling root, data root hash. For any subsequent call, the return values from the
+/// previous call to verify should be used.
+pub fn validate_proofs(doc_root: [u8; 32], proofs: &Vec<Proof>, static_proofs: [[u8; 32]; 3]) -> bool {
     if proofs.len() < 1 {
         return false;
     }
 
-    let mut matches = Vec::new();
-    matches.push(doc_root);
+    let (valid, mut matches) = pre_matches(static_proofs, doc_root);
+    if !valid {
+        return false
+    }
+
     return proofs
         .iter()
-        .map(|proof| validate_proof(&mut matches, proof.hash, proof.sorted_hashes.clone()))
+        .map(|proof| validate_proof(&mut matches, proof.leaf_hash, proof.sorted_hashes.clone()))
         .fold(true, |acc, b| acc && b);
 }
 
-fn hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+fn sort_hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     if a < b {
         h.extend_from_slice(&a);
@@ -47,6 +64,13 @@ fn hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
     runtime_io::hashing::blake2_256(&h)
 }
 
+fn hash_of(a: [u8; 32], b: [u8; 32]) -> [u8; 32] {
+    let mut h: Vec<u8> = Vec::with_capacity(64);
+    h.extend_from_slice(&a);
+    h.extend_from_slice(&b);
+    runtime_io::hashing::blake2_256(&h)
+}
+
 fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 32]>) -> bool {
     // if hash is already cached earlier
     if matches.contains(&hash) {
@@ -56,7 +80,7 @@ fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 
     let mut hash = hash;
     for proof in proofs.into_iter() {
         matches.push(proof);
-        hash = hash_of(hash, proof);
+        hash = sort_hash_of(hash, proof);
         if matches.contains(&hash) {
             return true;
         }
@@ -66,12 +90,29 @@ fn validate_proof(matches: &mut Vec<[u8; 32]>, hash: [u8; 32], proofs: Vec<[u8; 
     false
 }
 
+// prefill the required matches before proof validation
+fn pre_matches(static_proofs: [[u8; 32]; 3], doc_root: [u8; 32]) -> (bool, Vec<[u8; 32]>) {
+    let mut matches = Vec::new();
+    let basic_data_root = static_proofs[0];
+    let zk_data_root = static_proofs[1];
+    let signature_root = static_proofs[2];
+    matches.push(basic_data_root);
+    matches.push(zk_data_root);
+    let signing_root = hash_of(basic_data_root, zk_data_root);
+    matches.push(signing_root);
+    matches.push(signature_root);
+    let calc_doc_root = hash_of(signing_root, signature_root);
+    matches.push(calc_doc_root);
+    (calc_doc_root == doc_root, matches)
+}
+
+
 // appends deposit_address and all the hashes from the proofs and returns keccak hash of the result.
 pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
     let hash = proofs
         .into_iter()
         .fold(deposit_address.to_vec(), |mut acc, proof: Proof| {
-            acc.extend_from_slice(&proof.hash);
+            acc.extend_from_slice(&proof.leaf_hash);
             acc
         });
 
@@ -80,11 +121,11 @@ pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> [u8; 32] {
 
 #[cfg(test)]
 mod tests {
-    use crate::proofs::{bundled_hash, hash_of, validate_proof, validate_proofs, Proof};
+    use crate::proofs::{bundled_hash, sort_hash_of, validate_proof, validate_proofs, Proof, pre_matches};
 
     fn proof_from_hash(a: [u8; 32]) -> Proof {
         Proof {
-            hash: a,
+            leaf_hash: a,
             sorted_hashes: Vec::new(),
         }
     }
@@ -103,7 +144,7 @@ mod tests {
             29, 106, 103, 53, 85, 94, 151, 152, 97, 33, 199, 77, 199, 229, 218, 111, 251, 9, 138,
             235, 120, 71, 98, 105, 91, 212, 180, 209, 164, 91, 87, 156,
         ];
-        let got = hash_of(a, b);
+        let got = sort_hash_of(a, b);
         assert!(res == got, "{:?} {:?}", res, got)
     }
 
@@ -121,7 +162,7 @@ mod tests {
             237, 165, 215, 95, 110, 141, 136, 232, 17, 105, 160, 71, 23, 210, 172, 113, 170, 84,
             158, 210, 122, 74, 55, 7, 101, 217, 146, 206, 194, 114, 79, 169,
         ];
-        let got = hash_of(a, b);
+        let got = sort_hash_of(a, b);
         assert!(res == got, "{:?} {:?}", res, got)
     }
 
@@ -158,9 +199,9 @@ mod tests {
         assert!(res == got, "{:?} {:?}", res, got)
     }
 
-    fn get_valid_proof() -> (Proof, [u8; 32]) {
+    fn get_valid_proof() -> (Proof, [u8; 32], [[u8;32];3]) {
         let proof = Proof {
-            hash: [
+            leaf_hash: [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
                 37, 85, 23, 189, 209, 48, 97, 34, 3, 169, 157, 88, 159,
             ],
@@ -185,16 +226,31 @@ mod tests {
         };
 
         let doc_root = [
-            25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
-            161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
+            48, 123, 58, 192, 8, 62, 20, 55, 99, 52, 37, 73, 174, 123, 214, 104, 37, 41, 189, 170,
+            205, 80, 158, 136, 224, 128, 128, 89, 55, 240, 32, 234,
         ];
 
-        (proof, doc_root)
+        let static_proofs = [
+            [
+                25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
+                161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
+            ],
+            [
+                61, 164, 199, 22, 164, 251, 58, 14, 67, 56, 242, 60, 86, 203, 128, 203, 138, 129, 237,
+                7, 29, 7, 39, 58, 250, 42, 14, 53, 241, 108, 187, 74,
+            ],
+            [
+                70, 124, 133, 120, 103, 45, 94, 174, 176, 18, 151, 243, 104, 120, 12, 54, 217, 189,
+                59, 222, 109, 64, 136, 203, 56, 136, 159,115, 96, 101, 2, 185,
+            ]
+        ];
+
+        (proof, doc_root, static_proofs)
     }
 
     fn get_invalid_proof() -> (Proof, [u8; 32]) {
         let proof = Proof {
-            hash: [
+            leaf_hash: [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
                 37, 85, 23, 189, 20, 48, 97, 34, 3, 169, 157, 88, 159,
             ],
@@ -220,12 +276,11 @@ mod tests {
 
     #[test]
     fn validate_proof_success() {
-        let (proof, root) = get_valid_proof();
-        let mut matches = vec![root];
-
+        let (proof, root, static_proofs) = get_valid_proof();
+        let (_, mut matches) = pre_matches(static_proofs, root);
         assert!(validate_proof(
             &mut matches,
-            proof.hash,
+            proof.leaf_hash,
             proof.sorted_hashes
         ))
     }
@@ -237,7 +292,7 @@ mod tests {
 
         assert!(!validate_proof(
             &mut matches,
-            proof.hash,
+            proof.leaf_hash,
             proof.sorted_hashes
         ))
     }
@@ -245,7 +300,7 @@ mod tests {
     #[test]
     fn validate_proof_no_proofs() {
         let proof = Proof {
-            hash: [
+            leaf_hash: [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
                 37, 85, 23, 189, 209, 48, 97, 34, 3, 169, 157, 88, 159,
             ],
@@ -259,31 +314,31 @@ mod tests {
 
         assert!(!validate_proof(
             &mut matches,
-            proof.hash,
+            proof.leaf_hash,
             proof.sorted_hashes
         ))
     }
 
     #[test]
     fn validate_proofs_success() {
-        let (vp1, doc_root) = get_valid_proof();
-        let (vp2, _) = get_valid_proof();
+        let (vp1, doc_root, static_proofs) = get_valid_proof();
+        let (vp2, _, _) = get_valid_proof();
         let proofs = vec![vp1, vp2];
-        assert!(validate_proofs(doc_root, &proofs))
+        assert!(validate_proofs(doc_root, &proofs, static_proofs))
     }
 
     #[test]
     fn validate_proofs_failed() {
-        let (vp, doc_root) = get_valid_proof();
+        let (vp, doc_root, static_proofs) = get_valid_proof();
         let (ivp, _) = get_invalid_proof();
         let proofs = vec![vp, ivp];
-        assert!(!validate_proofs(doc_root, &proofs))
+        assert!(!validate_proofs(doc_root, &proofs, static_proofs))
     }
 
     #[test]
     fn validate_proofs_no_proofs() {
-        let (_, doc_root) = get_valid_proof();
+        let (_, doc_root, static_proofs) = get_valid_proof();
         let proofs = vec![];
-        assert!(!validate_proofs(doc_root, &proofs))
+        assert!(!validate_proofs(doc_root, &proofs, static_proofs))
     }
 }

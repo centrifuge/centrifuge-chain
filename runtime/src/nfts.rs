@@ -24,14 +24,14 @@ decl_module! {
         /// - depends on the arguments
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
-        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<proofs::Proof>) -> Result {
+        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<proofs::Proof>, static_proofs: [[u8;32];3]) -> Result {
             ensure_signed(origin)?;
 
             // get the anchor data from anchor ID
             let anchor_data = <anchor::Module<T>>::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
 
             // validate proofs
-            ensure!(Self::validate_proofs(anchor_data.get_doc_root(), &pfs), "Invalid proofs");
+            ensure!(Self::validate_proofs(anchor_data.get_doc_root(), &pfs, static_proofs), "Invalid proofs");
 
             // get the bundled hash
             let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
@@ -46,10 +46,10 @@ decl_module! {
 impl<T: Trait> Module<T> {
     /// validates the proofs again the provided doc_root.
     /// returns false if any proofs are invalid.
-    fn validate_proofs(doc_root: T::Hash, pfs: &Vec<proofs::Proof>) -> bool {
+    fn validate_proofs(doc_root: T::Hash, pfs: &Vec<proofs::Proof>, static_proofs: [[u8; 32]; 3]) -> bool {
         let mut dr: [u8; 32] = Default::default();
         dr.clone_from_slice(doc_root.as_ref());
-        proofs::validate_proofs(dr, pfs)
+        proofs::validate_proofs(dr, pfs, static_proofs)
     }
 
     /// returns a Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
@@ -171,7 +171,7 @@ mod tests {
         t.into()
     }
 
-    fn get_invalid_proof() -> (Proof, H256) {
+    fn get_invalid_proof() -> (Proof, H256, [[u8; 32]; 3]) {
         let proof = Proof::new(
             [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -180,7 +180,7 @@ mod tests {
             vec![
                 [
                     113, 229, 58, 22, 178, 220, 200, 69, 191, 246, 171, 254, 8, 183, 211, 75, 54,
-                    223, 224, 197, 170, 112, 248, 56, 10, 176, 17, 205, 86, 130, 233, 16,
+                    22, 224, 197, 170, 112, 248, 56, 10, 176, 17, 205, 86, 130, 233, 16,
                 ],
                 [
                     133, 11, 212, 75, 212, 65, 247, 178, 200, 157, 5, 39, 57, 135, 63, 126, 166,
@@ -190,15 +190,31 @@ mod tests {
         );
 
         let doc_root = [
-            25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
-            161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
+            48, 123, 58, 192, 8, 62, 20, 55, 99, 52, 37, 73, 174, 123, 214, 104, 37, 41, 189, 170,
+            205, 80, 158, 136, 224, 128, 128, 89, 55, 240, 32, 234,
         ]
-        .into();
+            .into();
 
-        (proof, doc_root)
+        let static_proofs = [
+            [
+                25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
+                161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
+            ],
+            [
+                61, 164, 199, 22, 164, 251, 58, 14, 67, 56, 242, 60, 86, 203, 128, 203, 138, 129, 237,
+                7, 29, 7, 39, 58, 250, 42, 14, 53, 241, 108, 187, 74,
+            ],
+            [
+                70, 124, 133, 120, 103, 45, 94, 174, 176, 18, 151, 243, 104, 120, 12, 54, 217, 189,
+                59, 222, 109, 64, 136, 203, 56, 136, 159,115, 96, 101, 2, 185,
+            ]
+        ];
+
+
+        (proof, doc_root, static_proofs)
     }
 
-    fn get_valid_proof() -> (Proof, primitives::H256) {
+    fn get_valid_proof() -> (Proof, primitives::H256, [[u8; 32]; 3]) {
         let proof = Proof::new(
             [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -225,27 +241,43 @@ mod tests {
         );
 
         let doc_root = [
-            25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
-            161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
+            48, 123, 58, 192, 8, 62, 20, 55, 99, 52, 37, 73, 174, 123, 214, 104, 37, 41, 189, 170,
+            205, 80, 158, 136, 224, 128, 128, 89, 55, 240, 32, 234,
         ]
         .into();
 
-        (proof, doc_root)
+        let static_proofs = [
+            [
+                25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70,
+                161, 35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
+            ],
+            [
+                61, 164, 199, 22, 164, 251, 58, 14, 67, 56, 242, 60, 86, 203, 128, 203, 138, 129, 237,
+                7, 29, 7, 39, 58, 250, 42, 14, 53, 241, 108, 187, 74,
+            ],
+            [
+                70, 124, 133, 120, 103, 45, 94, 174, 176, 18, 151, 243, 104, 120, 12, 54, 217, 189,
+                59, 222, 109, 64, 136, 203, 56, 136, 159,115, 96, 101, 2, 185,
+            ]
+        ];
+
+        (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (primitives::H256, [u8; 20], Vec<Proof>) {
+    fn get_params() -> (primitives::H256, [u8; 20], Vec<Proof>, [[u8; 32]; 3]) {
         let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
-        (anchor_id, deposit_address, pfs)
+        let static_proofs: [[u8; 32]; 3] = [[0;32], [0;32], [0;32]];
+        (anchor_id, deposit_address, pfs, static_proofs)
     }
 
     #[test]
     fn bad_origin() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
             assert_err!(
-                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs),
+                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs),
                 "RequireSignedOrigin"
             );
         })
@@ -254,9 +286,9 @@ mod tests {
     #[test]
     fn missing_anchor() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
             assert_err!(
-                Nfts::validate_mint(Origin::signed(1), anchor_id, deposit_address, pfs),
+                Nfts::validate_mint(Origin::signed(1), anchor_id, deposit_address, pfs, static_proofs),
                 "Anchor doesn't exist"
             );
         })
@@ -268,7 +300,7 @@ mod tests {
             let deposit_address: [u8; 20] = [0; 20];
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let (pf, doc_root) = get_invalid_proof();
+            let (pf, doc_root, static_proofs) = get_invalid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
@@ -278,7 +310,7 @@ mod tests {
             ));
 
             assert_err!(
-                Nfts::validate_mint(Origin::signed(1), anchor_id, deposit_address, vec![pf]),
+                Nfts::validate_mint(Origin::signed(1), anchor_id, deposit_address, vec![pf], static_proofs),
                 "Invalid proofs"
             );
         })
@@ -290,7 +322,7 @@ mod tests {
             let deposit_address: [u8; 20] = [0; 20];
             let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let (pf, doc_root) = get_valid_proof();
+            let (pf, doc_root, static_proofs) = get_valid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
@@ -303,7 +335,8 @@ mod tests {
                 Origin::signed(1),
                 anchor_id,
                 deposit_address,
-                vec![pf]
+                vec![pf],
+                static_proofs
             ),);
         })
     }

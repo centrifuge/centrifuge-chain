@@ -221,15 +221,6 @@ impl Alternative {
                         hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
                         vec![
                             hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
-                            hex!["c40526b6cb4c2ab991f5065b599a7313ba98ea6995786539ca05186adb30b34c"].into(),
-                            hex!["f0415b8cdfcd189c5636f3c1d0b65637b97fdd926af8132a38f963361f293b0f"].into(),
-                            hex!["c40524c8d2a97e347ba3f9c75395dabcad0ef7304c4804838f20ec05ef76b32a"].into(),
-                            hex!["f0415a742977038943db5f619a2101d790e8a588ba33d671044a10ea332b9f7f"].into(),
-                            hex!["f041601cc759ea533c386a0391344e82b6efb645c07a66355411cbc657aa8c66"].into(),
-                            hex!["f04162650738ed2e19b0240419f9680ba9d3dc6b40ccf4ad8993fcbf61ca6720"].into(),
-                            hex!["f0415b3730410e05516cbfcdc3eb2909d373dcaf205dc1889f4455d9dc0c7222"].into(),
-                            hex!["c4052280dcd37bc6c5148307fda2ade1be9c2d555ec49f59de27c730ca43d80d"].into(),
-                            hex!["f04157ad160c8e5c2847f74837b1c59ad6a927bd3feb517a16e12b59a4704c7a"].into(),
                         ],
                         true,
                     )
@@ -261,8 +252,10 @@ fn testnet_genesis(
     endowed_accounts: Vec<AccountId>,
     _enable_println: bool,
 ) -> GenesisConfig {
-    const ENDOWMENT: Balance = 10_000_000_000_000_000_000; // endowed in nano, for 1,000,000,000 Dev (=1,000,000,000 Rad)
-    const STASH: Balance = 100_000_000_000_000;
+    const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals)
+    const STASH: Balance =            1_000_000_000000000000000000;
+    let endowment: Balance = (INITIAL_SUPPLY - STASH * (initial_authorities.len() as Balance)) /
+        (endowed_accounts.len() as Balance);
 
     GenesisConfig {
         system: Some(SystemConfig {
@@ -271,7 +264,7 @@ fn testnet_genesis(
         }),
         balances: Some(BalancesConfig {
             balances: endowed_accounts.iter().cloned()
-            .map(|k| (k, ENDOWMENT))
+            .map(|k| (k, endowment))
             .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
             .collect(),
             vesting: vec![],
@@ -290,9 +283,9 @@ fn testnet_genesis(
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
-			validator_count: 5,
+			validator_count: 50,
             // Minimum number of staking participants before emergency conditions are imposed.
-			minimum_validator_count: 1,
+			minimum_validator_count: 2,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
