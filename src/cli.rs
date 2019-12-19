@@ -1,126 +1,105 @@
-use crate::chain_spec;
-use crate::service;
-use futures::{future, sync::oneshot, Future};
+pub use sc_cli::VersionInfo;
+use tokio::prelude::Future;
+use tokio::runtime::{Builder as RuntimeBuilder, Runtime};
+use sc_cli::{IntoExit, NoCustom, error};
+use sc_service::{AbstractService, Roles as ServiceRoles, Configuration};
 use log::info;
-use std::cell::RefCell;
-pub use substrate_cli::{error, IntoExit, VersionInfo};
-use substrate_cli::{display_role, informant, parse_and_prepare, NoCustom, ParseAndPrepare};
-use substrate_service::{AbstractService, Configuration, Roles as ServiceRoles};
-use tokio::runtime::Runtime;
+use sc_cli::{display_role, parse_and_prepare, ParseAndPrepare};
+use crate::{service, chain_spec};
+
+fn load_spec(id: &str) -> Result<Option<chain_spec::ChainSpec>, String> {
+	Ok(match chain_spec::Alternative::from(id) {
+		Some(spec) => Some(spec.load()?),
+		None => None,
+	})
+}
 
 /// Parse command line arguments into service configuration.
-pub fn run<I, T, E>(args: I, exit: E, version: VersionInfo) -> error::Result<()>
-where
+pub fn run<I, T, E>(args: I, exit: E, version: sc_cli::VersionInfo) -> error::Result<()> where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
     E: IntoExit,
 {
-    type Config<A, B> = Configuration<(), A, B>;
-    match parse_and_prepare::<NoCustom, NoCustom, _>(&version, "substrate-node", args) {
-        ParseAndPrepare::Run(cmd) => cmd.run(
-            load_spec,
-            exit,
-            |exit, _cli_args, _custom_args, config: Config<_, _>| {
-                info!("{}", version.name);
-                info!("  version {}", config.full_version());
-                info!("  by {}, 2017, 2018", version.author);
-                info!("Chain specification: {}", config.chain_spec.name());
-                info!("Node name: {}", config.name);
-                info!("Roles: {}", display_role(&config));
-                let runtime = Runtime::new().map_err(|e| format!("{:?}", e))?;
-                match config.roles {
-                    ServiceRoles::LIGHT => run_until_exit(
-                        runtime,
-                        service::new_light(config)?,
-                        exit
-                    ),
-                    _ => run_until_exit(
-                        runtime,
-                        service::new_full(config)?,
-                        exit
-                    ),
-                }
-            },
-        ),
+	type Config<A, B> = Configuration<(), A, B>;
+
+    match parse_and_prepare::<NoCustom, NoCustom, _>(&version, "centrifuge-chain", args) {
+        ParseAndPrepare::Run(cmd) => cmd.run(load_spec, exit,
+        |exit, _cli_args, _custom_args, config: Config<_, _>| {
+            info!("{}", version.name);
+            info!("  version {}", config.full_version());
+            info!("  by {}, 2017-2019", version.author);
+            info!("Chain specification: {}", config.chain_spec.name());
+            info!("Node name: {}", config.name);
+            info!("Roles: {}", display_role(&config));
+			let runtime = RuntimeBuilder::new().name_prefix("main-tokio-").build()
+				.map_err(|e| format!("{:?}", e))?;
+            match config.roles {
+                ServiceRoles::LIGHT => run_until_exit(
+                    runtime,
+                    service::new_light(config)?,
+                    exit
+                ),
+                _ => run_until_exit(
+                    runtime,
+                    service::new_full(config)?,
+                    exit
+                ),
+            }
+        }),
         ParseAndPrepare::BuildSpec(cmd) => cmd.run::<NoCustom, _, _, _>(load_spec),
-        ParseAndPrepare::ExportBlocks(cmd) => cmd.run_with_builder(
-            |config: Config<_, _>| Ok(new_full_start!(config).0),
-            load_spec,
-            exit,
-        ),
-        ParseAndPrepare::ImportBlocks(cmd) => cmd.run_with_builder(
-            |config: Config<_, _>| Ok(new_full_start!(config).0),
-            load_spec,
-            exit,
-        ),
+		ParseAndPrepare::ExportBlocks(cmd) => cmd.run_with_builder(|config: Config<_, _>|
+			Ok(new_full_start!(config).0), load_spec, exit),
+		ParseAndPrepare::ImportBlocks(cmd) => cmd.run_with_builder(|config: Config<_, _>|
+			Ok(new_full_start!(config).0), load_spec, exit),
+		ParseAndPrepare::CheckBlock(cmd) => cmd.run_with_builder(|config: Config<_, _>|
+			Ok(new_full_start!(config).0), load_spec, exit),
         ParseAndPrepare::PurgeChain(cmd) => cmd.run(load_spec),
-        ParseAndPrepare::RevertChain(cmd) => {
-            cmd.run_with_builder(|config: Config<_, _>| Ok(new_full_start!(config).0), load_spec)
-        },
+		ParseAndPrepare::RevertChain(cmd) => cmd.run_with_builder(|config: Config<_, _>|
+			Ok(new_full_start!(config).0), load_spec),
         ParseAndPrepare::CustomCommand(_) => Ok(())
-    }?;
-
-    Ok(())
+    }
 }
 
-fn load_spec(id: &str) -> Result<Option<chain_spec::ChainSpec>, String> {
-    Ok(match chain_spec::Alternative::from(id) {
-        Some(spec) => Some(spec.load()?),
-        None => None,
-    })
-}
-
-fn run_until_exit<T, E>(mut runtime: Runtime, service: T, e: E) -> error::Result<()>
+fn run_until_exit<T, E>(
+	mut runtime: Runtime,
+	service: T,
+	e: E,
+) -> error::Result<()>
 where
     T: AbstractService,
     E: IntoExit,
 {
-    let (exit_send, exit) = exit_future::signal();
+	use futures::{FutureExt, TryFutureExt, channel::oneshot, future::select, compat::Future01CompatExt};
 
-    let informant = informant::build(&service);
-    runtime.executor().spawn(exit.until(informant).map(|_| ()));
+	let (exit_send, exit) = oneshot::channel();
 
-    // we eagerly drop the service so that the internal exit future is fired,
-    // but we need to keep holding a reference to the global telemetry guard
-    let _telemetry = service.telemetry();
+	let informant = sc_cli::informant::build(&service);
 
-    let service_res = {
-        let exit = e
-            .into_exit()
-            .map_err(|_| error::Error::Other("Exit future failed.".into()));
-        let service = service.map_err(|err| error::Error::Service(err));
-        let select = service.select(exit).map(|_| ()).map_err(|(err, _)| err);
-        runtime.block_on(select)
-    };
+	let future = select(informant, exit)
+		.map(|_| Ok(()))
+		.compat();
 
-    exit_send.fire();
+	runtime.executor().spawn(future);
 
-    // TODO [andre]: timeout this future #1318
-    let _ = runtime.shutdown_on_idle().wait();
+	// we eagerly drop the service so that the internal exit future is fired,
+	// but we need to keep holding a reference to the global telemetry guard
+	let _telemetry = service.telemetry();
 
-    service_res
-}
+	let service_res = {
+		let exit = e.into_exit();
+		let service = service
+			.map_err(|err| error::Error::Service(err))
+			.compat();
+		let select = select(service, exit)
+			.map(|_| Ok(()))
+			.compat();
+		runtime.block_on(select)
+	};
 
-// handles ctrl-c
-pub struct Exit;
-impl IntoExit for Exit {
-    type Exit = future::MapErr<oneshot::Receiver<()>, fn(oneshot::Canceled) -> ()>;
-    fn into_exit(self) -> Self::Exit {
-        // can't use signal directly here because CtrlC takes only `Fn`.
-        let (exit_send, exit) = oneshot::channel();
+	let _ = exit_send.send(());
 
-        let exit_send_cell = RefCell::new(Some(exit_send));
-        ctrlc::set_handler(move || {
-            let exit_send = exit_send_cell
-                .try_borrow_mut()
-                .expect("signal handler not reentrant; qed")
-                .take();
-            if let Some(exit_send) = exit_send {
-                exit_send.send(()).expect("Error sending exit notification");
-            }
-        })
-        .expect("Error setting Ctrl-C handler");
+	// TODO [andre]: timeout this future #1318
+	let _ = runtime.shutdown_on_idle().wait();
 
-        exit.map_err(drop)
-    }
+	service_res
 }

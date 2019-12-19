@@ -1,15 +1,13 @@
-use codec::{Decode, Encode};
-use sr_primitives::{
-    weights::SimpleDispatchInfo,
-    traits::Hash,
-};
 /// Handling fees payments for specific transactions
 /// Initially being hard-coded, later coming from the governance module
+
+use codec::{Decode, Encode};
 use support::{
     decl_event, decl_module, decl_storage,
     dispatch::Result,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
+    weights::SimpleDispatchInfo,
 };
 use system::ensure_signed;
 
@@ -142,13 +140,12 @@ mod tests {
     use super::*;
 
     use primitives::H256;
-    use sr_primitives::weights::Weight;
-    use sr_primitives::Perbill;
-    use sr_primitives::{
+    use sp_runtime::Perbill;
+    use sp_runtime::{
         testing::Header,
-        traits::{BlakeTwo256, IdentityLookup},
+        traits::{BlakeTwo256, IdentityLookup, Hash},
     };
-    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types};
+    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
 
     impl_outer_origin! {
         pub enum Origin for Test {}

@@ -5,12 +5,9 @@
 
 use crate::{common, fees};
 use codec::{Decode, Encode};
-use rstd::{convert::TryInto, vec::Vec};
-use sr_primitives::{
-    traits::Hash,
-    weights::SimpleDispatchInfo,
-};
-use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure, StorageValue};
+use sp_std::{convert::TryInto, vec::Vec};
+use sp_runtime::traits::Hash;
+use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure, weights::SimpleDispatchInfo};
 use system::ensure_signed;
 
 #[cfg(feature = "std")]
@@ -323,7 +320,7 @@ impl<T: Trait> Module<T> {
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
         let signing_root = <PreCommits<T>>::get(anchor_id).signing_root;
         let mut concatenated_bytes = signing_root.as_ref().to_vec();
-        let mut proof_bytes = proof.as_ref().to_vec();
+        let proof_bytes = proof.as_ref().to_vec();
 
         // concat hashes
         concatenated_bytes.extend(proof_bytes);

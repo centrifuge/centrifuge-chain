@@ -23,11 +23,13 @@ sudo apt-get install -y cmake pkg-config libssl-dev
 
 ./scripts/init.sh
 
+rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
+
 case $TARGET in
 	"build-client")
 		cargo build --release --locked "$@"
 		;;
-		
+
 	"runtime-test")
 		cargo test -p centrifuge-chain-runtime
 		wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
@@ -43,5 +45,5 @@ case $TARGET in
         for file in target/debug/centrifuge_chain*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
         bash <(curl -s https://codecov.io/bash) &&
         echo "Uploaded code coverage"
-		;;		
+		;;
 esac

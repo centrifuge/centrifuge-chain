@@ -1,11 +1,12 @@
-use centrifuge_chain_runtime::{anchor::AnchorData, AnchorApi};
+use node_runtime::{anchor::AnchorData, AnchorApi};
 use node_primitives::{BlockNumber, Hash};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
 use primitives::Blake2Hasher;
-use sr_primitives::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
+use sp_runtime::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
 use std::sync::Arc;
-use client::{backend, CallExecutor, Client};
+use client_api::backend;
+use client::{CallExecutor, Client};
 
 /// Anchor RPC methods.
 #[rpc]

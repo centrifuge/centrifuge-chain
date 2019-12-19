@@ -1,14 +1,13 @@
 use super::*;
 
 use primitives::H256;
-use sr_primitives::{
+use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    weights::Weight,
     Perbill,
 };
 use std::time::Instant;
-use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness};
+use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
