@@ -105,3 +105,9 @@ Validator Bob:
 
 Validator Alice (Pass libp2p address of bobs node above as the bootnode here)
 `./target/debug/centrifuge-chain --ws-external --validator --node-key=2a654a0958cd0e10626c36057c46a08018eaf2901f9bab74ecc1144f714300ac --alice --rpc-cors=all --chain=testnets/fulvous.raw.json --base-path /tmp/talice --bootnodes=/ip4/127.0.0.1/tcp/30333/p2p/QmNpeu3bJhESzriWMLRcxRgSCYDGQ6GdBHnJAf8bJexAd5 --port=30334`
+
+### Generating a new genesis file
+
+1. Be sure to change the `id` and `protocol_id` in `src/chain_spec.rs`
+2. Run `cargo run --release build-spec --disable-default-bootnode --chain flint > res/[name]-spec.json` to export the chain spec
+3. Commit

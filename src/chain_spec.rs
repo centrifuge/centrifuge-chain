@@ -196,8 +196,8 @@ impl Alternative {
             // Flint initial spec
             Alternative::Flint => {
                 ChainSpec::from_genesis(
-                    "Flint Testnet",
-                    "flint",
+                    "Flint Testnet CC1",
+                    "flint-cc1",
                     || {
                         testnet_genesis(
                         vec![
@@ -227,7 +227,7 @@ impl Alternative {
                     },
                     vec![],
                     Some(TelemetryEndpoints::new(vec![(STAGING_TELEMETRY_URL.to_string(), 0)])),
-                    Some("flint"),
+                    Some("flint-cc1"),
                     Some(get_default_properties("FRAD")),
                     Default::default(),
                 )
