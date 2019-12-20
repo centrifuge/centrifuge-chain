@@ -45,6 +45,10 @@ COPY --from=builder /centrifuge-chain/target/$PROFILE/centrifuge-chain /usr/loca
 RUN ldd /usr/local/bin/centrifuge-chain && \
 	/usr/local/bin/centrifuge-chain --version
 
+# Shrinking
+RUN rm -rf /usr/lib/python* && \
+	rm -rf /usr/bin /usr/sbin /usr/share/man
+
 # Add chain resources to image
 COPY res /resources/
 
