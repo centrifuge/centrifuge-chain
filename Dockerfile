@@ -49,6 +49,9 @@ RUN ldd /usr/local/bin/centrifuge-chain && \
 RUN rm -rf /usr/lib/python* && \
 	rm -rf /usr/bin /usr/sbin /usr/share/man
 
+# Add chain resources to image
+COPY res /resources/
+
 # USER centrifuge-chain # see above
 EXPOSE 30333 9933 9944
 VOLUME ["/data"]
