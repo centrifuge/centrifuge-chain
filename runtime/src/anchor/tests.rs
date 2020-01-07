@@ -1,13 +1,13 @@
 use super::*;
 
-use primitives::H256;
+use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+    traits::{BadOrigin, BlakeTwo256, IdentityLookup},
     Perbill,
 };
 use std::time::Instant;
-use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight};
+use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -24,7 +24,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
-impl system::Trait for Test {
+impl frame_system::Trait for Test {
     type AccountId = u64;
     type Call = ();
     type Lookup = IdentityLookup<Self::AccountId>;
@@ -40,9 +40,10 @@ impl system::Trait for Test {
     type MaximumBlockLength = MaximumBlockLength;
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
+    type ModuleToIndex = ();
 }
 
-impl timestamp::Trait for Test {
+impl pallet_timestamp::Trait for Test {
     type Moment = u64;
     type OnTimestampSet = ();
     type MinimumPeriod = ();
@@ -59,7 +60,7 @@ parameter_types! {
     pub const TransactionBaseFee: u64 = 0;
     pub const TransactionByteFee: u64 = 0;
 }
-impl balances::Trait for Test {
+impl pallet_balances::Trait for Test {
     type Balance = u64;
     type OnFreeBalanceZero = ();
     type OnNewAccount = ();
@@ -78,9 +79,9 @@ impl Trait for Test {
 
 impl Test {
     fn test_document_hashes() -> (
-        <Test as system::Trait>::Hash,
-        <Test as system::Trait>::Hash,
-        <Test as system::Trait>::Hash,
+        <Test as frame_system::Trait>::Hash,
+        <Test as frame_system::Trait>::Hash,
+        <Test as frame_system::Trait>::Hash,
     ) {
         // first is the hash of concatenated last two in sorted order
         (
@@ -107,12 +108,12 @@ impl Test {
 }
 
 type Anchor = Module<Test>;
-type System = system::Module<Test>;
+type System = frame_system::Module<Test>;
 
 // This function basically just builds a genesis storage key/value store according to
 // our desired mockup.
-fn new_test_ext() -> runtime_io::TestExternalities {
-    let mut t = system::GenesisConfig::default()
+fn new_test_ext() -> sp_io::TestExternalities {
+    let mut t = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
     fees::GenesisConfig::<Test> {
@@ -134,13 +135,13 @@ fn new_test_ext() -> runtime_io::TestExternalities {
 #[test]
 fn basic_pre_commit() {
     new_test_ext().execute_with(|| {
-        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         // reject unsigned
         assert_err!(
             Anchor::pre_commit(Origin::NONE, anchor_id, signing_root),
-            "RequireSignedOrigin"
+            BadOrigin
         );
 
         // happy
@@ -163,15 +164,15 @@ fn basic_pre_commit() {
 #[test]
 fn pre_commit_fail_anchor_exists() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         // anchor
         assert_ok!(Anchor::commit(
             Origin::signed(1),
             pre_image,
-            <Test as system::Trait>::Hashing::hash_of(&0),
-            <Test as system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
             common::MS_PER_DAY + 1
         ));
 
@@ -186,15 +187,15 @@ fn pre_commit_fail_anchor_exists() {
 #[test]
 fn pre_commit_fail_anchor_exists_different_acc() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         // anchor
         assert_ok!(Anchor::commit(
             Origin::signed(2),
             pre_image,
-            <Test as system::Trait>::Hashing::hash_of(&0),
-            <Test as system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
             common::MS_PER_DAY + 1
         ));
 
@@ -209,8 +210,8 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 #[test]
 fn pre_commit_fail_pre_commit_exists() {
     new_test_ext().execute_with(|| {
-        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         // first pre-commit
         assert_ok!(Anchor::pre_commit(
@@ -245,8 +246,8 @@ fn pre_commit_fail_pre_commit_exists() {
 #[test]
 fn pre_commit_fail_pre_commit_exists_different_acc() {
     new_test_ext().execute_with(|| {
-        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         // first pre-commit
         assert_ok!(Anchor::pre_commit(
@@ -281,21 +282,21 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 #[test]
 fn basic_commit() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-        let pre_image2 = <Test as system::Trait>::Hashing::hash_of(&1);
-        let anchor_id2 = (pre_image2).using_encoded(<Test as system::Trait>::Hashing::hash);
-        let doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+        let pre_image2 = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+        let anchor_id2 = (pre_image2).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+        let doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         // reject unsigned
         assert_err!(
             Anchor::commit(
                 Origin::NONE,
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
                 1
             ),
-            "RequireSignedOrigin"
+            BadOrigin
         );
 
         // happy
@@ -303,7 +304,7 @@ fn basic_commit() {
             Origin::signed(1),
             pre_image,
             doc_root,
-            <Test as system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
             1567589834087
         ));
         // asserting that the stored anchor id is what we sent the pre-image for
@@ -322,7 +323,7 @@ fn basic_commit() {
             Origin::signed(1),
             pre_image2,
             doc_root,
-            <Test as system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
             1567589844087
         ));
         a = Anchor::get_anchor_by_id(anchor_id2).unwrap();
@@ -341,7 +342,7 @@ fn basic_commit() {
                 Origin::signed(1),
                 pre_image2,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
                 2 // some arbitrary store until date that is less than the required minimum
             ),
             "Stored until date must be at least a day later than the current date"
@@ -352,16 +353,16 @@ fn basic_commit() {
 #[test]
 fn commit_fail_anchor_exists() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-        let doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+        let doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         // happy
         assert_ok!(Anchor::commit(
             Origin::signed(1),
             pre_image,
             doc_root,
-            <Test as system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
             common::MS_PER_DAY + 1
         ));
         // asserting that the stored anchor id is what we sent the pre-image for
@@ -374,7 +375,7 @@ fn commit_fail_anchor_exists() {
                 Origin::signed(1),
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ),
             "Anchor already exists"
@@ -386,7 +387,7 @@ fn commit_fail_anchor_exists() {
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ),
             "Anchor already exists"
@@ -397,9 +398,9 @@ fn commit_fail_anchor_exists() {
 #[test]
 fn basic_pre_commit_commit() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
-        let random_doc_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+        let random_doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
         // happy
@@ -439,8 +440,8 @@ fn basic_pre_commit_commit() {
 #[test]
 fn pre_commit_expired_when_anchoring() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
         // happy
@@ -470,8 +471,8 @@ fn pre_commit_expired_when_anchoring() {
 #[test]
 fn pre_commit_commit_fail_from_another_acc() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
         // happy
@@ -499,16 +500,16 @@ fn pre_commit_commit_fail_from_another_acc() {
 #[test]
 fn pre_commit_commit_bucket_gets_determined_correctly() {
     new_test_ext().execute_with(|| {
-        let current_block: <Test as system::Trait>::BlockNumber = 1;
-        let expected_evict_bucket: <Test as system::Trait>::BlockNumber =
+        let current_block: <Test as frame_system::Trait>::BlockNumber = 1;
+        let expected_evict_bucket: <Test as frame_system::Trait>::BlockNumber =
             PRE_COMMIT_EXPIRATION_DURATION_BLOCKS * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER;
         assert_eq!(
             expected_evict_bucket,
             Anchor::determine_pre_commit_eviction_bucket(current_block)
         );
 
-        let current_block2: <Test as system::Trait>::BlockNumber = expected_evict_bucket + 1;
-        let expected_evict_bucket2: <Test as system::Trait>::BlockNumber =
+        let current_block2: <Test as frame_system::Trait>::BlockNumber = expected_evict_bucket + 1;
+        let expected_evict_bucket2: <Test as frame_system::Trait>::BlockNumber =
             expected_evict_bucket * 2;
         assert_eq!(
             expected_evict_bucket2,
@@ -516,8 +517,8 @@ fn pre_commit_commit_bucket_gets_determined_correctly() {
         );
 
         //testing with current bucket being even multiplier of EXPIRATION_DURATION_BLOCKS
-        let current_block3: <Test as system::Trait>::BlockNumber = expected_evict_bucket2;
-        let expected_evict_bucket3: <Test as system::Trait>::BlockNumber =
+        let current_block3: <Test as frame_system::Trait>::BlockNumber = expected_evict_bucket2;
+        let expected_evict_bucket3: <Test as frame_system::Trait>::BlockNumber =
             expected_evict_bucket * 3;
         assert_eq!(
             expected_evict_bucket3,
@@ -529,10 +530,10 @@ fn pre_commit_commit_bucket_gets_determined_correctly() {
 #[test]
 fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registration() {
     new_test_ext().execute_with(|| {
-        let anchor_id_0 = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id_1 = <Test as system::Trait>::Hashing::hash_of(&1);
-        let anchor_id_2 = <Test as system::Trait>::Hashing::hash_of(&2);
-        let anchor_id_3 = <Test as system::Trait>::Hashing::hash_of(&3);
+        let anchor_id_0 = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id_1 = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+        let anchor_id_2 = <Test as frame_system::Trait>::Hashing::hash_of(&2);
+        let anchor_id_3 = <Test as frame_system::Trait>::Hashing::hash_of(&3);
 
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
@@ -622,11 +623,11 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
 #[test]
 fn pre_commit_with_pre_commit_eviction_bucket_registration() {
     new_test_ext().execute_with(|| {
-        let anchor_id_0 = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id_1 = <Test as system::Trait>::Hashing::hash_of(&1);
-        let anchor_id_2 = <Test as system::Trait>::Hashing::hash_of(&2);
+        let anchor_id_0 = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id_1 = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+        let anchor_id_2 = <Test as frame_system::Trait>::Hashing::hash_of(&2);
 
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
@@ -685,11 +686,11 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
 #[test]
 fn pre_commit_and_then_evict() {
     new_test_ext().execute_with(|| {
-        let anchor_id_0 = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id_1 = <Test as system::Trait>::Hashing::hash_of(&1);
-        let anchor_id_2 = <Test as system::Trait>::Hashing::hash_of(&2);
+        let anchor_id_0 = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id_1 = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+        let anchor_id_2 = <Test as frame_system::Trait>::Hashing::hash_of(&2);
 
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
@@ -758,8 +759,8 @@ fn pre_commit_and_then_evict() {
 #[test]
 fn pre_commit_at_4799_and_then_evict_before_expire_and_collaborator_succeed_commit() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
         let start_block = 4799;
         // expected expiry block of pre-commit
@@ -808,13 +809,13 @@ fn pre_commit_and_then_evict_larger_than_max_evict() {
         let block_height_0 = 1;
         let block_height_1 =
             Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
-        let signing_root = <Test as system::Trait>::Hashing::hash_of(&0);
+        let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         System::set_block_number(block_height_0);
         for idx in 0..MAX_LOOP_IN_TX + 6 {
             assert_ok!(Anchor::pre_commit(
                 Origin::signed(1),
-                <Test as system::Trait>::Hashing::hash_of(&idx),
+                <Test as frame_system::Trait>::Hashing::hash_of(&idx),
                 signing_root
             ));
         }
@@ -862,9 +863,9 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 
         // create 1000 anchors one per day
         for i in 0..1000 {
-            let random_seed = <randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
+            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
             assert_ok!(Anchor::commit(
                 Origin::signed(1),
@@ -884,7 +885,7 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
         }
 
         // eviction on day 3
-        <timestamp::Module<Test>>::set_timestamp(day(2));
+        <pallet_timestamp::Module<Test>>::set_timestamp(day(2));
         assert!(Anchor::get_anchor_by_id(anchors[0]).is_some());
         assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
         verify_anchor_eviction(2, &anchors);
@@ -900,7 +901,7 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 
         // do the same as above for next 99 days without child trie root verification
         for i in 3..102 {
-            <timestamp::Module<Test>>::set_timestamp(day(i as u64));
+            <pallet_timestamp::Module<Test>>::set_timestamp(day(i as u64));
             assert!(Anchor::get_anchor_by_id(anchors[i - 2]).is_some());
 
             // evict
@@ -913,7 +914,7 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
         // test out limit on the number of anchors removed at a time
         // eviction on day 602, i.e 501 anchors to be removed one anchor
         // per day from the last eviction on day 102
-        <timestamp::Module<Test>>::set_timestamp(day(602));
+        <pallet_timestamp::Module<Test>>::set_timestamp(day(602));
         assert!(Anchor::get_anchor_by_id(anchors[600]).is_some());
         // evict
         assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
@@ -944,7 +945,7 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
         assert_eq!(Anchor::get_anchor_evict_date(anchors[600]), 0);
 
         // remove remaining anchors
-        <timestamp::Module<Test>>::set_timestamp(day(1001));
+        <pallet_timestamp::Module<Test>>::set_timestamp(day(1001));
         assert!(Anchor::get_anchor_by_id(anchors[999]).is_some());
         assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
         assert!(Anchor::get_anchor_by_id(anchors[999]).is_none());
@@ -962,9 +963,9 @@ fn test_remove_anchor_indexes() {
 
         // create 2000 anchors that expire on same day
         for i in 0..2000 {
-            let random_seed = <randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let _anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
+            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let _anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             assert_ok!(Anchor::commit(
                 Origin::signed(1),
                 pre_image,
@@ -1012,9 +1013,9 @@ fn test_same_day_1001_anchors() {
 
         // create 1001 anchors that expire on same day
         for i in 0..1001 {
-            let random_seed = <randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
+            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             assert_ok!(Anchor::commit(
                 Origin::signed(1),
                 pre_image,
@@ -1028,7 +1029,7 @@ fn test_same_day_1001_anchors() {
         assert_eq!(Anchor::get_latest_anchor_index(), 1001);
 
         // first 500
-        <timestamp::Module<Test>>::set_timestamp(day(2));
+        <pallet_timestamp::Module<Test>>::set_timestamp(day(2));
         assert!(Anchor::get_anchor_by_id(anchors[999]).is_some());
         assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
         assert!(Anchor::get_anchor_by_id(anchors[999]).is_none());
@@ -1067,9 +1068,9 @@ fn basic_commit_perf() {
     new_test_ext().execute_with(|| {
         let mut elapsed: u128 = 0;
         for i in 0..100000 {
-            let random_seed = <randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as system::Trait>::Hashing::hash);
-            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
+            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
             // happy
@@ -1099,10 +1100,10 @@ fn basic_commit_perf() {
 #[test]
 fn test_move_anchor_without_origin() {
     new_test_ext().execute_with(|| {
-        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         assert_err!(
             Anchor::move_anchor(Origin::NONE, anchor_id),
-            "RequireSignedOrigin"
+            BadOrigin
         );
     });
 }
@@ -1110,7 +1111,7 @@ fn test_move_anchor_without_origin() {
 #[test]
 fn test_move_anchor_missing_anchor() {
     new_test_ext().execute_with(|| {
-        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         assert_err!(
             Anchor::move_anchor(Origin::signed(0), anchor_id),
             "Anchor doesn't exist"
@@ -1121,14 +1122,14 @@ fn test_move_anchor_missing_anchor() {
 #[test]
 fn test_move_anchor_success() {
     new_test_ext().execute_with(|| {
-        let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         // commit anchor
         assert_ok!(Anchor::commit(
             Origin::signed(2),
             pre_image,
-            <Test as system::Trait>::Hashing::hash_of(&0),
-            <Test as system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
             common::MS_PER_DAY + 1
         ));
 

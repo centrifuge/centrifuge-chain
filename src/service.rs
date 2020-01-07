@@ -2,25 +2,25 @@
 
 use std::sync::Arc;
 
-use babe;
-use client::{self, LongestChain};
+use sc_consensus_babe;
+use sc_client::{self, LongestChain};
 use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use node_primitives::{Block, AccountId, Index};
 use node_runtime::{GenesisConfig, RuntimeApi};
 use sc_service::{
     AbstractService, ServiceBuilder, config::Configuration, error::{Error as ServiceError},
 };
-use inherents::InherentDataProviders;
-use network::construct_simple_protocol;
+use sp_inherents::InherentDataProviders;
+use sc_network::construct_simple_protocol;
 
 use sc_service::{Service, NetworkStatus};
-use client::{Client, LocalCallExecutor};
-use client_db::Backend;
+use sc_client::{Client, LocalCallExecutor};
+use sc_client_db::Backend;
 use sp_runtime::traits::Block as BlockT;
 use crate::executor::NativeExecutor;
-use network::NetworkService;
-use offchain::OffchainWorkers;
-use primitives::Blake2Hasher;
+use sc_network::NetworkService;
+use sc_offchain::OffchainWorkers;
+use sp_core::Blake2Hasher;
 
 construct_simple_protocol! {
     /// Demo protocol attachment for substrate.
@@ -35,19 +35,19 @@ macro_rules! new_full_start {
     ($config:expr) => {{
 		type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
         let mut import_setup = None;
-        let inherent_data_providers = inherents::InherentDataProviders::new();
+        let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
         let builder = sc_service::ServiceBuilder::new_full::<
             node_primitives::Block, node_runtime::RuntimeApi, crate::executor::Executor
         >($config)?
             .with_select_chain(|_config, backend| {
-                Ok(client::LongestChain::new(backend.clone()))
+                Ok(sc_client::LongestChain::new(backend.clone()))
             })?
             .with_transaction_pool(|config, client, _fetcher| {
-                let pool_api = txpool::FullChainApi::new(client.clone());
-                let pool = txpool::BasicPool::new(config, pool_api);
-                let maintainer = txpool::FullBasicPoolMaintainer::new(pool.pool().clone(), client);
-                let maintainable_pool = txpool_api::MaintainableTransactionPool::new(pool, maintainer);
+                let pool_api = sc_transaction_pool::FullChainApi::new(client.clone());
+                let pool = sc_transaction_pool::BasicPool::new(config, pool_api);
+                let maintainer = sc_transaction_pool::FullBasicPoolMaintainer::new(pool.pool().clone(), client);
+                let maintainable_pool = sp_transaction_pool::MaintainableTransactionPool::new(pool, maintainer);
                 Ok(maintainable_pool)
             })?
             .with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
@@ -60,14 +60,14 @@ macro_rules! new_full_start {
                 )?;
                 let justification_import = grandpa_block_import.clone();
 
-				let (block_import, babe_link) = babe::block_import(
-                    babe::Config::get_or_compute(&*client)?,
+				let (block_import, babe_link) = sc_consensus_babe::block_import(
+                    sc_consensus_babe::Config::get_or_compute(&*client)?,
                     grandpa_block_import,
                     client.clone(),
                     client.clone(),
                 )?;
 
-                let import_queue = babe::import_queue(
+                let import_queue = sc_consensus_babe::import_queue(
                     babe_link.clone(),
 					block_import.clone(),
                     Some(Box::new(justification_import)),
@@ -86,6 +86,7 @@ macro_rules! new_full_start {
                 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
 
                 let mut io = jsonrpc_core::IoHandler::default();
+
                 io.extend_with(SystemApi::to_delegate(FullSystem::new(client.clone(), pool)));
                 io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(client.clone())));
                 io.extend_with(AnchorRpcApi::to_delegate(Anchors::new(client)));
@@ -102,13 +103,13 @@ macro_rules! new_full_start {
 /// concrete types instead.
 macro_rules! new_full {
 	($config:expr, $with_startup_data: expr) => {{
-		use futures01::sync::mpsc;
-		use network::DhtEvent;
+		use futures01::Stream;
 		use futures::{
 			compat::Stream01CompatExt,
 			stream::StreamExt,
 			future::{FutureExt, TryFutureExt},
-		};
+        };
+        use sc_network::Event;
 
 		let (
 			is_authority,
@@ -131,18 +132,10 @@ macro_rules! new_full {
 
         let (builder, mut import_setup, inherent_data_providers) = new_full_start!($config);
 
-        // Dht event channel from the network to the authority discovery module. Use bounded channel to ensure
-        // back-pressure. Authority discovery is triggering one event per authority within the current authority set.
-        // This estimates the authority set size to be somewhere below 10 000 thereby setting the channel buffer size to
-        // 10 000.
-        let (dht_event_tx, dht_event_rx) =
-            mpsc::channel::<DhtEvent>(10_000);
-
         let service = builder.with_network_protocol(|_| Ok(crate::service::NodeProtocol::new()))?
             .with_finality_proof_provider(|client, backend|
                 Ok(Arc::new(grandpa::FinalityProofProvider::new(backend, client)) as _)
             )?
-            .with_dht_event_tx(dht_event_tx)?
             .build()?;
 
         let (block_import, grandpa_link, babe_link) = import_setup.take()
@@ -161,9 +154,9 @@ macro_rules! new_full {
                 .ok_or(sc_service::Error::SelectChainRequired)?;
 
             let can_author_with =
-                consensus_common::CanAuthorWithNativeVersion::new(client.executor().clone());
+                sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone());
 
-            let babe_config = babe::BabeParams {
+            let babe_config = sc_consensus_babe::BabeParams {
                 keystore: service.keystore(),
                 client,
                 select_chain,
@@ -176,18 +169,23 @@ macro_rules! new_full {
                 can_author_with,
             };
 
-            let babe = babe::start_babe(babe_config)?;
+            let babe = sc_consensus_babe::start_babe(babe_config)?;
             service.spawn_essential_task(babe);
 
-            let future03_dht_event_rx = dht_event_rx.compat()
+            let network = service.network();
+			let dht_event_stream = network.event_stream().filter_map(|e| match e {
+				Event::Dht(e) => Some(e),
+				_ => None,
+			});
+			let future03_dht_event_stream = dht_event_stream.compat()
                 .map(|x| x.expect("<mpsc::channel::Receiver as Stream> never returns an error; qed"))
                 .boxed();
-            let authority_discovery = authority_discovery::AuthorityDiscovery::new(
+            let authority_discovery = sc_authority_discovery::AuthorityDiscovery::new(
                 service.client(),
-                service.network(),
+                network,
                 sentry_nodes,
                 service.keystore(),
-                future03_dht_event_rx,
+                future03_dht_event_stream,
             );
             let future01_authority_discovery = authority_discovery.map(|x| Ok(x)).compat();
 
@@ -220,6 +218,7 @@ macro_rules! new_full {
                     grandpa_link,
                     service.network(),
                     service.on_exit(),
+                    service.spawn_task_handle(),
                 )?);
             },
             (true, false) => {
@@ -232,6 +231,7 @@ macro_rules! new_full {
                     on_exit: service.on_exit(),
                     telemetry_on_connect: Some(service.telemetry_on_connect_stream()),
                     voting_rule: grandpa::VotingRulesBuilder::default().build(),
+					executor: service.spawn_task_handle(),
                 };
                 // the GRANDPA voter task is considered infallible, i.e.
                 // if it fails we take down the service with it.
@@ -267,14 +267,14 @@ type ConcreteClient =
 #[allow(dead_code)]
 type ConcreteBackend = Backend<ConcreteBlock>;
 #[allow(dead_code)]
-type ConcreteTransactionPool = txpool_api::MaintainableTransactionPool<
-	txpool::BasicPool<
-		txpool::FullChainApi<ConcreteClient, ConcreteBlock>,
+type ConcreteTransactionPool = sp_transaction_pool::MaintainableTransactionPool<
+	sc_transaction_pool::BasicPool<
+		sc_transaction_pool::FullChainApi<ConcreteClient, ConcreteBlock>,
 		ConcreteBlock
 	>,
-	txpool::FullBasicPoolMaintainer<
+	sc_transaction_pool::FullBasicPoolMaintainer<
 		ConcreteClient,
-		txpool::FullChainApi<ConcreteClient, Block>
+		sc_transaction_pool::FullChainApi<ConcreteClient, Block>
 	>
 >;
 
@@ -293,7 +293,7 @@ pub fn new_full<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 		ConcreteTransactionPool,
 		OffchainWorkers<
 			ConcreteClient,
-			<ConcreteBackend as client_api::backend::Backend<Block, Blake2Hasher>>::OffchainStorage,
+			<ConcreteBackend as sc_client_api::backend::Backend<Block, Blake2Hasher>>::OffchainStorage,
 			ConcreteBlock,
 		>
     >,
@@ -316,10 +316,10 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
         .with_transaction_pool(|config, client, fetcher| {
 			let fetcher = fetcher
 				.ok_or_else(|| "Trying to start light transaction pool without active fetcher")?;
-			let pool_api = txpool::LightChainApi::new(client.clone(), fetcher.clone());
-			let pool = txpool::BasicPool::new(config, pool_api);
-			let maintainer = txpool::LightBasicPoolMaintainer::with_defaults(pool.pool().clone(), client, fetcher);
-			let maintainable_pool = txpool_api::MaintainableTransactionPool::new(pool, maintainer);
+			let pool_api = sc_transaction_pool::LightChainApi::new(client.clone(), fetcher.clone());
+			let pool = sc_transaction_pool::BasicPool::new(config, pool_api);
+			let maintainer = sc_transaction_pool::LightBasicPoolMaintainer::with_defaults(pool.pool().clone(), client, fetcher);
+			let maintainable_pool = sp_transaction_pool::MaintainableTransactionPool::new(pool, maintainer);
 			Ok(maintainable_pool)
 		})?
 		.with_import_queue_and_fprb(|_config, client, backend, fetcher, _select_chain, _tx_pool| {
@@ -337,14 +337,14 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
 			let finality_proof_request_builder =
 				finality_proof_import.create_finality_proof_request_builder();
 
-			let (babe_block_import, babe_link) = babe::block_import(
-				babe::Config::get_or_compute(&*client)?,
+			let (babe_block_import, babe_link) = sc_consensus_babe::block_import(
+				sc_consensus_babe::Config::get_or_compute(&*client)?,
 				grandpa_block_import,
 				client.clone(),
 				client.clone(),
 			)?;
 
-			let import_queue = babe::import_queue(
+			let import_queue = sc_consensus_babe::import_queue(
 				babe_link,
 				babe_block_import,
 				None,
@@ -366,7 +366,7 @@ pub fn new_light<C: Send + Default + 'static>(config: NodeConfiguration<C>)
             let fetcher = fetcher
 				.ok_or_else(|| "Trying to start node RPC without active fetcher")?;
 			let remote_blockchain = remote_blockchain
-                .ok_or_else(|| "Trying to start node RPC without active remote blockchain")?;
+				.ok_or_else(|| "Trying to start node RPC without active remote blockchain")?;
 
             let mut io = jsonrpc_core::IoHandler::default();
             io.extend_with(

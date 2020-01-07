@@ -2,7 +2,7 @@
 use node_primitives::Balance;
 use sp_runtime::traits::{Convert, Saturating};
 use sp_runtime::{Fixed64, Perbill};
-use support::{traits::{OnUnbalanced, Currency, Get}, weights::Weight};
+use frame_support::{traits::{OnUnbalanced, Currency, Get}, weights::Weight};
 use crate::{Balances, System, Authorship, MaximumBlockWeight, NegativeImbalance};
 
 pub struct Author;

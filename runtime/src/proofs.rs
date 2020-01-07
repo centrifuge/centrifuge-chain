@@ -1,7 +1,7 @@
 use codec::{Decode, Encode};
 use sp_std::vec::Vec;
 use sp_runtime::RuntimeDebug;
-use primitives::H256;
+use sp_core::H256;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(not(feature = "std"), derive(RuntimeDebug))]
@@ -62,14 +62,14 @@ fn sort_hash_of(a: H256, b: H256) -> H256 {
         h.extend_from_slice(&a[..]);
     }
 
-    runtime_io::hashing::blake2_256(&h).into()
+    sp_io::hashing::blake2_256(&h).into()
 }
 
 fn hash_of(a: H256, b: H256) -> H256 {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     h.extend_from_slice(&a[..]);
     h.extend_from_slice(&b[..]);
-    runtime_io::hashing::blake2_256(&h).into()
+    sp_io::hashing::blake2_256(&h).into()
 }
 
 fn validate_proof(matches: &mut Vec<H256>, hash: H256, proofs: Vec<H256>) -> bool {
@@ -117,13 +117,13 @@ pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> H256 {
             acc
         });
 
-        runtime_io::hashing::keccak_256(hash.as_slice()).into()
+        sp_io::hashing::keccak_256(hash.as_slice()).into()
 }
 
 #[cfg(test)]
 mod tests {
     use crate::proofs::{bundled_hash, sort_hash_of, validate_proof, validate_proofs, Proof, pre_matches};
-    use primitives::H256;
+    use sp_core::H256;
 
     fn proof_from_hash(a: H256) -> Proof {
         Proof {

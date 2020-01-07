@@ -1,5 +1,5 @@
-use chain_spec::ChainSpecExtension;
-use primitives::{Pair, Public, crypto::UncheckedInto, sr25519};
+use sc_chain_spec::ChainSpecExtension;
+use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
 use node_runtime::{
     AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
@@ -10,9 +10,9 @@ use sc_service;
 use hex_literal::hex;
 use sc_telemetry::TelemetryEndpoints;
 use grandpa_primitives::{AuthorityId as GrandpaId};
-use babe_primitives::{AuthorityId as BabeId};
-use im_online::sr25519::{AuthorityId as ImOnlineId};
-use authority_discovery_primitives::AuthorityId as AuthorityDiscoveryId;
+use sp_consensus_babe::{AuthorityId as BabeId};
+use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
+use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
@@ -27,9 +27,12 @@ const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 /// Additional parameters for some Substrate core modules,
 /// customizable from the chain spec.
 #[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
+#[serde(rename_all = "camelCase")]
 pub struct Extensions {
 	/// Block numbers with known hashes.
-	pub fork_blocks: client::ForkBlocks<Block>,
+    pub fork_blocks: sc_client::ForkBlocks<Block>,
+    /// Known bad block hashes.
+	pub bad_blocks: sc_client::BadBlocks<Block>,
 }
 
 /// Specialized `ChainSpec`.
@@ -258,28 +261,28 @@ fn testnet_genesis(
         (endowed_accounts.len() as Balance);
 
     GenesisConfig {
-        system: Some(SystemConfig {
+        frame_system: Some(SystemConfig {
             code: WASM_BINARY.to_vec(),
             changes_trie_config: Default::default(),
         }),
-        balances: Some(BalancesConfig {
+        pallet_balances: Some(BalancesConfig {
             balances: endowed_accounts.iter().cloned()
             .map(|k| (k, endowment))
             .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
             .collect(),
             vesting: vec![],
         }),
-        indices: Some(IndicesConfig {
+        pallet_indices: Some(IndicesConfig {
             ids: endowed_accounts.iter().cloned()
                 .chain(initial_authorities.iter().map(|x| x.0.clone()))
                 .collect::<Vec<_>>(),
         }),
-        session: Some(SessionConfig {
+        pallet_session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
 				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
 			}).collect::<Vec<_>>(),
 		}),
-		staking: Some(StakingConfig {
+		pallet_staking: Some(StakingConfig {
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
@@ -300,22 +303,22 @@ fn testnet_genesis(
             // force_era: NotForcing
 			.. Default::default()
 		}),
-        sudo: Some(SudoConfig {
+        pallet_sudo: Some(SudoConfig {
             key: root_key,
         }),
-        babe: Some(BabeConfig {
+        pallet_babe: Some(BabeConfig {
             authorities: vec![],
         }),
-        im_online: Some(ImOnlineConfig {
+        pallet_im_online: Some(ImOnlineConfig {
 			keys: vec![],
         }),
-        authority_discovery: Some(AuthorityDiscoveryConfig {
+        pallet_authority_discovery: Some(AuthorityDiscoveryConfig {
 			keys: vec![],
 		}),
-        grandpa: Some(GrandpaConfig {
+        pallet_grandpa: Some(GrandpaConfig {
             authorities: vec![],
         }),
-        treasury: Some(Default::default()),
+        pallet_treasury: Some(Default::default()),
         // membership_Instance1: Some(Default::default()),
         fees: Some(FeesConfig {
             initial_fees: vec![(
