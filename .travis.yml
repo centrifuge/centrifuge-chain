@@ -30,7 +30,7 @@ jobs:
   include:
     - stage: "Test and build"
       name: "Run runtime tests"
-      script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=runtime-test ./ci/script.sh
+      script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=runtime-test travis_wait 180 ./ci/script.sh
     - # stage name not required, will continue last one
       name: "Build (WASM and native)"
       script: RUST_TOOLCHAIN=nightly-2019-10-13 TARGET=build-client travis_wait 180 ./ci/script.sh

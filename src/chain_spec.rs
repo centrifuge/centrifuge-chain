@@ -2,7 +2,7 @@ use sc_chain_spec::ChainSpecExtension;
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
 use node_runtime::{
-    AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
+    AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
     StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
 };
 use node_runtime::Block;
@@ -109,12 +109,7 @@ impl Alternative {
                     testnet_genesis(
                         vec![get_authority_keys_from_seed("Alice")],
                         get_account_id_from_seed::<sr25519::Public>("Alice"),
-                        vec![
-                            get_account_id_from_seed::<sr25519::Public>("Alice"),
-                            get_account_id_from_seed::<sr25519::Public>("Bob"),
-                            get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-                            get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-                        ],
+                        None,
                         true,
                     )
                 },
@@ -134,20 +129,7 @@ impl Alternative {
                             get_authority_keys_from_seed("Bob"),
                         ],
                         get_account_id_from_seed::<sr25519::Public>("Alice"),
-                        vec![
-                            get_account_id_from_seed::<sr25519::Public>("Alice"),
-                            get_account_id_from_seed::<sr25519::Public>("Bob"),
-                            get_account_id_from_seed::<sr25519::Public>("Charlie"),
-                            get_account_id_from_seed::<sr25519::Public>("Dave"),
-                            get_account_id_from_seed::<sr25519::Public>("Eve"),
-                            get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-                            get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-                            get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-                            get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-                            get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-                            get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-                            get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-                        ],
+                        None,
                         true,
                     )
                 },
@@ -183,9 +165,9 @@ impl Alternative {
                             ),
                         ],
                         hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-                        vec![
+                        Some(vec![
                             hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into()
-                        ],
+                        ]),
                         true,
                     )
                     },
@@ -203,30 +185,30 @@ impl Alternative {
                     "flint-cc1",
                     || {
                         testnet_genesis(
-                        vec![
-                            (
-                                hex!["e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d"].into(),
-                                hex!["163fd93fd76775a38ee5d12f5e6ee2c106a92e5aa725a41e427a4f278887dc4c"].into(),
-                                hex!["4f5d54c1796633251f9600b51e1961dec3939ceb0f927584f357c38b5463c95e"].unchecked_into(),
-                                hex!["709c81a5ada8288f8c22b9605e9f8fba5034e13110799fdd7418bff37932c130"].unchecked_into(),
-                                hex!["524d4cae76a0354c7adf531c61c2e1269ecef63154cfc5d513c554bbd705fc68"].unchecked_into(),
-                                hex!["145139c78b70aadb6202cfdf2220d26a466ee39110812303b119a71f40f60571"].unchecked_into(),
-                            ),
-                            (
-                                hex!["6c8f1e49c090d4998b23cc68d52453563785df4e84f3a10024b77d8b4649d51c"].into(),
-                                hex!["2eaf31854d0d09ebbb920bf0bf4ff02570fa4f01d4557b5e1753bb70e5e6f25c"].into(),
-                                hex!["9eb9733ca20fa497d0b6e502a9030fc9037ad2943e2b27057816632fcc7d2237"].unchecked_into(),
-                                hex!["18291e4e4ca96f95d1014935880392dfd51ee99c1e9fd01e0255302f2984ef4a"].unchecked_into(),
-                                hex!["922719894768d1e78efdb286e8f2bb118165332ff6c5b4ea3beb9ed43cea2718"].unchecked_into(),
-                                hex!["16cde0520759b2ac5bc63c0a5a5ca4f8b97e2757bd8e8484c25aa73fb0f93955"].unchecked_into(),
-                            ),
-                        ],
-                        hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
-                        vec![
+                            vec![
+                                (
+                                    hex!["e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d"].into(),
+                                    hex!["163fd93fd76775a38ee5d12f5e6ee2c106a92e5aa725a41e427a4f278887dc4c"].into(),
+                                    hex!["4f5d54c1796633251f9600b51e1961dec3939ceb0f927584f357c38b5463c95e"].unchecked_into(),
+                                    hex!["709c81a5ada8288f8c22b9605e9f8fba5034e13110799fdd7418bff37932c130"].unchecked_into(),
+                                    hex!["524d4cae76a0354c7adf531c61c2e1269ecef63154cfc5d513c554bbd705fc68"].unchecked_into(),
+                                    hex!["145139c78b70aadb6202cfdf2220d26a466ee39110812303b119a71f40f60571"].unchecked_into(),
+                                ),
+                                (
+                                    hex!["6c8f1e49c090d4998b23cc68d52453563785df4e84f3a10024b77d8b4649d51c"].into(),
+                                    hex!["2eaf31854d0d09ebbb920bf0bf4ff02570fa4f01d4557b5e1753bb70e5e6f25c"].into(),
+                                    hex!["9eb9733ca20fa497d0b6e502a9030fc9037ad2943e2b27057816632fcc7d2237"].unchecked_into(),
+                                    hex!["18291e4e4ca96f95d1014935880392dfd51ee99c1e9fd01e0255302f2984ef4a"].unchecked_into(),
+                                    hex!["922719894768d1e78efdb286e8f2bb118165332ff6c5b4ea3beb9ed43cea2718"].unchecked_into(),
+                                    hex!["16cde0520759b2ac5bc63c0a5a5ca4f8b97e2757bd8e8484c25aa73fb0f93955"].unchecked_into(),
+                                ),
+                            ],
                             hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
-                        ],
-                        true,
-                    )
+                            Some(vec![
+                                hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
+                            ]),
+                            true,
+                        )
                     },
                     vec![],
                     Some(TelemetryEndpoints::new(vec![(STAGING_TELEMETRY_URL.to_string(), 0)])),
@@ -252,13 +234,31 @@ impl Alternative {
 fn testnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
     root_key: AccountId,
-    endowed_accounts: Vec<AccountId>,
+    endowed_accounts: Option<Vec<AccountId>>,
     _enable_println: bool,
 ) -> GenesisConfig {
+    let endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
+		vec![
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			get_account_id_from_seed::<sr25519::Public>("Bob"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			get_account_id_from_seed::<sr25519::Public>("Dave"),
+			get_account_id_from_seed::<sr25519::Public>("Eve"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+		]
+    });
+    let num_endowed_accounts = endowed_accounts.len();
+
     const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals)
     const STASH: Balance =            1_000_000_000000000000000000;
     let endowment: Balance = (INITIAL_SUPPLY - STASH * (initial_authorities.len() as Balance)) /
-        (endowed_accounts.len() as Balance);
+        (num_endowed_accounts as Balance);
 
     GenesisConfig {
         frame_system: Some(SystemConfig {
@@ -302,6 +302,12 @@ fn testnet_genesis(
             // True if the next session change will be a new era regardless of index.
             // force_era: NotForcing
 			.. Default::default()
+        }),
+        pallet_democracy: Some(DemocracyConfig::default()),
+		pallet_collective_Instance1: Some(CouncilConfig {
+			members: endowed_accounts.iter().cloned()
+				.collect::<Vec<_>>()[..(num_endowed_accounts + 1) / 2].to_vec(),
+			phantom: Default::default(),
 		}),
         pallet_sudo: Some(SudoConfig {
             key: root_key,
@@ -319,7 +325,6 @@ fn testnet_genesis(
             authorities: vec![],
         }),
         pallet_treasury: Some(Default::default()),
-        // membership_Instance1: Some(Default::default()),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // anchoring state rent fee per day. TODO Define in a more human friendly way.
@@ -344,4 +349,72 @@ fn get_default_properties(token: &str) -> sc_service::Properties {
 			\"tokenSymbol\": \"{}\"\
 		}}", token);
     serde_json::from_str(&data).unwrap()
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+	use super::*;
+	use crate::service::{new_full, new_light};
+	use sc_service_test;
+
+	fn local_testnet_genesis_instant_single() -> GenesisConfig {
+		testnet_genesis(
+			vec![
+				get_authority_keys_from_seed("Alice"),
+			],
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			None,
+			false,
+		)
+	}
+
+	/// Local testnet config (single validator - Alice)
+	pub fn integration_test_config_with_single_authority() -> ChainSpec {
+		ChainSpec::from_genesis(
+			"Integration Test",
+			"test",
+			local_testnet_genesis_instant_single,
+			vec![],
+			None,
+			None,
+			None,
+			Default::default(),
+		)
+    }
+
+    fn local_testnet_genesis() -> GenesisConfig {
+        testnet_genesis(
+            vec![
+                get_authority_keys_from_seed("Alice"),
+                get_authority_keys_from_seed("Bob"),
+            ],
+            get_account_id_from_seed::<sr25519::Public>("Alice"),
+            None,
+            false,
+        )
+    }
+
+	/// Local testnet config (multivalidator Alice + Bob)
+	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
+		ChainSpec::from_genesis(
+			"Integration Test",
+			"test",
+			local_testnet_genesis,
+			vec![],
+			None,
+			None,
+			None,
+			Default::default(),
+		)
+	}
+
+	#[test]
+	#[ignore]
+	fn test_connectivity() {
+		sc_service_test::connectivity(
+			integration_test_config_with_two_authorities(),
+			|config| new_full(config),
+			|config| new_light(config),
+		);
+	}
 }
