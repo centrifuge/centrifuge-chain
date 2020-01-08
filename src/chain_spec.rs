@@ -184,7 +184,7 @@ impl Alternative {
                     "Flint Testnet CC1",
                     "flint-cc1",
                     || {
-                        testnet_genesis(
+                        testnet_genesis( // discuss: how to manage keys?
                             vec![
                                 (
                                     hex!["e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d"].into(),
@@ -255,8 +255,8 @@ fn testnet_genesis(
     });
     let num_endowed_accounts = endowed_accounts.len();
 
-    const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals)
-    const STASH: Balance =            1_000_000_000000000000000000;
+    const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals) // discuss
+    const STASH: Balance =            1_000_000_000000000000000000; // discuss
     let endowment: Balance = (INITIAL_SUPPLY - STASH * (initial_authorities.len() as Balance)) /
         (num_endowed_accounts as Balance);
 
@@ -267,10 +267,10 @@ fn testnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig {
             balances: endowed_accounts.iter().cloned()
-            .map(|k| (k, endowment))
-            .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
-            .collect(),
-            vesting: vec![],
+                .map(|k| (k, endowment))
+                .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+                .collect(),
+            vesting: vec![], // discuss
         }),
         pallet_indices: Some(IndicesConfig {
             ids: endowed_accounts.iter().cloned()
@@ -286,31 +286,31 @@ fn testnet_genesis(
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
-			validator_count: 50,
+			validator_count: 50, // discuss
             // Minimum number of staking participants before emergency conditions are imposed.
-			minimum_validator_count: 2,
+			minimum_validator_count: 2, // discuss
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
             // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
             // easy to initialize and the performance hit is minimal (we expect no more than four
             // invulnerables) and restricted to testnets.
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(), // discuss
             // The percentage of the slash that is distributed to reporters.
 		    // The rest of the slashed value is handled by the `Slash`.
-			slash_reward_fraction: Perbill::from_percent(10),
+			slash_reward_fraction: Perbill::from_percent(10), // discuss
             // True if the next session change will be a new era regardless of index.
             // force_era: NotForcing
 			.. Default::default()
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
 		pallet_collective_Instance1: Some(CouncilConfig {
-			members: endowed_accounts.iter().cloned()
+			members: endowed_accounts.iter().cloned() // discuss
 				.collect::<Vec<_>>()[..(num_endowed_accounts + 1) / 2].to_vec(),
 			phantom: Default::default(),
 		}),
         pallet_sudo: Some(SudoConfig {
-            key: root_key,
+            key: root_key, // discuss
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -336,7 +336,7 @@ fn testnet_genesis(
                 ]),
                 // define this based on the expected value of 1 Rad in the given testnet
                 // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet =0.0000000008219178082 USD)
-                1,
+                1, // discuss
             )],
         }),
     }
@@ -347,7 +347,7 @@ fn get_default_properties(token: &str) -> sc_service::Properties {
 		{{
 			\"tokenDecimals\": 18,\
 			\"tokenSymbol\": \"{}\"\
-		}}", token);
+		}}", token); // discuss
     serde_json::from_str(&data).unwrap()
 }
 
