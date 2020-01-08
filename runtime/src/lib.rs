@@ -196,8 +196,11 @@ impl pallet_balances::Trait for Runtime {
 	type Event = Event;
 	type DustRemoval = ();
 	type TransferPayment = ();
+	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
+	/// The fee required to make a transfer.
 	type TransferFee = TransferFee;
+	/// The fee required to create an account.
     type CreationFee = CreationFee;
 }
 
@@ -321,11 +324,26 @@ impl pallet_democracy::Trait for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type Currency = Balances;
+
+	/// The minimum period of locking and the period between a proposal being approved and enacted.
+	///
+	/// It should generally be a little more than the unstake period to ensure that
+	/// voting stakers have an opportunity to remove themselves from the system in the case where
+	/// they are on the losing side of a vote.
 	type EnactmentPeriod = EnactmentPeriod;
+
+	/// How often (in blocks) new public referenda are launched.
 	type LaunchPeriod = LaunchPeriod;
+
+	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
+
+	/// Minimum voting period allowed for an fast-track/emergency referendum.
 	type EmergencyVotingPeriod = EmergencyVotingPeriod;
+
+	/// The minimum amount to be used as a deposit for a public referendum proposal.
 	type MinimumDeposit = MinimumDeposit;
+
 	/// A straight majority of the council can decide what their next motion is.
 	type ExternalOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
@@ -340,9 +358,14 @@ impl pallet_democracy::Trait for Runtime {
 	type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 	// Any single council member may veto a coming council proposal, however they can
 	// only do it once and it lasts only for the cooloff period.
-	type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
+
+	/// Period in blocks where an external proposal may not be re-submitted after being vetoed.
 	type CooloffPeriod = CooloffPeriod;
+
+	/// The amount of balance that must be deposited per byte of preimage stored.
 	type PreimageByteDeposit = PreimageByteDeposit;
+
+	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash = Treasury;
 }
 
@@ -365,11 +388,24 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type CurrencyToVote = CurrencyToVoteHandler;
+
+	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
+
+	/// How much should be locked up in order to be able to submit votes.
 	type VotingBond = VotingBond;
+
+	/// How long each seat is kept. This defines the next block number at which an election
+	/// round will happen. If set to zero, no elections are ever triggered and the module will
+	/// be in passive mode.
 	type TermDuration = TermDuration;
+
+	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
+
+	/// Number of runners_up to keep.
 	type DesiredRunnersUp = DesiredRunnersUp;
+
 	type LoserCandidate = ();
 	type BadReport = ();
 	type KickedMember = ();
@@ -385,13 +421,27 @@ parameter_types! {
 
 impl pallet_treasury::Trait for Runtime {
 	type Currency = Balances;
-	type ApproveOrigin = pallet_collective::EnsureMembers<_4, AccountId, CouncilCollective>;
-	type RejectOrigin = pallet_collective::EnsureMembers<_2, AccountId, CouncilCollective>;
+
+	/// Origin from which approvals must come.
+
+	/// Origin from which rejections must come.
+
 	type Event = Event;
+
+	/// Handler for the unbalanced decrease when slashing for a rejected proposal.
 	type ProposalRejection = ();
+
+	/// Fraction of a proposal's value that should be bonded in order to place the proposal.
+	/// An accepted proposal gets these back. A rejected proposal does not.
 	type ProposalBond = ProposalBond;
+
+	/// Minimum amount of funds that should be placed in a deposit for making a proposal.
 	type ProposalBondMinimum = ProposalBondMinimum;
+
+	/// Period between successive spends.
 	type SpendPeriod = SpendPeriod;
+
+	/// Percentage of spare funds (if any) that are burnt per spend period.
 	type Burn = Burn;
 }
 
@@ -434,7 +484,11 @@ parameter_types! {
 
 impl pallet_finality_tracker::Trait for Runtime {
 	type OnFinalizationStalled = Grandpa;
+
+	/// The number of recent samples to keep from this chain. Default is 101.
 	type WindowSize = WindowSize;
+
+	/// The delay after which point things become suspicious. Default is 1000.
 	type ReportLatency = ReportLatency;
 }
 
