@@ -7,8 +7,8 @@ use crate::{common, fees};
 use codec::{Decode, Encode};
 use sp_std::{convert::TryInto, vec::Vec};
 use sp_runtime::traits::Hash;
-use support::{decl_event, decl_module, decl_storage, dispatch::Result, ensure, weights::SimpleDispatchInfo};
-use system::ensure_signed;
+use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}};
+use frame_system::{self as system, ensure_signed};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,9 @@ const MAX_LOOP_IN_TX: u64 = 500;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
+
+/// The child info for this module
+const CHILD_INFO: ChildInfo<'static> = ChildInfo::new_default(b"anchor");
 
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -54,14 +57,14 @@ impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait + timestamp::Trait + fees::Trait + balances::Trait {
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
 decl_event! (
     pub enum Event<T>
     where
-        <T as system::Trait>::Hash,
+        <T as frame_system::Trait>::Hash,
     {
         /// MoveAnchor event is triggered when the anchor should be moved to a different chain.
         /// AnchorID and its DocRoot are sent as part of the event.
@@ -137,13 +140,13 @@ decl_module! {
         /// minimal logic, also needs to be consume less block capacity + cheaper to make the pre-commits viable.
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
-        pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> Result {
+        pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> DispatchResult {
             // TODO make payable
             let who = ensure_signed(origin)?;
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
             ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre-commit already exists");
 
-            let expiration_block = <system::Module<T>>::block_number()  +
+            let expiration_block = <frame_system::Module<T>>::block_number()  +
                 T::BlockNumber::from(Self::pre_commit_expiration_duration_blocks() as u32);
             <PreCommits<T>>::insert(anchor_id, PreCommitData {
                 signing_root: signing_root,
@@ -171,9 +174,9 @@ decl_module! {
         ///
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> Result {
+        pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(<timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
+            ensure!(<pallet_timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
                 "Stored until date must be at least a day later than the current date");
 
             // validate the eviction date
@@ -184,7 +187,7 @@ decl_module! {
             ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
 
             let anchor_id = (anchor_id_preimage)
-                .using_encoded(<T as system::Trait>::Hashing::hash);
+                .using_encoded(<T as frame_system::Trait>::Hashing::hash);
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
 
             if Self::has_valid_pre_commit(anchor_id) {
@@ -192,7 +195,7 @@ decl_module! {
                 ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
 
-            let block_num = <system::Module<T>>::block_number();
+            let block_num = <frame_system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
                 id: anchor_id,
@@ -201,7 +204,7 @@ decl_module! {
             };
 
             let anchor_data_encoded = anchor_data.encode();
-            runtime_io::storage::child_set(&child_storage_key, anchor_id.as_ref(), &anchor_data_encoded);
+            child::put_raw(&child_storage_key, CHILD_INFO, anchor_id.as_ref(), &anchor_data_encoded);
             // update indexes
             <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
             let idx = LatestAnchorIndex::get() + 1;
@@ -209,14 +212,14 @@ decl_module! {
             LatestAnchorIndex::put(idx);
 
             // pay the state rent
-            let today_in_days_from_epoch = TryInto::<u64>::try_into(<timestamp::Module<T>>::get())
+            let today_in_days_from_epoch = TryInto::<u64>::try_into(<pallet_timestamp::Module<T>>::get())
                 .map(common::get_days_since_epoch)
                 .map_err(|_e| "Can not convert timestamp to u64")
                 .unwrap();
 
             // we use the fee config setup on genesis for anchoring to calculate the state rent
             let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
-                <T as balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+                <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
             <fees::Module<T>>::pay_fee_given(who, fee)?;
 
             Ok(())
@@ -230,10 +233,10 @@ decl_module! {
         /// - discourage DoS
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
-        pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> Result {
+        pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> DispatchResult {
             // TODO make payable
             ensure_signed(origin)?;
-            ensure!(<system::Module<T>>::block_number() >= evict_bucket, "eviction only possible for bucket expiring < current block height");
+            ensure!(<frame_system::Module<T>>::block_number() >= evict_bucket, "eviction only possible for bucket expiring < current block height");
 
             let pre_commits_count = Self::get_pre_commits_count_in_evict_bucket(evict_bucket);
             for idx in (0..pre_commits_count).rev() {
@@ -265,9 +268,9 @@ decl_module! {
         /// - discourage DoS
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
-        pub fn evict_anchors(origin) -> Result {
+        pub fn evict_anchors(origin) -> DispatchResult {
             ensure_signed(origin)?;
-            let current_timestamp = <timestamp::Module<T>>::get();
+            let current_timestamp = <pallet_timestamp::Module<T>>::get();
 
             // get the today counting epoch, so that we can remove the corresponding child trie
             let today_in_days_from_epoch = TryInto::<u64>::try_into(current_timestamp)
@@ -292,7 +295,7 @@ decl_module! {
         /// Dispatch call when anchor by anchor_id is to be moved to another chain.
         /// TODO remove?
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn move_anchor(origin, anchor_id: T::Hash) -> Result {
+        pub fn move_anchor(origin, anchor_id: T::Hash) -> DispatchResult {
             // ensure signed origin
             ensure_signed(origin)?;
 
@@ -312,7 +315,7 @@ impl<T: Trait> Module<T> {
             return false;
         }
 
-        <PreCommits<T>>::get(anchor_id).expiration_block > <system::Module<T>>::block_number()
+        <PreCommits<T>>::get(anchor_id).expiration_block > <frame_system::Module<T>>::block_number()
     }
 
     /// checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
@@ -324,7 +327,7 @@ impl<T: Trait> Module<T> {
 
         // concat hashes
         concatenated_bytes.extend(proof_bytes);
-        let calculated_root = <T as system::Trait>::Hashing::hash(&concatenated_bytes);
+        let calculated_root = <T as frame_system::Trait>::Hashing::hash(&concatenated_bytes);
         return doc_root == calculated_root;
     }
 
@@ -346,7 +349,7 @@ impl<T: Trait> Module<T> {
     fn put_pre_commit_into_eviction_bucket(
         anchor_id: T::Hash,
         expiration_block: T::BlockNumber,
-    ) -> Result {
+    ) -> DispatchResult {
         // determine which eviction bucket to put into
         let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block);
         // get current index in eviction bucket and increment
@@ -394,11 +397,11 @@ impl<T: Trait> Module<T> {
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
                 if !EvictedAnchorRoots::exists(day) {
-                    EvictedAnchorRoots::insert(day, runtime_io::storage::child_root(&key));
+                    EvictedAnchorRoots::insert(day, child::child_root(&key));
                 }
                 key
             })
-            .map(|key| runtime_io::storage::child_storage_kill(&key))
+            .map(|key| child::kill_storage(&key, CHILD_INFO))
             .count()
     }
 
@@ -432,12 +435,12 @@ impl<T: Trait> Module<T> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
         let storage_key = common::generate_child_storage_key(anchor_evict_date);
 
-        runtime_io::storage::child_get(&storage_key, anchor_id.as_ref())
+        child::get_raw(&storage_key, CHILD_INFO, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
     }
 
-    fn fee_key() -> <T as system::Trait>::Hash {
-        <T as system::Trait>::Hashing::hash_of(&0)
+    fn fee_key() -> <T as frame_system::Trait>::Hash {
+        <T as frame_system::Trait>::Hashing::hash_of(&0)
     }
 }
 

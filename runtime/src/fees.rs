@@ -2,19 +2,19 @@
 /// Initially being hard-coded, later coming from the governance module
 
 use codec::{Decode, Encode};
-use support::{
+use frame_support::{
     decl_event, decl_module, decl_storage,
-    dispatch::Result,
+    dispatch::DispatchResult,
     ensure,
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     weights::SimpleDispatchInfo,
 };
-use system::ensure_signed;
+use frame_system::{self as system, ensure_signed};
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait + balances::Trait {
+pub trait Trait: frame_system::Trait + pallet_balances::Trait {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -38,7 +38,7 @@ decl_storage! {
 }
 
 decl_event!(
-	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId, <T as system::Trait>::Hash, <T as balances::Trait>::Balance {
+	pub enum Event<T> where AccountId = <T as frame_system::Trait>::AccountId, <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
 		FeeChanged(AccountId, Hash, Balance),
 	}
 );
@@ -66,7 +66,7 @@ decl_module! {
         /// - Contains a limited number of reads and writes.
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
-        pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> Result {
+        pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> DispatchResult {
             let sender = ensure_signed(origin)?;
             Self::can_change_fee(sender.clone())?;
             Self::change_fee(key, new_price);
@@ -81,7 +81,7 @@ impl<T: Trait> Module<T> {
     /// Called by any other module who wants to trigger a fee payment
     /// for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
-    pub fn pay_fee(who: T::AccountId, key: T::Hash) -> Result {
+    pub fn pay_fee(who: T::AccountId, key: T::Hash) -> DispatchResult {
         ensure!(<Fees<T>>::exists(key), "fee not found for key");
 
         let single_fee = <Fees<T>>::get(key);
@@ -91,8 +91,8 @@ impl<T: Trait> Module<T> {
     }
 
     /// Pay the given fee
-    pub fn pay_fee_given(who: T::AccountId, fee: T::Balance) -> Result {
-        let _ = <balances::Module<T> as Currency<_>>::withdraw(
+    pub fn pay_fee_given(who: T::AccountId, fee: T::Balance) -> DispatchResult {
+        let _ = <pallet_balances::Module<T> as Currency<_>>::withdraw(
             &who,
             fee,
             WithdrawReason::Fee.into(),
@@ -102,7 +102,7 @@ impl<T: Trait> Module<T> {
     }
 
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
-        //why this has been hashed again after passing to the function? runtime_io::print(key.as_ref());
+        //why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
         if <Fees<T>>::exists(&key) {
             let single_fee = <Fees<T>>::get(&key);
             Some(single_fee.price)
@@ -111,7 +111,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn can_change_fee(_who: T::AccountId) -> Result {
+    fn can_change_fee(_who: T::AccountId) -> DispatchResult {
         //TODO add auth who can change fees
         //        ensure!(<validatorset::Module<T>>::is_validator(who), "Not authorized to change fees.");
         Ok(())
@@ -139,13 +139,13 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
-    use primitives::H256;
+    use sp_core::H256;
     use sp_runtime::Perbill;
     use sp_runtime::{
         testing::Header,
         traits::{BlakeTwo256, IdentityLookup, Hash},
     };
-    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
+    use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight, dispatch::DispatchError};
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -162,7 +162,7 @@ mod tests {
         pub const MaximumBlockLength: u32 = 2 * 1024;
         pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
-    impl system::Trait for Test {
+    impl frame_system::Trait for Test {
         type AccountId = u64;
         type Call = ();
         type Lookup = IdentityLookup<Self::AccountId>;
@@ -178,6 +178,7 @@ mod tests {
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
+        type ModuleToIndex = ();
     }
     impl Trait for Test {
         type Event = ();
@@ -189,7 +190,7 @@ mod tests {
         pub const TransactionBaseFee: u64 = 0;
         pub const TransactionByteFee: u64 = 0;
     }
-    impl balances::Trait for Test {
+    impl pallet_balances::Trait for Test {
         type Balance = u64;
         type OnFreeBalanceZero = ();
         type OnNewAccount = ();
@@ -205,13 +206,13 @@ mod tests {
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
-    fn new_test_ext() -> runtime_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
+    fn new_test_ext() -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
 
         // pre-fill balances
-        balances::GenesisConfig::<Test> {
+        pallet_balances::GenesisConfig::<Test> {
             balances: vec![(1, 100000), (2, 100000)],
             vesting: vec![],
         }
@@ -230,11 +231,11 @@ mod tests {
     #[test]
     fn multiple_new_fees_are_setable() {
         new_test_ext().execute_with(|| {
-            let fee_key1 = <Test as system::Trait>::Hashing::hash_of(&11111);
-            let fee_key2 = <Test as system::Trait>::Hashing::hash_of(&22222);
+            let fee_key1 = <Test as frame_system::Trait>::Hashing::hash_of(&11111);
+            let fee_key2 = <Test as frame_system::Trait>::Hashing::hash_of(&22222);
 
-            let price1: <Test as balances::Trait>::Balance = 666;
-            let price2: <Test as balances::Trait>::Balance = 777;
+            let price1: <Test as pallet_balances::Trait>::Balance = 666;
+            let price2: <Test as pallet_balances::Trait>::Balance = 777;
 
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key1, price1));
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key2, price2));
@@ -250,16 +251,16 @@ mod tests {
     #[test]
     fn fee_is_re_setable() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as system::Trait>::Hashing::hash_of(&11111);
+            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&11111);
 
-            let initial_price: <Test as balances::Trait>::Balance = 666;
+            let initial_price: <Test as pallet_balances::Trait>::Balance = 666;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, initial_price));
 
             let loaded_fee = Fees::fee(fee_key);
             assert_eq!(loaded_fee.price, initial_price);
 
             // set fee to different price, set by different account
-            let new_price: <Test as balances::Trait>::Balance = 777;
+            let new_price: <Test as pallet_balances::Trait>::Balance = 777;
             assert_ok!(Fees::set_fee(Origin::signed(2), fee_key, new_price));
             let again_loaded_fee = Fees::fee(fee_key);
             assert_eq!(again_loaded_fee.price, new_price);
@@ -269,8 +270,8 @@ mod tests {
     #[test]
     fn fee_payment_errors_if_not_set() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
-            let fee_price: <Test as balances::Trait>::Balance = 90000;
+            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
 
             assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
 
@@ -280,28 +281,42 @@ mod tests {
             assert_ok!(Fees::pay_fee(1, fee_key));
 
             //second time paying will lead to account having insufficient balance
-            assert_err!(Fees::pay_fee(1, fee_key), "too few free funds in account");
+            assert_err!(
+                Fees::pay_fee(1, fee_key),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    message: Some("InsufficientBalance"),
+                }
+            );
         });
     }
 
     #[test]
     fn fee_payment_errors_if_insufficient_balance() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
-            let fee_price: <Test as balances::Trait>::Balance = 90000;
+            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
 
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // account 3 is not endowed in the test setup
-            assert_err!(Fees::pay_fee(3, fee_key), "too few free funds in account");
+            assert_err!(
+                Fees::pay_fee(3, fee_key),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    message: Some("InsufficientBalance"),
+                }
+            );
         });
     }
 
     #[test]
     fn fee_payment_subtracts_fees_from_account() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
-            let fee_price: <Test as balances::Trait>::Balance = 90000;
+            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // account 1 is endowed in test setup
@@ -309,15 +324,22 @@ mod tests {
             assert_ok!(Fees::pay_fee(1, fee_key));
 
             //second time paying will lead to account having insufficient balance
-            assert_err!(Fees::pay_fee(1, fee_key), "too few free funds in account");
+            assert_err!(
+                Fees::pay_fee(1, fee_key),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    message: Some("InsufficientBalance"),
+                }
+            );
         });
     }
 
     #[test]
     fn fee_is_gettable() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as system::Trait>::Hashing::hash_of(&111111);
-            let fee_price: <Test as balances::Trait>::Balance = 90000;
+            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
 
             //First run, the fee is not set yet and should return None
             match Fees::price_of(fee_key) {

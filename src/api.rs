@@ -2,11 +2,11 @@ use node_runtime::{anchor::AnchorData, AnchorApi};
 use node_primitives::{BlockNumber, Hash};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
-use primitives::Blake2Hasher;
+use sp_core::Blake2Hasher;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
 use std::sync::Arc;
-use client_api::backend;
-use client::{CallExecutor, Client};
+use sc_client_api::backend;
+use sc_client::{CallExecutor, Client};
 
 /// Anchor RPC methods.
 #[rpc]
@@ -38,7 +38,7 @@ where
 {
     fn get_anchor_by_id(&self, id: Hash) -> RpcResult<AnchorData<Hash, BlockNumber>> {
         let api = self.client.runtime_api();
-        let best = self.client.info().chain.best_hash;
+        let best = self.client.usage_info().chain.best_hash;
         let at = BlockId::hash(best);
         api.get_anchor_by_id(&at, id)
             .ok()

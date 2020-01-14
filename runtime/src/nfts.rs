@@ -1,15 +1,15 @@
 use crate::{anchor, proofs, proofs::Proof};
 use sp_std::vec::Vec;
-use support::{decl_event, decl_module, dispatch::Result, ensure, weights::SimpleDispatchInfo};
-use system::ensure_signed;
-use primitives::H256;
+use frame_support::{decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo};
+use frame_system::{self as system, ensure_signed};
+use sp_core::H256;
 
 pub trait Trait: anchor::Trait {
-    type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
 decl_event!(
-    pub enum Event<T> where <T as system::Trait>::Hash {
+    pub enum Event<T> where <T as frame_system::Trait>::Hash {
         DepositAsset(Hash),
     }
 );
@@ -25,7 +25,7 @@ decl_module! {
         /// - depends on the arguments
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
-        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3]) -> Result {
+        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3]) -> DispatchResult {
             ensure_signed(origin)?;
 
             // get the anchor data from anchor ID
@@ -68,13 +68,13 @@ mod tests {
     use crate::fees;
     use crate::proofs::Proof;
     use codec::Encode;
-    use primitives::H256;
+    use sp_core::H256;
     use sp_runtime::{
         testing::Header,
-        traits::{BlakeTwo256, Hash, IdentityLookup},
+        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
         Perbill,
     };
-    use support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
+    use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -93,7 +93,7 @@ mod tests {
         pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
 
-    impl system::Trait for Test {
+    impl frame_system::Trait for Test {
         type AccountId = u64;
         type Call = ();
         type Lookup = IdentityLookup<Self::AccountId>;
@@ -109,6 +109,7 @@ mod tests {
         type MaximumBlockLength = MaximumBlockLength;
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
+        type ModuleToIndex = ();
     }
 
     impl anchor::Trait for Test {
@@ -119,7 +120,7 @@ mod tests {
         type Event = ();
     }
 
-    impl timestamp::Trait for Test {
+    impl pallet_timestamp::Trait for Test {
         type Moment = u64;
         type OnTimestampSet = ();
         type MinimumPeriod = ();
@@ -137,7 +138,7 @@ mod tests {
         pub const TransactionByteFee: u64 = 0;
     }
 
-    impl balances::Trait for Test {
+    impl pallet_balances::Trait for Test {
         type Balance = u64;
         type OnFreeBalanceZero = ();
         type OnNewAccount = ();
@@ -150,8 +151,8 @@ mod tests {
         type CreationFee = CreationFee;
     }
 
-    fn new_test_ext() -> runtime_io::TestExternalities {
-        let mut t = system::GenesisConfig::default()
+    fn new_test_ext() -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Test>()
             .unwrap();
         fees::GenesisConfig::<Test> {
@@ -212,7 +213,7 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_valid_proof() -> (Proof, primitives::H256, [H256; 3]) {
+    fn get_valid_proof() -> (Proof, sp_core::H256, [H256; 3]) {
         let proof = Proof::new(
             [
                 1, 93, 41, 93, 124, 185, 25, 20, 141, 93, 101, 68, 16, 11, 142, 219, 3, 124, 155,
@@ -261,8 +262,8 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (primitives::H256, [u8; 20], Vec<Proof>, [H256; 3]) {
-        let anchor_id = <Test as system::Trait>::Hashing::hash_of(&0);
+    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3]) {
+        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
         let static_proofs: [H256; 3] = [[0;32].into(), [0;32].into(), [0;32].into()];
@@ -275,7 +276,7 @@ mod tests {
             let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
             assert_err!(
                 Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs),
-                "RequireSignedOrigin"
+                BadOrigin
             );
         })
     }
@@ -295,14 +296,14 @@ mod tests {
     fn invalid_proof() {
         new_test_ext().execute_with(|| {
             let deposit_address: [u8; 20] = [0; 20];
-            let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let (pf, doc_root, static_proofs) = get_invalid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ));
 
@@ -317,14 +318,14 @@ mod tests {
     fn valid_proof() {
         new_test_ext().execute_with(|| {
             let deposit_address: [u8; 20] = [0; 20];
-            let pre_image = <Test as system::Trait>::Hashing::hash_of(&0);
-            let anchor_id = (pre_image).using_encoded(<Test as system::Trait>::Hashing::hash);
+            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let (pf, doc_root, static_proofs) = get_valid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                <Test as system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ));
 

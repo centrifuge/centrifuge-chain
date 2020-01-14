@@ -1,13 +1,13 @@
-//! Substrate Node Template CLI library.
+//! Substrate Node CLI
 
 #![warn(missing_docs)]
 #![warn(unused_extern_crates)]
 
 use futures::channel::oneshot;
 use futures::{future, FutureExt};
-use std::cell::RefCell;
+use sc_cli::VersionInfo;
 
-pub use sc_cli::{VersionInfo, IntoExit, error};
+use std::cell::RefCell;
 
 mod api;
 mod chain_spec;
