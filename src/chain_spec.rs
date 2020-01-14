@@ -298,7 +298,7 @@ fn testnet_genesis(
 			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(), // discuss: suggestion remove for amber
             // The percentage of the slash that is distributed to reporters.
 		    // The rest of the slashed value is handled by the `Slash`.
-			slash_reward_fraction: Perbill::from_percent(10),
+			slash_reward_fraction: Perbill::from_percent(10), // discuss
             // True if the next session change will be a new era regardless of index.
             // force_era: NotForcing
 			.. Default::default()
@@ -347,7 +347,7 @@ fn get_default_properties(token: &str) -> sc_service::Properties {
 		{{
 			\"tokenDecimals\": 18,\
 			\"tokenSymbol\": \"{}\"\
-		}}", token);
+		}}", token); // discuss
     serde_json::from_str(&data).unwrap()
 }
 

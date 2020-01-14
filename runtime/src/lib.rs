@@ -141,10 +141,10 @@ impl frame_system::Trait for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const MultisigDepositBase: Balance = 30 * 10_000_000_000_000_000;
+	pub const MultisigDepositBase: Balance = 30 * 10_000_000_000_000_000;  // discuss
 	// Additional storage item size of 32 bytes.
-	pub const MultisigDepositFactor: Balance = 5 * 10_000_000_000_000_000;
-	pub const MaxSignatories: u16 = 100;
+	pub const MultisigDepositFactor: Balance = 5 * 10_000_000_000_000_000; // discuss
+	pub const MaxSignatories: u16 = 100; // discuss
 }
 
 impl pallet_utility::Trait for Runtime {
@@ -157,8 +157,8 @@ impl pallet_utility::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
-    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
+    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS; // discuss
+    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK; // discuss
 }
 
 impl pallet_babe::Trait for Runtime {
@@ -255,7 +255,7 @@ impl_opaque_keys! {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17); // discuss
 }
 
 impl pallet_session::Trait for Runtime {
