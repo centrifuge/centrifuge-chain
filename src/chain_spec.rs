@@ -184,7 +184,7 @@ impl Alternative {
                     "Flint Testnet CC1",
                     "flint-cc1",
                     || {
-                        testnet_genesis(
+                        testnet_genesis( // discuss: how to manage keys? => tech team, add to amber testnet criteria
                             vec![
                                 (
                                     hex!["e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d"].into(),
@@ -255,8 +255,8 @@ fn testnet_genesis(
     });
     let num_endowed_accounts = endowed_accounts.len();
 
-    const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals)
-    const STASH: Balance =            1_000_000_000000000000000000;
+    const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals) // discuss, bridge: is the balance held in a multisig or is it minted? is the faucet in here?
+    const STASH: Balance =            1_000_000_000000000000000000; // discuss: comes out of foundation's funds => better: specify exact token amounts per account
     let endowment: Balance = (INITIAL_SUPPLY - STASH * (initial_authorities.len() as Balance)) /
         (num_endowed_accounts as Balance);
 
@@ -267,9 +267,9 @@ fn testnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig {
             balances: endowed_accounts.iter().cloned()
-            .map(|k| (k, endowment))
-            .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
-            .collect(),
+                .map(|k| (k, endowment))
+                .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+                .collect(),
             vesting: vec![],
         }),
         pallet_indices: Some(IndicesConfig {
@@ -286,16 +286,16 @@ fn testnet_genesis(
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
-			validator_count: 50,
+			validator_count: 50, // discuss: security implications, needs to be determined based on validator interest
             // Minimum number of staking participants before emergency conditions are imposed.
-			minimum_validator_count: 2,
+			minimum_validator_count: 2, // discuss
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
             // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
             // easy to initialize and the performance hit is minimal (we expect no more than four
             // invulnerables) and restricted to testnets.
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(), // discuss: suggestion remove for amber
             // The percentage of the slash that is distributed to reporters.
 		    // The rest of the slashed value is handled by the `Slash`.
 			slash_reward_fraction: Perbill::from_percent(10),
@@ -305,12 +305,12 @@ fn testnet_genesis(
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
 		pallet_collective_Instance1: Some(CouncilConfig {
-			members: endowed_accounts.iter().cloned()
+			members: endowed_accounts.iter().cloned() // discuss: needs to be a specific list
 				.collect::<Vec<_>>()[..(num_endowed_accounts + 1) / 2].to_vec(),
 			phantom: Default::default(),
 		}),
         pallet_sudo: Some(SudoConfig {
-            key: root_key,
+            key: root_key, // discuss: suggestion to remove
         }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
@@ -335,8 +335,8 @@ fn testnet_genesis(
                     97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
                 ]),
                 // define this based on the expected value of 1 Rad in the given testnet
-                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet =0.0000000008219178082 USD)
-                1,
+                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet = 0.0000000008219178082 USD)
+                1, // discuss: needs deeper look
             )],
         }),
     }
