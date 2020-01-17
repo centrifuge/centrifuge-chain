@@ -31,15 +31,15 @@ pub mod time {
     /// `SLOT_DURATION` should have the same value.
     ///
     /// <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-    pub const MILLISECS_PER_BLOCK: Moment = 6000; // discuss (will be changed to 3 seconds in Kusama)
+    pub const MILLISECS_PER_BLOCK: Moment = 6000;
     pub const SECS_PER_BLOCK: Moment = MILLISECS_PER_BLOCK / 1000;
 
     pub const SLOT_DURATION: Moment = MILLISECS_PER_BLOCK;
 
     // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
-    pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4); // discuss
+    pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
 
-    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 30; // discuss (600 slots = 1 hour in Kusama) => increase to kusama
+    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 6 * HOURS;
     pub const EPOCH_DURATION_IN_SLOTS: u64 = {
         const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
 

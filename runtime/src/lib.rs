@@ -10,7 +10,7 @@ use frame_support::{
 	weights::Weight,
 	traits::{SplitTwoWays, Currency, Randomness},
 };
-use sp_core::u32_trait::{_1, _2, _3, _4};
+use sp_core::u32_trait::{_0, _1, _2, _3, _4, _5};
 use node_primitives::{AccountId, AccountIndex, Balance, BlockNumber, Hash, Index, Moment, Signature};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{Permill, Perbill, ApplyExtrinsicResult, impl_opaque_keys, generic, create_runtime_str};
@@ -60,7 +60,7 @@ mod nfts;
 
 /// Constant values used within the runtime.
 pub mod constants;
-use constants::time::*;
+use constants::{time::*, currency::*};
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -94,13 +94,13 @@ type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 pub type DealWithFees = SplitTwoWays<
 	Balance,
 	NegativeImbalance,
-	_4, Treasury,   // 4 parts (80%) goes to the treasury. // discuss: might be needed to compensate for upgrades and governance
-	_1, Author,     // 1 part (20%) goes to the block author.  // discuss: all to block authors
+	_0, Treasury,   // 0 parts (0%) goes to the treasury.
+	_1, Author,     // 1 part (100%) goes to the block author.
 >;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 1_000_000_000;  // discuss: set anchor/nft/bridging weights in relation to other txs like balance changes/staking/...
+    pub const MaximumBlockWeight: Weight = 1_000_000_000;
     pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
@@ -141,10 +141,10 @@ impl frame_system::Trait for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const MultisigDepositBase: Balance = 30 * 10_000_000_000_000_000;  // discuss
+	pub const MultisigDepositBase: Balance = 30 * CENTI_RAD;
 	// Additional storage item size of 32 bytes.
-	pub const MultisigDepositFactor: Balance = 5 * 10_000_000_000_000_000; // discuss
-	pub const MaxSignatories: u16 = 100; // discuss
+	pub const MultisigDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const MaxSignatories: u16 = 100;
 }
 
 impl pallet_utility::Trait for Runtime {
@@ -157,8 +157,8 @@ impl pallet_utility::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS; // discuss
-    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK; // discuss
+    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
+    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
 }
 
 impl pallet_babe::Trait for Runtime {
@@ -180,9 +180,9 @@ impl pallet_indices::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: Balance = 1_000_000_000_000; // the minimum fee for an anchor is 500,000ths of a RAD. This is set to a value so you can still get some return without getting your account removed
-    pub const TransferFee: Balance = 10_000_000_000_000_000; // discuss: back default
-    pub const CreationFee: Balance = 10_000_000_000_000_000; // discuss: back default
+    pub const ExistentialDeposit: Balance = 1 * MICRO_RAD; // the minimum fee for an anchor is 500,000ths of a RAD. This is set to a value so you can still get some return without getting your account removed
+    pub const TransferFee: Balance = 1 * MILLI_RAD;
+    pub const CreationFee: Balance = 1 * MILLI_RAD;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -205,13 +205,10 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
-    /// No need of a base fee for now as all transactions are priced with their weight + state rent
-    pub const TransactionBaseFee: Balance = 0; // discuss: back to default
-    /// Per byte fee would discourage larger bandwidth transactions like
-    pub const TransactionByteFee: Balance = 0; // discuss: back to default
+    pub const TransactionBaseFee: Balance = 100 * MICRO_RAD;
+    pub const TransactionByteFee: Balance = 1 * MICRO_RAD;
 	// setting this to zero will disable the weight fee.
-	pub const WeightFeeCoefficient: Balance = 1_000; // discuss: needs to be scaled to the same level as kusama
-	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
+	pub const WeightFeeCoefficient: Balance = 1_000;
 	pub const TargetBlockFullness: Perbill = Perbill::from_percent(25); // will be used for multiplier
 }
 
@@ -255,7 +252,7 @@ impl_opaque_keys! {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17); // discuss
+	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
 }
 
 impl pallet_session::Trait for Runtime {
@@ -276,7 +273,7 @@ impl pallet_session::historical::Trait for Runtime {
 }
 
 pallet_staking_reward_curve::build! {
-	const REWARD_CURVE: PiecewiseLinear<'static> = curve!( // discuss: in session with fees
+	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
 		min_inflation: 0_025_000,
 		max_inflation: 0_100_000,
 		ideal_stake: 0_500_000,
@@ -287,9 +284,9 @@ pallet_staking_reward_curve::build! {
 }
 
 parameter_types! {
-	pub const SessionsPerEra: sp_staking::SessionIndex = 2; // number of epochs/sessions per era // discuss (Kusama: 3600 = 6 hours) => use kusama value
-	pub const BondingDuration: pallet_staking::EraIndex = 24 * 28; // discuss (for us, this is 67.2h, on Kusama, it's 100800 blocks = 7 days) => needs more research (nothing at stake attack)
-	pub const SlashDeferDuration: pallet_staking::EraIndex = 24 * 7; // 1/4 the bonding duration. // discuss, if we have 7 days bonding duration, 1/4 of it would be too short
+	pub const SessionsPerEra: sp_staking::SessionIndex = 4; // 1 day
+	pub const BondingDuration: pallet_staking::EraIndex = 21; // 21 days
+	pub const SlashDeferDuration: pallet_staking::EraIndex = 7; // 7 days, 1/3 the bonding duration
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }
 
@@ -305,19 +302,19 @@ impl pallet_staking::Trait for Runtime {
 	type BondingDuration = BondingDuration;
 	type SlashDeferDuration = SlashDeferDuration;
 	/// A super-majority of the council can cancel the slash.
-	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>; // discuss: interferes with deferduration
+	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 28 * 24 * 60 * MINUTES; // discuss
-	pub const VotingPeriod: BlockNumber = 28 * 24 * 60 * MINUTES; // discuss
-	pub const EmergencyVotingPeriod: BlockNumber = 3 * 24 * 60 * MINUTES; // discuss
-	pub const MinimumDeposit: Balance = 100 * 1_000_000_000_000_000_000; // discuss
-	pub const EnactmentPeriod: BlockNumber = 30 * 24 * 60 * MINUTES; // discuss
-	pub const CooloffPeriod: BlockNumber = 28 * 24 * 60 * MINUTES; // discuss
-	pub const PreimageByteDeposit: Balance = 1 * 10_000_000_000_000_000; // discuss
+	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
+	pub const VotingPeriod: BlockNumber = 7 * DAYS;
+	pub const EmergencyVotingPeriod: BlockNumber = 3 * HOURS;
+	pub const MinimumDeposit: Balance = 10 * RAD;
+	pub const EnactmentPeriod: BlockNumber = 30 * 24 * 60 * MINUTES;
+	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
+	pub const PreimageByteDeposit: Balance = 100 * MICRO_RAD;
 }
 
 impl pallet_democracy::Trait for Runtime {
@@ -345,25 +342,25 @@ impl pallet_democracy::Trait for Runtime {
 	type MinimumDeposit = MinimumDeposit;
 
 	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>; // discuss
+	type ExternalOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>; // discuss
+	type ExternalMajorityOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
-	type ExternalDefaultOrigin = pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>; // discuss
+	type ExternalDefaultOrigin = pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
 	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>; // discuss
+	type FastTrackOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>; // discuss
+	type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
 	// Any single council member may veto a coming council proposal, however they can
 	// only do it once and it lasts only for the cooloff period.
-	type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>; // discuss
+	type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
 
 	/// Period in blocks where an external proposal may not be re-submitted after being vetoed.
 	type CooloffPeriod = CooloffPeriod;
@@ -383,11 +380,11 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 10 * 1_000_000_000_000_000_000; // discuss
-	pub const VotingBond: Balance = 1 * 1_000_000_000_000_000_000; // discuss
-	pub const TermDuration: BlockNumber = 7 * DAYS; // discuss
-	pub const DesiredMembers: u32 = 13; // discuss
-	pub const DesiredRunnersUp: u32 = 7; // discuss
+	pub const CandidacyBond: Balance = 1000 * RAD;
+	pub const VotingBond: Balance = 50 * CENTI_RAD;
+	pub const TermDuration: BlockNumber = 1 * DAYS;
+	pub const DesiredMembers: u32 = 5;
+	pub const DesiredRunnersUp: u32 = 3;
 }
 
 impl pallet_elections_phragmen::Trait for Runtime {
@@ -419,20 +416,20 @@ impl pallet_elections_phragmen::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const ProposalBond: Permill = Permill::from_percent(5); // discuss
-	pub const ProposalBondMinimum: Balance = 1 * 1_000_000_000_000_000_000; // discuss
-	pub const SpendPeriod: BlockNumber = 1 * DAYS; // discuss
-	pub const Burn: Permill = Permill::from_percent(50); // discuss
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+	pub const ProposalBondMinimum: Balance = 200 * RAD;
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
+	pub const Burn: Permill = Permill::from_percent(0);
 }
 
 impl pallet_treasury::Trait for Runtime {
 	type Currency = Balances;
 
 	/// Origin from which approvals must come.
-	type ApproveOrigin = pallet_collective::EnsureMembers<_4, AccountId, CouncilCollective>; // discuss
+	type ApproveOrigin = pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>;
 
 	/// Origin from which rejections must come.
-	type RejectOrigin = pallet_collective::EnsureMembers<_2, AccountId, CouncilCollective>; // discuss
+	type RejectOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 
 	type Event = Event;
 
@@ -451,11 +448,6 @@ impl pallet_treasury::Trait for Runtime {
 
 	/// Percentage of spare funds (if any) that are burnt per spend period.
 	type Burn = Burn;
-}
-
-impl pallet_sudo::Trait for Runtime {
-    type Event = Event;
-    type Proposal = Call;
 }
 
 type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, UncheckedExtrinsic>;
@@ -568,7 +560,6 @@ construct_runtime!(
 		FinalityTracker: pallet_finality_tracker::{Module, Call, Inherent},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
 		Treasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
-		Sudo: pallet_sudo,
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},

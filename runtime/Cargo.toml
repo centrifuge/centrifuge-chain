@@ -49,7 +49,6 @@ pallet-randomness-collective-flip = { git = "https://github.com/paritytech/subst
 pallet-session = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32", default-features = false, features = ["historical"] }
 pallet-staking = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32", default-features = false, features = ["migrate"] }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32"}
-pallet-sudo = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32", default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32", default-features = false }
 frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", rev = "ddb309ae7c70e5e51a60879af18819cf28be4a32", default-features = false }
@@ -103,7 +102,6 @@ std = [
 	"sp-staking/std",
 	"pallet-staking/std",
 	"sp-session/std",
-	"pallet-sudo/std",
 	"frame-support/std",
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",

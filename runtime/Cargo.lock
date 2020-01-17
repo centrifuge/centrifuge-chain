@@ -278,7 +278,6 @@ dependencies = [
  "pallet-session 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
  "pallet-staking 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
  "pallet-staking-reward-curve 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
- "pallet-sudo 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
  "pallet-timestamp 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
  "pallet-transaction-payment 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
  "pallet-transaction-payment-rpc-runtime-api 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=ddb309ae7c70e5e51a60879af18819cf28be4a32)",
