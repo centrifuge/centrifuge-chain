@@ -3,9 +3,10 @@ use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
 use node_runtime::{
     AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
-    StakerStatus, StakingConfig, SudoConfig, SystemConfig, WASM_BINARY,
+    StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
 use node_runtime::Block;
+use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
 use sc_telemetry::TelemetryEndpoints;
@@ -255,8 +256,8 @@ fn testnet_genesis(
     });
     let num_endowed_accounts = endowed_accounts.len();
 
-    const INITIAL_SUPPLY: Balance = 300_000_000_000000000000000000; // 3% of total supply (10^9 + 18 decimals)
-    const STASH: Balance =            1_000_000_000000000000000000;
+    const INITIAL_SUPPLY: Balance = 300_000_000 * RAD; // 3% of total supply
+    const STASH: Balance = 1_000_000 * RAD;
     let endowment: Balance = (INITIAL_SUPPLY - STASH * (initial_authorities.len() as Balance)) /
         (num_endowed_accounts as Balance);
 
@@ -267,9 +268,9 @@ fn testnet_genesis(
         }),
         pallet_balances: Some(BalancesConfig {
             balances: endowed_accounts.iter().cloned()
-            .map(|k| (k, endowment))
-            .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
-            .collect(),
+                .map(|k| (k, endowment))
+                .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+                .collect(),
             vesting: vec![],
         }),
         pallet_indices: Some(IndicesConfig {
@@ -286,8 +287,7 @@ fn testnet_genesis(
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
-			validator_count: 50,
-            // Minimum number of staking participants before emergency conditions are imposed.
+			validator_count: 5,
 			minimum_validator_count: 2,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
@@ -295,7 +295,7 @@ fn testnet_genesis(
             // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
             // easy to initialize and the performance hit is minimal (we expect no more than four
             // invulnerables) and restricted to testnets.
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
+			invulnerables: vec![],
             // The percentage of the slash that is distributed to reporters.
 		    // The rest of the slashed value is handled by the `Slash`.
 			slash_reward_fraction: Perbill::from_percent(10),
@@ -309,9 +309,6 @@ fn testnet_genesis(
 				.collect::<Vec<_>>()[..(num_endowed_accounts + 1) / 2].to_vec(),
 			phantom: Default::default(),
 		}),
-        pallet_sudo: Some(SudoConfig {
-            key: root_key,
-        }),
         pallet_babe: Some(BabeConfig {
             authorities: vec![],
         }),
@@ -335,7 +332,7 @@ fn testnet_genesis(
                     97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
                 ]),
                 // define this based on the expected value of 1 Rad in the given testnet
-                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet =0.0000000008219178082 USD)
+                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet = 0.0000000008219178082 USD)
                 1,
             )],
         }),

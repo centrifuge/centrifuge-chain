@@ -1,5 +1,15 @@
 //! A set of constant values used in substrate runtime.
 
+/// Money matters.
+pub mod currency {
+	use node_primitives::Balance;
+
+	pub const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
+    pub const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
+	pub const CENTI_RAD: Balance = 10 * MILLI_RAD;    // 10−2 	0.01
+    pub const RAD: Balance = 100 * CENTI_RAD;
+}
+
 /// Time.
 pub mod time {
     use node_primitives::{Moment, BlockNumber};
@@ -29,7 +39,7 @@ pub mod time {
     // 1 in 4 blocks (on average, not counting collisions) will be primary BABE blocks.
     pub const PRIMARY_PROBABILITY: (u64, u64) = (1, 4);
 
-    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 30;
+    pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 6 * HOURS;
     pub const EPOCH_DURATION_IN_SLOTS: u64 = {
         const SLOT_FILL_RATE: f64 = MILLISECS_PER_BLOCK as f64 / SLOT_DURATION as f64;
 
