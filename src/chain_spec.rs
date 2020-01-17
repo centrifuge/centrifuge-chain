@@ -109,7 +109,6 @@ impl Alternative {
                 || {
                     testnet_genesis(
                         vec![get_authority_keys_from_seed("Alice")],
-                        get_account_id_from_seed::<sr25519::Public>("Alice"),
                         None,
                         true,
                     )
@@ -129,7 +128,6 @@ impl Alternative {
                             get_authority_keys_from_seed("Alice"),
                             get_authority_keys_from_seed("Bob"),
                         ],
-                        get_account_id_from_seed::<sr25519::Public>("Alice"),
                         None,
                         true,
                     )
@@ -165,7 +163,6 @@ impl Alternative {
                                 hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
                             ),
                         ],
-                        hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
                         Some(vec![
                             hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into()
                         ]),
@@ -182,8 +179,8 @@ impl Alternative {
             // Flint initial spec
             Alternative::Flint => {
                 ChainSpec::from_genesis(
-                    "Flint Testnet CC1",
-                    "flint-cc1",
+                    "Flint Testnet CC2",
+                    "flint-cc2",
                     || {
                         testnet_genesis(
                             vec![
@@ -204,7 +201,6 @@ impl Alternative {
                                     hex!["16cde0520759b2ac5bc63c0a5a5ca4f8b97e2757bd8e8484c25aa73fb0f93955"].unchecked_into(),
                                 ),
                             ],
-                            hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
                             Some(vec![
                                 hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
                             ]),
@@ -213,7 +209,7 @@ impl Alternative {
                     },
                     vec![],
                     Some(TelemetryEndpoints::new(vec![(STAGING_TELEMETRY_URL.to_string(), 0)])),
-                    Some("flint-cc1"),
+                    Some("flint-cc2"),
                     Some(get_default_properties("FRAD")),
                     Default::default(),
                 )
@@ -234,7 +230,6 @@ impl Alternative {
 
 fn testnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
-    root_key: AccountId,
     endowed_accounts: Option<Vec<AccountId>>,
     _enable_println: bool,
 ) -> GenesisConfig {
@@ -359,7 +354,6 @@ pub(crate) mod tests {
 			vec![
 				get_authority_keys_from_seed("Alice"),
 			],
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			None,
 			false,
 		)
@@ -385,7 +379,6 @@ pub(crate) mod tests {
                 get_authority_keys_from_seed("Alice"),
                 get_authority_keys_from_seed("Bob"),
             ],
-            get_account_id_from_seed::<sr25519::Public>("Alice"),
             None,
             false,
         )
