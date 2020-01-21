@@ -531,7 +531,9 @@ impl anchor::Trait for Runtime {
 
 /// Fees module implementation
 impl fees::Trait for Runtime {
-    type Event = Event;
+	type Event = Event;
+	/// A straight majority of the council can change the fees.
+	type FeeChangeOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
 impl nfts::Trait for Runtime {

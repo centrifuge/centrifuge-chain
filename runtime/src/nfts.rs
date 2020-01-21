@@ -128,6 +128,7 @@ mod tests {
 
     impl fees::Trait for Test {
         type Event = ();
+        type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
     }
 
     parameter_types! {
