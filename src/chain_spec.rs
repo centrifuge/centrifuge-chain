@@ -283,7 +283,7 @@ fn testnet_genesis(
 			current_era: 0,
             // The ideal number of staking participants.
 			validator_count: 5,
-			minimum_validator_count: 2,
+			minimum_validator_count: 1,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
@@ -326,9 +326,11 @@ fn testnet_genesis(
                     17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
                     97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
                 ]),
-                // define this based on the expected value of 1 Rad in the given testnet
-                // here assuming 1 USD ~ 1 Rad => anchor cost per day = 1nRad (based on state rent sheet = 0.0000000008219178082 USD)
-                1,
+                // Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
+                // 3 years, which is the expected average anchor duration. The other fee components for anchors amount
+                // to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+                // 0.003.. RAD
+                2_365_296_803_653,
             )],
         }),
     }

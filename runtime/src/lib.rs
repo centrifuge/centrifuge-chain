@@ -208,7 +208,7 @@ parameter_types! {
     pub const TransactionBaseFee: Balance = 100 * MICRO_RAD;
     pub const TransactionByteFee: Balance = 1 * MICRO_RAD;
 	// setting this to zero will disable the weight fee.
-	pub const WeightFeeCoefficient: Balance = 1_000;
+	pub const WeightFeeCoefficient: Balance = 100_000_000;
 	pub const TargetBlockFullness: Perbill = Perbill::from_percent(25); // will be used for multiplier
 }
 
@@ -274,8 +274,8 @@ impl pallet_session::historical::Trait for Runtime {
 
 pallet_staking_reward_curve::build! {
 	const REWARD_CURVE: PiecewiseLinear<'static> = curve!(
-		min_inflation: 0_025_000,
-		max_inflation: 0_100_000,
+		min_inflation: 0_030_000,
+		max_inflation: 0_030_000,
 		ideal_stake: 0_500_000,
 		falloff: 0_050_000,
 		max_piece_count: 40,
@@ -285,8 +285,8 @@ pallet_staking_reward_curve::build! {
 
 parameter_types! {
 	pub const SessionsPerEra: sp_staking::SessionIndex = 4; // 1 day
-	pub const BondingDuration: pallet_staking::EraIndex = 21; // 21 days
-	pub const SlashDeferDuration: pallet_staking::EraIndex = 7; // 7 days, 1/3 the bonding duration
+	pub const BondingDuration: pallet_staking::EraIndex = 7; // 7 days
+	pub const SlashDeferDuration: pallet_staking::EraIndex = 7; // 7 days, same as bonding duration
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
 }
 
@@ -312,7 +312,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const EmergencyVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const MinimumDeposit: Balance = 10 * RAD;
-	pub const EnactmentPeriod: BlockNumber = 30 * 24 * 60 * MINUTES;
+	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_RAD;
 }
@@ -382,7 +382,7 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
-	pub const TermDuration: BlockNumber = 1 * DAYS;
+	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 5;
 	pub const DesiredRunnersUp: u32 = 3;
 }
