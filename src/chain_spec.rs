@@ -9,7 +9,6 @@ use node_runtime::Block;
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
-use sc_telemetry::TelemetryEndpoints;
 use grandpa_primitives::{AuthorityId as GrandpaId};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
@@ -20,8 +19,6 @@ pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
 
 type AccountPublic = <Signature as Verify>::Signer;
-
-const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Node `ChainSpec` extensions.
 ///
@@ -42,6 +39,55 @@ pub type ChainSpec = sc_service::ChainSpec<
 	Extensions,
 >;
 
+/// The chain specification option.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Alternative {
+	/// Whatever the current runtime is, with just Alice as an auth.
+	Development,
+	/// Whatever the current runtime is, with simple Alice/Bob auths.
+	LocalTestnet,
+	/// The Fulvous testnet.
+	Fulvous,
+	/// The Flint testnet.
+	Flint,
+	/// The Amber testnet.
+	Amber,
+}
+
+/// Get a chain config from a spec setting.
+impl Alternative {
+	pub(crate) fn load(self) -> Result<ChainSpec, String> {
+		Ok(match self {
+			Alternative::Development => development_config(),
+			Alternative::LocalTestnet => local_testnet_config(),
+			Alternative::Fulvous => fulvous_config(),
+			Alternative::Flint => flint_config()?,
+			Alternative::Amber => amber_config()?,
+		})
+	}
+
+	pub(crate) fn from(s: &str) -> Option<Self> {
+		match s {
+			"dev" => Some(Alternative::Development),
+			"local" => Some(Alternative::LocalTestnet),
+			"fulvous" => Some(Alternative::Fulvous),
+			"flint" => Some(Alternative::Flint),
+			"" | "amber" => Some(Alternative::Amber),
+			_ => None,
+		}
+	}
+}
+
+/// Flint testnet generator
+pub fn flint_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc2-spec.json")[..])
+}
+
+/// Amber testnet generator
+pub fn amber_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-pre-spec.json")[..])
+}
+
 fn session_keys(
     grandpa: GrandpaId,
     babe: BabeId,
@@ -49,21 +95,6 @@ fn session_keys(
     authority_discovery: AuthorityDiscoveryId,
 ) -> SessionKeys {
 	SessionKeys { grandpa, babe, im_online, authority_discovery }
-}
-
-/// The chain specification option. This is expected to come in from the CLI and
-/// is little more than one of a number of alternatives which can easily be converted
-/// from a string (`--chain=...`) into a `ChainSpec`.
-#[derive(Clone, Debug)]
-pub enum Alternative {
-    /// Whatever the current runtime is, with just Alice as an auth.
-    Development,
-    /// Whatever the current runtime is, with simple Alice/Bob auths.
-    LocalTestnet,
-    /// Fulvous testnet with whatever the current runtime is.
-    Fulvous,
-    /// Flint testnet with whatever the current runtime is and persistent disks.
-    Flint,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -99,139 +130,10 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (
     )
 }
 
-impl Alternative {
-    /// Get an actual chain config from one of the alternatives.
-    pub(crate) fn load(self) -> Result<ChainSpec, String> {
-        Ok(match self {
-            Alternative::Development => ChainSpec::from_genesis(
-                "Development",
-                "dev",
-                || {
-                    testnet_genesis(
-                        vec![get_authority_keys_from_seed("Alice")],
-                        None,
-                        true,
-                    )
-                },
-                vec![],
-                None,
-                None,
-                Some(get_default_properties("DRAD")),
-                Default::default(),
-            ),
-            Alternative::LocalTestnet => ChainSpec::from_genesis(
-                "Local Testnet",
-                "local_testnet",
-                || {
-                    testnet_genesis(
-                        vec![
-                            get_authority_keys_from_seed("Alice"),
-                            get_authority_keys_from_seed("Bob"),
-                        ],
-                        None,
-                        true,
-                    )
-                },
-                vec![],
-                None,
-                None,
-                None,
-                Default::default(),
-            ),
-            // Fulvous initial spec
-            Alternative::Fulvous => {
-                ChainSpec::from_genesis(
-                    "Fulvous Testnet",
-                    "fulvous",
-                    || {
-                        testnet_genesis(
-                        vec![
-                            (
-                                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(), // TODO replace with other AccountId
-                                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(), // TODO replace with other AccountId
-                                hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].unchecked_into(),
-                                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-                                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(), // TODO replace with other AccountId
-                                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(), // TODO replace with other AccountId
-                            ),
-                            (
-                                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(), // TODO replace with other AccountId
-                                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(), // TODO replace with other AccountId
-                                hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].unchecked_into(),
-                                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-                                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
-                                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
-                            ),
-                        ],
-                        Some(vec![
-                            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into()
-                        ]),
-                        true,
-                    )
-                    },
-                    vec![],
-                    None,
-                    Some("flvs"),
-                    Some(get_default_properties("TRAD")),
-                    Default::default(),
-                )
-            }
-            // Flint initial spec
-            Alternative::Flint => {
-                ChainSpec::from_genesis(
-                    "Flint Testnet CC2",
-                    "flint-cc2",
-                    || {
-                        testnet_genesis(
-                            vec![
-                                (
-                                    hex!["e85164fc14c1275c398301fbfb9663916f4b0847331aa8ab2097c79358cb2a3d"].into(),
-                                    hex!["163fd93fd76775a38ee5d12f5e6ee2c106a92e5aa725a41e427a4f278887dc4c"].into(),
-                                    hex!["4f5d54c1796633251f9600b51e1961dec3939ceb0f927584f357c38b5463c95e"].unchecked_into(),
-                                    hex!["709c81a5ada8288f8c22b9605e9f8fba5034e13110799fdd7418bff37932c130"].unchecked_into(),
-                                    hex!["524d4cae76a0354c7adf531c61c2e1269ecef63154cfc5d513c554bbd705fc68"].unchecked_into(),
-                                    hex!["145139c78b70aadb6202cfdf2220d26a466ee39110812303b119a71f40f60571"].unchecked_into(),
-                                ),
-                                (
-                                    hex!["6c8f1e49c090d4998b23cc68d52453563785df4e84f3a10024b77d8b4649d51c"].into(),
-                                    hex!["2eaf31854d0d09ebbb920bf0bf4ff02570fa4f01d4557b5e1753bb70e5e6f25c"].into(),
-                                    hex!["9eb9733ca20fa497d0b6e502a9030fc9037ad2943e2b27057816632fcc7d2237"].unchecked_into(),
-                                    hex!["18291e4e4ca96f95d1014935880392dfd51ee99c1e9fd01e0255302f2984ef4a"].unchecked_into(),
-                                    hex!["922719894768d1e78efdb286e8f2bb118165332ff6c5b4ea3beb9ed43cea2718"].unchecked_into(),
-                                    hex!["16cde0520759b2ac5bc63c0a5a5ca4f8b97e2757bd8e8484c25aa73fb0f93955"].unchecked_into(),
-                                ),
-                            ],
-                            Some(vec![
-                                hex!["c4051f94a879bd014647993acb2d52c4059a872b6e202e70c3121212416c5842"].into(),
-                            ]),
-                            true,
-                        )
-                    },
-                    vec![],
-                    Some(TelemetryEndpoints::new(vec![(STAGING_TELEMETRY_URL.to_string(), 0)])),
-                    Some("flint-cc2"),
-                    Some(get_default_properties("FRAD")),
-                    Default::default(),
-                )
-            }
-        })
-    }
-
-    pub(crate) fn from(s: &str) -> Option<Self> {
-        match s {
-            "dev" => Some(Alternative::Development),
-            "" | "local" => Some(Alternative::LocalTestnet),
-            "fulvous" => Some(Alternative::Fulvous),
-            "flint" => Some(Alternative::Flint),
-            _ => None,
-        }
-    }
-}
-
+/// Helper function to create GenesisConfig for testing
 fn testnet_genesis(
     initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
     endowed_accounts: Option<Vec<AccountId>>,
-    _enable_println: bool,
 ) -> GenesisConfig {
     let endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
@@ -345,6 +247,93 @@ fn get_default_properties(token: &str) -> sc_service::Properties {
     serde_json::from_str(&data).unwrap()
 }
 
+fn development_config_genesis() -> GenesisConfig {
+	testnet_genesis(
+		vec![
+			get_authority_keys_from_seed("Alice"),
+		],
+		None,
+	)
+}
+
+/// Development config (single validator Alice)
+pub fn development_config() -> ChainSpec {
+	ChainSpec::from_genesis(
+		"Development",
+		"dev",
+		development_config_genesis,
+		vec![],
+		None,
+		None,
+		Some(get_default_properties("DRAD")),
+		Default::default(),
+	)
+}
+
+fn local_testnet_genesis() -> GenesisConfig {
+	testnet_genesis(
+		vec![
+			get_authority_keys_from_seed("Alice"),
+			get_authority_keys_from_seed("Bob"),
+		],
+		None,
+	)
+}
+
+/// Local testnet config (multivalidator Alice + Bob)
+pub fn local_testnet_config() -> ChainSpec {
+	ChainSpec::from_genesis(
+		"Local Testnet",
+		"local_testnet",
+		local_testnet_genesis,
+		vec![],
+		None,
+		None,
+		Some(get_default_properties("DRAD")),
+		Default::default(),
+	)
+}
+
+fn fulvous_genesis() -> GenesisConfig {
+	testnet_genesis(
+		vec![
+            (
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(), // TODO replace with other AccountId
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(), // TODO replace with other AccountId
+                hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].unchecked_into(),
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(), // TODO replace with other AccountId
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(), // TODO replace with other AccountId
+            ),
+            (
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(), // TODO replace with other AccountId
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(), // TODO replace with other AccountId
+                hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].unchecked_into(),
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(), // TODO replace with other AccountId
+            ),
+        ],
+        Some(vec![
+            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into()
+        ]),
+	)
+}
+
+/// Local testnet config (multivalidator Alice + Bob)
+pub fn fulvous_config() -> ChainSpec {
+	ChainSpec::from_genesis(
+		"Fulvous Testnet",
+		"fulvous",
+		fulvous_genesis,
+		vec![],
+		None,
+		None,
+		Some(get_default_properties("TRAD")),
+		Default::default(),
+	)
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
 	use super::*;
@@ -357,7 +346,6 @@ pub(crate) mod tests {
 				get_authority_keys_from_seed("Alice"),
 			],
 			None,
-			false,
 		)
 	}
 
@@ -373,17 +361,6 @@ pub(crate) mod tests {
 			None,
 			Default::default(),
 		)
-    }
-
-    fn local_testnet_genesis() -> GenesisConfig {
-        testnet_genesis(
-            vec![
-                get_authority_keys_from_seed("Alice"),
-                get_authority_keys_from_seed("Bob"),
-            ],
-            None,
-            false,
-        )
     }
 
 	/// Local testnet config (multivalidator Alice + Bob)
