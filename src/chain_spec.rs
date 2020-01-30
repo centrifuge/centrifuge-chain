@@ -52,6 +52,8 @@ pub enum Alternative {
 	Flint,
 	/// The Amber testnet.
 	Amber,
+	/// Mainnet.
+	Mainnet,
 }
 
 /// Get a chain config from a spec setting.
@@ -63,6 +65,7 @@ impl Alternative {
 			Alternative::Fulvous => fulvous_config(),
 			Alternative::Flint => flint_config()?,
 			Alternative::Amber => amber_config()?,
+			Alternative::Mainnet => mainnet_config()?,
 		})
 	}
 
@@ -72,7 +75,8 @@ impl Alternative {
 			"local" => Some(Alternative::LocalTestnet),
 			"fulvous" => Some(Alternative::Fulvous),
 			"flint" => Some(Alternative::Flint),
-			"" | "amber" => Some(Alternative::Amber),
+			"amber" => Some(Alternative::Amber),
+			"" | "mainnet" => Some(Alternative::Mainnet),
 			_ => None,
 		}
 	}
@@ -86,6 +90,11 @@ pub fn flint_config() -> Result<ChainSpec, String> {
 /// Amber testnet generator
 pub fn amber_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-pre-spec.json")[..])
+}
+
+/// Mainnet generator
+pub fn mainnet_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-spec.json")[..])
 }
 
 fn session_keys(
@@ -328,7 +337,7 @@ pub fn fulvous_config() -> ChainSpec {
 		fulvous_genesis,
 		vec![],
 		None,
-		None,
+		Some("flvs"),
 		Some(get_default_properties("TRAD")),
 		Default::default(),
 	)
