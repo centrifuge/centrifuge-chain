@@ -31,7 +31,7 @@ cargo build --release
 
 Centrifuge has multiple testnets online.
 
-1. Fulvous is an ephemeral testnet that is tracking `master`.
+1. Fulvous is an ephemeral testnet for internal dev purposes, and testing internal integrations with all the centrifuge components. Not recommended for external usage due to its nature and purpose.
 2. Flint is for breaking changes and testing the integration with other parts of the Centrifuge ecosystem. Think of Flint as a way to test previews, alpha releases.
 3. Amber is for audits and testing of the stability of release candidates. Think of Amber as a way to test beta releases.
 
