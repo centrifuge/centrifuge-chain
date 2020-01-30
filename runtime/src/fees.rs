@@ -9,12 +9,15 @@ use frame_support::{
     traits::{Currency, ExistenceRequirement, WithdrawReason},
     weights::SimpleDispatchInfo,
 };
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, ensure_root};
+use sp_runtime::traits::EnsureOrigin;
 
 /// The module's configuration trait.
 pub trait Trait: frame_system::Trait + pallet_balances::Trait {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    /// Required origin for changing fees
+	type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -38,8 +41,8 @@ decl_storage! {
 }
 
 decl_event!(
-	pub enum Event<T> where AccountId = <T as frame_system::Trait>::AccountId, <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
-		FeeChanged(AccountId, Hash, Balance),
+	pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
+		FeeChanged(Hash, Balance),
 	}
 );
 
@@ -67,11 +70,10 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> DispatchResult {
-            let sender = ensure_signed(origin)?;
-            Self::can_change_fee(sender.clone())?;
+            Self::can_change_fee(origin)?;
             Self::change_fee(key, new_price);
 
-            Self::deposit_event(RawEvent::FeeChanged(sender, key, new_price));
+            Self::deposit_event(RawEvent::FeeChanged(key, new_price));
             Ok(())
         }
     }
@@ -111,9 +113,11 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    fn can_change_fee(_who: T::AccountId) -> DispatchResult {
-        //TODO add auth who can change fees
-        //        ensure!(<validatorset::Module<T>>::is_validator(who), "Not authorized to change fees.");
+    fn can_change_fee(origin: T::Origin) -> DispatchResult {
+        T::FeeChangeOrigin::try_origin(origin)
+            .map(|_| ())
+            .or_else(ensure_root)?;
+
         Ok(())
     }
 
@@ -143,9 +147,11 @@ mod tests {
     use sp_runtime::Perbill;
     use sp_runtime::{
         testing::Header,
-        traits::{BlakeTwo256, IdentityLookup, Hash},
+        traits::{BlakeTwo256, IdentityLookup, Hash, BadOrigin},
     };
-    use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight, dispatch::DispatchError};
+    use frame_support::{assert_err, assert_noop, assert_ok, impl_outer_origin, parameter_types, weights::Weight,
+        dispatch::DispatchError};
+    use frame_system::EnsureSignedBy;
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -180,8 +186,12 @@ mod tests {
         type Version = ();
         type ModuleToIndex = ();
     }
+    parameter_types! {
+        pub const One: u64 = 1;
+    }
     impl Trait for Test {
         type Event = ();
+        type FeeChangeOrigin = EnsureSignedBy<One, u64>;
     }
     parameter_types! {
         pub const ExistentialDeposit: u64 = 0;
@@ -222,9 +232,10 @@ mod tests {
     }
 
     #[test]
-    fn can_change_fee_allows_all() {
+    fn can_change_fee() {
         new_test_ext().execute_with(|| {
-            assert_ok!(Fees::can_change_fee(123));
+            assert_noop!(Fees::can_change_fee(Origin::signed(2)), BadOrigin);
+            assert_ok!(Fees::can_change_fee(Origin::signed(1)));
         });
     }
 
@@ -237,6 +248,7 @@ mod tests {
             let price1: <Test as pallet_balances::Trait>::Balance = 666;
             let price2: <Test as pallet_balances::Trait>::Balance = 777;
 
+            assert_noop!(Fees::set_fee(Origin::signed(2), fee_key1, price1), BadOrigin);
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key1, price1));
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key2, price2));
 
@@ -259,9 +271,9 @@ mod tests {
             let loaded_fee = Fees::fee(fee_key);
             assert_eq!(loaded_fee.price, initial_price);
 
-            // set fee to different price, set by different account
             let new_price: <Test as pallet_balances::Trait>::Balance = 777;
-            assert_ok!(Fees::set_fee(Origin::signed(2), fee_key, new_price));
+            assert_noop!(Fees::set_fee(Origin::signed(2), fee_key, new_price), BadOrigin);
+            assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, new_price));
             let again_loaded_fee = Fees::fee(fee_key);
             assert_eq!(again_loaded_fee.price, new_price);
         });

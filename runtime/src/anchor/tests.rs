@@ -51,6 +51,7 @@ impl pallet_timestamp::Trait for Test {
 
 impl fees::Trait for Test {
     type Event = ();
+    type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
 }
 
 parameter_types! {
