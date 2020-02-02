@@ -132,3 +132,15 @@ wasmtime = [
 	"sc-cli/wasmtime",
 	"sc-service/wasmtime",
 ]
+
+[workspace]
+members = [
+	"runtime",
+]
+
+[badges]
+maintenance = { status = "actively-developed" }
+
+[profile.release]
+# Runtime requires unwinding.
+panic = "unwind"
