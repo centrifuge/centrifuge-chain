@@ -89,7 +89,7 @@ pub fn flint_config() -> Result<ChainSpec, String> {
 
 /// Amber testnet generator
 pub fn amber_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-pre-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-spec.json")[..])
 }
 
 fn session_keys(

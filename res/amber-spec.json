@@ -1,6 +1,6 @@
 {
-  "name": "Centrifuge Testnet Amber Preview",
-  "id": "amber-pre",
+  "name": "Centrifuge Testnet Amber",
+  "id": "amber",
   "bootNodes": [],
   "telemetryEndpoints": [
     [
@@ -8,7 +8,7 @@
       0
     ]
   ],
-  "protocolId": "amber-pre",
+  "protocolId": "amber",
   "properties": {
     "tokenDecimals": 18,
     "tokenSymbol": "ARAD"
@@ -27,25 +27,66 @@
       },
       "palletIndices": {
         "ids": [
+          "5GBVxCExyviNwR43r5TN12oX7Qneb7PKCt31Na1MueCcwQ3z",
           "5GW44H6ARQryd8jH44QGgRek8c6scP3Xd7MkTZojP2p56gAE",
+          "5Cg3cASAUXEGcdyxkFuoZQdcsBLgFeaqvoEvvAKYGTKJsE1a",
+          "5FZ95CMG9WTNX7TAQGP5XSmFDHQzd4urdijLF7AxDwoKQAvY",
+          "5GZ6Sze3maX5YyYhjFPFTdkBRtN3pU252zz47LhPowquDDJd",
+          "5FLdHgw5Nfmw2ZrvYAo2HMqapMrpX7NuDSB4oiATkWmgS1a5",
+          "5EFjhSh7dU2HtS9Tunrzha8favTgE8CfF5iNF6GguPiJmdKC",
+          "5E4TDmXqEQ3oaDowR9Cc68skvJAiB3M4pnSiCw7zNEcrJLDS",
+          "5CyHZfeEF5omjJDaYsYEe9HNrW3aCuMyNaJKexcPgUoabwX8",
+          "5EWnnNqG8VqCHpPLdkcGRVStHKTJCX8o2HSrmVbf9kpniVCK",
+          "5DhSiVuUa9TH8ZL5ScrxKRKnoZZzyQ1BfGkqAwqPrnFy9ceg",
+          "5Ey49BVnAdvz94aBUsYSX5bewuVk2DzBUjdAUyVoYa2b4Z3e",
+          "5E5KMDmmTVRCtRX2AD77TQSGLxVZpJN2NjdnHJf954YkbDiu",
+          "5GNqhkqXtcpxsENbsXrgqsEzyR3MdzErY9TcBFWPV6ZYQzAo",
+          "5DaCpdkEpRdG4hvaSN3e9CybE4PYdA5G8z2YNwhc9JMwrrq6",
+          "5DANitTBQ5tEBxbxPKoeNhLVmyYS9TiSqzoLpBNKzx4mPFEZ",
+          "5E81MsE2Gn3JuLoQKAfNSYHLCFecadfQgkZKdz2Qonu2gjA6",
+          "5EWyypMHJva5GsNt1LL1VBL3mEeBZb4zFUbwvJoh24pY61MT",
+          "5GGy7fxQ5LKawDqRy8Zq7TdDeoVC4JkvSWJ9VFruHRLdT9Ai",
           "5Cqpq6ixzhtpNZeCkvi6xAjR67ZUNkVHGFKvHUhYwmvjYmrv",
-          "5DoMKrzPbUWGqsp9EKnovF8Qzj4Zs5mJmzp5uk1QaFBxfZqj"
+          "5DoMKrzPbUWGqsp9EKnovF8Qzj4Zs5mJmzp5uk1QaFBxfZqj",
+          "5GgmWSnVBKopGpPqpfpxrANiZnXiP9wYGK56dkvTxchdYT7n",
+          "5F7bVTxdjdXX74XE3usbW2rrpmkN9v4txsWdWjH11smsxXaL",
+          "5CoQP8jqx4GctyuxAKydPU8se4fxJwt5NLWfC4r8AZ5MYhe6",
+          "5E7sCpko6sh3pogWoASk9ibE1b4D1xzdit4wqSyJB9yzECCc",
+          "5HpLku5nX1Qqr2jUHDXH7rMBB5UVD7gJubNzVijvg6JhJJ9Q",
+          "5Gj1w63vRRDxVMkDG9c3hL89QeRPvMuz1DBjquQSB2Z5xRSi",
+          "5C5cvbjb7CR3tg1wbASJUERz35LuEPnfv2UTAFT34qtWduAM"
         ]
       },
       "palletBalances": {
         "balances": [
-          [
-            "5GW44H6ARQryd8jH44QGgRek8c6scP3Xd7MkTZojP2p56gAE",
-            400000000000000000000000000
-          ],
-          [
-            "5Cqpq6ixzhtpNZeCkvi6xAjR67ZUNkVHGFKvHUhYwmvjYmrv",
-            30000000000000000000000
-          ],
-          [
-            "5DoMKrzPbUWGqsp9EKnovF8Qzj4Zs5mJmzp5uk1QaFBxfZqj",
-            30000000000000000000000
-          ]
+          ["5GBVxCExyviNwR43r5TN12oX7Qneb7PKCt31Na1MueCcwQ3z", 200000000000000000000000000],
+          ["5GW44H6ARQryd8jH44QGgRek8c6scP3Xd7MkTZojP2p56gAE", 185681120000000000000000000],
+          ["5Cg3cASAUXEGcdyxkFuoZQdcsBLgFeaqvoEvvAKYGTKJsE1a", 1000000000000000000000000],
+          ["5FZ95CMG9WTNX7TAQGP5XSmFDHQzd4urdijLF7AxDwoKQAvY", 5000000000000000000000],
+          ["5GZ6Sze3maX5YyYhjFPFTdkBRtN3pU252zz47LhPowquDDJd", 2000000000000000000000000],
+          ["5FLdHgw5Nfmw2ZrvYAo2HMqapMrpX7NuDSB4oiATkWmgS1a5", 2000000000000000000000000],
+          ["5EFjhSh7dU2HtS9Tunrzha8favTgE8CfF5iNF6GguPiJmdKC", 2000000000000000000000000],
+          ["5E4TDmXqEQ3oaDowR9Cc68skvJAiB3M4pnSiCw7zNEcrJLDS", 1000000000000000000000000],
+          ["5CyHZfeEF5omjJDaYsYEe9HNrW3aCuMyNaJKexcPgUoabwX8", 1000000000000000000000000],
+          ["5EWnnNqG8VqCHpPLdkcGRVStHKTJCX8o2HSrmVbf9kpniVCK", 600000000000000000000000],
+          ["5DhSiVuUa9TH8ZL5ScrxKRKnoZZzyQ1BfGkqAwqPrnFy9ceg", 500000000000000000000000],
+          ["5Ey49BVnAdvz94aBUsYSX5bewuVk2DzBUjdAUyVoYa2b4Z3e", 871252000000000000000000],
+          ["5E5KMDmmTVRCtRX2AD77TQSGLxVZpJN2NjdnHJf954YkbDiu", 500000000000000000000000],
+          ["5GNqhkqXtcpxsENbsXrgqsEzyR3MdzErY9TcBFWPV6ZYQzAo", 400000000000000000000000],
+          ["5DaCpdkEpRdG4hvaSN3e9CybE4PYdA5G8z2YNwhc9JMwrrq6", 400000000000000000000000],
+          ["5DANitTBQ5tEBxbxPKoeNhLVmyYS9TiSqzoLpBNKzx4mPFEZ", 400000000000000000000000],
+          ["5E81MsE2Gn3JuLoQKAfNSYHLCFecadfQgkZKdz2Qonu2gjA6", 500000000000000000000000],
+          ["5EWyypMHJva5GsNt1LL1VBL3mEeBZb4zFUbwvJoh24pY61MT", 784127000000000000000000],
+          ["5GGy7fxQ5LKawDqRy8Zq7TdDeoVC4JkvSWJ9VFruHRLdT9Ai", 148501000000000000000000],
+          ["5Cqpq6ixzhtpNZeCkvi6xAjR67ZUNkVHGFKvHUhYwmvjYmrv", 30000000000000000000000],
+          ["5DoMKrzPbUWGqsp9EKnovF8Qzj4Zs5mJmzp5uk1QaFBxfZqj", 30000000000000000000000],
+          ["5GgmWSnVBKopGpPqpfpxrANiZnXiP9wYGK56dkvTxchdYT7n", 30000000000000000000000],
+          ["5F7bVTxdjdXX74XE3usbW2rrpmkN9v4txsWdWjH11smsxXaL", 30000000000000000000000],
+          ["5CoQP8jqx4GctyuxAKydPU8se4fxJwt5NLWfC4r8AZ5MYhe6", 30000000000000000000000],
+          ["5E7sCpko6sh3pogWoASk9ibE1b4D1xzdit4wqSyJB9yzECCc", 30000000000000000000000],
+          ["5HpLku5nX1Qqr2jUHDXH7rMBB5UVD7gJubNzVijvg6JhJJ9Q", 30000000000000000000000],
+          ["5Gj1w63vRRDxVMkDG9c3hL89QeRPvMuz1DBjquQSB2Z5xRSi", 30000000000000000000000],
+          ["5C5cvbjb7CR3tg1wbASJUERz35LuEPnfv2UTAFT34qtWduAM", 30000000000000000000000]
         ],
         "vesting": []
       },
