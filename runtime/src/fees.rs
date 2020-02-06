@@ -34,9 +34,9 @@ decl_storage! {
         Version: u64;
     }
     add_extra_genesis {
+        // Anchoring state rent fee per day
         config(initial_fees): Vec<(T::Hash, T::Balance)>;
-        build(
-            |config| Module::<T>::initialize_fees(&config.initial_fees))
+        build(|config| Module::<T>::initialize_fees(&config.initial_fees))
     }
 }
 

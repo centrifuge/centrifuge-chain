@@ -1,23 +1,27 @@
-//! A module for implementing Centrifuge document anchoring(merklized document commitments) on substrate for
+//! A module for implementing Centrifuge document anchoring (merklized document commitments) on substrate for
 //! Centrifuge chain.
 //!
-//! For a more formally detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+//! For a more formally detailed explanation refer section 3.4 of
+//! [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
 
 use crate::{common, fees};
 use codec::{Decode, Encode};
 use sp_std::{convert::TryInto, vec::Vec};
 use sp_runtime::traits::Hash;
-use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}};
+use frame_support::{
+    decl_event, decl_module, decl_storage, dispatch::{DispatchError, DispatchResult}, ensure,
+    weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}
+};
 use frame_system::{self as system, ensure_signed};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-/// expiration duration in blocks of a pre-commit,
-/// This is maximum expected time for document consensus to take place after a pre-commit of
-/// an anchor and a commit to be received for the pre-committed anchor. Currently we expect to provide around 80mins for this.
-/// Since our current block time as per chain_spec.rs is 10s, this means we have to provide 80 * 60 / 10 = 480 blocks of time for this.
-const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 480;
+/// Expiration duration in blocks of a pre-commit
+/// This is the maximum expected time for document consensus to take place between a pre-commit of an anchor and a
+/// commit to be received for the pre-committed anchor. Currently we expect to provide around 80 mins for this.
+/// Since our current block time as per chain_spec.rs is 6s, we set this to 80 * 60 secs / 6 secs/block = 800 blocks.
+const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 800;
 
 /// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
 /// The higher the number, the more pre-commits will be collected in a single eviction bucket
@@ -75,7 +79,8 @@ decl_event! (
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
 
-        /// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
+        /// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed
+        /// later
         PreCommits get(get_pre_commit): map T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
         /// Pre-commit eviction buckets keep track of which pre-commit can be evicted at which point
@@ -115,16 +120,6 @@ decl_module! {
 
         fn deposit_event() = default;
 
-        fn on_initialize(_now: T::BlockNumber) {
-            if Version::get() == 0 {
-                // do first upgrade
-                // ...
-
-                // uncomment when upgraded
-                // <Version<T>>::put(1);
-            }
-        }
-
         /// Obtains an exclusive lock to make the next update to a certain document version
         /// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
         /// by `pre_commit_expiration_duration_blocks` function. `signing_root` is a child node of
@@ -141,7 +136,6 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> DispatchResult {
-            // TODO make payable
             let who = ensure_signed(origin)?;
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
             ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre-commit already exists");
@@ -234,9 +228,9 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> DispatchResult {
-            // TODO make payable
             ensure_signed(origin)?;
-            ensure!(<frame_system::Module<T>>::block_number() >= evict_bucket, "eviction only possible for bucket expiring < current block height");
+            ensure!(<frame_system::Module<T>>::block_number() >= evict_bucket,
+                "eviction only possible for bucket expiring < current block height");
 
             let pre_commits_count = Self::get_pre_commits_count_in_evict_bucket(evict_bucket);
             for idx in (0..pre_commits_count).rev() {
@@ -287,13 +281,10 @@ decl_module! {
             LatestEvictedDate::put(yesterday);
             let _evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday);
 
-            // TODO emit an event for this so that the process which triggers can know how many anchor indexes got purged
-
             Ok(())
         }
 
         /// Dispatch call when anchor by anchor_id is to be moved to another chain.
-        /// TODO remove?
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn move_anchor(origin, anchor_id: T::Hash) -> DispatchResult {
             // ensure signed origin
@@ -331,16 +322,12 @@ impl<T: Trait> Module<T> {
         return doc_root == calculated_root;
     }
 
-    /// TODO this needs to come from governance
     /// How long before we expire a pre-commit
     fn pre_commit_expiration_duration_blocks() -> u64 {
         PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
     }
 
     /// Get the maximum days allowed for an anchor to be stored on chain from unix epoch onwards.
-    /// TODO this needs to come from governance
-    /// TODO this also needs to be calculated from a value from governance that provides the maximum days
-    /// from now on instead of taking an absolute date from unix epoch through governance.
     fn anchor_storage_max_days_from_now() -> u32 {
         STORAGE_MAX_DAYS
     }
@@ -351,7 +338,7 @@ impl<T: Trait> Module<T> {
         expiration_block: T::BlockNumber,
     ) -> DispatchResult {
         // determine which eviction bucket to put into
-        let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block);
+        let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block)?;
         // get current index in eviction bucket and increment
         let mut eviction_bucket_size =
             Self::get_pre_commits_count_in_evict_bucket(evict_after_block);
@@ -369,10 +356,9 @@ impl<T: Trait> Module<T> {
     /// Determines the next eviction bucket number based on the given BlockNumber
     /// This can be used to determine which eviction bucket a pre-commit
     /// should be put into for later eviction.
-    /// TODO return err
     fn determine_pre_commit_eviction_bucket(
         pre_commit_expiration_block: T::BlockNumber,
-    ) -> T::BlockNumber {
+    ) -> Result<T::BlockNumber, DispatchError> {
         let result = TryInto::<u32>::try_into(pre_commit_expiration_block);
         match result {
             Ok(u32_expiration_block) => {
@@ -382,9 +368,9 @@ impl<T: Trait> Module<T> {
                     - (u32_expiration_block % expiration_horizon)
                     + expiration_horizon;
 
-                T::BlockNumber::from(put_into_bucket)
+                Ok(T::BlockNumber::from(put_into_bucket))
             }
-            Err(_e) => T::BlockNumber::from(0),
+            Err(_e) => Err(DispatchError::Other("pre commit expiration block too big"))
         }
     }
 
