@@ -180,6 +180,17 @@ decl_module! {
                 ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
 
+             // pay the state rent
+            let today_in_days_from_epoch = TryInto::<u64>::try_into(<pallet_timestamp::Module<T>>::get())
+                .map(common::get_days_since_epoch)
+                .map_err(|_e| "Can not convert timestamp to u64")
+                .unwrap();
+
+            // we use the fee config setup on genesis for anchoring to calculate the state rent
+            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
+                <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            <fees::Module<T>>::pay_fee_given(who, fee)?;
+
             let block_num = <frame_system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
@@ -195,18 +206,6 @@ decl_module! {
             let idx = LatestAnchorIndex::get() + 1;
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
             LatestAnchorIndex::put(idx);
-
-            // pay the state rent
-            let today_in_days_from_epoch = TryInto::<u64>::try_into(<pallet_timestamp::Module<T>>::get())
-                .map(common::get_days_since_epoch)
-                .map_err(|_e| "Can not convert timestamp to u64")
-                .unwrap();
-
-            // we use the fee config setup on genesis for anchoring to calculate the state rent
-            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
-                <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
-            <fees::Module<T>>::pay_fee_given(who, fee)?;
-
             Ok(())
         }
 
