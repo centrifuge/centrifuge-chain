@@ -74,9 +74,7 @@ impl pallet_balances::Trait for Test {
     type CreationFee = CreationFee;
 }
 
-impl Trait for Test {
-    type Event = ();
-}
+impl Trait for Test {}
 
 impl Test {
     fn test_document_hashes() -> (
