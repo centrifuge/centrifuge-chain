@@ -87,17 +87,17 @@ decl_storage! {
         PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
         PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map T::BlockNumber => u64;
 
-        /// index to find the eviction date given an anchor id
+        /// Index to find the eviction date given an anchor id
         AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
 
-        /// incrementing index for anchors for iteration purposes
+        /// Incrementing index for anchors for iteration purposes
         AnchorIndexes get(get_anchor_id_by_index): map u64 => T::Hash;
 
-        /// latest anchored index
+        /// Latest anchored index
         LatestAnchorIndex get(get_latest_anchor_index): u64;
 
-        /// latest evicted anchor index. This would keep track of the latest evicted anchor index so
-        /// that we can start the removal of AnchorEvictDates index from that index onwards. going
+        /// Latest evicted anchor index. This would keep track of the latest evicted anchor index so
+        /// that we can start the removal of AnchorEvictDates index from that index onwards. Going
         /// from AnchorIndexes => AnchorEvictDates
         LatestEvictedAnchorIndex get(get_latest_evicted_anchor_index): u64;
 
@@ -130,7 +130,9 @@ decl_module! {
         /// its own state commitment upon receiving a request for signature, the node can first
         /// publish a pre-commit. Only the pre-committer account in the Centrifuge chain is
         /// allowed to `commit` a corresponding anchor before the pre-commit has expired.
-        /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        /// For a more detailed explanation refer section 3.4 of
+        /// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        ///
         /// # <weight>
         /// minimal logic, also needs to be consume less block capacity + cheaper to make the pre-commits viable.
         /// # </weight>
@@ -159,13 +161,14 @@ decl_module! {
         /// `signing_root + proof` must match the given `doc_root`. To avoid state bloat on chain,
         /// the committed anchor would be evicted after the given `stored_until_date`. The calling
         /// account would be charged accordingly for the storage period.
-        /// For a more detailed explanation refer section 3.4 of [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        /// For a more detailed explanation refer section 3.4 of
+        /// [Centrifuge Protocol Paper](https://staticw.centrifuge.io/assets/centrifuge_os_protocol_paper.pdf)
+        ///
         /// # <weight>
         /// State rent takes into account the storage cost depending on `stored_until_date`.
         /// Otherwise independant of the inputs. The weight cost is important as it helps avoid DOS
         /// using smaller `stored_until_date`s. Computation cost involves timestamp calculations
         /// and state rent calculations, which we take here to be equivalent to a transfer transaction.
-        ///
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> DispatchResult {
@@ -199,6 +202,7 @@ decl_module! {
 
             let anchor_data_encoded = anchor_data.encode();
             child::put_raw(&child_storage_key, CHILD_INFO, anchor_id.as_ref(), &anchor_data_encoded);
+
             // update indexes
             <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
             let idx = LatestAnchorIndex::get() + 1;
@@ -223,6 +227,7 @@ decl_module! {
         /// has progressed past the block number provided in `evict_bucket`. `evict_bucket` is also
         /// the index to find the pre-commits stored in storage to be evicted when the
         /// `evict_bucket` number of blocks has expired.
+        ///
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
@@ -258,6 +263,7 @@ decl_module! {
         /// their eviction date, what this function does is to remove those child tries which has
         /// date_represented_by_root < current_date. Additionally it needs to take care of indexes
         /// created for accessing anchors, eg: to find an anchor given an id.
+        ///
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
@@ -299,7 +305,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    /// checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
+    /// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
     /// `expiration_block` < `current_block_number`.
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
         if !<PreCommits<T>>::exists(&anchor_id) {
@@ -309,7 +315,7 @@ impl<T: Trait> Module<T> {
         <PreCommits<T>>::get(anchor_id).expiration_block > <frame_system::Module<T>>::block_number()
     }
 
-    /// checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
+    /// Checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
     /// of `signing_root` and `proof` is done in a fixed order (signing_root + proof).
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
         let signing_root = <PreCommits<T>>::get(anchor_id).signing_root;
@@ -339,6 +345,7 @@ impl<T: Trait> Module<T> {
     ) -> DispatchResult {
         // determine which eviction bucket to put into
         let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block)?;
+
         // get current index in eviction bucket and increment
         let mut eviction_bucket_size =
             Self::get_pre_commits_count_in_evict_bucket(evict_after_block);
@@ -374,7 +381,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
-    /// remove child tries starting with `from` day to `until` day returning the
+    /// Remove child tries starting with `from` day to `until` day returning the
     /// count of tries removed.
     fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
         (from..until)
@@ -391,7 +398,7 @@ impl<T: Trait> Module<T> {
             .count()
     }
 
-    /// iterate from the last evicted anchor to latest anchor, while removing indexes that
+    /// Iterate from the last evicted anchor to latest anchor, while removing indexes that
     /// are no longer valid because they belong to an expired/evicted anchor. The loop is
     /// only allowed to run MAX_LOOP_IN_TX at a time.
     fn remove_anchor_indexes(yesterday: u32) -> usize {
@@ -416,7 +423,7 @@ impl<T: Trait> Module<T> {
             .count()
     }
 
-    /// get an anchor by its id in the child storage
+    /// Get an anchor by its id in the child storage
     pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
         let storage_key = common::generate_child_storage_key(anchor_evict_date);
