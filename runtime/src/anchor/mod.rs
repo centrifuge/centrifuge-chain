@@ -7,7 +7,7 @@ use crate::{common, fees};
 use codec::{Decode, Encode};
 use sp_std::{convert::TryInto, vec::Vec};
 use sp_runtime::traits::Hash;
-use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}};
+use frame_support::{decl_module, decl_storage, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}};
 use frame_system::{self as system, ensure_signed};
 
 #[cfg(feature = "std")]
@@ -57,20 +57,7 @@ impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-}
-
-decl_event! (
-    pub enum Event<T>
-    where
-        <T as frame_system::Trait>::Hash,
-    {
-        /// MoveAnchor event is triggered when the anchor should be moved to a different chain.
-        /// AnchorID and its DocRoot are sent as part of the event.
-        MoveAnchor(Hash, Hash),
-    }
-);
+pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -112,8 +99,6 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-
-        fn deposit_event() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
             if Version::get() == 0 {
@@ -289,19 +274,6 @@ decl_module! {
 
             // TODO emit an event for this so that the process which triggers can know how many anchor indexes got purged
 
-            Ok(())
-        }
-
-        /// Dispatch call when anchor by anchor_id is to be moved to another chain.
-        /// TODO remove?
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn move_anchor(origin, anchor_id: T::Hash) -> DispatchResult {
-            // ensure signed origin
-            ensure_signed(origin)?;
-
-            // fetch anchor data by anchor_id or fail if not present
-            let anchor_data = Self::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
-            Self::deposit_event(RawEvent::MoveAnchor(anchor_data.id, anchor_data.doc_root));
             Ok(())
         }
     }
