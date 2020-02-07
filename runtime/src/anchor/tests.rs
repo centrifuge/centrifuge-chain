@@ -503,7 +503,7 @@ fn pre_commit_commit_bucket_gets_determined_correctly() {
         let expected_evict_bucket: <Test as frame_system::Trait>::BlockNumber =
             PRE_COMMIT_EXPIRATION_DURATION_BLOCKS * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER;
         assert_eq!(
-            expected_evict_bucket,
+            Ok(expected_evict_bucket),
             Anchor::determine_pre_commit_eviction_bucket(current_block)
         );
 
@@ -511,7 +511,7 @@ fn pre_commit_commit_bucket_gets_determined_correctly() {
         let expected_evict_bucket2: <Test as frame_system::Trait>::BlockNumber =
             expected_evict_bucket * 2;
         assert_eq!(
-            expected_evict_bucket2,
+            Ok(expected_evict_bucket2),
             Anchor::determine_pre_commit_eviction_bucket(current_block2)
         );
 
@@ -520,7 +520,7 @@ fn pre_commit_commit_bucket_gets_determined_correctly() {
         let expected_evict_bucket3: <Test as frame_system::Trait>::BlockNumber =
             expected_evict_bucket * 3;
         assert_eq!(
-            expected_evict_bucket3,
+            Ok(expected_evict_bucket3),
             Anchor::determine_pre_commit_eviction_bucket(current_block3)
         );
     });
@@ -537,9 +537,9 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
         let block_height_1 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() + block_height_0;
         let block_height_2 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_1) + block_height_0;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap() + block_height_0;
 
         // ------ First run ------
         // register anchor_id_0 into block_height_0
@@ -549,8 +549,7 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
             block_height_0
         ));
 
-        let mut current_pre_commit_evict_bucket =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0);
+        let mut current_pre_commit_evict_bucket = Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
 
         // asserting that the right bucket was used to store
         let mut pre_commits_count =
@@ -573,7 +572,7 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
         ));
 
         current_pre_commit_evict_bucket =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_1);
+            Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap();
 
         // asserting that the right bucket was used to store
         pre_commits_count =
@@ -596,7 +595,7 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
             block_height_2
         ));
         current_pre_commit_evict_bucket =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_2);
+            Anchor::determine_pre_commit_eviction_bucket(block_height_2).unwrap();
 
         // asserting that the right bucket was used to store
         pre_commits_count =
@@ -609,7 +608,7 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
         // finally a sanity check that the previous bucketed items are untouched by the subsequent runs
         // checking run #1 again
         current_pre_commit_evict_bucket =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0);
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
         pre_commits_count =
             Anchor::get_pre_commits_count_in_evict_bucket(current_pre_commit_evict_bucket);
         assert_eq!(pre_commits_count, 1);
@@ -631,7 +630,7 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
         let block_height_1 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() + block_height_0;
 
         // ------ Register the pre-commits ------
         // register anchor_id_0 into block_height_0
@@ -665,7 +664,7 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
 
         // verify the registration in evict bucket of anchor 0
         let mut pre_commit_evict_bucket =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0);
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
         let pre_commits_count =
             Anchor::get_pre_commits_count_in_evict_bucket(pre_commit_evict_bucket);
         assert_eq!(pre_commits_count, 1);
@@ -674,7 +673,7 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
         assert_eq!(stored_pre_commit_id, anchor_id_0);
 
         // verify the expected numbers on the evict bucket IDx
-        pre_commit_evict_bucket = Anchor::determine_pre_commit_eviction_bucket(block_height_1);
+        pre_commit_evict_bucket = Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap();
         assert_eq!(
             Anchor::get_pre_commits_count_in_evict_bucket(pre_commit_evict_bucket),
             2
@@ -694,9 +693,9 @@ fn pre_commit_and_then_evict() {
         // three different block heights that will put anchors into different eviction buckets
         let block_height_0 = 1;
         let block_height_1 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() + block_height_0;
         let block_height_2 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_1) + block_height_0;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap() + block_height_0;
 
         // ------ Register the pre-commits ------
         // register anchor_id_0 into block_height_0
@@ -720,18 +719,18 @@ fn pre_commit_and_then_evict() {
         ));
 
         // eviction fails within the "non evict time"
-        System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(block_height_0) - 1);
+        System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() - 1);
         assert_err!(
             Anchor::evict_pre_commits(
                 Origin::signed(1),
-                Anchor::determine_pre_commit_eviction_bucket(block_height_0)
+                Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap()
             ),
             "eviction only possible for bucket expiring < current block height"
         );
 
         // test that eviction works after expiration time
         System::set_block_number(block_height_2);
-        let bucket_1 = Anchor::determine_pre_commit_eviction_bucket(block_height_0);
+        let bucket_1 = Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
 
         // before eviction, the pre-commit data findable
         let a = Anchor::get_pre_commit(anchor_id_0);
@@ -748,7 +747,7 @@ fn pre_commit_and_then_evict() {
         assert_eq!(a_evicted.identity, 0);
         assert_eq!(a_evicted.expiration_block, 0);
 
-        let bucket_2 = Anchor::determine_pre_commit_eviction_bucket(block_height_1);
+        let bucket_2 = Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap();
         assert_eq!(Anchor::get_pre_commits_count_in_evict_bucket(bucket_2), 2);
         assert_ok!(Anchor::evict_pre_commits(Origin::signed(1), bucket_2));
         assert_eq!(Anchor::get_pre_commits_count_in_evict_bucket(bucket_2), 0);
@@ -756,14 +755,16 @@ fn pre_commit_and_then_evict() {
 }
 
 #[test]
-fn pre_commit_at_4799_and_then_evict_before_expire_and_collaborator_succeed_commit() {
+fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_commit() {
     new_test_ext().execute_with(|| {
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
-        let start_block = 4799;
+        // use as a start block a block that is before an eviction bucket boundary
+        let start_block = Anchor::pre_commit_expiration_duration_blocks() * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER
+            * 2 - 1;
         // expected expiry block of pre-commit
-        let expiration_block = start_block + Anchor::pre_commit_expiration_duration_blocks(); // i.e 4799 + 480
+        let expiration_block = start_block + Anchor::pre_commit_expiration_duration_blocks(); // i.e 4799 + 800
 
         System::set_block_number(start_block);
         // happy
@@ -775,17 +776,18 @@ fn pre_commit_at_4799_and_then_evict_before_expire_and_collaborator_succeed_comm
 
         let a = Anchor::get_pre_commit(anchor_id);
         assert_eq!(a.expiration_block, expiration_block);
+
         // the edge case bug we had - pre-commit eviction time is less than its expiry time
         assert_eq!(
-            Anchor::determine_pre_commit_eviction_bucket(expiration_block) > a.expiration_block,
+            Anchor::determine_pre_commit_eviction_bucket(expiration_block).unwrap() > a.expiration_block,
             true
         );
 
         // this should not evict the pre-commit before its expired
-        System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(start_block) + 1);
+        System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(start_block).unwrap() + 1);
         assert_ok!(Anchor::evict_pre_commits(
             Origin::signed(1),
-            Anchor::determine_pre_commit_eviction_bucket(start_block)
+            Anchor::determine_pre_commit_eviction_bucket(start_block).unwrap()
         ));
 
         // fails
@@ -807,7 +809,7 @@ fn pre_commit_and_then_evict_larger_than_max_evict() {
     new_test_ext().execute_with(|| {
         let block_height_0 = 1;
         let block_height_1 =
-            Anchor::determine_pre_commit_eviction_bucket(block_height_0) + block_height_0;
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() + block_height_0;
         let signing_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
 
         System::set_block_number(block_height_0);
@@ -820,7 +822,7 @@ fn pre_commit_and_then_evict_larger_than_max_evict() {
         }
 
         System::set_block_number(block_height_1);
-        let bucket_1 = Anchor::determine_pre_commit_eviction_bucket(block_height_0);
+        let bucket_1 = Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
 
         //do check counts, evict, check counts again
         assert_eq!(Anchor::get_pre_commits_count_in_evict_bucket(bucket_1), 506);

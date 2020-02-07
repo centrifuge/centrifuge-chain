@@ -20,14 +20,14 @@ impl Proof {
     }
 }
 
-/// validates each proof and return true if all the proofs are valid
-/// else returns false
+/// Validates each proof and return true if all the proofs are valid else returns false
+///
 /// This is an optimized Merkle proof checker. It caches all valid leaves in an array called
 /// matches. If a proof is validated, all the intermediate hashes will be added to the array.
 /// When validating a subsequent proof, that proof will stop being validated as soon as a hash
 /// has been computed that has been a computed hash in a previously validated proof.
 ///
-/// When submitting a list of proof, the client can thus choose to chop of all the already proven
+/// When submitting a list of proofs, the client can thus choose to chop of all the already proven
 /// nodes when submitting multiple proofs.
 ///
 /// matches: matches will have a pre computed hashes provided by the client and document root of the

@@ -1,5 +1,4 @@
-/// Handling fees payments for specific transactions
-/// Initially being hard-coded, later coming from the governance module
+/// Handling state rent fee payments for specific transactions
 
 use codec::{Decode, Encode};
 use frame_support::{
@@ -34,9 +33,9 @@ decl_storage! {
         Version: u64;
     }
     add_extra_genesis {
+        // Anchoring state rent fee per day
         config(initial_fees): Vec<(T::Hash, T::Balance)>;
-        build(
-            |config| Module::<T>::initialize_fees(&config.initial_fees))
+        build(|config| Module::<T>::initialize_fees(&config.initial_fees))
     }
 }
 
@@ -53,17 +52,8 @@ decl_module! {
         // this is needed only if you are using events in your module
         fn deposit_event() = default;
 
-        fn on_initialize(_now: T::BlockNumber) {
-            if <Version>::get() == 0 {
-                // do first upgrade
-                // ...
-
-                // uncomment when upgraded
-                // <Version<T>>::put(1);
-            }
-        }
-
         /// Set the given fee for the key
+        ///
         /// # <weight>
         /// - Independent of the arguments.
         /// - Contains a limited number of reads and writes.
@@ -80,8 +70,7 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-    /// Called by any other module who wants to trigger a fee payment
-    /// for a given account.
+    /// Called by any other module who wants to trigger a fee payment for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
     pub fn pay_fee(who: T::AccountId, key: T::Hash) -> DispatchResult {
         ensure!(<Fees<T>>::exists(key), "fee not found for key");
@@ -103,6 +92,7 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    /// Returns the current fee for the key
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
         //why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
         if <Fees<T>>::exists(&key) {
@@ -113,6 +103,7 @@ impl<T: Trait> Module<T> {
         }
     }
 
+    /// Returns true if the given origin can change the fee
     fn can_change_fee(origin: T::Origin) -> DispatchResult {
         T::FeeChangeOrigin::try_origin(origin)
             .map(|_| ())
@@ -128,7 +119,7 @@ impl<T: Trait> Module<T> {
             .count();
     }
 
-    /// change the fee for the given key
+    /// Change the fee for the given key
     fn change_fee(key: T::Hash, fee: T::Balance) {
         let new_fee = Fee {
             key: key.clone(),
