@@ -757,14 +757,16 @@ fn pre_commit_and_then_evict() {
 }
 
 #[test]
-fn pre_commit_at_4799_and_then_evict_before_expire_and_collaborator_succeed_commit() {
+fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_commit() {
     new_test_ext().execute_with(|| {
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
-        let start_block = 4799;
+        // use as a start block a block that is before an eviction bucket boundary
+        let start_block = Anchor::pre_commit_expiration_duration_blocks() * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER
+            * 2 - 1;
         // expected expiry block of pre-commit
-        let expiration_block = start_block + Anchor::pre_commit_expiration_duration_blocks(); // i.e 4799 + 480
+        let expiration_block = start_block + Anchor::pre_commit_expiration_duration_blocks(); // i.e 4799 + 800
 
         System::set_block_number(start_block);
         // happy
@@ -776,6 +778,7 @@ fn pre_commit_at_4799_and_then_evict_before_expire_and_collaborator_succeed_comm
 
         let a = Anchor::get_pre_commit(anchor_id);
         assert_eq!(a.expiration_block, expiration_block);
+
         // the edge case bug we had - pre-commit eviction time is less than its expiry time
         assert_eq!(
             Anchor::determine_pre_commit_eviction_bucket(expiration_block).unwrap() > a.expiration_block,
