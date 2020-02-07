@@ -7,7 +7,7 @@ use crate::{common, fees};
 use codec::{Decode, Encode};
 use sp_std::{convert::TryInto, vec::Vec};
 use sp_runtime::traits::Hash;
-use frame_support::{decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}};
+use frame_support::{decl_module, decl_storage, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}};
 use frame_system::{self as system, ensure_signed};
 
 #[cfg(feature = "std")]
@@ -57,20 +57,7 @@ impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
-}
-
-decl_event! (
-    pub enum Event<T>
-    where
-        <T as frame_system::Trait>::Hash,
-    {
-        /// MoveAnchor event is triggered when the anchor should be moved to a different chain.
-        /// AnchorID and its DocRoot are sent as part of the event.
-        MoveAnchor(Hash, Hash),
-    }
-);
+pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -112,8 +99,6 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-
-        fn deposit_event() = default;
 
         fn on_initialize(_now: T::BlockNumber) {
             if Version::get() == 0 {
@@ -195,6 +180,17 @@ decl_module! {
                 ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
             }
 
+             // pay the state rent
+            let today_in_days_from_epoch = TryInto::<u64>::try_into(<pallet_timestamp::Module<T>>::get())
+                .map(common::get_days_since_epoch)
+                .map_err(|_e| "Can not convert timestamp to u64")
+                .unwrap();
+
+            // we use the fee config setup on genesis for anchoring to calculate the state rent
+            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
+                <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            <fees::Module<T>>::pay_fee_given(who, fee)?;
+
             let block_num = <frame_system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
@@ -210,18 +206,6 @@ decl_module! {
             let idx = LatestAnchorIndex::get() + 1;
             <AnchorIndexes<T>>::insert(idx, &anchor_id);
             LatestAnchorIndex::put(idx);
-
-            // pay the state rent
-            let today_in_days_from_epoch = TryInto::<u64>::try_into(<pallet_timestamp::Module<T>>::get())
-                .map(common::get_days_since_epoch)
-                .map_err(|_e| "Can not convert timestamp to u64")
-                .unwrap();
-
-            // we use the fee config setup on genesis for anchoring to calculate the state rent
-            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
-                <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
-            <fees::Module<T>>::pay_fee_given(who, fee)?;
-
             Ok(())
         }
 
@@ -289,19 +273,6 @@ decl_module! {
 
             // TODO emit an event for this so that the process which triggers can know how many anchor indexes got purged
 
-            Ok(())
-        }
-
-        /// Dispatch call when anchor by anchor_id is to be moved to another chain.
-        /// TODO remove?
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
-        pub fn move_anchor(origin, anchor_id: T::Hash) -> DispatchResult {
-            // ensure signed origin
-            ensure_signed(origin)?;
-
-            // fetch anchor data by anchor_id or fail if not present
-            let anchor_data = Self::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
-            Self::deposit_event(RawEvent::MoveAnchor(anchor_data.id, anchor_data.doc_root));
             Ok(())
         }
     }

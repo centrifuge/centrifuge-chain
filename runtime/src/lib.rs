@@ -519,9 +519,7 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 	}
 }
 
-impl anchor::Trait for Runtime {
-    type Event = Event;
-}
+impl anchor::Trait for Runtime {}
 
 /// Fees module implementation
 impl fees::Trait for Runtime {
@@ -560,7 +558,7 @@ construct_runtime!(
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		Anchor: anchor::{Module, Call, Storage, Event<T>},
+		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
 	}
