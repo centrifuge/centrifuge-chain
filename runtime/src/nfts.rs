@@ -113,9 +113,7 @@ mod tests {
         type ModuleToIndex = ();
     }
 
-    impl anchor::Trait for Test {
-        type Event = ();
-    }
+    impl anchor::Trait for Test {}
 
     impl Trait for Test {
         type Event = ();

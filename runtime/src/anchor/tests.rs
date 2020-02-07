@@ -74,9 +74,7 @@ impl pallet_balances::Trait for Test {
     type CreationFee = CreationFee;
 }
 
-impl Trait for Test {
-    type Event = ();
-}
+impl Trait for Test {}
 
 impl Test {
     fn test_document_hashes() -> (
@@ -1097,45 +1095,5 @@ fn basic_commit_perf() {
         }
 
         println!("time {}", elapsed);
-    });
-}
-
-#[test]
-fn test_move_anchor_without_origin() {
-    new_test_ext().execute_with(|| {
-        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-        assert_err!(
-            Anchor::move_anchor(Origin::NONE, anchor_id),
-            BadOrigin
-        );
-    });
-}
-
-#[test]
-fn test_move_anchor_missing_anchor() {
-    new_test_ext().execute_with(|| {
-        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-        assert_err!(
-            Anchor::move_anchor(Origin::signed(0), anchor_id),
-            "Anchor doesn't exist"
-        );
-    });
-}
-
-#[test]
-fn test_move_anchor_success() {
-    new_test_ext().execute_with(|| {
-        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
-        // commit anchor
-        assert_ok!(Anchor::commit(
-            Origin::signed(2),
-            pre_image,
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
-            common::MS_PER_DAY + 1
-        ));
-
-        assert_ok!(Anchor::move_anchor(Origin::signed(0), anchor_id));
     });
 }

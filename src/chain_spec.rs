@@ -344,29 +344,6 @@ pub(crate) mod tests {
 	use crate::service::{new_full, new_light};
 	use sc_service_test;
 
-	fn local_testnet_genesis_instant_single() -> GenesisConfig {
-		testnet_genesis(
-			vec![
-				get_authority_keys_from_seed("Alice"),
-			],
-			None,
-		)
-	}
-
-	/// Local testnet config (single validator - Alice)
-	pub fn integration_test_config_with_single_authority() -> ChainSpec {
-		ChainSpec::from_genesis(
-			"Integration Test",
-			"test",
-			local_testnet_genesis_instant_single,
-			vec![],
-			None,
-			None,
-			None,
-			Default::default(),
-		)
-    }
-
 	/// Local testnet config (multivalidator Alice + Bob)
 	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
 		ChainSpec::from_genesis(

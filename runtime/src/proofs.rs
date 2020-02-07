@@ -30,12 +30,9 @@ impl Proof {
 /// When submitting a list of proofs, the client can thus choose to chop of all the already proven
 /// nodes when submitting multiple proofs.
 ///
-/// matches: matches must be initialized with length = sum of all proof hashes to ensure all
-///          computed hashes can be stored.
-///
-/// In the first call to verify(), you should pass in the matches containing document root, signing root
-/// signature root,  sibling root, data root hash. For any subsequent call, the return values from the
-/// previous call to verify should be used.
+/// matches: matches will have a pre computed hashes provided by the client and document root of the
+/// reference anchor. static proofs are used to computed the pre computed hashes and the result is
+/// checked against document root provided.
 pub fn validate_proofs(doc_root: H256, proofs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {
     if proofs.len() < 1 {
         return false;
@@ -52,6 +49,9 @@ pub fn validate_proofs(doc_root: H256, proofs: &Vec<Proof>, static_proofs: [H256
         .fold(true, |acc, b| acc && b);
 }
 
+// computes blake2 256 sorted hash of the a and b
+// if a < b: blake256(a+b)
+// else: blake256(b+a)
 fn sort_hash_of(a: H256, b: H256) -> H256 {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     if a < b {
@@ -65,6 +65,7 @@ fn sort_hash_of(a: H256, b: H256) -> H256 {
     sp_io::hashing::blake2_256(&h).into()
 }
 
+// computes blake2 256 hash of the a + b
 fn hash_of(a: H256, b: H256) -> H256 {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     h.extend_from_slice(&a[..]);
@@ -72,6 +73,10 @@ fn hash_of(a: H256, b: H256) -> H256 {
     sp_io::hashing::blake2_256(&h).into()
 }
 
+// validates the proof by computing a sorted hash of the provided proofs with hash as initial value.
+// each calculated hash is memoized.
+// Validation stops as soon as the any computed hash is found in the matches.
+// if no computed hash is found in the matches, validation fails.
 fn validate_proof(matches: &mut Vec<H256>, hash: H256, proofs: Vec<H256>) -> bool {
     // if hash is already cached earlier
     if matches.contains(&hash) {
@@ -91,7 +96,18 @@ fn validate_proof(matches: &mut Vec<H256>, hash: H256, proofs: Vec<H256>) -> boo
     false
 }
 
-// prefill the required matches before proof validation
+// pre_matches takes 3 static proofs and calculate document root.
+// the calculated document root is then compared with the document root that is passed.
+// if the calculated document root matches, returns true and array of precomputed hashes
+// precomputed hashes are used while validating the proofs.
+//
+//
+// Computing Document Root:
+//                      DocumentRoot
+//                      /          \
+//          Signing Root            Signature Root
+//          /          \
+//   data root 1     data root 2
 fn pre_matches(static_proofs: [H256; 3], doc_root: H256) -> (bool, Vec<H256>) {
     let mut matches = Vec::new();
     let basic_data_root = static_proofs[0];
