@@ -60,11 +60,7 @@ pub fn run<I, T, E>(args: I, exit: E, version: sc_cli::VersionInfo) -> error::Re
     }
 }
 
-fn run_until_exit<T, E>(
-	mut runtime: Runtime,
-	service: T,
-	e: E,
-) -> error::Result<()>
+fn run_until_exit<T, E>(mut runtime: Runtime, service: T, e: E) -> error::Result<()>
 where
     T: AbstractService,
     E: IntoExit,
@@ -75,9 +71,7 @@ where
 
 	let informant = sc_cli::informant::build(&service);
 
-	let future = select(informant, exit)
-		.map(|_| Ok(()))
-		.compat();
+    let future = select(informant, exit).map(|_| Ok(())).compat();
 
 	runtime.executor().spawn(future);
 
@@ -87,12 +81,8 @@ where
 
 	let service_res = {
 		let exit = e.into_exit();
-		let service = service
-			.map_err(|err| error::Error::Service(err))
-			.compat();
-		let select = select(service, exit)
-			.map(|_| Ok(()))
-			.compat();
+        let service = service.map_err(|err| error::Error::Service(err)).compat();
+        let select = select(service, exit).map(|_| Ok(())).compat();
 		runtime.block_on(select)
 	};
 

@@ -101,7 +101,6 @@ fn validate_proof(matches: &mut Vec<H256>, hash: H256, proofs: Vec<H256>) -> boo
 // if the calculated document root matches, returns true and array of precomputed hashes
 // precomputed hashes are used while validating the proofs.
 //
-//
 // Computing Document Root:
 //                      DocumentRoot
 //                      /          \
@@ -122,7 +121,6 @@ fn pre_matches(static_proofs: [H256; 3], doc_root: H256) -> (bool, Vec<H256>) {
     matches.push(calc_doc_root);
     (calc_doc_root == doc_root, matches)
 }
-
 
 // appends deposit_address and all the hashes from the proofs and returns keccak hash of the result.
 pub fn bundled_hash(proofs: Vec<Proof>, deposit_address: [u8; 20]) -> H256 {

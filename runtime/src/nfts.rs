@@ -209,7 +209,6 @@ mod tests {
             ].into(),
         ];
 
-
         (proof, doc_root, static_proofs)
     }
 
