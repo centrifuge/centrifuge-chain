@@ -27,6 +27,12 @@ cargo build --release
 
 ## Run
 
+### Tests
+
+```bash
+cargo test --release
+```
+
 ### Testnets
 
 Centrifuge has multiple testnets online.

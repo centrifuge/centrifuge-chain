@@ -2,8 +2,9 @@ use sc_chain_spec::ChainSpecExtension;
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
 use node_runtime::{
-    AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
-    StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
+	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
+	FeesConfig, GrandpaConfig, ImOnlineConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig,
+	IndicesConfig, SystemConfig, WASM_BINARY,
 };
 use node_runtime::Block;
 use node_runtime::constants::currency::*;
@@ -135,8 +136,9 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (
 }
 
 /// Helper function to create GenesisConfig for testing
-fn testnet_genesis(
-    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
+pub fn testnet_genesis(
+	// StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
     endowed_accounts: Option<Vec<AccountId>>,
 ) -> GenesisConfig {
     let endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
@@ -175,7 +177,7 @@ fn testnet_genesis(
             vesting: vec![],
         }),
         pallet_indices: Some(IndicesConfig {
-            ids: endowed_accounts.iter().cloned()
+            indices: endowed_accounts.iter().cloned()
                 .chain(initial_authorities.iter().map(|x| x.0.clone()))
                 .collect::<Vec<_>>(),
         }),
@@ -188,15 +190,15 @@ fn testnet_genesis(
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
-			validator_count: 5,
-			minimum_validator_count: 1,
+			validator_count: initial_authorities.len() as u32 * 2,
+			minimum_validator_count: initial_authorities.len() as u32,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
             // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
             // easy to initialize and the performance hit is minimal (we expect no more than four
             // invulnerables) and restricted to testnets.
-			invulnerables: vec![],
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
             // The percentage of the slash that is distributed to reporters.
 		    // The rest of the slashed value is handled by the `Slash`.
 			slash_reward_fraction: Perbill::from_percent(10),
@@ -206,8 +208,10 @@ fn testnet_genesis(
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
 		pallet_collective_Instance1: Some(CouncilConfig {
-			members: endowed_accounts.iter().cloned()
-				.collect::<Vec<_>>()[..(num_endowed_accounts + 1) / 2].to_vec(),
+			members: endowed_accounts.iter()
+						.take((num_endowed_accounts + 1) / 2)
+						.cloned()
+						.collect(),
 			phantom: Default::default(),
 		}),
         pallet_babe: Some(BabeConfig {
@@ -343,6 +347,32 @@ pub(crate) mod tests {
 	use super::*;
 	use crate::service::{new_full, new_light};
 	use sc_service_test;
+	use sp_runtime::BuildStorage;
+
+	fn local_testnet_genesis_instant_single() -> GenesisConfig {
+		testnet_genesis(
+			vec![
+				get_authority_keys_from_seed("Alice"),
+			],
+			get_account_id_from_seed::<sr25519::Public>("Alice"),
+			None,
+			false,
+		)
+	}
+
+	/// Local testnet config (single validator - Alice)
+	pub fn integration_test_config_with_single_authority() -> ChainSpec {
+		ChainSpec::from_genesis(
+			"Integration Test",
+			"test",
+			local_testnet_genesis_instant_single,
+			vec![],
+			None,
+			None,
+			None,
+			Default::default(),
+		)
+	}
 
 	/// Local testnet config (multivalidator Alice + Bob)
 	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
@@ -366,5 +396,20 @@ pub(crate) mod tests {
 			|config| new_full(config),
 			|config| new_light(config),
 		);
+	}
+
+	#[test]
+	fn test_create_development_chain_spec() {
+		development_config().build_storage().unwrap();
+	}
+
+	#[test]
+	fn test_create_local_testnet_chain_spec() {
+		local_testnet_config().build_storage().unwrap();
+	}
+
+	#[test]
+	fn test_staging_test_net_chain_spec() {
+		staging_testnet_config().build_storage().unwrap();
 	}
 }

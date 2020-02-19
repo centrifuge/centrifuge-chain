@@ -111,6 +111,9 @@ mod tests {
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
+		type AccountData = pallet_balances::AccountData<u64>;
+		type OnNewAccount = ();
+		type OnReapAccount = pallet_balances::Module<Test>;
     }
 
     impl anchor::Trait for Test {}
@@ -131,25 +134,17 @@ mod tests {
     }
 
     parameter_types! {
-        pub const ExistentialDeposit: u64 = 0;
-        pub const TransferFee: u64 = 0;
-        pub const CreationFee: u64 = 0;
-        pub const TransactionBaseFee: u64 = 0;
-        pub const TransactionByteFee: u64 = 0;
+        pub const ExistentialDeposit: u64 = 1;
     }
-
     impl pallet_balances::Trait for Test {
         type Balance = u64;
-        type OnFreeBalanceZero = ();
-        type OnNewAccount = ();
-        type Event = ();
-
         type DustRemoval = ();
-        type TransferPayment = ();
+        type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
-        type TransferFee = TransferFee;
-        type CreationFee = CreationFee;
+        type AccountStore = System;
     }
+
+    type System = frame_system::Module<Test>;
 
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()

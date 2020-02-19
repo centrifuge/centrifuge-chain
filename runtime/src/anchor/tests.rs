@@ -8,6 +8,7 @@ use sp_runtime::{
 };
 use std::time::Instant;
 use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight};
+use frame_system::{self as system};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -41,6 +42,9 @@ impl frame_system::Trait for Test {
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type ModuleToIndex = ();
+    type AccountData = pallet_balances::AccountData<u64>;
+    type OnNewAccount = ();
+    type OnReapAccount = pallet_balances::Module<Test>;
 }
 
 impl pallet_timestamp::Trait for Test {
@@ -55,23 +59,14 @@ impl fees::Trait for Test {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u64 = 0;
-    pub const TransferFee: u64 = 0;
-    pub const CreationFee: u64 = 0;
-    pub const TransactionBaseFee: u64 = 0;
-    pub const TransactionByteFee: u64 = 0;
+    pub const ExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Trait for Test {
     type Balance = u64;
-    type OnFreeBalanceZero = ();
-    type OnNewAccount = ();
-    type Event = ();
-
     type DustRemoval = ();
-    type TransferPayment = ();
+    type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
-    type TransferFee = TransferFee;
-    type CreationFee = CreationFee;
+    type AccountStore = System;
 }
 
 impl Trait for Test {}
@@ -1066,8 +1061,12 @@ fn test_same_day_1001_anchors() {
 #[test]
 #[ignore]
 fn basic_commit_perf() {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     new_test_ext().execute_with(|| {
         let mut elapsed: u128 = 0;
+        let today_in_ms = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_millis() as u64;
+
         for i in 0..100000 {
             let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
             let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
@@ -1088,7 +1087,7 @@ fn basic_commit_perf() {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                today_in_ms + common::MS_PER_DAY * 2,
             ));
 
             elapsed = elapsed + now.elapsed().as_micros();
