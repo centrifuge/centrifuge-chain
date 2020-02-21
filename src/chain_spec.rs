@@ -19,29 +19,11 @@ use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
 
-type AccountPublic = <Signature as Verify>::Signer;
-
-/// Node `ChainSpec` extensions.
-///
-/// Additional parameters for some Substrate core modules,
-/// customizable from the chain spec.
-#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
-#[serde(rename_all = "camelCase")]
-pub struct Extensions {
-	/// Block numbers with known hashes.
-    pub fork_blocks: sc_client::ForkBlocks<Block>,
-    /// Known bad block hashes.
-	pub bad_blocks: sc_client::BadBlocks<Block>,
-}
-
-/// Specialized `ChainSpec`.
-pub type ChainSpec = sc_service::ChainSpec<
-	GenesisConfig,
-	Extensions,
->;
+/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
+pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
 
 /// The chain specification option.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Alternative {
 	/// Whatever the current runtime is, with just Alice as an auth.
 	Development,
@@ -55,6 +37,41 @@ pub enum Alternative {
 	Amber,
 	/// Mainnet.
 	Mainnet,
+}
+
+/// Helper function to generate a crypto pair from seed
+pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
+    TPublic::Pair::from_string(&format!("//{}", seed), None)
+        .expect("static values are valid; qed")
+        .public()
+}
+
+type AccountPublic = <Signature as Verify>::Signer;
+
+/// Helper function to generate an account ID from seed
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
+	AccountPublic: From<<TPublic::Pair as Pair>::Public>
+{
+	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
+}
+
+/// Helper function to generate stash, controller and session key from seed
+pub fn get_authority_keys_from_seed(seed: &str) -> (
+    AccountId,
+    AccountId,
+    GrandpaId,
+    BabeId,
+    ImOnlineId,
+    AuthorityDiscoveryId,
+) {
+    (
+        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+		get_account_id_from_seed::<sr25519::Public>(seed),
+        get_from_seed::<GrandpaId>(seed),
+        get_from_seed::<BabeId>(seed),
+        get_from_seed::<ImOnlineId>(seed),
+        get_from_seed::<AuthorityDiscoveryId>(seed),
+    )
 }
 
 /// Get a chain config from a spec setting.
@@ -102,39 +119,6 @@ fn session_keys(
 	SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
-/// Helper function to generate a crypto pair from seed
-pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
-    TPublic::Pair::from_string(&format!("//{}", seed), None)
-        .expect("static values are valid; qed")
-        .public()
-}
-
-/// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
-	AccountPublic: From<<TPublic::Pair as Pair>::Public>
-{
-	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
-}
-
-/// Helper function to generate stash, controller and session key from seed
-pub fn get_authority_keys_from_seed(seed: &str) -> (
-    AccountId,
-    AccountId,
-    GrandpaId,
-    BabeId,
-    ImOnlineId,
-    AuthorityDiscoveryId,
-) {
-    (
-        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
-		get_account_id_from_seed::<sr25519::Public>(seed),
-        get_from_seed::<GrandpaId>(seed),
-        get_from_seed::<BabeId>(seed),
-        get_from_seed::<ImOnlineId>(seed),
-        get_from_seed::<AuthorityDiscoveryId>(seed),
-    )
-}
-
 /// Helper function to create GenesisConfig for testing
 pub fn testnet_genesis(
 	// StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
@@ -174,12 +158,9 @@ pub fn testnet_genesis(
                 .map(|k| (k, endowment))
                 .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
                 .collect(),
-            vesting: vec![],
         }),
         pallet_indices: Some(IndicesConfig {
-            indices: endowed_accounts.iter().cloned()
-                .chain(initial_authorities.iter().map(|x| x.0.clone()))
-                .collect::<Vec<_>>(),
+            indices: vec![],
         }),
         pallet_session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
@@ -342,6 +323,13 @@ pub fn fulvous_config() -> ChainSpec {
 	)
 }
 
+pub fn load_spec(id: &str) -> Result<Option<ChainSpec>, String> {
+	Ok(match Alternative::from(id) {
+		Some(spec) => Some(spec.load()?),
+		None => None,
+	})
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
 	use super::*;
@@ -354,9 +342,7 @@ pub(crate) mod tests {
 			vec![
 				get_authority_keys_from_seed("Alice"),
 			],
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			None,
-			false,
 		)
 	}
 
@@ -406,10 +392,5 @@ pub(crate) mod tests {
 	#[test]
 	fn test_create_local_testnet_chain_spec() {
 		local_testnet_config().build_storage().unwrap();
-	}
-
-	#[test]
-	fn test_staging_test_net_chain_spec() {
-		staging_testnet_config().build_storage().unwrap();
 	}
 }
