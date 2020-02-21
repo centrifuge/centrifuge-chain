@@ -427,6 +427,7 @@ name = "centrifuge-chain"
 version = "2.0.0"
 dependencies = [
  "centrifuge-chain-runtime 2.0.0",
+ "frame-system 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "futures 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex-literal 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "jsonrpc-core 14.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -435,6 +436,7 @@ dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "node-primitives 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "pallet-im-online 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
+ "pallet-transaction-payment 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "pallet-transaction-payment-rpc 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "sc-authority-discovery 0.8.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
@@ -449,6 +451,7 @@ dependencies = [
  "sc-consensus-epochs 0.8.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sc-executor 0.8.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sc-finality-grandpa 0.8.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
+ "sc-keystore 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sc-network 0.8.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sc-offchain 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sc-rpc 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
@@ -466,12 +469,14 @@ dependencies = [
  "sp-finality-grandpa 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sp-finality-tracker 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sp-inherents 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
+ "sp-keyring 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sp-runtime 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sp-timestamp 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "sp-transaction-pool 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "structopt 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "substrate-build-script-utils 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
  "substrate-frame-rpc-system 2.0.0 (git+https://github.com/paritytech/substrate.git?rev=419e5fd0026cfd528cd3b327789bb0a3a8215703)",
+ "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "vergen 3.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

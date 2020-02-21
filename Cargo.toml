@@ -75,4 +75,10 @@ vergen = "3.0.4"
 build-script-utils = { package = "substrate-build-script-utils", git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }
 
 [dev-dependencies]
+tempfile = "3.1.0"
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }
 sc-service-test = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }
+sc-keystore = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }
+sc-consensus-babe = { features = ["test-helpers"], git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }
+frame-system = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }
+pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703" }

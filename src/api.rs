@@ -1,9 +1,8 @@
 use std::sync::Arc;
-use codec::{Codec, Decode};
 use sp_blockchain::HeaderBackend;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
-use sp_runtime::{generic::BlockId, traits::{Block as BlockT, MaybeDisplay, MaybeFromStr}};
+use sp_runtime::{generic::BlockId, traits::{Block as BlockT}};
 use sp_api::ProvideRuntimeApi;
 use node_runtime::{anchor::AnchorData};
 pub use node_runtime::AnchorApi as AnchorRuntimeApi;
