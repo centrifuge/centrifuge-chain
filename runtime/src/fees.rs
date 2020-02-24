@@ -1,5 +1,4 @@
 /// Handling state rent fee payments for specific transactions
-
 use codec::{Decode, Encode};
 use frame_support::{
     decl_event, decl_module, decl_storage,
@@ -16,7 +15,7 @@ pub trait Trait: frame_system::Trait + pallet_balances::Trait {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Required origin for changing fees
-	type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
+    type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -40,9 +39,9 @@ decl_storage! {
 }
 
 decl_event!(
-	pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
-		FeeChanged(Hash, Balance),
-	}
+    pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
+        FeeChanged(Hash, Balance),
+    }
 );
 
 decl_module! {
@@ -134,15 +133,17 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
+    use frame_support::{
+        assert_err, assert_noop, assert_ok, dispatch::DispatchError, impl_outer_origin,
+        parameter_types, weights::Weight,
+    };
+    use frame_system::EnsureSignedBy;
     use sp_core::H256;
     use sp_runtime::Perbill;
     use sp_runtime::{
         testing::Header,
-        traits::{BlakeTwo256, IdentityLookup, Hash, BadOrigin},
+        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
     };
-    use frame_support::{assert_err, assert_noop, assert_ok, impl_outer_origin, parameter_types, weights::Weight,
-        dispatch::DispatchError};
-    use frame_system::EnsureSignedBy;
 
     impl_outer_origin! {
         pub enum Origin for Test {}
@@ -239,7 +240,10 @@ mod tests {
             let price1: <Test as pallet_balances::Trait>::Balance = 666;
             let price2: <Test as pallet_balances::Trait>::Balance = 777;
 
-            assert_noop!(Fees::set_fee(Origin::signed(2), fee_key1, price1), BadOrigin);
+            assert_noop!(
+                Fees::set_fee(Origin::signed(2), fee_key1, price1),
+                BadOrigin
+            );
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key1, price1));
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key2, price2));
 
@@ -263,7 +267,10 @@ mod tests {
             assert_eq!(loaded_fee.price, initial_price);
 
             let new_price: <Test as pallet_balances::Trait>::Balance = 777;
-            assert_noop!(Fees::set_fee(Origin::signed(2), fee_key, new_price), BadOrigin);
+            assert_noop!(
+                Fees::set_fee(Origin::signed(2), fee_key, new_price),
+                BadOrigin
+            );
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, new_price));
             let again_loaded_fee = Fees::fee(fee_key);
             assert_eq!(again_loaded_fee.price, new_price);

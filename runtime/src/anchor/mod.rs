@@ -6,13 +6,16 @@
 
 use crate::{common, fees};
 use codec::{Decode, Encode};
-use sp_std::{convert::TryInto, vec::Vec};
-use sp_runtime::traits::Hash;
 use frame_support::{
-    decl_module, decl_storage, dispatch::{DispatchError, DispatchResult}, ensure,
-    weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}
+    decl_module, decl_storage,
+    dispatch::{DispatchError, DispatchResult},
+    ensure,
+    storage::child::{self, ChildInfo},
+    weights::SimpleDispatchInfo,
 };
 use frame_system::{self as system, ensure_signed};
+use sp_runtime::traits::Hash;
+use sp_std::{convert::TryInto, vec::Vec};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -61,7 +64,10 @@ impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {}
+pub trait Trait:
+    frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait
+{
+}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -349,7 +355,7 @@ impl<T: Trait> Module<T> {
 
                 Ok(T::BlockNumber::from(put_into_bucket))
             }
-            Err(_e) => Err(DispatchError::Other("pre commit expiration block too big"))
+            Err(_e) => Err(DispatchError::Other("pre commit expiration block too big")),
         }
     }
 

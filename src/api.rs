@@ -1,12 +1,12 @@
-use node_runtime::{anchor::AnchorData, AnchorApi};
-use node_primitives::{BlockNumber, Hash};
 use jsonrpc_core::Result as RpcResult;
 use jsonrpc_derive::rpc;
+use node_primitives::{BlockNumber, Hash};
+use node_runtime::{anchor::AnchorData, AnchorApi};
+use sc_client::{CallExecutor, Client};
+use sc_client_api::backend;
 use sp_core::Blake2Hasher;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
 use std::sync::Arc;
-use sc_client_api::backend;
-use sc_client::{CallExecutor, Client};
 
 /// Anchor RPC methods.
 #[rpc]
