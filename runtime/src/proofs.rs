@@ -1,10 +1,9 @@
 use codec::{Decode, Encode};
 use sp_std::vec::Vec;
-use sp_runtime::RuntimeDebug;
 use sp_core::H256;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
-#[cfg_attr(not(feature = "std"), derive(RuntimeDebug))]
+#[cfg_attr(not(feature = "std"), derive(sp_runtime::RuntimeDebug))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
     leaf_hash: H256,

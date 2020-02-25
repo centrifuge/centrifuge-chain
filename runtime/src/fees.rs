@@ -28,7 +28,7 @@ pub struct Fee<Hash, Balance> {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Fees {
-        Fees get(fee) : map T::Hash => Fee<T::Hash, T::Balance>;
+        Fees get(fee) : map hasher(blake2_256) T::Hash => Fee<T::Hash, T::Balance>;
 
         Version: u64;
     }
@@ -73,7 +73,7 @@ impl<T: Trait> Module<T> {
     /// Called by any other module who wants to trigger a fee payment for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
     pub fn pay_fee(who: T::AccountId, key: T::Hash) -> DispatchResult {
-        ensure!(<Fees<T>>::exists(key), "fee not found for key");
+        ensure!(<Fees<T>>::contains_key(key), "fee not found for key");
 
         let single_fee = <Fees<T>>::get(key);
         Self::pay_fee_given(who, single_fee.price)?;
@@ -95,7 +95,7 @@ impl<T: Trait> Module<T> {
     /// Returns the current fee for the key
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
         //why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
-        if <Fees<T>>::exists(&key) {
+        if <Fees<T>>::contains_key(&key) {
             let single_fee = <Fees<T>>::get(&key);
             Some(single_fee.price)
         } else {
@@ -141,11 +141,11 @@ mod tests {
         traits::{BlakeTwo256, IdentityLookup, Hash, BadOrigin},
     };
     use frame_support::{assert_err, assert_noop, assert_ok, impl_outer_origin, parameter_types, weights::Weight,
-        dispatch::DispatchError};
+        dispatch::DispatchError, ord_parameter_types};
     use frame_system::EnsureSignedBy;
 
     impl_outer_origin! {
-        pub enum Origin for Test {}
+        pub enum Origin for Test  where system = frame_system {}
     }
 
     // For testing the module, we construct most of a mock runtime. This means
@@ -176,8 +176,11 @@ mod tests {
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
+		type AccountData = pallet_balances::AccountData<u64>;
+		type OnNewAccount = ();
+		type OnReapAccount = pallet_balances::Module<Test>;
     }
-    parameter_types! {
+    ord_parameter_types! {
         pub const One: u64 = 1;
     }
     impl Trait for Test {
@@ -185,25 +188,17 @@ mod tests {
         type FeeChangeOrigin = EnsureSignedBy<One, u64>;
     }
     parameter_types! {
-        pub const ExistentialDeposit: u64 = 0;
-        pub const TransferFee: u64 = 0;
-        pub const CreationFee: u64 = 0;
-        pub const TransactionBaseFee: u64 = 0;
-        pub const TransactionByteFee: u64 = 0;
+        pub const ExistentialDeposit: u64 = 1;
     }
     impl pallet_balances::Trait for Test {
         type Balance = u64;
-        type OnFreeBalanceZero = ();
-        type OnNewAccount = ();
-        type Event = ();
-
         type DustRemoval = ();
-        type TransferPayment = ();
+        type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
-        type TransferFee = TransferFee;
-        type CreationFee = CreationFee;
+        type AccountStore = System;
     }
     type Fees = Module<Test>;
+    type System = frame_system::Module<Test>;
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
@@ -215,7 +210,6 @@ mod tests {
         // pre-fill balances
         pallet_balances::GenesisConfig::<Test> {
             balances: vec![(1, 100000), (2, 100000)],
-            vesting: vec![],
         }
         .assimilate_storage(&mut t)
         .unwrap();
