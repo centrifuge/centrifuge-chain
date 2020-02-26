@@ -1,12 +1,12 @@
-use std::sync::Arc;
-use sp_blockchain::HeaderBackend;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
-use sp_runtime::{generic::BlockId, traits::{Block as BlockT}};
-use sp_api::ProvideRuntimeApi;
-use node_runtime::{anchor::AnchorData};
-pub use node_runtime::AnchorApi as AnchorRuntimeApi;
 use node_primitives::{BlockNumber, Hash};
+use node_runtime::anchor::AnchorData;
+pub use node_runtime::AnchorApi as AnchorRuntimeApi;
+use sp_api::ProvideRuntimeApi;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use std::sync::Arc;
 
 #[rpc]
 pub trait AnchorApi {
@@ -17,23 +17,25 @@ pub trait AnchorApi {
 
 /// A struct that implements the [`AnchorApi`].
 pub struct Anchor<C, P> {
-	client: Arc<C>,
-	_marker: std::marker::PhantomData<P>,
+    client: Arc<C>,
+    _marker: std::marker::PhantomData<P>,
 }
 
 impl<C, P> Anchor<C, P> {
-	/// Create new `Anchor` with the given reference to the client.
-	pub fn new(client: Arc<C>) -> Self {
-		Anchor { client, _marker: Default::default() }
-	}
+    /// Create new `Anchor` with the given reference to the client.
+    pub fn new(client: Arc<C>) -> Self {
+        Anchor {
+            client,
+            _marker: Default::default(),
+        }
+    }
 }
 
-impl<C, Block> AnchorApi
-	for Anchor<C, Block>
+impl<C, Block> AnchorApi for Anchor<C, Block>
 where
-	Block: BlockT,
-	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: AnchorRuntimeApi<Block>,
+    Block: BlockT,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: AnchorRuntimeApi<Block>,
 {
     fn get_anchor_by_id(&self, id: Hash) -> Result<AnchorData<Hash, BlockNumber>> {
         let api = self.client.runtime_api();
