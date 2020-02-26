@@ -2,17 +2,17 @@
 
 /// Money matters.
 pub mod currency {
-	use node_primitives::Balance;
+    use node_primitives::Balance;
 
-	pub const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
+    pub const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
     pub const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
-	pub const CENTI_RAD: Balance = 10 * MILLI_RAD;    // 10−2 	0.01
+    pub const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
     pub const RAD: Balance = 100 * CENTI_RAD;
 }
 
 /// Time.
 pub mod time {
-    use node_primitives::{Moment, BlockNumber};
+    use node_primitives::{BlockNumber, Moment};
 
     /// Since BABE is probabilistic this is the average expected block time that
     /// we are targetting. Blocks will be produced at a minimum duration defined
