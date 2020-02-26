@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use sc_consensus_babe;
 use sc_client::{self, LongestChain};
-use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
+use sc_finality_grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
 use node_primitives::{Block, AccountId, Index};
 use node_runtime::{GenesisConfig, RuntimeApi};
 use sc_service::{
@@ -59,7 +59,7 @@ macro_rules! new_full_start {
 			.with_import_queue(|_config, client, mut select_chain, _transaction_pool| {
 				let select_chain = select_chain.take()
 					.ok_or_else(|| sc_service::Error::SelectChainRequired)?;
-				let (grandpa_block_import, grandpa_link) = grandpa::block_import(
+				let (grandpa_block_import, grandpa_link) = sc_finality_grandpa::block_import(
 					client.clone(),
 					&*client,
 					select_chain,
@@ -157,7 +157,7 @@ macro_rules! new_full {
 
 		let service = builder.with_network_protocol(|_| Ok(crate::service::NodeProtocol::new()))?
 			.with_finality_proof_provider(|client, backend|
-				Ok(Arc::new(grandpa::FinalityProofProvider::new(backend, client)) as _)
+				Ok(Arc::new(sc_finality_grandpa::FinalityProofProvider::new(backend, client)) as _)
 			)?
 			.build()?;
 
@@ -232,7 +232,7 @@ macro_rules! new_full {
 		match (is_authority, disable_grandpa) {
 			(false, false) => {
 				// start the lightweight GRANDPA observer
-				service.spawn_task("grandpa-observer", grandpa::run_grandpa_observer(
+				service.spawn_task("grandpa-observer", sc_finality_grandpa::run_grandpa_observer(
 					config,
 					grandpa_link,
 					service.network(),
@@ -241,24 +241,24 @@ macro_rules! new_full {
 			},
 			(true, false) => {
 				// start the full GRANDPA voter
-				let grandpa_config = grandpa::GrandpaParams {
+				let grandpa_config = sc_finality_grandpa::GrandpaParams {
 					config: config,
 					link: grandpa_link,
 					network: service.network(),
 					inherent_data_providers: inherent_data_providers.clone(),
 					on_exit: service.on_exit(),
 					telemetry_on_connect: Some(service.telemetry_on_connect_stream()),
-					voting_rule: grandpa::VotingRulesBuilder::default().build(),
+					voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
 				};
 				// the GRANDPA voter task is considered infallible, i.e.
 				// if it fails we take down the service with it.
 				service.spawn_essential_task(
 					"grandpa-voter",
-					grandpa::run_grandpa_voter(grandpa_config)?
+					sc_finality_grandpa::run_grandpa_voter(grandpa_config)?
 				);
 			},
 			(_, true) => {
-				grandpa::setup_disabled_grandpa(
+				sc_finality_grandpa::setup_disabled_grandpa(
 					service.client(),
 					&inherent_data_providers,
 					service.network(),
@@ -339,8 +339,8 @@ pub fn new_light(config: NodeConfiguration)
 		.with_import_queue_and_fprb(|_config, client, backend, fetcher, _select_chain, _tx_pool| {
 			let fetch_checker = fetcher
 				.map(|fetcher| fetcher.checker().clone())
-				.ok_or_else(|| "Trying to start light import queue without active fetch checker")?;
-			let grandpa_block_import = grandpa::light_block_import::<_, _, _, RuntimeApi>(
+				.ok_or_else(|| "Trying to start light import queue without active fetch checker")?;rust
+			let grandpa_block_import = sc_finality_grandpa::light_block_import::<_, _, _, RuntimeApi>(
 				client.clone(),
 				backend,
 				&*client,

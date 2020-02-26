@@ -7,7 +7,7 @@ use node_runtime::{
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
-use grandpa_primitives::{AuthorityId as GrandpaId};
+use sp_finality_grandpa::{AuthorityId as GrandpaId};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
