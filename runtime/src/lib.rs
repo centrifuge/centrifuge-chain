@@ -151,7 +151,7 @@ impl frame_system::Trait for Runtime {
 	/// A function that is invoked when an account has been determined to be dead.
 	///
 	/// All resources should be cleaned up associated with the given account.
-	type OnKilledAccount = ();
+	type OnKilledAccount = Balances;
 }
 
 parameter_types! {

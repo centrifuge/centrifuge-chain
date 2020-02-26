@@ -179,7 +179,7 @@ mod tests {
         type ModuleToIndex = ();
         type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
-        type OnReapAccount = pallet_balances::Module<Test>;
+        type OnKilledAccount = pallet_balances::Module<Test>;
     }
     ord_parameter_types! {
         pub const One: u64 = 1;

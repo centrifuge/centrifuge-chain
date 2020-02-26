@@ -46,7 +46,7 @@ impl frame_system::Trait for Test {
     type ModuleToIndex = ();
     type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
-    type OnReapAccount = pallet_balances::Module<Test>;
+    type OnKilledAccount = pallet_balances::Module<Test>;
 }
 
 impl pallet_timestamp::Trait for Test {
