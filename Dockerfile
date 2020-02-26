@@ -22,7 +22,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	rustup toolchain install $RUST_TOOLCHAIN && \
 	rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
 	rustup default $RUST_TOOLCHAIN && \
-	rustup default stable && \
+	# rustup default stable && \ # workaround as described in https://matrix.to/#/!HzySYSaIhtyWrwiwEV:matrix.org/$158222010481650qmZYp:matrix.parity.io?via=matrix.parity.io&via=matrix.org&via=web3.foundation
 	cargo build "--$PROFILE"
 
 # ===== SECOND STAGE ======
