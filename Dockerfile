@@ -6,7 +6,7 @@ LABEL maintainer="philip@centrifuge.io"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV RUST_TOOLCHAIN=nightly-2020-02-17
+ENV RUST_TOOLCHAIN=nightly
 
 ARG PROFILE=release
 WORKDIR /centrifuge-chain
@@ -22,7 +22,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	rustup toolchain install $RUST_TOOLCHAIN && \
 	rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
 	rustup default $RUST_TOOLCHAIN && \
-	# rustup default stable && \ # workaround as described in https://matrix.to/#/!HzySYSaIhtyWrwiwEV:matrix.org/$158222010481650qmZYp:matrix.parity.io?via=matrix.parity.io&via=matrix.org&via=web3.foundation
+	rustup default stable && \
 	cargo build "--$PROFILE"
 
 # ===== SECOND STAGE ======

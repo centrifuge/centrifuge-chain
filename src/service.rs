@@ -70,7 +70,6 @@ macro_rules! new_full_start {
 					sc_consensus_babe::Config::get_or_compute(&*client)?,
 					grandpa_block_import,
 					client.clone(),
-					client.clone(),
 				)?;
 
 				let import_queue = sc_consensus_babe::import_queue(
@@ -78,7 +77,6 @@ macro_rules! new_full_start {
 					block_import.clone(),
 					Some(Box::new(justification_import)),
 					None,
-					client.clone(),
 					client,
 					inherent_data_providers.clone(),
 				)?;
@@ -155,7 +153,7 @@ macro_rules! new_full {
 
 		let (builder, mut import_setup, inherent_data_providers) = new_full_start!($config);
 
-		let service = builder.with_network_protocol(|_| Ok(crate::service::NodeProtocol::new()))?
+		let service = builder
 			.with_finality_proof_provider(|client, backend|
 				Ok(Arc::new(sc_finality_grandpa::FinalityProofProvider::new(backend, client)) as _)
 			)?
@@ -224,25 +222,21 @@ macro_rules! new_full {
 			gossip_duration: std::time::Duration::from_millis(333),
 			justification_period: 512,
 			name: Some(name),
-			observer_enabled: true,
+			observer_enabled: false,
 			keystore,
 			is_authority,
 		};
 
-		match (is_authority, disable_grandpa) {
-			(false, false) => {
-				// start the lightweight GRANDPA observer
-				service.spawn_task("grandpa-observer", sc_finality_grandpa::run_grandpa_observer(
-					config,
-					grandpa_link,
-					service.network(),
-					service.on_exit(),
-				)?);
-			},
-			(true, false) => {
-				// start the full GRANDPA voter
-				let grandpa_config = sc_finality_grandpa::GrandpaParams {
-					config: config,
+		let enable_grandpa = !disable_grandpa;
+		if enable_grandpa {
+			// start the full GRANDPA voter
+			// NOTE: non-authorities could run the GRANDPA observer protocol, but at
+			// this point the full voter should provide better guarantees of block
+			// and vote data availability than the observer. The observer has not
+			// been tested extensively yet and having most nodes in a network run it
+			// could lead to finality stalls.
+			let grandpa_config = grandpa::GrandpaParams {
+				config,
 					link: grandpa_link,
 					network: service.network(),
 					inherent_data_providers: inherent_data_providers.clone(),
@@ -250,20 +244,19 @@ macro_rules! new_full {
 					telemetry_on_connect: Some(service.telemetry_on_connect_stream()),
 					voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
 				};
+
 				// the GRANDPA voter task is considered infallible, i.e.
 				// if it fails we take down the service with it.
 				service.spawn_essential_task(
 					"grandpa-voter",
 					sc_finality_grandpa::run_grandpa_voter(grandpa_config)?
 				);
-			},
-			(_, true) => {
-				sc_finality_grandpa::setup_disabled_grandpa(
-					service.client(),
-					&inherent_data_providers,
-					service.network(),
-				)?;
-			},
+		} else {
+			sc_finality_grandpa::setup_disabled_grandpa(
+				service.client(),
+				&inherent_data_providers,
+				service.network(),
+			)?;
 		}
 
 		Ok((service, inherent_data_providers))
@@ -273,9 +266,7 @@ macro_rules! new_full {
 	}}
 }
 
-#[allow(dead_code)]
 type ConcreteBlock = node_primitives::Block;
-#[allow(dead_code)]
 type ConcreteClient =
 	Client<
 		Backend<ConcreteBlock>,
@@ -284,9 +275,7 @@ type ConcreteClient =
 		ConcreteBlock,
 		node_runtime::RuntimeApi
 	>;
-#[allow(dead_code)]
 type ConcreteBackend = Backend<ConcreteBlock>;
-#[allow(dead_code)]
 type ConcreteTransactionPool = sc_transaction_pool::BasicPool<
 	sc_transaction_pool::FullChainApi<ConcreteClient, ConcreteBlock>,
 	ConcreteBlock
@@ -303,7 +292,7 @@ pub fn new_full(config: NodeConfiguration)
 		ConcreteClient,
 		LongestChain<ConcreteBackend, ConcreteBlock>,
 		NetworkStatus<ConcreteBlock>,
-		NetworkService<ConcreteBlock, crate::service::NodeProtocol, <ConcreteBlock as BlockT>::Hash>,
+		NetworkService<ConcreteBlock, <ConcreteBlock as BlockT>::Hash>,
 		ConcreteTransactionPool,
 		OffchainWorkers<
 			ConcreteClient,
@@ -339,7 +328,7 @@ pub fn new_light(config: NodeConfiguration)
 		.with_import_queue_and_fprb(|_config, client, backend, fetcher, _select_chain, _tx_pool| {
 			let fetch_checker = fetcher
 				.map(|fetcher| fetcher.checker().clone())
-				.ok_or_else(|| "Trying to start light import queue without active fetch checker")?;rust
+				.ok_or_else(|| "Trying to start light import queue without active fetch checker")?;
 			let grandpa_block_import = sc_finality_grandpa::light_block_import::<_, _, _, RuntimeApi>(
 				client.clone(),
 				backend,
@@ -355,7 +344,6 @@ pub fn new_light(config: NodeConfiguration)
 				sc_consensus_babe::Config::get_or_compute(&*client)?,
 				grandpa_block_import,
 				client.clone(),
-				client.clone(),
 			)?;
 
 			let import_queue = sc_consensus_babe::import_queue(
@@ -364,13 +352,11 @@ pub fn new_light(config: NodeConfiguration)
 				None,
 				Some(Box::new(finality_proof_import)),
 				client.clone(),
-				client,
 				inherent_data_providers.clone(),
 			)?;
 
 			Ok((import_queue, finality_proof_request_builder))
 		})?
-		.with_network_protocol(|_| Ok(NodeProtocol::new()))?
 		.with_finality_proof_provider(|client, backend|
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, client)) as _)
 		)?
@@ -515,7 +501,7 @@ mod tests {
 			|config| {
 				let mut setup_handles = None;
 				new_full!(config, |
-					block_import: &sc_consensus_babe::BabeBlockImport<_, _, Block, _, _, _>,
+					block_import: &sc_consensus_babe::BabeBlockImport<Block, _, _>,
 					babe_link: &sc_consensus_babe::BabeLink<Block>,
 				| {
 					setup_handles = Some((block_import.clone(), babe_link.clone()));

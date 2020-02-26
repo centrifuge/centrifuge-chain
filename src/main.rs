@@ -1,4 +1,4 @@
-//! Substrate Node CLI library.
+//! Centrifuge Chain Node CLI library.
 #![warn(missing_docs)]
 
 mod api;
@@ -8,10 +8,8 @@ mod service;
 mod cli;
 mod command;
 
-pub use sc_cli::{VersionInfo, error};
-
-fn main() -> Result<(), error::Error> {
-	let version = VersionInfo {
+fn main() -> sc_cli::Result<()> {
+	let version = sc_cli::VersionInfo {
 		name: "Centrifuge Chain Node",
 		commit: env!("VERGEN_SHA_SHORT"),
 		version: env!("CARGO_PKG_VERSION"),
