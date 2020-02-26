@@ -59,9 +59,6 @@ pallet-utility = { git = "https://github.com/paritytech/substrate.git", rev = "4
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703", default-features = false }
 
-# other substrate dependencies
-node-runtime = { git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703", default-features = false }
-
 [build-dependencies]
 wasm-builder-runner = { package = "substrate-wasm-builder-runner", git = "https://github.com/paritytech/substrate.git", rev = "419e5fd0026cfd528cd3b327789bb0a3a8215703", version = "1.0.4" }
 
@@ -87,7 +84,6 @@ std = [
 	"sp-inherents/std",
 	"pallet-membership/std",
 	"node-primitives/std",
-	"node-runtime/std",
 	"sp-offchain/std",
 	"pallet-offences/std",
 	"sp-core/std",
