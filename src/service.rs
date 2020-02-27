@@ -13,7 +13,6 @@ use sc_service::{
 	AbstractService, ServiceBuilder, config::Configuration, error::{Error as ServiceError},
 };
 use sp_inherents::InherentDataProviders;
-use sc_network::construct_simple_protocol;
 
 use sc_service::{Service, NetworkStatus};
 use sc_client::{Client, LocalCallExecutor};
@@ -30,11 +29,6 @@ native_executor_instance!(
 	node_runtime::api::dispatch,
 	node_runtime::native_version,
 );
-
-construct_simple_protocol! {
-	/// Demo protocol attachment for substrate.
-	pub struct NodeProtocol where Block = Block { }
-}
 
 /// Starts a `ServiceBuilder` for a full service.
 ///
@@ -217,7 +211,7 @@ macro_rules! new_full {
 			None
 		};
 
-		let config = grandpa::Config {
+		let config = sc_finality_grandpa::Config {
 			// FIXME #1578 make this available through chainspec
 			gossip_duration: std::time::Duration::from_millis(333),
 			justification_period: 512,
@@ -235,7 +229,7 @@ macro_rules! new_full {
 			// and vote data availability than the observer. The observer has not
 			// been tested extensively yet and having most nodes in a network run it
 			// could lead to finality stalls.
-			let grandpa_config = grandpa::GrandpaParams {
+			let grandpa_config = sc_finality_grandpa::GrandpaParams {
 				config,
 					link: grandpa_link,
 					network: service.network(),
