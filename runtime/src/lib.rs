@@ -79,8 +79,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 221,
-    impl_version: 0,
+    spec_version: 225,
+    impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -151,7 +151,7 @@ impl frame_system::Trait for Runtime {
 	/// A function that is invoked when an account has been determined to be dead.
 	///
 	/// All resources should be cleaned up associated with the given account.
-	type OnReapAccount = (Balances, Staking, Session);
+	type OnKilledAccount = Balances;
 }
 
 parameter_types! {
@@ -662,6 +662,10 @@ impl_runtime_apis! {
 	impl sp_block_builder::BlockBuilder<Block> for Runtime {
 		fn apply_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
 			Executive::apply_extrinsic(extrinsic)
+		}
+
+		fn apply_trusted_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
+			Executive::apply_trusted_extrinsic(extrinsic)
 		}
 
 		fn finalize_block() -> <Block as BlockT>::Header {

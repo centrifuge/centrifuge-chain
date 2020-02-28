@@ -7,7 +7,7 @@ use node_runtime::{
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
-use grandpa_primitives::{AuthorityId as GrandpaId};
+use sp_finality_grandpa::{AuthorityId as GrandpaId};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -161,7 +161,7 @@ pub fn testnet_genesis(
         }),
         pallet_session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
+				(x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
 			}).collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
