@@ -183,7 +183,7 @@ impl pallet_babe::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 1 * MICRO_RAD;
+	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
 }
 
 impl pallet_indices::Trait for Runtime {
@@ -387,7 +387,7 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
-	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub const TermDuration: BlockNumber = 1 * DAYS;
 	pub const DesiredMembers: u32 = 5;
 	pub const DesiredRunnersUp: u32 = 3;
 }
