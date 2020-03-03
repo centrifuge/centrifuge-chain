@@ -30,10 +30,10 @@ jobs:
   include:
     - stage: "Test and build"
       name: "Run runtime tests"
-      script: RUST_TOOLCHAIN=nightly TARGET=runtime-test travis_wait 180 ./ci/script.sh
+      script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=runtime-test travis_wait 180 ./ci/script.sh
     - # stage name not required, will continue last one
       name: "Build (WASM and native)"
-      script: RUST_TOOLCHAIN=nightly TARGET=build-client travis_wait 180 ./ci/script.sh
+      script: RUST_TOOLCHAIN=nightly-2020-02-17 TARGET=build-client travis_wait 180 ./ci/script.sh
     - stage: "Build and push Docker image"
       if: (NOT type IN (pull_request)) AND (branch = master)
       script: travis_wait 180 ./ci/docker.sh

@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 
-set -e
+set -eux
+
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly}"
 
 echo "*** Initializing WASM build environment"
 
-if [ -z $CI_PROJECT_NAME ] ; then
-   rustup update nightly
-   rustup update stable
-fi
+rustup update $RUST_TOOLCHAIN
+rustup update stable
 
-rustup target add wasm32-unknown-unknown --toolchain nightly
+rustup toolchain install $RUST_TOOLCHAIN
+rustup default $RUST_TOOLCHAIN
+
+rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
