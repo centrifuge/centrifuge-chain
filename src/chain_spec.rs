@@ -80,7 +80,7 @@ impl Alternative {
 			Alternative::Fulvous => fulvous_config(),
 			Alternative::Flint => flint_config()?,
 			Alternative::Amber => amber_config()?,
-			Alternative::Mainnet => panic!("Mainnet spec is not yet available"),
+			Alternative::Mainnet => mainnet_config()?,
 		})
 	}
 
@@ -105,6 +105,11 @@ pub fn flint_config() -> Result<ChainSpec, String> {
 /// Amber testnet generator
 pub fn amber_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-spec.json")[..])
+}
+
+/// Mainnet generator
+pub fn mainnet_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-pre-spec.json")[..])
 }
 
 fn session_keys(

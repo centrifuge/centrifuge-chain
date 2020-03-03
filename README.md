@@ -122,7 +122,7 @@ Additional CLI usage options are available and may be shown by running `./target
 ### Generating a new genesis file
 
 1. Be sure to change the `id` and `protocol_id` in `src/chain_spec.rs`
-2. Run `cargo run --release build-spec --disable-default-bootnode --chain flint > res/[name]-spec.json` to export the chain spec
+2. Run `cargo run --release build-spec --disable-default-bootnode --chain fulvous > res/[name]-spec.json` to export the chain spec
 3. Commit
 
 ## Linting
