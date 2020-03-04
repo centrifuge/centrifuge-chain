@@ -183,7 +183,7 @@ impl pallet_babe::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 1 * MICRO_RAD;
+	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
 }
 
 impl pallet_indices::Trait for Runtime {
@@ -283,9 +283,15 @@ impl pallet_session::historical::Trait for Runtime {
 	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
 }
 
+// set to almost three percent to correct for a bug, see https://github.com/paritytech/substrate/issues/4964 for
+// details and https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=e6490da3bfb28f69c7f6e6393ec6bb0c
+// for the calculation
+// TODO: set back to Perbill::from_percent(3) as soon as the bug above is fixed.
+const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
+
 const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
-	points: &[(Perbill::from_percent(0), Perbill::from_percent(3))],
-	maximum: Perbill::from_percent(3),
+	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
+	maximum: THREE_PERCENT_INFLATION,
 };
 
 parameter_types! {
@@ -387,7 +393,7 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
-	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub const TermDuration: BlockNumber = 1 * DAYS;
 	pub const DesiredMembers: u32 = 5;
 	pub const DesiredRunnersUp: u32 = 3;
 }

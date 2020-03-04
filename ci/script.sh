@@ -2,6 +2,8 @@
 
 set -eux
 
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly}"
+
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
 
@@ -11,19 +13,14 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y
 # Load cargo environment. Specifically, put cargo into PATH.
 source ~/.cargo/env
 
-rustup toolchain install $RUST_TOOLCHAIN
-rustup default $RUST_TOOLCHAIN
-
-rustc --version
-rustup --version
-cargo --version
-
 sudo apt-get -y update
 sudo apt-get install -y cmake pkg-config libssl-dev
 
 ./scripts/init.sh
 
-rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
+rustc --version
+rustup --version
+cargo --version
 
 case $TARGET in
 	"build-client")
