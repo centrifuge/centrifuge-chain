@@ -489,6 +489,7 @@ dependencies = [
 name = "centrifuge-chain-runtime"
 version = "2.0.0"
 dependencies = [
+ "chainbridge 0.0.1 (git+https://github.com/ChainSafe/chainbridge-substrate?rev=9a3037806e8c8f93ff707e52a4a38812c66a3605)",
  "frame-executive 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "frame-support 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "frame-system 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
@@ -557,6 +558,23 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "constant_time_eq 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "chainbridge"
+version = "0.0.1"
+source = "git+https://github.com/ChainSafe/chainbridge-substrate?rev=9a3037806e8c8f93ff707e52a4a38812c66a3605#9a3037806e8c8f93ff707e52a4a38812c66a3605"
+dependencies = [
+ "frame-support 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "frame-system 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "pallet-balances 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-core 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "sp-io 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "sp-runtime 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "sp-std 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
+ "substrate-wasm-builder-runner 1.0.5 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
 ]
 
 [[package]]
@@ -6496,6 +6514,7 @@ dependencies = [
 "checksum cexpr 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "fce5b5fb86b0c57c20c834c1b412fd09c77c8a59b9473f86272709e78874cd1d"
 "checksum cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 "checksum chacha20-poly1305-aead 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "77d2058ba29594f69c75e8a9018e0485e3914ca5084e3613cd64529042f5423b"
+"checksum chainbridge 0.0.1 (git+https://github.com/ChainSafe/chainbridge-substrate?rev=9a3037806e8c8f93ff707e52a4a38812c66a3605)" = "<none>"
 "checksum chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "31850b4a4d6bae316f7a09e691c944c28299298837edc0a03f755618c23cbc01"
 "checksum clang-sys 0.28.1 (registry+https://github.com/rust-lang/crates.io-index)" = "81de550971c976f176130da4b2978d3b524eaa0fd9ac31f3ceb5ae1231fb4853"
 "checksum clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5067f5bb2d80ef5d68b4c87db81601f0b75bca627bc2ef76b141d7b846a3c6d9"

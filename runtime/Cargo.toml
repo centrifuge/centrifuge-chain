@@ -63,6 +63,8 @@ pallet-utility = { version = "2.0.0-alpha.1", git = "https://github.com/parityte
 pallet-transaction-payment = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 
+chainbridge = { git = "https://github.com/ChainSafe/chainbridge-substrate", rev = "9a3037806e8c8f93ff707e52a4a38812c66a3605", default-features = false }
+
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972" }
 
@@ -113,4 +115,5 @@ std = [
 	"sp-transaction-pool/std",
 	"pallet-utility/std",
 	"sp-version/std",
+	"chainbridge/std"
 ]
