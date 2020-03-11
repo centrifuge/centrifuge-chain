@@ -505,7 +505,6 @@ dependencies = [
  "pallet-finality-tracker 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-grandpa 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-im-online 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "pallet-indices 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-membership 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-offences 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-randomness-collective-flip 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
@@ -2820,22 +2819,6 @@ dependencies = [
  "sp-io 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "sp-runtime 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "sp-staking 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "sp-std 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
-]
-
-[[package]]
-name = "pallet-indices"
-version = "2.0.0-alpha.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972#7c751574d8c53108e78440bfa5dffb80ab644972"
-dependencies = [
- "frame-support 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "frame-system 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
- "sp-core 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "sp-io 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "sp-keyring 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "sp-runtime 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "sp-std 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
 ]
 
@@ -6728,7 +6711,6 @@ dependencies = [
 "checksum pallet-finality-tracker 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-grandpa 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-im-online 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
-"checksum pallet-indices 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-membership 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-offences 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-randomness-collective-flip 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"

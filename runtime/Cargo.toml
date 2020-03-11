@@ -50,7 +50,6 @@ pallet-elections-phragmen = { version = "2.0.0-alpha.1", git = "https://github.c
 pallet-finality-tracker = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-grandpa = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-im-online = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
-pallet-indices = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-membership = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-offences = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-randomness-collective-flip = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
@@ -84,7 +83,6 @@ std = [
 	"pallet-finality-tracker/std",
 	"pallet-grandpa/std",
     "pallet-im-online/std",
-	"pallet-indices/std",
 	"sp-inherents/std",
 	"pallet-membership/std",
 	"node-primitives/std",

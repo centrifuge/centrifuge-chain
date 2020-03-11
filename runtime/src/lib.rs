@@ -12,7 +12,7 @@ use frame_support::{
 };
 use sp_core::u32_trait::{_0, _1, _2, _3, _4, _5};
 pub use node_primitives::{AccountId, Signature};
-use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
+use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
 	Permill, Perbill, Percent, ApplyExtrinsicResult,
@@ -21,7 +21,7 @@ use sp_runtime::{
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::TransactionValidity;
 use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
+	self, BlakeTwo256, Block as BlockT, IdentityLookup, SaturatedConversion,
 	OpaqueKeys,
 };
 use sp_version::RuntimeVersion;
@@ -126,7 +126,7 @@ impl frame_system::Trait for Runtime {
     /// The identifier used to distinguish between accounts.
     type AccountId = AccountId;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = Indices;
+    type Lookup = IdentityLookup<AccountId>;
     /// The header type.
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
     /// The overarching event type.
@@ -180,22 +180,6 @@ impl pallet_babe::Trait for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-}
-
-parameter_types! {
-	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
-}
-
-impl pallet_indices::Trait for Runtime {
-    /// The type for recording indexing into the account enumeration. If this ever overflows, there
-    /// will be problems!
-    type AccountIndex = AccountIndex;
-    /// The overarching event type.
-	type Event = Event;
-	/// The currency trait.
-	type Currency = Balances;
-	/// The deposit needed for reserving an index.
-	type Deposit = IndexDeposit;
 }
 
 parameter_types! {
@@ -558,9 +542,8 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 			debug::warn!("Unable to create signed payload: {:?}", e);
 		}).ok()?;
 		let signature = TSigner::sign(public, &raw_payload)?;
-		let address = Indices::unlookup(account);
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (address, signature, extra)))
+		Some((call, (account, signature, extra)))
 	}
 }
 
@@ -588,7 +571,6 @@ construct_runtime!(
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
@@ -610,7 +592,7 @@ construct_runtime!(
 );
 
 /// The address format for describing accounts.
-pub type Address = <Indices as StaticLookup>::Source;
+pub type Address = AccountId;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.

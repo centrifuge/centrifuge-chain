@@ -2,7 +2,7 @@ use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
 	FeesConfig, GrandpaConfig, ImOnlineConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig,
-	IndicesConfig, SystemConfig, WASM_BINARY,
+	SystemConfig, WASM_BINARY,
 };
 use node_runtime::constants::currency::*;
 use sc_service;
@@ -160,9 +160,6 @@ pub fn testnet_genesis(
                 .map(|k| (k, endowment))
                 .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
                 .collect(),
-        }),
-        pallet_indices: Some(IndicesConfig {
-            indices: vec![],
         }),
         pallet_session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
