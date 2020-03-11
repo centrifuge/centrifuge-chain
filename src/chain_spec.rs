@@ -206,7 +206,6 @@ pub fn testnet_genesis(
         pallet_grandpa: Some(GrandpaConfig {
             authorities: vec![],
         }),
-        pallet_treasury: Some(Default::default()),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day

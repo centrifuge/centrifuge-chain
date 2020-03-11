@@ -8,14 +8,14 @@ use sp_std::prelude::*;
 use frame_support::{
 	construct_runtime, parameter_types, debug,
 	weights::Weight,
-	traits::{SplitTwoWays, Currency, Randomness},
+	traits::{Currency, Randomness},
 };
-use sp_core::u32_trait::{_0, _1, _2, _3, _4, _5};
+use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
-	Permill, Perbill, Percent, ApplyExtrinsicResult,
+	Perbill, ApplyExtrinsicResult,
 	impl_opaque_keys, generic, create_runtime_str,
 };
 use sp_runtime::curve::PiecewiseLinear;
@@ -94,13 +94,6 @@ pub fn native_version() -> NativeVersion {
 }
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-
-pub type DealWithFees = SplitTwoWays<
-	Balance,
-	NegativeImbalance,
-	_0, Treasury,   // 0 parts (0%) goes to the treasury.
-	_1, Author,     // 1 part (100%) goes to the block author.
->;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
@@ -210,7 +203,7 @@ parameter_types! {
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
-	type OnTransactionPayment = DealWithFees;
+	type OnTransactionPayment = Author;
 	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = LinearWeightToFee<WeightFeeCoefficient>;
@@ -289,9 +282,9 @@ impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
 	type Time = Timestamp;
 	type CurrencyToVote = CurrencyToVoteHandler;
-	type RewardRemainder = Treasury;
+	type RewardRemainder = ();
 	type Event = Event;
-	type Slash = Treasury; // send the slashed funds to the treasury.
+	type Slash = ();
 	type Reward = (); // rewards are minted from the void
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
@@ -364,7 +357,7 @@ impl pallet_democracy::Trait for Runtime {
 	type PreimageByteDeposit = PreimageByteDeposit;
 
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = Treasury;
+	type Slash = ();
 }
 
 type CouncilCollective = pallet_collective::Instance1;
@@ -394,9 +387,9 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBond = VotingBond;
 
-	type LoserCandidate = Treasury;
-	type BadReport = Treasury;
-	type KickedMember = Treasury;
+	type LoserCandidate = ();
+	type BadReport = ();
+	type KickedMember = ();
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -408,62 +401,6 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	/// round will happen. If set to zero, no elections are ever triggered and the module will
 	/// be in passive mode.
 	type TermDuration = TermDuration;
-}
-
-parameter_types! {
-	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 200 * RAD;
-	pub const SpendPeriod: BlockNumber = 6 * DAYS;
-	pub const Burn: Permill = Permill::from_percent(0);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
-	pub const TipFindersFee: Percent = Percent::from_percent(20);
-	pub const TipReportDepositBase: Balance = 10 * RAD;
-	pub const TipReportDepositPerByte: Balance = 10 * CENTI_RAD;
-}
-
-impl pallet_treasury::Trait for Runtime {
-	/// The staking balance.
-	type Currency = Balances;
-
-	/// Origin from which approvals must come.
-	type ApproveOrigin = pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>;
-
-	/// Origin from which rejections must come.
-	type RejectOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-
-	/// Origin from which tippers must come.
-	type Tippers = Elections;
-
-	/// The period for which a tip remains open after is has achieved threshold tippers.
-	type TipCountdown = TipCountdown;
-
-	/// The percent of the final tip which goes to the original reporter of the tip.
-	type TipFindersFee = TipFindersFee;
-
-	/// The amount held on deposit for placing a tip report.
-	type TipReportDepositBase = TipReportDepositBase;
-
-	/// The amount held on deposit per byte within the tip report reason.
-	type TipReportDepositPerByte = TipReportDepositPerByte;
-
-	/// The overarching event type.
-	type Event = Event;
-
-	/// Handler for the unbalanced decrease when slashing for a rejected proposal.
-	type ProposalRejection = Treasury;
-
-	/// Fraction of a proposal's value that should be bonded in order to place the proposal.
-	/// An accepted proposal gets these back. A rejected proposal does not.
-	type ProposalBond = ProposalBond;
-
-	/// Minimum amount of funds that should be placed in a deposit for making a proposal.
-	type ProposalBondMinimum = ProposalBondMinimum;
-
-	/// Period between successive spends.
-	type SpendPeriod = SpendPeriod;
-
-	/// Percentage of spare funds (if any) that are burnt per spend period.
-	type Burn = Burn;
 }
 
 /// A runtime transaction submitter.
@@ -580,7 +517,6 @@ construct_runtime!(
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
 		FinalityTracker: pallet_finality_tracker::{Module, Call, Inherent},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-		Treasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},

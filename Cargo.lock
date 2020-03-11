@@ -514,7 +514,6 @@ dependencies = [
  "pallet-timestamp 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-transaction-payment 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-transaction-payment-rpc-runtime-api 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "pallet-treasury 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "pallet-utility 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hex 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2970,20 +2969,6 @@ dependencies = [
  "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-api 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "sp-runtime 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "sp-std 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
-]
-
-[[package]]
-name = "pallet-treasury"
-version = "2.0.0-alpha.1"
-source = "git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972#7c751574d8c53108e78440bfa5dffb80ab644972"
-dependencies = [
- "frame-support 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "frame-system 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "pallet-balances 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
- "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sp-runtime 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
  "sp-std 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)",
 ]
@@ -6721,7 +6706,6 @@ dependencies = [
 "checksum pallet-transaction-payment 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-transaction-payment-rpc 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-transaction-payment-rpc-runtime-api 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
-"checksum pallet-treasury 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum pallet-utility 2.0.0-alpha.1 (git+https://github.com/paritytech/substrate.git?rev=7c751574d8c53108e78440bfa5dffb80ab644972)" = "<none>"
 "checksum parity-bytes 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0c276d76c5333b8c2579e02d49a06733a55b8282d2d9b13e8d53b6406bd7e30a"
 "checksum parity-multiaddr 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "045b3c7af871285146300da35b1932bb6e4639b66c7c98e85d06a32cbc4e8fa7"

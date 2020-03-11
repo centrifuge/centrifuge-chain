@@ -57,7 +57,6 @@ pallet-session = { version = "2.0.0-alpha.1", git = "https://github.com/parityte
 pallet-staking = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false, features = ["migrate"] }
 pallet-staking-reward-curve = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972"}
 pallet-timestamp = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
-pallet-treasury = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-utility = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-transaction-payment = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-alpha.1", git = "https://github.com/paritytech/substrate.git", rev = "7c751574d8c53108e78440bfa5dffb80ab644972", default-features = false }
@@ -107,7 +106,6 @@ std = [
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
-	"pallet-treasury/std",
 	"sp-transaction-pool/std",
 	"pallet-utility/std",
 	"sp-version/std",
