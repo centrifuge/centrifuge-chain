@@ -193,7 +193,7 @@ decl_module! {
             let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
                 <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
 
-            // transfer fees to the block author
+            // pay state rent to block author
             <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
