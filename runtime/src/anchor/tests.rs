@@ -71,6 +71,13 @@ impl pallet_balances::Trait for Test {
     type AccountStore = System;
 }
 
+impl pallet_authorship::Trait for Test {
+    type FindAuthor = ();
+    type UncleGenerations = ();
+    type FilterUncle = ();
+    type EventHandler = ();
+}
+
 impl Trait for Test {}
 
 impl Test {

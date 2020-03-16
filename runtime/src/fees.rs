@@ -4,7 +4,7 @@ use frame_support::{
     decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{Currency, ExistenceRequirement, WithdrawReason},
+    traits::{Currency, ExistenceRequirement},
     weights::SimpleDispatchInfo,
 };
 use frame_system::{self as system, ensure_root};
@@ -71,21 +71,25 @@ decl_module! {
 impl<T: Trait> Module<T> {
     /// Called by any other module who wants to trigger a fee payment for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
-    pub fn pay_fee(who: T::AccountId, key: T::Hash) -> DispatchResult {
+    pub fn pay_fee(from: T::AccountId, to: T::AccountId, key: T::Hash) -> DispatchResult {
         ensure!(<Fees<T>>::contains_key(key), "fee not found for key");
 
         let single_fee = <Fees<T>>::get(key);
-        Self::pay_fee_given(who, single_fee.price)?;
+        Self::pay_fee_given_to(from, to, single_fee.price)?;
 
         Ok(())
     }
 
     /// Pay the given fee
-    pub fn pay_fee_given(who: T::AccountId, fee: T::Balance) -> DispatchResult {
-        let _ = <pallet_balances::Module<T> as Currency<_>>::withdraw(
-            &who,
+    pub fn pay_fee_given_to(
+        from: T::AccountId,
+        to: T::AccountId,
+        fee: T::Balance,
+    ) -> DispatchResult {
+        let _ = <pallet_balances::Module<T> as Currency<_>>::transfer(
+            &from,
+            &to,
             fee,
-            WithdrawReason::Fee.into(),
             ExistenceRequirement::KeepAlive,
         )?;
         Ok(())
@@ -277,16 +281,16 @@ mod tests {
             let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
 
-            assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
+            assert_err!(Fees::pay_fee(1, 2, fee_key), "fee not found for key");
 
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // initial time paying will succeed as sufficient balance + fee is set
-            assert_ok!(Fees::pay_fee(1, fee_key));
+            assert_ok!(Fees::pay_fee(1, 2, fee_key));
 
             //second time paying will lead to account having insufficient balance
             assert_err!(
-                Fees::pay_fee(1, fee_key),
+                Fees::pay_fee(1, 2, fee_key),
                 DispatchError::Module {
                     index: 0,
                     error: 3,
@@ -306,7 +310,7 @@ mod tests {
 
             // account 3 is not endowed in the test setup
             assert_err!(
-                Fees::pay_fee(3, fee_key),
+                Fees::pay_fee(3, 4, fee_key),
                 DispatchError::Module {
                     index: 0,
                     error: 3,
@@ -325,11 +329,11 @@ mod tests {
 
             // account 1 is endowed in test setup
             // initial time paying will succeed as sufficient balance + fee is set
-            assert_ok!(Fees::pay_fee(1, fee_key));
+            assert_ok!(Fees::pay_fee(1, 2, fee_key));
 
             //second time paying will lead to account having insufficient balance
             assert_err!(
-                Fees::pay_fee(1, fee_key),
+                Fees::pay_fee(1, 2, fee_key),
                 DispatchError::Module {
                     index: 0,
                     error: 3,

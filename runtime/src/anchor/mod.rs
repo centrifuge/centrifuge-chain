@@ -65,7 +65,11 @@ impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
 
 /// The module's configuration trait.
 pub trait Trait:
-    frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait
+    frame_system::Trait
+    + pallet_timestamp::Trait
+    + fees::Trait
+    + pallet_balances::Trait
+    + pallet_authorship::Trait
 {
 }
 
@@ -192,7 +196,11 @@ decl_module! {
             // we use the fee config setup on genesis for anchoring to calculate the state rent
             let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
                 <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
-            <fees::Module<T>>::pay_fee_given(who, fee)?;
+            // fetch the author of the current block
+            let author = <pallet_authorship::Module<T>>::author();
+
+            // transfer fees to the block author
+            <fees::Module<T>>::pay_fee_given_to(who, author, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
