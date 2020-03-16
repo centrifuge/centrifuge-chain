@@ -132,6 +132,13 @@ mod tests {
         type MinimumPeriod = ();
     }
 
+    impl pallet_authorship::Trait for Test {
+        type FindAuthor = ();
+        type UncleGenerations = ();
+        type FilterUncle = ();
+        type EventHandler = ();
+    }
+
     impl fees::Trait for Test {
         type Event = ();
         type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
