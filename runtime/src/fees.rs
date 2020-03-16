@@ -4,14 +4,14 @@ use frame_support::{
     decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{Currency, ExistenceRequirement},
+    traits::{Currency, ExistenceRequirement, WithdrawReason},
     weights::SimpleDispatchInfo,
 };
 use frame_system::{self as system, ensure_root};
 use sp_runtime::traits::EnsureOrigin;
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_balances::Trait {
+pub trait Trait: frame_system::Trait + pallet_balances::Trait + pallet_authorship::Trait {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Required origin for changing fees
@@ -71,27 +71,26 @@ decl_module! {
 impl<T: Trait> Module<T> {
     /// Called by any other module who wants to trigger a fee payment for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
-    pub fn pay_fee(from: T::AccountId, to: T::AccountId, key: T::Hash) -> DispatchResult {
+    pub fn pay_fee(from: T::AccountId, key: T::Hash) -> DispatchResult {
         ensure!(<Fees<T>>::contains_key(key), "fee not found for key");
 
         let single_fee = <Fees<T>>::get(key);
-        Self::pay_fee_given_to(from, to, single_fee.price)?;
+        Self::pay_fee_to_author(from, single_fee.price)?;
 
         Ok(())
     }
 
     /// Pay the given fee
-    pub fn pay_fee_given_to(
-        from: T::AccountId,
-        to: T::AccountId,
-        fee: T::Balance,
-    ) -> DispatchResult {
-        let _ = <pallet_balances::Module<T> as Currency<_>>::transfer(
+    pub fn pay_fee_to_author(from: T::AccountId, fee: T::Balance) -> DispatchResult {
+        let value = <pallet_balances::Module<T> as Currency<_>>::withdraw(
             &from,
-            &to,
             fee,
+            WithdrawReason::Fee.into(),
             ExistenceRequirement::KeepAlive,
         )?;
+
+        let author = <pallet_authorship::Module<T>>::author();
+        <pallet_balances::Module<T> as Currency<_>>::resolve_creating(&author, value);
         Ok(())
     }
 
@@ -139,7 +138,8 @@ mod tests {
 
     use frame_support::{
         assert_err, assert_noop, assert_ok, dispatch::DispatchError, impl_outer_origin,
-        ord_parameter_types, parameter_types, weights::Weight,
+        ord_parameter_types, parameter_types, traits::FindAuthor, weights::Weight,
+        ConsensusEngineId,
     };
     use frame_system::EnsureSignedBy;
     use sp_core::H256;
@@ -202,6 +202,25 @@ mod tests {
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
     }
+
+    impl pallet_authorship::Trait for Test {
+        type FindAuthor = AuthorGiven;
+        type UncleGenerations = ();
+        type FilterUncle = ();
+        type EventHandler = ();
+    }
+
+    pub struct AuthorGiven;
+
+    impl FindAuthor<u64> for AuthorGiven {
+        fn find_author<'a, I>(_digests: I) -> Option<u64>
+        where
+            I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+        {
+            Some(100)
+        }
+    }
+
     type Fees = Module<Test>;
     type System = frame_system::Module<Test>;
 
@@ -213,8 +232,9 @@ mod tests {
             .unwrap();
 
         // pre-fill balances
+        // 100 is the block author
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(1, 100000), (2, 100000)],
+            balances: vec![(1, 100000), (2, 100000), (100, 100)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -280,17 +300,21 @@ mod tests {
         new_test_ext().execute_with(|| {
             let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
+            let author_old_balance = <pallet_balances::Module<Test>>::total_balance(&100);
 
-            assert_err!(Fees::pay_fee(1, 2, fee_key), "fee not found for key");
+            assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
 
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
             // initial time paying will succeed as sufficient balance + fee is set
-            assert_ok!(Fees::pay_fee(1, 2, fee_key));
+            assert_ok!(Fees::pay_fee(1, fee_key));
 
-            //second time paying will lead to account having insufficient balance
+            let author_new_balance = <pallet_balances::Module<Test>>::total_balance(&100);
+            assert_eq!(author_new_balance - author_old_balance, fee_price);
+
+            // second time paying will lead to account having insufficient balance
             assert_err!(
-                Fees::pay_fee(1, 2, fee_key),
+                Fees::pay_fee(1, fee_key),
                 DispatchError::Module {
                     index: 0,
                     error: 3,
@@ -310,7 +334,7 @@ mod tests {
 
             // account 3 is not endowed in the test setup
             assert_err!(
-                Fees::pay_fee(3, 4, fee_key),
+                Fees::pay_fee(3, fee_key),
                 DispatchError::Module {
                     index: 0,
                     error: 3,
@@ -329,11 +353,11 @@ mod tests {
 
             // account 1 is endowed in test setup
             // initial time paying will succeed as sufficient balance + fee is set
-            assert_ok!(Fees::pay_fee(1, 2, fee_key));
+            assert_ok!(Fees::pay_fee(1, fee_key));
 
             //second time paying will lead to account having insufficient balance
             assert_err!(
-                Fees::pay_fee(1, 2, fee_key),
+                Fees::pay_fee(1, fee_key),
                 DispatchError::Module {
                     index: 0,
                     error: 3,
