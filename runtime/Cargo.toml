@@ -9,6 +9,8 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
+# external pallet
+substrate-pallet-multi-account = { version = "2.0.0-alpha.1", git = "https://github.com/centrifuge/substrate-pallet-multi-account", default-features = false }
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "1.0.6", default-features = false, features = ["derive"] }
@@ -67,6 +69,7 @@ wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-run
 [features]
 default = ["std"]
 std = [
+    "substrate-pallet-multi-account/std",
 	"sp-authority-discovery/std",
 	"pallet-authority-discovery/std",
 	"pallet-authorship/std",
