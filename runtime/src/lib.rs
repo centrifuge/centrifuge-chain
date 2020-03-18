@@ -499,7 +499,7 @@ impl nfts::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MultiAcountSigDepositBase: Balance = 30 * CENTI_RAD;
+	pub const MultiAccountSigDepositBase: Balance = 30 * CENTI_RAD;
 	pub const MultiAccountDepositBase: Balance = 30 * CENTI_RAD;
 	pub const MultiAccountSigDepositFactor: Balance = 5 * CENTI_RAD;
 	pub const MultiAccountDepositFactor: Balance = 5 * CENTI_RAD;
@@ -512,7 +512,7 @@ impl substrate_pallet_multi_account::Trait for Runtime {
     type MaxSignatories = MultiAccountMaxSignatories;
     type MultiAccountDepositBase = MultiAccountDepositBase;
     type MultiAccountDepositFactor =  MultiAccountDepositFactor;
-    type MultisigDepositBase = MultiAcountSigDepositBase;
+    type MultisigDepositBase = MultiAccountSigDepositBase;
     type MultisigDepositFactor = MultiAccountSigDepositFactor;
 }
 
