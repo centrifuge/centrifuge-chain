@@ -6,13 +6,16 @@
 
 use crate::{common, fees};
 use codec::{Decode, Encode};
-use sp_std::{convert::TryInto, vec::Vec};
-use sp_runtime::traits::Hash;
 use frame_support::{
-    decl_module, decl_storage, dispatch::{DispatchError, DispatchResult}, ensure,
-    weights::SimpleDispatchInfo, storage::child::{self, ChildInfo}
+    decl_module, decl_storage,
+    dispatch::{DispatchError, DispatchResult},
+    ensure,
+    storage::child::{self, ChildInfo},
+    weights::SimpleDispatchInfo,
 };
 use frame_system::{self as system, ensure_signed};
+use sp_runtime::traits::Hash;
+use sp_std::{convert::TryInto, vec::Vec};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -40,18 +43,18 @@ const CHILD_INFO: ChildInfo<'static> = ChildInfo::new_default(b"anchor");
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreCommitData<Hash, AccountId, BlockNumber> {
-    signing_root: Hash,
-    identity: AccountId,
-    expiration_block: BlockNumber,
+    pub signing_root: Hash,
+    pub identity: AccountId,
+    pub expiration_block: BlockNumber,
 }
 
 /// The data structure for storing committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
-    id: Hash,
-    doc_root: Hash,
-    anchored_block: BlockNumber,
+    pub id: Hash,
+    pub doc_root: Hash,
+    pub anchored_block: BlockNumber,
 }
 
 impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
@@ -61,7 +64,10 @@ impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
 }
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait {}
+pub trait Trait:
+    frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait
+{
+}
 
 decl_storage! {
     trait Store for Module<T: Trait> as Anchor {
@@ -349,7 +355,7 @@ impl<T: Trait> Module<T> {
 
                 Ok(T::BlockNumber::from(put_into_bucket))
             }
-            Err(_e) => Err(DispatchError::Other("pre commit expiration block too big"))
+            Err(_e) => Err(DispatchError::Other("pre commit expiration block too big")),
         }
     }
 
