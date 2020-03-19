@@ -155,6 +155,7 @@ parameter_types! {
 	pub const MaxSignatories: u16 = 100;
 }
 
+
 impl pallet_utility::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
@@ -497,6 +498,24 @@ impl nfts::Trait for Runtime {
     type Event = Event;
 }
 
+parameter_types! {
+	pub const MultiAccountSigDepositBase: Balance = 30 * CENTI_RAD;
+	pub const MultiAccountDepositBase: Balance = 30 * CENTI_RAD;
+	pub const MultiAccountSigDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const MultiAccountDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const MultiAccountMaxSignatories: u16 = 100;
+}
+impl substrate_pallet_multi_account::Trait for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type Call = Call;
+    type MaxSignatories = MultiAccountMaxSignatories;
+    type MultiAccountDepositBase = MultiAccountDepositBase;
+    type MultiAccountDepositFactor =  MultiAccountDepositFactor;
+    type MultisigDepositBase = MultiAccountSigDepositBase;
+    type MultisigDepositFactor = MultiAccountSigDepositFactor;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -524,6 +543,7 @@ construct_runtime!(
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
+                MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>},
 	}
 );
 
