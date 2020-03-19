@@ -7,8 +7,8 @@ use sp_std::vec::Vec;
 #[cfg_attr(not(feature = "std"), derive(sp_runtime::RuntimeDebug))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
-    pub leaf_hash: H256,
-    pub sorted_hashes: Vec<H256>,
+    leaf_hash: H256,
+    sorted_hashes: Vec<H256>,
 }
 
 impl Proof {
@@ -17,6 +17,10 @@ impl Proof {
             leaf_hash: hash,
             sorted_hashes,
         }
+    }
+
+    pub fn get_leaf_hash(&self) -> H256 {
+        self.leaf_hash
     }
 }
 

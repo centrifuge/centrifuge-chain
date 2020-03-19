@@ -43,18 +43,18 @@ const CHILD_INFO: ChildInfo<'static> = ChildInfo::new_default(b"anchor");
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreCommitData<Hash, AccountId, BlockNumber> {
-    pub signing_root: Hash,
-    pub identity: AccountId,
-    pub expiration_block: BlockNumber,
+    signing_root: Hash,
+    identity: AccountId,
+    expiration_block: BlockNumber,
 }
 
 /// The data structure for storing committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
-    pub id: Hash,
-    pub doc_root: Hash,
-    pub anchored_block: BlockNumber,
+    id: Hash,
+    doc_root: Hash,
+    anchored_block: BlockNumber,
 }
 
 impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
