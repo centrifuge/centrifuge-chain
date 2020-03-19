@@ -13,7 +13,7 @@ use frame_support::{
     storage::child::{self, ChildInfo},
     weights::SimpleDispatchInfo,
 };
-use frame_system::{self as system, ensure_signed};
+use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
 use sp_std::{convert::TryInto, vec::Vec};
 
@@ -43,24 +43,18 @@ const CHILD_INFO: ChildInfo<'static> = ChildInfo::new_default(b"anchor");
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreCommitData<Hash, AccountId, BlockNumber> {
-    signing_root: Hash,
-    identity: AccountId,
-    expiration_block: BlockNumber,
+    pub signing_root: Hash,
+    pub identity: AccountId,
+    pub expiration_block: BlockNumber,
 }
 
 /// The data structure for storing committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
-    id: Hash,
-    doc_root: Hash,
-    anchored_block: BlockNumber,
-}
-
-impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
-    pub fn get_doc_root(self) -> Hash {
-        self.doc_root
-    }
+    pub id: Hash,
+    pub doc_root: Hash,
+    pub anchored_block: BlockNumber,
 }
 
 /// The module's configuration trait.

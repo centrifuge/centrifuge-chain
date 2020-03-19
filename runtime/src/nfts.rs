@@ -35,7 +35,7 @@ decl_module! {
             let anchor_data = <anchor::Module<T>>::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
 
             // validate proofs
-            ensure!(Self::validate_proofs(anchor_data.get_doc_root(), &pfs, static_proofs), "Invalid proofs");
+            ensure!(Self::validate_proofs(anchor_data.doc_root, &pfs, static_proofs), "Invalid proofs");
 
             // get the bundled hash
             let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
