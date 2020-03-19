@@ -1,8 +1,8 @@
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
-	FeesConfig, GrandpaConfig, ImOnlineConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig,
-	SystemConfig, WASM_BINARY,
+	FeesConfig, GrandpaConfig, ImOnlineConfig, MultiAccountConfig, SessionConfig, SessionKeys,
+	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
 use node_runtime::constants::currency::*;
 use sc_service;
@@ -205,7 +205,10 @@ pub fn testnet_genesis(
 		}),
         pallet_grandpa: Some(GrandpaConfig {
             authorities: vec![],
-        }),
+		}),
+		pallet_multi_account: Some(MultiAccountConfig{
+			multi_accounts: vec![],
+		}),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
