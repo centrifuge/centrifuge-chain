@@ -1,44 +1,45 @@
-use node_runtime::{anchor::AnchorData, AnchorApi};
-use node_primitives::{BlockNumber, Hash};
-use jsonrpc_core::Result as RpcResult;
+use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
-use sp_core::Blake2Hasher;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT, traits::ProvideRuntimeApi};
+use node_primitives::{BlockNumber, Hash};
+use node_runtime::anchor::AnchorData;
+pub use node_runtime::AnchorApi as AnchorRuntimeApi;
+use sp_api::ProvideRuntimeApi;
+use sp_blockchain::HeaderBackend;
+use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
-use sc_client_api::backend;
-use sc_client::{CallExecutor, Client};
 
-/// Anchor RPC methods.
 #[rpc]
-pub trait AnchorRpcApi {
+pub trait AnchorApi {
     /// Returns an anchor given an anchor id from the runtime storage
     #[rpc(name = "anchor_getAnchorById")]
-    fn get_anchor_by_id(&self, id: Hash) -> RpcResult<AnchorData<Hash, BlockNumber>>;
+    fn get_anchor_by_id(&self, id: Hash) -> Result<AnchorData<Hash, BlockNumber>>;
 }
 
-/// Anchors api with support for querying anchor child storage
-pub struct Anchors<B, E, Block: BlockT, RA> {
-    client: Arc<Client<B, E, Block, RA>>,
+/// A struct that implements the [`AnchorApi`].
+pub struct Anchor<C, P> {
+    client: Arc<C>,
+    _marker: std::marker::PhantomData<P>,
 }
 
-impl<B, E, Block: BlockT, RA> Anchors<B, E, Block, RA> {
-    pub fn new(client: Arc<Client<B, E, Block, RA>>) -> Self {
-        Anchors { client }
+impl<C, P> Anchor<C, P> {
+    /// Create new `Anchor` with the given reference to the client.
+    pub fn new(client: Arc<C>) -> Self {
+        Anchor {
+            client,
+            _marker: Default::default(),
+        }
     }
 }
 
-impl<B, E, Block, RA> AnchorRpcApi for Anchors<B, E, Block, RA>
+impl<C, Block> AnchorApi for Anchor<C, Block>
 where
-    Block: BlockT<Hash = Hash> + 'static,
-    B: backend::Backend<Block, Blake2Hasher> + Send + Sync + 'static,
-    E: CallExecutor<Block, Blake2Hasher> + Send + Sync + 'static + Clone,
-    RA: Send + Sync + 'static,
-    Client<B, E, Block, RA>: ProvideRuntimeApi,
-    <Client<B, E, Block, RA> as ProvideRuntimeApi>::Api: AnchorApi<Block>,
+    Block: BlockT,
+    C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+    C::Api: AnchorRuntimeApi<Block>,
 {
-    fn get_anchor_by_id(&self, id: Hash) -> RpcResult<AnchorData<Hash, BlockNumber>> {
+    fn get_anchor_by_id(&self, id: Hash) -> Result<AnchorData<Hash, BlockNumber>> {
         let api = self.client.runtime_api();
-        let best = self.client.usage_info().chain.best_hash;
+        let best = self.client.info().best_hash;
         let at = BlockId::hash(best);
         api.get_anchor_by_id(&at, id)
             .ok()

@@ -6,18 +6,22 @@
 
 use sp_std::prelude::*;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime, parameter_types, debug,
 	weights::Weight,
-	traits::{SplitTwoWays, Currency, Randomness},
+	traits::{Currency, Randomness},
 };
-use sp_core::u32_trait::{_0, _1, _2, _3, _4, _5};
-use node_primitives::{AccountId, AccountIndex, Balance, BlockNumber, Hash, Index, Moment, Signature};
+use sp_core::u32_trait::{_1, _2, _3, _4};
+pub use node_primitives::{AccountId, Signature};
+use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
-use sp_runtime::{Permill, Perbill, ApplyExtrinsicResult, impl_opaque_keys, generic, create_runtime_str};
+use sp_runtime::{
+	Perbill, ApplyExtrinsicResult,
+	impl_opaque_keys, generic, create_runtime_str,
+};
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::TransactionValidity;
 use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, NumberFor, StaticLookup, SaturatedConversion,
+	self, BlakeTwo256, Block as BlockT, IdentityLookup, SaturatedConversion,
 	OpaqueKeys,
 };
 use sp_version::RuntimeVersion;
@@ -72,11 +76,11 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     impl_name: create_runtime_str!("centrifuge-chain"),
     authoring_version: 10,
     // Per convention: if the runtime behavior changes, increment spec_version
-    // and set impl_version to equal spec_version. If only runtime
+    // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 198,
-    impl_version: 198,
+    spec_version: 225,
+    impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -90,13 +94,6 @@ pub fn native_version() -> NativeVersion {
 }
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-
-pub type DealWithFees = SplitTwoWays<
-	Balance,
-	NegativeImbalance,
-	_0, Treasury,   // 0 parts (0%) goes to the treasury.
-	_1, Author,     // 1 part (100%) goes to the block author.
->;
 
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
@@ -122,10 +119,10 @@ impl frame_system::Trait for Runtime {
     /// The identifier used to distinguish between accounts.
     type AccountId = AccountId;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = Indices;
+    type Lookup = IdentityLookup<AccountId>;
     /// The header type.
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
-    /// The ubiquitous event type.
+    /// The overarching event type.
     type Event = Event;
     /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
     type BlockHashCount = BlockHashCount;
@@ -134,9 +131,20 @@ impl frame_system::Trait for Runtime {
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
     type MaximumBlockLength = MaximumBlockLength;
     /// Portion of the block weight that is available to all normal transactions.
-    type AvailableBlockRatio = AvailableBlockRatio;
+	type AvailableBlockRatio = AvailableBlockRatio;
+	/// Get the chain's current version.
 	type Version = Version;
+	/// Convert a module to its index in the runtime.
 	type ModuleToIndex = ModuleToIndex;
+	/// Data to be associated with an account (other than nonce/transaction counter, which this
+	/// module does regardless).
+	type AccountData = pallet_balances::AccountData<Balance>;
+	/// Handler for when a new account has just been created.
+	type OnNewAccount = ();
+	/// A function that is invoked when an account has been determined to be dead.
+	///
+	/// All resources should be cleaned up associated with the given account.
+	type OnKilledAccount = Balances;
 }
 
 parameter_types! {
@@ -167,41 +175,21 @@ impl pallet_babe::Trait for Runtime {
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
 }
 
-impl pallet_indices::Trait for Runtime {
-    /// The type for recording indexing into the account enumeration. If this ever overflows, there
-    /// will be problems!
-    type AccountIndex = AccountIndex;
-    /// Determine whether an account is dead.
-    type IsDeadAccount = Balances;
-    /// Use the standard means of resolving an index hint from an id.
-    type ResolveHint = pallet_indices::SimpleResolveHint<Self::AccountId, Self::AccountIndex>;
-    /// The ubiquitous event type.
-    type Event = Event;
-}
-
 parameter_types! {
     pub const ExistentialDeposit: Balance = 1 * MICRO_RAD; // the minimum fee for an anchor is 500,000ths of a RAD. This is set to a value so you can still get some return without getting your account removed
-    pub const TransferFee: Balance = 1 * MILLI_RAD;
-    pub const CreationFee: Balance = 1 * MILLI_RAD;
 }
 
 impl pallet_balances::Trait for Runtime {
 	/// The type for recording an account's balance.
 	type Balance = Balance;
-	/// What to do if an account's free balance gets zeroed.
-	type OnFreeBalanceZero = (Staking, Session);
-	/// What to do if a new account is created.
-	type OnNewAccount = Indices;
-	/// The ubiquitous event type.
-	type Event = Event;
+	/// Handler for the unbalanced reduction when removing a dust account.
 	type DustRemoval = ();
-	type TransferPayment = ();
+	/// The overarching event type.
+	type Event = Event;
 	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
-	/// The fee required to make a transfer.
-	type TransferFee = TransferFee;
-	/// The fee required to create an account.
-    type CreationFee = CreationFee;
+	/// The means of storing the balances of an account.
+	type AccountStore = frame_system::Module<Runtime>;
 }
 
 parameter_types! {
@@ -209,12 +197,13 @@ parameter_types! {
     pub const TransactionByteFee: Balance = 1 * MICRO_RAD;
 	// setting this to zero will disable the weight fee.
 	pub const WeightFeeCoefficient: Balance = 100_000_000;
-	pub const TargetBlockFullness: Perbill = Perbill::from_percent(25); // will be used for multiplier
+	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
+	pub const TargetBlockFullness: Perbill = Perbill::from_percent(25);
 }
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
-	type OnTransactionPayment = DealWithFees;
+	type OnTransactionPayment = Author;
 	type TransactionBaseFee = TransactionBaseFee;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = LinearWeightToFee<WeightFeeCoefficient>;
@@ -256,14 +245,13 @@ parameter_types! {
 }
 
 impl pallet_session::Trait for Runtime {
-	type OnSessionEnding = Staking;
-	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type ShouldEndSession = Babe;
 	type Event = Event;
-	type Keys = SessionKeys;
 	type ValidatorId = <Self as frame_system::Trait>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
-	type SelectInitialValidators = Staking;
+	type ShouldEndSession = Babe;
+	type SessionManager = Staking;
+	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = SessionKeys;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
 }
 
@@ -272,9 +260,15 @@ impl pallet_session::historical::Trait for Runtime {
 	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
 }
 
+// set to almost three percent to correct for a bug, see https://github.com/paritytech/substrate/issues/4964 for
+// details and https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=e6490da3bfb28f69c7f6e6393ec6bb0c
+// for the calculation
+// TODO: set back to Perbill::from_percent(3) as soon as the bug above is fixed.
+const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
+
 const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
-	points: &[(Perbill::from_percent(0), Perbill::from_percent(3))],
-	maximum: Perbill::from_percent(3),
+	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
+	maximum: THREE_PERCENT_INFLATION,
 };
 
 parameter_types! {
@@ -288,9 +282,9 @@ impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
 	type Time = Timestamp;
 	type CurrencyToVote = CurrencyToVoteHandler;
-	type RewardRemainder = Treasury;
+	type RewardRemainder = ();
 	type Event = Event;
-	type Slash = Treasury; // send the slashed funds to the treasury.
+	type Slash = ();
 	type Reward = (); // rewards are minted from the void
 	type SessionsPerEra = SessionsPerEra;
 	type BondingDuration = BondingDuration;
@@ -329,9 +323,6 @@ impl pallet_democracy::Trait for Runtime {
 	/// How often (in blocks) to check for new votes.
 	type VotingPeriod = VotingPeriod;
 
-	/// Minimum voting period allowed for an fast-track/emergency referendum.
-	type EmergencyVotingPeriod = EmergencyVotingPeriod;
-
 	/// The minimum amount to be used as a deposit for a public referendum proposal.
 	type MinimumDeposit = MinimumDeposit;
 
@@ -349,6 +340,9 @@ impl pallet_democracy::Trait for Runtime {
 	/// be tabled immediately and with a shorter voting/enactment period.
 	type FastTrackOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
+	/// Minimum voting period allowed for an fast-track/emergency referendum.
+	type EmergencyVotingPeriod = EmergencyVotingPeriod;
+
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
 	type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
@@ -363,7 +357,7 @@ impl pallet_democracy::Trait for Runtime {
 	type PreimageByteDeposit = PreimageByteDeposit;
 
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = Treasury;
+	type Slash = ();
 }
 
 type CouncilCollective = pallet_collective::Instance1;
@@ -376,7 +370,7 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
-	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub const TermDuration: BlockNumber = 1 * DAYS;
 	pub const DesiredMembers: u32 = 5;
 	pub const DesiredRunnersUp: u32 = 3;
 }
@@ -384,6 +378,7 @@ parameter_types! {
 impl pallet_elections_phragmen::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
+	type ChangeMembers = Council;
 	type CurrencyToVote = CurrencyToVoteHandler;
 
 	/// How much should be locked up in order to submit one's candidacy.
@@ -392,10 +387,9 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBond = VotingBond;
 
-	/// How long each seat is kept. This defines the next block number at which an election
-	/// round will happen. If set to zero, no elections are ever triggered and the module will
-	/// be in passive mode.
-	type TermDuration = TermDuration;
+	type LoserCandidate = ();
+	type BadReport = ();
+	type KickedMember = ();
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -403,48 +397,14 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	/// Number of runners_up to keep.
 	type DesiredRunnersUp = DesiredRunnersUp;
 
-	type LoserCandidate = ();
-	type BadReport = ();
-	type KickedMember = ();
-	type ChangeMembers = Council;
+	/// How long each seat is kept. This defines the next block number at which an election
+	/// round will happen. If set to zero, no elections are ever triggered and the module will
+	/// be in passive mode.
+	type TermDuration = TermDuration;
 }
 
-parameter_types! {
-	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 200 * RAD;
-	pub const SpendPeriod: BlockNumber = 6 * DAYS;
-	pub const Burn: Permill = Permill::from_percent(0);
-}
-
-impl pallet_treasury::Trait for Runtime {
-	type Currency = Balances;
-
-	/// Origin from which approvals must come.
-	type ApproveOrigin = pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>;
-
-	/// Origin from which rejections must come.
-	type RejectOrigin = pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-
-	type Event = Event;
-
-	/// Handler for the unbalanced decrease when slashing for a rejected proposal.
-	type ProposalRejection = ();
-
-	/// Fraction of a proposal's value that should be bonded in order to place the proposal.
-	/// An accepted proposal gets these back. A rejected proposal does not.
-	type ProposalBond = ProposalBond;
-
-	/// Minimum amount of funds that should be placed in a deposit for making a proposal.
-	type ProposalBondMinimum = ProposalBondMinimum;
-
-	/// Period between successive spends.
-	type SpendPeriod = SpendPeriod;
-
-	/// Percentage of spare funds (if any) that are burnt per spend period.
-	type Burn = Burn;
-}
-
-type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, UncheckedExtrinsic>;
+/// A runtime transaction submitter.
+pub type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, UncheckedExtrinsic>;
 
 parameter_types! {
 	pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_SLOTS as _;
@@ -452,11 +412,11 @@ parameter_types! {
 
 impl pallet_im_online::Trait for Runtime {
 	type AuthorityId = ImOnlineId;
-	type Call = Call;
 	type Event = Event;
+	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
-    type ReportUnresponsiveness = Offences;
     type SessionDuration = SessionDuration;
+    type ReportUnresponsiveness = Offences;
 }
 
 impl pallet_offences::Trait for Runtime {
@@ -477,7 +437,7 @@ parameter_types! {
 }
 
 impl pallet_finality_tracker::Trait for Runtime {
-	type OnFinalizationStalled = Grandpa;
+	type OnFinalizationStalled = ();
 
 	/// The number of recent samples to keep from this chain. Default is 101.
 	type WindowSize = WindowSize;
@@ -501,7 +461,11 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 			.checked_next_power_of_two()
 			.map(|c| c / 2)
 			.unwrap_or(2) as u64;
-		let current_block = System::block_number().saturated_into::<u64>();
+		let current_block = System::block_number()
+			.saturated_into::<u64>()
+			// The `System::block_number` is initialized with `n+1`,
+			// so the actual block number is `n`.
+			.saturating_sub(1);
 		let tip = 0;
 		let extra: SignedExtra = (
 			frame_system::CheckVersion::<Runtime>::new(),
@@ -511,11 +475,12 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
-		let raw_payload = SignedPayload::new(call, extra).ok()?;
+		let raw_payload = SignedPayload::new(call, extra).map_err(|e| {
+			debug::warn!("Unable to create signed payload: {:?}", e);
+		}).ok()?;
 		let signature = TSigner::sign(public, &raw_payload)?;
-		let address = Indices::unlookup(account);
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (address, signature, extra)))
+		Some((call, (account, signature, extra)))
 	}
 }
 
@@ -538,22 +503,20 @@ construct_runtime!(
 		NodeBlock = node_primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Storage, Config, Event},
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		Utility: pallet_utility::{Module, Call, Storage, Event<T>},
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent(Timestamp)},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-		Indices: pallet_indices,
-		Balances: pallet_balances,
+		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
-		Staking: pallet_staking,
+		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
 		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>},
 		FinalityTracker: pallet_finality_tracker::{Module, Call, Inherent},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event},
-		Treasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},
@@ -565,7 +528,7 @@ construct_runtime!(
 );
 
 /// The address format for describing accounts.
-pub type Address = <Indices as StaticLookup>::Source;
+pub type Address = AccountId;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
@@ -625,6 +588,10 @@ impl_runtime_apis! {
 			Executive::apply_extrinsic(extrinsic)
 		}
 
+		fn apply_trusted_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
+			Executive::apply_trusted_extrinsic(extrinsic)
+		}
+
 		fn finalize_block() -> <Block as BlockT>::Header {
 			Executive::finalize_block()
 		}
@@ -649,8 +616,8 @@ impl_runtime_apis! {
 	}
 
 	impl sp_offchain::OffchainWorkerApi<Block> for Runtime {
-		fn offchain_worker(number: NumberFor<Block>) {
-			Executive::offchain_worker(number)
+		fn offchain_worker(header: &<Block as BlockT>::Header) {
+			Executive::offchain_worker(header)
 		}
     }
 
@@ -669,13 +636,17 @@ impl_runtime_apis! {
             // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
             sp_consensus_babe::BabeConfiguration {
                 slot_duration: Babe::slot_duration(), // The slot duration in milliseconds for BABE. Currently, only the value provided by this type at genesis will be used.
-                epoch_length: EpochDuration::get(), // The duration of epochs in slots.
+				epoch_length: EpochDuration::get(), // The duration of epochs in slots.
                 c: PRIMARY_PROBABILITY,
                 genesis_authorities: Babe::authorities(),
                 randomness: Babe::randomness(),
                 secondary_slots: true,
             }
         }
+
+		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
+			Babe::current_epoch_start()
+		}
 	}
 
 	impl sp_authority_discovery::AuthorityDiscoveryApi<Block> for Runtime {
@@ -704,6 +675,12 @@ impl_runtime_apis! {
 		fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
 			SessionKeys::generate(seed)
 		}
+
+		fn decode_session_keys(
+			encoded: Vec<u8>,
+		) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
+			SessionKeys::decode_into_raw_public_keys(&encoded)
+		}
 	}
 
 	impl self::AnchorApi<Block> for Runtime {
@@ -716,22 +693,29 @@ impl_runtime_apis! {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use frame_system::offchain::SubmitSignedTransaction;
-
-	fn is_submit_signed_transaction<T>(_arg: T) where
-		T: SubmitSignedTransaction<
-			Runtime,
-			Call,
-			Extrinsic=UncheckedExtrinsic,
-			CreateTransaction=Runtime,
-			Signer=ImOnlineId,
-		>,
-	{}
+	use frame_system::offchain::{SignAndSubmitTransaction, SubmitSignedTransaction};
 
 	#[test]
-	fn validate_bounds() {
-		let x = SubmitTransaction::default();
-		is_submit_signed_transaction(x);
+	fn validate_transaction_submitter_bounds() {
+		fn is_submit_signed_transaction<T>() where
+			T: SubmitSignedTransaction<
+				Runtime,
+				Call,
+			>,
+		{}
+
+		fn is_sign_and_submit_transaction<T>() where
+			T: SignAndSubmitTransaction<
+				Runtime,
+				Call,
+				Extrinsic=UncheckedExtrinsic,
+				CreateTransaction=Runtime,
+				Signer=ImOnlineId,
+			>,
+		{}
+
+		is_submit_signed_transaction::<SubmitTransaction>();
+		is_sign_and_submit_transaction::<SubmitTransaction>();
 	}
 
 	#[test]

@@ -1,5 +1,9 @@
 use super::*;
 
+use frame_support::{
+    assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight,
+};
+use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -7,7 +11,6 @@ use sp_runtime::{
     Perbill,
 };
 use std::time::Instant;
-use frame_support::{assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight};
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -41,6 +44,9 @@ impl frame_system::Trait for Test {
     type AvailableBlockRatio = AvailableBlockRatio;
     type Version = ();
     type ModuleToIndex = ();
+    type AccountData = pallet_balances::AccountData<u64>;
+    type OnNewAccount = ();
+    type OnKilledAccount = pallet_balances::Module<Test>;
 }
 
 impl pallet_timestamp::Trait for Test {
@@ -55,23 +61,21 @@ impl fees::Trait for Test {
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u64 = 0;
-    pub const TransferFee: u64 = 0;
-    pub const CreationFee: u64 = 0;
-    pub const TransactionBaseFee: u64 = 0;
-    pub const TransactionByteFee: u64 = 0;
+    pub const ExistentialDeposit: u64 = 1;
 }
 impl pallet_balances::Trait for Test {
     type Balance = u64;
-    type OnFreeBalanceZero = ();
-    type OnNewAccount = ();
-    type Event = ();
-
     type DustRemoval = ();
-    type TransferPayment = ();
+    type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
-    type TransferFee = TransferFee;
-    type CreationFee = CreationFee;
+    type AccountStore = System;
+}
+
+impl pallet_authorship::Trait for Test {
+    type FindAuthor = ();
+    type UncleGenerations = ();
+    type FilterUncle = ();
+    type EventHandler = ();
 }
 
 impl Trait for Test {}
@@ -549,7 +553,8 @@ fn put_pre_commit_into_eviction_bucket_basic_pre_commit_eviction_bucket_registra
             block_height_0
         ));
 
-        let mut current_pre_commit_evict_bucket = Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
+        let mut current_pre_commit_evict_bucket =
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap();
 
         // asserting that the right bucket was used to store
         let mut pre_commits_count =
@@ -673,7 +678,8 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
         assert_eq!(stored_pre_commit_id, anchor_id_0);
 
         // verify the expected numbers on the evict bucket IDx
-        pre_commit_evict_bucket = Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap();
+        pre_commit_evict_bucket =
+            Anchor::determine_pre_commit_eviction_bucket(block_height_1).unwrap();
         assert_eq!(
             Anchor::get_pre_commits_count_in_evict_bucket(pre_commit_evict_bucket),
             2
@@ -719,7 +725,9 @@ fn pre_commit_and_then_evict() {
         ));
 
         // eviction fails within the "non evict time"
-        System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() - 1);
+        System::set_block_number(
+            Anchor::determine_pre_commit_eviction_bucket(block_height_0).unwrap() - 1,
+        );
         assert_err!(
             Anchor::evict_pre_commits(
                 Origin::signed(1),
@@ -761,8 +769,10 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
         // use as a start block a block that is before an eviction bucket boundary
-        let start_block = Anchor::pre_commit_expiration_duration_blocks() * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER
-            * 2 - 1;
+        let start_block = Anchor::pre_commit_expiration_duration_blocks()
+            * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER
+            * 2
+            - 1;
         // expected expiry block of pre-commit
         let expiration_block = start_block + Anchor::pre_commit_expiration_duration_blocks(); // i.e 4799 + 800
 
@@ -779,12 +789,15 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
 
         // the edge case bug we had - pre-commit eviction time is less than its expiry time
         assert_eq!(
-            Anchor::determine_pre_commit_eviction_bucket(expiration_block).unwrap() > a.expiration_block,
+            Anchor::determine_pre_commit_eviction_bucket(expiration_block).unwrap()
+                > a.expiration_block,
             true
         );
 
         // this should not evict the pre-commit before its expired
-        System::set_block_number(Anchor::determine_pre_commit_eviction_bucket(start_block).unwrap() + 1);
+        System::set_block_number(
+            Anchor::determine_pre_commit_eviction_bucket(start_block).unwrap() + 1,
+        );
         assert_ok!(Anchor::evict_pre_commits(
             Origin::signed(1),
             Anchor::determine_pre_commit_eviction_bucket(start_block).unwrap()
@@ -865,7 +878,8 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
         // create 1000 anchors one per day
         for i in 0..1000 {
             let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image =
+                (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
             assert_ok!(Anchor::commit(
@@ -965,8 +979,10 @@ fn test_remove_anchor_indexes() {
         // create 2000 anchors that expire on same day
         for i in 0..2000 {
             let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
-            let _anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image =
+                (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let _anchor_id =
+                (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             assert_ok!(Anchor::commit(
                 Origin::signed(1),
                 pre_image,
@@ -1015,7 +1031,8 @@ fn test_same_day_1001_anchors() {
         // create 1001 anchors that expire on same day
         for i in 0..1001 {
             let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image =
+                (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             assert_ok!(Anchor::commit(
                 Origin::signed(1),
@@ -1066,11 +1083,19 @@ fn test_same_day_1001_anchors() {
 #[test]
 #[ignore]
 fn basic_commit_perf() {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     new_test_ext().execute_with(|| {
         let mut elapsed: u128 = 0;
+        let today_in_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis() as u64;
+
         for i in 0..100000 {
             let random_seed = <pallet_randomness_collective_flip::Module<Test>>::random_seed();
-            let pre_image = (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image =
+                (random_seed, i).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
             let (doc_root, signing_root, proof) = Test::test_document_hashes();
 
@@ -1088,7 +1113,7 @@ fn basic_commit_perf() {
                 pre_image,
                 doc_root,
                 proof,
-                1
+                today_in_ms + common::MS_PER_DAY * 2,
             ));
 
             elapsed = elapsed + now.elapsed().as_micros();

@@ -2,11 +2,11 @@
 
 /// Money matters.
 pub mod currency {
-	use node_primitives::Balance;
+    use node_primitives::Balance;
 
-	pub const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
+    pub const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
     pub const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
-	pub const CENTI_RAD: Balance = 10 * MILLI_RAD;    // 10−2 	0.01
+    pub const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
     pub const RAD: Balance = 100 * CENTI_RAD;
 }
 
@@ -23,7 +23,7 @@ pub mod time {
     /// a slot being empty).
     /// This value is only used indirectly to define the unit constants below
     /// that are expressed in blocks. The rest of the code should use
-    /// `SLOT_DURATION` instead (like the timestamp module for calculating the
+	/// `SLOT_DURATION` instead (like the Timestamp pallet for calculating the
     /// minimum period).
     ///
     /// If using BABE with secondary slots (default) then all of the slots will

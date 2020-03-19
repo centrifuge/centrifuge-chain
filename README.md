@@ -27,6 +27,12 @@ cargo build --release
 
 ## Run
 
+### Tests
+
+```bash
+cargo test --release
+```
+
 ### Testnets
 
 Centrifuge has multiple testnets online.
@@ -116,5 +122,9 @@ Additional CLI usage options are available and may be shown by running `./target
 ### Generating a new genesis file
 
 1. Be sure to change the `id` and `protocol_id` in `src/chain_spec.rs`
-2. Run `cargo run --release build-spec --disable-default-bootnode --chain flint > res/[name]-spec.json` to export the chain spec
+2. Run `cargo run --release build-spec --disable-default-bootnode --chain fulvous > res/[name]-spec.json` to export the chain spec
 3. Commit
+
+## Linting
+
+Lint the project with `cargo +nightly fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.

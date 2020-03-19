@@ -1,15 +1,13 @@
-use sc_chain_spec::ChainSpecExtension;
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
-use serde::{Serialize, Deserialize};
 use node_runtime::{
-    AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
-    StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
+	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
+	FeesConfig, GrandpaConfig, ImOnlineConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig,
+	SystemConfig, WASM_BINARY,
 };
-use node_runtime::Block;
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
-use grandpa_primitives::{AuthorityId as GrandpaId};
+use sp_finality_grandpa::{AuthorityId as GrandpaId};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -18,29 +16,11 @@ use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
 
-type AccountPublic = <Signature as Verify>::Signer;
-
-/// Node `ChainSpec` extensions.
-///
-/// Additional parameters for some Substrate core modules,
-/// customizable from the chain spec.
-#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
-#[serde(rename_all = "camelCase")]
-pub struct Extensions {
-	/// Block numbers with known hashes.
-    pub fork_blocks: sc_client::ForkBlocks<Block>,
-    /// Known bad block hashes.
-	pub bad_blocks: sc_client::BadBlocks<Block>,
-}
-
-/// Specialized `ChainSpec`.
-pub type ChainSpec = sc_service::ChainSpec<
-	GenesisConfig,
-	Extensions,
->;
+/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
+pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
 
 /// The chain specification option.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum Alternative {
 	/// Whatever the current runtime is, with just Alice as an auth.
 	Development,
@@ -56,57 +36,14 @@ pub enum Alternative {
 	Mainnet,
 }
 
-/// Get a chain config from a spec setting.
-impl Alternative {
-	pub(crate) fn load(self) -> Result<ChainSpec, String> {
-		Ok(match self {
-			Alternative::Development => development_config(),
-			Alternative::LocalTestnet => local_testnet_config(),
-			Alternative::Fulvous => fulvous_config(),
-			Alternative::Flint => flint_config()?,
-			Alternative::Amber => amber_config()?,
-			Alternative::Mainnet => panic!("Mainnet spec is not yet available"),
-		})
-	}
-
-	pub(crate) fn from(s: &str) -> Option<Self> {
-		match s {
-			"dev" => Some(Alternative::Development),
-			"local" => Some(Alternative::LocalTestnet),
-			"fulvous" => Some(Alternative::Fulvous),
-			"flint" => Some(Alternative::Flint),
-			"amber" => Some(Alternative::Amber),
-			"" | "mainnet" => Some(Alternative::Mainnet),
-			_ => None,
-		}
-	}
-}
-
-/// Flint testnet generator
-pub fn flint_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc2-spec.json")[..])
-}
-
-/// Amber testnet generator
-pub fn amber_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-spec.json")[..])
-}
-
-fn session_keys(
-    grandpa: GrandpaId,
-    babe: BabeId,
-    im_online: ImOnlineId,
-    authority_discovery: AuthorityDiscoveryId,
-) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, authority_discovery }
-}
-
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
     TPublic::Pair::from_string(&format!("//{}", seed), None)
         .expect("static values are valid; qed")
         .public()
 }
+
+type AccountPublic = <Signature as Verify>::Signer;
 
 /// Helper function to generate an account ID from seed
 pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
@@ -134,9 +71,60 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (
     )
 }
 
+/// Get a chain config from a spec setting.
+impl Alternative {
+	pub(crate) fn load(self) -> Result<ChainSpec, String> {
+		Ok(match self {
+			Alternative::Development => development_config(),
+			Alternative::LocalTestnet => local_testnet_config(),
+			Alternative::Fulvous => fulvous_config(),
+			Alternative::Flint => flint_config()?,
+			Alternative::Amber => amber_config()?,
+			Alternative::Mainnet => mainnet_config()?,
+		})
+	}
+
+	pub(crate) fn from(s: &str) -> Option<Self> {
+		match s {
+			"dev" => Some(Alternative::Development),
+			"local" => Some(Alternative::LocalTestnet),
+			"fulvous" => Some(Alternative::Fulvous),
+			"flint" => Some(Alternative::Flint),
+			"amber" => Some(Alternative::Amber),
+			"" | "mainnet" => Some(Alternative::Mainnet),
+			_ => None,
+		}
+	}
+}
+
+/// Flint testnet generator
+pub fn flint_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc2-spec.json")[..])
+}
+
+/// Amber testnet generator
+pub fn amber_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-spec.json")[..])
+}
+
+/// Mainnet generator
+pub fn mainnet_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-pre-spec.json")[..])
+}
+
+fn session_keys(
+    grandpa: GrandpaId,
+    babe: BabeId,
+    im_online: ImOnlineId,
+    authority_discovery: AuthorityDiscoveryId,
+) -> SessionKeys {
+	SessionKeys { grandpa, babe, im_online, authority_discovery }
+}
+
 /// Helper function to create GenesisConfig for testing
-fn testnet_genesis(
-    initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>, // StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
+pub fn testnet_genesis(
+	// StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
+	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
     endowed_accounts: Option<Vec<AccountId>>,
 ) -> GenesisConfig {
     let endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
@@ -172,31 +160,25 @@ fn testnet_genesis(
                 .map(|k| (k, endowment))
                 .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
                 .collect(),
-            vesting: vec![],
-        }),
-        pallet_indices: Some(IndicesConfig {
-            ids: endowed_accounts.iter().cloned()
-                .chain(initial_authorities.iter().map(|x| x.0.clone()))
-                .collect::<Vec<_>>(),
         }),
         pallet_session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
+				(x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
 			}).collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
             // The current era index.
 			current_era: 0,
             // The ideal number of staking participants.
-			validator_count: 5,
-			minimum_validator_count: 1,
+			validator_count: initial_authorities.len() as u32 * 2,
+			minimum_validator_count: initial_authorities.len() as u32,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
             // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
             // easy to initialize and the performance hit is minimal (we expect no more than four
             // invulnerables) and restricted to testnets.
-			invulnerables: vec![],
+			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
             // The percentage of the slash that is distributed to reporters.
 		    // The rest of the slashed value is handled by the `Slash`.
 			slash_reward_fraction: Perbill::from_percent(10),
@@ -206,8 +188,10 @@ fn testnet_genesis(
         }),
         pallet_democracy: Some(DemocracyConfig::default()),
 		pallet_collective_Instance1: Some(CouncilConfig {
-			members: endowed_accounts.iter().cloned()
-				.collect::<Vec<_>>()[..(num_endowed_accounts + 1) / 2].to_vec(),
+			members: endowed_accounts.iter()
+						.take((num_endowed_accounts + 1) / 2)
+						.cloned()
+						.collect(),
 			phantom: Default::default(),
 		}),
         pallet_babe: Some(BabeConfig {
@@ -222,7 +206,6 @@ fn testnet_genesis(
         pallet_grandpa: Some(GrandpaConfig {
             authorities: vec![],
         }),
-        pallet_treasury: Some(Default::default()),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
@@ -338,11 +321,42 @@ pub fn fulvous_config() -> ChainSpec {
 	)
 }
 
+pub fn load_spec(id: &str) -> Result<Option<ChainSpec>, String> {
+	Ok(match Alternative::from(id) {
+		Some(spec) => Some(spec.load()?),
+		None => None,
+	})
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
 	use super::*;
 	use crate::service::{new_full, new_light};
 	use sc_service_test;
+	use sp_runtime::BuildStorage;
+
+	fn local_testnet_genesis_instant_single() -> GenesisConfig {
+		testnet_genesis(
+			vec![
+				get_authority_keys_from_seed("Alice"),
+			],
+			None,
+		)
+	}
+
+	/// Local testnet config (single validator - Alice)
+	pub fn integration_test_config_with_single_authority() -> ChainSpec {
+		ChainSpec::from_genesis(
+			"Integration Test",
+			"test",
+			local_testnet_genesis_instant_single,
+			vec![],
+			None,
+			None,
+			None,
+			Default::default(),
+		)
+	}
 
 	/// Local testnet config (multivalidator Alice + Bob)
 	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
@@ -366,5 +380,15 @@ pub(crate) mod tests {
 			|config| new_full(config),
 			|config| new_light(config),
 		);
+	}
+
+	#[test]
+	fn test_create_development_chain_spec() {
+		development_config().build_storage().unwrap();
+	}
+
+	#[test]
+	fn test_create_local_testnet_chain_spec() {
+		local_testnet_config().build_storage().unwrap();
 	}
 }

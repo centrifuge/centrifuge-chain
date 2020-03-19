@@ -1,5 +1,4 @@
 /// Handling state rent fee payments for specific transactions
-
 use codec::{Decode, Encode};
 use frame_support::{
     decl_event, decl_module, decl_storage,
@@ -12,11 +11,11 @@ use frame_system::{self as system, ensure_root};
 use sp_runtime::traits::EnsureOrigin;
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_balances::Trait {
+pub trait Trait: frame_system::Trait + pallet_balances::Trait + pallet_authorship::Trait {
     /// The overarching event type.
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Required origin for changing fees
-	type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
+    type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -28,7 +27,7 @@ pub struct Fee<Hash, Balance> {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Fees {
-        Fees get(fee) : map T::Hash => Fee<T::Hash, T::Balance>;
+        Fees get(fee) : map hasher(blake2_256) T::Hash => Fee<T::Hash, T::Balance>;
 
         Version: u64;
     }
@@ -40,9 +39,9 @@ decl_storage! {
 }
 
 decl_event!(
-	pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
-		FeeChanged(Hash, Balance),
-	}
+    pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
+        FeeChanged(Hash, Balance),
+    }
 );
 
 decl_module! {
@@ -72,30 +71,33 @@ decl_module! {
 impl<T: Trait> Module<T> {
     /// Called by any other module who wants to trigger a fee payment for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
-    pub fn pay_fee(who: T::AccountId, key: T::Hash) -> DispatchResult {
-        ensure!(<Fees<T>>::exists(key), "fee not found for key");
+    pub fn pay_fee(from: T::AccountId, key: T::Hash) -> DispatchResult {
+        ensure!(<Fees<T>>::contains_key(key), "fee not found for key");
 
         let single_fee = <Fees<T>>::get(key);
-        Self::pay_fee_given(who, single_fee.price)?;
+        Self::pay_fee_to_author(from, single_fee.price)?;
 
         Ok(())
     }
 
     /// Pay the given fee
-    pub fn pay_fee_given(who: T::AccountId, fee: T::Balance) -> DispatchResult {
-        let _ = <pallet_balances::Module<T> as Currency<_>>::withdraw(
-            &who,
+    pub fn pay_fee_to_author(from: T::AccountId, fee: T::Balance) -> DispatchResult {
+        let value = <pallet_balances::Module<T> as Currency<_>>::withdraw(
+            &from,
             fee,
             WithdrawReason::Fee.into(),
             ExistenceRequirement::KeepAlive,
         )?;
+
+        let author = <pallet_authorship::Module<T>>::author();
+        <pallet_balances::Module<T> as Currency<_>>::resolve_creating(&author, value);
         Ok(())
     }
 
     /// Returns the current fee for the key
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
         //why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
-        if <Fees<T>>::exists(&key) {
+        if <Fees<T>>::contains_key(&key) {
             let single_fee = <Fees<T>>::get(&key);
             Some(single_fee.price)
         } else {
@@ -134,18 +136,21 @@ impl<T: Trait> Module<T> {
 mod tests {
     use super::*;
 
+    use frame_support::{
+        assert_err, assert_noop, assert_ok, dispatch::DispatchError, impl_outer_origin,
+        ord_parameter_types, parameter_types, traits::FindAuthor, weights::Weight,
+        ConsensusEngineId,
+    };
+    use frame_system::EnsureSignedBy;
     use sp_core::H256;
     use sp_runtime::Perbill;
     use sp_runtime::{
         testing::Header,
-        traits::{BlakeTwo256, IdentityLookup, Hash, BadOrigin},
+        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
     };
-    use frame_support::{assert_err, assert_noop, assert_ok, impl_outer_origin, parameter_types, weights::Weight,
-        dispatch::DispatchError};
-    use frame_system::EnsureSignedBy;
 
     impl_outer_origin! {
-        pub enum Origin for Test {}
+        pub enum Origin for Test  where system = frame_system {}
     }
 
     // For testing the module, we construct most of a mock runtime. This means
@@ -176,8 +181,11 @@ mod tests {
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
+        type AccountData = pallet_balances::AccountData<u64>;
+        type OnNewAccount = ();
+        type OnKilledAccount = pallet_balances::Module<Test>;
     }
-    parameter_types! {
+    ord_parameter_types! {
         pub const One: u64 = 1;
     }
     impl Trait for Test {
@@ -185,25 +193,36 @@ mod tests {
         type FeeChangeOrigin = EnsureSignedBy<One, u64>;
     }
     parameter_types! {
-        pub const ExistentialDeposit: u64 = 0;
-        pub const TransferFee: u64 = 0;
-        pub const CreationFee: u64 = 0;
-        pub const TransactionBaseFee: u64 = 0;
-        pub const TransactionByteFee: u64 = 0;
+        pub const ExistentialDeposit: u64 = 1;
     }
     impl pallet_balances::Trait for Test {
         type Balance = u64;
-        type OnFreeBalanceZero = ();
-        type OnNewAccount = ();
-        type Event = ();
-
         type DustRemoval = ();
-        type TransferPayment = ();
+        type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
-        type TransferFee = TransferFee;
-        type CreationFee = CreationFee;
+        type AccountStore = System;
     }
+
+    impl pallet_authorship::Trait for Test {
+        type FindAuthor = AuthorGiven;
+        type UncleGenerations = ();
+        type FilterUncle = ();
+        type EventHandler = ();
+    }
+
+    pub struct AuthorGiven;
+
+    impl FindAuthor<u64> for AuthorGiven {
+        fn find_author<'a, I>(_digests: I) -> Option<u64>
+        where
+            I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+        {
+            Some(100)
+        }
+    }
+
     type Fees = Module<Test>;
+    type System = frame_system::Module<Test>;
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
@@ -213,9 +232,9 @@ mod tests {
             .unwrap();
 
         // pre-fill balances
+        // 100 is the block author
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(1, 100000), (2, 100000)],
-            vesting: vec![],
+            balances: vec![(1, 100000), (2, 100000), (100, 100)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -239,7 +258,10 @@ mod tests {
             let price1: <Test as pallet_balances::Trait>::Balance = 666;
             let price2: <Test as pallet_balances::Trait>::Balance = 777;
 
-            assert_noop!(Fees::set_fee(Origin::signed(2), fee_key1, price1), BadOrigin);
+            assert_noop!(
+                Fees::set_fee(Origin::signed(2), fee_key1, price1),
+                BadOrigin
+            );
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key1, price1));
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key2, price2));
 
@@ -263,7 +285,10 @@ mod tests {
             assert_eq!(loaded_fee.price, initial_price);
 
             let new_price: <Test as pallet_balances::Trait>::Balance = 777;
-            assert_noop!(Fees::set_fee(Origin::signed(2), fee_key, new_price), BadOrigin);
+            assert_noop!(
+                Fees::set_fee(Origin::signed(2), fee_key, new_price),
+                BadOrigin
+            );
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, new_price));
             let again_loaded_fee = Fees::fee(fee_key);
             assert_eq!(again_loaded_fee.price, new_price);
@@ -275,6 +300,7 @@ mod tests {
         new_test_ext().execute_with(|| {
             let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
+            let author_old_balance = <pallet_balances::Module<Test>>::total_balance(&100);
 
             assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
 
@@ -283,7 +309,10 @@ mod tests {
             // initial time paying will succeed as sufficient balance + fee is set
             assert_ok!(Fees::pay_fee(1, fee_key));
 
-            //second time paying will lead to account having insufficient balance
+            let author_new_balance = <pallet_balances::Module<Test>>::total_balance(&100);
+            assert_eq!(author_new_balance - author_old_balance, fee_price);
+
+            // second time paying will lead to account having insufficient balance
             assert_err!(
                 Fees::pay_fee(1, fee_key),
                 DispatchError::Module {

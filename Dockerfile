@@ -6,6 +6,7 @@ LABEL maintainer="philip@centrifuge.io"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV RUST_TOOLCHAIN=nightly
 
 ARG PROFILE=release
 WORKDIR /centrifuge-chain
@@ -18,9 +19,9 @@ RUN apt-get update && \
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	export PATH="$PATH:$HOME/.cargo/bin" && \
-	rustup toolchain install nightly && \
-	rustup target add wasm32-unknown-unknown --toolchain nightly && \
-	rustup default nightly && \
+	rustup toolchain install $RUST_TOOLCHAIN && \
+	rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
+	rustup default $RUST_TOOLCHAIN && \
 	rustup default stable && \
 	cargo build "--$PROFILE"
 

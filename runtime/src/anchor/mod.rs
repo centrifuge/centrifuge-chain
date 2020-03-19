@@ -74,17 +74,17 @@ decl_storage! {
 
         /// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed
         /// later
-        PreCommits get(get_pre_commit): map T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
+        PreCommits get(get_pre_commit): map hasher(blake2_256) T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
         /// Pre-commit eviction buckets keep track of which pre-commit can be evicted at which point
-        PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map (T::BlockNumber, u64) => T::Hash;
-        PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map T::BlockNumber => u64;
+        PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map hasher(blake2_256) (T::BlockNumber, u64) => T::Hash;
+        PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map hasher(blake2_256) T::BlockNumber => u64;
 
         /// Index to find the eviction date given an anchor id
-        AnchorEvictDates get(get_anchor_evict_date): map T::Hash => u32;
+        AnchorEvictDates get(get_anchor_evict_date): map hasher(blake2_256) T::Hash => u32;
 
         /// Incrementing index for anchors for iteration purposes
-        AnchorIndexes get(get_anchor_id_by_index): map u64 => T::Hash;
+        AnchorIndexes get(get_anchor_id_by_index): map hasher(blake2_256) u64 => T::Hash;
 
         /// Latest anchored index
         LatestAnchorIndex get(get_latest_anchor_index): u64;
@@ -102,7 +102,7 @@ decl_storage! {
         /// are stored on-chain in a single child trie. This child trie is removed after the expiry
         /// date has passed while its root is stored permanently for proving an existence of an
         /// evicted anchor.
-        EvictedAnchorRoots get(get_evicted_anchor_root_by_day): map u32 => Vec<u8>;
+        EvictedAnchorRoots get(get_evicted_anchor_root_by_day): map hasher(blake2_256) u32 => Vec<u8>;
 
         Version: u64;
     }
@@ -192,7 +192,9 @@ decl_module! {
             // we use the fee config setup on genesis for anchoring to calculate the state rent
             let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
                 <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
-            <fees::Module<T>>::pay_fee_given(who, fee)?;
+
+            // pay state rent to block author
+            <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
@@ -286,7 +288,7 @@ impl<T: Trait> Module<T> {
     /// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
     /// `expiration_block` < `current_block_number`.
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
-        if !<PreCommits<T>>::exists(&anchor_id) {
+        if !<PreCommits<T>>::contains_key(&anchor_id) {
             return false;
         }
 
@@ -367,7 +369,7 @@ impl<T: Trait> Module<T> {
             // store the root of child trie for the day on chain before eviction. Checks if it
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
-                if !EvictedAnchorRoots::exists(day) {
+                if !EvictedAnchorRoots::contains_key(day) {
                     EvictedAnchorRoots::insert(day, child::child_root(&key));
                 }
                 key
