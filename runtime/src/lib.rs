@@ -543,7 +543,7 @@ construct_runtime!(
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
-                MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>},
+		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
