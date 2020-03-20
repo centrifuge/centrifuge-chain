@@ -1,8 +1,8 @@
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig,
-	FeesConfig, GrandpaConfig, ImOnlineConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig,
-	SystemConfig, WASM_BINARY,
+	FeesConfig, GrandpaConfig, ImOnlineConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
+	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
 use node_runtime::constants::currency::*;
 use sc_service;
@@ -127,7 +127,7 @@ pub fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
     endowed_accounts: Option<Vec<AccountId>>,
 ) -> GenesisConfig {
-    let endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
+    let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -142,7 +142,10 @@ pub fn testnet_genesis(
 			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 		]
-    });
+	});
+	// add a balance for the multi account id 1 created further down, this will have address
+	// 5DnGuePtDg4x7vCiUgjxrfFVVvMiA5aBDKLRbAp4SVohAMn8 on the default substrate chain
+	endowed_accounts.push(MultiAccount::multi_account_id(1));
     let num_endowed_accounts = endowed_accounts.len();
 
     const INITIAL_SUPPLY: Balance = 300_000_000 * RAD; // 3% of total supply
@@ -205,7 +208,13 @@ pub fn testnet_genesis(
 		}),
         pallet_grandpa: Some(GrandpaConfig {
             authorities: vec![],
-        }),
+		}),
+		substrate_pallet_multi_account: Some(MultiAccountConfig{
+			multi_accounts: vec![
+				// Add the first 3 accounts to a 2-of-3 multi account
+				(endowed_accounts[0].clone(), 2, vec![endowed_accounts[1].clone(), endowed_accounts[2].clone()]),
+			],
+		}),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
@@ -302,7 +311,9 @@ fn fulvous_genesis() -> GenesisConfig {
             ),
         ],
         Some(vec![
-            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into()
+            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+            hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
+            hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
         ]),
 	)
 }
