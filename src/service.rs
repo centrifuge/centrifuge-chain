@@ -512,10 +512,10 @@ mod tests {
 				let parent_header = service.client().header(&parent_id).unwrap().unwrap();
 				let parent_hash = parent_header.hash();
 				let parent_number = *parent_header.number();
-				let mut proposer_factory = sc_basic_authorship::ProposerFactory {
-					client: service.client(),
-					transaction_pool: service.transaction_pool(),
-				};
+				let mut proposer_factory = sc_basic_authorship::ProposerFactory::new(
+					service.client(),
+					service.transaction_pool()
+				);
 
 				let epoch = babe_link.epoch_changes().lock().epoch_for_child_of(
 					descendent_query(&*service.client()),
