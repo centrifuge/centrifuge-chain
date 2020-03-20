@@ -25,13 +25,6 @@
       "palletBabe": {
         "authorities": []
       },
-      "palletIndices": {
-        "ids": [
-          "5GVimJ6UTyMvaWc1Ea5K3Bk8cra1VTp96xd3oLmtsUVnXU6r",
-          "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
-          "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF"
-        ]
-      },
       "palletBalances": {
         "balances": [
           [
@@ -104,7 +97,6 @@
       "palletGrandpa": {
         "authorities": []
       },
-      "palletTreasury": {},
       "palletImOnline": {
         "keys": []
       },
