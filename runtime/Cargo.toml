@@ -10,7 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # external pallet
-substrate-pallet-multi-account = { version = "2.0.0-alpha.3", git = "https://github.com/mikiquantum/substrate-pallet-multi-account", rev = "976ee2504281ce05ed26830491b178170ae8e1fa", default-features = false }
+substrate-pallet-multi-account = { version = "2.0.0-alpha.3", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "3a40d9a1107816ee28989bf4bbbe3f0ab6a1822d", default-features = false }
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "1.0.6", default-features = false, features = ["derive"] }
