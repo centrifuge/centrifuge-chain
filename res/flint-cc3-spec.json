@@ -1,14 +1,20 @@
 {
-  "name": "Centrifuge Mainnet Preview",
-  "id": "mainnet-pre",
+  "name": "Centrifuge Testnet Flint CC3",
+  "id": "flint-cc3",
   "bootNodes": [],
-  "telemetryEndpoints": null,
-  "protocolId": "mainnet-pre",
+  "telemetryEndpoints": [
+    [
+      "wss://telemetry.polkadot.io/submit/",
+      0
+    ]
+  ],
+  "protocolId": "flint-cc3",
   "properties": {
-    "ss58Format": 36,
     "tokenDecimals": 18,
-    "tokenSymbol": "RAD"
+    "tokenSymbol": "FRAD"
   },
+  "forkBlocks": null,
+  "badBlocks": null,
   "consensusEngine": null,
   "genesis": {
     "runtime": {
@@ -21,16 +27,24 @@
       },
       "palletBalances": {
         "balances": [
-          ["4d882vYRJQe82cWpCFggDGafPDGQyFNAFRFvcM2BTZMZTfGb", 200000000000000000000000000],
-          ["4f4wrb9G23kWHxNGHe88m9UXJckomsqCPrk9ym4HkmyodZy5", 30000000000000000000000],
-          ["4cfQbx1dopCW5SaxKGBksjTAmtZx8TVKqeinAiZVRdWVXPgk", 30000000000000000000000],
-          ["4cD3tDkidPPGKPm7qu2eVdgtKm8XTyHEhTqx4xhMxQNVpwkd", 30000000000000000000000],
-          ["4gbNoUKbX6tnuKuLnHmuoVjDnwNeSHZGFgwTWZXLC2WUpYGC", 30000000000000000000000]
-        ]
+          [
+            "5GVimJ6UTyMvaWc1Ea5K3Bk8cra1VTp96xd3oLmtsUVnXU6r",
+            298000000000000000000000000
+          ],
+          [
+            "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
+            1000000000000000000000000
+          ],
+          [
+            "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
+            1000000000000000000000000
+          ]
+        ],
+        "vesting": []
       },
       "palletStaking": {
         "validatorCount": 5,
-        "minimumValidatorCount": 1,
+        "minimumValidatorCount": 2,
         "invulnerables": [],
         "currentEra": 0,
         "forceEra": "NotForcing",
@@ -38,15 +52,15 @@
         "canceledPayout": 0,
         "stakers": [
           [
-            "4f4wrb9G23kWHxNGHe88m9UXJckomsqCPrk9ym4HkmyodZy5",
-            "4cfQbx1dopCW5SaxKGBksjTAmtZx8TVKqeinAiZVRdWVXPgk",
-            30000000000000000000000,
+            "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
+            "5CZssrbay86Ckzw8RswMR7om6i7CTBEizNojeEcyURJuQ9a4",
+            1000000000000000000000000,
             "Validator"
           ],
           [
-            "4cD3tDkidPPGKPm7qu2eVdgtKm8XTyHEhTqx4xhMxQNVpwkd",
-            "4gbNoUKbX6tnuKuLnHmuoVjDnwNeSHZGFgwTWZXLC2WUpYGC",
-            30000000000000000000000,
+            "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
+            "5D7v6wMAYcFPNv1VC5YGP239mFnRkT8QzEVaSHP6H1oQJ9FC",
+            1000000000000000000000000,
             "Validator"
           ]
         ]
@@ -54,23 +68,21 @@
       "palletSession": {
         "keys": [
           [
-            "4f4wrb9G23kWHxNGHe88m9UXJckomsqCPrk9ym4HkmyodZy5",
-            "4f4wrb9G23kWHxNGHe88m9UXJckomsqCPrk9ym4HkmyodZy5",
+            "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
             {
-              "grandpa": "4gvkRDhSh8YVrSnqxb221iFGYGP7iRkzBzSShixBPTJ5Gxc9",
-              "babe": "4dtNTNKp7m2kqmtY4MJvrRihChSNF4xt8SJzjhmMH5ebLufB",
-              "im_online": "4dLY1Q4bXbBjCTCfMfkTRdNhoNdeJTXxQso26x2qXYhhkzmR",
-              "authority_discovery": "4fsBGZDeGLNCYxEBSum6UozomnXnnRgTsfcUgYojLwCZeonP"
+              "grandpa": "5DrmN8hKKxF7uB1mH9fXeSXomENV5PBQfm8YSGaYEZmzBVQJ",
+              "babe": "5EcMiGfV8M9vizYsfaLcF1XSZD2TmpE3gbmDEBnbguGVueMt",
+              "im_online": "5DvckFMxFKWdyYJN646BjmPzM3QQgtWbFhKZV89NBkDNWYtZ",
+              "authority_discovery": "5CXLwhdHJEREvFoeDpVLupoksvDA8FoNkhA3XBDSaT6CDna6"
             }
           ],
           [
-            "4cD3tDkidPPGKPm7qu2eVdgtKm8XTyHEhTqx4xhMxQNVpwkd",
-            "4cD3tDkidPPGKPm7qu2eVdgtKm8XTyHEhTqx4xhMxQNVpwkd",
+            "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
             {
-              "grandpa": "4fZR7KCQ8xCRoSRS4Z8XCbE4mxAViSgGWLVuEuGhGMbWPiek",
-              "babe": "4dLwJ5vrbQEg8CA34F6k1HSvp8BY2JiBCU9vCP6avEGi4NVF",
-              "im_online": "4cfiKgzbLsR4HX3uRseuxYHorSKCkmCt3AuhSm96gXfGQzTT",
-              "authority_discovery": "4dCZvJMXDFQC1FuTZgMQdXQD18AXQi9c7crRDRSGbsjMDXr5"
+              "grandpa": "5FepWiU8F9VsYkNKkfogKag1j7WiRATgpbMgjomMxJZnvLf1",
+              "babe": "5CcPDn3jvhUEGCzw4RcVhJizoRyqXz6dhgMuy2AHQch6Kvk7",
+              "im_online": "5FNLTq4YNJC8vo3Z5d2vrMwf9p5ZdiGVu75WbCg7krqvuxEX",
+              "authority_discovery": "5Cac4wB9uK4pMU1qexwE8P9Vwmf3D1nj63Cxufi7bn4QTvnK"
             }
           ]
         ]
@@ -79,7 +91,7 @@
       "palletCollectiveInstance1": {
         "phantom": null,
         "members": [
-          "4d882vYRJQe82cWpCFggDGafPDGQyFNAFRFvcM2BTZMZTfGb"
+          "5GVimJ6UTyMvaWc1Ea5K3Bk8cra1VTp96xd3oLmtsUVnXU6r"
         ]
       },
       "palletGrandpa": {
@@ -95,7 +107,7 @@
         "initialFees": [
           [
             "0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9",
-            2365296803653
+            1
           ]
         ]
       }
