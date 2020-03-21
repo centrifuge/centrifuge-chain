@@ -311,9 +311,9 @@ fn fulvous_genesis() -> GenesisConfig {
             ),
         ],
         Some(vec![
-            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-            hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
             hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
+            hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
+            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
         ]),
 	)
 }
