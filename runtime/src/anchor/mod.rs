@@ -53,14 +53,8 @@ pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
     id: Hash,
-    doc_root: Hash,
+    pub doc_root: Hash,
     anchored_block: BlockNumber,
-}
-
-impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
-    pub fn get_doc_root(self) -> Hash {
-        self.doc_root
-    }
 }
 
 /// The module's configuration trait.
