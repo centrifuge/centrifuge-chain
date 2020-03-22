@@ -53,14 +53,8 @@ pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
     id: Hash,
-    doc_root: Hash,
+    pub doc_root: Hash,
     anchored_block: BlockNumber,
-}
-
-impl<Hash, BlockNumber> AnchorData<Hash, BlockNumber> {
-    pub fn get_doc_root(self) -> Hash {
-        self.doc_root
-    }
 }
 
 /// The module's configuration trait.
@@ -192,7 +186,9 @@ decl_module! {
             // we use the fee config setup on genesis for anchoring to calculate the state rent
             let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
                 <T as pallet_balances::Trait>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
-            <fees::Module<T>>::pay_fee_given(who, fee)?;
+
+            // pay state rent to block author
+            <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
             let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);

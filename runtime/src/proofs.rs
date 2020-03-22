@@ -6,7 +6,7 @@ use sp_std::vec::Vec;
 #[cfg_attr(not(feature = "std"), derive(sp_runtime::RuntimeDebug))]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof {
-    leaf_hash: H256,
+    pub leaf_hash: H256,
     sorted_hashes: Vec<H256>,
 }
 
