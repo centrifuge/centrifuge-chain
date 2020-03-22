@@ -13,8 +13,6 @@
     "tokenDecimals": 18,
     "tokenSymbol": "ARAD"
   },
-  "forkBlocks": null,
-  "badBlocks": null,
   "consensusEngine": null,
   "genesis": {
     "runtime": {
@@ -55,8 +53,7 @@
           ["5HpLku5nX1Qqr2jUHDXH7rMBB5UVD7gJubNzVijvg6JhJJ9Q", 30000000000000000000000],
           ["5Gj1w63vRRDxVMkDG9c3hL89QeRPvMuz1DBjquQSB2Z5xRSi", 30000000000000000000000],
           ["5C5cvbjb7CR3tg1wbASJUERz35LuEPnfv2UTAFT34qtWduAM", 30000000000000000000000]
-        ],
-        "vesting": []
+        ]
       },
       "palletStaking": {
         "validatorCount": 5,
@@ -85,6 +82,7 @@
         "keys": [
           [
             "5Cqpq6ixzhtpNZeCkvi6xAjR67ZUNkVHGFKvHUhYwmvjYmrv",
+            "5Cqpq6ixzhtpNZeCkvi6xAjR67ZUNkVHGFKvHUhYwmvjYmrv",
             {
               "grandpa": "5EstUCPaB2MD3g8F8pJbhrEKRmLjDsTRRWm35k5d11LbDTS2",
               "babe": "5FXEGAJatkArpjCEv861GmT1XyhZydfHALoEnkfq5PGtDcDi",
@@ -93,6 +91,7 @@
             }
           ],
           [
+            "5DoMKrzPbUWGqsp9EKnovF8Qzj4Zs5mJmzp5uk1QaFBxfZqj",
             "5DoMKrzPbUWGqsp9EKnovF8Qzj4Zs5mJmzp5uk1QaFBxfZqj",
             {
               "grandpa": "5HAZ1GdecBBWCzQxWZ4eK5eKiqzuR1yKi5feo6W2fg59Z2MG",

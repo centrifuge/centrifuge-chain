@@ -13,8 +13,6 @@
     "tokenDecimals": 18,
     "tokenSymbol": "FRAD"
   },
-  "forkBlocks": null,
-  "badBlocks": null,
   "consensusEngine": null,
   "genesis": {
     "runtime": {
@@ -39,8 +37,7 @@
             "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
             1000000000000000000000000
           ]
-        ],
-        "vesting": []
+        ]
       },
       "palletStaking": {
         "validatorCount": 5,
@@ -69,6 +66,7 @@
         "keys": [
           [
             "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
+            "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
             {
               "grandpa": "5DrmN8hKKxF7uB1mH9fXeSXomENV5PBQfm8YSGaYEZmzBVQJ",
               "babe": "5EcMiGfV8M9vizYsfaLcF1XSZD2TmpE3gbmDEBnbguGVueMt",
@@ -77,6 +75,7 @@
             }
           ],
           [
+            "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
             "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
             {
               "grandpa": "5FepWiU8F9VsYkNKkfogKag1j7WiRATgpbMgjomMxJZnvLf1",
