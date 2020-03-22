@@ -52,11 +52,15 @@
           ["5E7sCpko6sh3pogWoASk9ibE1b4D1xzdit4wqSyJB9yzECCc", 30000000000000000000000],
           ["5HpLku5nX1Qqr2jUHDXH7rMBB5UVD7gJubNzVijvg6JhJJ9Q", 30000000000000000000000],
           ["5Gj1w63vRRDxVMkDG9c3hL89QeRPvMuz1DBjquQSB2Z5xRSi", 30000000000000000000000],
-          ["5C5cvbjb7CR3tg1wbASJUERz35LuEPnfv2UTAFT34qtWduAM", 30000000000000000000000]
+          ["5C5cvbjb7CR3tg1wbASJUERz35LuEPnfv2UTAFT34qtWduAM", 30000000000000000000000],
+          ["5Fpt4oPa1riEueScFaC1HrYpuAZgYi2ZJGoGxS2hDDrBczC5", 1000000000000000000],
+          ["5EWNUVzgzL8ybdv9y3eHCtuvvV2yZBPyTEhrwcYhu7ZCG5uw", 1000000000000000000],
+          ["5DoMNuBYdcnbahe2QtzdvhCaMM1uShugfWETYUTZhZXzyXTt", 1000000000000000000],
+          ["5DnGuePtDg4x7vCiUgjxrfFVVvMiA5aBDKLRbAp4SVohAMn8", 7000000000000000000]
         ]
       },
       "palletStaking": {
-        "validatorCount": 5,
+        "validatorCount": 20,
         "minimumValidatorCount": 1,
         "invulnerables": [],
         "currentEra": 0,
@@ -127,6 +131,18 @@
           [
             "0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9",
             2365296803653
+          ]
+        ]
+      },
+      "substratePalletMultiAccount": {
+        "multiAccounts": [
+          [
+            "5DoMNuBYdcnbahe2QtzdvhCaMM1uShugfWETYUTZhZXzyXTt",
+            2,
+            [
+              "5EWNUVzgzL8ybdv9y3eHCtuvvV2yZBPyTEhrwcYhu7ZCG5uw",
+              "5Fpt4oPa1riEueScFaC1HrYpuAZgYi2ZJGoGxS2hDDrBczC5"
+            ]
           ]
         ]
       }
