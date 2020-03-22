@@ -25,18 +25,13 @@
       },
       "palletBalances": {
         "balances": [
-          [
-            "5GVimJ6UTyMvaWc1Ea5K3Bk8cra1VTp96xd3oLmtsUVnXU6r",
-            298000000000000000000000000
-          ],
-          [
-            "5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu",
-            1000000000000000000000000
-          ],
-          [
-            "5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF",
-            1000000000000000000000000
-          ]
+          ["5GVimJ6UTyMvaWc1Ea5K3Bk8cra1VTp96xd3oLmtsUVnXU6r", 298000000000000000000000000],
+          ["5HKK9Q7wNYi6ptXRXhvBvWQaQHxad94huB418izvbhuF3KLu", 1000000000000000000000000],
+          ["5EX3YVMV1JYpgjTtt27ArwbEJErMk1sWpmYoFgEmKijPDheF", 1000000000000000000000000],
+          ["5Fpt4oPa1riEueScFaC1HrYpuAZgYi2ZJGoGxS2hDDrBczC5", 1000000000000000000],
+          ["5EWNUVzgzL8ybdv9y3eHCtuvvV2yZBPyTEhrwcYhu7ZCG5uw", 1000000000000000000],
+          ["5DoMNuBYdcnbahe2QtzdvhCaMM1uShugfWETYUTZhZXzyXTt", 1000000000000000000],
+          ["5DnGuePtDg4x7vCiUgjxrfFVVvMiA5aBDKLRbAp4SVohAMn8", 7000000000000000000]
         ]
       },
       "palletStaking": {
@@ -107,6 +102,18 @@
           [
             "0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9",
             2365296803653
+          ]
+        ]
+      },
+      "substratePalletMultiAccount": {
+        "multiAccounts": [
+          [
+            "5Fpt4oPa1riEueScFaC1HrYpuAZgYi2ZJGoGxS2hDDrBczC5",
+            2,
+            [
+              "5EWNUVzgzL8ybdv9y3eHCtuvvV2yZBPyTEhrwcYhu7ZCG5uw",
+              "5DoMNuBYdcnbahe2QtzdvhCaMM1uShugfWETYUTZhZXzyXTt"
+            ]
           ]
         ]
       }
