@@ -56,7 +56,7 @@
         ]
       },
       "palletStaking": {
-        "validatorCount": 5,
+        "validatorCount": 20,
         "minimumValidatorCount": 1,
         "invulnerables": [],
         "currentEra": 0,

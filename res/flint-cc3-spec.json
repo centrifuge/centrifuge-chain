@@ -40,8 +40,8 @@
         ]
       },
       "palletStaking": {
-        "validatorCount": 5,
-        "minimumValidatorCount": 2,
+        "validatorCount": 20,
+        "minimumValidatorCount": 1,
         "invulnerables": [],
         "currentEra": 0,
         "forceEra": "NotForcing",
@@ -106,7 +106,7 @@
         "initialFees": [
           [
             "0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9",
-            1
+            2365296803653
           ]
         ]
       }
