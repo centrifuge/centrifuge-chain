@@ -11,9 +11,9 @@ pub trait Trait: anchor::Trait {
 }
 
 decl_event!(
-    pub enum Event<T> where <T as frame_system::Trait>::Hash {
-        DepositAsset(Hash),
-    }
+	pub enum Event<T> where <T as frame_system::Trait>::Hash {
+		DepositAsset(Hash),
+	}
 );
 
 decl_module! {

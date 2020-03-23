@@ -39,9 +39,9 @@ decl_storage! {
 }
 
 decl_event!(
-    pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
-        FeeChanged(Hash, Balance),
-    }
+	pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
+		FeeChanged(Hash, Balance),
+	}
 );
 
 decl_module! {
