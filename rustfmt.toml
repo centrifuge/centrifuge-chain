@@ -1,10 +1,3 @@
-ignore = [
-    "build.rs",
-    "runtime/build.rs",
-    "runtime/src/impls.rs",
-    "runtime/src/lib.rs",
-    "src/chain_spec.rs",
-    "src/cli.rs",
-    "src/main.rs",
-    "src/service.rs",
-]
+max_width = 100
+# substrate devs uses hardtabs as convention
+hard_tabs = true

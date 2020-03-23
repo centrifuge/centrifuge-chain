@@ -2,50 +2,46 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit="256"]
+#![recursion_limit = "256"]
 
-use sp_std::prelude::*;
+use crate::anchor::AnchorData;
 use frame_support::{
-	construct_runtime, parameter_types, debug,
-	weights::Weight,
+	construct_runtime, debug, parameter_types,
 	traits::{Currency, Randomness},
+	weights::Weight,
 };
-use sp_core::u32_trait::{_1, _2, _3, _4};
+use frame_system::offchain::TransactionSubmitter;
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
+use pallet_grandpa::fg_primitives;
+use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
+use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
+use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
-use sp_runtime::{
-	Perbill, ApplyExtrinsicResult,
-	impl_opaque_keys, generic, create_runtime_str,
-};
+use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+use sp_core::u32_trait::{_1, _2, _3, _4};
+use sp_core::OpaqueMetadata;
+use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::curve::PiecewiseLinear;
-use sp_runtime::transaction_validity::TransactionValidity;
 use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, IdentityLookup, SaturatedConversion,
-	OpaqueKeys,
+	self, BlakeTwo256, Block as BlockT, IdentityLookup, OpaqueKeys, SaturatedConversion,
 };
-use sp_version::RuntimeVersion;
+use sp_runtime::transaction_validity::TransactionValidity;
+use sp_runtime::{create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill};
+use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
-use sp_core::OpaqueMetadata;
-use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
-use pallet_grandpa::fg_primitives;
-use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
-use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
-use frame_system::offchain::TransactionSubmitter;
-use sp_inherents::{InherentData, CheckInherentsResult};
-use crate::anchor::AnchorData;
+use sp_version::RuntimeVersion;
 
-#[cfg(any(feature = "std", test))]
-pub use sp_runtime::BuildStorage;
-pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
+pub use pallet_timestamp::Call as TimestampCall;
+#[cfg(any(feature = "std", test))]
+pub use sp_runtime::BuildStorage;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
-use impls::{CurrencyToVoteHandler, Author, LinearWeightToFee, TargetedFeeAdjustment};
+use impls::{Author, CurrencyToVoteHandler, LinearWeightToFee, TargetedFeeAdjustment};
 
 /// Used for anchor module
 pub mod anchor;
@@ -64,7 +60,7 @@ mod nfts;
 
 /// Constant values used within the runtime.
 pub mod constants;
-use constants::{time::*, currency::*};
+use constants::{currency::*, time::*};
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -72,65 +68,65 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 /// Runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("centrifuge-chain"),
-    impl_name: create_runtime_str!("centrifuge-chain"),
-    authoring_version: 10,
-    // Per convention: if the runtime behavior changes, increment spec_version
-    // and set impl_version to 0. If only runtime
-    // implementation changes and behavior does not, then leave spec_version as
-    // is and increment impl_version.
-    spec_version: 226,
-    impl_version: 0,
-    apis: RUNTIME_API_VERSIONS,
+	spec_name: create_runtime_str!("centrifuge-chain"),
+	impl_name: create_runtime_str!("centrifuge-chain"),
+	authoring_version: 10,
+	// Per convention: if the runtime behavior changes, increment spec_version
+	// and set impl_version to 0. If only runtime
+	// implementation changes and behavior does not, then leave spec_version as
+	// is and increment impl_version.
+	spec_version: 226,
+	impl_version: 0,
+	apis: RUNTIME_API_VERSIONS,
 };
 
 /// Native version.
 #[cfg(any(feature = "std", test))]
 pub fn native_version() -> NativeVersion {
-    NativeVersion {
-        runtime_version: VERSION,
-        can_author_with: Default::default(),
-    }
+	NativeVersion {
+		runtime_version: VERSION,
+		can_author_with: Default::default(),
+	}
 }
 
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 parameter_types! {
-    pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 1_000_000_000;
-    pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
-    pub const Version: RuntimeVersion = VERSION;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	pub const BlockHashCount: BlockNumber = 250;
+	pub const MaximumBlockWeight: Weight = 1_000_000_000;
+	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
+	pub const Version: RuntimeVersion = VERSION;
+	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
 impl frame_system::Trait for Runtime {
-    /// The ubiquitous origin type.
-    type Origin = Origin;
+	/// The ubiquitous origin type.
+	type Origin = Origin;
 	/// The aggregated dispatch type that is available for extrinsics.
-    type Call = Call;
-    /// The index type for storing how many extrinsics an account has signed.
-    type Index = Index;
-    /// The index type for blocks.
-    type BlockNumber = BlockNumber;
-    /// The type for hashing blocks and tries.
-    type Hash = Hash;
-    /// The hashing algorithm used.
-    type Hashing = BlakeTwo256;
-    /// The identifier used to distinguish between accounts.
-    type AccountId = AccountId;
-    /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = IdentityLookup<AccountId>;
-    /// The header type.
-    type Header = generic::Header<BlockNumber, BlakeTwo256>;
-    /// The overarching event type.
-    type Event = Event;
-    /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
-    type BlockHashCount = BlockHashCount;
-    /// Maximum weight of each block. With a default weight system of 1byte == 1weight, 4mb is ok.
-    type MaximumBlockWeight = MaximumBlockWeight;
-    /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
-    type MaximumBlockLength = MaximumBlockLength;
-    /// Portion of the block weight that is available to all normal transactions.
+	type Call = Call;
+	/// The index type for storing how many extrinsics an account has signed.
+	type Index = Index;
+	/// The index type for blocks.
+	type BlockNumber = BlockNumber;
+	/// The type for hashing blocks and tries.
+	type Hash = Hash;
+	/// The hashing algorithm used.
+	type Hashing = BlakeTwo256;
+	/// The identifier used to distinguish between accounts.
+	type AccountId = AccountId;
+	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
+	type Lookup = IdentityLookup<AccountId>;
+	/// The header type.
+	type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	/// The overarching event type.
+	type Event = Event;
+	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
+	type BlockHashCount = BlockHashCount;
+	/// Maximum weight of each block. With a default weight system of 1byte == 1weight, 4mb is ok.
+	type MaximumBlockWeight = MaximumBlockWeight;
+	/// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
+	type MaximumBlockLength = MaximumBlockLength;
+	/// Portion of the block weight that is available to all normal transactions.
 	type AvailableBlockRatio = AvailableBlockRatio;
 	/// Get the chain's current version.
 	type Version = Version;
@@ -155,7 +151,6 @@ parameter_types! {
 	pub const MaxSignatories: u16 = 100;
 }
 
-
 impl pallet_utility::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
@@ -166,18 +161,18 @@ impl pallet_utility::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
-    pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
+	pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
+	pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
 }
 
 impl pallet_babe::Trait for Runtime {
-    type EpochDuration = EpochDuration;
-    type ExpectedBlockTime = ExpectedBlockTime;
-    type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+	type EpochDuration = EpochDuration;
+	type ExpectedBlockTime = ExpectedBlockTime;
+	type EpochChangeTrigger = pallet_babe::ExternalTrigger;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: Balance = 1 * MICRO_RAD; // the minimum fee for an anchor is 500,000ths of a RAD. This is set to a value so you can still get some return without getting your account removed
+	pub const ExistentialDeposit: Balance = 1 * MICRO_RAD; // the minimum fee for an anchor is 500,000ths of a RAD. This is set to a value so you can still get some return without getting your account removed
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -194,8 +189,8 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const TransactionBaseFee: Balance = 100 * MICRO_RAD;
-    pub const TransactionByteFee: Balance = 1 * MICRO_RAD;
+	pub const TransactionBaseFee: Balance = 100 * MICRO_RAD;
+	pub const TransactionByteFee: Balance = 1 * MICRO_RAD;
 	// setting this to zero will disable the weight fee.
 	pub const WeightFeeCoefficient: Balance = 100_000_000;
 	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
@@ -212,13 +207,13 @@ impl pallet_transaction_payment::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
+	pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
 }
 impl pallet_timestamp::Trait for Runtime {
-    /// A timestamp: milliseconds since the unix epoch.
-    type Moment = Moment;
-    type OnTimestampSet = Babe;
-    type MinimumPeriod = MinimumPeriod;
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = Moment;
+	type OnTimestampSet = Babe;
+	type MinimumPeriod = MinimumPeriod;
 }
 
 parameter_types! {
@@ -233,12 +228,12 @@ impl pallet_authorship::Trait for Runtime {
 }
 
 impl_opaque_keys! {
-    pub struct SessionKeys {
-        pub grandpa: Grandpa,
-        pub babe: Babe,
+	pub struct SessionKeys {
+		pub grandpa: Grandpa,
+		pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
-    }
+	}
 }
 
 parameter_types! {
@@ -291,7 +286,8 @@ impl pallet_staking::Trait for Runtime {
 	type BondingDuration = BondingDuration;
 	type SlashDeferDuration = SlashDeferDuration;
 	/// A super-majority of the council can cancel the slash.
-	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type SlashCancelOrigin =
+		pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
 }
@@ -328,24 +324,29 @@ impl pallet_democracy::Trait for Runtime {
 	type MinimumDeposit = MinimumDeposit;
 
 	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ExternalOrigin =
+		pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type ExternalMajorityOrigin =
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
-	type ExternalDefaultOrigin = pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type ExternalDefaultOrigin =
+		pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
 	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type FastTrackOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
 	/// Minimum voting period allowed for an fast-track/emergency referendum.
 	type EmergencyVotingPeriod = EmergencyVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type CancellationOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
 	// Any single council member may veto a coming council proposal, however they can
 	// only do it once and it lasts only for the cooloff period.
@@ -416,8 +417,8 @@ impl pallet_im_online::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type SubmitTransaction = SubmitTransaction;
-    type SessionDuration = SessionDuration;
-    type ReportUnresponsiveness = Offences;
+	type SessionDuration = SessionDuration;
+	type ReportUnresponsiveness = Offences;
 }
 
 impl pallet_offences::Trait for Runtime {
@@ -429,7 +430,7 @@ impl pallet_offences::Trait for Runtime {
 impl pallet_authority_discovery::Trait for Runtime {}
 
 impl pallet_grandpa::Trait for Runtime {
-    type Event = Event;
+	type Event = Event;
 }
 
 parameter_types! {
@@ -451,12 +452,17 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 	type Public = <Signature as traits::Verify>::Signer;
 	type Signature = Signature;
 
-	fn create_transaction<TSigner: frame_system::offchain::Signer<Self::Public, Self::Signature>>(
+	fn create_transaction<
+		TSigner: frame_system::offchain::Signer<Self::Public, Self::Signature>,
+	>(
 		call: Call,
 		public: Self::Public,
 		account: AccountId,
 		index: Index,
-	) -> Option<(Call, <UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload)> {
+	) -> Option<(
+		Call,
+		<UncheckedExtrinsic as traits::Extrinsic>::SignaturePayload,
+	)> {
 		// take the biggest period possible.
 		let period = BlockHashCount::get()
 			.checked_next_power_of_two()
@@ -476,9 +482,11 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 			frame_system::CheckWeight::<Runtime>::new(),
 			pallet_transaction_payment::ChargeTransactionPayment::<Runtime>::from(tip),
 		);
-		let raw_payload = SignedPayload::new(call, extra).map_err(|e| {
-			debug::warn!("Unable to create signed payload: {:?}", e);
-		}).ok()?;
+		let raw_payload = SignedPayload::new(call, extra)
+			.map_err(|e| {
+				debug::warn!("Unable to create signed payload: {:?}", e);
+			})
+			.ok()?;
 		let signature = TSigner::sign(public, &raw_payload)?;
 		let (call, extra, _) = raw_payload.deconstruct();
 		Some((call, (account, signature, extra)))
@@ -491,11 +499,12 @@ impl anchor::Trait for Runtime {}
 impl fees::Trait for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
-	type FeeChangeOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type FeeChangeOrigin =
+		pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
 impl nfts::Trait for Runtime {
-    type Event = Event;
+	type Event = Event;
 }
 
 parameter_types! {
@@ -506,14 +515,14 @@ parameter_types! {
 	pub const MultiAccountMaxSignatories: u16 = 100;
 }
 impl substrate_pallet_multi_account::Trait for Runtime {
-    type Event = Event;
-    type Currency = Balances;
-    type Call = Call;
-    type MaxSignatories = MultiAccountMaxSignatories;
-    type MultiAccountDepositBase = MultiAccountDepositBase;
-    type MultiAccountDepositFactor =  MultiAccountDepositFactor;
-    type MultisigDepositBase = MultiAccountSigDepositBase;
-    type MultisigDepositFactor = MultiAccountSigDepositFactor;
+	type Event = Event;
+	type Currency = Balances;
+	type Call = Call;
+	type MaxSignatories = MultiAccountMaxSignatories;
+	type MultiAccountDepositBase = MultiAccountDepositBase;
+	type MultiAccountDepositFactor = MultiAccountDepositFactor;
+	type MultisigDepositBase = MultiAccountSigDepositBase;
+	type MultisigDepositFactor = MultiAccountSigDepositFactor;
 }
 
 construct_runtime!(
@@ -559,12 +568,12 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
-    frame_system::CheckVersion<Runtime>,
-    frame_system::CheckGenesis<Runtime>,
-    frame_system::CheckEra<Runtime>,
-    frame_system::CheckNonce<Runtime>,
-    frame_system::CheckWeight<Runtime>,
-    pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	frame_system::CheckVersion<Runtime>,
+	frame_system::CheckGenesis<Runtime>,
+	frame_system::CheckEra<Runtime>,
+	frame_system::CheckNonce<Runtime>,
+	frame_system::CheckWeight<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -573,13 +582,19 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive = frame_executive::Executive<
+	Runtime,
+	Block,
+	frame_system::ChainContext<Runtime>,
+	Runtime,
+	AllModules,
+>;
 
 decl_runtime_apis! {
-    /// The API to query anchoring info.
-    pub trait AnchorApi {
-        fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
-    }
+	/// The API to query anchoring info.
+	pub trait AnchorApi {
+		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
+	}
 }
 
 impl_runtime_apis! {
@@ -639,30 +654,30 @@ impl_runtime_apis! {
 		fn offchain_worker(header: &<Block as BlockT>::Header) {
 			Executive::offchain_worker(header)
 		}
-    }
+	}
 
-    impl fg_primitives::GrandpaApi<Block> for Runtime {
+	impl fg_primitives::GrandpaApi<Block> for Runtime {
 		fn grandpa_authorities() -> GrandpaAuthorityList {
 			Grandpa::grandpa_authorities()
 		}
 	}
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
-        fn configuration() -> sp_consensus_babe::BabeConfiguration {
-            // The choice of `c` parameter (where `1 - c` represents the
-            // probability of a slot being empty), is done in accordance to the
-            // slot duration and expected target block time, for safely
-            // resisting network delays of maximum two seconds.
-            // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-            sp_consensus_babe::BabeConfiguration {
-                slot_duration: Babe::slot_duration(), // The slot duration in milliseconds for BABE. Currently, only the value provided by this type at genesis will be used.
+		fn configuration() -> sp_consensus_babe::BabeConfiguration {
+			// The choice of `c` parameter (where `1 - c` represents the
+			// probability of a slot being empty), is done in accordance to the
+			// slot duration and expected target block time, for safely
+			// resisting network delays of maximum two seconds.
+			// <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
+			sp_consensus_babe::BabeConfiguration {
+				slot_duration: Babe::slot_duration(), // The slot duration in milliseconds for BABE. Currently, only the value provided by this type at genesis will be used.
 				epoch_length: EpochDuration::get(), // The duration of epochs in slots.
-                c: PRIMARY_PROBABILITY,
-                genesis_authorities: Babe::authorities(),
-                randomness: Babe::randomness(),
-                secondary_slots: true,
-            }
-        }
+				c: PRIMARY_PROBABILITY,
+				genesis_authorities: Babe::authorities(),
+				randomness: Babe::randomness(),
+				secondary_slots: true,
+			}
+		}
 
 		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
 			Babe::current_epoch_start()
@@ -675,13 +690,13 @@ impl_runtime_apis! {
 		}
 	}
 
-    impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
-        fn account_nonce(account: AccountId) -> Index {
-            System::account_nonce(account)
-        }
-    }
+	impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
+		fn account_nonce(account: AccountId) -> Index {
+			System::account_nonce(account)
+		}
+	}
 
-    impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
+	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
 		Block,
 		Balance,
 		UncheckedExtrinsic,
@@ -717,22 +732,23 @@ mod tests {
 
 	#[test]
 	fn validate_transaction_submitter_bounds() {
-		fn is_submit_signed_transaction<T>() where
-			T: SubmitSignedTransaction<
-				Runtime,
-				Call,
-			>,
-		{}
+		fn is_submit_signed_transaction<T>()
+		where
+			T: SubmitSignedTransaction<Runtime, Call>,
+		{
+		}
 
-		fn is_sign_and_submit_transaction<T>() where
+		fn is_sign_and_submit_transaction<T>()
+		where
 			T: SignAndSubmitTransaction<
 				Runtime,
 				Call,
-				Extrinsic=UncheckedExtrinsic,
-				CreateTransaction=Runtime,
-				Signer=ImOnlineId,
+				Extrinsic = UncheckedExtrinsic,
+				CreateTransaction = Runtime,
+				Signer = ImOnlineId,
 			>,
-		{}
+		{
+		}
 
 		is_submit_signed_transaction::<SubmitTransaction>();
 		is_sign_and_submit_transaction::<SubmitTransaction>();
@@ -742,9 +758,8 @@ mod tests {
 	fn block_hooks_weight_should_not_exceed_limits() {
 		use frame_support::weights::WeighBlock;
 		let check_for_block = |b| {
-			let block_hooks_weight =
-				<AllModules as WeighBlock<BlockNumber>>::on_initialize(b) +
-				<AllModules as WeighBlock<BlockNumber>>::on_finalize(b);
+			let block_hooks_weight = <AllModules as WeighBlock<BlockNumber>>::on_initialize(b)
+				+ <AllModules as WeighBlock<BlockNumber>>::on_finalize(b);
 
 			assert_eq!(
 				block_hooks_weight,
