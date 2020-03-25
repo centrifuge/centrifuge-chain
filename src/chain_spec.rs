@@ -53,6 +53,7 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
 }
 
 /// Helper function to generate stash, controller and session key from seed
+/// Note: this should be used only for dev testnets.
 pub fn get_authority_keys_from_seed(seed: &str) -> (
     AccountId,
     AccountId,
