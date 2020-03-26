@@ -36,7 +36,7 @@ jobs:
       name: "Build binary"
       script: TARGET=build-client travis_wait 180 ./ci/script.sh
     - stage: "Build runtime"
-      if: (NOT type IN (pull_request)) AND ((branch = master) || ( -n $TRAVIS_TAG ))
+      if: (NOT type IN (pull_request)) AND (branch = master || tag IS present)
       script: TARGET=build-runtime travis_wait 180 ./ci/script.sh
     - stage: "Build and push Docker image"
       if: (NOT type IN (pull_request)) AND (branch = master)
