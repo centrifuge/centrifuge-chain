@@ -128,3 +128,25 @@ Additional CLI usage options are available and may be shown by running `./target
 ## Linting
 
 Lint the project with `cargo +nightly fmt`. This excludes certain paths (defined in `rustfmt.toml`) that we want to stay as close as possible to `paritytech/substrate` to simplify upgrading to new releases.
+
+## Verifying Runtime
+1. Check out the commit at which the runtime was built.
+2. Run `TARGET=build-runtime RUST_TOOLCHAIN=nightly-2020-03-12 ./ci/script.sh`
+3. A similar output is generated
+```
+✨ Your Substrate WASM Runtime is ready! ✨
+Summary:
+  Generator  : srtool v0.9.5
+  GIT commit : 27326e69481f08313d6048da1500befe209bdf71
+  GIT tag    : v0.0.3
+  GIT branch : master
+  Time       : 2020-03-20T11:00:24Z
+  Rustc      : rustc 1.43.0-nightly (5e7af4669 2020-02-16)
+  Size       : 928 KB (950464 bytes)
+  Content    : 0x0061736d0100000001c2022f60037f7f...3436363920323032302d30322d313629
+  Package    : centrifuge-chain-runtime
+  Proposal   : 0x5c3d2cd41d70c514566c9b512743ad229fa96518061fe21c8178ba43cfcf16dc
+  SHA256     : 3f0d2e98e2351144027826f26277bda90e5fabc13f0945fc8fec13d116602e2a
+  Wasm       : ./target/srtool/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm
+```
+4. `Proposal` hash should match the runtime upgrade proposal

@@ -43,4 +43,10 @@ case $TARGET in
         bash <(curl -s https://codecov.io/bash) &&
         echo "Uploaded code coverage"
 		;;
+
+  "build-runtime")
+    export RUSTC_VERSION=RUST_TOOLCHAIN
+    export PACKAGE=centrifuge-chain-runtime
+    alias srtool='docker run --rm -it -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION'
+    srtool build
 esac
