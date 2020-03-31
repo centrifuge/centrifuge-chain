@@ -79,8 +79,8 @@ LABEL_MARKER="breakapi"
 LABELED_MARKER_COUNT=$(echo -e "${pr_label}" | grep -w ${LABEL_MARKER} | wc -l)
 
 if [ $RUNTIME_FILE_CHANGED != "0" ]
-	then
-		echo "There are ${RUNTIME_FILE_CHANGED} files changed in runtime "
+then
+	echo "There are ${RUNTIME_FILE_CHANGED} files changed in runtime "
 
 	if [ "${LABELED_MARKER_COUNT}" != "0" ]
 	then
@@ -112,6 +112,9 @@ if [ $RUNTIME_FILE_CHANGED != "0" ]
 			echo "ERROR: impl_version should be changed in ${VERSIONS_FILE}"
 		fi
 	fi
+else
+	echo "OK: No changes in runtime, no need for version change"
+	exit 0
 fi
 
 exit 1

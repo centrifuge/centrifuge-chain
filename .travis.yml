@@ -42,7 +42,7 @@ jobs:
       if: (NOT type IN (pull_request)) AND (branch = master)
       script: travis_wait 180 ./ci/docker.sh
     - stage: "Check PR runtime changes"
-      script: ./ci/check_pr.sh
+      script: travis_wait 180 ./ci/check_pr.sh
 
 addons:
   apt:
