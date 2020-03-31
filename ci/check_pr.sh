@@ -9,6 +9,12 @@
 # get the commit sha for this PR
 CI_COMMIT_SHA=$(git rev-parse HEAD)
 
+
+boldprint () { printf "|\n| \033[1m${@}\033[0m\n|\n" ; }
+
+boldprint "latest 10 commits of ${CI_COMMIT_REF_NAME}"
+git log --graph --oneline --decorate=short -n 10
+
 # base the origin/master as the base commit
 BASE_COMMIT="origin/master"
 VERSIONS_FILE="runtime/src/lib.rs"
@@ -20,7 +26,6 @@ echo "Changed files $CHANGED_FILES"
 
 # count the number of files changed in runtime directory
 RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
-echo "There are ${RUNTIME_FILE_CHANGED} files changed in runtime "
 
 
 
@@ -39,7 +44,6 @@ echo "There are ${RUNTIME_FILE_CHANGED} files changed in runtime "
 # ie: curl -s https://api.github.com/repos/centrifuge/centrifuge-chain/pulls/119 | jq '.labels' | jq '.[] | .name'
 # This will list down the list of labels on that PR
 
-#CI_COMMIT_SHA=22681fb3ae899448d73124b047f006ce84164234
 
 
 
@@ -72,28 +76,29 @@ echo "pr_label:[${pr_label}]"
 
 LABEL_MARKER="BREAK"
 
-LABELED_WIP=$(echo -e "${pr_label}" | grep -w ${LABEL_MARKER} | wc -l)
-echo "LABELED WIP: $LABELED_WIP"
+LABELED_MARKER_COUNT=$(echo -e "${pr_label}" | grep -w ${LABEL_MARKER} | wc -l)
 
 if [ $RUNTIME_FILE_CHANGED != "0" ]
 	then
 		echo "There are ${RUNTIME_FILE_CHANGED} files changed in runtime "
 
-	if [ "${LABELED_WIP}" != "0" ]
+	if [ "${LABELED_MARKER_COUNT}" != "0" ]
 	then
 		add_spec_version="$(git diff ${BASE_COMMIT}...${CI_COMMIT_SHA} ${VERSIONS_FILE} \
 			| sed -n -r "s/^\+[[:space:]]+spec_version: +([0-9]+),$/\1/p")"
 		sub_spec_version="$(git diff ${BASE_COMMIT}...${CI_COMMIT_SHA} ${VERSIONS_FILE} \
 			| sed -n -r "s/^\-[[:space:]]+spec_version: +([0-9]+),$/\1/p")"
 
-		if [ "${add_impl_version}" != "${sub_impl_version}" ]
+		if [ "${add_spec_version}" != "${sub_spec_version}" ]
 		then
 			echo "OK: spec_version is changed.. "
 			exit 0
 		else
-			echo "ERROR: Spec version should be changed"
+			echo "ERROR: Spec version should be changed in ${VERSIONS_FILE}"
 		fi
 	else
+		echo "Not a breaking change"
+
 		add_impl_version="$(git diff tags/release...${CI_COMMIT_SHA} ${VERSIONS_FILE} \
 			| sed -n -r 's/^\+[[:space:]]+impl_version: +([0-9]+),$/\1/p')"
 		sub_impl_version="$(git diff tags/release...${CI_COMMIT_SHA} ${VERSIONS_FILE} \
@@ -104,7 +109,7 @@ if [ $RUNTIME_FILE_CHANGED != "0" ]
 			echo "OK: impl_version is changed..."
 			exit 0
 		else
-			echo "ERROR: impl_version should be changed"
+			echo "ERROR: impl_version should be changed in ${VERSIONS_FILE}"
 		fi
 	fi
 fi
