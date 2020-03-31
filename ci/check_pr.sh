@@ -74,7 +74,7 @@ pr_label=$(github_label_from_pr "${PR_ID}")
 
 echo "pr_label:[${pr_label}]"
 
-LABEL_MARKER="BREAK"
+LABEL_MARKER="breakapi"
 
 LABELED_MARKER_COUNT=$(echo -e "${pr_label}" | grep -w ${LABEL_MARKER} | wc -l)
 
