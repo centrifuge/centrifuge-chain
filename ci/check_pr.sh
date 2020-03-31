@@ -94,7 +94,7 @@ if [ $RUNTIME_FILE_CHANGED != "0" ]
 			echo "OK: spec_version is changed.. "
 			exit 0
 		else
-			echo "ERROR: Spec version should be changed in ${VERSIONS_FILE}"
+			echo "ERROR: spec_version should be changed in ${VERSIONS_FILE}"
 		fi
 	else
 		echo "Not a breaking change"
