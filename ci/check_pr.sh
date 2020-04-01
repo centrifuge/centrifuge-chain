@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 #
-
+#set -x
 # check for any changes in the runtime/ . if
 # there are any changes found, it should mark the PR breaksconsensus and
 # "auto-fail" the PR if there isn't a change in the runtime/src/lib.rs file
@@ -22,7 +22,6 @@ VERSIONS_FILE="runtime/src/lib.rs"
 # show the diff of origin/master and this PR sha
 CHANGED_FILES=$(git diff --name-only ${BASE_COMMIT}...${CI_COMMIT_SHA})
 
-echo "Changed files $CHANGED_FILES"
 
 # count the number of files changed in runtime directory
 RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
@@ -50,9 +49,9 @@ RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
 # returns the PR number where a commit hash belongs to
 github_pr_from_commit () {
 	commit_details=$(curl -s https://api.github.com/search/issues?q=sha:${1})
-	first_result=$(echo ${commit_details} | jq '.items[0]')
-	pr_id=$(echo ${first_result} | jq '.number' )
-	echo ${pr_id}
+	first_result=$(echo "${commit_details}" | jq '.items[0]')
+	pr_id=$(echo "${first_result}" | jq '.number' )
+	echo "${pr_id}"
 }
 
 
@@ -61,18 +60,18 @@ github_pr_from_commit () {
 # Note: the label names is double quoted
 github_label_from_pr () {
 	pr_info=$(curl -s https://api.github.com/repos/centrifuge/centrifuge-chain/pulls/${1})
-	labels=$(echo ${pr_info} | jq '.labels' )
+	labels=$(echo "${pr_info}" | jq '.labels' )
 	if [ "$labels" != "null" ]; then 
-		label_names=$(echo ${labels} | jq '.[] | .name')
-		echo ${label_names}
+		label_names=$(echo "${labels}" | jq '.[] | .name')
+		echo "${label_names}"
 	fi
 }
 
 
-PR_ID=$(github_pr_from_commit ${CI_COMMIT_SHA})
+PR_ID=$(github_pr_from_commit "${CI_COMMIT_SHA}")
 pr_label=$(github_label_from_pr "${PR_ID}")
 
-echo "pr_label:[${pr_label}]"
+echo "PR labels: ${pr_label}"
 
 LABEL_MARKER="breakapi"
 
@@ -80,7 +79,7 @@ LABELED_MARKER_COUNT=$(echo -e "${pr_label}" | grep -w ${LABEL_MARKER} | wc -l)
 
 if [ $RUNTIME_FILE_CHANGED != "0" ]
 then
-	echo "There are ${RUNTIME_FILE_CHANGED} files changed in runtime "
+	echo "There are ${RUNTIME_FILE_CHANGED} file(s) changed in runtime "
 
 	if [ "${LABELED_MARKER_COUNT}" != "0" ]
 	then
