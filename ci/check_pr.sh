@@ -31,6 +31,8 @@ ERROR="${red}${block}ERROR${nc}"
 # show the diff of origin/master and this PR sha
 CHANGED_FILES=$(git diff --name-only ${BASE_COMMIT}...${PR_COMMIT})
 
+echo "Changed files: ${CHANGED_FILES}"
+
 # count the number of files changed in runtime directory
 RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
 
