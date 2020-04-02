@@ -39,7 +39,7 @@ RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
 echo "There are ${RUNTIME_FILE_CHANGED} file(s) changed in runtime "
 
 # If there are no changes in the runtime file, exit sucessfully
-if (( RUNTIME_FILE_CHANGED == 0 ))
+if (( $RUNTIME_FILE_CHANGED == 0 ))
 then
 	echo -e "| ${OK} Nothing is changed in runtime"
 	exit 0
@@ -52,15 +52,15 @@ BASE_IMPL_VERSION=$(git show ${BASE_COMMIT}:${VERSIONS_FILE} | sed -n -r "s/^[[:
 PR_SPEC_VERSION=$(git show ${PR_COMMIT}:${VERSIONS_FILE} | sed -n -r "s/^[[:space:]]+spec_version: +([0-9]+),$/\1/p")
 PR_IMPL_VERSION=$(git show ${PR_COMMIT}:${VERSIONS_FILE} | sed -n -r "s/^[[:space:]]+impl_version: +([0-9]+),$/\1/p")
 
-echo "| ${BASE_COMMIT} -> spec_version: ${BASE_SPEC_VERSION}"
-echo "| ${BASE_COMMIT} -> impl_version: ${BASE_IMPL_VERSION}"
-echo "| PR -> spec_version: ${PR_SPEC_VERSION}"
-echo "| PR -> impl_version: ${PR_IMPL_VERSION}"
+echo "| ${BASE_COMMIT} spec_version: ${BASE_SPEC_VERSION}"
+echo "| ${BASE_COMMIT} impl_version: ${BASE_IMPL_VERSION}"
+echo "| PR spec_version: ${PR_SPEC_VERSION}"
+echo "| PR impl_version: ${PR_IMPL_VERSION}"
 
 # Check if the PR spec version is incremented
 if (( $PR_SPEC_VERSION > $BASE_SPEC_VERSION ))
 then
-	echo -e "${BASE_SPEC_VERSION} -> ${PR_SPEC_VERSION}"
+	echo -e "| spec_version is changed: ${BASE_SPEC_VERSION} -> ${PR_SPEC_VERSION}"
 	# Ensure impl_version in the PR is set to 0 when spec_version is incremented
 	if (( $PR_IMPL_VERSION == 0 ))
 	then
@@ -74,6 +74,7 @@ else
 	# Check if impl_version is incremented
 	if (( $PR_IMPL_VERSION > $BASE_IMPL_VERSION ))
 	then
+		echo -e "| impl_version is changed: ${BASE_IMPL_VERSION} -> ${PR_IMPL_VERSION}"
 		echo -e "| ${OK}: ${yellow}impl_version${nc} is incremented"
 		exit 0
 	else
