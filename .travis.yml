@@ -54,7 +54,6 @@ addons:
       - gcc
       - binutils-dev
       - libiberty-dev
-      - jq
 
 after_script:
   # Check how much free disk space left after the build
