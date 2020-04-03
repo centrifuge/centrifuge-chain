@@ -30,7 +30,7 @@ before_install:
 jobs:
   include:
     - stage: "Check PR runtime changes"
-      script: travis_wait 180 ./ci/check_pr.sh
+      script: travis_wait 180 ./ci/check_runtime_changes.sh
     - stage: "Test and build"
       name: "Run runtime tests"
       script: TARGET=runtime-test travis_wait 180 ./ci/script.sh
