@@ -525,7 +525,7 @@ dependencies = [
  "sp-std 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "sp-transaction-pool 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "sp-version 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
- "substrate-pallet-multi-account 2.0.0-alpha.3 (git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=3a40d9a1107816ee28989bf4bbbe3f0ab6a1822d)",
+ "substrate-pallet-multi-account 2.0.0-alpha.3 (git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=35fe33019a6cdf72137712d290a0965ac5eb71fb)",
  "substrate-wasm-builder-runner 1.0.5 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
 ]
 
@@ -5428,7 +5428,7 @@ dependencies = [
 [[package]]
 name = "substrate-pallet-multi-account"
 version = "2.0.0-alpha.3"
-source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=3a40d9a1107816ee28989bf4bbbe3f0ab6a1822d#3a40d9a1107816ee28989bf4bbbe3f0ab6a1822d"
+source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=35fe33019a6cdf72137712d290a0965ac5eb71fb#35fe33019a6cdf72137712d290a0965ac5eb71fb"
 dependencies = [
  "frame-support 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "frame-system 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
@@ -6900,7 +6900,7 @@ dependencies = [
 "checksum substrate-bip39 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3be511be555a3633e71739a79e4ddff6a6aaa6579fa6114182a51d72c3eb93c5"
 "checksum substrate-build-script-utils 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum substrate-frame-rpc-system 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
-"checksum substrate-pallet-multi-account 2.0.0-alpha.3 (git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=3a40d9a1107816ee28989bf4bbbe3f0ab6a1822d)" = "<none>"
+"checksum substrate-pallet-multi-account 2.0.0-alpha.3 (git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=35fe33019a6cdf72137712d290a0965ac5eb71fb)" = "<none>"
 "checksum substrate-prometheus-endpoint 0.8.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum substrate-wasm-builder-runner 1.0.5 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum subtle 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
