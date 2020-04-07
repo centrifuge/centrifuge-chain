@@ -345,7 +345,9 @@ pub(crate) mod tests {
 	use super::*;
 	use crate::service::{new_full, new_light};
 	use sc_service_test;
-	use sp_runtime::BuildStorage;
+	use sp_runtime::{ModuleId, BuildStorage, traits::AccountIdConversion};
+	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccountDirect};
+
 
 	fn local_testnet_genesis_instant_single() -> GenesisConfig {
 		testnet_genesis(
@@ -392,6 +394,27 @@ pub(crate) mod tests {
 			|config| new_full(config),
 			|config| new_light(config),
 		);
+	}
+
+	#[test]
+	fn test_centrifuge_multi_account_ids() {
+		assert_eq!(MultiAccount::multi_account_id(1).to_ss58check_with_version(CentrifugeAccountDirect),
+			"4d4KMh9TuvpbBZmw3VTpbFewd1Vwpyo45g1du4xFfNEmUKQV");
+		assert_eq!(MultiAccount::multi_account_id(2).to_ss58check_with_version(CentrifugeAccountDirect),
+			"4ghzKGVmwh7wKFaWVF3d4QTbg21AbTo4mMPM5YUkkQasth4e");
+		assert_eq!(MultiAccount::multi_account_id(3).to_ss58check_with_version(CentrifugeAccountDirect),
+			"4fM9N5BuADmbYBn4SPNnSVhfD9TVoBc83BC3ZJWei5FmAunc");
+		assert_eq!(MultiAccount::multi_account_id(4).to_ss58check_with_version(CentrifugeAccountDirect),
+			"4eHarY1f35y2wtbW3XKLbbnJHeztAjNsxcYEoMnjfQbKXyq3");
+		assert_eq!(MultiAccount::multi_account_id(5).to_ss58check_with_version(CentrifugeAccountDirect),
+			"4dTzs4ktTARToFk6k12Diu8ZHeP9bPCTfh1erAGhd3THtqCZ");
+	}
+
+	#[test]
+	fn test_centrifuge_bridge_account_id() {
+		let account_id: AccountId = ModuleId(*b"cent/brg").into_account();
+		assert_eq!(account_id.to_ss58check_with_version(CentrifugeAccountDirect),
+			"4dpEcgqFozaDzLZx2ex8zg8PFsk4reL8nSv5WKKN7YFDPmYd");
 	}
 
 	#[test]
