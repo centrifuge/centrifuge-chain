@@ -110,7 +110,7 @@ pub fn amber_config() -> Result<ChainSpec, String> {
 
 /// Mainnet generator
 pub fn mainnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-pre-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-spec.json")[..])
 }
 
 fn session_keys(
