@@ -412,9 +412,9 @@ pub(crate) mod tests {
 
 	#[test]
 	fn test_centrifuge_bridge_account_id() {
-		let account_id: AccountId = ModuleId(*b"cent/brg").into_account();
+		let account_id: AccountId = ModuleId(*b"cb/bridg").into_account();
 		assert_eq!(account_id.to_ss58check_with_version(CentrifugeAccountDirect),
-			"4dpEcgqFozaDzLZx2ex8zg8PFsk4reL8nSv5WKKN7YFDPmYd");
+			"4dpEcgqFor2TJw9uWSjx2JpjkNmTic2UjJAK1j9fRtcTUoRu");
 	}
 
 	#[test]
