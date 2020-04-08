@@ -10,6 +10,7 @@ use frame_support::{
 	weights::Weight,
 	traits::{Currency, Randomness},
 };
+use frame_system::EnsureSigned;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
@@ -516,6 +517,27 @@ impl substrate_pallet_multi_account::Trait for Runtime {
     type MultisigDepositFactor = MultiAccountSigDepositFactor;
 }
 
+parameter_types! {
+    pub const MaxSubAccounts: u32 = 100;
+    pub const MaxAdditionalFields: u32 = 100;
+    pub const BasicDeposit: Balance = 30 * CENTI_RAD;
+    pub const FieldDeposit: Balance = 10 * CENTI_RAD;
+    pub const SubAccountDeposit: Balance = 5 * CENTI_RAD;
+}
+
+impl pallet_identity::Trait for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type BasicDeposit = BasicDeposit;
+    type FieldDeposit = FieldDeposit;
+    type SubAccountDeposit = SubAccountDeposit;
+    type MaxSubAccounts = MaxSubAccounts;
+    type MaxAdditionalFields = MaxAdditionalFields;
+    type Slashed = ();
+    type ForceOrigin = EnsureSigned<AccountId>;
+    type RegistrarOrigin = EnsureSigned<AccountId>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -544,6 +566,7 @@ construct_runtime!(
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
+                Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}
 );
 
