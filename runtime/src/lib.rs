@@ -37,6 +37,7 @@ use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use frame_system::offchain::TransactionSubmitter;
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
+use pallet_collective::EnsureProportionMoreThan;
 
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -520,9 +521,9 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
-    pub const BasicDeposit: Balance = 30 * CENTI_RAD;
-    pub const FieldDeposit: Balance = 10 * CENTI_RAD;
-    pub const SubAccountDeposit: Balance = 5 * CENTI_RAD;
+    pub const BasicDeposit: Balance = 10 * MICRO_RAD;
+    pub const FieldDeposit: Balance = 250 * MICRO_RAD / 100;
+    pub const SubAccountDeposit: Balance = 2 * MICRO_RAD;
 }
 
 impl pallet_identity::Trait for Runtime {
@@ -534,8 +535,8 @@ impl pallet_identity::Trait for Runtime {
     type MaxSubAccounts = MaxSubAccounts;
     type MaxAdditionalFields = MaxAdditionalFields;
     type Slashed = ();
-    type ForceOrigin = EnsureSigned<AccountId>;
-    type RegistrarOrigin = EnsureSigned<AccountId>;
+    type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+    type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 }
 
 construct_runtime!(
