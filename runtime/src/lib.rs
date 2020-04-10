@@ -10,7 +10,6 @@ use frame_support::{
 	weights::Weight,
 	traits::{Currency, Randomness},
 };
-use frame_system::EnsureSigned;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
