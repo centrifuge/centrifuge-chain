@@ -12,10 +12,15 @@
 
 # origin/master as the base commit
 BASE_COMMIT="origin/master"
+PR_COMMIT="HEAD"
 VERSIONS_FILE="runtime/src/lib.rs"
 
-PR_COMMIT=$(git rev-parse HEAD)
-echo "commit: ${PR_COMMIT}"
+echo "PR commit: ${PR_COMMIT}"
+echo "BASE commit: ${BASE_COMMIT}"
+
+PR_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}
+
+echo "PR branch ${PR_BRANCH}"
 
 # use color in echo for indicating success or fail
 red='\033[0;31m'
@@ -30,7 +35,13 @@ FATAL="${red}${block}FATAL${nc}"
 
 
 # show the diff of origin/master and this PR sha
-CHANGED_FILES=$(git diff --name-only ${BASE_COMMIT}...${PR_COMMIT})
+CHANGED_FILES=$(git diff --name-only ${BASE_COMMIT} ${PR_COMMIT} 2>&1 )
+GIT_STATUS=$?
+if (( $GIT_STATUS != 0 ))
+then
+	echo -e "${red}${bold}GIT ERROR${nc}: $CHANGED_FILES"
+	exit 1
+fi
 
 # count the number of files changed in runtime directory
 RUNTIME_FILE_CHANGED=$(echo "${CHANGED_FILES}" | grep -e ^runtime/ | wc -l)
