@@ -80,8 +80,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 226,
-    impl_version: 2,
+    spec_version: 227,
+    impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -520,9 +520,9 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
-    pub const BasicDeposit: Balance = 10 * MICRO_RAD;
-    pub const FieldDeposit: Balance = 250 * MICRO_RAD / 100;
-    pub const SubAccountDeposit: Balance = 2 * MICRO_RAD;
+    pub const BasicDeposit: Balance = 100 * RAD;
+    pub const FieldDeposit: Balance = 25 * RAD;
+    pub const SubAccountDeposit: Balance = 20 * RAD;
 }
 
 impl pallet_identity::Trait for Runtime {
