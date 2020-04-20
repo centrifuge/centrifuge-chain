@@ -36,6 +36,7 @@ use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use frame_system::offchain::TransactionSubmitter;
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
+use pallet_collective::EnsureProportionMoreThan;
 
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -79,8 +80,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 226,
-    impl_version: 1,
+    spec_version: 227,
+    impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -516,6 +517,27 @@ impl substrate_pallet_multi_account::Trait for Runtime {
     type MultisigDepositFactor = MultiAccountSigDepositFactor;
 }
 
+parameter_types! {
+    pub const MaxSubAccounts: u32 = 100;
+    pub const MaxAdditionalFields: u32 = 100;
+    pub const BasicDeposit: Balance = 100 * RAD;
+    pub const FieldDeposit: Balance = 25 * RAD;
+    pub const SubAccountDeposit: Balance = 20 * RAD;
+}
+
+impl pallet_identity::Trait for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type BasicDeposit = BasicDeposit;
+    type FieldDeposit = FieldDeposit;
+    type SubAccountDeposit = SubAccountDeposit;
+    type MaxSubAccounts = MaxSubAccounts;
+    type MaxAdditionalFields = MaxAdditionalFields;
+    type Slashed = ();
+    type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+    type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -544,6 +566,7 @@ construct_runtime!(
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
+		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 	}
 );
 

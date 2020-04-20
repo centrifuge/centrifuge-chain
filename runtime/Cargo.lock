@@ -317,6 +317,7 @@ dependencies = [
  "pallet-elections-phragmen 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "pallet-finality-tracker 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "pallet-grandpa 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+ "pallet-identity 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "pallet-im-online 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "pallet-membership 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "pallet-offences 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
@@ -553,6 +554,24 @@ dependencies = [
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "enumflags2"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "enumflags2_derive 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "enumflags2_derive"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "proc-macro2 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syn 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "environmental"
@@ -1892,6 +1911,22 @@ dependencies = [
  "sp-finality-grandpa 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "sp-runtime 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "sp-staking 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+ "sp-std 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+]
+
+[[package]]
+name = "pallet-identity"
+version = "2.0.0-alpha.3"
+source = "git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943#013c1ee167354a08283fb69915fda56a62fee943"
+dependencies = [
+ "enumflags2 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "frame-benchmarking 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+ "frame-support 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+ "frame-system 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+ "parity-scale-codec 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sp-io 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
+ "sp-runtime 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "sp-std 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
 ]
 
@@ -3863,6 +3898,8 @@ dependencies = [
 "checksum dns-parser 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c4d33be9473d06f75f58220f71f7a9317aca647dc061dbd3c361b0bef505fbea"
 "checksum ed25519-dalek 1.0.0-pre.3 (registry+https://github.com/rust-lang/crates.io-index)" = "978710b352437433c97b2bff193f2fb1dfd58a093f863dd95e225a19baa599a2"
 "checksum either 1.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
+"checksum enumflags2 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "33121c8782ba948ba332dab29311b026a8716dc65a1599e5b88f392d38496af8"
+"checksum enumflags2_derive 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ecf634c5213044b8d54a46dd282cf5dd1f86bb5cb53e92c409cb4680a7fb9894"
 "checksum environmental 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "516aa8d7a71cb00a1c4146f0798549b93d083d4f189b3ced8f3de6b8f11ee6c4"
 "checksum failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "f8273f13c977665c5db7eb2b99ae520952fe5ac831ae4cd09d80c4c7042b5ed9"
 "checksum failure_derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0bc225b78e0391e4b8683440bf2e63c2deeeb2ce5189eab46e2b68c6d3725d08"
@@ -3988,6 +4025,7 @@ dependencies = [
 "checksum pallet-elections-phragmen 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum pallet-finality-tracker 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum pallet-grandpa 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
+"checksum pallet-identity 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum pallet-im-online 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum pallet-membership 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
 "checksum pallet-offences 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)" = "<none>"
