@@ -37,19 +37,6 @@ decl_module! {
 
         fn deposit_event() = default;
 
-        //
-        // Initiation calls. These start a chainbridge transfer.
-        //
-
-        /// Transfers an arbitrary hash to a (whitelisted) destination chain.
-        pub fn transfer_hash(origin, hash: T::Hash, dest_id: chainbridge::ChainId) -> DispatchResult {
-            ensure_signed(origin)?;
-
-            let resource_id = T::HashId::get();
-            let metadata: Vec<u8> = hash.as_ref().to_vec();
-            <chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)
-        }
-
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
         pub fn transfer_native(origin, amount: u32, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;

@@ -545,7 +545,7 @@ impl pallet_identity::Trait for Runtime {
 
 
 parameter_types! {
-    pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
 	pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 }
 
@@ -558,7 +558,7 @@ impl bridge::Trait for Runtime {
 
 
 parameter_types! {
-    pub const ChainId: u8 = 0;
+    pub const ChainId: u8 = 1;
 }
 impl chainbridge::Trait for Runtime {
     type Event = Event;
