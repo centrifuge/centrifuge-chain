@@ -598,7 +598,7 @@ construct_runtime!(
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 		PalletBridge: bridge::{Module, Call, Event<T>},
-		ChainBridge: chainbridge::{Module, Call, Event<T>},
+		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 	}
 );
 
