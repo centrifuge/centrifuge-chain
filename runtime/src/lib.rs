@@ -28,12 +28,14 @@ use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_core::OpaqueMetadata;
+use sp_io::hashing::blake2_128;
 use pallet_grandpa::AuthorityList as GrandpaAuthorityList;
 use pallet_grandpa::fg_primitives;
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 use frame_system::offchain::TransactionSubmitter;
+use frame_system::EnsureSigned;
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
 use pallet_collective::EnsureProportionMoreThan;
@@ -62,6 +64,9 @@ mod proofs;
 
 /// nft module
 mod nfts;
+
+/// bridge module
+mod bridge;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -538,6 +543,31 @@ impl pallet_identity::Trait for Runtime {
     type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 }
 
+
+parameter_types! {
+    pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+}
+
+impl bridge::Trait for Runtime {
+	type Event = Event;
+	type BridgeOrigin = EnsureSigned<AccountId>;
+	type HashId = HashId;
+	type NativeTokenId = NativeTokenId;
+}
+
+
+parameter_types! {
+    pub const ChainId: u8 = 0;
+}
+impl chainbridge::Trait for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type Proposal = Call;
+    type ChainId = ChainId;
+
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -567,6 +597,8 @@ construct_runtime!(
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
+		PalletBridge: bridge::{Module, Call, Event<T>},
+		ChainBridge: chainbridge::{Module, Call, Event<T>},
 	}
 );
 
