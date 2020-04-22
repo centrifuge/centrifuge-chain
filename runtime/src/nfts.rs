@@ -5,8 +5,9 @@ use frame_support::{
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
+use crate::bridge as pallet_bridge;
 
-pub trait Trait: anchor::Trait {
+pub trait Trait: anchor::Trait + pallet_bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
@@ -17,7 +18,7 @@ decl_event!(
 );
 
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin  {
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin , T: pallet_bridge::Trait {
         fn deposit_event() = default;
 
         /// Validates the proofs provided against the document root associated with the anchor_id.
@@ -28,8 +29,8 @@ decl_module! {
         /// - depends on the arguments
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
-        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3]) -> DispatchResult {
-            ensure_signed(origin)?;
+        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
+            ensure_signed(origin.clone())?;
 
             // get the anchor data from anchor ID
             let anchor_data = <anchor::Module<T>>::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
@@ -42,12 +43,17 @@ decl_module! {
 
             Self::deposit_event(RawEvent::DepositAsset(bundled_hash));
 
+            let resource_id = [0;32]; //TODO: where to get this?
+			let metadata = Vec::with_capacity(0); // TODO: what's the content of metadata
+
+			<pallet_bridge::Module<T>>::transfer_generic(origin, dest_id, resource_id, metadata)?;
+
             Ok(())
         }
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Trait + pallet_bridge::Trait> Module<T>{
     /// Validates the proofs again the provided doc_root.
     /// returns false if any proofs are invalid.
     fn validate_proofs(doc_root: T::Hash, pfs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {

@@ -49,6 +49,7 @@ pub use pallet_staking::StakerStatus;
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
 use impls::{CurrencyToVoteHandler, Author, LinearWeightToFee, TargetedFeeAdjustment};
+use bridge as pallet_bridge;
 
 /// Used for anchor module
 pub mod anchor;
@@ -597,7 +598,7 @@ construct_runtime!(
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		PalletBridge: bridge::{Module, Call, Event<T>},
+		PalletBridge: pallet_bridge::{Module, Call, Event<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 	}
 );
