@@ -97,7 +97,6 @@ mod tests{
 		BuildStorage, ModuleId, Perbill,
 	};
 	use crate::bridge as pallet_bridge;
-	use crate::bridge::Module;
 
 	pub use pallet_balances as balances;
 

@@ -1,6 +1,6 @@
 use crate::{anchor, proofs, proofs::Proof};
 use frame_support::{
-    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo,
+    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
@@ -40,12 +40,10 @@ decl_module! {
 
             // get the bundled hash
             let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
-
             Self::deposit_event(RawEvent::DepositAsset(bundled_hash));
 
-            let resource_id = [0;32]; //TODO: where to get this?
-			let metadata = Vec::with_capacity(0); // TODO: what's the content of metadata
-
+			let metadata = bundled_hash.as_ref().to_vec();
+			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
 			<pallet_bridge::Module<T>>::transfer_generic(origin, dest_id, resource_id, metadata)?;
 
             Ok(())
