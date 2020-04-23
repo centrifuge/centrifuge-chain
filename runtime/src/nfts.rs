@@ -75,23 +75,35 @@ mod tests {
     use crate::proofs::Proof;
     use codec::Encode;
     use frame_support::{
-        assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight,
+        assert_err, assert_ok, parameter_types, weights::Weight,
     };
     use sp_core::H256;
     use sp_runtime::{
         testing::Header,
-        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
+        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
         Perbill,
     };
+	use sp_core::hashing::blake2_128;
+	use crate::nfts;
+	use sp_std::prelude::*;
 
-    impl_outer_origin! {
-        pub enum Origin for Test {}
-    }
+	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
-    #[derive(Clone, Eq, PartialEq)]
-    pub struct Test;
+	frame_support::construct_runtime!(
+		pub enum Test where
+			Block = Block,
+			NodeBlock = Block,
+			UncheckedExtrinsic = UncheckedExtrinsic
+		{
+			System: frame_system::{Module, Call, Event<T>},
+			Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+			Nfts: nfts::{Module, Event<T>}
+		}
+	);
 
-    type Nfts = super::Module<Test>;
     type Anchor = anchor::Module<Test>;
 
     parameter_types! {
@@ -129,6 +141,30 @@ mod tests {
         type Event = ();
     }
 
+	parameter_types! {
+		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+	}
+
+	impl pallet_bridge::Trait for Test {
+		type Event = ();
+		type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+		type HashId = HashId;
+		type NativeTokenId = NativeTokenId;
+	}
+
+	parameter_types! {
+		pub const TestChainId: u8 = 5;
+		pub const TestCurrency: u32 = 0;
+	}
+
+	impl chainbridge::Trait for Test {
+		type Event = ();
+		type Currency = Balances;
+		type Proposal = Call;
+		type ChainId = TestChainId;
+	}
+
     impl pallet_timestamp::Trait for Test {
         type Moment = u64;
         type OnTimestampSet = ();
@@ -158,7 +194,6 @@ mod tests {
         type AccountStore = System;
     }
 
-    type System = frame_system::Module<Test>;
 
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
@@ -286,20 +321,21 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3]) {
+    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3], chainbridge::ChainId) {
         let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
         let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
-        (anchor_id, deposit_address, pfs, static_proofs)
+		let chain_id: chainbridge::ChainId = 1;
+        (anchor_id, deposit_address, pfs, static_proofs, chain_id)
     }
 
     #[test]
     fn bad_origin() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
-                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs),
+                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs, chain_id),
                 BadOrigin
             );
         })
@@ -308,14 +344,15 @@ mod tests {
     #[test]
     fn missing_anchor() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
                 Nfts::validate_mint(
                     Origin::signed(1),
                     anchor_id,
                     deposit_address,
                     pfs,
-                    static_proofs
+                    static_proofs,
+					chain_id
                 ),
                 "Anchor doesn't exist"
             );
@@ -343,7 +380,8 @@ mod tests {
                     anchor_id,
                     deposit_address,
                     vec![pf],
-                    static_proofs
+                    static_proofs,
+					1
                 ),
                 "Invalid proofs"
             );
@@ -370,7 +408,8 @@ mod tests {
                 anchor_id,
                 deposit_address,
                 vec![pf],
-                static_proofs
+                static_proofs,
+				1
             ),);
         })
     }
