@@ -68,12 +68,11 @@ decl_module! {
         }
 
 		pub fn transfer_generic(
-			origin,
+			_origin,
 			dest_id: chainbridge::ChainId,
 			resource_id: ResourceId,
 			metadata: Vec<u8>,
 		) -> DispatchResult {
-			T::BridgeOrigin::ensure_origin(origin)?;
 			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
 			Ok(())
 		}
