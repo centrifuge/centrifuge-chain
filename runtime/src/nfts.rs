@@ -30,7 +30,7 @@ decl_module! {
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
-            ensure_signed(origin.clone())?;
+            ensure_signed(origin)?;
 
             // get the anchor data from anchor ID
             let anchor_data = <anchor::Module<T>>::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
@@ -44,8 +44,7 @@ decl_module! {
 
 			let metadata = bundled_hash.as_ref().to_vec();
 			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
-			<pallet_bridge::Module<T>>::transfer_generic(origin, dest_id, resource_id, metadata)?;
-
+			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
             Ok(())
         }
     }
