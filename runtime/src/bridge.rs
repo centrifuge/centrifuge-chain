@@ -259,31 +259,6 @@ mod tests{
 
 
 	#[test]
-	fn transfer_hash() {
-		new_test_ext().execute_with(|| {
-			let dest_chain = 0;
-			let resource_id = HashId::get();
-			let hash: H256 = "ABC".using_encoded(blake2_256).into();
-
-			assert_ok!(ChainBridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-
-			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
-			assert_ok!(PalletBridge::transfer_hash(
-				Origin::signed(1),
-				hash.clone(),
-				dest_chain,
-			));
-
-			expect_event(chainbridge::RawEvent::GenericTransfer(
-				dest_chain,
-				1,
-				resource_id,
-				hash.as_ref().to_vec(),
-			));
-		})
-	}
-
-	#[test]
 	fn transfer_native() {
 		new_test_ext().execute_with(|| {
 			let dest_chain = 0;
