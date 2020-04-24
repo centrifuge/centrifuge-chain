@@ -553,6 +553,7 @@ parameter_types! {
 impl bridge::Trait for Runtime {
 	type Event = Event;
 	type BridgeOrigin = EnsureSigned<AccountId>;
+	type Currency = Balances;
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
 }
@@ -563,7 +564,6 @@ parameter_types! {
 }
 impl chainbridge::Trait for Runtime {
     type Event = Event;
-    type Currency = Balances;
     type Proposal = Call;
     type ChainId = ChainId;
 

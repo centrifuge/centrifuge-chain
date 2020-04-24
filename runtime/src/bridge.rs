@@ -3,14 +3,18 @@ use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResul
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
+use sp_core::U256;
+use sp_runtime::traits::SaturatedConversion;
 
 type ResourceId = chainbridge::ResourceId;
+type BalanceOf<T> =
+    <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 pub trait Trait: system::Trait + chainbridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
-
+ 	type Currency: Currency<Self::AccountId>;
     /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
     type HashId: Get<ResourceId>;
     type NativeTokenId: Get<ResourceId>;
@@ -38,14 +42,14 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
-        pub fn transfer_native(origin, amount: u32, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
+        pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
             ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
             let bridge_id = <chainbridge::Module<T>>::account_id();
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
             let resource_id = T::NativeTokenId::get();
-            <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, amount)?;
+            <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))?;
 			Ok(())
         }
 
@@ -55,7 +59,7 @@ decl_module! {
         //
 
         /// Executes a simple currency transfer using the chainbridge account as the source
-        pub fn transfer(origin, to: T::AccountId, amount: u32) -> DispatchResult {
+        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
@@ -77,7 +81,7 @@ mod tests{
 	use frame_support::dispatch::DispatchError;
 	use frame_support::{assert_noop, assert_ok};
 	use codec::Encode;
-	use sp_core::{blake2_256, H256};
+	use sp_core::{blake2_256, H256, U256};
 	use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
 	use frame_system::{self as system};
 	use sp_core::hashing::blake2_128;
@@ -145,7 +149,6 @@ mod tests{
 
 	impl chainbridge::Trait for Test {
 		type Event = Event;
-		type Currency = Balances;
 		type Proposal = Call;
 		type ChainId = TestChainId;
 	}
@@ -158,6 +161,7 @@ mod tests{
 	impl Trait for Test {
 		type Event = Event;
 		type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+		type Currency = Balances;
 		type HashId = HashId;
 		type NativeTokenId = NativeTokenId;
 	}
@@ -243,7 +247,7 @@ mod tests{
 		Call::PalletBridge(crate::bridge::Call::remark(hash))
 	}
 
-	fn make_transfer_proposal(to: u64, amount: u32) -> Call {
+	fn make_transfer_proposal(to: u64, amount: u64) -> Call {
 		Call::PalletBridge(crate::bridge::Call::transfer(to, amount))
 	}
 
@@ -253,7 +257,7 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			let dest_chain = 0;
 			let resource_id = NativeTokenId::get();
-			let amount: u32 = 100;
+			let amount: u64 = 100;
 			let recipient = vec![99];
 
 			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
@@ -268,7 +272,7 @@ mod tests{
 				dest_chain,
 				1,
 				resource_id,
-				amount,
+				amount.into(),
 				recipient,
 			));
 		})

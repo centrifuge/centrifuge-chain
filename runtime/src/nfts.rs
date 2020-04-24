@@ -149,18 +149,17 @@ mod tests {
 	impl pallet_bridge::Trait for Test {
 		type Event = ();
 		type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+		type Currency = Balances;
 		type HashId = HashId;
 		type NativeTokenId = NativeTokenId;
 	}
 
 	parameter_types! {
 		pub const TestChainId: u8 = 5;
-		pub const TestCurrency: u32 = 0;
 	}
 
 	impl chainbridge::Trait for Test {
 		type Event = ();
-		type Currency = Balances;
 		type Proposal = Call;
 		type ChainId = TestChainId;
 	}
