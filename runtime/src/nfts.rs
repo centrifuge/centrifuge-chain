@@ -381,7 +381,7 @@ mod tests {
                     deposit_address,
                     vec![pf],
                     static_proofs,
-					1
+					0
                 ),
                 "Invalid proofs"
             );
@@ -391,6 +391,7 @@ mod tests {
     #[test]
     fn valid_proof() {
         new_test_ext().execute_with(|| {
+            let dest_id = 0;
             let deposit_address: [u8; 20] = [0; 20];
             let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
@@ -403,13 +404,14 @@ mod tests {
                 common::MS_PER_DAY + 1
             ));
 
+            assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
             assert_ok!(Nfts::validate_mint(
                 Origin::signed(1),
                 anchor_id,
                 deposit_address,
                 vec![pf],
                 static_proofs,
-				1
+				0
             ),);
         })
     }
