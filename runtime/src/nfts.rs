@@ -1,12 +1,13 @@
 use crate::{anchor, proofs, proofs::Proof};
 use frame_support::{
-    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo,
+    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
+use crate::bridge as pallet_bridge;
 
-pub trait Trait: anchor::Trait {
+pub trait Trait: anchor::Trait + pallet_bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
@@ -17,7 +18,7 @@ decl_event!(
 );
 
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin  {
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin , T: pallet_bridge::Trait {
         fn deposit_event() = default;
 
         /// Validates the proofs provided against the document root associated with the anchor_id.
@@ -28,7 +29,7 @@ decl_module! {
         /// - depends on the arguments
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
-        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3]) -> DispatchResult {
+        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
             ensure_signed(origin)?;
 
             // get the anchor data from anchor ID
@@ -39,15 +40,17 @@ decl_module! {
 
             // get the bundled hash
             let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
-
             Self::deposit_event(RawEvent::DepositAsset(bundled_hash));
 
+			let metadata = bundled_hash.as_ref().to_vec();
+			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
+			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
             Ok(())
         }
     }
 }
 
-impl<T: Trait> Module<T> {
+impl<T: Trait + pallet_bridge::Trait> Module<T>{
     /// Validates the proofs again the provided doc_root.
     /// returns false if any proofs are invalid.
     fn validate_proofs(doc_root: T::Hash, pfs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {
@@ -72,23 +75,35 @@ mod tests {
     use crate::proofs::Proof;
     use codec::Encode;
     use frame_support::{
-        assert_err, assert_ok, impl_outer_origin, parameter_types, weights::Weight,
+        assert_err, assert_ok, parameter_types, weights::Weight,
     };
     use sp_core::H256;
     use sp_runtime::{
         testing::Header,
-        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
+        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
         Perbill,
     };
+	use sp_core::hashing::blake2_128;
+	use crate::nfts;
+	use sp_std::prelude::*;
 
-    impl_outer_origin! {
-        pub enum Origin for Test {}
-    }
+	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
-    #[derive(Clone, Eq, PartialEq)]
-    pub struct Test;
+	frame_support::construct_runtime!(
+		pub enum Test where
+			Block = Block,
+			NodeBlock = Block,
+			UncheckedExtrinsic = UncheckedExtrinsic
+		{
+			System: frame_system::{Module, Call, Event<T>},
+			Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+			Nfts: nfts::{Module, Event<T>}
+		}
+	);
 
-    type Nfts = super::Module<Test>;
     type Anchor = anchor::Module<Test>;
 
     parameter_types! {
@@ -126,6 +141,29 @@ mod tests {
         type Event = ();
     }
 
+	parameter_types! {
+		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+	}
+
+	impl pallet_bridge::Trait for Test {
+		type Event = ();
+		type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+		type Currency = Balances;
+		type HashId = HashId;
+		type NativeTokenId = NativeTokenId;
+	}
+
+	parameter_types! {
+		pub const TestChainId: u8 = 5;
+	}
+
+	impl chainbridge::Trait for Test {
+		type Event = ();
+		type Proposal = Call;
+		type ChainId = TestChainId;
+	}
+
     impl pallet_timestamp::Trait for Test {
         type Moment = u64;
         type OnTimestampSet = ();
@@ -155,7 +193,6 @@ mod tests {
         type AccountStore = System;
     }
 
-    type System = frame_system::Module<Test>;
 
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
@@ -283,20 +320,21 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3]) {
+    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3], chainbridge::ChainId) {
         let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
         let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
-        (anchor_id, deposit_address, pfs, static_proofs)
+		let chain_id: chainbridge::ChainId = 1;
+        (anchor_id, deposit_address, pfs, static_proofs, chain_id)
     }
 
     #[test]
     fn bad_origin() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
-                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs),
+                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs, chain_id),
                 BadOrigin
             );
         })
@@ -305,14 +343,15 @@ mod tests {
     #[test]
     fn missing_anchor() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
                 Nfts::validate_mint(
                     Origin::signed(1),
                     anchor_id,
                     deposit_address,
                     pfs,
-                    static_proofs
+                    static_proofs,
+					chain_id
                 ),
                 "Anchor doesn't exist"
             );
@@ -340,7 +379,8 @@ mod tests {
                     anchor_id,
                     deposit_address,
                     vec![pf],
-                    static_proofs
+                    static_proofs,
+					0
                 ),
                 "Invalid proofs"
             );
@@ -350,6 +390,7 @@ mod tests {
     #[test]
     fn valid_proof() {
         new_test_ext().execute_with(|| {
+            let dest_id = 0;
             let deposit_address: [u8; 20] = [0; 20];
             let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
@@ -362,12 +403,14 @@ mod tests {
                 common::MS_PER_DAY + 1
             ));
 
+            assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
             assert_ok!(Nfts::validate_mint(
                 Origin::signed(1),
                 anchor_id,
                 deposit_address,
                 vec![pf],
-                static_proofs
+                static_proofs,
+				0
             ),);
         })
     }
