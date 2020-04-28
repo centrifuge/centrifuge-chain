@@ -598,7 +598,7 @@ construct_runtime!(
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 	}
 );

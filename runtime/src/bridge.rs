@@ -1,5 +1,5 @@
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
-use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
@@ -18,6 +18,18 @@ pub trait Trait: system::Trait + chainbridge::Trait {
     /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
     type HashId: Get<ResourceId>;
     type NativeTokenId: Get<ResourceId>;
+}
+
+decl_storage! {
+	trait Store for Module<T: Trait> as Bridge {}
+
+	add_extra_genesis {
+        config(chains): Vec<u8>;
+        config(relayers): Vec<T::AccountId>;
+        config(resources): Vec<ResourceId>;
+
+        build(|config| Module::<T>::initialize_test(&config.chains, &config.relayers, &config.resources))
+    }
 }
 
 decl_event! {
@@ -73,6 +85,21 @@ decl_module! {
         }
 
     }
+}
+
+impl<T: Trait> Module<T> {
+	fn initialize_test(chains: &[u8], relayers: &[T::AccountId], resources: &[ResourceId]) {
+		chains.into_iter().for_each(|c| {
+			<chainbridge::Module<T>>::whitelist(*c);
+		});
+		relayers.into_iter().for_each(|rs| {
+			<chainbridge::Module<T>>::register_relayer(rs);
+		});
+		<chainbridge::Module<T>>::set_relayer_threshold(relayers.len() as u32);
+		resources.into_iter().for_each(|re| {
+			<chainbridge::Module<T>>::register_resource(*re, vec![0]);
+		});
+	}
 }
 
 #[cfg(test)]
