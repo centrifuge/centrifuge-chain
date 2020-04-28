@@ -87,7 +87,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
     spec_version: 227,
-    impl_version: 1,
+    impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -566,7 +566,8 @@ impl chainbridge::Trait for Runtime {
     type Event = Event;
     type Proposal = Call;
     type ChainId = ChainId;
-
+	/// A 75% majority of the council can update bridge settings.
+	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 }
 
 construct_runtime!(
@@ -598,7 +599,7 @@ construct_runtime!(
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 	}
 );
