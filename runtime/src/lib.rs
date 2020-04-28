@@ -566,7 +566,8 @@ impl chainbridge::Trait for Runtime {
     type Event = Event;
     type Proposal = Call;
     type ChainId = ChainId;
-
+	/// A straight majority of the council can update bridge settings.
+	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
 construct_runtime!(

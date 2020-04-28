@@ -15,7 +15,6 @@ use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
-use sp_core::crypto::AccountId32;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
 pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
@@ -218,8 +217,11 @@ pub fn testnet_genesis(
 			],
 		}),
 		pallet_bridge: Some(PalletBridgeConfig{
+			// Whitelist chains Ethereum - 0
 			chains: vec![0],
+			// Whitelisted resourceIDs
 			resources: vec![hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"]],
+			// Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 			relayers: vec![hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into()],
 		}),
         fees: Some(FeesConfig {

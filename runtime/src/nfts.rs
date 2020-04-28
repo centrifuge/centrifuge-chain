@@ -75,7 +75,7 @@ mod tests {
     use crate::proofs::Proof;
     use codec::Encode;
     use frame_support::{
-        assert_err, assert_ok, parameter_types, weights::Weight,
+        assert_err, assert_ok, parameter_types, ord_parameter_types, weights::Weight,
     };
     use sp_core::H256;
     use sp_runtime::{
@@ -86,6 +86,7 @@ mod tests {
 	use sp_core::hashing::blake2_128;
 	use crate::nfts;
 	use sp_std::prelude::*;
+    use frame_system::EnsureSignedBy;
 
 	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
@@ -158,10 +159,15 @@ mod tests {
 		pub const TestChainId: u8 = 5;
 	}
 
+    ord_parameter_types! {
+		pub const One: u64 = 1;
+	}
+
 	impl chainbridge::Trait for Test {
 		type Event = ();
 		type Proposal = Call;
 		type ChainId = TestChainId;
+        type AdminOrigin = EnsureSignedBy<One, u64>;
 	}
 
     impl pallet_timestamp::Trait for Test {
