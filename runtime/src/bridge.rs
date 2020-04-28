@@ -28,7 +28,7 @@ decl_storage! {
         config(relayers): Vec<T::AccountId>;
         config(resources): Vec<ResourceId>;
 
-        build(|config| Module::<T>::initialize_test(&config.chains, &config.relayers, &config.resources))
+        build(|config| Module::<T>::initialize(&config.chains, &config.relayers, &config.resources))
     }
 }
 
@@ -89,7 +89,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	/// Its called as part of genesis step to initialize some dev parameters
-	fn initialize_test(chains: &[u8], relayers: &[T::AccountId], resources: &[ResourceId]) {
+	fn initialize(chains: &[u8], relayers: &[T::AccountId], resources: &[ResourceId]) {
 		chains.into_iter().for_each(|c| {
 			<chainbridge::Module<T>>::whitelist(*c).unwrap_or_default();
 		});
