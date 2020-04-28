@@ -12,7 +12,7 @@ use frame_support::{
 };
 use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
-use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
+use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
 	Perbill, ApplyExtrinsicResult,
@@ -569,6 +569,22 @@ impl chainbridge::Trait for Runtime {
 
 }
 
+parameter_types! {
+	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
+}
+
+impl pallet_indices::Trait for Runtime {
+	/// The type for recording indexing into the account enumeration. If this ever overflows, there
+	/// will be problems!
+	type AccountIndex = AccountIndex;
+	/// The overarching event type.
+	type Event = Event;
+	/// The currency trait.
+	type Currency = Balances;
+	/// The deposit needed for reserving an index.
+	type Deposit = IndexDeposit;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -600,6 +616,7 @@ construct_runtime!(
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Event<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
