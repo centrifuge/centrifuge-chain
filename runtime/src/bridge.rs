@@ -1,5 +1,5 @@
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
-use frame_support::{decl_error, decl_event, decl_module, dispatch::DispatchResult, ensure};
+use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
@@ -18,6 +18,18 @@ pub trait Trait: system::Trait + chainbridge::Trait {
     /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
     type HashId: Get<ResourceId>;
     type NativeTokenId: Get<ResourceId>;
+}
+
+decl_storage! {
+	trait Store for Module<T: Trait> as Bridge {}
+
+	add_extra_genesis {
+        config(chains): Vec<u8>;
+        config(relayers): Vec<T::AccountId>;
+        config(resources): Vec<ResourceId>;
+
+        build(|config| Module::<T>::initialize(&config.chains, &config.relayers, &config.resources))
+    }
 }
 
 decl_event! {
@@ -75,15 +87,33 @@ decl_module! {
     }
 }
 
+impl<T: Trait> Module<T> {
+	/// Its called as part of genesis step to initialize some dev parameters
+	fn initialize(chains: &[u8], relayers: &[T::AccountId], resources: &[ResourceId]) {
+		chains.into_iter().for_each(|c| {
+			<chainbridge::Module<T>>::whitelist(*c).unwrap_or_default();
+		});
+		relayers.into_iter().for_each(|rs| {
+			<chainbridge::Module<T>>::register_relayer(rs.clone()).unwrap_or_default();
+		});
+		if !relayers.is_empty() {
+			<chainbridge::Module<T>>::set_relayer_threshold(relayers.len() as u32).unwrap_or_default();
+		}
+		resources.into_iter().for_each(|re| {
+			<chainbridge::Module<T>>::register_resource(*re, vec![0]).unwrap_or_default();
+		});
+	}
+}
+
 #[cfg(test)]
 mod tests{
 	use super::*;
 	use frame_support::dispatch::DispatchError;
 	use frame_support::{assert_noop, assert_ok};
 	use codec::Encode;
-	use sp_core::{blake2_256, H256, U256};
+	use sp_core::{blake2_256, H256};
 	use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
-	use frame_system::{self as system};
+	use frame_system::{self as system, EnsureSignedBy};
 	use sp_core::hashing::blake2_128;
 	use sp_runtime::{
 		testing::Header,
@@ -151,6 +181,7 @@ mod tests{
 		type Event = Event;
 		type Proposal = Call;
 		type ChainId = TestChainId;
+		type AdminOrigin = EnsureSignedBy<One, u64>;
 	}
 
 	parameter_types! {
