@@ -5,9 +5,12 @@ use frame_support::{
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
-use crate::bridge as pallet_bridge;
+// TODO uncomment this when ready to merge bridge pallet
+// use crate::bridge as pallet_bridge;
 
-pub trait Trait: anchor::Trait + pallet_bridge::Trait {
+// TODO uncomment this when ready to merge bridge pallet
+// pub trait Trait: anchor::Trait + pallet_bridge::Trait {
+pub trait Trait: anchor::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
@@ -18,7 +21,9 @@ decl_event!(
 );
 
 decl_module! {
-    pub struct Module<T: Trait> for enum Call where origin: T::Origin , T: pallet_bridge::Trait {
+    // TODO uncomment this when ready to merge bridge pallet
+    // pub struct Module<T: Trait> for enum Call where origin: T::Origin , T: pallet_bridge::Trait {
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         fn deposit_event() = default;
 
         /// Validates the proofs provided against the document root associated with the anchor_id.
@@ -29,7 +34,9 @@ decl_module! {
         /// - depends on the arguments
         /// # </weight>
         #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
-        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
+        // TODO uncomment this when ready to merge bridge pallet
+        // fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
+        fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3]) -> DispatchResult {
             ensure_signed(origin)?;
 
             // get the anchor data from anchor ID
@@ -42,15 +49,18 @@ decl_module! {
             let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
             Self::deposit_event(RawEvent::DepositAsset(bundled_hash));
 
-			let metadata = bundled_hash.as_ref().to_vec();
-			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
-			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
+            // TODO uncomment this when ready to merge bridge pallet
+			// let metadata = bundled_hash.as_ref().to_vec();
+			// let resource_id = <T as pallet_bridge::Trait>::HashId::get();
+			// <chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
             Ok(())
         }
     }
 }
 
-impl<T: Trait + pallet_bridge::Trait> Module<T>{
+// TODO uncomment this when ready to merge bridge pallet
+// impl<T: Trait + pallet_bridge::Trait> Module<T>{
+impl<T: Trait> Module<T>{
     /// Validates the proofs again the provided doc_root.
     /// returns false if any proofs are invalid.
     fn validate_proofs(doc_root: T::Hash, pfs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {
@@ -99,8 +109,8 @@ mod tests {
 		{
 			System: frame_system::{Module, Call, Event<T>},
 			Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
-			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+			// ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+			// PalletBridge: pallet_bridge::{Module, Call, Event<T>},
 			Nfts: nfts::{Module, Event<T>}
 		}
 	);
@@ -142,18 +152,19 @@ mod tests {
         type Event = ();
     }
 
-	parameter_types! {
-		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
-		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
-	}
+    // TODO uncomment this when ready to merge bridge pallet
+	// parameter_types! {
+	// 	pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	// 	pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+	// }
 
-	impl pallet_bridge::Trait for Test {
-		type Event = ();
-		type BridgeOrigin = chainbridge::EnsureBridge<Test>;
-		type Currency = Balances;
-		type HashId = HashId;
-		type NativeTokenId = NativeTokenId;
-	}
+	// impl pallet_bridge::Trait for Test {
+	// 	type Event = ();
+	// 	type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+	// 	type Currency = Balances;
+	// 	type HashId = HashId;
+	// 	type NativeTokenId = NativeTokenId;
+	// }
 
 	parameter_types! {
 		pub const TestChainId: u8 = 5;
@@ -163,12 +174,13 @@ mod tests {
 		pub const One: u64 = 1;
 	}
 
-	impl chainbridge::Trait for Test {
-		type Event = ();
-		type Proposal = Call;
-		type ChainId = TestChainId;
-        type AdminOrigin = EnsureSignedBy<One, u64>;
-	}
+    // TODO uncomment this when ready to merge bridge pallet
+	// impl chainbridge::Trait for Test {
+	// 	type Event = ();
+	// 	type Proposal = Call;
+	// 	type ChainId = TestChainId;
+    //     type AdminOrigin = EnsureSignedBy<One, u64>;
+	// }
 
     impl pallet_timestamp::Trait for Test {
         type Moment = u64;
@@ -326,21 +338,28 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3], chainbridge::ChainId) {
+    // TODO uncomment this when ready to merge bridge pallet
+    // fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3], chainbridge::ChainId) {
+    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3]) {
         let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
         let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
-		let chain_id: chainbridge::ChainId = 1;
-        (anchor_id, deposit_address, pfs, static_proofs, chain_id)
+        // TODO uncomment this when ready to merge bridge pallet
+		// let chain_id: chainbridge::ChainId = 1;
+        // (anchor_id, deposit_address, pfs, static_proofs, chain_id)
+        (anchor_id, deposit_address, pfs, static_proofs)
     }
 
     #[test]
     fn bad_origin() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
+            // let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
             assert_err!(
-                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs, chain_id),
+                // TODO uncomment this when ready to merge bridge pallet
+                // Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs, chain_id),
+                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs),
                 BadOrigin
             );
         })
@@ -349,15 +368,16 @@ mod tests {
     #[test]
     fn missing_anchor() {
         new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
+            // TODO uncomment this when ready to merge bridge pallet
+            // let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
+            let (anchor_id, deposit_address, pfs, static_proofs) = get_params();
             assert_err!(
                 Nfts::validate_mint(
                     Origin::signed(1),
                     anchor_id,
                     deposit_address,
                     pfs,
-                    static_proofs,
-					chain_id
+                    static_proofs // add chain_id when bridge ready
                 ),
                 "Anchor doesn't exist"
             );
@@ -385,8 +405,7 @@ mod tests {
                     anchor_id,
                     deposit_address,
                     vec![pf],
-                    static_proofs,
-					0
+                    static_proofs // Add 0 when bridge ready
                 ),
                 "Invalid proofs"
             );
@@ -409,14 +428,14 @@ mod tests {
                 common::MS_PER_DAY + 1
             ));
 
-            assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
+            // TODO uncomment this when ready to merge bridge pallet
+            // assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
             assert_ok!(Nfts::validate_mint(
                 Origin::signed(1),
                 anchor_id,
                 deposit_address,
                 vec![pf],
-                static_proofs,
-				0
+                static_proofs // Add 0 when bridge ready
             ),);
         })
     }

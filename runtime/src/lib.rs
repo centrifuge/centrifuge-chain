@@ -49,7 +49,8 @@ pub use pallet_staking::StakerStatus;
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
 use impls::{CurrencyToVoteHandler, Author, LinearWeightToFee, TargetedFeeAdjustment};
-use bridge as pallet_bridge;
+// TODO uncomment this when ready to merge bridge pallet
+// use bridge as pallet_bridge;
 
 /// Used for anchor module
 pub mod anchor;
@@ -66,8 +67,9 @@ mod proofs;
 /// nft module
 mod nfts;
 
+// TODO uncomment this when ready to merge bridge pallet
 /// bridge module
-mod bridge;
+// mod bridge;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -87,7 +89,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
     spec_version: 227,
-    impl_version: 3,
+    impl_version: 4,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -550,25 +552,28 @@ parameter_types! {
 	pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 }
 
-impl bridge::Trait for Runtime {
-	type Event = Event;
-	type BridgeOrigin = EnsureSigned<AccountId>;
-	type Currency = Balances;
-	type HashId = HashId;
-	type NativeTokenId = NativeTokenId;
-}
+// TODO uncomment this when ready to merge bridge pallet
+// impl bridge::Trait for Runtime {
+// 	type Event = Event;
+// 	type BridgeOrigin = EnsureSigned<AccountId>;
+// 	type Currency = Balances;
+// 	type HashId = HashId;
+// 	type NativeTokenId = NativeTokenId;
+// }
 
 
 parameter_types! {
     pub const ChainId: u8 = 1;
 }
-impl chainbridge::Trait for Runtime {
-    type Event = Event;
-    type Proposal = Call;
-    type ChainId = ChainId;
-	/// A 75% majority of the council can update bridge settings.
-	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
-}
+
+// TODO uncomment this when ready to merge bridge pallet
+// impl chainbridge::Trait for Runtime {
+//     type Event = Event;
+//     type Proposal = Call;
+//     type ChainId = ChainId;
+// 	/// A 75% majority of the council can update bridge settings.
+// 	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+// }
 
 parameter_types! {
 	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
@@ -615,8 +620,9 @@ construct_runtime!(
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
-		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+		// TODO uncomment this when ready to merge bridge pallet
+		// PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
+		// ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
