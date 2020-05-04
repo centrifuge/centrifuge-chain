@@ -24,7 +24,7 @@ cargo --version
 
 case $TARGET in
 	"build-client")
-		cargo build --release --locked "$@"
+		cargo build --release "$@"
 		;;
 
 	"runtime-test")
