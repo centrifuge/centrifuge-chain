@@ -1,6 +1,6 @@
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use node_runtime::{
-	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
+	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, CouncilConfig, DemocracyConfig, // Add PalletBridgeConfig
 	FeesConfig, GrandpaConfig, ImOnlineConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
 	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
@@ -220,14 +220,15 @@ pub fn testnet_genesis(
 				(endowed_accounts[0].clone(), 2, vec![endowed_accounts[1].clone(), endowed_accounts[2].clone()]),
 			],
 		}),
-		pallet_bridge: Some(PalletBridgeConfig{
-			// Whitelist chains Ethereum - 0
-			chains: vec![0],
-			// Whitelisted resourceIDs
-			resources: vec![hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"]],
-			// Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-			relayers: vec![hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into()],
-		}),
+		// TODO uncomment this when ready to merge bridge pallet
+		// pallet_bridge: Some(PalletBridgeConfig{
+		// 	// Whitelist chains Ethereum - 0
+		// 	chains: vec![0],
+		// 	// Whitelisted resourceIDs
+		// 	resources: vec![hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"]],
+		// 	// Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+		// 	relayers: vec![hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into()],
+		// }),
         fees: Some(FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
