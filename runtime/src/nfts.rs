@@ -1,6 +1,6 @@
 use crate::{anchor, proofs, proofs::Proof};
 use frame_support::{
-    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
+    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, // add traits::Get when bridge is ready
 };
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
@@ -93,10 +93,11 @@ mod tests {
         traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
         Perbill,
     };
-	use sp_core::hashing::blake2_128;
 	use crate::nfts;
 	use sp_std::prelude::*;
-    use frame_system::EnsureSignedBy;
+    // TODO uncomment this when ready to merge bridge pallet
+	// use sp_core::hashing::blake2_128;
+    // use frame_system::EnsureSignedBy;
 
 	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
@@ -415,7 +416,8 @@ mod tests {
     #[test]
     fn valid_proof() {
         new_test_ext().execute_with(|| {
-            let dest_id = 0;
+            // TODO uncomment this when ready to merge bridge pallet
+            // let dest_id = 0;
             let deposit_address: [u8; 20] = [0; 20];
             let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
