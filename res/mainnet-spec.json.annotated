@@ -1,10 +1,15 @@
 // This annotated version of the spec adds comments to the original version starting. You can verify the contents match by running the following command:
-// sed '/^\/\// d' < mainnet-spec.json.annotated | diff mainnet-spec.json - 
+// sed '/^\/\// d' < mainnet-spec.json.annotated | diff mainnet-spec.json -
 {
   "name": "Centrifuge Mainnet",
   "id": "mainnet",
   "bootNodes": [],
-  "telemetryEndpoints": null,
+  "telemetryEndpoints": [
+    [
+      "wss://telemetry.polkadot.io/submit/",
+      0
+    ]
+  ],
   "protocolId": "mainnet",
   "properties": {
     "ss58Format": 36,
@@ -43,13 +48,13 @@
           ["4f4uzLSVxqBiqXnNr3BHc1c5ytYfrVZGNMhtG7qpnHTze9e3", 750000000000000000000000],
 // Manuel Polzhofer Controller
           ["4fZ41eL5gv6schj6ojccLonw6tBxEYxFBgTrS3yqdxpmStv7", 200000000000000000000000],
-// Centrifuge Team Member #1 Stash 
+// Centrifuge Team Member #1 Stash
           ["4dHpZm63rHrQPuTNRuTK24U4c9JzrYCgh6MhkHQowi6x2r1V", 1121152000000000000000000],
-// Centrifuge Team Member #1 Controller 
+// Centrifuge Team Member #1 Controller
           ["4cABzziSUZWzzfQGeWvxnVUXePkamXCYp9BBgkRVd4d9MBTM", 100000000000000000000],
-// Vedhavyas Singareddi Stash 
+// Vedhavyas Singareddi Stash
           ["4biGPE627SThwSTY2PSSNB3xyZ3YtEraiu99LFTZsVoWJE82", 1021252000000000000000000],
-// Vedhavyas Singareddi Controller 
+// Vedhavyas Singareddi Controller
           ["4fAEcB4onVVcLzRWtFRpFMsZXL3cWcrPpLFRcGs8YMrVgjep", 100000000000000000000000],
 // Dennis Wellmann Stash
           ["4dkPyf3E3cQTimFPDHnsv7UgMtTZ9jPUVshyrG4cbcjTH3si", 550000000000000000000000],
@@ -76,7 +81,7 @@
 // Centrifuge Team Member #3 Controller
           ["4eU6D8cfrx7CyUR6v7kvvi2mU2GeWH6uYXwbYPXW4d8bvDov", 100000000000000000000],
 
-// Ethereum Radial Supply Special Account (400M RAD ETH supply - migrated RAD at Genesis) 
+// Ethereum Radial Supply Special Account (400M RAD ETH supply - migrated RAD at Genesis)
           ["4dpEcgqFor2TJw9uWSjx2JpjkNmTic2UjJAK1j9fRtcTUoRu", 380804969000000000000000000],
 // CNF Multisig holding various funds:
 // 4.650M RAD in Grants and Token Awards
@@ -119,9 +124,9 @@
           ["4gj8oRqXY3fwbh62Gh3eskiq8oHxKvRFtDFmWK7nQ3S4AEMm", 29900000000000000000000],
 // Pure Stake #1 Controller
           ["4cMbngpvtVLeXo7PwBvKxfWvMTCNn7Mk1sCED3vjozd9i6qt", 100000000000000000000],
-// Pure Stake #2 Stash 
+// Pure Stake #2 Stash
           ["4dLkjhLWziQDQVFkm4LJYe9pfUL4RKkY9zuZ9XASTcrz7P43", 29900000000000000000000],
-// Pure Stake #2 Controller 
+// Pure Stake #2 Controller
           ["4gF7rrmcExxtH2J3CyBLyMGMvF4XMhZL7huq4K9SxFeJTz3y", 100000000000000000000],
 // Staked.us Stash
           ["4dLDCBi63LgERKviARMdNvqfeG2QRrNRe9vUYpEAVyj5tJmt", 59900000000000000000000],

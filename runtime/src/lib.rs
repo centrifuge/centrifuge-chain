@@ -21,7 +21,7 @@ use sp_runtime::{
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::TransactionValidity;
 use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, IdentityLookup, SaturatedConversion,
+	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
 	OpaqueKeys,
 };
 use sp_version::RuntimeVersion;
@@ -86,8 +86,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 227,
-    impl_version: 3,
+    spec_version: 228,
+    impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -126,7 +126,7 @@ impl frame_system::Trait for Runtime {
     /// The identifier used to distinguish between accounts.
     type AccountId = AccountId;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = IdentityLookup<AccountId>;
+    type Lookup = Indices;
     /// The header type.
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
     /// The overarching event type.
@@ -487,8 +487,9 @@ impl frame_system::offchain::CreateTransaction<Runtime, UncheckedExtrinsic> for 
 			debug::warn!("Unable to create signed payload: {:?}", e);
 		}).ok()?;
 		let signature = TSigner::sign(public, &raw_payload)?;
+		let address = Indices::unlookup(account);
 		let (call, extra, _) = raw_payload.deconstruct();
-		Some((call, (account, signature, extra)))
+		Some((call, (address, signature, extra)))
 	}
 }
 
@@ -622,7 +623,7 @@ construct_runtime!(
 );
 
 /// The address format for describing accounts.
-pub type Address = AccountId;
+pub type Address = <Indices as StaticLookup>::Source;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.

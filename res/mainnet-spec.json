@@ -2,7 +2,12 @@
   "name": "Centrifuge Mainnet",
   "id": "mainnet",
   "bootNodes": [],
-  "telemetryEndpoints": null,
+  "telemetryEndpoints": [
+    [
+      "wss://telemetry.polkadot.io/submit/",
+      0
+    ]
+  ],
   "protocolId": "mainnet",
   "properties": {
     "ss58Format": 36,

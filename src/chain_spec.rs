@@ -1,7 +1,7 @@
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
-	FeesConfig, GrandpaConfig, ImOnlineConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
+	FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
 	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
 use node_runtime::constants::currency::*;
@@ -12,7 +12,6 @@ use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
-use node_runtime::IndicesConfig;
 
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
