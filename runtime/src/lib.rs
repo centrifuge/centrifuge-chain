@@ -19,7 +19,7 @@ use sp_runtime::{
 	impl_opaque_keys, generic, create_runtime_str,
 };
 use sp_runtime::curve::PiecewiseLinear;
-use sp_runtime::transaction_validity::TransactionValidity;
+use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
 use sp_runtime::traits::{
 	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
 	OpaqueKeys,
@@ -76,6 +76,9 @@ use constants::{time::*, currency::*};
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+
+/// A transaction submitter with the given key type.
+pub type TransactionSubmitterOf<KeyType> = TransactionSubmitter<KeyType, Runtime, UncheckedExtrinsic>;
 
 /// Runtime version.
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -257,6 +260,7 @@ impl pallet_session::Trait for Runtime {
 	type ValidatorId = <Self as frame_system::Trait>::AccountId;
 	type ValidatorIdOf = pallet_staking::StashOf<Self>;
 	type ShouldEndSession = Babe;
+	type NextSessionRotation = Babe;
 	type SessionManager = Staking;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
@@ -284,11 +288,13 @@ parameter_types! {
 	pub const BondingDuration: pallet_staking::EraIndex = 7; // 7 days
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 7; // 7 days, same as bonding duration
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+	pub const ElectionLookahead: BlockNumber = 25; // 10 minutes per session => 100 block.
+	pub const MaxNominatorRewardedPerValidator: u32 = 64;
 }
 
 impl pallet_staking::Trait for Runtime {
 	type Currency = Balances;
-	type Time = Timestamp;
+	type UnixTime = Timestamp;
 	type CurrencyToVote = CurrencyToVoteHandler;
 	type RewardRemainder = ();
 	type Event = Event;
@@ -301,6 +307,23 @@ impl pallet_staking::Trait for Runtime {
 	type SlashCancelOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	type SessionInterface = Self;
 	type RewardCurve = RewardCurve;
+	type NextNewSession = Session;
+	type ElectionLookahead = ElectionLookahead;
+	type Call = Call;
+	type SubmitTransaction = TransactionSubmitterOf<()>;
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+	type UnsignedPriority = StakingUnsignedPriority;
+}
+
+parameter_types! {
+	pub const MaximumWeight: Weight = 2_000_000;
+}
+
+impl pallet_scheduler::Trait for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Call = Call;
+	type MaximumWeight = MaximumWeight;
 }
 
 parameter_types! {
@@ -311,6 +334,7 @@ parameter_types! {
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_RAD;
+	pub const InstantAllowed: bool = true;
 }
 
 impl pallet_democracy::Trait for Runtime {
@@ -347,9 +371,9 @@ impl pallet_democracy::Trait for Runtime {
 	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
 	type FastTrackOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
-
-	/// Minimum voting period allowed for an fast-track/emergency referendum.
-	type EmergencyVotingPeriod = EmergencyVotingPeriod;
+	type InstantOrigin = pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type InstantAllowed = InstantAllowed;
+	type FastTrackVotingPeriod = EmergencyVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
 	type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
@@ -366,6 +390,11 @@ impl pallet_democracy::Trait for Runtime {
 
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
 	type Slash = ();
+	type Scheduler = Scheduler;
+}
+
+parameter_types! {
+	pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
 }
 
 type CouncilCollective = pallet_collective::Instance1;
@@ -373,6 +402,8 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
+	/// The time-out for council motions.
+	type MotionDuration = CouncilMotionDuration;
 }
 
 parameter_types! {
@@ -387,6 +418,9 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	type Event = Event;
 	type Currency = Balances;
 	type ChangeMembers = Council;
+	// NOTE: this implies that council's genesis members cannot be set directly and must come from
+	// this module.
+	type InitializeMembers = Council;
 	type CurrencyToVote = CurrencyToVoteHandler;
 
 	/// How much should be locked up in order to submit one's candidacy.
@@ -416,6 +450,9 @@ pub type SubmitTransaction = TransactionSubmitter<ImOnlineId, Runtime, Unchecked
 
 parameter_types! {
 	pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_SLOTS as _;
+	pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+	/// We prioritize im-online heartbeats over phragmen solution submission.
+	pub const StakingUnsignedPriority: TransactionPriority = TransactionPriority::max_value() / 2;
 }
 
 impl pallet_im_online::Trait for Runtime {
@@ -425,6 +462,7 @@ impl pallet_im_online::Trait for Runtime {
 	type SubmitTransaction = SubmitTransaction;
     type SessionDuration = SessionDuration;
     type ReportUnresponsiveness = Offences;
+	type UnsignedPriority = ImOnlineUnsignedPriority;
 }
 
 impl pallet_offences::Trait for Runtime {
@@ -562,6 +600,8 @@ impl bridge::Trait for Runtime {
 
 parameter_types! {
     pub const ChainId: u8 = 1;
+    /// ProposalLifetime is set to approximately 1 day
+    pub const ProposalLifetime: BlockNumber = 14_400;
 }
 impl chainbridge::Trait for Runtime {
     type Event = Event;
@@ -569,6 +609,8 @@ impl chainbridge::Trait for Runtime {
     type ChainId = ChainId;
 	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	/// Number of blocks after which the Proposal is expired
+	type ProposalLifetime = ProposalLifetime;
 }
 
 parameter_types! {
@@ -619,6 +661,7 @@ construct_runtime!(
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
+		Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 	}
 );
 
@@ -683,10 +726,6 @@ impl_runtime_apis! {
 			Executive::apply_extrinsic(extrinsic)
 		}
 
-		fn apply_trusted_extrinsic(extrinsic: <Block as BlockT>::Extrinsic) -> ApplyExtrinsicResult {
-			Executive::apply_trusted_extrinsic(extrinsic)
-		}
-
 		fn finalize_block() -> <Block as BlockT>::Header {
 			Executive::finalize_block()
 		}
@@ -705,8 +744,11 @@ impl_runtime_apis! {
 	}
 
 	impl sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block> for Runtime {
-		fn validate_transaction(tx: <Block as BlockT>::Extrinsic) -> TransactionValidity {
-			Executive::validate_transaction(tx)
+		fn validate_transaction(
+			source: TransactionSource,
+			tx: <Block as BlockT>::Extrinsic,
+		) -> TransactionValidity {
+			Executive::validate_transaction(source, tx)
 		}
 	}
 
@@ -809,39 +851,7 @@ mod tests {
 			>,
 		{}
 
-		is_submit_signed_transaction::<SubmitTransaction>();
-		is_sign_and_submit_transaction::<SubmitTransaction>();
-	}
-
-	#[test]
-	fn block_hooks_weight_should_not_exceed_limits() {
-		use frame_support::weights::WeighBlock;
-		let check_for_block = |b| {
-			let block_hooks_weight =
-				<AllModules as WeighBlock<BlockNumber>>::on_initialize(b) +
-				<AllModules as WeighBlock<BlockNumber>>::on_finalize(b);
-
-			assert_eq!(
-				block_hooks_weight,
-				0,
-				"This test might fail simply because the value being compared to has increased to a \
-				module declaring a new weight for a hook or call. In this case update the test and \
-				happily move on.",
-			);
-
-			// Invariant. Always must be like this to have a sane chain.
-			assert!(block_hooks_weight < MaximumBlockWeight::get());
-
-			// Warning.
-			if block_hooks_weight > MaximumBlockWeight::get() / 2 {
-				println!(
-					"block hooks weight is consuming more than a block's capacity. You probably want \
-					to re-think this. This test will fail now."
-				);
-				assert!(false);
-			}
-		};
-
-		let _ = (0..100_000).for_each(check_for_block);
+		is_submit_signed_transaction::<TransactionSubmitterOf<ImOnlineId>>();
+		is_sign_and_submit_transaction::<TransactionSubmitterOf<ImOnlineId>>();
 	}
 }

@@ -87,6 +87,7 @@ mod tests {
 	use crate::nfts;
 	use sp_std::prelude::*;
     use frame_system::EnsureSignedBy;
+    use node_primitives::BlockNumber;
 
 	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
@@ -161,6 +162,7 @@ mod tests {
 
     ord_parameter_types! {
 		pub const One: u64 = 1;
+		pub const ProposalLifetime: BlockNumber = 500;
 	}
 
 	impl chainbridge::Trait for Test {
@@ -168,7 +170,8 @@ mod tests {
 		type Proposal = Call;
 		type ChainId = TestChainId;
         type AdminOrigin = EnsureSignedBy<One, u64>;
-	}
+        type ProposalLifetime = ProposalLifetime;
+    }
 
     impl pallet_timestamp::Trait for Test {
         type Moment = u64;

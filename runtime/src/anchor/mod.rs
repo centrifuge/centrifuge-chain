@@ -68,17 +68,17 @@ decl_storage! {
 
         /// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed
         /// later
-        PreCommits get(get_pre_commit): map hasher(blake2_256) T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
+        PreCommits get(get_pre_commit): map hasher(opaque_blake2_256) T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
         /// Pre-commit eviction buckets keep track of which pre-commit can be evicted at which point
-        PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map hasher(blake2_256) (T::BlockNumber, u64) => T::Hash;
-        PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map hasher(blake2_256) T::BlockNumber => u64;
+        PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map hasher(opaque_blake2_256) (T::BlockNumber, u64) => T::Hash;
+        PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map hasher(opaque_blake2_256) T::BlockNumber => u64;
 
         /// Index to find the eviction date given an anchor id
-        AnchorEvictDates get(get_anchor_evict_date): map hasher(blake2_256) T::Hash => u32;
+        AnchorEvictDates get(get_anchor_evict_date): map hasher(opaque_blake2_256) T::Hash => u32;
 
         /// Incrementing index for anchors for iteration purposes
-        AnchorIndexes get(get_anchor_id_by_index): map hasher(blake2_256) u64 => T::Hash;
+        AnchorIndexes get(get_anchor_id_by_index): map hasher(opaque_blake2_256) u64 => T::Hash;
 
         /// Latest anchored index
         LatestAnchorIndex get(get_latest_anchor_index): u64;
@@ -96,7 +96,7 @@ decl_storage! {
         /// are stored on-chain in a single child trie. This child trie is removed after the expiry
         /// date has passed while its root is stored permanently for proving an existence of an
         /// evicted anchor.
-        EvictedAnchorRoots get(get_evicted_anchor_root_by_day): map hasher(blake2_256) u32 => Vec<u8>;
+        EvictedAnchorRoots get(get_evicted_anchor_root_by_day): map hasher(opaque_blake2_256) u32 => Vec<u8>;
 
         Version: u64;
     }

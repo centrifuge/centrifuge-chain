@@ -1,9 +1,12 @@
+use sc_chain_spec::ChainSpecExtension;
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
+use serde::{Serialize, Deserialize};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
 	FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
 	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
+use node_runtime::Block;
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
@@ -16,8 +19,24 @@ use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
 
+/// Node `ChainSpec` extensions.
+///
+/// Additional parameters for some Substrate core modules,
+/// customizable from the chain spec.
+#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
+#[serde(rename_all = "camelCase")]
+pub struct Extensions {
+	/// Block numbers with known hashes.
+	pub fork_blocks: sc_client::ForkBlocks<Block>,
+	/// Known bad block hashes.
+	pub bad_blocks: sc_client::BadBlocks<Block>,
+}
+
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<
+	GenesisConfig,
+	Extensions,
+>;
 
 /// The chain specification option.
 #[derive(Clone, Debug)]

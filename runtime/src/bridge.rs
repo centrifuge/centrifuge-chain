@@ -1,7 +1,10 @@
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+	weights::SimpleDispatchInfo,
+	traits::EnsureOrigin
+};
 use frame_system::{self as system, ensure_signed};
-use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
 use sp_core::U256;
 use sp_runtime::traits::SaturatedConversion;
@@ -54,6 +57,7 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
             ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
@@ -71,6 +75,7 @@ decl_module! {
         //
 
         /// Executes a simple currency transfer using the chainbridge account as the source
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
@@ -78,6 +83,7 @@ decl_module! {
         }
 
         /// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn remark(origin, hash: T::Hash) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(RawEvent::Remark(hash));
@@ -118,8 +124,9 @@ mod tests{
 	use sp_runtime::{
 		testing::Header,
 		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
-		BuildStorage, ModuleId, Perbill,
+		ModuleId, Perbill,
 	};
+	use node_primitives::BlockNumber;
 	use crate::bridge as pallet_bridge;
 
 	pub use pallet_balances as balances;
@@ -175,6 +182,7 @@ mod tests{
 
 	parameter_types! {
 		pub const TestChainId: u8 = 5;
+		pub const ProposalLifetime: BlockNumber = 300;
 	}
 
 	impl chainbridge::Trait for Test {
@@ -182,6 +190,7 @@ mod tests{
 		type Proposal = Call;
 		type ChainId = TestChainId;
 		type AdminOrigin = EnsureSignedBy<One, u64>;
+		type ProposalLifetime = ProposalLifetime;
 	}
 
 	parameter_types! {
@@ -220,14 +229,15 @@ mod tests{
 
 	pub fn new_test_ext() -> sp_io::TestExternalities {
 		let bridge_id = ModuleId(*b"cb/bridg").into_account();
-		GenesisConfig {
-			balances: Some(balances::GenesisConfig {
-				balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
-			}),
-		}
-		.build_storage()
-		.unwrap()
-		.into()
+		let mut t = frame_system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap();
+		pallet_balances::GenesisConfig::<Test> {
+			balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
+		}.assimilate_storage(&mut t).unwrap();
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
 	}
 
 	fn last_event() -> Event {
@@ -415,12 +425,15 @@ mod tests{
 			let expected = chainbridge::ProposalVotes {
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![],
-				status: chainbridge::ProposalStatus::Active,
+				status: chainbridge::ProposalStatus::Initiated,
+				expiry: ProposalLifetime
 			};
-			assert_eq!(prop, expected);
+			assert_eq!(prop.votes_for, expected.votes_for);
+			assert_eq!(prop.votes_against, expected.votes_against);
+			assert_eq!(prop.status, expected.status);
 
 			// Second relayer votes against
-			assert_ok!(ChainBridge::reject(
+			assert_ok!(ChainBridge::reject_proposal(
 				Origin::signed(RELAYER_B),
 				prop_id,
 				src_id,
@@ -431,9 +444,12 @@ mod tests{
 			let expected = chainbridge::ProposalVotes {
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![RELAYER_B],
-				status: chainbridge::ProposalStatus::Active,
+				status: chainbridge::ProposalStatus::Initiated,
+				expiry: ProposalLifetime
 			};
-			assert_eq!(prop, expected);
+			assert_eq!(prop.votes_for, expected.votes_for);
+			assert_eq!(prop.votes_against, expected.votes_against);
+			assert_eq!(prop.status, expected.status);
 
 			// Third relayer votes in favour
 			assert_ok!(ChainBridge::acknowledge_proposal(
@@ -448,8 +464,11 @@ mod tests{
 				votes_for: vec![RELAYER_A, RELAYER_C],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::ProposalStatus::Approved,
+				expiry: ProposalLifetime
 			};
-			assert_eq!(prop, expected);
+			assert_eq!(prop.votes_for, expected.votes_for);
+			assert_eq!(prop.votes_against, expected.votes_against);
+			assert_eq!(prop.status, expected.status);
 
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 			assert_eq!(

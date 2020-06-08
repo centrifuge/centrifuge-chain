@@ -4,11 +4,10 @@ use frame_support::{
     decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{Currency, ExistenceRequirement, WithdrawReason},
+    traits::{Currency, ExistenceRequirement, WithdrawReason, EnsureOrigin},
     weights::SimpleDispatchInfo,
 };
 use frame_system::{self as system, ensure_root};
-use sp_runtime::traits::EnsureOrigin;
 
 /// The module's configuration trait.
 pub trait Trait: frame_system::Trait + pallet_balances::Trait + pallet_authorship::Trait {
@@ -27,7 +26,7 @@ pub struct Fee<Hash, Balance> {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Fees {
-        Fees get(fee) : map hasher(blake2_256) T::Hash => Fee<T::Hash, T::Balance>;
+        Fees get(fee) : map hasher(opaque_blake2_256) T::Hash => Fee<T::Hash, T::Balance>;
 
         Version: u64;
     }
