@@ -243,8 +243,13 @@ pub fn testnet_genesis(
 			chains: vec![0],
 			// Whitelisted resourceIDs
 			resources: vec![hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"]],
-			// Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-			relayers: vec![hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into()],
+			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+			// Fulvous Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+			relayers: vec![
+				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+			],
+			threshold: 1,
 		}),
         fees: Some(FeesConfig {
             initial_fees: vec![(

@@ -30,8 +30,9 @@ decl_storage! {
         config(chains): Vec<u8>;
         config(relayers): Vec<T::AccountId>;
         config(resources): Vec<ResourceId>;
+        config(threshold): u32;
 
-        build(|config| Module::<T>::initialize(&config.chains, &config.relayers, &config.resources))
+        build(|config| Module::<T>::initialize(&config.chains, &config.relayers, &config.resources, &config.threshold))
     }
 }
 
@@ -95,16 +96,14 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	/// Its called as part of genesis step to initialize some dev parameters
-	fn initialize(chains: &[u8], relayers: &[T::AccountId], resources: &[ResourceId]) {
+	fn initialize(chains: &[u8], relayers: &[T::AccountId], resources: &[ResourceId], threshold: &u32) {
 		chains.into_iter().for_each(|c| {
 			<chainbridge::Module<T>>::whitelist(*c).unwrap_or_default();
 		});
 		relayers.into_iter().for_each(|rs| {
 			<chainbridge::Module<T>>::register_relayer(rs.clone()).unwrap_or_default();
 		});
-		if !relayers.is_empty() {
-			<chainbridge::Module<T>>::set_relayer_threshold(relayers.len() as u32).unwrap_or_default();
-		}
+		<chainbridge::Module<T>>::set_relayer_threshold(*threshold).unwrap_or_default();
 		resources.into_iter().for_each(|re| {
 			<chainbridge::Module<T>>::register_resource(*re, vec![0]).unwrap_or_default();
 		});
