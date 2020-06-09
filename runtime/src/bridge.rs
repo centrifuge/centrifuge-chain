@@ -1,5 +1,8 @@
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+	weights::SimpleDispatchInfo
+};
 use frame_system::{self as system, ensure_signed};
 use sp_runtime::traits::EnsureOrigin;
 use sp_std::prelude::*;
@@ -55,6 +58,7 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
             ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
@@ -72,6 +76,7 @@ decl_module! {
         //
 
         /// Executes a simple currency transfer using the chainbridge account as the source
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
@@ -79,6 +84,7 @@ decl_module! {
         }
 
         /// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
+        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn remark(origin, hash: T::Hash) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(RawEvent::Remark(hash));
