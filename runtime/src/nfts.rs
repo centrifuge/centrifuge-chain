@@ -1,11 +1,9 @@
+use crate::bridge as pallet_bridge;
 use crate::{anchor, proofs, proofs::Proof};
-use frame_support::{
-    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
-};
+use frame_support::{decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get};
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
-use crate::bridge as pallet_bridge;
 
 pub trait Trait: anchor::Trait + pallet_bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -28,7 +26,7 @@ decl_module! {
         /// # <weight>
         /// - depends on the arguments
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
+        #[weight = 1_500_000]
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
             ensure_signed(origin)?;
 
@@ -72,22 +70,22 @@ mod tests {
 
     use crate::common;
     use crate::fees;
+    use crate::nfts;
     use crate::proofs::Proof;
     use codec::Encode;
     use frame_support::{
-        assert_err, assert_ok, parameter_types, ord_parameter_types, weights::Weight,
+        assert_err, assert_ok, ord_parameter_types, parameter_types, weights::Weight,
     };
+    use frame_system::EnsureSignedBy;
+    use node_primitives::BlockNumber;
+    use sp_core::hashing::blake2_128;
     use sp_core::H256;
     use sp_runtime::{
         testing::Header,
-        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
+        traits::{BadOrigin, BlakeTwo256, Block as BlockT, Hash, IdentityLookup},
         Perbill,
     };
-	use sp_core::hashing::blake2_128;
-	use crate::nfts;
-	use sp_std::prelude::*;
-    use frame_system::EnsureSignedBy;
-    use node_primitives::BlockNumber;
+    use sp_std::prelude::*;
 
 	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
@@ -135,6 +133,10 @@ mod tests {
         type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
         type OnKilledAccount = pallet_balances::Module<Test>;
+        type DbWeight = ();
+        type BlockExecutionWeight = ();
+        type ExtrinsicBaseWeight = ();
+        type MaximumExtrinsicWeight = ();
     }
 
     impl anchor::Trait for Test {}
@@ -201,7 +203,6 @@ mod tests {
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
     }
-
 
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()

@@ -47,6 +47,10 @@ impl frame_system::Trait for Test {
     type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = pallet_balances::Module<Test>;
+    type DbWeight = ();
+    type BlockExecutionWeight = ();
+    type ExtrinsicBaseWeight = ();
+    type MaximumExtrinsicWeight = ();
 }
 
 impl pallet_timestamp::Trait for Test {

@@ -1,8 +1,5 @@
 use codec::Encode;
-use sp_std::vec::Vec;
-
-// default substrate child storage root
-const CHILD_STORAGE_DEFAULT_PREFIX: &[u8] = b":child_storage:default:";
+use frame_support::storage::child::ChildInfo;
 
 pub const MS_PER_DAY: u64 = 86400000;
 
@@ -17,11 +14,10 @@ pub fn get_days_since_epoch(ts: u64) -> u32 {
     }
 }
 
-/// Create a child storage key from the given specific key
-pub fn generate_child_storage_key(specific_key: u32) -> Vec<u8> {
-    let mut child_storage_key = CHILD_STORAGE_DEFAULT_PREFIX.to_vec();
-    child_storage_key.extend_from_slice(&specific_key.encode());
-    child_storage_key
+/// Create a child info from the given specific key
+pub fn generate_child_storage_key(specific_key: u32) -> ChildInfo {
+    let cf: ChildInfo = ChildInfo::new_default(&specific_key.encode());
+    cf
 }
 
 #[cfg(test)]

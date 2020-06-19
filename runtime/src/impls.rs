@@ -2,7 +2,7 @@
 
 use node_primitives::Balance;
 use sp_runtime::traits::{Convert, Saturating};
-use sp_runtime::{Fixed64, Perbill};
+use sp_runtime::{FixedI64, Perbill};
 use frame_support::{traits::{OnUnbalanced, Currency, Get}, weights::Weight};
 use crate::{Balances, System, Authorship, MaximumBlockWeight, NegativeImbalance};
 
@@ -52,8 +52,8 @@ impl<C: Get<Balance>> Convert<Weight, Balance> for LinearWeightToFee<C> {
 /// https://research.web3.foundation/en/latest/polkadot/Token%20Economics/#relay-chain-transaction-fees
 pub struct TargetedFeeAdjustment<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: Get<Perbill>> Convert<Fixed64, Fixed64> for TargetedFeeAdjustment<T> {
-	fn convert(multiplier: Fixed64) -> Fixed64 {
+impl<T: Get<Perbill>> Convert<FixedI64, FixedI64> for TargetedFeeAdjustment<T> {
+	fn convert(multiplier: FixedI64) -> FixedI64 {
 		let block_weight = System::all_extrinsics_weight();
 		let max_weight = MaximumBlockWeight::get();
 		let target_weight = (T::get() * max_weight) as u128;
@@ -63,14 +63,14 @@ impl<T: Get<Perbill>> Convert<Fixed64, Fixed64> for TargetedFeeAdjustment<T> {
 		let positive = block_weight >= target_weight;
 		let diff_abs = block_weight.max(target_weight) - block_weight.min(target_weight);
 		// diff is within u32, safe.
-		let diff = Fixed64::from_rational(diff_abs as i64, max_weight as u64);
+		let diff = FixedI64::from_rational(diff_abs as i64, max_weight as u64);
 		let diff_squared = diff.saturating_mul(diff);
 
 		// 0.00004 = 4/100_000 = 40_000/10^9
-		let v = Fixed64::from_rational(4, 100_000);
+		let v = FixedI64::from_rational(4, 100_000);
 		// 0.00004^2 = 16/10^10 ~= 2/10^9. Taking the future /2 into account, then it is just 1
 		// parts from a billionth.
-		let v_squared_2 = Fixed64::from_rational(1, 1_000_000_000);
+		let v_squared_2 = FixedI64::from_rational(1, 1_000_000_000);
 
 		let first_term = v.saturating_mul(diff);
 		// It is very unlikely that this will exist (in our poor perbill estimate) but we are giving
@@ -91,7 +91,7 @@ impl<T: Get<Perbill>> Convert<Fixed64, Fixed64> for TargetedFeeAdjustment<T> {
 				// multiplier. While at -1, it means that the network is so un-congested that all
 				// transactions have no weight fee. We stop here and only increase if the network
 				// became more busy.
-				.max(Fixed64::from_rational(-1, 1))
+				.max(FixedI64::from_rational(-1, 1))
 		}
 	}
 }
@@ -113,7 +113,7 @@ mod tests {
 	}
 
 	// poc reference implementation.
-	fn fee_multiplier_update(block_weight: Weight, previous: Fixed64) -> Fixed64  {
+	fn fee_multiplier_update(block_weight: Weight, previous: FixedI64) -> FixedI64  {
 		let block_weight = block_weight as f32;
 		let v: f32 = 0.00004;
 
@@ -125,12 +125,12 @@ mod tests {
 		let s = block_weight;
 
 		let fm = v * (s/m - ss/m) + v.powi(2) * (s/m - ss/m).powi(2) / 2.0;
-		let addition_fm = Fixed64::from_parts((fm * 1_000_000_000_f32).round() as i64);
+		let addition_fm = FixedI64::from_parts((fm * 1_000_000_000_f32).round() as i64);
 		previous.saturating_add(addition_fm)
 	}
 
-	fn feemul(parts: i64) -> Fixed64 {
-		Fixed64::from_parts(parts)
+	fn feemul(parts: i64) -> FixedI64 {
+		FixedI64::from_parts(parts)
 	}
 
 	fn run_with_system_weight<F>(w: Weight, assertions: F) where F: Fn() -> () {
@@ -144,7 +144,7 @@ mod tests {
 
 	#[test]
 	fn fee_multiplier_update_poc_works() {
-		let fm = Fixed64::from_rational(0, 1);
+		let fm = FixedI64::from_rational(0, 1);
 		let test_set = vec![
 			(0, fm.clone()),
 			(100, fm.clone()),
@@ -168,12 +168,12 @@ mod tests {
 		// just a few txs per_block.
 		let block_weight = 0;
 		run_with_system_weight(block_weight, || {
-			let mut fm = Fixed64::default();
+			let mut fm = FixedI64::default();
 			let mut iterations: u64 = 0;
 			loop {
 				let next = TargetedFeeAdjustment::<TargetBlockFullness>::convert(fm);
 				fm = next;
-				if fm == Fixed64::from_rational(-1, 1) { break; }
+				if fm == FixedI64::from_rational(-1, 1) { break; }
 				iterations += 1;
 			}
 			println!("iteration {}, new fm = {:?}. Weight fee is now zero", iterations, fm);
@@ -201,7 +201,7 @@ mod tests {
 
 		run_with_system_weight(block_weight, || {
 			// initial value configured on module
-			let mut fm = Fixed64::default();
+			let mut fm = FixedI64::default();
 			assert_eq!(fm, TransactionPayment::next_fee_multiplier());
 
 			let mut iterations: u64 = 0;
@@ -232,14 +232,14 @@ mod tests {
 		run_with_system_weight(target() / 4, || {
 			// Light block. Fee is reduced a little.
 			assert_eq!(
-				TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default()),
+				TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default()),
 				feemul(-7500),
 			);
 		});
 		run_with_system_weight(target() / 2, || {
 			// a bit more. Fee is decreased less, meaning that the fee increases as the block grows.
 			assert_eq!(
-				TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default()),
+				TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default()),
 				feemul(-5000),
 			);
 
@@ -247,14 +247,14 @@ mod tests {
 		run_with_system_weight(target(), || {
 			// ideal. Original fee. No changes.
 			assert_eq!(
-				TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default()),
+				TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default()),
 				feemul(0),
 			);
 		});
 		run_with_system_weight(target() * 2, || {
 			// // More than ideal. Fee is increased.
 			assert_eq!(
-				TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default()),
+				TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default()),
 				feemul(10000),
 			);
 		});
@@ -264,7 +264,7 @@ mod tests {
 	fn stateful_weight_mul_grow_to_infinity() {
 		run_with_system_weight(target() * 2, || {
 			assert_eq!(
-				TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default()),
+				TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default()),
 				feemul(10000)
 			);
 			assert_eq!(
@@ -287,7 +287,7 @@ mod tests {
 	fn stateful_weight_mil_collapse_to_minus_one() {
 		run_with_system_weight(0, || {
 			assert_eq!(
-				TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default()),
+				TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default()),
 				feemul(-10000)
 			);
 			assert_eq!(
@@ -310,7 +310,7 @@ mod tests {
 	fn weight_to_fee_should_not_overflow_on_large_weights() {
 		let kb = 1024 as Weight;
 		let mb = kb * kb;
-		let max_fm = Fixed64::from_natural(i64::max_value());
+		let max_fm = FixedI64::from_natural(i64::max_value());
 
 		// check that for all values it can compute, correctly.
 		vec![
@@ -327,8 +327,8 @@ mod tests {
 			Weight::max_value(),
 		].into_iter().for_each(|i| {
 			run_with_system_weight(i, || {
-				let next = TargetedFeeAdjustment::<TargetBlockFullness>::convert(Fixed64::default());
-				let truth = fee_multiplier_update(i, Fixed64::default());
+				let next = TargetedFeeAdjustment::<TargetBlockFullness>::convert(FixedI64::default());
+				let truth = fee_multiplier_update(i, FixedI64::default());
 				assert_eq_error_rate!(truth.into_inner(), next.into_inner(), 5);
 			});
 		});
