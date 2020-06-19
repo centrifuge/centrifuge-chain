@@ -22,7 +22,8 @@ pub fn generate_child_storage_key(specific_key: u32) -> ChildInfo {
 
 #[cfg(test)]
 mod tests {
-
+    use codec::Encode;
+    use frame_support::storage::child::ChildInfo;
     use crate::common::{generate_child_storage_key, get_days_since_epoch};
 
     #[test]
@@ -41,10 +42,7 @@ mod tests {
     fn test_child_storage_key() {
         assert_eq!(
             generate_child_storage_key(1),
-            vec![
-                58, 99, 104, 105, 108, 100, 95, 115, 116, 111, 114, 97, 103, 101, 58, 100, 101,
-                102, 97, 117, 108, 116, 58, 1, 0, 0, 0
-            ]
+            ChildInfo::new_default(&1.encode())
         );
     }
 }

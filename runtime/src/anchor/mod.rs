@@ -10,7 +10,7 @@ use frame_support::{
     decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
-    storage::child::{self, ChildInfo},
+    storage::child::self,
 };
 use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
@@ -34,9 +34,6 @@ const MAX_LOOP_IN_TX: u64 = 500;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
-
-/// The child info for this module
-const CHILD_INFO: ChildInfo = ChildInfo::new_default(b"anchor");
 
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
