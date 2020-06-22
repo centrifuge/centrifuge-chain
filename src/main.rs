@@ -9,16 +9,5 @@ mod cli;
 mod command;
 
 fn main() -> sc_cli::Result<()> {
-	let version = sc_cli::VersionInfo {
-		name: "Centrifuge Chain Node",
-		commit: env!("VERGEN_SHA_SHORT"),
-		version: env!("CARGO_PKG_VERSION"),
-		executable_name: "centrifuge-chain",
-		author: "Centrifuge",
-		description: "Centrifuge Chain Node",
-		support_url: "centrifuge.io",
-		copyright_start_year: 2019,
-	};
-
-	command::run(version)
+	command::run()
 }
