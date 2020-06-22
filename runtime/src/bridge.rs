@@ -23,7 +23,7 @@ pub trait Trait: system::Trait + chainbridge::Trait {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Bridge {}
+	trait Store for Module<T: Trait> as PalletBridge {}
 
 	add_extra_genesis {
         config(chains): Vec<u8>;

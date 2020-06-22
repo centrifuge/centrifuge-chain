@@ -96,7 +96,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
     spec_version: 228,
-    impl_version: 1,
+    impl_version: 3,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 0,
 };
@@ -451,7 +451,7 @@ parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
 	pub const TermDuration: BlockNumber = 1 * DAYS;
-	pub const DesiredMembers: u32 = 5;
+	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
