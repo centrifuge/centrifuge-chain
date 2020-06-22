@@ -63,7 +63,7 @@ sc-client-db = { default-features = false, version = "0.8.0-rc3", git = "https:/
 sc-offchain = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-rpc = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-basic-authorship = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
-sc-service = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
+sc-service = { version = "0.8.0-rc3", default-features = false, git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-cli = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-executor = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-consensus-epochs = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
