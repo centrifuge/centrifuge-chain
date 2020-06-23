@@ -198,8 +198,8 @@ mod tests {
 					<Runtime as pallet_transaction_payment::Trait>::WeightToFee::calc(&tx_weight);
 				let adjusted_fee = fm.saturating_mul_acc_int(fee);
 				println!(
-					"iteration {}, new fm = {:?}. Fee at this point is: {} units / {} millicents, \
-					{} cents, {} dollars",
+					"iteration {}, new fm = {:?}. Fee at this point is: {} units / {} milli RAD, \
+					{} centi RAD, {} RAD",
 					iterations,
 					fm,
 					adjusted_fee,

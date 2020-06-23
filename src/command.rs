@@ -40,7 +40,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn executable_name() -> &'static str {
-		env!("CARGO_PKG_NAME")
+		"centrifuge-chain"
 	}
 
 	fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {

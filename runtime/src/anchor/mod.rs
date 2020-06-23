@@ -10,7 +10,8 @@ use frame_support::{
     decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
-    storage::child::self,
+    storage::child,
+    weights::DispatchClass,
 };
 use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
@@ -213,7 +214,7 @@ decl_module! {
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
-        #[weight = 1_000_000]
+        #[weight = (1_000_000, DispatchClass::Operational)]
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> DispatchResult {
             ensure_signed(origin)?;
             ensure!(<frame_system::Module<T>>::block_number() >= evict_bucket,
@@ -249,7 +250,7 @@ decl_module! {
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
-        #[weight = 1_000_000]
+        #[weight = (1_000_000, DispatchClass::Operational)]
         pub fn evict_anchors(origin) -> DispatchResult {
             ensure_signed(origin)?;
             let current_timestamp = <pallet_timestamp::Module<T>>::get();

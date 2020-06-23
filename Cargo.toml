@@ -69,20 +69,15 @@ sc-executor = { version = "0.8.0-rc3", git = "https://github.com/paritytech/subs
 sc-consensus-epochs = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-consensus-babe-rpc = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-authority-discovery = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
-sc-finality-grandpa-rpc = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sc-rpc-api = { version = "0.8.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
-sc-keystore = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 
 # frame dependencies
 pallet-transaction-payment-rpc = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
-pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 substrate-frame-rpc-system  = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 pallet-im-online = { default-features = false, version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
-pallet-grandpa  = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 
 # node-specific dependencies
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
-node-executor = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 node-primitives = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 
 [build-dependencies]

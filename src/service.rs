@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
-use node_primitives::Block;
+use node_primitives::{Block, AccountId, Index};
 use node_runtime::{self, RuntimeApi};
 use sc_service::{error::{Error as ServiceError}, AbstractService, Configuration, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
@@ -244,6 +244,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 
 /// Builds a new service for a light client.
 pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceError> {
+	type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 	let inherent_data_providers = InherentDataProviders::new();
 
 	ServiceBuilder::new_light::<Block, RuntimeApi, Executor>(config)?
@@ -313,5 +314,23 @@ pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceE
 			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
+		.with_rpc_extensions(|builder,| ->
+		Result<RpcExtension, _>
+			{
+				use substrate_frame_rpc_system::{LightSystem, SystemApi};
+
+				let client = builder.client().clone();
+				let pool = builder.pool();
+				let fetcher = builder.fetcher()
+					.ok_or_else(|| "Trying to start node RPC without active fetcher")?;
+				let remote_blockchain = builder.remote_backend()
+					.ok_or_else(|| "Trying to start node RPC without active remote blockchain")?;
+
+				let mut io = jsonrpc_core::IoHandler::default();
+				io.extend_with(
+					SystemApi::<AccountId, Index>::to_delegate(LightSystem::new(client, remote_blockchain, fetcher, pool))
+				);
+				Ok(io)
+			})?
 		.build()
 }
