@@ -63,7 +63,6 @@
         "validatorCount": 20,
         "minimumValidatorCount": 1,
         "invulnerables": [],
-        "currentEra": 0,
         "forceEra": "NotForcing",
         "slashRewardFraction": 100000000,
         "canceledPayout": 0,
@@ -80,7 +79,8 @@
             30000000000000000000000,
             "Validator"
           ]
-        ]
+        ],
+        "historyDepth": 0
       },
       "palletSession": {
         "keys": [

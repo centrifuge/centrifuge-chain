@@ -21,6 +21,7 @@ native_executor_instance!(
 	pub Executor,
 	node_runtime::api::dispatch,
 	node_runtime::native_version,
+	crate::child::storage::HostFunctions,
 );
 
 /// Starts a `ServiceBuilder` for a full service.

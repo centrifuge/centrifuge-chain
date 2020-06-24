@@ -50,6 +50,8 @@ sp-consensus = { version = "0.8.0-rc3", git = "https://github.com/paritytech/sub
 sp-transaction-pool = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sp-api = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 sp-blockchain = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
+sp-runtime-interface = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68", default-features = false }
+sp-io = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68", default-features = false }
 
 # client dependencies
 sc-client-api = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
@@ -93,7 +95,10 @@ frame-system = { version = "2.0.0-rc3", git = "https://github.com/paritytech/sub
 pallet-transaction-payment = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 
 [features]
-default = [ "cli" ]
-cli = [
+default = [ "std" ]
+std = [
 	"sc-service/db",
+	"sp-core/std",
+	"sp-runtime-interface/std",
+	"sp-io/std"
 ]
