@@ -1,4 +1,5 @@
 //! Child trie host interface for Substrate runtime.
+#![allow(dead_code)]
 
 use sp_runtime_interface::runtime_interface;
 
