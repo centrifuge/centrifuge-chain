@@ -91,3 +91,9 @@ tempfile = "3.1.0"
 sp-keyring = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 frame-system = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
 pallet-transaction-payment = { version = "2.0.0-rc3", git = "https://github.com/paritytech/substrate.git", rev = "34695a85650b58bcd7d7e2a677cafc2921251d68" }
+
+[features]
+default = [ "cli" ]
+cli = [
+	"sc-service/db",
+]
