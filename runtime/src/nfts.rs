@@ -161,6 +161,7 @@ mod tests {
 
     ord_parameter_types! {
 		pub const One: u64 = 1;
+		pub const ProposalLifetime: u32 = 10;
 	}
 
 	impl chainbridge::Trait for Test {
@@ -168,6 +169,7 @@ mod tests {
 		type Proposal = Call;
 		type ChainId = TestChainId;
         type AdminOrigin = EnsureSignedBy<One, u64>;
+        type ProposalLifetime = ProposalLifetime;
 	}
 
     impl pallet_timestamp::Trait for Test {

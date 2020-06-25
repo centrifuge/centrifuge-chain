@@ -180,6 +180,7 @@ mod tests{
 
 	parameter_types! {
 		pub const TestChainId: u8 = 5;
+		pub const ProposalLifetime: u64 = 10;
 	}
 
 	impl chainbridge::Trait for Test {
@@ -187,6 +188,7 @@ mod tests{
 		type Proposal = Call;
 		type ChainId = TestChainId;
 		type AdminOrigin = EnsureSignedBy<One, u64>;
+		type ProposalLifetime = ProposalLifetime;
 	}
 
 	parameter_types! {
@@ -393,7 +395,7 @@ mod tests{
 	}
 
 	#[test]
-	fn create_sucessful_transfer_proposal() {
+	fn create_successful_transfer_proposal() {
 		new_test_ext().execute_with(|| {
 			let prop_id = 1;
 			let src_id = 1;
@@ -420,12 +422,13 @@ mod tests{
 			let expected = chainbridge::ProposalVotes {
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![],
-				status: chainbridge::ProposalStatus::Active,
+				status: chainbridge::ProposalStatus::Initiated,
+				expiry: ProposalLifetime::get(),
 			};
 			assert_eq!(prop, expected);
 
 			// Second relayer votes against
-			assert_ok!(ChainBridge::reject(
+			assert_ok!(ChainBridge::reject_proposal(
 				Origin::signed(RELAYER_B),
 				prop_id,
 				src_id,
@@ -436,7 +439,8 @@ mod tests{
 			let expected = chainbridge::ProposalVotes {
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![RELAYER_B],
-				status: chainbridge::ProposalStatus::Active,
+				status: chainbridge::ProposalStatus::Initiated,
+				expiry: ProposalLifetime::get(),
 			};
 			assert_eq!(prop, expected);
 
@@ -453,6 +457,7 @@ mod tests{
 				votes_for: vec![RELAYER_A, RELAYER_C],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::ProposalStatus::Approved,
+				expiry: ProposalLifetime::get(),
 			};
 			assert_eq!(prop, expected);
 
