@@ -302,7 +302,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "centrifuge-chain-runtime"
 version = "2.0.0"
 dependencies = [
- "chainbridge 0.0.1 (git+https://github.com/ChainSafe/chainbridge-substrate.git?rev=5788ebb9f771148ea13618d19f1bdcbd8ea18732)",
+ "chainbridge 0.0.1 (git+https://github.com/ChainSafe/chainbridge-substrate.git?tag=v0.0.1-alpha)",
  "frame-executive 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "frame-support 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "frame-system 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
@@ -369,7 +369,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.1"
-source = "git+https://github.com/ChainSafe/chainbridge-substrate.git?rev=5788ebb9f771148ea13618d19f1bdcbd8ea18732#5788ebb9f771148ea13618d19f1bdcbd8ea18732"
+source = "git+https://github.com/ChainSafe/chainbridge-substrate.git?tag=v0.0.1-alpha#16ae61b16af8cfecb85a58d19c45ccb93fe90fbc"
 dependencies = [
  "frame-support 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
  "frame-system 2.0.0-alpha.3 (git+https://github.com/paritytech/substrate.git?rev=013c1ee167354a08283fb69915fda56a62fee943)",
@@ -3911,7 +3911,7 @@ dependencies = [
 "checksum cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)" = "95e28fa049fda1c330bcf9d723be7663a899c4679724b34c81e9f5a326aab8cd"
 "checksum cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 "checksum chacha20-poly1305-aead 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "77d2058ba29594f69c75e8a9018e0485e3914ca5084e3613cd64529042f5423b"
-"checksum chainbridge 0.0.1 (git+https://github.com/ChainSafe/chainbridge-substrate.git?rev=5788ebb9f771148ea13618d19f1bdcbd8ea18732)" = "<none>"
+"checksum chainbridge 0.0.1 (git+https://github.com/ChainSafe/chainbridge-substrate.git?tag=v0.0.1-alpha)" = "<none>"
 "checksum clear_on_drop 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "97276801e127ffb46b66ce23f35cc96bd454fa311294bced4bbace7baa8b1d17"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum const-random 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "2f1af9ac737b2dd2d577701e59fd09ba34822f6f2ebdb30a7647405d9e55e16a"

@@ -87,7 +87,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
     spec_version: 228,
-    impl_version: 4,
+    impl_version: 5,
     apis: RUNTIME_API_VERSIONS,
 };
 
@@ -562,6 +562,7 @@ impl bridge::Trait for Runtime {
 
 parameter_types! {
     pub const ChainId: u8 = 1;
+    pub const ProposalLifetime: u32 = 100;
 }
 impl chainbridge::Trait for Runtime {
     type Event = Event;
@@ -569,6 +570,8 @@ impl chainbridge::Trait for Runtime {
     type ChainId = ChainId;
 	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	/// Lifetime of a proposal before it becomes expired
+	type ProposalLifetime = ProposalLifetime;
 }
 
 parameter_types! {
