@@ -120,12 +120,12 @@ impl Alternative {
 
 /// Flint testnet generator
 pub fn flint_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc3-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc3-raw-spec.json")[..])
 }
 
 /// Amber testnet generator
 pub fn amber_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-cc2-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-cc2-raw-spec.json")[..])
 }
 
 /// Mainnet generator
