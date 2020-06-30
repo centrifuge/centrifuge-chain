@@ -410,11 +410,11 @@ mod tests {
             //first time has enough funds to burn
             assert_ok!(Fees::burn_fee(&100, fee_amount));
             let account_new_balance = <pallet_balances::Module<Test>>::free_balance(100);
-            assert_eq!(account_current_balance-fee_amount, account_new_balance);
+            assert_eq!(account_current_balance - fee_amount, account_new_balance);
 
             //second time burn will lead to account having insufficient balance
             assert_err!(
-                Fees::burn_fee(&100, account_new_balance+1),
+                Fees::burn_fee(&100, account_new_balance + 1),
                 DispatchError::Module {
                     index: 0,
                     error: 3,

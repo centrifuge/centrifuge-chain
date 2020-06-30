@@ -35,10 +35,6 @@ decl_module! {
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            // Burn additional fees
-            let nft_fee = <T as pallet_balances::Trait>::Balance::from(NFT_FEE);
-            <fees::Module<T>>::burn_fee(&who, nft_fee)?;
-
             // get the anchor data from anchor ID
             let anchor_data = <anchor::Module<T>>::get_anchor_by_id(anchor_id).ok_or("Anchor doesn't exist")?;
 
@@ -51,6 +47,11 @@ decl_module! {
 
 			let metadata = bundled_hash.as_ref().to_vec();
 			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
+
+			// Burn additional fees
+            let nft_fee = <T as pallet_balances::Trait>::Balance::from(NFT_FEE);
+            <fees::Module<T>>::burn_fee(&who, nft_fee)?;
+
 			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
             Ok(())
         }
@@ -363,28 +364,6 @@ mod tests {
     }
 
     #[test]
-    fn insufficient_balance_to_mint() {
-        new_test_ext().execute_with(|| {
-            let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
-            assert_err!(
-                Nfts::validate_mint(
-                    Origin::signed(2),
-                    anchor_id,
-                    deposit_address,
-                    pfs,
-                    static_proofs,
-					chain_id
-                ),
-                DispatchError::Module {
-                    index: 0,
-                    error: 3,
-                    message: Some("InsufficientBalance"),
-                }
-            );
-        })
-    }
-
-    #[test]
     fn missing_anchor() {
         new_test_ext().execute_with(|| {
             let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
@@ -427,6 +406,40 @@ mod tests {
 					0
                 ),
                 "Invalid proofs"
+            );
+        })
+    }
+
+    #[test]
+    fn insufficient_balance_to_mint() {
+        new_test_ext().execute_with(|| {
+            let dest_id = 0;
+            let deposit_address: [u8; 20] = [0; 20];
+            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let (pf, doc_root, static_proofs) = get_valid_proof();
+            assert_ok!(Anchor::commit(
+                Origin::signed(2),
+                pre_image,
+                doc_root,
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
+                common::MS_PER_DAY + 1
+            ));
+
+            assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
+            assert_err!(Nfts::validate_mint(
+                    Origin::signed(2),
+                    anchor_id,
+                    deposit_address,
+                    vec![pf],
+                    static_proofs,
+                    0
+                ),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    message: Some("InsufficientBalance"),
+                }
             );
         })
     }
