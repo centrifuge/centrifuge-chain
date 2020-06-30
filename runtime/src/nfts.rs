@@ -28,6 +28,7 @@ decl_module! {
         /// Once the proofs are verified, we create a bundled hash (deposit_address + [proof[i].hash])
         /// Bundled Hash is deposited to an DepositAsset event for bridging purposes.
         ///
+        /// Adds additional fee to compensate the current cost of target chains
         /// # <weight>
         /// - depends on the arguments
         /// # </weight>

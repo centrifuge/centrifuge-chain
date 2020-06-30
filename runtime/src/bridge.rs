@@ -62,6 +62,7 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+        /// Adds additional fee to compensate the current cost of target chains
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
