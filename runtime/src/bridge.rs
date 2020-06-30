@@ -1,3 +1,4 @@
+use crate::{fees};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
@@ -13,7 +14,10 @@ type ResourceId = chainbridge::ResourceId;
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-pub trait Trait: system::Trait + chainbridge::Trait {
+/// Additional Fee charged when moving native tokens to target chains (RAD)
+const TOKEN_FEE : u32 = 20;
+
+pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -61,6 +65,11 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
+
+            // Burn additional fees
+            let token_fee = <T as pallet_balances::Trait>::Balance::from(TOKEN_FEE);
+            <fees::Module<T>>::burn_fee(&source, token_fee)?;
+
             ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
             let bridge_id = <chainbridge::Module<T>>::account_id();
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
@@ -131,8 +140,6 @@ mod tests{
 
 	const TEST_THRESHOLD: u32 = 2;
 
-
-
 	parameter_types! {
 		pub const BlockHashCount: u64 = 250;
 		pub const MaximumBlockWeight: Weight = 1024;
@@ -189,6 +196,18 @@ mod tests{
 		type ChainId = TestChainId;
 		type AdminOrigin = EnsureSignedBy<One, u64>;
 		type ProposalLifetime = ProposalLifetime;
+	}
+
+	impl fees::Trait for Test {
+		type Event = ();
+		type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
+	}
+
+	impl pallet_authorship::Trait for Test {
+		type FindAuthor = ();
+		type UncleGenerations = ();
+		type FilterUncle = ();
+		type EventHandler = ();
 	}
 
 	parameter_types! {
