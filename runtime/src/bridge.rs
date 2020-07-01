@@ -67,17 +67,18 @@ decl_module! {
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
 			let token_fee = <T as pallet_balances::Trait>::Balance::from(TOKEN_FEE);
-			let total_amount = U256::from(amount.saturated_into()) + U256::from(token_fee.saturated_into());
+			let total_amount = U256::from(amount.saturated_into()).saturating_add(U256::from(token_fee.saturated_into()));
 
 			// Ensure account has enough balance for both fee and transfer
 			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
 			let current_balance = T::Currency::free_balance(&source);
 			ensure!(U256::from(current_balance.saturated_into()) >= total_amount, "Insufficient Balance");
 
+			ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
+
             // Burn additional fees
             <fees::Module<T>>::burn_fee(&source, token_fee)?;
 
-            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
             let bridge_id = <chainbridge::Module<T>>::account_id();
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
@@ -85,7 +86,6 @@ decl_module! {
             <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))?;
 			Ok(())
         }
-
 
         //
         // Executable calls. These can be triggered by a chainbridge transfer initiated on another chain
