@@ -1,3 +1,4 @@
+use crate::{fees};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
@@ -13,7 +14,10 @@ type ResourceId = chainbridge::ResourceId;
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-pub trait Trait: system::Trait + chainbridge::Trait {
+/// Additional Fee charged when moving native tokens to target chains (RAD)
+const TOKEN_FEE : u32 = 20;
+
+pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -58,10 +62,23 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
+        /// Adds additional fee to compensate the current cost of target chains
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
-            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
+			let token_fee = <T as pallet_balances::Trait>::Balance::from(TOKEN_FEE);
+			let total_amount = U256::from(amount.saturated_into()).saturating_add(U256::from(token_fee.saturated_into()));
+
+			// Ensure account has enough balance for both fee and transfer
+			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
+			let current_balance = T::Currency::free_balance(&source);
+			ensure!(U256::from(current_balance.saturated_into()) >= total_amount, "Insufficient Balance");
+
+			ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
+
+            // Burn additional fees
+            <fees::Module<T>>::burn_fee(&source, token_fee)?;
+
             let bridge_id = <chainbridge::Module<T>>::account_id();
             T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
 
@@ -69,7 +86,6 @@ decl_module! {
             <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))?;
 			Ok(())
         }
-
 
         //
         // Executable calls. These can be triggered by a chainbridge transfer initiated on another chain
@@ -114,7 +130,7 @@ impl<T: Trait> Module<T> {
 mod tests{
 	use super::*;
 	use frame_support::dispatch::DispatchError;
-	use frame_support::{assert_noop, assert_ok};
+	use frame_support::{assert_err, assert_noop, assert_ok};
 	use codec::Encode;
 	use sp_core::{blake2_256, H256};
 	use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
@@ -130,8 +146,6 @@ mod tests{
 	pub use pallet_balances as balances;
 
 	const TEST_THRESHOLD: u32 = 2;
-
-
 
 	parameter_types! {
 		pub const BlockHashCount: u64 = 250;
@@ -191,6 +205,18 @@ mod tests{
 		type ProposalLifetime = ProposalLifetime;
 	}
 
+	impl fees::Trait for Test {
+		type Event = Event;
+		type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
+	}
+
+	impl pallet_authorship::Trait for Test {
+		type FindAuthor = ();
+		type UncleGenerations = ();
+		type FilterUncle = ();
+		type EventHandler = ();
+	}
+
 	parameter_types! {
 		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
@@ -216,7 +242,8 @@ mod tests{
 			System: system::{Module, Call, Event<T>},
 			Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
-			PalletBridge: pallet_bridge::{Module, Call, Event<T>}
+			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+			Fees: fees::{Module, Call, Event<T>}
 		}
 	);
 
@@ -229,7 +256,7 @@ mod tests{
 		let bridge_id = ModuleId(*b"cb/bridg").into_account();
 		GenesisConfig {
 			balances: Some(balances::GenesisConfig {
-				balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE)],
+				balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE), (RELAYER_B, 100)],
 			}),
 		}
 		.build_storage()
@@ -299,6 +326,37 @@ mod tests{
 			let recipient = vec![99];
 
 			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+
+			// Using account with not enough balance for fee should fail when requesting transfer
+			assert_err!(
+				PalletBridge::transfer_native(
+					Origin::signed(RELAYER_C),
+					amount.clone(),
+					recipient.clone(),
+					dest_chain,
+				),
+				"Insufficient Balance"
+			);
+
+			let mut account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
+			assert_eq!(account_current_balance, 100);
+
+			// Using account with enough balance for fee but not for transfer amount
+			assert_err!(
+				PalletBridge::transfer_native(
+					Origin::signed(RELAYER_B),
+					amount.clone(),
+					recipient.clone(),
+					dest_chain,
+				),
+				"Insufficient Balance"
+			);
+
+			// Account balance should be reverted to original balance
+			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
+			assert_eq!(account_current_balance, 100);
+
+			// Success
 			assert_ok!(PalletBridge::transfer_native(
 				Origin::signed(RELAYER_A),
 				amount.clone(),
