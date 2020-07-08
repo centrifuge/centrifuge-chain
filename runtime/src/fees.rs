@@ -79,6 +79,18 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
+    /// Burns Fee from account
+    pub fn burn_fee(from: &T::AccountId, fee: T::Balance) -> DispatchResult {
+        let _ = <pallet_balances::Module<T> as Currency<_>>::withdraw(
+            from,
+            fee,
+            WithdrawReason::Fee.into(),
+            ExistenceRequirement::KeepAlive,
+        )?;
+
+        Ok(())
+    }
+
     /// Pay the given fee
     pub fn pay_fee_to_author(from: T::AccountId, fee: T::Balance) -> DispatchResult {
         let value = <pallet_balances::Module<T> as Currency<_>>::withdraw(
@@ -389,6 +401,30 @@ mod tests {
                 Some(x) => assert_eq!(fee_price, x),
                 None => assert!(false, "Fee should have been set"),
             }
+        });
+    }
+
+    #[test]
+    fn fee_burn_fee_from_account() {
+        new_test_ext().execute_with(|| {
+            let account_current_balance = <pallet_balances::Module<Test>>::free_balance(100);
+            let fee_amount: u64 = 10;
+
+            //first time has enough funds to burn
+            assert_ok!(Fees::burn_fee(&100, fee_amount));
+            let account_new_balance = <pallet_balances::Module<Test>>::free_balance(100);
+            assert_eq!(account_current_balance - fee_amount, account_new_balance);
+
+            //second time burn will lead to account having insufficient balance
+            assert_err!(
+                Fees::burn_fee(&100, account_new_balance + 1),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    message: Some("InsufficientBalance"),
+                }
+            );
+
         });
     }
 }

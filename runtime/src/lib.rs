@@ -675,8 +675,7 @@ impl bridge::Trait for Runtime {
 
 parameter_types! {
     pub const ChainId: u8 = 1;
-    /// ProposalLifetime is set to approximately 1 day
-    pub const ProposalLifetime: BlockNumber = 14_400;
+    pub const ProposalLifetime: u32 = 100;
 }
 
 impl chainbridge::Trait for Runtime {

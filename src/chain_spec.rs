@@ -240,8 +240,11 @@ pub fn testnet_genesis(
 		pallet_bridge: Some(PalletBridgeConfig{
 			// Whitelist chains Ethereum - 0
 			chains: vec![0],
-			// Whitelisted resourceIDs
-			resources: vec![hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"]],
+			// Register resourceIDs
+			resources: vec![
+				// xRAD ResourceID to PalletBridge.transfer method (for incoming txs)
+				(hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"], hex!["50616c6c65744272696467652e7472616e73666572"].iter().cloned().collect())
+			],
 			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 			// Fulvous Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
 			relayers: vec![
@@ -384,31 +387,6 @@ pub(crate) mod tests {
 	use sc_service_test;
 	use sp_runtime::{ModuleId, BuildStorage, traits::AccountIdConversion};
 	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccount};
-
-
-	fn local_testnet_genesis_instant_single() -> GenesisConfig {
-		testnet_genesis(
-			vec![
-				get_authority_keys_from_seed("Alice"),
-			],
-			None,
-		)
-	}
-
-	/// Local testnet config (single validator - Alice)
-	pub fn integration_test_config_with_single_authority() -> ChainSpec {
-		ChainSpec::from_genesis(
-			"Integration Test",
-			"test",
-			ChainType::Development,
-			local_testnet_genesis_instant_single,
-			vec![],
-			None,
-			None,
-			None,
-			Default::default(),
-		)
-	}
 
 	/// Local testnet config (multivalidator Alice + Bob)
 	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
