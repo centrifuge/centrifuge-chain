@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use sp_runtime_interface::runtime_interface;
+use sp_core::storage::{well_known_keys};
 
 /// Interface for accessing the storage from within the runtime.
 #[runtime_interface]
@@ -23,7 +24,7 @@ pub trait Storage {
         _child_type: u32,
         key: &[u8],
     ) -> Option<Vec<u8>> {
-        sp_io::default_child_storage::get(storage_key, key)
+        sp_io::default_child_storage::get(strip_if_prefix(storage_key), key)
     }
 
     /// Get `key` from child storage, placing the value into `value_out` and return the number
@@ -41,7 +42,7 @@ pub trait Storage {
         value_out: &mut [u8],
         value_offset: u32,
     ) -> Option<u32> {
-        sp_io::default_child_storage::read(storage_key, key, value_out, value_offset)
+        sp_io::default_child_storage::read(strip_if_prefix(storage_key), key, value_out, value_offset)
     }
 
 
@@ -55,7 +56,7 @@ pub trait Storage {
         key: &[u8],
         value: &[u8],
     ) {
-        sp_io::default_child_storage::set(storage_key, key, value);
+        sp_io::default_child_storage::set(strip_if_prefix(storage_key), key, value);
     }
 
     /// Clear the given child storage of the given `key` and its value.
@@ -67,7 +68,7 @@ pub trait Storage {
         _child_type: u32,
         key: &[u8],
     ) {
-        sp_io::default_child_storage::clear(storage_key, key);
+        sp_io::default_child_storage::clear(strip_if_prefix(storage_key), key);
     }
 
     /// Clear an entire child storage.
@@ -78,7 +79,7 @@ pub trait Storage {
         _child_definition: &[u8],
         _child_type: u32,
     ) {
-        sp_io::default_child_storage::storage_kill(storage_key);
+        sp_io::default_child_storage::storage_kill(strip_if_prefix(storage_key));
     }
 
 
@@ -91,7 +92,7 @@ pub trait Storage {
         _child_type: u32,
         key: &[u8],
     ) -> bool {
-        sp_io::default_child_storage::exists(storage_key, key)
+        sp_io::default_child_storage::exists(strip_if_prefix(storage_key), key)
     }
 
     /// Clear the child storage of each key-value pair where the key starts with the given `prefix`.
@@ -103,7 +104,7 @@ pub trait Storage {
         _child_type: u32,
         prefix: &[u8],
     ) {
-        sp_io::default_child_storage::clear_prefix(storage_key, prefix);
+        sp_io::default_child_storage::clear_prefix(strip_if_prefix(storage_key), prefix);
     }
 
     /// "Commit" all existing operations and compute the resulting child storage root.
@@ -116,7 +117,7 @@ pub trait Storage {
     fn child_root(
         storage_key: &[u8],
     ) -> Vec<u8> {
-        sp_io::default_child_storage::root(storage_key)
+        sp_io::default_child_storage::root(strip_if_prefix(storage_key))
     }
 
     /// Get the next key in storage after the given one in lexicographic order in child storage.
@@ -126,6 +127,14 @@ pub trait Storage {
         _child_type: u32,
         key: &[u8],
     ) -> Option<Vec<u8>> {
-        sp_io::default_child_storage::next_key(storage_key, key)
+        sp_io::default_child_storage::next_key(strip_if_prefix(storage_key), key)
     }
+}
+
+fn strip_if_prefix(key: &[u8]) -> &[u8]{
+    if key.starts_with(well_known_keys::DEFAULT_CHILD_STORAGE_KEY_PREFIX) {
+        let si = well_known_keys::DEFAULT_CHILD_STORAGE_KEY_PREFIX.len();
+        return &key[si..]
+    }
+    &key
 }
