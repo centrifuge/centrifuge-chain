@@ -98,7 +98,7 @@ impl Alternative {
 		Ok(match self {
 			Alternative::Development => Box::new(development_config()),
 			Alternative::LocalTestnet => Box::new(local_testnet_config()),
-			Alternative::Fulvous => Box::new(fulvous_config()),
+			Alternative::Fulvous => Box::new(fulvous_config()?),
 			Alternative::Flint => Box::new(flint_config()?),
 			Alternative::Amber => Box::new(amber_config()?),
 			Alternative::Mainnet => Box::new(mainnet_config()?),
@@ -130,7 +130,7 @@ pub fn amber_config() -> Result<ChainSpec, String> {
 
 /// Mainnet generator
 pub fn mainnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-raw-spec.json")[..])
 }
 
 fn session_keys(
@@ -330,6 +330,7 @@ pub fn local_testnet_config() -> ChainSpec {
 	)
 }
 
+#[allow(dead_code)]
 fn fulvous_genesis() -> GenesisConfig {
 	testnet_genesis(
 		vec![
@@ -359,18 +360,20 @@ fn fulvous_genesis() -> GenesisConfig {
 }
 
 /// Local testnet config (multivalidator Alice + Bob)
-pub fn fulvous_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"Fulvous Testnet",
-		"fulvous",
-		ChainType::Live,
-		fulvous_genesis,
-		vec![],
-		None,
-		Some("flvs"),
-		Some(get_default_properties("TRAD")),
-		Default::default(),
-	)
+pub fn fulvous_config() -> Result<ChainSpec,String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-raw-spec.json")[..])
+	// Keeping this as in case we want to regenerate the fulvous raw later
+	// ChainSpec::from_genesis(
+	// 	"Fulvous Testnet",
+	// 	"fulvous",
+	// 	ChainType::Live,
+	// 	fulvous_genesis,
+	// 	vec![],
+	// 	None,
+	// 	Some("flvs"),
+	// 	Some(get_default_properties("TRAD")),
+	// 	Default::default(),
+	// )
 }
 
 pub fn load_spec(id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
