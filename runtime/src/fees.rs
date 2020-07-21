@@ -424,7 +424,6 @@ mod tests {
                     message: Some("InsufficientBalance"),
                 }
             );
-
         });
     }
 }
