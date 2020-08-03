@@ -14,8 +14,8 @@ type ResourceId = chainbridge::ResourceId;
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-/// Additional Fee charged when moving native tokens to target chains (RAD)
-const TOKEN_FEE : u32 = 20;
+/// Additional Fee charged when moving native tokens to target chains (20 RAD)
+const TOKEN_FEE: u128 = 20_000_000_000_000_000_000;
 
 pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -66,7 +66,8 @@ decl_module! {
         #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
-			let token_fee = <T as pallet_balances::Trait>::Balance::from(TOKEN_FEE);
+
+            let token_fee: T::Balance = TOKEN_FEE.saturated_into();
 			let total_amount = U256::from(amount.saturated_into()).saturating_add(U256::from(token_fee.saturated_into()));
 
 			// Ensure account has enough balance for both fee and transfer
@@ -171,7 +172,7 @@ mod tests{
 		type AvailableBlockRatio = AvailableBlockRatio;
 		type Version = ();
 		type ModuleToIndex = ();
-		type AccountData = balances::AccountData<u64>;
+		type AccountData = balances::AccountData<u128>;
 		type OnNewAccount = ();
 		type OnKilledAccount = ();
 	}
@@ -185,7 +186,7 @@ mod tests{
 	}
 
 	impl pallet_balances::Trait for Test {
-		type Balance = u64;
+		type Balance = u128;
 		type DustRemoval = ();
 		type Event = Event;
 		type ExistentialDeposit = ExistentialDeposit;
@@ -250,7 +251,7 @@ mod tests{
 	pub const RELAYER_A: u64 = 0x2;
 	pub const RELAYER_B: u64 = 0x3;
 	pub const RELAYER_C: u64 = 0x4;
-	pub const ENDOWED_BALANCE: u64 = 100_000_000;
+	pub const ENDOWED_BALANCE: u128 = 100_000_000_000_000_000_000; //100 RAD
 
 	pub fn new_test_ext() -> sp_io::TestExternalities {
 		let bridge_id = ModuleId(*b"cb/bridg").into_account();
@@ -312,7 +313,7 @@ mod tests{
 		Call::PalletBridge(crate::bridge::Call::remark(hash))
 	}
 
-	fn make_transfer_proposal(to: u64, amount: u64) -> Call {
+	fn make_transfer_proposal(to: u64, amount: u128) -> Call {
 		Call::PalletBridge(crate::bridge::Call::transfer(to, amount))
 	}
 
@@ -322,7 +323,7 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			let dest_chain = 0;
 			let resource_id = NativeTokenId::get();
-			let amount: u64 = 100;
+			let amount: u128 = 20_000_000_000_000_000_000; // 20 RAD
 			let recipient = vec![99];
 
 			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
@@ -371,6 +372,10 @@ mod tests{
 				amount.into(),
 				recipient,
 			));
+
+			// Account balance should be reduced amount + fee
+			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
+			assert_eq!(account_current_balance, 60_000_000_000_000_000_000);
 		})
 	}
 
