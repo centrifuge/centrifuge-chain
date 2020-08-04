@@ -1,14 +1,16 @@
-use crate::{anchor, proofs, proofs::Proof, fees};
+use crate::{anchor, proofs, proofs::Proof, fees, constants::currency};
 use frame_support::{
     decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
+use sp_runtime::traits::SaturatedConversion;
+
 use crate::bridge as pallet_bridge;
 
-/// Additional Fee charged to validate NFT proofs (RAD)
-const NFT_FEE : u32 = 10;
+/// Additional Fee charged to validate NFT proofs
+const NFT_FEE: u128 = 10 * currency::RAD;
 
 pub trait Trait: anchor::Trait + pallet_balances::Trait + pallet_bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -50,7 +52,7 @@ decl_module! {
 			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
 
 			// Burn additional fees
-            let nft_fee = <T as pallet_balances::Trait>::Balance::from(NFT_FEE);
+			let nft_fee: T::Balance = NFT_FEE.saturated_into();
             <fees::Module<T>>::burn_fee(&who, nft_fee)?;
 
 			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
@@ -141,7 +143,7 @@ mod tests {
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
-        type AccountData = pallet_balances::AccountData<u64>;
+        type AccountData = pallet_balances::AccountData<u128>;
         type OnNewAccount = ();
         type OnKilledAccount = pallet_balances::Module<Test>;
     }
@@ -204,13 +206,14 @@ mod tests {
         pub const ExistentialDeposit: u64 = 1;
     }
     impl pallet_balances::Trait for Test {
-        type Balance = u64;
+        type Balance = u128;
         type DustRemoval = ();
         type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
     }
 
+    pub const USER_A: u64 = 0x1;
 
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
@@ -231,7 +234,7 @@ mod tests {
         .unwrap();
 
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(1, 100000)],
+            balances: vec![(USER_A, 100 * currency::RAD)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -370,7 +373,7 @@ mod tests {
             let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
                 Nfts::validate_mint(
-                    Origin::signed(1),
+                    Origin::signed(USER_A),
                     anchor_id,
                     deposit_address,
                     pfs,
@@ -399,7 +402,7 @@ mod tests {
 
             assert_err!(
                 Nfts::validate_mint(
-                    Origin::signed(1),
+                    Origin::signed(USER_A),
                     anchor_id,
                     deposit_address,
                     vec![pf],
@@ -463,13 +466,17 @@ mod tests {
 
             assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
             assert_ok!(Nfts::validate_mint(
-                Origin::signed(1),
+                Origin::signed(USER_A),
                 anchor_id,
                 deposit_address,
                 vec![pf],
                 static_proofs,
 				0
             ),);
+
+            // Account balance should be reduced amount + fee
+            let account_current_balance = <pallet_balances::Module<Test>>::free_balance(USER_A);
+            assert_eq!(account_current_balance, 90 * currency::RAD);
         })
     }
 }
