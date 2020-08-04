@@ -1,4 +1,4 @@
-use crate::{anchor, proofs, proofs::Proof, fees};
+use crate::{anchor, proofs, proofs::Proof, fees, constants::currency};
 use frame_support::{
     decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
 };
@@ -9,8 +9,8 @@ use sp_runtime::traits::SaturatedConversion;
 
 use crate::bridge as pallet_bridge;
 
-/// Additional Fee charged to validate NFT proofs (10 RAD)
-const NFT_FEE: u128 = 10_000_000_000_000_000_000;
+/// Additional Fee charged to validate NFT proofs
+const NFT_FEE: u128 = 10 * currency::RAD;
 
 pub trait Trait: anchor::Trait + pallet_balances::Trait + pallet_bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -234,7 +234,7 @@ mod tests {
         .unwrap();
 
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(USER_A, 100_000_000_000_000_000_000)],
+            balances: vec![(USER_A, 100 * currency::RAD)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -476,7 +476,7 @@ mod tests {
 
             // Account balance should be reduced amount + fee
             let account_current_balance = <pallet_balances::Module<Test>>::free_balance(USER_A);
-            assert_eq!(account_current_balance, 90_000_000_000_000_000_000);
+            assert_eq!(account_current_balance, 90 * currency::RAD);
         })
     }
 }

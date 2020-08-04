@@ -1,4 +1,4 @@
-use crate::{fees};
+use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
@@ -14,8 +14,8 @@ type ResourceId = chainbridge::ResourceId;
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-/// Additional Fee charged when moving native tokens to target chains (20 RAD)
-const TOKEN_FEE: u128 = 20_000_000_000_000_000_000;
+/// Additional Fee charged when moving native tokens to target chains
+const TOKEN_FEE: u128 = 20 * currency::RAD;
 
 pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -251,7 +251,7 @@ mod tests{
 	pub const RELAYER_A: u64 = 0x2;
 	pub const RELAYER_B: u64 = 0x3;
 	pub const RELAYER_C: u64 = 0x4;
-	pub const ENDOWED_BALANCE: u128 = 100_000_000_000_000_000_000; //100 RAD
+	pub const ENDOWED_BALANCE: u128 = 100 * currency::RAD;
 
 	pub fn new_test_ext() -> sp_io::TestExternalities {
 		let bridge_id = ModuleId(*b"cb/bridg").into_account();
@@ -323,7 +323,7 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			let dest_chain = 0;
 			let resource_id = NativeTokenId::get();
-			let amount: u128 = 20_000_000_000_000_000_000; // 20 RAD
+			let amount: u128 = 20 * currency::RAD;
 			let recipient = vec![99];
 
 			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
@@ -375,7 +375,7 @@ mod tests{
 
 			// Account balance should be reduced amount + fee
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, 60_000_000_000_000_000_000);
+			assert_eq!(account_current_balance, 60 * currency::RAD);
 		})
 	}
 
