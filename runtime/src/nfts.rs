@@ -4,6 +4,8 @@ use frame_support::{decl_event, decl_module, dispatch::DispatchResult, ensure, t
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
+use crate::constants::currency;
+use sp_runtime::traits::SaturatedConversion;
 
 /// Additional Fee charged to validate NFT proofs
 const NFT_FEE: u128 = 10 * currency::RAD;
@@ -47,13 +49,8 @@ decl_module! {
             let metadata = bundled_hash.as_ref().to_vec();
             let resource_id = <T as pallet_bridge::Trait>::HashId::get();
 
-<<<<<<< HEAD
-            // Burn additional fees
-            let nft_fee = <T as pallet_balances::Trait>::Balance::from(NFT_FEE);
-=======
 			// Burn additional fees
 			let nft_fee: T::Balance = NFT_FEE.saturated_into();
->>>>>>> master
             <fees::Module<T>>::burn_fee(&who, nft_fee)?;
 
             <chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
@@ -218,11 +215,7 @@ mod tests {
         type AccountStore = System;
     }
 
-<<<<<<< HEAD
-=======
     pub const USER_A: u64 = 0x1;
-
->>>>>>> master
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Test>()

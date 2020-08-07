@@ -94,7 +94,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 230,
+    spec_version: 231,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 0,
@@ -120,7 +120,6 @@ impl Filter<Call> for BaseFilter {
 pub struct IsCallable;
 frame_support::impl_filter_stack!(IsCallable, BaseFilter, Call, is_callable);
 
-const AVERAGE_ON_INITIALIZE_WEIGHT: Perbill = Perbill::from_percent(10);
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const MaximumBlockWeight: Weight = 1_000_000_000;
