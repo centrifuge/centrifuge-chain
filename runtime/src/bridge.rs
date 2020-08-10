@@ -142,8 +142,7 @@ mod tests{
 	use sp_core::hashing::blake2_128;
 	use sp_runtime::{
 		testing::Header,
-		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
-		BuildStorage, ModuleId, Perbill,
+		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
 	};
 	use crate::bridge as pallet_bridge;
 
@@ -171,6 +170,10 @@ mod tests{
 		type Event = Event;
 		type BlockHashCount = BlockHashCount;
 		type MaximumBlockWeight = MaximumBlockWeight;
+		type DbWeight = ();
+		type BlockExecutionWeight = ();
+		type ExtrinsicBaseWeight = ();
+		type MaximumExtrinsicWeight = ();
 		type MaximumBlockLength = MaximumBlockLength;
 		type AvailableBlockRatio = AvailableBlockRatio;
 		type Version = ();
@@ -222,8 +225,8 @@ mod tests{
 	}
 
 	parameter_types! {
-		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
-		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 	}
 
 	impl Trait for Test {
@@ -496,7 +499,7 @@ mod tests{
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![],
 				status: chainbridge::ProposalStatus::Initiated,
-				expiry: ProposalLifetime::get(),
+				expiry: ProposalLifetime::get() + 1,
 			};
 			assert_eq!(prop, expected);
 
@@ -513,7 +516,7 @@ mod tests{
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::ProposalStatus::Initiated,
-				expiry: ProposalLifetime::get(),
+				expiry: ProposalLifetime::get() + 1,
 			};
 			assert_eq!(prop, expected);
 
@@ -530,7 +533,7 @@ mod tests{
 				votes_for: vec![RELAYER_A, RELAYER_C],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::ProposalStatus::Approved,
-				expiry: ProposalLifetime::get(),
+				expiry: ProposalLifetime::get() + 1,
 			};
 			assert_eq!(prop, expected);
 
