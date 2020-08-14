@@ -1,13 +1,16 @@
+use sc_chain_spec::ChainSpecExtension;
 use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
+use serde::{Serialize, Deserialize};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
 	FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
 	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
 };
+use node_runtime::Block;
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
-use sp_finality_grandpa::{AuthorityId as GrandpaId};
+use grandpa_primitives::{AuthorityId as GrandpaId};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -15,9 +18,26 @@ use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
 
 pub use node_primitives::{AccountId, Balance, Hash, Signature};
 pub use node_runtime::GenesisConfig;
+use sc_service::ChainType;
+
+/// Node `ChainSpec` extensions.
+///
+/// Additional parameters for some Substrate core modules,
+/// customizable from the chain spec.
+#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
+#[serde(rename_all = "camelCase")]
+pub struct Extensions {
+	/// Block numbers with known hashes.
+	pub fork_blocks: sc_client_api::ForkBlocks<Block>,
+	/// Known bad block hashes.
+	pub bad_blocks: sc_client_api::BadBlocks<Block>,
+}
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::ChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<
+	GenesisConfig,
+	Extensions,
+>;
 
 /// The chain specification option.
 #[derive(Clone, Debug)]
@@ -74,14 +94,14 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (
 
 /// Get a chain config from a spec setting.
 impl Alternative {
-	pub(crate) fn load(self) -> Result<ChainSpec, String> {
+	pub(crate) fn load(self) -> Result<Box<dyn sc_service::ChainSpec>, String> {
 		Ok(match self {
-			Alternative::Development => development_config(),
-			Alternative::LocalTestnet => local_testnet_config(),
-			Alternative::Fulvous => fulvous_config(),
-			Alternative::Flint => flint_config()?,
-			Alternative::Amber => amber_config()?,
-			Alternative::Mainnet => mainnet_config()?,
+			Alternative::Development => Box::new(development_config()),
+			Alternative::LocalTestnet => Box::new(local_testnet_config()),
+			Alternative::Fulvous => Box::new(fulvous_config()?),
+			Alternative::Flint => Box::new(flint_config()?),
+			Alternative::Amber => Box::new(amber_config()?),
+			Alternative::Mainnet => Box::new(mainnet_config()?),
 		})
 	}
 
@@ -100,17 +120,17 @@ impl Alternative {
 
 /// Flint testnet generator
 pub fn flint_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc3-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc3-raw-spec.json")[..])
 }
 
 /// Amber testnet generator
 pub fn amber_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-cc2-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-cc2-raw-spec.json")[..])
 }
 
 /// Mainnet generator
 pub fn mainnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-raw-spec.json")[..])
 }
 
 fn session_keys(
@@ -171,8 +191,6 @@ pub fn testnet_genesis(
 			}).collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
-            // The current era index.
-			current_era: 0,
             // The ideal number of staking participants.
 			validator_count: initial_authorities.len() as u32 * 2,
 			minimum_validator_count: initial_authorities.len() as u32,
@@ -277,6 +295,7 @@ pub fn development_config() -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Development",
 		"dev",
+		ChainType::Development,
 		development_config_genesis,
 		vec![],
 		None,
@@ -301,6 +320,7 @@ pub fn local_testnet_config() -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Local Testnet",
 		"local_testnet",
+		ChainType::Local,
 		local_testnet_genesis,
 		vec![],
 		None,
@@ -310,6 +330,7 @@ pub fn local_testnet_config() -> ChainSpec {
 	)
 }
 
+#[allow(dead_code)]
 fn fulvous_genesis() -> GenesisConfig {
 	testnet_genesis(
 		vec![
@@ -339,24 +360,27 @@ fn fulvous_genesis() -> GenesisConfig {
 }
 
 /// Local testnet config (multivalidator Alice + Bob)
-pub fn fulvous_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"Fulvous Testnet",
-		"fulvous",
-		fulvous_genesis,
-		vec![],
-		None,
-		Some("flvs"),
-		Some(get_default_properties("TRAD")),
-		Default::default(),
-	)
+pub fn fulvous_config() -> Result<ChainSpec,String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/fulvous-raw-spec.json")[..])
+	// Keeping this as in case we want to regenerate the fulvous raw later
+	// ChainSpec::from_genesis(
+	// 	"Fulvous Testnet",
+	// 	"fulvous",
+	// 	ChainType::Live,
+	// 	fulvous_genesis,
+	// 	vec![],
+	// 	None,
+	// 	Some("flvs"),
+	// 	Some(get_default_properties("TRAD")),
+	// 	Default::default(),
+	// )
 }
 
-pub fn load_spec(id: &str) -> Result<Option<ChainSpec>, String> {
-	Ok(match Alternative::from(id) {
-		Some(spec) => Some(spec.load()?),
-		None => None,
-	})
+pub fn load_spec(id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
+	match Alternative::from(id) {
+		Some(spec) => spec.load(),
+		None => Err(String::from("Unknown network ID")),
+	}
 }
 
 #[cfg(test)]
@@ -365,37 +389,14 @@ pub(crate) mod tests {
 	use crate::service::{new_full, new_light};
 	use sc_service_test;
 	use sp_runtime::{ModuleId, BuildStorage, traits::AccountIdConversion};
-	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccountDirect};
-
-
-	fn local_testnet_genesis_instant_single() -> GenesisConfig {
-		testnet_genesis(
-			vec![
-				get_authority_keys_from_seed("Alice"),
-			],
-			None,
-		)
-	}
-
-	/// Local testnet config (single validator - Alice)
-	pub fn integration_test_config_with_single_authority() -> ChainSpec {
-		ChainSpec::from_genesis(
-			"Integration Test",
-			"test",
-			local_testnet_genesis_instant_single,
-			vec![],
-			None,
-			None,
-			None,
-			Default::default(),
-		)
-	}
+	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccount};
 
 	/// Local testnet config (multivalidator Alice + Bob)
 	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
 		ChainSpec::from_genesis(
 			"Integration Test",
 			"test",
+			ChainType::Local,
 			local_testnet_genesis,
 			vec![],
 			None,
@@ -417,22 +418,22 @@ pub(crate) mod tests {
 
 	#[test]
 	fn test_centrifuge_multi_account_ids() {
-		assert_eq!(MultiAccount::multi_account_id(1).to_ss58check_with_version(CentrifugeAccountDirect),
+		assert_eq!(MultiAccount::multi_account_id(1).to_ss58check_with_version(CentrifugeAccount),
 			"4d4KMh9TuvpbBZmw3VTpbFewd1Vwpyo45g1du4xFfNEmUKQV");
-		assert_eq!(MultiAccount::multi_account_id(2).to_ss58check_with_version(CentrifugeAccountDirect),
+		assert_eq!(MultiAccount::multi_account_id(2).to_ss58check_with_version(CentrifugeAccount),
 			"4ghzKGVmwh7wKFaWVF3d4QTbg21AbTo4mMPM5YUkkQasth4e");
-		assert_eq!(MultiAccount::multi_account_id(3).to_ss58check_with_version(CentrifugeAccountDirect),
+		assert_eq!(MultiAccount::multi_account_id(3).to_ss58check_with_version(CentrifugeAccount),
 			"4fM9N5BuADmbYBn4SPNnSVhfD9TVoBc83BC3ZJWei5FmAunc");
-		assert_eq!(MultiAccount::multi_account_id(4).to_ss58check_with_version(CentrifugeAccountDirect),
+		assert_eq!(MultiAccount::multi_account_id(4).to_ss58check_with_version(CentrifugeAccount),
 			"4eHarY1f35y2wtbW3XKLbbnJHeztAjNsxcYEoMnjfQbKXyq3");
-		assert_eq!(MultiAccount::multi_account_id(5).to_ss58check_with_version(CentrifugeAccountDirect),
+		assert_eq!(MultiAccount::multi_account_id(5).to_ss58check_with_version(CentrifugeAccount),
 			"4dTzs4ktTARToFk6k12Diu8ZHeP9bPCTfh1erAGhd3THtqCZ");
 	}
 
 	#[test]
 	fn test_centrifuge_bridge_account_id() {
 		let account_id: AccountId = ModuleId(*b"cb/bridg").into_account();
-		assert_eq!(account_id.to_ss58check_with_version(CentrifugeAccountDirect),
+		assert_eq!(account_id.to_ss58check_with_version(CentrifugeAccount),
 			"4dpEcgqFor2TJw9uWSjx2JpjkNmTic2UjJAK1j9fRtcTUoRu");
 	}
 

@@ -1,36 +1,35 @@
 use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
-	decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-	weights::SimpleDispatchInfo
+    decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
+    traits::EnsureOrigin,
 };
 use frame_system::{self as system, ensure_signed};
-use sp_runtime::traits::EnsureOrigin;
-use sp_std::prelude::*;
 use sp_core::U256;
 use sp_runtime::traits::SaturatedConversion;
+use sp_std::prelude::*;
 
 type ResourceId = chainbridge::ResourceId;
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-/// Additional Fee charged when moving native tokens to target chains
+/// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
 
 pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
- 	type Currency: Currency<Self::AccountId>;
+    type Currency: Currency<Self::AccountId>;
     /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
     type HashId: Get<ResourceId>;
     type NativeTokenId: Get<ResourceId>;
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as PalletBridge {}
+    trait Store for Module<T: Trait> as PalletBridge {}
 
-	add_extra_genesis {
+    add_extra_genesis {
         config(chains): Vec<u8>;
         config(relayers): Vec<T::AccountId>;
         config(resources): Vec<(ResourceId, Vec<u8>)>;
@@ -62,20 +61,19 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
-        /// Adds additional fee to compensate the current cost of target chains
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
 
             let token_fee: T::Balance = TOKEN_FEE.saturated_into();
 			let total_amount = U256::from(amount.saturated_into()).saturating_add(U256::from(token_fee.saturated_into()));
 
-			// Ensure account has enough balance for both fee and transfer
-			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
-			let current_balance = T::Currency::free_balance(&source);
-			ensure!(U256::from(current_balance.saturated_into()) >= total_amount, "Insufficient Balance");
+            // Ensure account has enough balance for both fee and transfer
+            // Check to avoid balance errors down the line that leave balance storage in an inconsistent state
+            let current_balance = T::Currency::free_balance(&source);
+            ensure!(U256::from(current_balance.saturated_into()) >= total_amount, "Insufficient Balance");
 
-			ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
+            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
 
             // Burn additional fees
             <fees::Module<T>>::burn_fee(&source, token_fee)?;
@@ -85,7 +83,7 @@ decl_module! {
 
             let resource_id = T::NativeTokenId::get();
             <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))?;
-			Ok(())
+            Ok(())
         }
 
         //
@@ -93,7 +91,7 @@ decl_module! {
         //
 
         /// Executes a simple currency transfer using the chainbridge account as the source
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
@@ -101,7 +99,7 @@ decl_module! {
         }
 
         /// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn remark(origin, hash: T::Hash) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
             Self::deposit_event(RawEvent::Remark(hash));
@@ -112,19 +110,24 @@ decl_module! {
 }
 
 impl<T: Trait> Module<T> {
-	/// Its called as part of genesis step to initialize some dev parameters
-	fn initialize(chains: &[u8], relayers: &[T::AccountId], resources: &Vec<(ResourceId, Vec<u8>)>, threshold: &u32) {
-		chains.into_iter().for_each(|c| {
-			<chainbridge::Module<T>>::whitelist(*c).unwrap_or_default();
-		});
-		relayers.into_iter().for_each(|rs| {
-			<chainbridge::Module<T>>::register_relayer(rs.clone()).unwrap_or_default();
-		});
-		<chainbridge::Module<T>>::set_relayer_threshold(*threshold).unwrap_or_default();
-		for &(ref re, ref m) in resources.iter() {
-			<chainbridge::Module<T>>::register_resource(*re, m.clone()).unwrap_or_default();
-		}
-	}
+    /// Its called as part of genesis step to initialize some dev parameters
+    fn initialize(
+        chains: &[u8],
+        relayers: &[T::AccountId],
+        resources: &Vec<(ResourceId, Vec<u8>)>,
+        threshold: &u32,
+    ) {
+        chains.into_iter().for_each(|c| {
+            <chainbridge::Module<T>>::whitelist(*c).unwrap_or_default();
+        });
+        relayers.into_iter().for_each(|rs| {
+            <chainbridge::Module<T>>::register_relayer(rs.clone()).unwrap_or_default();
+        });
+        <chainbridge::Module<T>>::set_relayer_threshold(*threshold).unwrap_or_default();
+        for &(ref re, ref m) in resources.iter() {
+            <chainbridge::Module<T>>::register_resource(*re, m.clone()).unwrap_or_default();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -139,8 +142,7 @@ mod tests{
 	use sp_core::hashing::blake2_128;
 	use sp_runtime::{
 		testing::Header,
-		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup},
-		BuildStorage, ModuleId, Perbill,
+		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
 	};
 	use crate::bridge as pallet_bridge;
 
@@ -168,6 +170,10 @@ mod tests{
 		type Event = Event;
 		type BlockHashCount = BlockHashCount;
 		type MaximumBlockWeight = MaximumBlockWeight;
+		type DbWeight = ();
+		type BlockExecutionWeight = ();
+		type ExtrinsicBaseWeight = ();
+		type MaximumExtrinsicWeight = ();
 		type MaximumBlockLength = MaximumBlockLength;
 		type AvailableBlockRatio = AvailableBlockRatio;
 		type Version = ();
@@ -219,8 +225,8 @@ mod tests{
 	}
 
 	parameter_types! {
-		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
-		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 	}
 
 	impl Trait for Test {
@@ -253,17 +259,24 @@ mod tests{
 	pub const RELAYER_C: u64 = 0x4;
 	pub const ENDOWED_BALANCE: u128 = 100 * currency::RAD;
 
-	pub fn new_test_ext() -> sp_io::TestExternalities {
-		let bridge_id = ModuleId(*b"cb/bridg").into_account();
-		GenesisConfig {
-			balances: Some(balances::GenesisConfig {
-				balances: vec![(bridge_id, ENDOWED_BALANCE), (RELAYER_A, ENDOWED_BALANCE), (RELAYER_B, 100)],
-			}),
-		}
-		.build_storage()
-		.unwrap()
-		.into()
-	}
+    pub fn new_test_ext() -> sp_io::TestExternalities {
+        let bridge_id = ModuleId(*b"cb/bridg").into_account();
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+        pallet_balances::GenesisConfig::<Test> {
+            balances: vec![
+                (bridge_id, ENDOWED_BALANCE),
+                (RELAYER_A, ENDOWED_BALANCE),
+                (RELAYER_B, 100),
+            ],
+        }
+            .assimilate_storage(&mut t)
+            .unwrap();
+        let mut ext = sp_io::TestExternalities::new(t);
+        ext.execute_with(|| System::set_block_number(1));
+        ext
+    }
 
 	fn last_event() -> Event {
 		system::Module::<Test>::events()
@@ -486,7 +499,7 @@ mod tests{
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![],
 				status: chainbridge::ProposalStatus::Initiated,
-				expiry: ProposalLifetime::get(),
+				expiry: ProposalLifetime::get() + 1,
 			};
 			assert_eq!(prop, expected);
 
@@ -503,7 +516,7 @@ mod tests{
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::ProposalStatus::Initiated,
-				expiry: ProposalLifetime::get(),
+				expiry: ProposalLifetime::get() + 1,
 			};
 			assert_eq!(prop, expected);
 
@@ -520,7 +533,7 @@ mod tests{
 				votes_for: vec![RELAYER_A, RELAYER_C],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::ProposalStatus::Approved,
-				expiry: ProposalLifetime::get(),
+				expiry: ProposalLifetime::get() + 1,
 			};
 			assert_eq!(prop, expected);
 
