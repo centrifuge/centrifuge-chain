@@ -10,8 +10,8 @@ use frame_support::{
     decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
-    storage::child::{self, ChildInfo},
-    weights::SimpleDispatchInfo,
+    storage::child,
+    weights::DispatchClass,
 };
 use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
@@ -35,9 +35,6 @@ const MAX_LOOP_IN_TX: u64 = 500;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
-
-/// The child info for this module
-const CHILD_INFO: ChildInfo<'static> = ChildInfo::new_default(b"anchor");
 
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -68,35 +65,35 @@ decl_storage! {
 
         /// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed
         /// later
-        PreCommits get(get_pre_commit): map hasher(blake2_256) T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
+        PreCommits get(fn get_pre_commit): map hasher(opaque_blake2_256) T::Hash => PreCommitData<T::Hash, T::AccountId, T::BlockNumber>;
 
         /// Pre-commit eviction buckets keep track of which pre-commit can be evicted at which point
-        PreCommitEvictionBuckets get(get_pre_commit_in_evict_bucket_by_index): map hasher(blake2_256) (T::BlockNumber, u64) => T::Hash;
-        PreCommitEvictionBucketIndex get(get_pre_commits_count_in_evict_bucket): map hasher(blake2_256) T::BlockNumber => u64;
+        PreCommitEvictionBuckets get(fn get_pre_commit_in_evict_bucket_by_index): map hasher(opaque_blake2_256) (T::BlockNumber, u64) => T::Hash;
+        PreCommitEvictionBucketIndex get(fn get_pre_commits_count_in_evict_bucket): map hasher(opaque_blake2_256) T::BlockNumber => u64;
 
         /// Index to find the eviction date given an anchor id
-        AnchorEvictDates get(get_anchor_evict_date): map hasher(blake2_256) T::Hash => u32;
+        AnchorEvictDates get(fn get_anchor_evict_date): map hasher(opaque_blake2_256) T::Hash => u32;
 
         /// Incrementing index for anchors for iteration purposes
-        AnchorIndexes get(get_anchor_id_by_index): map hasher(blake2_256) u64 => T::Hash;
+        AnchorIndexes get(fn get_anchor_id_by_index): map hasher(opaque_blake2_256) u64 => T::Hash;
 
         /// Latest anchored index
-        LatestAnchorIndex get(get_latest_anchor_index): u64;
+        LatestAnchorIndex get(fn get_latest_anchor_index): u64;
 
         /// Latest evicted anchor index. This would keep track of the latest evicted anchor index so
         /// that we can start the removal of AnchorEvictDates index from that index onwards. Going
         /// from AnchorIndexes => AnchorEvictDates
-        LatestEvictedAnchorIndex get(get_latest_evicted_anchor_index): u64;
+        LatestEvictedAnchorIndex get(fn get_latest_evicted_anchor_index): u64;
 
         /// This is to keep track of the date when a child trie of anchors was evicted last. It is
         /// to evict historic anchor data child tries if they weren't evicted in a timely manner.
-        LatestEvictedDate get(get_latest_evicted_date): u32;
+        LatestEvictedDate get(fn get_latest_evicted_date): u32;
 
         /// Storage for evicted anchor child trie roots. Anchors with a given expiry/eviction date
         /// are stored on-chain in a single child trie. This child trie is removed after the expiry
         /// date has passed while its root is stored permanently for proving an existence of an
         /// evicted anchor.
-        EvictedAnchorRoots get(get_evicted_anchor_root_by_day): map hasher(blake2_256) u32 => Vec<u8>;
+        EvictedAnchorRoots get(fn get_evicted_anchor_root_by_day): map hasher(opaque_blake2_256) u32 => Vec<u8>;
 
         Version: u64;
     }
@@ -121,7 +118,7 @@ decl_module! {
         /// # <weight>
         /// minimal logic, also needs to be consume less block capacity + cheaper to make the pre-commits viable.
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedNormal(500_000)]
+        #[weight = 500_000]
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
@@ -155,7 +152,7 @@ decl_module! {
         /// using smaller `stored_until_date`s. Computation cost involves timestamp calculations
         /// and state rent calculations, which we take here to be equivalent to a transfer transaction.
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedNormal(1_000_000)]
+        #[weight = 1_000_000]
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(<pallet_timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
@@ -191,7 +188,7 @@ decl_module! {
             <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
-            let child_storage_key = common::generate_child_storage_key(stored_until_date_from_epoch);
+            let child_info = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
@@ -199,7 +196,7 @@ decl_module! {
             };
 
             let anchor_data_encoded = anchor_data.encode();
-            child::put_raw(&child_storage_key, CHILD_INFO, anchor_id.as_ref(), &anchor_data_encoded);
+            child::put_raw(&child_info, anchor_id.as_ref(), &anchor_data_encoded);
 
             // update indexes
             <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
@@ -217,7 +214,7 @@ decl_module! {
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
+        #[weight = (1_000_000, DispatchClass::Operational)]
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> DispatchResult {
             ensure_signed(origin)?;
             ensure!(<frame_system::Module<T>>::block_number() >= evict_bucket,
@@ -253,7 +250,7 @@ decl_module! {
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
+        #[weight = (1_000_000, DispatchClass::Operational)]
         pub fn evict_anchors(origin) -> DispatchResult {
             ensure_signed(origin)?;
             let current_timestamp = <pallet_timestamp::Module<T>>::get();
@@ -364,11 +361,11 @@ impl<T: Trait> Module<T> {
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
                 if !EvictedAnchorRoots::contains_key(day) {
-                    EvictedAnchorRoots::insert(day, child::child_root(&key));
+                    EvictedAnchorRoots::insert(day, child::root(&key));
                 }
                 key
             })
-            .map(|key| child::kill_storage(&key, CHILD_INFO))
+            .map(|key| child::kill_storage(&key))
             .count()
     }
 
@@ -400,9 +397,9 @@ impl<T: Trait> Module<T> {
     /// Get an anchor by its id in the child storage
     pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-        let storage_key = common::generate_child_storage_key(anchor_evict_date);
+        let child_info = common::generate_child_storage_key(anchor_evict_date);
 
-        child::get_raw(&storage_key, CHILD_INFO, anchor_id.as_ref())
+        child::get_raw(&child_info, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
     }
 

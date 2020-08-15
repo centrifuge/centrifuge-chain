@@ -1,13 +1,11 @@
-use crate::{anchor, proofs, proofs::Proof, fees, constants::currency};
-use frame_support::{
-    decl_event, decl_module, dispatch::DispatchResult, ensure, weights::SimpleDispatchInfo, traits::Get,
-};
+use crate::bridge as pallet_bridge;
+use crate::{anchor, fees, proofs, proofs::Proof};
+use frame_support::{decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get};
 use frame_system::{self as system, ensure_signed};
 use sp_core::H256;
 use sp_std::vec::Vec;
+use crate::constants::currency;
 use sp_runtime::traits::SaturatedConversion;
-
-use crate::bridge as pallet_bridge;
 
 /// Additional Fee charged to validate NFT proofs
 const NFT_FEE: u128 = 10 * currency::RAD;
@@ -34,7 +32,7 @@ decl_module! {
         /// # <weight>
         /// - depends on the arguments
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedNormal(1_500_000)]
+        #[weight = 1_500_000]
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -48,20 +46,20 @@ decl_module! {
             let bundled_hash = Self::get_bundled_hash(pfs, deposit_address);
             Self::deposit_event(RawEvent::DepositAsset(bundled_hash));
 
-			let metadata = bundled_hash.as_ref().to_vec();
-			let resource_id = <T as pallet_bridge::Trait>::HashId::get();
+            let metadata = bundled_hash.as_ref().to_vec();
+            let resource_id = <T as pallet_bridge::Trait>::HashId::get();
 
 			// Burn additional fees
 			let nft_fee: T::Balance = NFT_FEE.saturated_into();
             <fees::Module<T>>::burn_fee(&who, nft_fee)?;
 
-			<chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
+            <chainbridge::Module<T>>::transfer_generic(dest_id, resource_id, metadata)?;
             Ok(())
         }
     }
 }
 
-impl<T: Trait + pallet_bridge::Trait> Module<T>{
+impl<T: Trait + pallet_bridge::Trait> Module<T> {
     /// Validates the proofs again the provided doc_root.
     /// returns false if any proofs are invalid.
     fn validate_proofs(doc_root: T::Hash, pfs: &Vec<Proof>, static_proofs: [H256; 3]) -> bool {
@@ -83,39 +81,39 @@ mod tests {
 
     use crate::common;
     use crate::fees;
+    use crate::nfts;
     use crate::proofs::Proof;
     use codec::Encode;
     use frame_support::{
-        assert_err, assert_ok, parameter_types, ord_parameter_types, weights::Weight,
-        dispatch::DispatchError,
+        assert_err, assert_ok, dispatch::DispatchError, ord_parameter_types, parameter_types,
+        weights::Weight,
     };
+    use frame_system::EnsureSignedBy;
+    use sp_core::hashing::blake2_128;
     use sp_core::H256;
     use sp_runtime::{
         testing::Header,
-        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
+        traits::{BadOrigin, BlakeTwo256, Block as BlockT, Hash, IdentityLookup},
         Perbill,
     };
-	use sp_core::hashing::blake2_128;
-	use crate::nfts;
-	use sp_std::prelude::*;
-    use frame_system::EnsureSignedBy;
+    use sp_std::prelude::*;
 
-	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-	pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
+    pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
+    pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
 
-	frame_support::construct_runtime!(
-		pub enum Test where
-			Block = Block,
-			NodeBlock = Block,
-			UncheckedExtrinsic = UncheckedExtrinsic
-		{
-			System: frame_system::{Module, Call, Event<T>},
-			Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
-			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
-			Nfts: nfts::{Module, Event<T>}
-		}
-	);
+    frame_support::construct_runtime!(
+        pub enum Test where
+            Block = Block,
+            NodeBlock = Block,
+            UncheckedExtrinsic = UncheckedExtrinsic
+        {
+            System: frame_system::{Module, Call, Event<T>},
+            Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
+            ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+            PalletBridge: pallet_bridge::{Module, Call, Event<T>},
+            Nfts: nfts::{Module, Event<T>}
+        }
+    );
 
     type Anchor = anchor::Module<Test>;
 
@@ -146,6 +144,10 @@ mod tests {
         type AccountData = pallet_balances::AccountData<u128>;
         type OnNewAccount = ();
         type OnKilledAccount = pallet_balances::Module<Test>;
+        type DbWeight = ();
+        type BlockExecutionWeight = ();
+        type ExtrinsicBaseWeight = ();
+        type MaximumExtrinsicWeight = ();
     }
 
     impl anchor::Trait for Test {}
@@ -154,35 +156,35 @@ mod tests {
         type Event = ();
     }
 
-	parameter_types! {
-		pub const HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
-		pub const NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
-	}
+    parameter_types! {
+        pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+        pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+    }
 
-	impl pallet_bridge::Trait for Test {
-		type Event = ();
-		type BridgeOrigin = chainbridge::EnsureBridge<Test>;
-		type Currency = Balances;
-		type HashId = HashId;
-		type NativeTokenId = NativeTokenId;
-	}
+    impl pallet_bridge::Trait for Test {
+        type Event = ();
+        type BridgeOrigin = chainbridge::EnsureBridge<Test>;
+        type Currency = Balances;
+        type HashId = HashId;
+        type NativeTokenId = NativeTokenId;
+    }
 
-	parameter_types! {
-		pub const TestChainId: u8 = 5;
-	}
+    parameter_types! {
+        pub const TestChainId: u8 = 5;
+    }
 
     ord_parameter_types! {
-		pub const One: u64 = 1;
-		pub const ProposalLifetime: u32 = 10;
-	}
+        pub const One: u64 = 1;
+        pub const ProposalLifetime: u32 = 10;
+    }
 
-	impl chainbridge::Trait for Test {
-		type Event = ();
-		type Proposal = Call;
-		type ChainId = TestChainId;
+    impl chainbridge::Trait for Test {
+        type Event = ();
+        type Proposal = Call;
+        type ChainId = TestChainId;
         type AdminOrigin = EnsureSignedBy<One, u64>;
         type ProposalLifetime = ProposalLifetime;
-	}
+    }
 
     impl pallet_timestamp::Trait for Test {
         type Moment = u64;
@@ -214,7 +216,6 @@ mod tests {
     }
 
     pub const USER_A: u64 = 0x1;
-
     fn new_test_ext() -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Test>()
@@ -347,12 +348,18 @@ mod tests {
         (proof, doc_root, static_proofs)
     }
 
-    fn get_params() -> (sp_core::H256, [u8; 20], Vec<Proof>, [H256; 3], chainbridge::ChainId) {
+    fn get_params() -> (
+        sp_core::H256,
+        [u8; 20],
+        Vec<Proof>,
+        [H256; 3],
+        chainbridge::ChainId,
+    ) {
         let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
         let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
-		let chain_id: chainbridge::ChainId = 1;
+        let chain_id: chainbridge::ChainId = 1;
         (anchor_id, deposit_address, pfs, static_proofs, chain_id)
     }
 
@@ -361,7 +368,14 @@ mod tests {
         new_test_ext().execute_with(|| {
             let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
-                Nfts::validate_mint(Origin::NONE, anchor_id, deposit_address, pfs, static_proofs, chain_id),
+                Nfts::validate_mint(
+                    Origin::NONE,
+                    anchor_id,
+                    deposit_address,
+                    pfs,
+                    static_proofs,
+                    chain_id
+                ),
                 BadOrigin
             );
         })
@@ -378,7 +392,7 @@ mod tests {
                     deposit_address,
                     pfs,
                     static_proofs,
-					chain_id
+                    chain_id
                 ),
                 "Anchor doesn't exist"
             );
@@ -407,7 +421,7 @@ mod tests {
                     deposit_address,
                     vec![pf],
                     static_proofs,
-					0
+                    0
                 ),
                 "Invalid proofs"
             );
@@ -431,7 +445,8 @@ mod tests {
             ));
 
             assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
-            assert_err!(Nfts::validate_mint(
+            assert_err!(
+                Nfts::validate_mint(
                     Origin::signed(2),
                     anchor_id,
                     deposit_address,
@@ -471,7 +486,7 @@ mod tests {
                 deposit_address,
                 vec![pf],
                 static_proofs,
-				0
+                0
             ),);
 
             // Account balance should be reduced amount + fee

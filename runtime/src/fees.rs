@@ -4,11 +4,10 @@ use frame_support::{
     decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{Currency, ExistenceRequirement, WithdrawReason},
-    weights::SimpleDispatchInfo,
+    traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReason},
+    weights::DispatchClass,
 };
 use frame_system::{self as system, ensure_root};
-use sp_runtime::traits::EnsureOrigin;
 
 /// The module's configuration trait.
 pub trait Trait: frame_system::Trait + pallet_balances::Trait + pallet_authorship::Trait {
@@ -27,7 +26,7 @@ pub struct Fee<Hash, Balance> {
 
 decl_storage! {
     trait Store for Module<T: Trait> as Fees {
-        Fees get(fee) : map hasher(blake2_256) T::Hash => Fee<T::Hash, T::Balance>;
+        Fees get(fn fee) : map hasher(opaque_blake2_256) T::Hash => Fee<T::Hash, T::Balance>;
 
         Version: u64;
     }
@@ -57,7 +56,7 @@ decl_module! {
         /// - Independent of the arguments.
         /// - Contains a limited number of reads and writes.
         /// # </weight>
-        #[weight = SimpleDispatchInfo::FixedOperational(1_000_000)]
+        #[weight = (1_000_000, DispatchClass::Operational)]
         pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> DispatchResult {
             Self::can_change_fee(origin)?;
             Self::change_fee(key, new_price);
@@ -196,6 +195,10 @@ mod tests {
         type AccountData = pallet_balances::AccountData<u64>;
         type OnNewAccount = ();
         type OnKilledAccount = pallet_balances::Module<Test>;
+        type DbWeight = ();
+        type BlockExecutionWeight = ();
+        type ExtrinsicBaseWeight = ();
+        type MaximumExtrinsicWeight = ();
     }
     ord_parameter_types! {
         pub const One: u64 = 1;
@@ -421,7 +424,6 @@ mod tests {
                     message: Some("InsufficientBalance"),
                 }
             );
-
         });
     }
 }
