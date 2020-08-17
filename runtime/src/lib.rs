@@ -257,6 +257,7 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
+    /// TransactionByteFee is set to 0.01 MicroRAD
     pub const TransactionByteFee: Balance = 1 * (MICRO_RAD / 100);
 	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
