@@ -32,7 +32,7 @@ decl_module! {
         /// # <weight>
         /// - depends on the arguments
         /// # </weight>
-        #[weight = 1_500_000]
+        #[weight = 120_000_000]
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 

@@ -644,7 +644,9 @@ dependencies = [
  "rustc-hex",
  "safe-mix",
  "serde",
+ "smallvec 1.4.1",
  "sp-api",
+ "sp-arithmetic",
  "sp-authority-discovery",
  "sp-block-builder",
  "sp-consensus-babe",
@@ -658,6 +660,7 @@ dependencies = [
  "sp-std",
  "sp-transaction-pool",
  "sp-version",
+ "static_assertions",
  "substrate-pallet-multi-account",
  "substrate-wasm-builder-runner",
 ]

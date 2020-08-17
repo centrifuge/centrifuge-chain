@@ -56,7 +56,7 @@ decl_module! {
         /// - Independent of the arguments.
         /// - Contains a limited number of reads and writes.
         /// # </weight>
-        #[weight = (1_000_000, DispatchClass::Operational)]
+        #[weight = (195_000_000, DispatchClass::Operational)]
         pub fn set_fee(origin, key: T::Hash, new_price: T::Balance) -> DispatchResult {
             Self::can_change_fee(origin)?;
             Self::change_fee(key, new_price);

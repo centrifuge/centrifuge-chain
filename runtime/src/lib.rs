@@ -8,8 +8,8 @@ use sp_std::prelude::*;
 use frame_support::{
     construct_runtime, parameter_types, debug,
     weights::{
-        Weight, IdentityFee,
-        constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
+        Weight,
+        constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
     traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier},
 };
@@ -23,7 +23,7 @@ pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
-	Perbill, Perquintill, ApplyExtrinsicResult,
+	Perbill, Perquintill, ApplyExtrinsicResult, PerThing,
 	impl_opaque_keys, generic, create_runtime_str,
 };
 use sp_runtime::curve::PiecewiseLinear;
@@ -47,6 +47,7 @@ use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
 use pallet_collective::EnsureProportionMoreThan;
+use static_assertions::const_assert;
 
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -80,6 +81,7 @@ mod bridge;
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
+use crate::impls::WeightToFee;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -94,10 +96,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 231,
+    spec_version: 232,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 0,
+    transaction_version: 1,
 };
 
 /// Native version.
@@ -120,16 +122,19 @@ impl Filter<Call> for BaseFilter {
 pub struct IsCallable;
 frame_support::impl_filter_stack!(IsCallable, BaseFilter, Call, is_callable);
 
+const AVERAGE_ON_INITIALIZE_WEIGHT: Perbill = Perbill::from_percent(10);
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 1_000_000_000;
+    pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
     pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     /// Assume 10% of weight for average on_initialize calls.
     pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
-		.saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
+		.saturating_sub(AVERAGE_ON_INITIALIZE_WEIGHT) * MaximumBlockWeight::get();
 }
+
+const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
 
 impl frame_system::Trait for Runtime {
     /// The ubiquitous origin type.
@@ -224,16 +229,18 @@ impl pallet_indices::Trait for Runtime {
     /// The type for recording indexing into the account enumeration. If this ever overflows, there
     /// will be problems!
     type AccountIndex = AccountIndex;
-    /// The overarching event type.
-    type Event = Event;
     /// The currency trait.
     type Currency = Balances;
     /// The deposit needed for reserving an index.
     type Deposit = IndexDeposit;
+    /// The overarching event type.
+    type Event = Event;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: Balance = 1 * MICRO_RAD; // the minimum fee for an anchor is 500,000ths of a RAD. This is set to a value so you can still get some return without getting your account removed
+    // the minimum fee for an anchor is 500,000ths of a RAD.
+    // This is set to a value so you can still get some return without getting your account removed.
+    pub const ExistentialDeposit: Balance = 1 * MICRO_RAD;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -250,16 +257,23 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const TransactionByteFee: Balance = 1 * MICRO_RAD;
+    pub const TransactionByteFee: Balance = 1 * (MICRO_RAD / 100);
 	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 }
+
+// for a sane configuration, this should always be less than `AvailableBlockRatio`.
+const_assert!(
+	TargetBlockFullness::get().deconstruct() <
+	(AvailableBlockRatio::get().deconstruct() as <Perquintill as PerThing>::Inner)
+		* (<Perquintill as PerThing>::ACCURACY / <Perbill as PerThing>::ACCURACY as <Perquintill as PerThing>::Inner)
+);
 
 impl pallet_transaction_payment::Trait for Runtime {
 	type Currency = Balances;
 	type OnTransactionPayment = Author;
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = IdentityFee<Balance>;
+	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = TargetedFeeAdjustment<TargetBlockFullness>;
 }
 
@@ -452,6 +466,9 @@ parameter_types! {
 	pub const DesiredRunnersUp: u32 = 3;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
+
+// Make sure that there are no more than `MAX_MEMBERS` members elected via elections-phragmen.
+const_assert!(DesiredMembers::get() <= pallet_collective::MAX_MEMBERS);
 
 impl pallet_elections_phragmen::Trait for Runtime {
 	type Event = Event;
@@ -648,13 +665,13 @@ parameter_types! {
 
 impl substrate_pallet_multi_account::Trait for Runtime {
     type Event = Event;
-    type Currency = Balances;
     type Call = Call;
-    type MaxSignatories = MultiAccountMaxSignatories;
+    type Currency = Balances;
     type MultiAccountDepositBase = MultiAccountDepositBase;
     type MultiAccountDepositFactor =  MultiAccountDepositFactor;
     type MultisigDepositBase = MultiAccountSigDepositBase;
     type MultisigDepositFactor = MultiAccountSigDepositFactor;
+    type MaxSignatories = MultiAccountMaxSignatories;
 }
 
 parameter_types! {

@@ -6,6 +6,9 @@ use sp_runtime::{FixedPointNumber, Perquintill};
 use frame_support::traits::{OnUnbalanced, Currency, Get};
 use pallet_transaction_payment::Multiplier;
 use crate::{Balances, System, Authorship, MaximumBlockWeight, NegativeImbalance};
+use frame_support::weights::{WeightToFeeCoefficient, WeightToFeePolynomial, WeightToFeeCoefficients};
+use smallvec::smallvec;
+use sp_arithmetic::Perbill;
 
 pub struct Author;
 impl OnUnbalanced<NegativeImbalance> for Author {
@@ -28,6 +31,30 @@ impl Convert<Balance, u64> for CurrencyToVoteHandler {
 
 impl Convert<u128, Balance> for CurrencyToVoteHandler {
 	fn convert(x: u128) -> Balance { x * Self::factor() }
+}
+
+/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
+/// node's balance type.
+///
+/// This should typically create a mapping between the following ranges:
+///   - [0, frame_system::MaximumBlockWeight]
+///   - [Balance::min, Balance::max]
+///
+/// Yet, it can be used for any other sort of change to weight-fee. Some examples being:
+///   - Setting it to `0` will essentially disable the weight fee.
+///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
+pub struct WeightToFee;
+impl WeightToFeePolynomial for WeightToFee {
+	type Balance = Balance;
+
+	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
+		smallvec!(WeightToFeeCoefficient {
+			coeff_integer: 315000,
+			coeff_frac: Perbill::zero(),
+			negative: false,
+			degree: 1,
+		})
+	}
 }
 
 /// Update the given multiplier based on the following formula
