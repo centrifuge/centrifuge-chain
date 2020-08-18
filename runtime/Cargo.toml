@@ -10,8 +10,8 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # external pallet
-substrate-pallet-multi-account = { version = "2.0.0-rc3", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "a99ee8f5c95818f012431029595b25642d02df08", default-features = false }
-chainbridge = { version = "0.0.1", git = "https://github.com/vedhavyas/chainbridge-substrate.git", rev = "d69d4cdf21602f6dc988485948d568e1c507077b" , default-features = false}
+substrate-pallet-multi-account = { version = "2.0.0-rc3-0", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "ce36ce991ff2d57f6aa51e0a29f8563b9044f18d", default-features = false }
+chainbridge = { version = "0.0.1", git = "https://github.com/chainsafe/chainbridge-substrate.git", rev = "59fbb767de890b6dcb781fb9e6c4c84a967693ff" , default-features = false}
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "1.3.0", default-features = false, features = ["derive"] }
