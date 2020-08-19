@@ -6,7 +6,7 @@ LABEL maintainer="philip@centrifuge.io"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV RUST_TOOLCHAIN=nightly-2020-03-12
+ENV RUST_TOOLCHAIN=nightly-2020-06-09
 
 ARG PROFILE=release
 WORKDIR /centrifuge-chain
