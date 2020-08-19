@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2020-08-16}"
 
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
@@ -47,5 +47,5 @@ case $TARGET in
   "build-runtime")
     export RUSTC_VERSION=$RUST_TOOLCHAIN
     export PACKAGE=centrifuge-chain-runtime
-    docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
+    docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home centrifugeio/srtool:$RUSTC_VERSION build
 esac

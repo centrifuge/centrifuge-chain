@@ -131,7 +131,7 @@ Lint the project with `cargo +nightly fmt`. This excludes certain paths (defined
 
 ## Verifying Runtime
 1. Check out the commit at which the runtime was built.
-2. Run `TARGET=build-runtime RUST_TOOLCHAIN=nightly-2020-03-12 ./ci/script.sh`
+2. Run `TARGET=build-runtime RUST_TOOLCHAIN=nightly-2020-08-16 ./ci/script.sh`
 3. A similar output is generated
 ```
 ✨ Your Substrate WASM Runtime is ready! ✨
