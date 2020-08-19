@@ -6337,7 +6337,7 @@ dependencies = [
 [[package]]
 name = "substrate-pallet-multi-account"
 version = "2.0.0-rc3-0"
-source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=ce36ce991ff2d57f6aa51e0a29f8563b9044f18d#ce36ce991ff2d57f6aa51e0a29f8563b9044f18d"
+source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=557b4da832a1d74ed286c3a3a4b20b7d80f47e05#557b4da832a1d74ed286c3a3a4b20b7d80f47e05"
 dependencies = [
  "frame-support",
  "frame-system",

@@ -10,7 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # external pallet
-substrate-pallet-multi-account = { version = "2.0.0-rc3-0", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "ce36ce991ff2d57f6aa51e0a29f8563b9044f18d", default-features = false }
+substrate-pallet-multi-account = { version = "2.0.0-rc3-0", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "557b4da832a1d74ed286c3a3a4b20b7d80f47e05", default-features = false }
 chainbridge = { version = "0.0.1", git = "https://github.com/chainsafe/chainbridge-substrate.git", rev = "59fbb767de890b6dcb781fb9e6c4c84a967693ff" , default-features = false}
 
 # third-party dependencies
