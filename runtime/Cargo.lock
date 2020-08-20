@@ -379,7 +379,7 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chainbridge"
 version = "0.0.1"
-source = "git+https://github.com/vedhavyas/chainbridge-substrate.git?rev=d69d4cdf21602f6dc988485948d568e1c507077b#d69d4cdf21602f6dc988485948d568e1c507077b"
+source = "git+https://github.com/chainsafe/chainbridge-substrate.git?rev=59fbb767de890b6dcb781fb9e6c4c84a967693ff#59fbb767de890b6dcb781fb9e6c4c84a967693ff"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3352,8 +3352,8 @@ dependencies = [
 
 [[package]]
 name = "substrate-pallet-multi-account"
-version = "2.0.0-rc3"
-source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=a99ee8f5c95818f012431029595b25642d02df08#a99ee8f5c95818f012431029595b25642d02df08"
+version = "2.0.0-rc3-0"
+source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=557b4da832a1d74ed286c3a3a4b20b7d80f47e05#557b4da832a1d74ed286c3a3a4b20b7d80f47e05"
 dependencies = [
  "frame-support",
  "frame-system",
