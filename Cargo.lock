@@ -706,7 +706,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.1"
-source = "git+https://github.com/chainsafe/chainbridge-substrate.git?rev=59fbb767de890b6dcb781fb9e6c4c84a967693ff#59fbb767de890b6dcb781fb9e6c4c84a967693ff"
+source = "git+https://github.com/vedhavyas/chainbridge-substrate.git?rev=ac4702cc3805b9c9c6c86309db04f55f105f8504#ac4702cc3805b9c9c6c86309db04f55f105f8504"
 dependencies = [
  "frame-support",
  "frame-system",
