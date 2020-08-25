@@ -3,7 +3,6 @@ use super::*;
 use frame_support::{
     assert_err, assert_ok, impl_outer_origin, parameter_types, traits::Randomness, weights::Weight,
 };
-use frame_system::{self as system};
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -51,12 +50,15 @@ impl frame_system::Trait for Test {
     type BlockExecutionWeight = ();
     type ExtrinsicBaseWeight = ();
     type MaximumExtrinsicWeight = ();
+    type BaseCallFilter = ();
+    type SystemWeightInfo = ();
 }
 
 impl pallet_timestamp::Trait for Test {
     type Moment = u64;
     type OnTimestampSet = ();
     type MinimumPeriod = ();
+    type WeightInfo = ();
 }
 
 impl fees::Trait for Test {
@@ -73,6 +75,7 @@ impl pallet_balances::Trait for Test {
     type Event = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
+    type WeightInfo = ();
 }
 
 impl pallet_authorship::Trait for Test {
@@ -149,7 +152,7 @@ fn basic_pre_commit() {
 
         // reject unsigned
         assert_err!(
-            Anchor::pre_commit(Origin::NONE, anchor_id, signing_root),
+            Anchor::pre_commit(Origin::none(), anchor_id, signing_root),
             BadOrigin
         );
 
@@ -299,7 +302,7 @@ fn basic_commit() {
         // reject unsigned
         assert_err!(
             Anchor::commit(
-                Origin::NONE,
+                Origin::none(),
                 pre_image,
                 doc_root,
                 <Test as frame_system::Trait>::Hashing::hash_of(&0),

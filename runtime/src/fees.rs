@@ -7,7 +7,7 @@ use frame_support::{
     traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReason},
     weights::DispatchClass,
 };
-use frame_system::{self as system, ensure_root};
+use frame_system::ensure_root;
 
 /// The module's configuration trait.
 pub trait Trait: frame_system::Trait + pallet_balances::Trait + pallet_authorship::Trait {
@@ -199,6 +199,8 @@ mod tests {
         type BlockExecutionWeight = ();
         type ExtrinsicBaseWeight = ();
         type MaximumExtrinsicWeight = ();
+        type BaseCallFilter = ();
+        type SystemWeightInfo = ();
     }
     ord_parameter_types! {
         pub const One: u64 = 1;
@@ -216,6 +218,7 @@ mod tests {
         type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
+        type WeightInfo = ();
     }
 
     impl pallet_authorship::Trait for Test {

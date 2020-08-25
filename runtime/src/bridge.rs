@@ -158,8 +158,9 @@ mod tests{
 	}
 
 	impl frame_system::Trait for Test {
+		type BaseCallFilter = ();
 		type Origin = Origin;
-		type Call = ();
+		type Call = Call;
 		type Index = u64;
 		type BlockNumber = u64;
 		type Hash = H256;
@@ -181,6 +182,7 @@ mod tests{
 		type AccountData = balances::AccountData<u128>;
 		type OnNewAccount = ();
 		type OnKilledAccount = ();
+		type SystemWeightInfo = ();
 	}
 
 	parameter_types! {
@@ -197,6 +199,7 @@ mod tests{
 		type Event = Event;
 		type ExistentialDeposit = ExistentialDeposit;
 		type AccountStore = System;
+		type WeightInfo = ();
 	}
 
 	parameter_types! {
@@ -246,7 +249,7 @@ mod tests{
 			NodeBlock = Block,
 			UncheckedExtrinsic = UncheckedExtrinsic
 		{
-			System: system::{Module, Call, Event<T>},
+			System: system::{Module, Call, Config, Storage, Event<T>},
 			Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
@@ -339,7 +342,7 @@ mod tests{
 			let amount: u128 = 20 * currency::RAD;
 			let recipient = vec![99];
 
-			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_chain.clone()));
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
 
 			// Using account with not enough balance for fee should fail when requesting transfer
 			assert_err!(
@@ -403,11 +406,11 @@ mod tests{
 			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
 			let resource = b"PalletBridge.remark".to_vec();
 
-			assert_ok!(ChainBridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-			assert_ok!(ChainBridge::add_relayer(Origin::ROOT, RELAYER_A));
-			assert_ok!(ChainBridge::add_relayer(Origin::ROOT, RELAYER_B));
-			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, src_id));
-			assert_ok!(ChainBridge::set_resource(Origin::ROOT, r_id, resource));
+			assert_ok!(ChainBridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_B));
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), src_id));
+			assert_ok!(ChainBridge::set_resource(Origin::root(), r_id, resource));
 
 			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_A),
@@ -441,7 +444,7 @@ mod tests{
 			);
 			// Don't allow root calls
 			assert_noop!(
-				PalletBridge::remark(Origin::ROOT, hash),
+				PalletBridge::remark(Origin::root(), hash),
 				DispatchError::BadOrigin
 			);
 		})
@@ -479,12 +482,12 @@ mod tests{
 			let resource = b"PalletBridge.transfer".to_vec();
 			let proposal = make_transfer_proposal(RELAYER_A, 10);
 
-			assert_ok!(ChainBridge::set_threshold(Origin::ROOT, TEST_THRESHOLD,));
-			assert_ok!(ChainBridge::add_relayer(Origin::ROOT, RELAYER_A));
-			assert_ok!(ChainBridge::add_relayer(Origin::ROOT, RELAYER_B));
-			assert_ok!(ChainBridge::add_relayer(Origin::ROOT, RELAYER_C));
-			assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, src_id));
-			assert_ok!(ChainBridge::set_resource(Origin::ROOT, r_id, resource));
+			assert_ok!(ChainBridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_B));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_C));
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), src_id));
+			assert_ok!(ChainBridge::set_resource(Origin::root(), r_id, resource));
 
 			// Create proposal (& vote)
 			assert_ok!(ChainBridge::acknowledge_proposal(
