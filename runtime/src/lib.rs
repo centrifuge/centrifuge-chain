@@ -78,9 +78,6 @@ mod nfts;
 /// bridge module
 mod bridge;
 
-/// weights module
-mod weights;
-
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
@@ -186,7 +183,7 @@ impl frame_system::Trait for Runtime {
 	///
 	/// All resources should be cleaned up associated with the given account.
 	type OnKilledAccount = ();
-    type SystemWeightInfo = weights::frame_system::WeightInfo;
+    type SystemWeightInfo = ();
 }
 
 parameter_types! {
@@ -201,7 +198,7 @@ parameter_types! {
 impl pallet_utility::Trait for Runtime {
 	type Event = Event;
 	type Call = Call;
-    type WeightInfo = weights::pallet_utility::WeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -278,7 +275,7 @@ impl pallet_balances::Trait for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	/// The means of storing the balances of an account.
 	type AccountStore = frame_system::Module<Runtime>;
-    type WeightInfo = weights::pallet_balances::WeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -307,7 +304,7 @@ impl pallet_timestamp::Trait for Runtime {
     type Moment = Moment;
     type OnTimestampSet = Babe;
     type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = weights::pallet_timestamp::WeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -468,7 +465,7 @@ impl pallet_democracy::Trait for Runtime {
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = MaxVotes;
-    type WeightInfo = weights::pallet_democracy::WeightInfo;
+    type WeightInfo = ();
 }
 
 parameter_types! {
