@@ -1,7 +1,7 @@
 use crate::bridge as pallet_bridge;
 use crate::{anchor, fees, proofs, proofs::Proof};
 use frame_support::{decl_event, decl_module, dispatch::DispatchResult, ensure, traits::Get};
-use frame_system::{self as system, ensure_signed};
+use frame_system::ensure_signed;
 use sp_core::H256;
 use sp_std::vec::Vec;
 use crate::constants::currency;
@@ -32,7 +32,7 @@ decl_module! {
         /// # <weight>
         /// - depends on the arguments
         /// # </weight>
-        #[weight = 1_500_000]
+        #[weight = 120_000_000]
         fn validate_mint(origin, anchor_id: T::Hash, deposit_address: [u8; 20], pfs: Vec<Proof>, static_proofs: [H256;3], dest_id: chainbridge::ChainId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -126,7 +126,7 @@ mod tests {
 
     impl frame_system::Trait for Test {
         type AccountId = u64;
-        type Call = ();
+        type Call = Call;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Index = u64;
         type BlockNumber = u64;
@@ -148,6 +148,8 @@ mod tests {
         type BlockExecutionWeight = ();
         type ExtrinsicBaseWeight = ();
         type MaximumExtrinsicWeight = ();
+        type BaseCallFilter = ();
+        type SystemWeightInfo = ();
     }
 
     impl anchor::Trait for Test {}
@@ -190,6 +192,7 @@ mod tests {
         type Moment = u64;
         type OnTimestampSet = ();
         type MinimumPeriod = ();
+        type WeightInfo = ();
     }
 
     impl pallet_authorship::Trait for Test {
@@ -213,6 +216,7 @@ mod tests {
         type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
+        type WeightInfo = ();
     }
 
     pub const USER_A: u64 = 0x1;
@@ -369,7 +373,7 @@ mod tests {
             let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
             assert_err!(
                 Nfts::validate_mint(
-                    Origin::NONE,
+                    Origin::none(),
                     anchor_id,
                     deposit_address,
                     pfs,
@@ -444,7 +448,7 @@ mod tests {
                 common::MS_PER_DAY + 1
             ));
 
-            assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
+            assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_id.clone()));
             assert_err!(
                 Nfts::validate_mint(
                     Origin::signed(2),
@@ -479,7 +483,7 @@ mod tests {
                 common::MS_PER_DAY + 1
             ));
 
-            assert_ok!(ChainBridge::whitelist_chain(Origin::ROOT, dest_id.clone()));
+            assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_id.clone()));
             assert_ok!(Nfts::validate_mint(
                 Origin::signed(USER_A),
                 anchor_id,

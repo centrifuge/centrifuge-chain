@@ -118,7 +118,7 @@ decl_module! {
         /// # <weight>
         /// minimal logic, also needs to be consume less block capacity + cheaper to make the pre-commits viable.
         /// # </weight>
-        #[weight = 500_000]
+        #[weight = 193_000_000]
         pub fn pre_commit(origin, anchor_id: T::Hash, signing_root: T::Hash) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
@@ -152,7 +152,7 @@ decl_module! {
         /// using smaller `stored_until_date`s. Computation cost involves timestamp calculations
         /// and state rent calculations, which we take here to be equivalent to a transfer transaction.
         /// # </weight>
-        #[weight = 1_000_000]
+        #[weight = 190_000_000]
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(<pallet_timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
@@ -214,7 +214,7 @@ decl_module! {
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
-        #[weight = (1_000_000, DispatchClass::Operational)]
+        #[weight = (192_000_000, DispatchClass::Operational)]
         pub fn evict_pre_commits(origin, evict_bucket: T::BlockNumber) -> DispatchResult {
             ensure_signed(origin)?;
             ensure!(<frame_system::Module<T>>::block_number() >= evict_bucket,
@@ -250,7 +250,7 @@ decl_module! {
         /// # <weight>
         /// - discourage DoS
         /// # </weight>
-        #[weight = (1_000_000, DispatchClass::Operational)]
+        #[weight = (195_000_000, DispatchClass::Operational)]
         pub fn evict_anchors(origin) -> DispatchResult {
             ensure_signed(origin)?;
             let current_timestamp = <pallet_timestamp::Module<T>>::get();
