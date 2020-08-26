@@ -36,6 +36,9 @@ const MAX_LOOP_IN_TX: u64 = 500;
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
 
+/// Child trie prefix
+const ANCHOR_PREFIX: &[u8; 6] = b"anchor";
+
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -188,7 +191,7 @@ decl_module! {
             <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
-            let child_info = common::generate_child_storage_key(stored_until_date_from_epoch);
+            let child_info = common::generate_child_storage_key(ANCHOR_PREFIX, &stored_until_date_from_epoch.encode());
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
@@ -356,7 +359,7 @@ impl<T: Trait> Module<T> {
     /// count of tries removed.
     fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
         (from..until)
-            .map(|day| (day, common::generate_child_storage_key(day)))
+            .map(|day| (day, common::generate_child_storage_key(ANCHOR_PREFIX, &day.encode())))
             // store the root of child trie for the day on chain before eviction. Checks if it
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
@@ -397,7 +400,7 @@ impl<T: Trait> Module<T> {
     /// Get an anchor by its id in the child storage
     pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-        let child_info = common::generate_child_storage_key(anchor_evict_date);
+        let child_info = common::generate_child_storage_key(ANCHOR_PREFIX, &anchor_evict_date.encode());
 
         child::get_raw(&child_info, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())

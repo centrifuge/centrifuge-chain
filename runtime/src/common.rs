@@ -1,4 +1,4 @@
-use codec::Encode;
+use sp_std::{vec::Vec};
 use frame_support::storage::child::ChildInfo;
 
 pub const MS_PER_DAY: u64 = 86400000;
@@ -15,8 +15,11 @@ pub fn get_days_since_epoch(ts: u64) -> u32 {
 }
 
 /// Create a child info from the given specific key
-pub fn generate_child_storage_key(specific_key: u32) -> ChildInfo {
-    let cf: ChildInfo = ChildInfo::new_default(&specific_key.encode());
+pub fn generate_child_storage_key(prefix: &[u8], specific_key: &[u8]) -> ChildInfo {
+    let mut prefixed_key = Vec::with_capacity(prefix.len() + specific_key.len());
+    prefixed_key.extend_from_slice(prefix);
+    prefixed_key.extend_from_slice(specific_key);
+    let cf: ChildInfo = ChildInfo::new_default(&prefixed_key);
     cf
 }
 
@@ -40,9 +43,18 @@ mod tests {
 
     #[test]
     fn test_child_storage_key() {
+        let mut prefix: &[u8] = &[];
+        let mut expected: &[u8] = &[1, 0, 0, 0];
         assert_eq!(
-            generate_child_storage_key(1),
-            ChildInfo::new_default(&1.encode())
+            generate_child_storage_key(prefix, &1.encode()),
+            ChildInfo::new_default(expected)
+        );
+
+        prefix = b"anchor";
+        expected = &[97, 110, 99, 104, 111, 114, 1, 0, 0, 0];
+        assert_eq!(
+            generate_child_storage_key(prefix, &1.encode()),
+            ChildInfo::new_default(expected)
         );
     }
 }
