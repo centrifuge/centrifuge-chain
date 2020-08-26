@@ -41,6 +41,20 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 /// Yet, it can be used for any other sort of change to weight-fee. Some examples being:
 ///   - Setting it to `0` will essentially disable the weight fee.
 ///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
+///
+/// Sample weight to Fee Calculation for 1 Rad Balance transfer:
+/// 	ExtrinsicBytes: 92 bytes
+/// 	Weight: 195000000
+/// 	WeightCoefficient: 315000
+/// 	TransactionByteFee: 0.01 Micro RAD = 10000000000
+///		MaximumBlockWeight: 2 * WEIGHT_PER_SECOND = 2000000000000
+/// 	ExtrinsicBaseWeight: 125 * WEIGHT_PER_MICROS = 125000000
+///
+/// 	Calculation:
+/// 	BaseFee = ExtrinsicBaseWeight * WeightCoefficient = 39375000000000
+/// 	LengthFee = ExtrinsicBytes * TransactionByteFee = 920000000000
+/// 	WeightFee = Weight * WeightCoefficient = 61425000000000
+/// 	Fee = BaseFee + LengthFee + WeightFee = 101720000000000 => 101.72 Micro RAD
 pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
