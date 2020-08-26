@@ -43,18 +43,22 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 ///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
 ///
 /// Sample weight to Fee Calculation for 1 Rad Balance transfer:
-/// 	ExtrinsicBytes: 92 bytes
-/// 	Weight: 195000000
-/// 	WeightCoefficient: 315000
-/// 	TransactionByteFee: 0.01 Micro RAD = 10000000000
-///		MaximumBlockWeight: 2 * WEIGHT_PER_SECOND = 2000000000000
-/// 	ExtrinsicBaseWeight: 125 * WEIGHT_PER_MICROS = 125000000
+/// ```rust
+/// 	use node_primitives::Balance;
+/// 	let extrinsic_bytes: Balance = 92;
+/// 	let weight: Balance = 195000000;
+/// 	let weight_coefficient: Balance = 315000;
+/// 	let transaction_byte_fee: Balance = 10000000000; // 0.01 Micro RAD
+///		let maximum_block_weight: Balance = 2000000000000; // 2 * WEIGHT_PER_SECOND
+/// 	let extrinsic_base_weight: Balance = 125000000; // 125 * WEIGHT_PER_MICROS
 ///
-/// 	Calculation:
-/// 	BaseFee = ExtrinsicBaseWeight * WeightCoefficient = 39375000000000
-/// 	LengthFee = ExtrinsicBytes * TransactionByteFee = 920000000000
-/// 	WeightFee = Weight * WeightCoefficient = 61425000000000
-/// 	Fee = BaseFee + LengthFee + WeightFee = 101720000000000 => 101.72 Micro RAD
+/// 	// Calculation:
+/// 	let base_fee: Balance = extrinsic_base_weight * weight_coefficient; // 39375000000000
+/// 	let length_fee: Balance = extrinsic_bytes * transaction_byte_fee; // 920000000000
+/// 	let weight_fee: Balance = weight * weight_coefficient; // 61425000000000
+/// 	let fee: Balance = base_fee + length_fee + weight_fee;
+/// 	assert_eq!(fee, 10172 * (centrifuge_chain_runtime::constants::currency::MICRO_RAD / 100));
+/// ```
 pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
