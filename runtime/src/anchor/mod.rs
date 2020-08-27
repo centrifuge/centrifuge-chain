@@ -409,6 +409,11 @@ impl<T: Trait> Module<T> {
     fn fee_key() -> <T as frame_system::Trait>::Hash {
         <T as frame_system::Trait>::Hashing::hash_of(&0)
     }
+
+    /// Runs Anchor Migration to move child storage anchors to new prefix child trie
+    pub fn run_anchor_migration() -> u32 {
+        10
+    }
 }
 
 /// tests for anchor module

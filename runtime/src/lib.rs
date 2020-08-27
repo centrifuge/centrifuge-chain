@@ -730,6 +730,14 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
+// struct CustomOnRuntimeUpgrade;
+// impl frame_support::traits::OnRuntimeUpgrade for CustomOnRuntimeUpgrade {
+//     fn on_runtime_upgrade() -> frame_support::weights::Weight {
+//         // Do whatever you want.
+//         0
+//    }
+//  }
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -795,6 +803,7 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
+// pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules, CustomOnRuntimeUpgrade>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.

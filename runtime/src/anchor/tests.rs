@@ -1090,6 +1090,11 @@ fn test_same_day_1001_anchors() {
 }
 
 #[test]
+fn test_anchor_migration() {
+    assert_eq!(10, Anchor::run_anchor_migration())
+}
+
+#[test]
 #[ignore]
 fn basic_commit_perf() {
     use std::time::{SystemTime, UNIX_EPOCH};
