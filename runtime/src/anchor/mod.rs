@@ -425,7 +425,7 @@ impl<T: Trait> Module<T> {
     }
 
     /// Runs Anchor Migration to move child storage anchors to new prefix child trie
-    fn run_anchor_migration() -> usize {
+    pub fn run_anchor_migration() -> usize {
         // StorageKey ":child_storage:default:"
         let storage_key: &[u8] =
             &[58, 99, 104, 105, 108, 100, 95, 115, 116, 111, 114, 97, 103, 101, 58, 100, 101, 102, 97, 117, 108, 116, 58];

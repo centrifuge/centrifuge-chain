@@ -730,13 +730,13 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
-// struct CustomOnRuntimeUpgrade;
-// impl frame_support::traits::OnRuntimeUpgrade for CustomOnRuntimeUpgrade {
-//     fn on_runtime_upgrade() -> frame_support::weights::Weight {
-//         // Do whatever you want.
-//         0
-//    }
-//  }
+struct CustomOnRuntimeUpgrade;
+impl frame_support::traits::OnRuntimeUpgrade for CustomOnRuntimeUpgrade {
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        Anchor::run_anchor_migration();
+        0
+   }
+ }
 
 construct_runtime!(
 	pub enum Runtime where
