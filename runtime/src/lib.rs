@@ -400,7 +400,7 @@ impl pallet_staking::Trait for Runtime {
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
-	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
+	pub const FastTrackVotingPeriod: BlockNumber = 3 * MINUTES;
     pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 10 * RAD;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
@@ -730,13 +730,13 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
-struct CustomOnRuntimeUpgrade;
-impl frame_support::traits::OnRuntimeUpgrade for CustomOnRuntimeUpgrade {
-    fn on_runtime_upgrade() -> frame_support::weights::Weight {
-        Anchor::run_anchor_migration();
-        0
-   }
- }
+// struct CustomOnRuntimeUpgrade;
+// impl frame_support::traits::OnRuntimeUpgrade for CustomOnRuntimeUpgrade {
+//     fn on_runtime_upgrade() -> frame_support::weights::Weight {
+//         // Anchor::run_anchor_migration();
+//         0
+//    }
+//  }
 
 construct_runtime!(
 	pub enum Runtime where
