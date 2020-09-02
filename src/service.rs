@@ -36,7 +36,6 @@ use sp_runtime::traits::Block as BlockT;
 use futures::prelude::*;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sp_core::traits::BareCryptoStorePtr;
-use crate::api::{AnchorApi, Anchor};
 
 // Our native executor instance.
 native_executor_instance!(
@@ -147,12 +146,7 @@ pub fn new_partial(config: &Configuration) -> Result<sc_service::PartialComponen
                 },
             };
 
-            let mut io = crate::rpc::create_full(deps);
-            io.extend_with(
-                AnchorApi::to_delegate(Anchor::new(client.clone()))
-            );
-
-            io
+            crate::rpc::create_full(deps)
         };
 
         (rpc_extensions_builder, rpc_setup)

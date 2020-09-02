@@ -105,7 +105,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 234,
+    spec_version: 233,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -400,7 +400,7 @@ impl pallet_staking::Trait for Runtime {
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
-	pub const FastTrackVotingPeriod: BlockNumber = 3 * MINUTES;
+	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
     pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 10 * RAD;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
@@ -730,14 +730,6 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
-// struct CustomOnRuntimeUpgrade;
-// impl frame_support::traits::OnRuntimeUpgrade for CustomOnRuntimeUpgrade {
-//     fn on_runtime_upgrade() -> frame_support::weights::Weight {
-//         // Anchor::run_anchor_migration();
-//         0
-//    }
-//  }
-
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -803,7 +795,6 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
-// pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules, CustomOnRuntimeUpgrade>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.

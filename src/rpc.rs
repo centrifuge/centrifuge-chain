@@ -47,6 +47,8 @@ use sp_blockchain::{Error as BlockChainError, HeaderMetadata, HeaderBackend};
 use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
 use sp_transaction_pool::TransactionPool;
+use crate::api::{AnchorApi, Anchor};
+pub use node_runtime::AnchorApi as AnchorRuntimeApi;
 
 /// Light client extra dependencies.
 pub struct LightDeps<C, F, P> {
@@ -112,6 +114,7 @@ pub fn create_full<C, P, SC>(
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
     C::Api: BabeApi<Block>,
     C::Api: BlockBuilder<Block>,
+    C::Api: AnchorRuntimeApi<Block>,
     P: TransactionPool + 'static,
     SC: SelectChain<Block> +'static,
 {
@@ -149,7 +152,7 @@ pub fn create_full<C, P, SC>(
     io.extend_with(
         sc_consensus_babe_rpc::BabeApi::to_delegate(
             BabeRpcHandler::new(
-                client,
+                client.clone(),
                 shared_epoch_changes,
                 keystore,
                 babe_config,
@@ -167,6 +170,10 @@ pub fn create_full<C, P, SC>(
                 subscriptions,
             )
         )
+    );
+
+    io.extend_with(
+        AnchorApi::to_delegate(Anchor::new(client.clone()))
     );
 
     io
