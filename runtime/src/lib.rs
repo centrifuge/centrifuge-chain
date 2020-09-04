@@ -177,6 +177,7 @@ impl frame_system::Trait for Runtime {
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
+    type MigrateAccount = (Balances, Identity, Democracy, Elections, ImOnline, Session, Staking);
 	/// Handler for when a new account has just been created.
 	type OnNewAccount = ();
 	/// A function that is invoked when an account has been determined to be dead.
@@ -793,8 +794,29 @@ pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signatu
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+
+/// Custom runtime upgrade to execute the balances migration before the account migration.
+mod custom_migration {
+    use super::*;
+
+    use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+    use pallet_balances::migration::on_runtime_upgrade as balances_upgrade;
+    use frame_system::migration::migrate_accounts as accounts_upgrade;
+
+    pub struct Upgrade;
+    impl OnRuntimeUpgrade for Upgrade {
+        fn on_runtime_upgrade() -> Weight {
+            let mut weight = 0;
+            weight += balances_upgrade::<Runtime, pallet_balances::DefaultInstance>();
+            weight += accounts_upgrade::<Runtime>();
+            weight
+        }
+    }
+}
+
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>,
+    Runtime, AllModules, custom_migration::Upgrade>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.

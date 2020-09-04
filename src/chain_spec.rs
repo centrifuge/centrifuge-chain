@@ -359,7 +359,7 @@ fn fulvous_genesis() -> GenesisConfig {
 
 /// Local testnet config (multivalidator Alice + Bob)
 pub fn fulvous_config() -> Result<ChainSpec,String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/fulvous-raw-spec.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../res/fulvous-raw-spec-0.json")[..])
 	// Keeping this as in case we want to regenerate the fulvous raw later
 	// ChainSpec::from_genesis(
 	// 	"Fulvous Testnet",
