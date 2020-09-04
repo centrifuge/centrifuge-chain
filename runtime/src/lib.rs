@@ -808,7 +808,9 @@ mod custom_migration {
         fn on_runtime_upgrade() -> Weight {
             let mut weight = 0;
             weight += balances_upgrade::<Runtime, pallet_balances::DefaultInstance>();
-            weight += accounts_upgrade::<Runtime>();
+            let mut acc_scale: &[u8] = &[4,158, 252, 159, 19, 36, 40, 210, 18, 104, 113, 1, 129, 254,
+                67, 21, 225, 160, 45, 131, 142, 14, 82, 57, 254, 69, 89, 159, 84, 49, 10, 124, 52];
+            weight += accounts_upgrade::<Runtime>(acc_scale);
             weight
         }
     }
