@@ -180,6 +180,7 @@ mod tests{
 		type Version = ();
 		type ModuleToIndex = ();
 		type AccountData = balances::AccountData<u128>;
+		type MigrateAccount = ();
 		type OnNewAccount = ();
 		type OnKilledAccount = ();
 		type SystemWeightInfo = ();

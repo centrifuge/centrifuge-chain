@@ -105,7 +105,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 233,
+    spec_version: 234,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -177,7 +177,8 @@ impl frame_system::Trait for Runtime {
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
-	/// Handler for when a new account has just been created.
+    type MigrateAccount = (Balances, Identity, Democracy, Elections, ImOnline, Staking, Session);
+    /// Handler for when a new account has just been created.
 	type OnNewAccount = ();
 	/// A function that is invoked when an account has been determined to be dead.
 	///
@@ -793,8 +794,53 @@ pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signatu
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+
+/// Custom runtime upgrade to execute the balances migration before the account migration.
+mod custom_migration {
+    use super::*;
+
+    use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+    use pallet_staking::migrations::migrate as staking_upgrade;
+    use frame_system::migrations::migrate as accounts_upgrade;
+
+    pub struct Upgrade;
+    impl OnRuntimeUpgrade for Upgrade {
+        fn on_runtime_upgrade() -> Weight {
+            let accounts: Vec<AccountId> = Self::get_accounts();
+            staking_upgrade::<Runtime>();
+            accounts_upgrade::<Runtime>(accounts);
+            MaximumBlockWeight::get()
+        }
+    }
+
+    impl Upgrade {
+        fn get_accounts() -> Vec<AccountId> {
+            use hex_literal::hex;
+            vec![
+                hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
+                hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
+                hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+                hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].into(),
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+                hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].into(),
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+            ]
+        }
+    }
+}
+
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules, custom_migration::Upgrade>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.
