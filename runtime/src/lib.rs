@@ -177,6 +177,8 @@ impl frame_system::Trait for Runtime {
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
+    /// MigrateAccount holds the pallets that needs an explicit account migrations.
+    /// The accounts will be coming from Custom upgrade we have below.
     type MigrateAccount = (Balances, Identity, Democracy, Elections, ImOnline, Staking, Session);
     /// Handler for when a new account has just been created.
 	type OnNewAccount = ();
@@ -814,6 +816,8 @@ mod custom_migration {
     }
 
     impl Upgrade {
+        /// TODO(ved): remove these once we have the accounts taken from the testnets and mainnet
+        /// that are to be migrated
         fn get_accounts() -> Vec<AccountId> {
             use hex_literal::hex;
             vec![
