@@ -801,6 +801,7 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 mod custom_migration {
     use super::*;
 
+    use sp_core::Decode;
     use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
     use pallet_staking::migrations::migrate as staking_upgrade;
     use frame_system::migrations::migrate as accounts_upgrade;
@@ -811,35 +812,14 @@ mod custom_migration {
             let accounts: Vec<AccountId> = Self::get_accounts();
             staking_upgrade::<Runtime>();
             accounts_upgrade::<Runtime>(accounts);
+            Anchor::migrate_anchors();
             MaximumBlockWeight::get()
         }
     }
 
     impl Upgrade {
-        /// TODO(ved): remove these once we have the accounts taken from the testnets and mainnet
-        /// that are to be migrated
         fn get_accounts() -> Vec<AccountId> {
-            use hex_literal::hex;
-            vec![
-                hex!["c2cda5af8590d296eff5d7bb3ddf8235ca0f220743861808d611f4d5e5c120f8"].into(),
-                hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
-                hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
-                hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-            ]
+            Vec::<AccountId>::decode(&mut &include_bytes!("accounts.scale")[..]).unwrap()
         }
     }
 }
