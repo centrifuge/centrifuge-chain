@@ -11,7 +11,7 @@ use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     ensure,
     storage::{child, child::ChildInfo},
-    weights::DispatchClass,
+    weights::{Weight, DispatchClass},
 };
 use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
@@ -104,6 +104,11 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+        fn on_runtime_upgrade() -> Weight {
+			Self::migrate_anchors();
+			0
+		}
 
         /// Obtains an exclusive lock to make the next update to a certain document version
         /// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given

@@ -812,7 +812,6 @@ mod custom_migration {
             let accounts: Vec<AccountId> = Self::get_accounts();
             staking_upgrade::<Runtime>();
             accounts_upgrade::<Runtime>(accounts);
-            Anchor::migrate_anchors();
             MaximumBlockWeight::get()
         }
     }
