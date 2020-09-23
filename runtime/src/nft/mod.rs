@@ -140,10 +140,7 @@ impl<T: Trait<I>, I: Instance>
 {
     type Asset = Commodity<CommodityId<T>, <T as Trait<I>>::CommodityInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
-    //type AssetLimit = <T as nft::Trait>::CommodityLimit;
     type AssetLimit = T::CommodityLimit;
-    //type UserAssetLimit = <T as nft::Trait>::UserCommodityLimit;
-    //type UserAssetLimit = <T as nft::Trait>::UserCommodityLimit;
     type UserAssetLimit = T::UserCommodityLimit;
 
     fn total() -> u128 {
