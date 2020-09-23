@@ -78,6 +78,12 @@ mod nfts;
 /// bridge module
 mod bridge;
 
+/// registry module
+mod registry;
+
+/// nft module
+mod nft;
+
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
