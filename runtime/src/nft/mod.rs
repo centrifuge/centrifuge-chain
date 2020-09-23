@@ -34,23 +34,23 @@ mod mock;
 mod tests;
 
 pub trait Trait<I = DefaultInstance>: frame_system::Trait {
-    /// The data type that is used to describe this type of commodity.
+    /// The data type that is used to describe this type of asset.
     type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry;
-    /// The maximum number of this type of commodity that may exist (minted - burned).
+    /// The maximum number of this type of asset that may exist (minted - burned).
     type AssetLimit: Get<u128>;
-    /// The maximum number of this type of commodity that any single account may own.
+    /// The maximum number of this type of asset that any single account may own.
     type UserAssetLimit: Get<u64>;
     type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
-/// The runtime system's hashing algorithm is used to uniquely identify commodities.
+/// The runtime system's hashing algorithm is used to uniquely identify assets.
 pub type AssetId<T> = <T as frame_system::Trait>::Hash;
 
 /// A generic definition of an NFT that will be used by this pallet.
 #[derive(Encode, Decode, Clone, Eq, RuntimeDebug)]
 pub struct Asset<Hash, AssetInfo> {
     pub id: Hash,
-    pub commodity: AssetInfo,
+    pub asset: AssetInfo,
 }
 
 /// An alias for this pallet's NFT implementation.
@@ -82,16 +82,16 @@ impl<AssetId: Eq, AssetInfo> PartialEq for Asset<AssetId, AssetInfo> {
 
 decl_storage! {
     trait Store for Module<T: Trait<I>, I: Instance = DefaultInstance> as Asset {
-        /// The total number of this type of commodity that exists (minted - burned).
+        /// The total number of this type of asset that exists (minted - burned).
         Total get(fn total): u128 = 0;
-        /// The total number of this type of commodity that has been burned (may overflow).
+        /// The total number of this type of asset that has been burned (may overflow).
         Burned get(fn burned): u128 = 0;
-        /// The total number of this type of commodity owned by an account.
+        /// The total number of this type of asset owned by an account.
         TotalForAccount get(fn total_for_account): map hasher(blake2_128_concat) T::AccountId => u64 = 0;
-        /// A mapping from an account to a list of all of the commodities of this type that are owned by it.
-        AssetsForAccount get(fn commodities_for_account): map hasher(blake2_128_concat) T::AccountId => Vec<AssetFor<T, I>>;
-        /// A mapping from a commodity ID to the account that owns it.
-        AccountForAsset get(fn account_for_commodity): map hasher(identity) AssetId<T> => T::AccountId;
+        /// A mapping from an account to a list of all of the assets of this type that are owned by it.
+        AssetsForAccount get(fn assets_for_account): map hasher(blake2_128_concat) T::AccountId => Vec<AssetFor<T, I>>;
+        /// A mapping from a asset ID to the account that owns it.
+        AccountForAsset get(fn account_for_asset): map hasher(identity) AssetId<T> => T::AccountId;
     }
 }
 
@@ -107,17 +107,17 @@ decl_event!(
 
 decl_error! {
     pub enum Error for Module<T: Trait<I>, I: Instance> {
-        // Thrown when there is an attempt to mint a duplicate commodity.
+        // Thrown when there is an attempt to mint a duplicate asset.
         AssetExists,
-        // Thrown when there is an attempt to burn or transfer a nonexistent commodity.
+        // Thrown when there is an attempt to burn or transfer a nonexistent asset.
         NonexistentAsset,
-        // Thrown when someone who is not the owner of a commodity attempts to transfer or burn it.
+        // Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
         NotAssetOwner,
-        // Thrown when the commodity admin attempts to mint a commodity and the maximum number of this
-        // type of commodity already exists.
+        // Thrown when the asset admin attempts to mint a asset and the maximum number of this
+        // type of asset already exists.
         TooManyAssets,
-        // Thrown when an attempt is made to mint or transfer a commodity to an account that already
-        // owns the maximum number of this type of commodity.
+        // Thrown when an attempt is made to mint or transfer a asset to an account that already
+        // owns the maximum number of this type of asset.
         TooManyAssetsForAccount,
     }
 }
@@ -149,18 +149,18 @@ impl<T: Trait<I>, I: Instance>
     fn assets_for_account(
         account: &T::AccountId,
     ) -> Vec<Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>> {
-        Self::commodities_for_account(account)
+        Self::assets_for_account(account)
     }
 
-    fn owner_of(commodity_id: &AssetId<T>) -> T::AccountId {
-        Self::account_for_commodity(commodity_id)
+    fn owner_of(asset_id: &AssetId<T>) -> T::AccountId {
+        Self::account_for_asset(asset_id)
     }
 
     fn transfer(
         dest_account: &T::AccountId,
-        commodity_id: &AssetId<T>,
+        asset_id: &AssetId<T>,
     ) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(&commodity_id);
+        let owner = Self::owner_of(&asset_id);
         ensure!(
             owner != T::AccountId::default(),
             Error::<T, I>::NonexistentAsset
@@ -171,26 +171,26 @@ impl<T: Trait<I>, I: Instance>
             Error::<T, I>::TooManyAssetsForAccount
         );
 
-        let xfer_commodity = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
-            id: *commodity_id,
-            commodity: <T as Trait<I>>::AssetInfo::default(),
+        let xfer_asset = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
+            id: *asset_id,
+            asset: <T as Trait<I>>::AssetInfo::default(),
         };
 
         TotalForAccount::<T, I>::mutate(&owner, |total| *total -= 1);
         TotalForAccount::<T, I>::mutate(dest_account, |total| *total += 1);
-        let commodity = AssetsForAccount::<T, I>::mutate(owner, |commodities| {
-            let pos = commodities
-                .binary_search(&xfer_commodity)
+        let asset = AssetsForAccount::<T, I>::mutate(owner, |assets| {
+            let pos = assets
+                .binary_search(&xfer_asset)
                 .expect("We already checked that we have the correct owner; qed");
-            commodities.remove(pos)
+            assets.remove(pos)
         });
-        AssetsForAccount::<T, I>::mutate(dest_account, |commodities| {
-            match commodities.binary_search(&commodity) {
+        AssetsForAccount::<T, I>::mutate(dest_account, |assets| {
+            match assets.binary_search(&asset) {
                 Ok(_pos) => {} // should never happen
-                Err(pos) => commodities.insert(pos, commodity),
+                Err(pos) => assets.insert(pos, asset),
             }
         });
-        AccountForAsset::<T, I>::insert(&commodity_id, &dest_account);
+        AccountForAsset::<T, I>::insert(&asset_id, &dest_account);
 
         Ok(())
     }
@@ -204,12 +204,12 @@ impl<T: Trait<I>, I: Instance>
 
     fn mint(
         owner_account: &T::AccountId,
-        commodity_info: <T as Trait<I>>::AssetInfo,
+        asset_info: <T as Trait<I>>::AssetInfo,
     ) -> dispatch::result::Result<AssetId<T>, dispatch::DispatchError> {
-        let commodity_id = T::Hashing::hash_of(&commodity_info);
+        let asset_id = T::Hashing::hash_of(&asset_info);
 
         ensure!(
-            !AccountForAsset::<T, I>::contains_key(&commodity_id),
+            !AccountForAsset::<T, I>::contains_key(&asset_id),
             Error::<T, I>::AssetExists
         );
 
@@ -223,22 +223,22 @@ impl<T: Trait<I>, I: Instance>
             Error::<T, I>::TooManyAssets
         );
 
-        let new_commodity = Asset {
-            id: commodity_id,
-            commodity: commodity_info,
+        let new_asset = Asset {
+            id: asset_id,
+            asset: asset_info,
         };
 
         Total::<I>::mutate(|total| *total += 1);
         TotalForAccount::<T, I>::mutate(owner_account, |total| *total += 1);
-        AssetsForAccount::<T, I>::mutate(owner_account, |commodities| {
-            match commodities.binary_search(&new_commodity) {
+        AssetsForAccount::<T, I>::mutate(owner_account, |assets| {
+            match assets.binary_search(&new_asset) {
                 Ok(_pos) => {} // should never happen
-                Err(pos) => commodities.insert(pos, new_commodity),
+                Err(pos) => assets.insert(pos, new_asset),
             }
         });
-        AccountForAsset::<T, I>::insert(commodity_id, &owner_account);
+        AccountForAsset::<T, I>::insert(asset_id, &owner_account);
 
-        Ok(commodity_id)
+        Ok(asset_id)
     }
 }
 
@@ -252,28 +252,28 @@ impl<T: Trait<I>, I: Instance>
         Self::burned()
     }
 
-    fn burn(commodity_id: &AssetId<T>) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(commodity_id);
+    fn burn(asset_id: &AssetId<T>) -> dispatch::DispatchResult {
+        let owner = Self::owner_of(asset_id);
         ensure!(
             owner != T::AccountId::default(),
             Error::<T, I>::NonexistentAsset
         );
 
-        let burn_commodity = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
-            id: *commodity_id,
-            commodity: <T as Trait<I>>::AssetInfo::default(),
+        let burn_asset = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
+            id: *asset_id,
+            asset: <T as Trait<I>>::AssetInfo::default(),
         };
 
         Total::<I>::mutate(|total| *total -= 1);
         Burned::<I>::mutate(|total| *total += 1);
         TotalForAccount::<T, I>::mutate(&owner, |total| *total -= 1);
-        AssetsForAccount::<T, I>::mutate(owner, |commodities| {
-            let pos = commodities
-                .binary_search(&burn_commodity)
+        AssetsForAccount::<T, I>::mutate(owner, |assets| {
+            let pos = assets
+                .binary_search(&burn_asset)
                 .expect("We already checked that we have the correct owner; qed");
-            commodities.remove(pos);
+            assets.remove(pos);
         });
-        AccountForAsset::<T, I>::remove(&commodity_id);
+        AccountForAsset::<T, I>::remove(&asset_id);
 
         Ok(())
     }

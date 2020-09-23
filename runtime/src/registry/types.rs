@@ -1,3 +1,4 @@
+use sp_core::H256;
 use crate::proofs::Proof;
 pub use crate::nft::AssetId;
 use frame_support::dispatch;
@@ -16,7 +17,7 @@ pub trait InRegistry {
 }
 
 // A vector of bytes, conveniently named like it is in Solidity
-pub type bytes = Vec<u8>;
+pub type Bytes = Vec<u8>;
 
 // Metadata for a registry instance
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
@@ -27,7 +28,7 @@ pub struct RegistryInfo {
     pub owner_can_burn: bool,
     /// Names of fields required to be provided for verification during a [mint].
     /// These *MUST* be compact encoded.
-    pub fields: Vec<bytes>,
+    pub fields: Vec<Bytes>,
 }
 
 /// All data for an instance of an NFT.
@@ -56,7 +57,18 @@ pub struct MintInfo<Hash> {
     /// document when valid.
     pub proofs: Vec<Proof>,
     /// Values correspond with fields specified by a registry.
-    pub values: Vec<bytes>,
+    pub values: Vec<Bytes>,
+    /// The three hashes [DataRoot, SignatureRoot, DocRoot] *MUST* be in this order.
+    /// These are used to validate the respective branches of the merkle tree, and
+    /// to generate the final document root hash.
+    pub static_hashes: [H256; 3],
+    /// Elements are hexified, compact encoded names for properties of the document
+    /// that match corresponding specified values. Property names *MUST* correspond
+    /// with the same index in the values list.
+    pub properties: Vec<Bytes>,
+    /// A list of salts used in the document to generate leaf hashes. Indices of this
+    /// list *MUST* correspond with the same index in the values list.
+    pub salts: Vec<Bytes>,
 }
 
 /// A general interface for registries that require some sort of verification to mint their

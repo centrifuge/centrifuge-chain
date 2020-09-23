@@ -16,6 +16,7 @@
 //! to generate the root. When the root hash matches that of the anchor,
 //! a mint can be verified.
 
+use sp_core::H256;
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error,
     ensure, dispatch};
@@ -71,7 +72,7 @@ decl_event!(
         /// Successful creation of a registry from fn
         /// [`create_registry`](./struct.Module.html#method.create_registry)
         RegistryCreated(RegistryId),
-        /// Ownership of the commodity has been transferred to the account.
+        /// Ownership of the asset has been transferred to the account.
         Transferred(AssetId, AccountId),
     }
 );
@@ -85,7 +86,7 @@ decl_error! {
         /// The values vector provided to a mint call doesn't match the length of the specified
         /// registry's fields vector.
         InvalidMintingValues,
-        // Thrown when someone who is not the owner of a commodity attempts to transfer or burn it.
+        // Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
         NotAssetOwner,
     }
 }
@@ -112,39 +113,39 @@ decl_module! {
         #[weight = 10_000]
         pub fn mint(origin,
                     owner_account: <T as frame_system::Trait>::AccountId,
-                    commodity_info: T::AssetInfo,
+                    asset_info: T::AssetInfo,
                     mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
         ) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
 
             // Internal mint validates proofs and modifies state or returns error
-            let commodity_id = <Self as VerifierRegistry>::mint(owner_account,
-                                                                commodity_info,
+            let asset_id = <Self as VerifierRegistry>::mint(owner_account,
+                                                                asset_info,
                                                                 mint_info)?;
 
             // Mint event
-            Self::deposit_event(RawEvent::Mint(commodity_id));
+            Self::deposit_event(RawEvent::Mint(asset_id));
 
             Ok(())
        }
 
-        /// Transfer a commodity to a new owner.
+        /// Transfer a asset to a new owner.
         ///
-        /// The dispatch origin for this call must be the commodity owner.
+        /// The dispatch origin for this call must be the asset owner.
         ///
         /// This function will throw an error if the new owner already owns the maximum
-        /// number of this type of commodity.
+        /// number of this type of asset.
         ///
-        /// - `dest_account`: Receiver of the commodity.
-        /// - `commodity_id`: The hash (calculated by the runtime system's hashing algorithm)
-        ///   of the info that defines the commodity to destroy.
+        /// - `dest_account`: Receiver of the asset.
+        /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
+        ///   of the info that defines the asset to destroy.
         #[weight = 10_000]
-        pub fn transfer(origin, dest_account: T::AccountId, commodity_id: AssetId<T>) -> dispatch::DispatchResult {
+        pub fn transfer(origin, dest_account: T::AccountId, asset_id: AssetId<T>) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(who == <nft::Module<T>>::account_for_commodity(&commodity_id), Error::<T>::NotAssetOwner);
+            ensure!(who == <nft::Module<T>>::account_for_asset(&asset_id), Error::<T>::NotAssetOwner);
 
-            <nft::Module<T> as Unique>::transfer(&dest_account, &commodity_id)?;
-            Self::deposit_event(RawEvent::Transferred(commodity_id.clone(), dest_account.clone()));
+            <nft::Module<T> as Unique>::transfer(&dest_account, &asset_id)?;
+            Self::deposit_event(RawEvent::Transferred(asset_id.clone(), dest_account.clone()));
             Ok(())
         }
     }
@@ -173,7 +174,7 @@ impl<T: Trait> Module<T> {
     }
 
     /// Generates a hash of the concatenated inputs, consuming inputs in the process.
-    fn leaf_hash(mut field: bytes, mut value: bytes/*, salt: u32*/) -> T::Hash {
+    fn leaf_hash(mut field: Bytes, value: Bytes/*, salt: u32*/) -> T::Hash {
         // Generate leaf hash from field ++ value
         let leaf_data = field.extend(value);
         <T as frame_system::Trait>::Hashing::hash_of(&leaf_data)
@@ -202,10 +203,10 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     }
 
     fn mint(owner_account: <T as frame_system::Trait>::AccountId,
-            commodity_info: T::AssetInfo,
+            asset_info: T::AssetInfo,
             mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
     ) -> Result<Self::AssetId, dispatch::DispatchError> {
-        let registry_id = commodity_info.registry_id();
+        let registry_id = asset_info.registry_id();
         let registry_info = Registries::get(registry_id);
 
         // Check that the registry exists
@@ -237,18 +238,20 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
         // Verify the proof against document root
         // TODO: Once integrated w/ cent chain
-        //ensure!(Self::validate_proofs(&doc_root, &proofs, &static_proofs),
-                //"Invalid proofs");
+        ensure!(proofs::validate_proofs(H256::from_slice(doc_root.as_ref()),
+                                        &mint_info.proofs,
+                                        mint_info.static_hashes),
+                "Invalid proofs");
 
         // -------
         // Minting
 
         // Internal nft mint
-        let commodity_id = <nft::Module<T>>::mint(&owner_account, commodity_info)?;
+        let asset_id = <nft::Module<T>>::mint(&owner_account, asset_info)?;
 
         // Place asset id in registry map
-        NftLists::<T>::insert(registry_id, commodity_id, ());
+        NftLists::<T>::insert(registry_id, asset_id, ());
 
-        Ok(commodity_id)
+        Ok(asset_id)
     }
 }
