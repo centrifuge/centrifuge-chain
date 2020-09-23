@@ -21,7 +21,6 @@ use frame_support::{
     ensure, dispatch};
 use frame_system::ensure_signed;
 use sp_std::{vec::Vec, cmp::Eq};
-use crate::nft::InRegistry;
 use unique_assets::traits::{Unique, Nft, Mintable};
 pub use types::{*, VerifierRegistry};
 use sp_runtime::traits::Hash;
@@ -36,10 +35,7 @@ use crate::{nft, proofs, anchor};
 //- Consider weights for mint, burn, and transfer
 
 // Types for this module
-mod types;
-
-// TODO: tmp until integrated w/ cent chain
-//mod proofs;
+pub mod types;
 
 #[cfg(test)]
 mod mock;
@@ -67,16 +63,16 @@ decl_storage! {
 decl_event!(
     pub enum Event<T>
     where
-        CommodityId = AssetId<T>,
+        AssetId = AssetId<T>,
         AccountId   = <T as frame_system::Trait>::AccountId,
     {
         /// Successful mint of an NFT from fn [`mint`](struct.Module.html#method.mint)
-        Mint(CommodityId),
+        Mint(AssetId),
         /// Successful creation of a registry from fn
         /// [`create_registry`](./struct.Module.html#method.create_registry)
         RegistryCreated(RegistryId),
         /// Ownership of the commodity has been transferred to the account.
-        Transferred(CommodityId, AccountId),
+        Transferred(AssetId, AccountId),
     }
 );
 
@@ -90,7 +86,7 @@ decl_error! {
         /// registry's fields vector.
         InvalidMintingValues,
         // Thrown when someone who is not the owner of a commodity attempts to transfer or burn it.
-        NotCommodityOwner,
+        NotAssetOwner,
     }
 }
 
@@ -116,7 +112,7 @@ decl_module! {
         #[weight = 10_000]
         pub fn mint(origin,
                     owner_account: <T as frame_system::Trait>::AccountId,
-                    commodity_info: T::CommodityInfo,
+                    commodity_info: T::AssetInfo,
                     mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
         ) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
@@ -145,7 +141,7 @@ decl_module! {
         #[weight = 10_000]
         pub fn transfer(origin, dest_account: T::AccountId, commodity_id: AssetId<T>) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(who == <nft::Module<T>>::account_for_commodity(&commodity_id), Error::<T>::NotCommodityOwner);
+            ensure!(who == <nft::Module<T>>::account_for_commodity(&commodity_id), Error::<T>::NotAssetOwner);
 
             <nft::Module<T> as Unique>::transfer(&dest_account, &commodity_id)?;
             Self::deposit_event(RawEvent::Transferred(commodity_id.clone(), dest_account.clone()));
@@ -191,7 +187,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type RegistryId   = RegistryId;
     type RegistryInfo = RegistryInfo;
     type AssetId      = AssetId<T>;
-    type AssetInfo    = <T as nft::Trait>::CommodityInfo;
+    type AssetInfo    = <T as nft::Trait>::AssetInfo;
     type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash>;
 
     // Registries with identical RegistryInfo may exist
@@ -206,7 +202,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     }
 
     fn mint(owner_account: <T as frame_system::Trait>::AccountId,
-            commodity_info: T::CommodityInfo,
+            commodity_info: T::AssetInfo,
             mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
     ) -> Result<Self::AssetId, dispatch::DispatchError> {
         let registry_id = commodity_info.registry_id();

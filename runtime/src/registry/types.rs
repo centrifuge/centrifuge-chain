@@ -1,5 +1,5 @@
 use crate::proofs::Proof;
-use crate::nft::{InRegistry, CommodityId};
+pub use crate::nft::AssetId;
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
@@ -7,11 +7,16 @@ use sp_std::{vec::Vec, fmt::Debug};
 // Registries are identified using a nonce in storage
 pub type RegistryId = u128;
 
+/// An implementor of this trait *MUST* be an asset of a registry.
+/// The registry id that an asset is a member of can be determined
+/// when this trait is implemented.
+pub trait InRegistry {
+    /// Returns the registry id that the self is a member of.
+    fn registry_id(&self) -> RegistryId;
+}
+
 // A vector of bytes, conveniently named like it is in Solidity
 pub type bytes = Vec<u8>;
-
-// A convenience rename from pallet_nft's id type
-pub type AssetId<T> = CommodityId<T>;
 
 // Metadata for a registry instance
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
