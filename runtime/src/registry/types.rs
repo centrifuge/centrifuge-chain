@@ -68,7 +68,7 @@ pub struct MintInfo<Hash> {
     pub properties: Vec<Bytes>,
     /// A list of salts used in the document to generate leaf hashes. Indices of this
     /// list *MUST* correspond with the same index in the values list.
-    pub salts: Vec<Bytes>,
+    pub salts: Vec<u32>,
 }
 
 /// A general interface for registries that require some sort of verification to mint their

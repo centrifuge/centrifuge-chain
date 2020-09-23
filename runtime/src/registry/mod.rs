@@ -174,7 +174,7 @@ impl<T: Trait> Module<T> {
     }
 
     /// Generates a hash of the concatenated inputs, consuming inputs in the process.
-    fn leaf_hash(mut field: Bytes, value: Bytes/*, salt: u32*/) -> T::Hash {
+    fn leaf_hash(mut field: Bytes, value: Bytes, salt: u32) -> T::Hash {
         // Generate leaf hash from field ++ value
         let leaf_data = field.extend(value);
         <T as frame_system::Trait>::Hashing::hash_of(&leaf_data)
@@ -233,11 +233,11 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // Generate leaf hashes of each value for proof
         let leaves = fields.into_iter()
             .zip(values)
-            .map(|(field, val)|
-                Self::leaf_hash(field, val));
+            .zip(mint_info.salts)
+            .map(|((field, val), salt)|
+                Self::leaf_hash(field, val, salt));
 
         // Verify the proof against document root
-        // TODO: Once integrated w/ cent chain
         ensure!(proofs::validate_proofs(H256::from_slice(doc_root.as_ref()),
                                         &mint_info.proofs,
                                         mint_info.static_hashes),
