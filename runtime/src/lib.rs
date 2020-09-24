@@ -173,7 +173,7 @@ impl frame_system::Trait for Runtime {
 	/// Get the chain's current version.
 	type Version = Version;
 	/// Convert a module to its index in the runtime.
-	type PalletInfo = PalletInfo;
+	type ModuleToIndex = ModuleToIndex;
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -206,7 +206,6 @@ impl pallet_utility::Trait for Runtime {
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
-	pub const MaxScheduledPerBlock: u32 = 50;
 }
 
 impl pallet_scheduler::Trait for Runtime {
@@ -216,7 +215,6 @@ impl pallet_scheduler::Trait for Runtime {
     type Call = Call;
     type MaximumWeight = MaximumSchedulerWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
-    type MaxScheduledPerBlock = MaxScheduledPerBlock;
     type WeightInfo = ();
 }
 
@@ -244,8 +242,6 @@ impl pallet_babe::Trait for Runtime {
 
     type HandleEquivocation =
     pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences>;
-
-    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -269,13 +265,9 @@ parameter_types! {
     // the minimum fee for an anchor is 500,000ths of a RAD.
     // This is set to a value so you can still get some return without getting your account removed.
     pub const ExistentialDeposit: Balance = 1 * MICRO_RAD;
-    // For weight estimation, we assume that the most locks on an individual account will be 50.
-	// This number may need to be adjusted in the future if this assumption no longer holds true.
-	pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Trait for Runtime {
-    type MaxLocks = MaxLocks;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	/// Handler for the unbalanced reduction when removing a dust account.
@@ -482,7 +474,6 @@ impl pallet_democracy::Trait for Runtime {
 parameter_types! {
 	pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
 	pub const CouncilMaxProposals: u32 = 100;
-	pub const CouncilMaxMembers: u32 = 100;
 }
 
 type CouncilCollective = pallet_collective::Instance1;
@@ -492,8 +483,6 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 	type Event = Event;
     type MotionDuration = CouncilMotionDuration;
     type MaxProposals = CouncilMaxProposals;
-    type MaxMembers = CouncilMaxMembers;
-    type DefaultVote = pallet_collective::PrimeDefaultVote;
     type WeightInfo = ();
 }
 
@@ -506,8 +495,8 @@ parameter_types! {
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
-// Make sure that there are no more than `MaxMembers` members elected via elections-phragmen.
-const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
+// Make sure that there are no more than `MAX_MEMBERS` members elected via elections-phragmen.
+const_assert!(DesiredMembers::get() <= pallet_collective::MAX_MEMBERS);
 
 impl pallet_elections_phragmen::Trait for Runtime {
 	type Event = Event;
@@ -622,6 +611,7 @@ impl pallet_offences::Trait for Runtime {
 	type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
 	type OnOffenceHandler = Staking;
     type WeightSoftLimit = OffencesWeightSoftLimit;
+    type WeightInfo = ();
 }
 
 impl pallet_authority_discovery::Trait for Runtime {}
@@ -642,8 +632,6 @@ impl pallet_grandpa::Trait for Runtime {
 
     type HandleEquivocation =
         pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, Offences>;
-
-    type WeightInfo = ();
 }
 
 parameter_types! {
