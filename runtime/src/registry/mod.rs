@@ -26,14 +26,6 @@ use unique_assets::traits::{Unique, Mintable, Burnable};
 pub use types::{*, VerifierRegistry};
 use crate::{nft, proofs, anchor};
 
-// TODO:
-//- Fix unit tests for pallet_nft
-//- Write tests for transfer and burn dispatchables in va-registry
-//- Integrate bridge pallet
-//- Review spec, compare with implementation
-//- Figure abstractions for nft macro
-//- Consider weights for mint, burn, and transfer
-
 // Types for this module
 pub mod types;
 
