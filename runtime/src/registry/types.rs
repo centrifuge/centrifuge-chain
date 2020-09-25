@@ -28,7 +28,7 @@ pub struct RegistryInfo {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetInfo {
     pub registry_id: RegistryId,
-    // TODO: Other generic fields ..
+    // TODO: What fields for a generic document/asset
 }
 
 // Registry id must be a field within the data, because an assets id
@@ -59,10 +59,10 @@ pub struct Proof<Hash> {
 /// Generates the leaf hash from underlying data, other hashes remain the same.
 impl From<Proof<sp_core::H256>> for proofs::Proof {
     fn from(mut p: Proof<sp_core::H256>) -> Self {
-        // Generate leaf hash from field ++ value ++ salt
+        // Generate leaf hash from property ++ value ++ salt
         p.property.extend(p.value);
         p.property.extend(p.salt);
-        // TODO: Is this the right hashing algo?
+        // TODO: Is keccak the right hashing algo, or should it be blake2?
         let leaf_hash = sp_io::hashing::keccak_256(&p.property).into();
 
         proofs::Proof::new(leaf_hash, p.hashes)
