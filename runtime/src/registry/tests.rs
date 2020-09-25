@@ -1,7 +1,7 @@
 use crate::registry::{Error, mock::*};
 use crate::proofs;
 use sp_core::{H256, Encode};
-use frame_support::{assert_ok, Hashable};
+use frame_support::{assert_err, assert_ok, Hashable};
 use sp_runtime::{
     testing::Header,
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
@@ -26,31 +26,43 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
     hash_of(signing_root, signature_root)
 }
 
+// Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
+fn proofs_data() -> (Vec<Proof<H256>>, [H256; 3], H256) {
+    let proofs = vec![
+        Proof {
+            value: vec![1],
+            salt: vec![0],
+            property: b"AMOUNT".to_vec(),
+            hashes: vec![],
+        }];
+    let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
+    let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    let static_hashes = [data_root, zk_data_root, sig_root];
+    let doc_root     = doc_root(static_hashes);
+
+    (proofs, static_hashes, doc_root)
+}
+
 #[test]
 fn mint_with_valid_proofs_works() {
     new_test_ext().execute_with(|| {
         let owner     = 1;
         let origin    = Origin::signed(1);
+
+        // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
-        let proofs = vec![
-            Proof {
-                value: vec![1],
-                salt: vec![0],
-                property: b"AMOUNT".to_vec(),
-                hashes: vec![],
-            }];
-        let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
-        let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-        let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-        let static_hashes = [data_root, zk_data_root, sig_root];
-        let doc_root     = doc_root(static_hashes);
-        let properties   =  proofs.iter().map(|p| p.property.clone()).collect();
 
+        // Proofs data
+        let (proofs, static_hashes, doc_root) = proofs_data();
+
+        // Registry data
         let registry_id = 0;
         let nft_data = AssetInfo {
             registry_id,
         };
+        let properties    =  proofs.iter().map(|p| p.property.clone()).collect();
         let registry_info = RegistryInfo {
             owner_can_burn: false,
             fields: properties,
@@ -94,6 +106,57 @@ fn mint_with_valid_proofs_works() {
         // Total Nfts did increase
         assert_eq!(<nft::Module<Test>>::total(), 1);
         assert_eq!(<nft::Module<Test>>::total_for_account(owner), 1);
+    });
+}
+
+#[test]
+fn mint_fails_when_dont_match_doc_root() {
+    new_test_ext().execute_with(|| {
+        let owner     = 1;
+        let origin    = Origin::signed(1);
+
+        // Anchor data
+        let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+
+        // Proofs data
+        let (proofs, static_hashes, doc_root) = proofs_data();
+
+        // Registry data
+        let registry_id = 0;
+        let nft_data = AssetInfo {
+            registry_id,
+        };
+        let properties    =  proofs.iter().map(|p| p.property.clone()).collect();
+        let registry_info = RegistryInfo {
+            owner_can_burn: false,
+            fields: properties,
+        };
+
+        // Create registry
+        assert_ok!(SUT::create_registry(origin.clone(), registry_info));
+
+        // Place document anchor into storage for verification
+        assert_ok!( <anchor::Module<Test>>::commit(
+            origin.clone(),
+            pre_image.clone(),
+            // Doc root
+            <Test as frame_system::Trait>::Hashing::hash_of(&pre_image),
+            // Proof does not matter here
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            crate::common::MS_PER_DAY + 1) );
+
+        // Mint token with document proof
+        assert_err!(
+            SUT::mint(origin,
+                      owner,
+                      nft_data.clone(),
+                      MintInfo {
+                          anchor_id: anchor_id,
+                          proofs: proofs,
+                          static_hashes: static_hashes,
+                      }),
+            Error::<Test>::InvalidProofs);
     });
 }
 
