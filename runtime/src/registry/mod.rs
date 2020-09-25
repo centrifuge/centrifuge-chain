@@ -24,9 +24,7 @@ use frame_system::ensure_signed;
 use sp_std::cmp::Eq;
 use unique_assets::traits::{Unique, Mintable, Burnable};
 pub use types::{*, VerifierRegistry};
-//use sp_runtime::traits::Hash;
 use crate::{nft, proofs, anchor};
-use sp_io::hashing::keccak_256;
 
 // TODO:
 //- Fix unit tests for pallet_nft
@@ -190,15 +188,6 @@ impl<T: Trait> Module<T> {
 
         Ok(id)
     }
-
-    /// Generates a hash of the concatenated inputs, consuming inputs in the process.
-    fn leaf_hash(mut field: Bytes, value: Bytes, salt: Salt) -> H256 {
-        // Generate leaf hash from field ++ value ++ salt
-        field.extend(value);
-        field.extend(salt);
-        // TODO: Is this the right hashing algo?
-        keccak_256(&field).into()
-    }
 }
 
 // Implement the verifier registry. This module verifies data fields that are custom defined
@@ -245,12 +234,8 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
         // Generate leaf hashes, turn into proofs::Proof type for validation call
         let proofs = mint_info.proofs.into_iter()
-            .map( |Proof { property, value, salt, hashes }|
-                proofs::Proof::new(
-                    // TODO: Check this is the right order
-                    Self::leaf_hash(property, value, salt),
-                    hashes,
-                )).collect();
+            .map(|p| p.into())
+            .collect();
 
         // Verify the proof against document root
         ensure!(proofs::validate_proofs(H256::from_slice(doc_root.as_ref()),

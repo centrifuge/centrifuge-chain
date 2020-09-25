@@ -2,6 +2,7 @@ pub use crate::nft::AssetId;
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
+use crate::proofs;
 
 /// Registries are identified using a nonce in storage.
 pub type RegistryId = u128;
@@ -55,6 +56,19 @@ pub struct Proof<Hash> {
     pub hashes: Vec<Hash>,
 }
 
+/// Generates the leaf hash from underlying data, other hashes remain the same.
+impl From<Proof<sp_core::H256>> for proofs::Proof {
+    fn from(mut p: Proof<sp_core::H256>) -> Self {
+        // Generate leaf hash from field ++ value ++ salt
+        p.property.extend(p.value);
+        p.property.extend(p.salt);
+        // TODO: Is this the right hashing algo?
+        let leaf_hash = sp_io::hashing::keccak_256(&p.property).into();
+
+        proofs::Proof::new(leaf_hash, p.hashes)
+    }
+}
+
 /// Data needed to provide proofs during a mint.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
 pub struct MintInfo<T, Hash> {
@@ -64,21 +78,6 @@ pub struct MintInfo<T, Hash> {
     /// These are used to validate the respective branches of the merkle tree, and
     /// to generate the final document root hash.
     pub static_hashes: [Hash; 3],
-    /*
-    /// Proofs should match to corresponding values. A value-leaf-hash
-    /// merkelized with its proof will be the root hash of the anchor
-    /// document when valid.
-    pub proofs: Vec<Proof>,
-    /// Values correspond with fields specified by a registry.
-    pub values: Vec<Bytes>,
-    /// Elements are hexified, compact encoded names for properties of the document
-    /// that match corresponding specified values. Property names *MUST* correspond
-    /// with the same index in the values list.
-    pub properties: Vec<Bytes>,
-    /// A list of salts used in the document to generate leaf hashes. Indices of this
-    /// list *MUST* correspond with the same index in the values list.
-    pub salts: Vec<Salt>,
-    */
     /// Each element of the list is a proof that a certain property of a
     /// document has the specified value.
     pub proofs: Vec<Proof<Hash>>,
