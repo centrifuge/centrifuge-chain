@@ -67,17 +67,18 @@ fn get_valid_proof() -> (Proof, sp_core::H256, [H256; 3]) {
    (proof, doc_root, static_proofs)
 }
 
-
 #[test]
 fn mint_with_valid_proofs_works() {
     new_test_ext().execute_with(|| {
         let owner     = 1;
         let origin    = Origin::signed(1);
-        let (pf, doc_root, static_proofs) = get_valid_proof();
+        let (pf, doc_root, static_hashes) = get_valid_proof();
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
-        let fields = vec![vec![0], vec![1]];
-        let values = vec![vec![2], vec![3]];
+        //let fields = vec![vec![0], vec![1]];
+        let fields = vec![b"AMOUNT".into()];
+        //let values = vec![vec![2], vec![3]];
+        let values = vec![vec![1]];
 
         let registry_id = 0;
         let nft_data = AssetInfo {
@@ -109,6 +110,9 @@ fn mint_with_valid_proofs_works() {
                           anchor_id: anchor_id,
                           proofs: vec![pf],
                           values: values,
+                          static_hashes: static_hashes,
+                          properties: fields,
+                          salts: vec![0],
                       }));
 
         // Nft registered to owner
@@ -124,8 +128,22 @@ fn mint_with_valid_proofs_works() {
 }
 
 #[test]
-fn create_registry_works() {
+fn burn_nft_works() {
     new_test_ext().execute_with(|| {
         let origin = Origin::signed(1);
+
+        let fields = vec![b"AMOUNT".into()];
+        let registry_info = RegistryInfo {
+            owner_can_burn: false,
+            fields: fields,
+        };
+
+        // Create registry
+        assert_ok!(
+            SUT::create_registry(origin.clone(), registry_info)
+        );
+
+        assert_ok!(
+            SUT::burn(
     });
 }

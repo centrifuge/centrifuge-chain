@@ -11,10 +11,9 @@ use crate::registry::types::InRegistry;
 use codec::{Decode, Encode, FullCodec};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
-    traits::{EnsureOrigin, Get},
+    traits::Get,
     Hashable,
 };
-use frame_system::ensure_signed;
 use sp_runtime::{
     traits::{Hash, Member},
     RuntimeDebug,

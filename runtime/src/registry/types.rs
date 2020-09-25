@@ -1,27 +1,19 @@
-use sp_core::H256;
-use crate::proofs::Proof;
 pub use crate::nft::AssetId;
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
 
-// Registries are identified using a nonce in storage
+/// Registries are identified using a nonce in storage.
 pub type RegistryId = u128;
 
-/// An implementor of this trait *MUST* be an asset of a registry.
-/// The registry id that an asset is a member of can be determined
-/// when this trait is implemented.
-pub trait InRegistry {
-    /// Returns the registry id that the self is a member of.
-    fn registry_id(&self) -> RegistryId;
-}
-
-// A vector of bytes, conveniently named like it is in Solidity
+/// A vector of bytes, conveniently named like it is in Solidity.
 pub type Bytes = Vec<u8>;
 
-// Metadata for a registry instance
-#[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
+/// A cryptographic salt to be combined with a value before hashing.
+pub type Salt = Bytes;
+
 /// Metadata for an instance of a registry.
+#[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
 pub struct RegistryInfo {
     /// A configuration option that will enable a user to burn their own tokens
     /// in the [burn] method.
@@ -47,28 +39,57 @@ impl InRegistry for AssetInfo {
     }
 }
 
+/// A complete proof that a value for a given property of a document is the real value.
+/// Proven by hashing hash(value + property + salt) into a leaf hash of the document
+/// merkle tree, then hashing with the given hashes to generate the merkle root.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+pub struct Proof<Hash> {
+    /// The value of the associated property of a document. Corrseponds to a leaf in
+    /// the document merkle tree.
+    pub value: Bytes,
+    /// A hexified and compact encoded plain text name for a document field.
+    pub property: Bytes,
+    /// A salt to be concatenated with the value and property before hashing a merkle leaf.
+    pub salt: Salt,
+    /// A list of all extra hashes required to build the merkle root hash from the leaf.
+    pub hashes: Vec<Hash>,
+}
+
 /// Data needed to provide proofs during a mint.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
-pub struct MintInfo<Hash> {
+pub struct MintInfo<T, Hash> {
     /// Unique ID to an anchor document.
-    pub anchor_id: Hash,
+    pub anchor_id: T,
+    /// The three hashes [DataRoot, SignatureRoot, DocRoot] *MUST* be in this order.
+    /// These are used to validate the respective branches of the merkle tree, and
+    /// to generate the final document root hash.
+    pub static_hashes: [Hash; 3],
+    /*
     /// Proofs should match to corresponding values. A value-leaf-hash
     /// merkelized with its proof will be the root hash of the anchor
     /// document when valid.
     pub proofs: Vec<Proof>,
     /// Values correspond with fields specified by a registry.
     pub values: Vec<Bytes>,
-    /// The three hashes [DataRoot, SignatureRoot, DocRoot] *MUST* be in this order.
-    /// These are used to validate the respective branches of the merkle tree, and
-    /// to generate the final document root hash.
-    pub static_hashes: [H256; 3],
     /// Elements are hexified, compact encoded names for properties of the document
     /// that match corresponding specified values. Property names *MUST* correspond
     /// with the same index in the values list.
     pub properties: Vec<Bytes>,
     /// A list of salts used in the document to generate leaf hashes. Indices of this
     /// list *MUST* correspond with the same index in the values list.
-    pub salts: Vec<u32>,
+    pub salts: Vec<Salt>,
+    */
+    /// Each element of the list is a proof that a certain property of a
+    /// document has the specified value.
+    pub proofs: Vec<Proof<Hash>>,
+}
+
+/// An implementor of this trait *MUST* be an asset of a registry.
+/// The registry id that an asset is a member of can be determined
+/// when this trait is implemented.
+pub trait InRegistry {
+    /// Returns the registry id that the self is a member of.
+    fn registry_id(&self) -> RegistryId;
 }
 
 /// A general interface for registries that require some sort of verification to mint their

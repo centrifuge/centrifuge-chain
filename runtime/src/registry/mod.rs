@@ -21,11 +21,12 @@ use frame_support::{
     decl_module, decl_storage, decl_event, decl_error,
     ensure, dispatch};
 use frame_system::ensure_signed;
-use sp_std::{vec::Vec, cmp::Eq};
-use unique_assets::traits::{Unique, Nft, Mintable};
+use sp_std::cmp::Eq;
+use unique_assets::traits::{Unique, Mintable, Burnable};
 pub use types::{*, VerifierRegistry};
-use sp_runtime::traits::Hash;
+//use sp_runtime::traits::Hash;
 use crate::{nft, proofs, anchor};
+use sp_io::hashing::keccak_256;
 
 // TODO:
 //- Fix unit tests for pallet_nft
@@ -83,6 +84,9 @@ decl_error! {
         DocumentNotAnchored,
         /// A specified registry is not in the module storage Registries map.
         RegistryDoesNotExist,
+        /// Unable to recreate the anchor hash from the proofs and data provided. This means
+        /// the [validate_proofs] method failed.
+        InvalidProofs,
         /// The values vector provided to a mint call doesn't match the length of the specified
         /// registry's fields vector.
         InvalidMintingValues,
@@ -114,7 +118,8 @@ decl_module! {
         pub fn mint(origin,
                     owner_account: <T as frame_system::Trait>::AccountId,
                     asset_info: T::AssetInfo,
-                    mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
+                    //mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
+                    mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
         ) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
 
@@ -127,7 +132,17 @@ decl_module! {
             Self::deposit_event(RawEvent::Mint(asset_id));
 
             Ok(())
-       }
+        }
+
+        #[weight = 10_000]
+        pub fn burn(origin, asset_id: AssetId<T>) -> dispatch::DispatchResult {
+            ensure_signed(origin)?;
+
+            // Internal nft burn logic
+            <nft::Module<T>>::burn(&asset_id)
+
+            // TODO: Emit burn event
+        }
 
         /// Transfer a asset to a new owner.
         ///
@@ -153,11 +168,14 @@ decl_module! {
 
 // Auxillary methods of the module for internal use
 impl<T: Trait> Module<T> {
-    fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, dispatch::DispatchError> {
-        match <anchor::Module<T>>::get_anchor_by_id(anchor_id) {
+    //fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, dispatch::DispatchError> {
+    fn get_document_root(anchor_id: T::Hash) -> Result<H256, dispatch::DispatchError> {
+        let root = match <anchor::Module<T>>::get_anchor_by_id(anchor_id) {
             Some(anchor_data) => Ok(anchor_data.doc_root),
-            None => Err(Error::<T>::DocumentNotAnchored.into()),
-        }
+            None => Err(Error::<T>::DocumentNotAnchored),
+        }?;
+
+        Ok( H256::from_slice(root.as_ref()) )
     }
 
     fn create_new_registry_id() -> Result<RegistryId, dispatch::DispatchError> {
@@ -174,10 +192,12 @@ impl<T: Trait> Module<T> {
     }
 
     /// Generates a hash of the concatenated inputs, consuming inputs in the process.
-    fn leaf_hash(mut field: Bytes, value: Bytes, salt: u32) -> T::Hash {
-        // Generate leaf hash from field ++ value
-        let leaf_data = field.extend(value);
-        <T as frame_system::Trait>::Hashing::hash_of(&leaf_data)
+    fn leaf_hash(mut field: Bytes, value: Bytes, salt: Salt) -> H256 {
+        // Generate leaf hash from field ++ value ++ salt
+        field.extend(value);
+        field.extend(salt);
+        // TODO: Is this the right hashing algo?
+        keccak_256(&field).into()
     }
 }
 
@@ -189,7 +209,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type RegistryInfo = RegistryInfo;
     type AssetId      = AssetId<T>;
     type AssetInfo    = <T as nft::Trait>::AssetInfo;
-    type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash>;
+    type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
 
     // Registries with identical RegistryInfo may exist
     fn create_registry(info: &Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError> {
@@ -204,9 +224,10 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
     fn mint(owner_account: <T as frame_system::Trait>::AccountId,
             asset_info: T::AssetInfo,
-            mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
+            //mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
+            mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
     ) -> Result<Self::AssetId, dispatch::DispatchError> {
-        let registry_id = asset_info.registry_id();
+        let registry_id   = asset_info.registry_id();
         let registry_info = Registries::get(registry_id);
 
         // Check that the registry exists
@@ -216,32 +237,26 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             Error::<T>::RegistryDoesNotExist
         );
 
-        let fields = registry_info.fields;
-        let values = mint_info.values;
-        // The number of values passed in should match the number of fields for the registry
-        ensure!(
-            fields.len() == values.len(),
-            Error::<T>::InvalidMintingValues
-        );
-
         // -------------
         // Verify proofs
 
         // Get the doc root
         let doc_root = Self::get_document_root(mint_info.anchor_id)?;
 
-        // Generate leaf hashes of each value for proof
-        let leaves = fields.into_iter()
-            .zip(values)
-            .zip(mint_info.salts)
-            .map(|((field, val), salt)|
-                Self::leaf_hash(field, val, salt));
+        // Generate leaf hashes, turn into proofs::Proof type for validation call
+        let proofs = mint_info.proofs.into_iter()
+            .map( |Proof { property, value, salt, hashes }|
+                proofs::Proof::new(
+                    // TODO: Check this is the right order
+                    Self::leaf_hash(property, value, salt),
+                    hashes,
+                )).collect();
 
         // Verify the proof against document root
         ensure!(proofs::validate_proofs(H256::from_slice(doc_root.as_ref()),
-                                        &mint_info.proofs,
+                                        &proofs,
                                         mint_info.static_hashes),
-                "Invalid proofs");
+                Error::<T>::InvalidProofs);
 
         // -------
         // Minting
