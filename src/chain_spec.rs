@@ -3,8 +3,8 @@ use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
-	FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
-	StakerStatus, StakingConfig, SystemConfig, WASM_BINARY,
+	ElectionsConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
+	StakerStatus, StakingConfig, SystemConfig, wasm_binary_unwrap,
 };
 use node_runtime::Block;
 use node_runtime::constants::currency::*;
@@ -148,7 +148,7 @@ pub fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
     endowed_accounts: Option<Vec<AccountId>>,
 ) -> GenesisConfig {
-    let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
+	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
 			get_account_id_from_seed::<sr25519::Public>("Alice"),
 			get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -169,46 +169,44 @@ pub fn testnet_genesis(
 	endowed_accounts.push(MultiAccount::multi_account_id(1));
     let num_endowed_accounts = endowed_accounts.len();
 
-    const INITIAL_SUPPLY: Balance = 300_000_000 * RAD; // 3% of total supply
+    const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
     const STASH: Balance = 1_000_000 * RAD;
-    let endowment: Balance = (INITIAL_SUPPLY - STASH * (initial_authorities.len() as Balance)) /
-        (num_endowed_accounts as Balance);
 
     GenesisConfig {
-        frame_system: Some(SystemConfig {
-            code: WASM_BINARY.to_vec(),
-            changes_trie_config: Default::default(),
-        }),
-        pallet_balances: Some(BalancesConfig {
-            balances: endowed_accounts.iter().cloned()
-                .map(|k| (k, endowment))
-                .chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
-                .collect(),
-        }),
-        pallet_session: Some(SessionConfig {
+		frame_system: Some(SystemConfig {
+			code: wasm_binary_unwrap().to_vec(),
+			changes_trie_config: Default::default(),
+		}),
+		pallet_balances: Some(BalancesConfig {
+			balances: endowed_accounts.iter().cloned()
+				.map(|k| (k, ENDOWMENT))
+				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+				.collect(),
+		}),
+		pallet_session: Some(SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.0.clone(), session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()))
+				(x.0.clone(), x.0.clone(), session_keys(
+					x.2.clone(),
+					x.3.clone(),
+					x.4.clone(),
+					x.5.clone(),
+				))
 			}).collect::<Vec<_>>(),
 		}),
 		pallet_staking: Some(StakingConfig {
-            // The ideal number of staking participants.
 			validator_count: initial_authorities.len() as u32 * 2,
 			minimum_validator_count: initial_authorities.len() as u32,
 			stakers: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
 			}).collect(),
-            // Any validators that may never be slashed or forcibly kicked. It's a Vec since they're
-            // easy to initialize and the performance hit is minimal (we expect no more than four
-            // invulnerables) and restricted to testnets.
 			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
-            // The percentage of the slash that is distributed to reporters.
-		    // The rest of the slashed value is handled by the `Slash`.
 			slash_reward_fraction: Perbill::from_percent(10),
-            // True if the next session change will be a new era regardless of index.
-            // force_era: NotForcing
 			.. Default::default()
-        }),
-        pallet_democracy: Some(DemocracyConfig::default()),
+		}),
+		pallet_democracy: Some(DemocracyConfig::default()),
+		pallet_elections_phragmen: Some(ElectionsConfig {
+			members: vec![],
+		}),
 		pallet_collective_Instance1: Some(CouncilConfig {
 			members: endowed_accounts.iter()
 						.take((num_endowed_accounts + 1) / 2)
@@ -386,35 +384,8 @@ pub fn load_spec(id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
 #[cfg(test)]
 pub(crate) mod tests {
 	use super::*;
-	use crate::service::{new_full, new_light};
-	use sc_service_test;
 	use sp_runtime::{ModuleId, BuildStorage, traits::AccountIdConversion};
 	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccount};
-
-	/// Local testnet config (multivalidator Alice + Bob)
-	pub fn integration_test_config_with_two_authorities() -> ChainSpec {
-		ChainSpec::from_genesis(
-			"Integration Test",
-			"test",
-			ChainType::Local,
-			local_testnet_genesis,
-			vec![],
-			None,
-			None,
-			None,
-			Default::default(),
-		)
-	}
-
-	#[test]
-	#[ignore]
-	fn test_connectivity() {
-		sc_service_test::connectivity(
-			integration_test_config_with_two_authorities(),
-			|config| new_full(config),
-			|config| new_light(config),
-		);
-	}
 
 	#[test]
 	fn test_centrifuge_multi_account_ids() {

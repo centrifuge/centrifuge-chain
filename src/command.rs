@@ -16,35 +16,36 @@
 use crate::chain_spec;
 use crate::cli::Cli;
 use crate::service;
-use sc_cli::SubstrateCli;
+use sc_service::PartialComponents;
+use sc_cli::{SubstrateCli, RuntimeVersion, Role, ChainSpec};
 
 impl SubstrateCli for Cli {
-	fn impl_name() -> &'static str {
-		"Centrifuge Chain Node"
+	fn impl_name() -> String {
+		"Centrifuge Chain Node".into()
 	}
 
-	fn impl_version() -> &'static str {
-		env!("CARGO_PKG_VERSION")
+	fn impl_version() -> String {
+		env!("SUBSTRATE_CLI_IMPL_VERSION").into()
 	}
 
-	fn description() -> &'static str { "Centrifuge Chain Node" }
+	fn description() -> String { "Centrifuge Chain Node".into() }
 
-	fn author() -> &'static str { "Centrifuge" }
+	fn author() -> String { "Centrifuge".into() }
 
-	fn support_url() -> &'static str {
-		"centrifuge.io"
+	fn support_url() -> String {
+		"centrifuge.io".into()
 	}
 
 	fn copyright_start_year() -> i32 {
 		2019
 	}
 
-	fn executable_name() -> &'static str {
-		"centrifuge-chain"
-	}
-
 	fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
 		chain_spec::load_spec(id)
+	}
+
+	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
+		&node_runtime::VERSION
 	}
 }
 
@@ -55,15 +56,18 @@ pub fn run() -> sc_cli::Result<()> {
 	match &cli.subcommand {
 		Some(subcommand) => {
 			let runner = cli.create_runner(subcommand)?;
-			runner.run_subcommand(subcommand, |config| Ok(new_full_start!(config).0))
+			runner.run_subcommand(subcommand, |config| {
+				let PartialComponents { client, backend, task_manager, import_queue, ..}
+					= service::new_partial(&config)?;
+				Ok((client, backend, import_queue, task_manager))
+			})
 		}
 		None => {
 			let runner = cli.create_runner(&cli.run)?;
-			runner.run_node(
-				service::new_light,
-				service::new_full,
-				node_runtime::VERSION
-			)
+			runner.run_node_until_exit(|config| match config.role {
+				Role::Light => service::new_light(config),
+				_ => service::new_full(config),
+			})
 		}
 	}
 }
