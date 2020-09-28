@@ -10,8 +10,8 @@ use frame_support::{
     decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
-    storage::child,
-    weights::DispatchClass,
+    storage::{child, child::ChildInfo},
+    weights::{Weight, DispatchClass},
 };
 use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
@@ -35,6 +35,9 @@ const MAX_LOOP_IN_TX: u64 = 500;
 
 /// date 3000-01-01 -> 376200 days from unix epoch
 const STORAGE_MAX_DAYS: u32 = 376200;
+
+/// Child trie prefix
+const ANCHOR_PREFIX: &[u8; 6] = b"anchor";
 
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
@@ -101,6 +104,11 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+        fn on_runtime_upgrade() -> Weight {
+			Self::migrate_anchors();
+			0
+		}
 
         /// Obtains an exclusive lock to make the next update to a certain document version
         /// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
@@ -188,21 +196,15 @@ decl_module! {
             <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
-            let child_info = common::generate_child_storage_key(stored_until_date_from_epoch);
             let anchor_data = AnchorData {
                 id: anchor_id,
                 doc_root: doc_root,
                 anchored_block: block_num
             };
 
-            let anchor_data_encoded = anchor_data.encode();
-            child::put_raw(&child_info, anchor_id.as_ref(), &anchor_data_encoded);
+            let prefixed_key = Self::anchor_storage_key(&stored_until_date_from_epoch.encode());
+            Self::store_anchor(anchor_id, &prefixed_key, stored_until_date_from_epoch, &anchor_data.encode());
 
-            // update indexes
-            <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
-            let idx = LatestAnchorIndex::get() + 1;
-            <AnchorIndexes<T>>::insert(idx, &anchor_id);
-            LatestAnchorIndex::put(idx);
             Ok(())
         }
 
@@ -356,7 +358,7 @@ impl<T: Trait> Module<T> {
     /// count of tries removed.
     fn evict_anchor_child_tries(from: u32, until: u32) -> usize {
         (from..until)
-            .map(|day| (day, common::generate_child_storage_key(day)))
+            .map(|day| (day, common::generate_child_storage_key(&Self::anchor_storage_key(&day.encode()))))
             // store the root of child trie for the day on chain before eviction. Checks if it
             // exists before hand to ensure that it doesn't overwrite a root.
             .map(|(day, key)| {
@@ -397,10 +399,66 @@ impl<T: Trait> Module<T> {
     /// Get an anchor by its id in the child storage
     pub fn get_anchor_by_id(anchor_id: T::Hash) -> Option<AnchorData<T::Hash, T::BlockNumber>> {
         let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-        let child_info = common::generate_child_storage_key(anchor_evict_date);
+        let anchor_evict_date_enc: &[u8] = &anchor_evict_date.encode();
+        let prefixed_key = Self::anchor_storage_key(anchor_evict_date_enc);
+        let child_info = common::generate_child_storage_key(&prefixed_key);
 
         child::get_raw(&child_info, anchor_id.as_ref())
             .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
+    }
+
+    pub fn anchor_storage_key(storage_key: &[u8]) -> Vec<u8> {
+        let mut prefixed_key = Vec::with_capacity(ANCHOR_PREFIX.len() + storage_key.len());
+        prefixed_key.extend_from_slice(ANCHOR_PREFIX);
+        prefixed_key.extend_from_slice(storage_key);
+        prefixed_key
+    }
+
+    fn store_anchor(anchor_id: T::Hash, prefixed_key: &Vec<u8>, stored_until_date_from_epoch: u32, anchor_data_encoded: &[u8]) {
+        let child_info = common::generate_child_storage_key(prefixed_key);
+
+        child::put_raw(&child_info, anchor_id.as_ref(), &anchor_data_encoded);
+
+        // update indexes
+        <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
+        let idx = LatestAnchorIndex::get() + 1;
+        <AnchorIndexes<T>>::insert(idx, &anchor_id);
+        LatestAnchorIndex::put(idx);
+    }
+
+    pub fn migrate_anchors() -> usize {
+        sp_runtime::print("Anchor: Running Migrations");
+        let last_idx = LatestAnchorIndex::get();
+        let mut moved: Vec<ChildInfo> = [].to_vec();
+        for i in 0..last_idx {
+            let anchor_id = <AnchorIndexes<T>>::get(i+1);
+            let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
+            let anchor_evict_date_enc = anchor_evict_date.encode();
+
+            // Old format
+            let cf: ChildInfo = ChildInfo::new_default(&anchor_evict_date_enc);
+            let ss_anchor_id: &[u8] = &anchor_id.encode();
+            let anchor_data_encoded = child::get_raw(&cf, ss_anchor_id.into());
+            if anchor_data_encoded.is_none() {
+                continue;
+            }
+
+            // New format
+            let prefixed_key = Self::anchor_storage_key(&anchor_evict_date_enc);
+            let new_child_info = common::generate_child_storage_key(&prefixed_key);
+            child::put_raw(&new_child_info, ss_anchor_id, &anchor_data_encoded.unwrap());
+            moved.push(cf);
+        }
+
+        // Delete moved child old keys
+        let vec_iter = moved.iter();
+        for val in vec_iter {
+            child::kill_storage(val);
+        }
+        sp_runtime::print("Anchor: Migrations ran");
+        sp_runtime::print(moved.len());
+
+        moved.len()
     }
 
     fn fee_key() -> <T as frame_system::Trait>::Hash {

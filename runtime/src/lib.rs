@@ -6,14 +6,14 @@
 
 use sp_std::prelude::*;
 use frame_support::{
-    construct_runtime, parameter_types, debug,
+    construct_runtime, parameter_types, debug, RuntimeDebug,
     weights::{
         Weight,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
-    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier},
+    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter},
 };
-use codec::Encode;
+use codec::{Encode, Decode};
 use sp_core::{
     crypto::KeyTypeId,
     u32_trait::{_1, _2, _3, _4}
@@ -105,7 +105,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 233,
+    spec_version: 235,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -177,7 +177,10 @@ impl frame_system::Trait for Runtime {
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
-	/// Handler for when a new account has just been created.
+    /// MigrateAccount holds the pallets that needs an explicit account migrations.
+    /// The accounts will be coming from Custom upgrade we have below.
+    type MigrateAccount = (Balances, Identity, Democracy, Elections, ImOnline, Staking, Session);
+    /// Handler for when a new account has just been created.
 	type OnNewAccount = ();
 	/// A function that is invoked when an account has been determined to be dead.
 	///
@@ -188,10 +191,72 @@ impl frame_system::Trait for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const MultisigDepositBase: Balance = 30 * CENTI_RAD;
+	pub const DepositBase: Balance = 30 * CENTI_RAD;
 	// Additional storage item size of 32 bytes.
-	pub const MultisigDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const DepositFactor: Balance = 5 * CENTI_RAD;
 	pub const MaxSignatories: u16 = 100;
+}
+
+impl pallet_multisig::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const ProxyDepositBase: Balance = 30 * CENTI_RAD;
+	// Additional storage item size of 32 bytes.
+	pub const ProxyDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const MaxProxies: u16 = 32;
+}
+
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+pub enum ProxyType {
+    Any,
+    NonTransfer,
+    Governance,
+    Staking,
+}
+impl Default for ProxyType { fn default() -> Self { Self::Any } }
+impl InstanceFilter<Call> for ProxyType {
+    fn filter(&self, c: &Call) -> bool {
+        match self {
+            ProxyType::Any => true,
+            ProxyType::NonTransfer => !matches!(c,
+				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+			),
+            ProxyType::Governance => matches!(c,
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
+			),
+            ProxyType::Staking => matches!(c, Call::Staking(..)),
+        }
+    }
+    fn is_superset(&self, o: &Self) -> bool {
+        match (self, o) {
+            (x, y) if x == y => true,
+            (ProxyType::Any, _) => true,
+            (_, ProxyType::Any) => false,
+            (ProxyType::NonTransfer, _) => true,
+            _ => false,
+        }
+    }
+}
+
+impl pallet_proxy::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type ProxyType = ProxyType;
+    type ProxyDepositBase = ProxyDepositBase;
+    type ProxyDepositFactor = ProxyDepositFactor;
+    type MaxProxies = MaxProxies;
+    type WeightInfo = ();
 }
 
 
@@ -283,7 +348,7 @@ parameter_types! {
     pub const TransactionByteFee: Balance = 1 * (MICRO_RAD / 100);
 	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(3, 100_000);
+	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
 	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 }
 
@@ -486,7 +551,7 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
-	pub const TermDuration: BlockNumber = 1 * DAYS;
+	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
@@ -730,6 +795,9 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
+// Frame Order in this block dictates the index of each one in the metadata
+// Any addition should be done at the bottom
+// Any deletion affects the following frames during runtime upgrades
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -741,7 +809,6 @@ construct_runtime!(
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
@@ -754,16 +821,19 @@ construct_runtime!(
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},
-		Historical: pallet_session_historical::{Module},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
+		Historical: pallet_session_historical::{Module},
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+        Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
 	}
 );
 
@@ -793,8 +863,35 @@ pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signatu
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
+
+/// Custom runtime upgrade to execute the balances migration before the account migration.
+mod custom_migration {
+    use super::*;
+
+    use sp_core::Decode;
+    use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
+    use pallet_staking::migrations::migrate as staking_upgrade;
+    use frame_system::migrations::migrate as accounts_upgrade;
+
+    pub struct Upgrade;
+    impl OnRuntimeUpgrade for Upgrade {
+        fn on_runtime_upgrade() -> Weight {
+            let accounts: Vec<AccountId> = Self::get_accounts();
+            staking_upgrade::<Runtime>();
+            accounts_upgrade::<Runtime>(accounts);
+            MaximumBlockWeight::get()
+        }
+    }
+
+    impl Upgrade {
+        fn get_accounts() -> Vec<AccountId> {
+            Vec::<AccountId>::decode(&mut &include_bytes!("accounts.scale")[..]).unwrap()
+        }
+    }
+}
+
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
+pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules, custom_migration::Upgrade>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.
