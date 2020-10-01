@@ -764,6 +764,7 @@ name = "centrifuge-chain-runtime"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",

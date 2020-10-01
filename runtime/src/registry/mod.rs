@@ -35,6 +35,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 
 pub trait Trait: frame_system::Trait + nft::Trait + anchor::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -108,15 +111,14 @@ decl_module! {
         pub fn mint(origin,
                     owner_account: <T as frame_system::Trait>::AccountId,
                     asset_info: T::AssetInfo,
-                    //mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
                     mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
         ) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
 
             // Internal mint validates proofs and modifies state or returns error
             let asset_id = <Self as VerifierRegistry>::mint(owner_account,
-                                                                asset_info,
-                                                                mint_info)?;
+                                                            asset_info,
+                                                            mint_info)?;
 
             // Mint event
             Self::deposit_event(RawEvent::Mint(asset_id));
@@ -205,7 +207,6 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
     fn mint(owner_account: <T as frame_system::Trait>::AccountId,
             asset_info: T::AssetInfo,
-            //mint_info: MintInfo<<T as frame_system::Trait>::Hash>,
             mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
     ) -> Result<Self::AssetId, dispatch::DispatchError> {
         let registry_id   = asset_info.registry_id();
@@ -230,7 +231,8 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             .collect();
 
         // Verify the proof against document root
-        ensure!(proofs::validate_proofs(H256::from_slice(doc_root.as_ref()),
+        // TODO:
+        ensure!(proofs::validate_proofs(doc_root,
                                         &proofs,
                                         mint_info.static_hashes),
                 Error::<T>::InvalidProofs);

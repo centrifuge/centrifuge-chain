@@ -739,6 +739,22 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
+impl registry::Trait for Runtime {
+    type Event = Event;
+}
+
+parameter_types! {
+    pub const MaxAssets: u128 = 1000000;
+    pub const MaxAssetsPerUser: u64 = 10000;
+}
+
+impl nft::Trait for Runtime {
+    type Event = Event;
+    type AssetInfo = registry::types::AssetInfo;
+    type AssetLimit = MaxAssets;
+    type UserAssetLimit = MaxAssetsPerUser;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -773,6 +789,8 @@ construct_runtime!(
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+		Registry: registry::{Module, Call, Storage, Event<T>},
+		Nft: nft::{Module, Storage, Event<T>},
 	}
 );
 
@@ -1012,6 +1030,32 @@ impl_runtime_apis! {
 			Anchor::get_anchor_by_id(id)
 		}
 	}
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+			//config: frame_benchmarking::BenchmarkConfig
+            pallet: Vec<u8>,
+            benchmark: Vec<u8>,
+            lowest_range_values: Vec<u32>,
+            highest_range_values: Vec<u32>,
+            steps: Vec<u32>,
+            repeat: u32,
+            extra: bool
+	    ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+
+            let whitelist: Vec<TrackedStorageKey> = vec![];
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            //let params = (&config, &whitelist);
+            let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
+
+            add_benchmark!(params, batches, registry, Registry);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+		    Ok(batches)
+        }
+    }
 }
 
 #[cfg(test)]

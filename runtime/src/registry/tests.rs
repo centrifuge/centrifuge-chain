@@ -6,7 +6,6 @@ use sp_runtime::{
     testing::Header,
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
 };
-use sp_core::hashing::blake2_128;
 use crate::nft;
 use super::*;
 
@@ -38,6 +37,8 @@ fn proofs_data() -> (Vec<Proof<H256>>, [H256; 3], H256) {
     let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
     let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
     let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    //let zk_data_root = sp_io::hashing::keccak_256(&[0]).into();
+    //let sig_root     = sp_io::hashing::keccak_256(&[0]).into();
     let static_hashes = [data_root, zk_data_root, sig_root];
     let doc_root     = doc_root(static_hashes);
 
@@ -48,7 +49,7 @@ fn proofs_data() -> (Vec<Proof<H256>>, [H256; 3], H256) {
 fn mint_with_valid_proofs_works() {
     new_test_ext().execute_with(|| {
         let owner     = 1;
-        let origin    = Origin::signed(1);
+        let origin    = Origin::signed(owner);
 
         // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
@@ -113,14 +114,14 @@ fn mint_with_valid_proofs_works() {
 fn mint_fails_when_dont_match_doc_root() {
     new_test_ext().execute_with(|| {
         let owner     = 1;
-        let origin    = Origin::signed(1);
+        let origin    = Origin::signed(owner);
 
         // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
         // Proofs data
-        let (proofs, static_hashes, doc_root) = proofs_data();
+        let (proofs, static_hashes, _) = proofs_data();
 
         // Registry data
         let registry_id = 0;
