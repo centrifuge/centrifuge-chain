@@ -21,7 +21,7 @@ use frame_support::{
     decl_module, decl_storage, decl_event, decl_error,
     ensure, dispatch};
 use frame_system::ensure_signed;
-use sp_std::cmp::Eq;
+use sp_std::{cmp::Eq, vec::Vec};
 use unique_assets::traits::{Unique, Mintable, Burnable};
 pub use types::{*, VerifierRegistry};
 use crate::{nft, proofs, anchor};
@@ -219,6 +219,19 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             Error::<T>::RegistryDoesNotExist
         );
 
+        // Check that all properties the registry expects are provided
+        // TODO: This should speed up the worst case as this is only an optimization
+        // before validating proofs. Check with benchmarks.
+        ensure!(
+            registry_info.fields.iter()
+                .fold(true, |acc, field|
+                      acc &&
+                      !mint_info.proofs.iter()
+                          .map(|p| p.property.clone())
+                          .filter(|prop| prop == field)
+                          .collect::<Vec<Bytes>>().is_empty()),
+            Error::<T>::InvalidProofs);
+
         // -------------
         // Verify proofs
 
@@ -231,7 +244,6 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             .collect();
 
         // Verify the proof against document root
-        // TODO:
         ensure!(proofs::validate_proofs(doc_root,
                                         &proofs,
                                         mint_info.static_hashes),

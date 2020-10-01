@@ -29,6 +29,7 @@ pub struct RegistryInfo {
 pub struct AssetInfo {
     pub registry_id: RegistryId,
     // TODO: What fields for a generic document/asset
+    // metadata: scale encoded
 }
 
 // Registry id must be a field within the data, because an assets id
@@ -62,7 +63,6 @@ impl From<Proof<sp_core::H256>> for proofs::Proof {
         // Generate leaf hash from property ++ value ++ salt
         p.property.extend(p.value);
         p.property.extend(p.salt);
-        // TODO: Is keccak the right hashing algo, or should it be blake2?
         let leaf_hash = sp_io::hashing::keccak_256(&p.property).into();
 
         proofs::Proof::new(leaf_hash, p.hashes)
