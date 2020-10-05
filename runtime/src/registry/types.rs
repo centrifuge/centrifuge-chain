@@ -26,16 +26,17 @@ pub struct RegistryInfo {
 
 /// All data for an instance of an NFT.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
-pub struct AssetInfo {
+pub struct AssetInfo<Hash> {
     pub registry_id: RegistryId,
-    // TODO: What fields for a generic document/asset
+    pub doc_root: Hash,
+    pub token_id: Bytes,
     // metadata: scale encoded
 }
 
 // Registry id must be a field within the data, because an assets id
 // is a hash of its content, and its registry is part of its uniquely
 // identifying information.
-impl InRegistry for AssetInfo {
+impl<T> InRegistry for AssetInfo<T> {
     fn registry_id(&self) -> RegistryId {
         self.registry_id
     }

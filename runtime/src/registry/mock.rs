@@ -57,7 +57,7 @@ parameter_types! {
 
 impl crate::nft::Trait for Test {
     type Event = ();
-    type AssetInfo = crate::registry::types::AssetInfo;
+    type AssetInfo = crate::registry::types::AssetInfo<H256>;
     type AssetLimit = MaxAssets;
     type UserAssetLimit = MaxAssetsPerUser;
 }

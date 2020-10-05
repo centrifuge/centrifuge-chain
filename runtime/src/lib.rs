@@ -15,6 +15,7 @@ use frame_support::{
 };
 use codec::Encode;
 use sp_core::{
+    H256,
     crypto::KeyTypeId,
     u32_trait::{_1, _2, _3, _4}
 };
@@ -750,7 +751,7 @@ parameter_types! {
 
 impl nft::Trait for Runtime {
     type Event = Event;
-    type AssetInfo = registry::types::AssetInfo;
+    type AssetInfo = registry::types::AssetInfo<H256>;
     type AssetLimit = MaxAssets;
     type UserAssetLimit = MaxAssetsPerUser;
 }

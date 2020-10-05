@@ -192,6 +192,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type RegistryInfo = RegistryInfo;
     type AssetId      = AssetId<T>;
     type AssetInfo    = <T as nft::Trait>::AssetInfo;
+    // TODO: Change anchor id type to Bytes
     type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
 
     // Registries with identical RegistryInfo may exist

@@ -50,6 +50,7 @@ fn mint_with_valid_proofs_works() {
     new_test_ext().execute_with(|| {
         let owner     = 1;
         let origin    = Origin::signed(owner);
+        let token_id  = vec![0];
 
         // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
@@ -61,7 +62,9 @@ fn mint_with_valid_proofs_works() {
         // Registry data
         let registry_id = 0;
         let nft_data = AssetInfo {
-            registry_id,
+            registry_id: registry_id,
+            doc_root: doc_root.clone(),
+            token_id: token_id,
         };
         let properties    =  proofs.iter().map(|p| p.property.clone()).collect();
         let registry_info = RegistryInfo {
@@ -115,18 +118,21 @@ fn mint_fails_when_dont_match_doc_root() {
     new_test_ext().execute_with(|| {
         let owner     = 1;
         let origin    = Origin::signed(owner);
+        let token_id  = vec![0];
 
         // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
         // Proofs data
-        let (proofs, static_hashes, _) = proofs_data();
+        let (proofs, static_hashes, doc_root) = proofs_data();
 
         // Registry data
         let registry_id = 0;
         let nft_data = AssetInfo {
-            registry_id,
+            registry_id: registry_id,
+            doc_root: doc_root.clone(),
+            token_id: token_id,
         };
         let properties    =  proofs.iter().map(|p| p.property.clone()).collect();
         let registry_info = RegistryInfo {
@@ -151,7 +157,7 @@ fn mint_fails_when_dont_match_doc_root() {
         assert_err!(
             SUT::mint(origin,
                       owner,
-                      nft_data.clone(),
+                      nft_data,
                       MintInfo {
                           anchor_id: anchor_id,
                           proofs: proofs,
