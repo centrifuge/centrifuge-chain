@@ -235,9 +235,9 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         ensure!(
             mint_info.proofs.iter()
                             .map(|p| p.property.clone())
-                            .filter(|prop| Self::h256_into_u256(H256::from_slice(prop)) == registry_id)
-                            .collect::<Vec<Bytes>>().is_empty(),
-                            //.collect::<Vec<sp_core::U256>>().is_empty(),
+                            .find(|prop| Self::h256_into_u256(H256::from_slice(prop)) == registry_id)
+                            .is_some(),
+                            //.collect::<Vec<Bytes>>().is_empty(),
             Error::<T>::InvalidProofs);
 
         // All properties the registry expects must be provided in proofs.
@@ -247,10 +247,11 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             registry_info.fields.iter()
                 .fold(true, |acc, field|
                       acc &&
-                      !mint_info.proofs.iter()
+                      mint_info.proofs.iter()
                           .map(|p| p.property.clone())
-                          .filter(|prop| prop == field)
-                          .collect::<Vec<Bytes>>().is_empty()),
+                          .find(|prop| prop == field)
+                          .is_some()),
+                          //.collect::<Vec<Bytes>>().is_empty()),
             Error::<T>::InvalidProofs);
 
         // -------------

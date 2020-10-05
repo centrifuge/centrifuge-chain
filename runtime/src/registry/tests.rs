@@ -26,12 +26,13 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
 }
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
-fn proofs_data() -> (Vec<Proof<H256>>, [H256; 3], H256) {
+fn proofs_data(registry_id: U256, token_id: Bytes) -> (Vec<Proof<H256>>, [H256; 3], H256) {
+    let prop_vec = H256::from_low_u64_le(registry_id.as_u64()).as_bytes().into();
     let proofs = vec![
         Proof {
-            value: vec![1],
+            value: token_id,
             salt: vec![0],
-            property: b"AMOUNT".to_vec(),
+            property: prop_vec,//b"AMOUNT".to_vec(),
             hashes: vec![],
         }];
     let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
@@ -51,16 +52,16 @@ fn mint_with_valid_proofs_works() {
         let owner     = 1;
         let origin    = Origin::signed(owner);
         let token_id  = vec![0];
+        let registry_id = U256::zero();
 
         // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
         // Proofs data
-        let (proofs, static_hashes, doc_root) = proofs_data();
+        let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), token_id.clone());
 
         // Registry data
-        let registry_id = U256::zero();
         let nft_data = AssetInfo {
             registry_id: registry_id,
             doc_root: doc_root.clone(),
@@ -119,16 +120,16 @@ fn mint_fails_when_dont_match_doc_root() {
         let owner     = 1;
         let origin    = Origin::signed(owner);
         let token_id  = vec![0];
+        let registry_id = U256::zero();
 
         // Anchor data
         let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
         // Proofs data
-        let (proofs, static_hashes, doc_root) = proofs_data();
+        let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), token_id.clone());
 
         // Registry data
-        let registry_id = U256::zero();
         let nft_data = AssetInfo {
             registry_id: registry_id,
             doc_root: doc_root.clone(),
