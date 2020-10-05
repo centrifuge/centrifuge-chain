@@ -2,13 +2,14 @@ pub use crate::nft::AssetId;
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
+use sp_core::U256;
 use crate::proofs;
-
-/// Registries are identified using a nonce in storage.
-pub type RegistryId = u128;
 
 /// A vector of bytes, conveniently named like it is in Solidity.
 pub type Bytes = Vec<u8>;
+
+/// Registries are identified using a nonce in storage.
+pub type RegistryId = U256;
 
 /// A cryptographic salt to be combined with a value before hashing.
 pub type Salt = Bytes;

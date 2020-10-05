@@ -16,7 +16,7 @@
 //! to generate the root. When the root hash matches that of the anchor,
 //! a mint can be verified.
 
-use sp_core::H256;
+use sp_core::{H256, U256};
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error,
     ensure, dispatch};
@@ -83,7 +83,7 @@ decl_error! {
         /// The values vector provided to a mint call doesn't match the length of the specified
         /// registry's fields vector.
         InvalidMintingValues,
-        // Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
+        /// Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
         NotAssetOwner,
     }
 }
@@ -174,13 +174,18 @@ impl<T: Trait> Module<T> {
         let id = <RegistryNonce>::get();
 
         // Check for overflow on index
-        let nplus1 = <RegistryNonce>::get().checked_add(1)
+        let nplus1 = <RegistryNonce>::get().checked_add(U256::one())
             .ok_or("Overflow when updating registry nonce.")?;
 
         // Update the nonce
         <RegistryNonce>::put( nplus1 );
 
         Ok(id)
+    }
+
+    // Convert H256 hashes as the little endian encoding
+    fn h256_into_u256(h: H256) -> U256 {
+        U256::from_little_endian(h.as_fixed_bytes())
     }
 }
 
@@ -213,16 +218,31 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         let registry_id   = asset_info.registry_id();
         let registry_info = Registries::get(registry_id);
 
-        // Check that the registry exists
+        // Check that registry exists
         ensure!(
             // TODO: Use the decl above
             Registries::contains_key(registry_id),
             Error::<T>::RegistryDoesNotExist
         );
 
-        // Check that all properties the registry expects are provided
-        // TODO: This should speed up the worst case as this is only an optimization
-        // before validating proofs. Check with benchmarks.
+        // --------------------------
+        // Type checking the document
+
+        // The registry field must be a proof with its value as the token id.
+        // If not, the document provided may not contain the data and would
+        // be invalid.
+        // TODO: Check value == token id
+        ensure!(
+            mint_info.proofs.iter()
+                            .map(|p| p.property.clone())
+                            .filter(|prop| Self::h256_into_u256(H256::from_slice(prop)) == registry_id)
+                            .collect::<Vec<Bytes>>().is_empty(),
+                            //.collect::<Vec<sp_core::U256>>().is_empty(),
+            Error::<T>::InvalidProofs);
+
+        // All properties the registry expects must be provided in proofs.
+        // If not, the document provided may not contain these fields and would
+        // therefore be invalid.
         ensure!(
             registry_info.fields.iter()
                 .fold(true, |acc, field|

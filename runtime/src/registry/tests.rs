@@ -1,6 +1,6 @@
 use crate::registry::{Error, mock::*};
 use crate::proofs;
-use sp_core::{H256, Encode};
+use sp_core::{H256, U256, Encode};
 use frame_support::{assert_err, assert_ok, Hashable};
 use sp_runtime::{
     testing::Header,
@@ -60,7 +60,7 @@ fn mint_with_valid_proofs_works() {
         let (proofs, static_hashes, doc_root) = proofs_data();
 
         // Registry data
-        let registry_id = 0;
+        let registry_id = U256::zero();
         let nft_data = AssetInfo {
             registry_id: registry_id,
             doc_root: doc_root.clone(),
@@ -128,7 +128,7 @@ fn mint_fails_when_dont_match_doc_root() {
         let (proofs, static_hashes, doc_root) = proofs_data();
 
         // Registry data
-        let registry_id = 0;
+        let registry_id = U256::zero();
         let nft_data = AssetInfo {
             registry_id: registry_id,
             doc_root: doc_root.clone(),
