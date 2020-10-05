@@ -744,16 +744,9 @@ impl registry::Trait for Runtime {
     type Event = Event;
 }
 
-parameter_types! {
-    pub const MaxAssets: u128 = 1000000;
-    pub const MaxAssetsPerUser: u64 = 10000;
-}
-
 impl nft::Trait for Runtime {
     type Event = Event;
     type AssetInfo = registry::types::AssetInfo<H256>;
-    type AssetLimit = MaxAssets;
-    type UserAssetLimit = MaxAssetsPerUser;
 }
 
 construct_runtime!(

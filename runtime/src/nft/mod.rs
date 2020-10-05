@@ -35,10 +35,6 @@ use unique_assets::traits::*;
 pub trait Trait<I = DefaultInstance>: frame_system::Trait {
     /// The data type that is used to describe this type of asset.
     type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry;
-    /// The maximum number of this type of asset that may exist (minted - burned).
-    type AssetLimit: Get<u128>;
-    /// The maximum number of this type of asset that any single account may own.
-    type UserAssetLimit: Get<u64>;
     type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
@@ -112,12 +108,6 @@ decl_error! {
         NonexistentAsset,
         // Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
         NotAssetOwner,
-        // Thrown when the asset admin attempts to mint a asset and the maximum number of this
-        // type of asset already exists.
-        TooManyAssets,
-        // Thrown when an attempt is made to mint or transfer a asset to an account that already
-        // owns the maximum number of this type of asset.
-        TooManyAssetsForAccount,
     }
 }
 
@@ -134,8 +124,6 @@ impl<T: Trait<I>, I: Instance>
 {
     type Asset = Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
-    type AssetLimit = T::AssetLimit;
-    type UserAssetLimit = T::UserAssetLimit;
 
     fn total() -> u128 {
         Self::total()
@@ -163,11 +151,6 @@ impl<T: Trait<I>, I: Instance>
         ensure!(
             owner != T::AccountId::default(),
             Error::<T, I>::NonexistentAsset
-        );
-
-        ensure!(
-            Self::total_for_account(dest_account) < T::UserAssetLimit::get(),
-            Error::<T, I>::TooManyAssetsForAccount
         );
 
         let xfer_asset = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
@@ -210,16 +193,6 @@ impl<T: Trait<I>, I: Instance>
         ensure!(
             !AccountForAsset::<T, I>::contains_key(&asset_id),
             Error::<T, I>::AssetExists
-        );
-
-        ensure!(
-            Self::total_for_account(owner_account) < T::UserAssetLimit::get(),
-            Error::<T, I>::TooManyAssetsForAccount
-        );
-
-        ensure!(
-            Self::total() < T::AssetLimit::get(),
-            Error::<T, I>::TooManyAssets
         );
 
         let new_asset = Asset {

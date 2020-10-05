@@ -50,16 +50,9 @@ impl system::Trait for Test {
     type MigrateAccount = ();
 }
 
-parameter_types! {
-    pub const MaxAssets: u128 = 5;
-    pub const MaxAssetsPerUser: u64 = 2;
-}
-
 impl crate::nft::Trait for Test {
     type Event = ();
     type AssetInfo = crate::registry::types::AssetInfo<H256>;
-    type AssetLimit = MaxAssets;
-    type UserAssetLimit = MaxAssetsPerUser;
 }
 
 impl crate::anchor::Trait for Test {}
