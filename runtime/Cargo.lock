@@ -3998,7 +3998,7 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 [[package]]
 name = "unique_assets"
 version = "0.1.0"
-source = "git+https://github.com/jaybutera/unique-assets#5993b3d5d67d5dd00ea4eb2446b8146bb064d0d8"
+source = "git+https://github.com/jaybutera/unique-assets#ada09d01f5eafc593abcc1fb247bcb72a9096293"
 dependencies = [
  "frame-support",
  "sp-std",

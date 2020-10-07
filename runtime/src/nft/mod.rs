@@ -7,7 +7,7 @@
 //! runtime can access the interface provided by this module to
 //! define user-facing logic to interact with the runtime NFTs.
 
-use crate::registry::types::InRegistry;
+use crate::registry::types::{InRegistry, HasId, AssetId, RegistryId};
 use codec::{Decode, Encode, FullCodec};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
@@ -34,12 +34,12 @@ use unique_assets::traits::*;
 
 pub trait Trait<I = DefaultInstance>: frame_system::Trait {
     /// The data type that is used to describe this type of asset.
-    type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry;
+    type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry + HasId;
     type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
 /// The runtime system's hashing algorithm is used to uniquely identify assets.
-pub type AssetId<T> = <T as frame_system::Trait>::Hash;
+//pub type AssetId<T> = <T as frame_system::Trait>::Hash;
 
 /// A generic definition of an NFT that will be used by this pallet.
 #[derive(Encode, Decode, Clone, Eq, RuntimeDebug)]
@@ -49,11 +49,12 @@ pub struct Asset<Hash, AssetInfo> {
 }
 
 /// An alias for this pallet's NFT implementation.
-pub type AssetFor<T, I> = Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>;
+pub type AssetFor<T, I> = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
 
 impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
     type Id = AssetId;
     type Info = AssetInfo;
+    type RegistryId = RegistryId;
 }
 
 // Needed to maintain a sorted list.
@@ -86,7 +87,10 @@ decl_storage! {
         /// A mapping from an account to a list of all of the assets of this type that are owned by it.
         AssetsForAccount get(fn assets_for_account): map hasher(blake2_128_concat) T::AccountId => Vec<AssetFor<T, I>>;
         /// A mapping from a asset ID to the account that owns it.
-        AccountForAsset get(fn account_for_asset): map hasher(identity) AssetId<T> => T::AccountId;
+        //AccountForAsset get(fn account_for_asset): map hasher(blake2_128_concat) AssetId => T::AccountId;
+        AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => T::AccountId;
+        // A double mapping of registry id and asset id to an asset.
+        //AssetByRegistry: double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => AssetFor<T, I>;
     }
 }
 
@@ -94,9 +98,9 @@ decl_storage! {
 decl_event!(
     pub enum Event<T, I = DefaultInstance>
     where
-        AssetId = <T as frame_system::Trait>::Hash,
+        Hash = <T as frame_system::Trait>::Hash,
     {
-        Tmp(AssetId),
+        Tmp(Hash),
     }
 );
 
@@ -122,7 +126,7 @@ decl_module! {
 impl<T: Trait<I>, I: Instance>
     Unique for Module<T, I>
 {
-    type Asset = Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>;
+    type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
     fn total() -> u128 {
@@ -135,25 +139,26 @@ impl<T: Trait<I>, I: Instance>
 
     fn assets_for_account(
         account: &T::AccountId,
-    ) -> Vec<Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>> {
+    ) -> Vec<Asset<AssetId, <T as Trait<I>>::AssetInfo>> {
         Self::assets_for_account(account)
     }
 
-    fn owner_of(asset_id: &AssetId<T>) -> T::AccountId {
-        Self::account_for_asset(asset_id)
+    fn owner_of(registry_id: &RegistryId, asset_id: &AssetId) -> T::AccountId {
+        Self::account_for_asset(registry_id, asset_id)
     }
 
     fn transfer(
         dest_account: &T::AccountId,
-        asset_id: &AssetId<T>,
+        registry_id: &RegistryId,
+        asset_id: &AssetId,
     ) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(&asset_id);
+        let owner = Self::owner_of(registry_id, asset_id);
         ensure!(
             owner != T::AccountId::default(),
             Error::<T, I>::NonexistentAsset
         );
 
-        let xfer_asset = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
+        let xfer_asset = Asset::<AssetId, <T as Trait<I>>::AssetInfo> {
             id: *asset_id,
             asset: <T as Trait<I>>::AssetInfo::default(),
         };
@@ -172,7 +177,7 @@ impl<T: Trait<I>, I: Instance>
                 Err(pos) => assets.insert(pos, asset),
             }
         });
-        AccountForAsset::<T, I>::insert(&asset_id, &dest_account);
+        AccountForAsset::<T, I>::insert(&registry_id, &asset_id, &dest_account);
 
         Ok(())
     }
@@ -181,17 +186,18 @@ impl<T: Trait<I>, I: Instance>
 impl<T: Trait<I>, I: Instance>
     Mintable for Module<T, I>
 {
-    type Asset = Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>;
+    type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
     fn mint(
         owner_account: &T::AccountId,
         asset_info: <T as Trait<I>>::AssetInfo,
-    ) -> dispatch::result::Result<AssetId<T>, dispatch::DispatchError> {
-        let asset_id = T::Hashing::hash_of(&asset_info);
+    ) -> dispatch::result::Result<AssetId, dispatch::DispatchError> {
+        let asset_id = asset_info.id().clone();
+        let registry_id = asset_info.registry_id();
 
         ensure!(
-            !AccountForAsset::<T, I>::contains_key(&asset_id),
+            !AccountForAsset::<T, I>::contains_key(&registry_id, &asset_id),
             Error::<T, I>::AssetExists
         );
 
@@ -208,7 +214,8 @@ impl<T: Trait<I>, I: Instance>
                 Err(pos) => assets.insert(pos, new_asset),
             }
         });
-        AccountForAsset::<T, I>::insert(asset_id, &owner_account);
+        AccountForAsset::<T, I>::insert(&registry_id, asset_id, &owner_account);
+        //AssetByRegistry::<T>::insert(registry_id, asset_id, new_asset);
 
         Ok(asset_id)
     }
@@ -218,20 +225,20 @@ impl<T: Trait<I>, I: Instance>
 impl<T: Trait<I>, I: Instance>
     Burnable for Module<T, I>
 {
-    type Asset = Asset<AssetId<T>, <T as Trait<I>>::AssetInfo>;
+    type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
 
     fn burned() -> u128 {
         Self::burned()
     }
 
-    fn burn(asset_id: &AssetId<T>) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(asset_id);
+    fn burn(registry_id: &RegistryId, asset_id: &AssetId) -> dispatch::DispatchResult {
+        let owner = Self::owner_of(registry_id, asset_id);
         ensure!(
             owner != T::AccountId::default(),
             Error::<T, I>::NonexistentAsset
         );
 
-        let burn_asset = Asset::<AssetId<T>, <T as Trait<I>>::AssetInfo> {
+        let burn_asset = Asset::<AssetId, <T as Trait<I>>::AssetInfo> {
             id: *asset_id,
             asset: <T as Trait<I>>::AssetInfo::default(),
         };
@@ -245,7 +252,7 @@ impl<T: Trait<I>, I: Instance>
                 .expect("We already checked that we have the correct owner; qed");
             assets.remove(pos);
         });
-        AccountForAsset::<T, I>::remove(&asset_id);
+        AccountForAsset::<T, I>::remove(&registry_id, &asset_id);
 
         Ok(())
     }

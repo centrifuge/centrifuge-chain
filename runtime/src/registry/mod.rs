@@ -49,9 +49,6 @@ decl_storage! {
         RegistryNonce: RegistryId;
         /// A mapping of all created registries and their metadata.
         Registries: map hasher(blake2_128_concat) RegistryId => RegistryInfo;
-        /// A list of asset ids for each registry.
-        // TODO: Try a map of BTreeSets as well, and do a benchmark comparison
-        NftLists: double_map hasher(identity) RegistryId, hasher(identity) AssetId => ();
     }
 }
 
@@ -67,7 +64,7 @@ decl_event!(
         /// [`create_registry`](./struct.Module.html#method.create_registry)
         RegistryCreated(RegistryId),
         /// Ownership of the asset has been transferred to the account.
-        Transferred(AssetId, AccountId),
+        Transferred(RegistryId, AssetId, AccountId),
     }
 );
 
@@ -127,11 +124,11 @@ decl_module! {
         }
 
         #[weight = 10_000]
-        pub fn burn(origin, asset_id: AssetId) -> dispatch::DispatchResult {
+        pub fn burn(origin, registry_id: RegistryId, asset_id: AssetId) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
 
             // Internal nft burn logic
-            <nft::Module<T>>::burn(&asset_id)
+            <nft::Module<T>>::burn(&registry_id, &asset_id)
 
             // TODO: Emit burn event
         }
@@ -147,12 +144,16 @@ decl_module! {
         /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
         ///   of the info that defines the asset to destroy.
         #[weight = 10_000]
-        pub fn transfer(origin, dest_account: T::AccountId, asset_id: AssetId) -> dispatch::DispatchResult {
+        pub fn transfer(origin,
+                        dest_account: T::AccountId,
+                        registry_id: RegistryId,
+                        asset_id: AssetId)
+        -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(who == <nft::Module<T>>::account_for_asset(&asset_id), Error::<T>::NotAssetOwner);
+            ensure!(who == <nft::Module<T>>::account_for_asset(&registry_id, &asset_id), Error::<T>::NotAssetOwner);
 
-            <nft::Module<T> as Unique>::transfer(&dest_account, &asset_id)?;
-            Self::deposit_event(RawEvent::Transferred(asset_id.clone(), dest_account.clone()));
+            <nft::Module<T> as Unique>::transfer(&dest_account, &registry_id, &asset_id)?;
+            Self::deposit_event(RawEvent::Transferred(registry_id, asset_id, dest_account));
             Ok(())
         }
     }
@@ -277,9 +278,6 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
         // Internal nft mint
         <nft::Module<T>>::mint(&owner_account, asset_info)?;
-
-        // Place asset id in registry map
-        NftLists::insert(registry_id, asset_id.clone(), ());
 
         Ok(asset_id)
     }
