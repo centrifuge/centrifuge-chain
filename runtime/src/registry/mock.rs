@@ -52,7 +52,7 @@ impl system::Trait for Test {
 
 impl crate::nft::Trait for Test {
     type Event = ();
-    type AssetInfo = crate::registry::types::AssetInfo<H256>;
+    type AssetInfo = crate::registry::types::AssetInfo;
 }
 
 impl crate::anchor::Trait for Test {}

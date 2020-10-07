@@ -746,7 +746,7 @@ impl registry::Trait for Runtime {
 
 impl nft::Trait for Runtime {
     type Event = Event;
-    type AssetInfo = registry::types::AssetInfo<H256>;
+    type AssetInfo = registry::types::AssetInfo;
 }
 
 construct_runtime!(

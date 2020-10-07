@@ -1,4 +1,4 @@
-pub use crate::nft::AssetId;
+//pub use crate::nft::AssetId;
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
@@ -14,6 +14,9 @@ pub type RegistryId = U256;
 /// A cryptographic salt to be combined with a value before hashing.
 pub type Salt = Bytes;
 
+/// An arbitrary byte string chosen by the minter of an asset.
+pub type AssetId = U256;
+
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
 pub struct RegistryInfo {
@@ -27,19 +30,24 @@ pub struct RegistryInfo {
 
 /// All data for an instance of an NFT.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
-pub struct AssetInfo<Hash> {
+pub struct AssetInfo {
     pub registry_id: RegistryId,
-    pub doc_root: Hash,
-    pub token_id: Bytes,
+    pub asset_id: AssetId,
     // metadata: scale encoded
 }
 
-// Registry id must be a field within the data, because an assets id
-// is a hash of its content, and its registry is part of its uniquely
-// identifying information.
-impl<T> InRegistry for AssetInfo<T> {
+/// Registry id must be a field within the data of an asset because
+/// its registry is part of its uniquely identifying information.
+impl InRegistry for AssetInfo {
     fn registry_id(&self) -> RegistryId {
         self.registry_id
+    }
+}
+
+/// Asset data must contain an id for identifying documents on and off-chain.
+impl HasId for AssetInfo {
+    fn id(&self) -> &AssetId {
+        &self.asset_id
     }
 }
 
@@ -91,6 +99,14 @@ pub struct MintInfo<T, Hash> {
 pub trait InRegistry {
     /// Returns the registry id that the self is a member of.
     fn registry_id(&self) -> RegistryId;
+}
+
+/// An implementor has an associated asset id that will be used as a
+/// unique id within a registry for an asset. Asset ids *MUST* be unique
+/// within a registry. Corresponds to a token id in a Centrifuge document.
+pub trait HasId {
+    /// Returns unique asset id.
+    fn id(&self) -> &AssetId;
 }
 
 /// A general interface for registries that require some sort of verification to mint their

@@ -51,14 +51,14 @@ decl_storage! {
         Registries: map hasher(blake2_128_concat) RegistryId => RegistryInfo;
         /// A list of asset ids for each registry.
         // TODO: Try a map of BTreeSets as well, and do a benchmark comparison
-        NftLists: double_map hasher(identity) RegistryId, hasher(identity) AssetId<T> => ();
+        NftLists: double_map hasher(identity) RegistryId, hasher(identity) AssetId => ();
     }
 }
 
 decl_event!(
     pub enum Event<T>
     where
-        AssetId = AssetId<T>,
+        //AssetId = AssetId,
         AccountId   = <T as frame_system::Trait>::AccountId,
     {
         /// Successful mint of an NFT from fn [`mint`](struct.Module.html#method.mint)
@@ -127,7 +127,7 @@ decl_module! {
         }
 
         #[weight = 10_000]
-        pub fn burn(origin, asset_id: AssetId<T>) -> dispatch::DispatchResult {
+        pub fn burn(origin, asset_id: AssetId) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
 
             // Internal nft burn logic
@@ -147,7 +147,7 @@ decl_module! {
         /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
         ///   of the info that defines the asset to destroy.
         #[weight = 10_000]
-        pub fn transfer(origin, dest_account: T::AccountId, asset_id: AssetId<T>) -> dispatch::DispatchResult {
+        pub fn transfer(origin, dest_account: T::AccountId, asset_id: AssetId) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(who == <nft::Module<T>>::account_for_asset(&asset_id), Error::<T>::NotAssetOwner);
 
@@ -195,7 +195,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type AccountId    = <T as frame_system::Trait>::AccountId;
     type RegistryId   = RegistryId;
     type RegistryInfo = RegistryInfo;
-    type AssetId      = AssetId<T>;
+    type AssetId      = AssetId;
     type AssetInfo    = <T as nft::Trait>::AssetInfo;
     // TODO: Change anchor id type to Bytes
     type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
@@ -217,6 +217,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     ) -> Result<Self::AssetId, dispatch::DispatchError> {
         let registry_id   = asset_info.registry_id();
         let registry_info = Registries::get(registry_id);
+        let asset_id      = asset_info.id().clone();
 
         // Check that registry exists
         ensure!(
@@ -231,13 +232,14 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // The registry field must be a proof with its value as the token id.
         // If not, the document provided may not contain the data and would
         // be invalid.
-        // TODO: Check value == token id
         ensure!(
             mint_info.proofs.iter()
-                            .map(|p| p.property.clone())
-                            .find(|prop| Self::h256_into_u256(H256::from_slice(prop)) == registry_id)
+                            .map(|p| (p.property.clone(), p.value.clone()))
+                            .find(|(prop, val)|
+                                  Self::h256_into_u256(H256::from_slice(prop)) == registry_id
+                               && Self::h256_into_u256(H256::from_slice(val))  == asset_id)
+                                  //&& val == &asset_id)
                             .is_some(),
-                            //.collect::<Vec<Bytes>>().is_empty(),
             Error::<T>::InvalidProofs);
 
         // All properties the registry expects must be provided in proofs.
@@ -251,7 +253,6 @@ impl<T: Trait> VerifierRegistry for Module<T> {
                           .map(|p| p.property.clone())
                           .find(|prop| prop == field)
                           .is_some()),
-                          //.collect::<Vec<Bytes>>().is_empty()),
             Error::<T>::InvalidProofs);
 
         // -------------
@@ -275,10 +276,10 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // Minting
 
         // Internal nft mint
-        let asset_id = <nft::Module<T>>::mint(&owner_account, asset_info)?;
+        <nft::Module<T>>::mint(&owner_account, asset_info)?;
 
         // Place asset id in registry map
-        NftLists::<T>::insert(registry_id, asset_id, ());
+        NftLists::insert(registry_id, asset_id.clone(), ());
 
         Ok(asset_id)
     }
