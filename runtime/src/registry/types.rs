@@ -2,20 +2,22 @@
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
-use sp_core::U256;
+use sp_core::{U256, H160};
 use crate::proofs;
 
 /// A vector of bytes, conveniently named like it is in Solidity.
 pub type Bytes = Vec<u8>;
 
 /// Registries are identified using a nonce in storage.
-pub type RegistryId = U256;
+pub type RegistryId = H160;
 
 /// A cryptographic salt to be combined with a value before hashing.
 pub type Salt = Bytes;
 
 /// An arbitrary byte string chosen by the minter of an asset.
 pub type AssetId = U256;
+
+//const NFTS_PREFIX: &'static [u8] = [20, 0, 0, 0, 0, 0, 0, 1];
 
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
@@ -33,7 +35,7 @@ pub struct RegistryInfo {
 pub struct AssetInfo {
     pub registry_id: RegistryId,
     pub asset_id: AssetId,
-    // metadata: scale encoded
+    pub metadata: Bytes, // scale encoded
 }
 
 /// Registry id must be a field within the data of an asset because
@@ -127,7 +129,7 @@ pub trait VerifierRegistry {
     type MintInfo;
 
     /// Create a new instance of a registry with the associated registry info.
-    fn create_registry(info: &Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError>;
+    fn create_registry(info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError>;
 
     /// Use the mint info to verify whether the mint is a valid action.
     /// If so, use the asset info to mint an asset.

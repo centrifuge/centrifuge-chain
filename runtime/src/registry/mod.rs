@@ -16,7 +16,7 @@
 //! to generate the root. When the root hash matches that of the anchor,
 //! a mint can be verified.
 
-use sp_core::{H256, U256};
+use sp_core::{H256, U256, H160};
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error,
     ensure, dispatch};
@@ -74,6 +74,8 @@ decl_error! {
         DocumentNotAnchored,
         /// A specified registry is not in the module storage Registries map.
         RegistryDoesNotExist,
+        /// The registry id is too large.
+        RegistryOverflow,
         /// Unable to recreate the anchor hash from the proofs and data provided. This means
         /// the [validate_proofs] method failed.
         InvalidProofs,
@@ -96,7 +98,7 @@ decl_module! {
         ) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
 
-            let registry_id = <Self as VerifierRegistry>::create_registry(&info)?;
+            let registry_id = <Self as VerifierRegistry>::create_registry(info)?;
 
             // Emit event
             Self::deposit_event(Event::<T>::RegistryCreated(registry_id));
@@ -175,8 +177,22 @@ impl<T: Trait> Module<T> {
         let id = <RegistryNonce>::get();
 
         // Check for overflow on index
-        let nplus1 = <RegistryNonce>::get().checked_add(U256::one())
-            .ok_or("Overflow when updating registry nonce.")?;
+        //let nplus1 = <RegistryNonce>::get().checked_add(U256::one())
+        //    .ok_or("Overflow when updating registry nonce.")?;
+
+        // TODO: Make a U160 type for RegistryId. Passing through U256 is inefficient
+        // and H160 is unneeded.
+        let mut res = Vec::<u8>::with_capacity(32);
+        unsafe {
+            res.set_len(32);
+        }
+        // U256 > H160 so no need for a checked_add
+        U256::from_big_endian(id.as_bytes())
+             .saturating_add(U256::one())
+             .to_big_endian(&mut res);
+        // Interpreted in big endian
+        // TODO: Panics if too large
+        let nplus1 = H160::from_slice(&res[0..20]);
 
         // Update the nonce
         <RegistryNonce>::put( nplus1 );
@@ -202,9 +218,12 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
 
     // Registries with identical RegistryInfo may exist
-    fn create_registry(info: &Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError> {
+    fn create_registry(mut info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError> {
         // Generate registry id as nonce
         let id = Self::create_new_registry_id()?;
+
+        // Create a field of the registry whose property is the registry id encoded with a prefix
+        //info.fields.push(
 
         // Insert registry in storage
         Registries::insert(id.clone(), info);
@@ -237,9 +256,9 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             mint_info.proofs.iter()
                             .map(|p| (p.property.clone(), p.value.clone()))
                             .find(|(prop, val)|
-                                  Self::h256_into_u256(H256::from_slice(prop)) == registry_id
+                                  H160::from_slice(prop) == registry_id
+                                  //Self::h256_into_u256(H256::from_slice(prop)) == registry_id
                                && Self::h256_into_u256(H256::from_slice(val))  == asset_id)
-                                  //&& val == &asset_id)
                             .is_some(),
             Error::<T>::InvalidProofs);
 

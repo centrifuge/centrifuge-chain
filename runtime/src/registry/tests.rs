@@ -27,14 +27,13 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
 }
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
-fn proofs_data(registry_id: U256, token_id: AssetId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
-    let prop_vec = H256::from_low_u64_le(registry_id.as_u64()).as_bytes().into();
+fn proofs_data(registry_id: H160, token_id: AssetId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
     let token_id = H256::from_low_u64_le(token_id.as_u64()).as_bytes().into();
     let proofs = vec![
         Proof {
             value: token_id,
             salt: vec![0],
-            property: prop_vec,//b"AMOUNT".to_vec(),
+            property: registry_id.as_bytes().into(),//b"AMOUNT".to_vec(),
             hashes: vec![],
         }];
     let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
@@ -48,7 +47,7 @@ fn proofs_data(registry_id: U256, token_id: AssetId) -> (Vec<Proof<H256>>, [H256
 
 // Creates a registry and returns all relevant data
 fn setup_mint() -> (u64, Origin, U256,
-                    U256, H256, H256,
+                    H160, H256, H256,
                     (Vec<Proof<H256>>,
                      [H256; 3], H256),
                     crate::registry::types::AssetInfo,
@@ -56,7 +55,8 @@ fn setup_mint() -> (u64, Origin, U256,
     let owner     = 1;
     let origin    = Origin::signed(owner);
     let asset_id  = U256::zero();
-    let registry_id = U256::zero();
+    let metadata  = vec![];
+    let registry_id = H160::zero();
 
     // Anchor data
     let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
@@ -69,6 +69,7 @@ fn setup_mint() -> (u64, Origin, U256,
     let nft_data = AssetInfo {
         registry_id,
         asset_id,
+        metadata,
     };
     let properties    =  proofs.iter().map(|p| p.property.clone()).collect();
     let registry_info = RegistryInfo {
@@ -131,7 +132,7 @@ fn mint_with_valid_proofs_works() {
 
         // Nft registered to owner
         assert_eq!(
-            <nft::Module<Test>>::account_for_asset::<U256,U256>(registry_id, asset_id),
+            <nft::Module<Test>>::account_for_asset::<H160,U256>(registry_id, asset_id),
             owner
         );
 
