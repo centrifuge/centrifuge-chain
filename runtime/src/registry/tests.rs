@@ -107,10 +107,6 @@ fn mint_with_valid_proofs_works() {
              nft_data,
              registry_info) = setup_mint();
 
-        // Starts with no Nfts
-        assert_eq!(<nft::Module<Test>>::total(), 0);
-        assert_eq!(<nft::Module<Test>>::total_for_account(owner), 0);
-
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
             origin.clone(),
@@ -136,10 +132,6 @@ fn mint_with_valid_proofs_works() {
             <nft::Module<Test>>::account_for_asset::<H160,U256>(registry_id, asset_id),
             owner
         );
-
-        // Total Nfts did increase
-        assert_eq!(<nft::Module<Test>>::total(), 1);
-        assert_eq!(<nft::Module<Test>>::total_for_account(owner), 1);
     });
 }
 

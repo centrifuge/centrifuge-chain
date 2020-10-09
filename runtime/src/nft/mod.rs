@@ -38,18 +38,12 @@ pub trait Trait<I = DefaultInstance>: frame_system::Trait {
     type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
-/// The runtime system's hashing algorithm is used to uniquely identify assets.
-//pub type AssetId<T> = <T as frame_system::Trait>::Hash;
-
-/// A generic definition of an NFT that will be used by this pallet.
-#[derive(Encode, Decode, Clone, Eq, RuntimeDebug)]
+// A generic definition of an NFT that will be used by this pallet.
+#[derive(Encode, Decode, Clone, RuntimeDebug)]
 pub struct Asset<Hash, AssetInfo> {
     pub id: Hash,
     pub asset: AssetInfo,
 }
-
-/// An alias for this pallet's NFT implementation.
-pub type AssetFor<T, I> = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
 
 impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
     type Id = AssetId;
@@ -57,40 +51,12 @@ impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
     type RegistryId = RegistryId;
 }
 
-// Needed to maintain a sorted list.
-impl<AssetId: Ord, AssetInfo: Eq> Ord for Asset<AssetId, AssetInfo> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.id.cmp(&other.id)
-    }
-}
-
-impl<AssetId: Ord, AssetInfo> PartialOrd for Asset<AssetId, AssetInfo> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.id.cmp(&other.id))
-    }
-}
-
-impl<AssetId: Eq, AssetInfo> PartialEq for Asset<AssetId, AssetInfo> {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
 decl_storage! {
     trait Store for Module<T: Trait<I>, I: Instance = DefaultInstance> as Asset {
-        /// The total number of this type of asset that exists (minted - burned).
-        Total get(fn total): u128 = 0;
-        /// The total number of this type of asset that has been burned (may overflow).
-        Burned get(fn burned): u128 = 0;
-        /// The total number of this type of asset owned by an account.
-        TotalForAccount get(fn total_for_account): map hasher(blake2_128_concat) T::AccountId => u64 = 0;
-        /// A mapping from an account to a list of all of the assets of this type that are owned by it.
-        AssetsForAccount get(fn assets_for_account): map hasher(blake2_128_concat) T::AccountId => Vec<AssetFor<T, I>>;
         /// A mapping from a asset ID to the account that owns it.
-        //AccountForAsset get(fn account_for_asset): map hasher(blake2_128_concat) AssetId => T::AccountId;
         AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => T::AccountId;
-        // A double mapping of registry id and asset id to an asset.
-        //AssetByRegistry: double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => AssetFor<T, I>;
+        /// A double mapping of registry id and asset id to an asset's info.
+        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => <T as Trait<I>>::AssetInfo;
     }
 }
 
@@ -129,20 +95,6 @@ impl<T: Trait<I>, I: Instance>
     type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
-    fn total() -> u128 {
-        Self::total()
-    }
-
-    fn total_for_account(account: &T::AccountId) -> u64 {
-        Self::total_for_account(account)
-    }
-
-    fn assets_for_account(
-        account: &T::AccountId,
-    ) -> Vec<Asset<AssetId, <T as Trait<I>>::AssetInfo>> {
-        Self::assets_for_account(account)
-    }
-
     fn owner_of(registry_id: &RegistryId, asset_id: &AssetId) -> T::AccountId {
         Self::account_for_asset(registry_id, asset_id)
     }
@@ -158,25 +110,7 @@ impl<T: Trait<I>, I: Instance>
             Error::<T, I>::NonexistentAsset
         );
 
-        let xfer_asset = Asset::<AssetId, <T as Trait<I>>::AssetInfo> {
-            id: *asset_id,
-            asset: <T as Trait<I>>::AssetInfo::default(),
-        };
-
-        TotalForAccount::<T, I>::mutate(&owner, |total| *total -= 1);
-        TotalForAccount::<T, I>::mutate(dest_account, |total| *total += 1);
-        let asset = AssetsForAccount::<T, I>::mutate(owner, |assets| {
-            let pos = assets
-                .binary_search(&xfer_asset)
-                .expect("We already checked that we have the correct owner; qed");
-            assets.remove(pos)
-        });
-        AssetsForAccount::<T, I>::mutate(dest_account, |assets| {
-            match assets.binary_search(&asset) {
-                Ok(_pos) => {} // should never happen
-                Err(pos) => assets.insert(pos, asset),
-            }
-        });
+        // Replace owner with destination account
         AccountForAsset::<T, I>::insert(&registry_id, &asset_id, &dest_account);
 
         Ok(())
@@ -201,59 +135,9 @@ impl<T: Trait<I>, I: Instance>
             Error::<T, I>::AssetExists
         );
 
-        let new_asset = Asset {
-            id: asset_id,
-            asset: asset_info,
-        };
-
-        Total::<I>::mutate(|total| *total += 1);
-        TotalForAccount::<T, I>::mutate(owner_account, |total| *total += 1);
-        AssetsForAccount::<T, I>::mutate(owner_account, |assets| {
-            match assets.binary_search(&new_asset) {
-                Ok(_pos) => {} // should never happen
-                Err(pos) => assets.insert(pos, new_asset),
-            }
-        });
         AccountForAsset::<T, I>::insert(&registry_id, asset_id, &owner_account);
-        //AssetByRegistry::<T>::insert(registry_id, asset_id, new_asset);
+        Assets::<T, I>::insert(registry_id, asset_id, asset_info);
 
         Ok(asset_id)
-    }
-}
-
-
-impl<T: Trait<I>, I: Instance>
-    Burnable for Module<T, I>
-{
-    type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
-
-    fn burned() -> u128 {
-        Self::burned()
-    }
-
-    fn burn(registry_id: &RegistryId, asset_id: &AssetId) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(registry_id, asset_id);
-        ensure!(
-            owner != T::AccountId::default(),
-            Error::<T, I>::NonexistentAsset
-        );
-
-        let burn_asset = Asset::<AssetId, <T as Trait<I>>::AssetInfo> {
-            id: *asset_id,
-            asset: <T as Trait<I>>::AssetInfo::default(),
-        };
-
-        Total::<I>::mutate(|total| *total -= 1);
-        Burned::<I>::mutate(|total| *total += 1);
-        TotalForAccount::<T, I>::mutate(&owner, |total| *total -= 1);
-        AssetsForAccount::<T, I>::mutate(owner, |assets| {
-            let pos = assets
-                .binary_search(&burn_asset)
-                .expect("We already checked that we have the correct owner; qed");
-            assets.remove(pos);
-        });
-        AccountForAsset::<T, I>::remove(&registry_id, &asset_id);
-
-        Ok(())
     }
 }

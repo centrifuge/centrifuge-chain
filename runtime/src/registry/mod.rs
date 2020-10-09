@@ -125,6 +125,7 @@ decl_module! {
             Ok(())
         }
 
+        /*
         #[weight = 10_000]
         pub fn burn(origin, registry_id: RegistryId, asset_id: AssetId) -> dispatch::DispatchResult {
             ensure_signed(origin)?;
@@ -134,6 +135,7 @@ decl_module! {
 
             // TODO: Emit burn event
         }
+        */
 
         /// Transfer a asset to a new owner.
         ///
@@ -152,7 +154,8 @@ decl_module! {
                         asset_id: AssetId)
         -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(who == <nft::Module<T>>::account_for_asset(&registry_id, &asset_id), Error::<T>::NotAssetOwner);
+            ensure!(who == <nft::Module<T>>::account_for_asset(&registry_id, &asset_id),
+                    Error::<T>::NotAssetOwner);
 
             <nft::Module<T> as Unique>::transfer(&dest_account, &registry_id, &asset_id)?;
             Self::deposit_event(RawEvent::Transferred(registry_id, asset_id, dest_account));
@@ -176,12 +179,8 @@ impl<T: Trait> Module<T> {
     fn create_new_registry_id() -> Result<RegistryId, dispatch::DispatchError> {
         let id = <RegistryNonce>::get();
 
-        // Check for overflow on index
-        //let nplus1 = <RegistryNonce>::get().checked_add(U256::one())
-        //    .ok_or("Overflow when updating registry nonce.")?;
-
-        // TODO: Make a U160 type for RegistryId. Passing through U256 is inefficient
-        // and H160 is unneeded.
+        // TODO: Make a U160 type for RegistryId with the uint crate.
+        // Passing through U256 is inefficient and H160 is unneeded.
         let mut res = Vec::<u8>::with_capacity(32);
         unsafe {
             res.set_len(32);
@@ -190,8 +189,8 @@ impl<T: Trait> Module<T> {
         U256::from_big_endian(id.as_bytes())
              .saturating_add(U256::one())
              .to_big_endian(&mut res);
+
         // Interpreted in big endian
-        // TODO: Panics if too large
         let nplus1 = H160::from_slice(&res[0..20]);
 
         // Update the nonce
@@ -223,7 +222,9 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         let id = Self::create_new_registry_id()?;
 
         // Create a field of the registry that is the registry id encoded with a prefix
+        // TODO: prepend NFTS prefix - [20, 0, 0, 0, 0, 0, 0, 1]
         info.fields.push(id.as_bytes().into());
+
 
         // Insert registry in storage
         Registries::insert(id.clone(), info);
