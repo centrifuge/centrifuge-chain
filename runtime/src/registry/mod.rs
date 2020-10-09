@@ -222,8 +222,8 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // Generate registry id as nonce
         let id = Self::create_new_registry_id()?;
 
-        // Create a field of the registry whose property is the registry id encoded with a prefix
-        //info.fields.push(
+        // Create a field of the registry that is the registry id encoded with a prefix
+        info.fields.push(id.as_bytes().into());
 
         // Insert registry in storage
         Registries::insert(id.clone(), info);
@@ -251,28 +251,21 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
         // The registry field must be a proof with its value as the token id.
         // If not, the document provided may not contain the data and would
-        // be invalid.
+        // be invalid. The registry field is always in the last place.
+        let registry_prop = &mint_info.proofs[ mint_info.proofs.len()-1 ].property;
         ensure!(
-            mint_info.proofs.iter()
-                            .map(|p| (p.property.clone(), p.value.clone()))
-                            .find(|(prop, val)|
-                                  H160::from_slice(prop) == registry_id
-                                  //Self::h256_into_u256(H256::from_slice(prop)) == registry_id
-                               && Self::h256_into_u256(H256::from_slice(val))  == asset_id)
-                            .is_some(),
+            H160::from_slice(&registry_prop[..20]) == registry_id,
             Error::<T>::InvalidProofs);
 
         // All properties the registry expects must be provided in proofs.
         // If not, the document provided may not contain these fields and would
-        // therefore be invalid.
+        // therefore be invalid. The order of proofs is assumed to be the same order
+        // as the registry fields.
         ensure!(
             registry_info.fields.iter()
-                .fold(true, |acc, field|
-                      acc &&
-                      mint_info.proofs.iter()
-                          .map(|p| p.property.clone())
-                          .find(|prop| prop == field)
-                          .is_some()),
+                .zip( mint_info.proofs.iter().map(|p| &p.property) )
+                .fold(true, |acc, (field, prop)|
+                      acc && (field == prop)),
             Error::<T>::InvalidProofs);
 
         // -------------

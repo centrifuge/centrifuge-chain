@@ -71,9 +71,10 @@ fn setup_mint() -> (u64, Origin, U256,
         asset_id,
         metadata,
     };
-    let properties    =  proofs.iter().map(|p| p.property.clone()).collect();
+    let properties    =  proofs.iter().skip(1).map(|p| p.property.clone()).collect();
     let registry_info = RegistryInfo {
         owner_can_burn: false,
+        // Don't include the registry id prop which will be generated in the runtime
         fields: properties,
     };
 

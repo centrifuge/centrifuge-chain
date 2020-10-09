@@ -33,6 +33,7 @@ pub struct RegistryInfo {
 /// All data for an instance of an NFT.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetInfo {
+    // TODO: Mismatch AssetInfo types in runtime so asset and registry ids are not stored
     pub registry_id: RegistryId,
     pub asset_id: AssetId,
     pub metadata: Bytes, // scale encoded
