@@ -32,7 +32,6 @@ use unique_assets::traits::*;
 //#[cfg(test)]
 //mod tests;
 
-//pub trait Trait<I = DefaultInstance>: frame_system::Trait {
 pub trait Trait: frame_system::Trait {
     /// The data type that is used to describe this type of asset.
     type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry + HasId;
@@ -63,9 +62,8 @@ decl_storage! {
 
 // Empty event to satisfy type constraints
 decl_event!(
-    pub enum Event<T>
-    where
-        Hash = <T as frame_system::Trait>::Hash,
+    pub enum Event<T> where
+        <T as frame_system::Trait>::Hash,
     {
         Tmp(Hash),
     }
