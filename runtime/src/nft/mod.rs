@@ -32,10 +32,11 @@ use unique_assets::traits::*;
 //#[cfg(test)]
 //mod tests;
 
-pub trait Trait<I = DefaultInstance>: frame_system::Trait {
+//pub trait Trait<I = DefaultInstance>: frame_system::Trait {
+pub trait Trait: frame_system::Trait {
     /// The data type that is used to describe this type of asset.
     type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry + HasId;
-    type Event: From<Event<Self, I>> + Into<<Self as frame_system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
 // A generic definition of an NFT that will be used by this pallet.
@@ -52,17 +53,17 @@ impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait<I>, I: Instance = DefaultInstance> as Asset {
+    trait Store for Module<T: Trait> as Asset {
         /// A mapping from a asset ID to the account that owns it.
         AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => T::AccountId;
         /// A double mapping of registry id and asset id to an asset's info.
-        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => <T as Trait<I>>::AssetInfo;
+        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => <T as Trait>::AssetInfo;
     }
 }
 
 // Empty event to satisfy type constraints
 decl_event!(
-    pub enum Event<T, I = DefaultInstance>
+    pub enum Event<T>
     where
         Hash = <T as frame_system::Trait>::Hash,
     {
@@ -71,7 +72,7 @@ decl_event!(
 );
 
 decl_error! {
-    pub enum Error for Module<T: Trait<I>, I: Instance> {
+    pub enum Error for Module<T: Trait> {
         // Thrown when there is an attempt to mint a duplicate asset.
         AssetExists,
         // Thrown when there is an attempt to burn or transfer a nonexistent asset.
@@ -83,16 +84,16 @@ decl_error! {
 
 // Empty module so that storage can be declared
 decl_module! {
-    pub struct Module<T: Trait<I>, I: Instance = DefaultInstance> for enum Call where origin: T::Origin {
-        type Error = Error<T, I>;
+    pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+        type Error = Error<T>;
         fn deposit_event() = default;
     }
 }
 
-impl<T: Trait<I>, I: Instance>
-    Unique for Module<T, I>
+impl<T: Trait>
+    Unique for Module<T>
 {
-    type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
+    type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
     fn owner_of(registry_id: &RegistryId, asset_id: &AssetId) -> T::AccountId {
@@ -107,36 +108,36 @@ impl<T: Trait<I>, I: Instance>
         let owner = Self::owner_of(registry_id, asset_id);
         ensure!(
             owner != T::AccountId::default(),
-            Error::<T, I>::NonexistentAsset
+            Error::<T>::NonexistentAsset
         );
 
         // Replace owner with destination account
-        AccountForAsset::<T, I>::insert(&registry_id, &asset_id, &dest_account);
+        AccountForAsset::<T>::insert(&registry_id, &asset_id, &dest_account);
 
         Ok(())
     }
 }
 
-impl<T: Trait<I>, I: Instance>
-    Mintable for Module<T, I>
+impl<T: Trait>
+    Mintable for Module<T>
 {
-    type Asset = Asset<AssetId, <T as Trait<I>>::AssetInfo>;
+    type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
     fn mint(
         owner_account: &T::AccountId,
-        asset_info: <T as Trait<I>>::AssetInfo,
+        asset_info: <T as Trait>::AssetInfo,
     ) -> dispatch::result::Result<AssetId, dispatch::DispatchError> {
         let asset_id = asset_info.id().clone();
         let registry_id = asset_info.registry_id();
 
         ensure!(
-            !AccountForAsset::<T, I>::contains_key(&registry_id, &asset_id),
-            Error::<T, I>::AssetExists
+            !AccountForAsset::<T>::contains_key(&registry_id, &asset_id),
+            Error::<T>::AssetExists
         );
 
-        AccountForAsset::<T, I>::insert(&registry_id, asset_id, &owner_account);
-        Assets::<T, I>::insert(registry_id, asset_id, asset_info);
+        AccountForAsset::<T>::insert(&registry_id, asset_id, &owner_account);
+        Assets::<T>::insert(registry_id, asset_id, asset_info);
 
         Ok(asset_id)
     }

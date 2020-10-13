@@ -7,7 +7,7 @@ use sp_runtime::{
     testing::Header,
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
 };
-use crate::nft::{self, DefaultInstance};
+use crate::nft::{self};
 use super::*;
 
 // Hash two hashes
@@ -215,29 +215,6 @@ fn duplicate_mint_fails() {
                           proofs: proofs,
                           static_hashes: static_hashes,
                       }),
-            NftError::<Test, DefaultInstance>::AssetExists);
+            NftError::<Test>::AssetExists);
     });
 }
-
-/*
-#[test]
-fn burn_nft_works() {
-    new_test_ext().execute_with(|| {
-        let origin = Origin::signed(1);
-
-        let fields = vec![b"AMOUNT".into()];
-        let registry_info = RegistryInfo {
-            owner_can_burn: false,
-            fields: fields,
-        };
-
-        // Create registry
-        assert_ok!(
-            SUT::create_registry(origin.clone(), registry_info)
-        );
-
-        assert_ok!(
-            SUT::burn(
-    });
-}
-*/
