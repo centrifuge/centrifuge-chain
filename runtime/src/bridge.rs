@@ -18,6 +18,8 @@ type BalanceOf<T> =
 
 /// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
+/// Additional Fee charged when move an NFT to target chain
+const NFT_FEE: u128 = 10 * currency::RAD;
 
 pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait + nft::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -93,7 +95,6 @@ decl_module! {
         /// rather than being burned.
         #[weight = 195_000_000]
         pub fn transfer_asset(origin,
-                              amount: BalanceOf<T>,
                               recipient: Vec<u8>,
                               from_registry: RegistryId,
                               token_id: AssetId,
@@ -102,22 +103,16 @@ decl_module! {
         ) -> DispatchResult {
             let source = ensure_signed(origin)?;
 
-            // Ensure account has enough balance for both fee and transfer
-            let token_fee: T::Balance = TOKEN_FEE.saturated_into();
-            let total_amount =  U256::from(amount.saturated_into())
-                .saturating_add(U256::from(token_fee.saturated_into()));
-            let current_balance = T::Currency::free_balance(&source);
-            ensure!(U256::from(current_balance.saturated_into()) >= total_amount, "Insufficient Balance");
-
             // Chain must be whitelisted
             ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
 
             // Burn additional fees
-            <fees::Module<T>>::burn_fee(&source, token_fee)?;
+            let nft_fee: T::Balance = NFT_FEE.saturated_into();
+            <fees::Module<T>>::burn_fee(&source, nft_fee)?;
 
             // Lock asset by transfering to bridge account
             let bridge_id = <chainbridge::Module<T>>::account_id();
-            <nft::Module<T> as Unique>::transfer(&bridge_id, &from_registry, &token_id)?;
+            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &from_registry, &token_id)?;
 
             // Transfer instructions for relayer
             let tid: &mut [u8] = &mut[0; 32];
