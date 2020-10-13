@@ -58,7 +58,7 @@ decl_event!(
         <T as frame_system::Trait>::Hash,
     {
         /// Successful mint of an NFT from fn [`mint`](struct.Module.html#method.mint)
-        Mint(AssetId),
+        Mint(RegistryId, TokenId),
         /// Successful creation of a registry from fn
         /// [`create_registry`](./struct.Module.html#method.create_registry)
         RegistryCreated(RegistryId),
@@ -105,19 +105,23 @@ decl_module! {
         #[weight = 10_000]
         pub fn mint(origin,
                     owner_account: <T as frame_system::Trait>::AccountId,
+                    registry_id: RegistryId,
+                    token_id: TokenId,
                     asset_info: T::AssetInfo,
                     mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
         ) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
 
             // Internal mint validates proofs and modifies state or returns error
-            let asset_id = <Self as VerifierRegistry>::mint(&who,
-                                                            &owner_account,
-                                                            asset_info,
-                                                            mint_info)?;
+            let asset_id = AssetId(registry_id, token_id);
+            <Self as VerifierRegistry>::mint(&who,
+                                             &owner_account,
+                                             &asset_id,
+                                             asset_info,
+                                             mint_info)?;
 
             // Mint event
-            Self::deposit_event(RawEvent::Mint(asset_id));
+            Self::deposit_event(RawEvent::Mint(registry_id, token_id));
 
             Ok(())
         }
@@ -193,12 +197,12 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
     fn mint(caller: &<T as frame_system::Trait>::AccountId,
             owner_account: &<T as frame_system::Trait>::AccountId,
+            asset_id: &Self::AssetId,
             asset_info: T::AssetInfo,
             mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
-    ) -> Result<Self::AssetId, dispatch::DispatchError> {
-        let registry_id   = asset_info.registry_id();
+    ) -> Result<(), dispatch::DispatchError> {
+        let (registry_id, _) = AssetIdRef::from(asset_id).destruct();
         let registry_info = Registries::get(registry_id);
-        let asset_id      = asset_info.id().clone();
 
         // Check that registry exists
         ensure!(
@@ -215,7 +219,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // be invalid. The registry field is always in the last place.
         let registry_prop = &mint_info.proofs[ mint_info.proofs.len()-1 ].property;
         ensure!(
-            H160::from_slice(&registry_prop[..20]) == registry_id,
+            &H160::from_slice(&registry_prop[..20]) == registry_id,
             Error::<T>::InvalidProofs);
         // TODO: Check token id as well
 
@@ -251,8 +255,8 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // Minting
 
         // Internal nft mint
-        <nft::Module<T>>::mint(caller, owner_account, asset_info)?;
+        <nft::Module<T>>::mint(caller, owner_account, asset_id, asset_info)?;
 
-        Ok(asset_id)
+        Ok(())
     }
 }

@@ -15,7 +15,45 @@ pub type RegistryId = H160;
 pub type Salt = Bytes;
 
 /// An arbitrary byte string chosen by the minter of an asset.
-pub type AssetId = U256;
+//pub type AssetId = U256;
+/// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
+/// A registry id is needed as well to uniquely identify an asset on-chain.
+pub type TokenId = U256;
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+pub struct AssetId(pub RegistryId, pub TokenId);
+
+pub struct AssetIdRef<'a>(pub &'a RegistryId, pub &'a TokenId);
+
+impl AssetId {
+    pub fn destruct(self) -> (RegistryId, TokenId) {
+        (self.0, self.1)
+    }
+    /*
+    pub fn destruct_ref(&self) -> (&RegistryId, &TokenId) {
+        (&self.0, &self.1)
+    }
+    */
+}
+
+/*
+impl<'a> From<AssetId> for AssetIdRef<'a> {
+    fn from(id: AssetId) -> Self {
+        AssetIdRef(&id.0, &id.1)
+    }
+}
+*/
+impl<'a> From<&'a AssetId> for AssetIdRef<'a> {
+    fn from(id: &'a AssetId) -> Self {
+        AssetIdRef(&id.0, &id.1)
+    }
+}
+
+impl<'a> AssetIdRef<'a> {
+    pub fn destruct(self) -> (&'a RegistryId, &'a TokenId) {
+        (self.0, self.1)
+    }
+}
 
 //const NFTS_PREFIX: &'static [u8] = [20, 0, 0, 0, 0, 0, 0, 1];
 
@@ -34,11 +72,12 @@ pub struct RegistryInfo {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetInfo {
     // TODO: Mismatch AssetInfo types in runtime so asset and registry ids are not stored
-    pub registry_id: RegistryId,
-    pub asset_id: AssetId,
+    //pub registry_id: RegistryId,
+    //pub asset_id: AssetId,
     pub metadata: Bytes, // scale encoded
 }
 
+/*
 /// Registry id must be a field within the data of an asset because
 /// its registry is part of its uniquely identifying information.
 impl InRegistry for AssetInfo {
@@ -53,6 +92,7 @@ impl HasId for AssetInfo {
         &self.asset_id
     }
 }
+*/
 
 /// A complete proof that a value for a given property of a document is the real value.
 /// Proven by hashing hash(value + property + salt) into a leaf hash of the document
@@ -125,7 +165,7 @@ pub trait VerifierRegistry {
     type AssetId;
     /// The data that defines the NFT held by a registry. Asset info must contain its
     /// associated registry id.
-    type AssetInfo: InRegistry;
+    type AssetInfo;
     /// All data necessary to determine if a requested mint is valid or not.
     type MintInfo;
 
@@ -136,7 +176,8 @@ pub trait VerifierRegistry {
     /// If so, use the asset info to mint an asset.
     fn mint(caller: &Self::AccountId,
             owner_account: &Self::AccountId,
+            asset_id: &Self::AssetId,
             asset_info: Self::AssetInfo,
             mint_info: Self::MintInfo,
-    ) -> Result<Self::AssetId, dispatch::DispatchError>;
+    ) -> Result<(), dispatch::DispatchError>;
 }

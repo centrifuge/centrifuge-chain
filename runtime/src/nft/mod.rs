@@ -7,7 +7,7 @@
 //! runtime can access the interface provided by this module to
 //! define user-facing logic to interact with the runtime NFTs.
 
-use crate::registry::types::{InRegistry, HasId, AssetId, RegistryId};
+use crate::registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
 use codec::{Decode, Encode, FullCodec};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
@@ -35,7 +35,7 @@ use unique_assets::traits::*;
 
 pub trait Trait: frame_system::Trait {
     /// The data type that is used to describe this type of asset.
-    type AssetInfo: Hashable + Member + Debug + Default + FullCodec + InRegistry + HasId;
+    type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
@@ -49,15 +49,14 @@ pub struct Asset<Hash, AssetInfo> {
 impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
     type Id = AssetId;
     type Info = AssetInfo;
-    type RegistryId = RegistryId;
 }
 
 decl_storage! {
     trait Store for Module<T: Trait> as Asset {
         /// A mapping from a asset ID to the account that owns it.
-        AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => T::AccountId;
+        AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) TokenId => T::AccountId;
         /// A double mapping of registry id and asset id to an asset's info.
-        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) AssetId => <T as Trait>::AssetInfo;
+        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) TokenId => <T as Trait>::AssetInfo;
     }
 }
 
@@ -102,11 +101,13 @@ decl_module! {
         pub fn transfer(origin,
                         dest_account: T::AccountId,
                         registry_id: RegistryId,
-                        asset_id: AssetId)
+                        token_id: TokenId)
         -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
 
-            <Self as Unique>::transfer(&who, &dest_account, &registry_id, &asset_id)?;
+            //<Self as Unique>::transfer(&who, &dest_account, &registry_id, &asset_id)?;
+            let asset_id = AssetId(registry_id, token_id);
+            <Self as Unique>::transfer(&who, &dest_account, &asset_id)?;
             // TODO: Event should go in nft module
             Self::deposit_event(RawEvent::Transferred(registry_id, asset_id, dest_account));
             Ok(())
@@ -120,17 +121,20 @@ impl<T: Trait>
     type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
-    fn owner_of(registry_id: &RegistryId, asset_id: &AssetId) -> T::AccountId {
-        Self::account_for_asset(registry_id, asset_id)
+    //fn owner_of(registry_id: &RegistryId, asset_id: &AssetId) -> T::AccountId {
+    fn owner_of(asset_id: &AssetId) -> T::AccountId {
+        let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
+        Self::account_for_asset(registry_id, token_id)
     }
 
     fn transfer(
         caller: &T::AccountId,
         dest_account: &T::AccountId,
-        registry_id: &RegistryId,
+        //registry_id: &RegistryId,
         asset_id: &AssetId,
     ) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(registry_id, asset_id);
+        let owner = Self::owner_of(asset_id);
+        let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
 
         // Check that owner account exists
         ensure!(owner != T::AccountId::default(),
@@ -140,7 +144,8 @@ impl<T: Trait>
                 Error::<T>::NotAssetOwner);
 
         // Replace owner with destination account
-        AccountForAsset::<T>::insert(&registry_id, &asset_id, &dest_account);
+        //AccountForAsset::<T>::insert(&registry_id, &asset_id, &dest_account);
+        AccountForAsset::<T>::insert(registry_id, token_id, dest_account);
 
         Ok(())
     }
@@ -155,21 +160,21 @@ impl<T: Trait>
     fn mint(
         caller: &Self::AccountId,
         owner_account: &Self::AccountId,
+        asset_id: &AssetId,
         asset_info: <T as Trait>::AssetInfo,
-    ) -> dispatch::result::Result<AssetId, dispatch::DispatchError> {
-        let asset_id = asset_info.id().clone();
-        let registry_id = asset_info.registry_id();
+    ) -> dispatch::result::Result<(), dispatch::DispatchError> {
+        let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
 
         // Ensure asset with id in registry does not already exist
         ensure!(
-            !AccountForAsset::<T>::contains_key(&registry_id, &asset_id),
+            !AccountForAsset::<T>::contains_key(registry_id, token_id),
             Error::<T>::AssetExists
         );
 
         // Insert into storage
-        AccountForAsset::<T>::insert(&registry_id, asset_id, &owner_account);
-        Assets::<T>::insert(registry_id, asset_id, asset_info);
+        AccountForAsset::<T>::insert(registry_id, token_id, owner_account);
+        Assets::<T>::insert(registry_id, token_id, asset_info);
 
-        Ok(asset_id)
+        Ok(())
     }
 }

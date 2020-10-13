@@ -1,6 +1,6 @@
 use crate::nft;
 use unique_assets::traits::Unique;
-use crate::registry::types::{RegistryId, AssetId};
+use crate::registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
@@ -97,7 +97,7 @@ decl_module! {
         pub fn transfer_asset(origin,
                               recipient: Vec<u8>,
                               from_registry: RegistryId,
-                              token_id: AssetId,
+                              token_id: TokenId,
                               resource_id: ResourceId,
                               dest_id: chainbridge::ChainId,
         ) -> DispatchResult {
@@ -112,7 +112,8 @@ decl_module! {
 
             // Lock asset by transfering to bridge account
             let bridge_id = <chainbridge::Module<T>>::account_id();
-            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &from_registry, &token_id)?;
+            let asset_id = AssetId(from_registry, token_id);
+            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &asset_id)?;
 
             // Transfer instructions for relayer
             let tid: &mut [u8] = &mut[0; 32];

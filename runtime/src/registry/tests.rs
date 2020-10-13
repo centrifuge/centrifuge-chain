@@ -27,7 +27,7 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
 }
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
-fn proofs_data(registry_id: H160, token_id: AssetId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
+fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
     let token_id = H256::from_low_u64_le(token_id.as_u64()).as_bytes().into();
     let proofs = vec![
         Proof {
@@ -46,15 +46,15 @@ fn proofs_data(registry_id: H160, token_id: AssetId) -> (Vec<Proof<H256>>, [H256
 }
 
 // Creates a registry and returns all relevant data
-fn setup_mint() -> (u64, Origin, U256,
-                    H160, H256, H256,
+fn setup_mint() -> (u64, Origin, AssetId,
+                    H256, H256,
                     (Vec<Proof<H256>>,
                      [H256; 3], H256),
                     crate::registry::types::AssetInfo,
                     crate::registry::types::RegistryInfo) {
     let owner     = 1;
     let origin    = Origin::signed(owner);
-    let asset_id  = U256::zero();
+    let token_id  = U256::zero();
     let metadata  = vec![];
     let registry_id = H160::zero();
 
@@ -63,12 +63,12 @@ fn setup_mint() -> (u64, Origin, U256,
     let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
     // Proofs data
-    let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), asset_id.clone());
+    let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), token_id.clone());
 
     // Registry data
     let nft_data = AssetInfo {
-        registry_id,
-        asset_id,
+        //registry_id,
+        //token_id,
         metadata,
     };
     let properties    =  proofs.iter().skip(1).map(|p| p.property.clone()).collect();
@@ -78,6 +78,9 @@ fn setup_mint() -> (u64, Origin, U256,
         fields: properties,
     };
 
+    // Asset id
+    let asset_id = AssetId(registry_id, token_id);
+
     // Create registry
     assert_ok!(
         SUT::create_registry(origin.clone(), registry_info.clone())
@@ -86,7 +89,8 @@ fn setup_mint() -> (u64, Origin, U256,
     (owner,
      origin,
      asset_id,
-     registry_id,
+     //token_id,
+     //registry_id,
      pre_image,
      anchor_id,
      (proofs, static_hashes, doc_root),
@@ -100,7 +104,6 @@ fn mint_with_valid_proofs_works() {
         let (owner,
              origin,
              asset_id,
-             registry_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
@@ -116,10 +119,14 @@ fn mint_with_valid_proofs_works() {
             <Test as frame_system::Trait>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
+        let (registry_id, token_id) = asset_id.destruct();
+
         // Mint token with document proof
         assert_ok!(
             SUT::mint(origin,
                       owner,
+                      registry_id,
+                      token_id,
                       nft_data.clone(),
                       MintInfo {
                           anchor_id: anchor_id,
@@ -129,7 +136,7 @@ fn mint_with_valid_proofs_works() {
 
         // Nft registered to owner
         assert_eq!(
-            <nft::Module<Test>>::account_for_asset::<H160,U256>(registry_id, asset_id),
+            <nft::Module<Test>>::account_for_asset::<H160,U256>(registry_id, token_id),
             owner
         );
     });
@@ -141,7 +148,6 @@ fn mint_fails_when_dont_match_doc_root() {
         let (owner,
              origin,
              asset_id,
-             registry_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
@@ -158,10 +164,14 @@ fn mint_fails_when_dont_match_doc_root() {
             <Test as frame_system::Trait>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
+        let (registry_id, token_id) = asset_id.destruct();
+
         // Mint token with document proof
         assert_err!(
             SUT::mint(origin,
                       owner,
+                      registry_id,
+                      token_id,
                       nft_data,
                       MintInfo {
                           anchor_id: anchor_id,
@@ -178,7 +188,6 @@ fn duplicate_mint_fails() {
         let (owner,
              origin,
              asset_id,
-             registry_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
@@ -194,10 +203,14 @@ fn duplicate_mint_fails() {
             <Test as frame_system::Trait>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
+        let (registry_id, token_id) = asset_id.destruct();
+
         // Mint token with document proof
         assert_ok!(
             SUT::mint(origin.clone(),
                       owner,
+                      registry_id,
+                      token_id,
                       nft_data.clone(),
                       MintInfo {
                           anchor_id: anchor_id,
@@ -209,6 +222,8 @@ fn duplicate_mint_fails() {
         assert_err!(
             SUT::mint(origin,
                       owner,
+                      registry_id,
+                      token_id,
                       nft_data.clone(),
                       MintInfo {
                           anchor_id: anchor_id,
