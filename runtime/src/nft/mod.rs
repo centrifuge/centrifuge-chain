@@ -14,6 +14,7 @@ use frame_support::{
     traits::Get,
     Hashable,
 };
+use frame_system::ensure_signed;
 use sp_runtime::{
     traits::{Hash, Member},
     RuntimeDebug,
@@ -63,9 +64,10 @@ decl_storage! {
 // Empty event to satisfy type constraints
 decl_event!(
     pub enum Event<T> where
-        <T as frame_system::Trait>::Hash,
+        <T as frame_system::Trait>::AccountId,
     {
-        Tmp(Hash),
+        /// Ownership of the asset has been transferred to the account.
+        Transferred(RegistryId, AssetId, AccountId),
     }
 );
 
@@ -85,6 +87,30 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         type Error = Error<T>;
         fn deposit_event() = default;
+
+        /// Transfer a asset to a new owner.
+        ///
+        /// The dispatch origin for this call must be the asset owner.
+        ///
+        /// This function will throw an error if the new owner already owns the maximum
+        /// number of this type of asset.
+        ///
+        /// - `dest_account`: Receiver of the asset.
+        /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
+        ///   of the info that defines the asset to destroy.
+        #[weight = 10_000]
+        pub fn transfer(origin,
+                        dest_account: T::AccountId,
+                        registry_id: RegistryId,
+                        asset_id: AssetId)
+        -> dispatch::DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            <Self as Unique>::transfer(&who, &dest_account, &registry_id, &asset_id)?;
+            // TODO: Event should go in nft module
+            Self::deposit_event(RawEvent::Transferred(registry_id, asset_id, dest_account));
+            Ok(())
+        }
     }
 }
 
@@ -99,15 +125,19 @@ impl<T: Trait>
     }
 
     fn transfer(
+        caller: &T::AccountId,
         dest_account: &T::AccountId,
         registry_id: &RegistryId,
         asset_id: &AssetId,
     ) -> dispatch::DispatchResult {
         let owner = Self::owner_of(registry_id, asset_id);
-        ensure!(
-            owner != T::AccountId::default(),
-            Error::<T>::NonexistentAsset
-        );
+
+        // Check that owner account exists
+        ensure!(owner != T::AccountId::default(),
+                Error::<T>::NonexistentAsset);
+        // Check that the caller is owner of asset
+        ensure!(caller == &owner,
+                Error::<T>::NotAssetOwner);
 
         // Replace owner with destination account
         AccountForAsset::<T>::insert(&registry_id, &asset_id, &dest_account);
@@ -123,17 +153,20 @@ impl<T: Trait>
     type AccountId = <T as frame_system::Trait>::AccountId;
 
     fn mint(
-        owner_account: &T::AccountId,
+        caller: &Self::AccountId,
+        owner_account: &Self::AccountId,
         asset_info: <T as Trait>::AssetInfo,
     ) -> dispatch::result::Result<AssetId, dispatch::DispatchError> {
         let asset_id = asset_info.id().clone();
         let registry_id = asset_info.registry_id();
 
+        // Ensure asset with id in registry does not already exist
         ensure!(
             !AccountForAsset::<T>::contains_key(&registry_id, &asset_id),
             Error::<T>::AssetExists
         );
 
+        // Insert into storage
         AccountForAsset::<T>::insert(&registry_id, asset_id, &owner_account);
         Assets::<T>::insert(registry_id, asset_id, asset_info);
 

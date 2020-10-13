@@ -55,16 +55,14 @@ decl_storage! {
 decl_event!(
     pub enum Event<T>
     where
-        //AssetId = AssetId,
-        AccountId   = <T as frame_system::Trait>::AccountId,
+        <T as frame_system::Trait>::Hash,
     {
         /// Successful mint of an NFT from fn [`mint`](struct.Module.html#method.mint)
         Mint(AssetId),
         /// Successful creation of a registry from fn
         /// [`create_registry`](./struct.Module.html#method.create_registry)
         RegistryCreated(RegistryId),
-        /// Ownership of the asset has been transferred to the account.
-        Transferred(RegistryId, AssetId, AccountId),
+        Tmp(Hash),
     }
 );
 
@@ -82,8 +80,6 @@ decl_error! {
         /// The values vector provided to a mint call doesn't match the length of the specified
         /// registry's fields vector.
         InvalidMintingValues,
-        /// Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
-        NotAssetOwner,
     }
 }
 
@@ -112,53 +108,17 @@ decl_module! {
                     asset_info: T::AssetInfo,
                     mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
         ) -> dispatch::DispatchResult {
-            ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
 
             // Internal mint validates proofs and modifies state or returns error
-            let asset_id = <Self as VerifierRegistry>::mint(owner_account,
+            let asset_id = <Self as VerifierRegistry>::mint(&who,
+                                                            &owner_account,
                                                             asset_info,
                                                             mint_info)?;
 
             // Mint event
             Self::deposit_event(RawEvent::Mint(asset_id));
 
-            Ok(())
-        }
-
-        /*
-        #[weight = 10_000]
-        pub fn burn(origin, registry_id: RegistryId, asset_id: AssetId) -> dispatch::DispatchResult {
-            ensure_signed(origin)?;
-
-            // Internal nft burn logic
-            <nft::Module<T>>::burn(&registry_id, &asset_id)
-
-            // TODO: Emit burn event
-        }
-        */
-
-        /// Transfer a asset to a new owner.
-        ///
-        /// The dispatch origin for this call must be the asset owner.
-        ///
-        /// This function will throw an error if the new owner already owns the maximum
-        /// number of this type of asset.
-        ///
-        /// - `dest_account`: Receiver of the asset.
-        /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
-        ///   of the info that defines the asset to destroy.
-        #[weight = 10_000]
-        pub fn transfer(origin,
-                        dest_account: T::AccountId,
-                        registry_id: RegistryId,
-                        asset_id: AssetId)
-        -> dispatch::DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(who == <nft::Module<T>>::account_for_asset(&registry_id, &asset_id),
-                    Error::<T>::NotAssetOwner);
-
-            <nft::Module<T> as Unique>::transfer(&dest_account, &registry_id, &asset_id)?;
-            Self::deposit_event(RawEvent::Transferred(registry_id, asset_id, dest_account));
             Ok(())
         }
     }
@@ -225,14 +185,14 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // TODO: prepend NFTS prefix - [20, 0, 0, 0, 0, 0, 0, 1]
         info.fields.push(id.as_bytes().into());
 
-
         // Insert registry in storage
         Registries::insert(id.clone(), info);
 
         Ok(id)
     }
 
-    fn mint(owner_account: <T as frame_system::Trait>::AccountId,
+    fn mint(caller: &<T as frame_system::Trait>::AccountId,
+            owner_account: &<T as frame_system::Trait>::AccountId,
             asset_info: T::AssetInfo,
             mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
     ) -> Result<Self::AssetId, dispatch::DispatchError> {
@@ -257,6 +217,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         ensure!(
             H160::from_slice(&registry_prop[..20]) == registry_id,
             Error::<T>::InvalidProofs);
+        // TODO: Check token id as well
 
         // All properties the registry expects must be provided in proofs.
         // If not, the document provided may not contain these fields and would
@@ -290,7 +251,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // Minting
 
         // Internal nft mint
-        <nft::Module<T>>::mint(&owner_account, asset_info)?;
+        <nft::Module<T>>::mint(caller, owner_account, asset_info)?;
 
         Ok(asset_id)
     }

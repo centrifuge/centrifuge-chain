@@ -134,7 +134,8 @@ pub trait VerifierRegistry {
 
     /// Use the mint info to verify whether the mint is a valid action.
     /// If so, use the asset info to mint an asset.
-    fn mint(owner_account: Self::AccountId,
+    fn mint(caller: &Self::AccountId,
+            owner_account: &Self::AccountId,
             asset_info: Self::AssetInfo,
             mint_info: Self::MintInfo,
     ) -> Result<Self::AssetId, dispatch::DispatchError>;
