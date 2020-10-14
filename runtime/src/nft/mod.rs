@@ -74,7 +74,7 @@ decl_error! {
     pub enum Error for Module<T: Trait> {
         // Thrown when there is an attempt to mint a duplicate asset.
         AssetExists,
-        // Thrown when there is an attempt to burn or transfer a nonexistent asset.
+        // Thrown when there is an attempt to transfer a nonexistent asset.
         NonexistentAsset,
         // Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
         NotAssetOwner,
@@ -105,11 +105,11 @@ decl_module! {
         -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
 
-            //<Self as Unique>::transfer(&who, &dest_account, &registry_id, &asset_id)?;
             let asset_id = AssetId(registry_id, token_id);
             <Self as Unique>::transfer(&who, &dest_account, &asset_id)?;
-            // TODO: Event should go in nft module
+
             Self::deposit_event(RawEvent::Transferred(registry_id, asset_id, dest_account));
+
             Ok(())
         }
     }
@@ -121,7 +121,6 @@ impl<T: Trait>
     type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
-    //fn owner_of(registry_id: &RegistryId, asset_id: &AssetId) -> T::AccountId {
     fn owner_of(asset_id: &AssetId) -> T::AccountId {
         let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
         Self::account_for_asset(registry_id, token_id)
@@ -130,7 +129,6 @@ impl<T: Trait>
     fn transfer(
         caller: &T::AccountId,
         dest_account: &T::AccountId,
-        //registry_id: &RegistryId,
         asset_id: &AssetId,
     ) -> dispatch::DispatchResult {
         let owner = Self::owner_of(asset_id);
@@ -144,7 +142,6 @@ impl<T: Trait>
                 Error::<T>::NotAssetOwner);
 
         // Replace owner with destination account
-        //AccountForAsset::<T>::insert(&registry_id, &asset_id, &dest_account);
         AccountForAsset::<T>::insert(registry_id, token_id, dest_account);
 
         Ok(())
