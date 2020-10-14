@@ -62,6 +62,7 @@ decl_event!(
         /// Successful creation of a registry from fn
         /// [`create_registry`](./struct.Module.html#method.create_registry)
         RegistryCreated(RegistryId),
+        // To keep Event parametric
         Tmp(Hash),
     }
 );
@@ -130,7 +131,6 @@ decl_module! {
 
 // Auxillary methods of the module for internal use
 impl<T: Trait> Module<T> {
-    //fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, dispatch::DispatchError> {
     fn get_document_root(anchor_id: T::Hash) -> Result<H256, dispatch::DispatchError> {
         let root = match <anchor::Module<T>>::get_anchor_by_id(anchor_id) {
             Some(anchor_data) => Ok(anchor_data.doc_root),
@@ -146,9 +146,7 @@ impl<T: Trait> Module<T> {
         // TODO: Make a U160 type for RegistryId with the uint crate.
         // Passing through U256 is inefficient and H160 is unneeded.
         let mut res = Vec::<u8>::with_capacity(32);
-        unsafe {
-            res.set_len(32);
-        }
+        unsafe { res.set_len(32); }
         // U256 > H160 so no need for a checked_add
         U256::from_big_endian(id.as_bytes())
              .saturating_add(U256::one())
@@ -177,7 +175,6 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type RegistryInfo = RegistryInfo;
     type AssetId      = AssetId;
     type AssetInfo    = <T as nft::Trait>::AssetInfo;
-    // TODO: Change anchor id type to Bytes
     type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
 
     // Registries with identical RegistryInfo may exist
@@ -201,12 +198,11 @@ impl<T: Trait> VerifierRegistry for Module<T> {
             asset_info: T::AssetInfo,
             mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
     ) -> Result<(), dispatch::DispatchError> {
-        let (registry_id, _) = AssetIdRef::from(asset_id).destruct();
+        let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
         let registry_info = Registries::get(registry_id);
 
         // Check that registry exists
         ensure!(
-            // TODO: Use the decl above
             Registries::contains_key(registry_id),
             Error::<T>::RegistryDoesNotExist
         );
@@ -221,7 +217,12 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         ensure!(
             &H160::from_slice(&registry_prop[..20]) == registry_id,
             Error::<T>::InvalidProofs);
-        // TODO: Check token id as well
+        // The token id is the value of the same proof, and must match the id
+        // provided in the call.
+        let token_value = &mint_info.proofs[ mint_info.proofs.len()-1 ].value;
+        ensure!(
+            &U256::from_big_endian(&token_value) == token_id,
+            Error::<T>::InvalidProofs);
 
         // All properties the registry expects must be provided in proofs.
         // If not, the document provided may not contain these fields and would

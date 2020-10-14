@@ -1,4 +1,3 @@
-use crate::registry::{Error, mock::*, types::AssetId};
 use crate::nft::Error as NftError;
 use crate::proofs;
 use sp_core::{H256, U256, Encode};
@@ -6,6 +5,10 @@ use frame_support::{assert_err, assert_ok, Hashable};
 use sp_runtime::{
     testing::Header,
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
+};
+use crate::registry::{
+    Error, mock::*,
+    types::{AssetId, VerifierRegistry},
 };
 use crate::nft;
 use super::*;
@@ -28,10 +31,12 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
 fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
-    let token_id = H256::from_low_u64_le(token_id.as_u64()).as_bytes().into();
+    let mut res = Vec::<u8>::with_capacity(32);
+    unsafe { res.set_len(32); }
+    token_id.to_big_endian(&mut res);
     let proofs = vec![
         Proof {
-            value: token_id,
+            value: res,
             salt: vec![0],
             property: registry_id.as_bytes().into(),//b"AMOUNT".to_vec(),
             hashes: vec![],
@@ -46,51 +51,50 @@ fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256
 }
 
 // Creates a registry and returns all relevant data
-fn setup_mint() -> (u64, Origin, AssetId,
-                    H256, H256,
-                    (Vec<Proof<H256>>,
-                     [H256; 3], H256),
-                    crate::registry::types::AssetInfo,
-                    crate::registry::types::RegistryInfo) {
+fn setup_mint(token_id: TokenId)
+    -> (u64, Origin, AssetId,
+        H256, H256,
+        (Vec<Proof<H256>>,
+         [H256; 3], H256),
+        crate::registry::types::AssetInfo,
+        crate::registry::types::RegistryInfo)
+{
     let owner     = 1;
     let origin    = Origin::signed(owner);
-    let token_id  = U256::zero();
     let metadata  = vec![];
-    let registry_id = H160::zero();
 
     // Anchor data
     let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
     let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
-    // Proofs data
-    let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), token_id.clone());
-
-    // Registry data
-    let nft_data = AssetInfo {
-        //registry_id,
-        //token_id,
-        metadata,
-    };
-    let properties    =  proofs.iter().skip(1).map(|p| p.property.clone()).collect();
+    //let properties = proofs.iter().skip(1).map(|p| p.property.clone()).collect();
+    let properties = vec![];
     let registry_info = RegistryInfo {
         owner_can_burn: false,
         // Don't include the registry id prop which will be generated in the runtime
         fields: properties,
     };
 
+    // Create registry, get registry id
+    let registry_id = <SUT as VerifierRegistry>::create_registry(registry_info.clone());
+    //assert!( !registry_id.is_err() );
+    assert_ok!(registry_id);
+    let registry_id = registry_id.unwrap();
+
+    // Proofs data
+    let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), token_id.clone());
+
+    // Registry data
+    let nft_data = AssetInfo {
+        metadata,
+    };
+
     // Asset id
     let asset_id = AssetId(registry_id, token_id);
-
-    // Create registry
-    assert_ok!(
-        SUT::create_registry(origin.clone(), registry_info.clone())
-    );
 
     (owner,
      origin,
      asset_id,
-     //token_id,
-     //registry_id,
      pre_image,
      anchor_id,
      (proofs, static_hashes, doc_root),
@@ -101,6 +105,7 @@ fn setup_mint() -> (u64, Origin, AssetId,
 #[test]
 fn mint_with_valid_proofs_works() {
     new_test_ext().execute_with(|| {
+        let token_id = U256::one();
         let (owner,
              origin,
              asset_id,
@@ -108,7 +113,7 @@ fn mint_with_valid_proofs_works() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint();
+             registry_info) = setup_mint(token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -145,6 +150,7 @@ fn mint_with_valid_proofs_works() {
 #[test]
 fn mint_fails_when_dont_match_doc_root() {
     new_test_ext().execute_with(|| {
+        let token_id = U256::one();
         let (owner,
              origin,
              asset_id,
@@ -152,7 +158,7 @@ fn mint_fails_when_dont_match_doc_root() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint();
+             registry_info) = setup_mint(token_id);
 
         // Place document anchor into storage for verification
         let wrong_doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&pre_image);
@@ -185,6 +191,7 @@ fn mint_fails_when_dont_match_doc_root() {
 #[test]
 fn duplicate_mint_fails() {
     new_test_ext().execute_with(|| {
+        let token_id = U256::one();
         let (owner,
              origin,
              asset_id,
@@ -192,7 +199,7 @@ fn duplicate_mint_fails() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint();
+             registry_info) = setup_mint(token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -231,5 +238,46 @@ fn duplicate_mint_fails() {
                           static_hashes: static_hashes,
                       }),
             NftError::<Test>::AssetExists);
+    });
+}
+
+#[test]
+fn mint_fails_with_wrong_tokenid_in_proof() {
+    new_test_ext().execute_with(|| {
+        let token_id = U256::one();
+        let (owner,
+             origin,
+             asset_id,
+             pre_image,
+             anchor_id,
+             (proofs, static_hashes, doc_root),
+             nft_data,
+             registry_info) = setup_mint(token_id);
+
+        // Place document anchor into storage for verification
+        assert_ok!( <anchor::Module<Test>>::commit(
+            origin.clone(),
+            pre_image,
+            doc_root,
+            // Proof does not matter here
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            crate::common::MS_PER_DAY + 1) );
+
+        let (registry_id, token_id) = asset_id.destruct();
+        let token_id = U256::zero();
+
+        // Mint token with document proof
+        assert_err!(
+            SUT::mint(origin,
+                      owner,
+                      registry_id,
+                      token_id,
+                      nft_data.clone(),
+                      MintInfo {
+                          anchor_id: anchor_id,
+                          proofs: proofs,
+                          static_hashes: static_hashes,
+                      }),
+            Error::<Test>::InvalidProofs);
     });
 }
