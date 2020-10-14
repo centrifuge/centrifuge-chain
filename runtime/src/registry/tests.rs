@@ -7,7 +7,7 @@ use sp_runtime::{
     testing::Header,
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
 };
-use crate::nft::{self};
+use crate::nft;
 use super::*;
 
 // Hash two hashes

@@ -27,11 +27,11 @@ use sp_std::{
 
 use unique_assets::traits::*;
 
-//#[cfg(test)]
-//mod mock;
+#[cfg(test)]
+mod mock;
 
-//#[cfg(test)]
-//mod tests;
+#[cfg(test)]
+mod tests;
 
 pub trait Trait: frame_system::Trait {
     /// The data type that is used to describe this type of asset.

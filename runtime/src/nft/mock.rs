@@ -1,6 +1,4 @@
-// Creating mock runtime here
-
-use crate::{Module, Trait};
+use crate::nft::{Module, Trait};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use frame_system as system;
 use sp_core::H256;
@@ -11,7 +9,7 @@ use sp_runtime::{
 };
 
 impl_outer_origin! {
-    pub enum Origin for Test where system = frame_system {}
+    pub enum Origin for Test {}
 }
 
 parameter_types! {
@@ -47,11 +45,7 @@ impl system::Trait for Test {
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-}
-
-parameter_types! {
-    pub const MaxCommodities: u128 = 5;
-    pub const MaxCommoditiesPerUser: u64 = 2;
+    type MigrateAccount = ();
 }
 
 // For testing the pallet, we construct most of a mock runtime. This means
@@ -62,10 +56,7 @@ pub struct Test;
 
 impl Trait for Test {
     type Event = ();
-    //type CommodityAdmin = frame_system::EnsureRoot<Self::AccountId>;
-    type CommodityInfo = Vec<u8>;
-    type CommodityLimit = MaxCommodities;
-    type UserCommodityLimit = MaxCommoditiesPerUser;
+    type AssetInfo = Vec<u8>;//crate::registry::types::AssetInfo;
 }
 
 // system under test

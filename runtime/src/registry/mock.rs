@@ -11,9 +11,9 @@ impl_outer_origin! {
 }
 
 // Configure a mock runtime to test the pallet.
-
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
