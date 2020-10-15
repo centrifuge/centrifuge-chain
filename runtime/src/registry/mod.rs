@@ -22,7 +22,7 @@ use frame_support::{
     ensure, dispatch};
 use frame_system::ensure_signed;
 use sp_std::{cmp::Eq, vec::Vec};
-use unique_assets::traits::{Unique, Mintable, Burnable};
+use unique_assets::traits::Mintable;
 pub use types::{*, VerifierRegistry, NFTS_PREFIX};
 use crate::{nft, proofs, anchor};
 
@@ -159,11 +159,6 @@ impl<T: Trait> Module<T> {
         <RegistryNonce>::put( nplus1 );
 
         Ok(id)
-    }
-
-    // Convert H256 hashes as the little endian encoding
-    fn h256_into_u256(h: H256) -> U256 {
-        U256::from_little_endian(h.as_fixed_bytes())
     }
 }
 
