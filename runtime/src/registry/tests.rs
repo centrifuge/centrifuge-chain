@@ -6,6 +6,7 @@ use sp_runtime::{
     testing::Header,
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
 };
+use std::cmp::Ordering;
 use crate::registry::{
     Error, mock::*,
     types::{AssetId, VerifierRegistry, NFTS_PREFIX},
@@ -29,19 +30,46 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
     hash_of(signing_root, signature_root)
 }
 
+/*
+fn sort_hashes(a: H256, b: H256) -> Ordering {
+    let mut h: Vec<u8> = Vec::with_capacity(64);
+    if a < b {
+        h.extend_from_slice(&a[..]);
+        h.extend_from_slice(&b[..]);
+    } else {
+        h.extend_from_slice(&b[..]);
+        h.extend_from_slice(&a[..]);
+    }
+    */
+
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
 fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
+    // Encode token into big endian U256
     let mut token_enc = Vec::<u8>::with_capacity(32);
     unsafe { token_enc.set_len(32); }
     token_id.to_big_endian(&mut token_enc);
+
+    // Pre proof has registry_id: token_id as prop: value
+    let pre_proof = Proof {
+        value: token_enc,
+        salt: vec![0],
+        property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
+        hashes: vec![]};
+
     let proofs = vec![
         Proof {
-            value: token_enc,
-            salt: vec![0],
-            property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),//b"AMOUNT".to_vec(),
-            hashes: vec![],
-        }];
-    let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
+            value: vec![1,1],
+            salt: vec![1],
+            property: b"AMOUNT".to_vec(),
+            hashes: vec![proofs::Proof::from(pre_proof.clone()).leaf_hash],
+        },
+        pre_proof.clone()
+    ];
+    let mut leaves: Vec<H256> = proofs.iter().map(|p| proofs::Proof::from(p.clone()).leaf_hash).collect();
+    leaves.sort();
+    //let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
+    //let data_root = leaves.into_iter().fold_first(|p1, p2| hash_of(p1, p2)).unwrap();
+    let data_root = hash_of(leaves[0], leaves[1]);
     let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
     let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
     let static_hashes = [data_root, zk_data_root, sig_root];
@@ -67,8 +95,8 @@ fn setup_mint(token_id: TokenId)
     let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
     let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
 
-    //let properties = proofs.iter().skip(1).map(|p| p.property.clone()).collect();
-    let properties = vec![];
+    // Registry info
+    let properties = vec![b"AMOUNT".to_vec()];
     let registry_info = RegistryInfo {
         owner_can_burn: false,
         // Don't include the registry id prop which will be generated in the runtime

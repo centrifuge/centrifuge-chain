@@ -215,11 +215,14 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // be invalid. The registry field is always in the last place.
         let registry_prop = &mint_info.proofs[ mint_info.proofs.len()-1 ].property;
         ensure!(
+            // First check that property is long enough
+            registry_prop.len()                      >= 28 &&
             // First 8 bytes are the nft_prefix
             &registry_prop[..8]                      == NFTS_PREFIX &&
             // Next 20 are the registry id
             &H160::from_slice(&registry_prop[8..28]) == registry_id,
             Error::<T>::InvalidProofs);
+
         // The token id is the value of the same proof, and must match the id
         // provided in the call.
         let token_value = &mint_info.proofs[ mint_info.proofs.len()-1 ].value;

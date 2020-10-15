@@ -59,28 +59,8 @@ pub struct RegistryInfo {
 /// All data for an instance of an NFT.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetInfo {
-    // TODO: Mismatch AssetInfo types in runtime so asset and registry ids are not stored
-    //pub registry_id: RegistryId,
-    //pub asset_id: AssetId,
-    pub metadata: Bytes, // scale encoded
+    pub metadata: Bytes,
 }
-
-/*
-/// Registry id must be a field within the data of an asset because
-/// its registry is part of its uniquely identifying information.
-impl InRegistry for AssetInfo {
-    fn registry_id(&self) -> RegistryId {
-        self.registry_id
-    }
-}
-
-/// Asset data must contain an id for identifying documents on and off-chain.
-impl HasId for AssetInfo {
-    fn id(&self) -> &AssetId {
-        &self.asset_id
-    }
-}
-*/
 
 /// A complete proof that a value for a given property of a document is the real value.
 /// Proven by hashing hash(value + property + salt) into a leaf hash of the document
