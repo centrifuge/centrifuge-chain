@@ -1,3 +1,6 @@
+use crate::nft;
+use unique_assets::traits::Unique;
+use crate::registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
@@ -5,7 +8,7 @@ use frame_support::{
     traits::EnsureOrigin,
 };
 use frame_system::{self as system, ensure_signed};
-use sp_core::U256;
+use sp_core::{U256, Bytes};
 use sp_runtime::traits::SaturatedConversion;
 use sp_std::prelude::*;
 
@@ -15,8 +18,10 @@ type BalanceOf<T> =
 
 /// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
+/// Additional Fee charged when move an NFT to target chain
+const NFT_FEE: u128 = 10 * currency::RAD;
 
-pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
+pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait + nft::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -86,6 +91,36 @@ decl_module! {
             Ok(())
         }
 
+        /// Transfer an nft to a whitelisted destination chain. Source nft is locked in bridge account
+        /// rather than being burned.
+        #[weight = 195_000_000]
+        pub fn transfer_asset(origin,
+                              recipient: Vec<u8>,
+                              from_registry: RegistryId,
+                              token_id: TokenId,
+                              resource_id: ResourceId,
+                              dest_id: chainbridge::ChainId,
+        ) -> DispatchResult {
+            let source = ensure_signed(origin)?;
+
+            // Chain must be whitelisted
+            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
+
+            // Burn additional fees
+            let nft_fee: T::Balance = NFT_FEE.saturated_into();
+            <fees::Module<T>>::burn_fee(&source, nft_fee)?;
+
+            // Lock asset by transfering to bridge account
+            let bridge_id = <chainbridge::Module<T>>::account_id();
+            let asset_id = AssetId(from_registry, token_id);
+            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &asset_id)?;
+
+            // Transfer instructions for relayer
+            let tid: &mut [u8] = &mut[0; 32];
+            token_id.to_big_endian(tid);
+            <chainbridge::Module<T>>::transfer_nonfungible(dest_id, resource_id, tid.to_vec(), recipient, vec![]/*assetinfo.metadata*/)
+        }
+
         //
         // Executable calls. These can be triggered by a chainbridge transfer initiated on another chain
         //
@@ -145,6 +180,7 @@ mod tests{
 		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
 	};
 	use crate::bridge as pallet_bridge;
+    use crate::nft;
 
 	pub use pallet_balances as balances;
 
@@ -228,6 +264,11 @@ mod tests{
 		type EventHandler = ();
 	}
 
+    impl nft::Trait for Test {
+        type Event = Event;
+        type AssetInfo = crate::registry::types::AssetInfo;
+    }
+
 	parameter_types! {
 		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
@@ -254,7 +295,8 @@ mod tests{
 			Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
-			Fees: fees::{Module, Call, Event<T>}
+			Fees: fees::{Module, Call, Event<T>},
+            Nft: nft::{Module, Event<T>},
 		}
 	);
 

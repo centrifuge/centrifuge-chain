@@ -15,6 +15,7 @@ use frame_support::{
 };
 use codec::{Encode, Decode};
 use sp_core::{
+    H256,
     crypto::KeyTypeId,
     u32_trait::{_1, _2, _3, _4}
 };
@@ -77,6 +78,12 @@ mod nfts;
 
 /// bridge module
 mod bridge;
+
+/// registry module
+mod registry;
+
+/// nft module
+mod nft;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -798,6 +805,15 @@ impl chainbridge::Trait for Runtime {
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
+impl registry::Trait for Runtime {
+    type Event = Event;
+}
+
+impl nft::Trait for Runtime {
+    type Event = Event;
+    type AssetInfo = registry::types::AssetInfo;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -834,6 +850,8 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+		Registry: registry::{Module, Call, Storage, Event<T>},
+		Nft: nft::{Module, Storage, Event<T>},
 	}
 );
 
@@ -1073,6 +1091,32 @@ impl_runtime_apis! {
 			Anchor::get_anchor_by_id(id)
 		}
 	}
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+			//config: frame_benchmarking::BenchmarkConfig
+            pallet: Vec<u8>,
+            benchmark: Vec<u8>,
+            lowest_range_values: Vec<u32>,
+            highest_range_values: Vec<u32>,
+            steps: Vec<u32>,
+            repeat: u32,
+            extra: bool
+	    ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+
+            let whitelist: Vec<TrackedStorageKey> = vec![];
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            //let params = (&config, &whitelist);
+            let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
+
+            add_benchmark!(params, batches, registry, Registry);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+		    Ok(batches)
+        }
+    }
 }
 
 #[cfg(test)]

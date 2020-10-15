@@ -764,6 +764,7 @@ name = "centrifuge-chain-runtime"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
@@ -819,6 +820,7 @@ dependencies = [
  "static_assertions",
  "substrate-pallet-multi-account",
  "substrate-wasm-builder-runner",
+ "unique_assets",
 ]
 
 [[package]]
@@ -3863,6 +3865,7 @@ dependencies = [
 name = "pallet-membership"
 version = "2.0.0-rc6"
 source = "git+https://github.com/centrifuge/substrate.git?rev=7f5382862e1f47875f05a5e7ad6219d694ffbc69#7f5382862e1f47875f05a5e7ad6219d694ffbc69"
+<<<<<<< HEAD
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3877,6 +3880,8 @@ dependencies = [
 name = "pallet-multisig"
 version = "2.0.0-rc6"
 source = "git+https://github.com/centrifuge/substrate.git?rev=7f5382862e1f47875f05a5e7ad6219d694ffbc69#7f5382862e1f47875f05a5e7ad6219d694ffbc69"
+=======
+>>>>>>> feat/nft-registry
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7928,6 +7933,14 @@ name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
+
+[[package]]
+name = "unique_assets"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "sp-std",
+]
 
 [[package]]
 name = "universal-hash"

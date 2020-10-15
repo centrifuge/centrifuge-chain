@@ -81,6 +81,7 @@ mod tests {
 
     use crate::common;
     use crate::fees;
+    use crate::nft;
     use crate::nfts;
     use crate::proofs::Proof;
     use codec::Encode;
@@ -170,6 +171,11 @@ mod tests {
         type Currency = Balances;
         type HashId = HashId;
         type NativeTokenId = NativeTokenId;
+    }
+
+    impl nft::Trait for Test {
+        type Event = ();
+        type AssetInfo = crate::registry::types::AssetInfo;
     }
 
     parameter_types! {

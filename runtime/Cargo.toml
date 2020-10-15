@@ -20,6 +20,8 @@ safe-mix = { version = "1.0", default-features = false }
 smallvec = "1.4.0"
 static_assertions = "1.1.0"
 hex-literal = "0.2.1"
+unique_assets = { git = "https://github.com/jaybutera/unique-assets", default-features = false }
+
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
 
@@ -42,6 +44,7 @@ sp-version = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/subst
 sp-arithmetic = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 
 # frame dependencies
+frame-benchmarking = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false, optional = true }
 frame-executive = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 frame-support = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 frame-system = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
@@ -78,6 +81,7 @@ wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-run
 [features]
 default = ["std"]
 std = [
+    "unique_assets/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",
@@ -113,6 +117,7 @@ std = [
     "sp-staking/std",
     "pallet-staking/std",
     "sp-session/std",
+    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
@@ -129,3 +134,4 @@ std = [
     "rustc-hex",
     "safe-mix/std",
 ]
+runtime-benchmarks = ["frame-benchmarking"]
