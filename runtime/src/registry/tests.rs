@@ -8,7 +8,7 @@ use sp_runtime::{
 };
 use crate::registry::{
     Error, mock::*,
-    types::{AssetId, VerifierRegistry},
+    types::{AssetId, VerifierRegistry, NFTS_PREFIX},
 };
 use crate::nft;
 use super::*;
@@ -31,14 +31,14 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
 fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
-    let mut res = Vec::<u8>::with_capacity(32);
-    unsafe { res.set_len(32); }
-    token_id.to_big_endian(&mut res);
+    let mut token_enc = Vec::<u8>::with_capacity(32);
+    unsafe { token_enc.set_len(32); }
+    token_id.to_big_endian(&mut token_enc);
     let proofs = vec![
         Proof {
-            value: res,
+            value: token_enc,
             salt: vec![0],
-            property: registry_id.as_bytes().into(),//b"AMOUNT".to_vec(),
+            property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),//b"AMOUNT".to_vec(),
             hashes: vec![],
         }];
     let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
@@ -77,7 +77,6 @@ fn setup_mint(token_id: TokenId)
 
     // Create registry, get registry id
     let registry_id = <SUT as VerifierRegistry>::create_registry(registry_info.clone());
-    //assert!( !registry_id.is_err() );
     assert_ok!(registry_id);
     let registry_id = registry_id.unwrap();
 

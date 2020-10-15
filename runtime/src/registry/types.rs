@@ -5,6 +5,8 @@ use sp_std::{vec::Vec, fmt::Debug};
 use sp_core::{U256, H160};
 use crate::proofs;
 
+pub const NFTS_PREFIX: &'static [u8] = &[20, 0, 0, 0, 0, 0, 0, 1];
+
 /// A vector of bytes, conveniently named like it is in Solidity.
 pub type Bytes = Vec<u8>;
 
@@ -14,35 +16,23 @@ pub type RegistryId = H160;
 /// A cryptographic salt to be combined with a value before hashing.
 pub type Salt = Bytes;
 
-/// An arbitrary byte string chosen by the minter of an asset.
-//pub type AssetId = U256;
 /// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 /// A registry id is needed as well to uniquely identify an asset on-chain.
 pub type TokenId = U256;
 
+/// A global identifier for an nft/asset on-chain. Composed of a registry and token id.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetId(pub RegistryId, pub TokenId);
 
+/// Holds references to its component parts.
 pub struct AssetIdRef<'a>(pub &'a RegistryId, pub &'a TokenId);
 
 impl AssetId {
     pub fn destruct(self) -> (RegistryId, TokenId) {
         (self.0, self.1)
     }
-    /*
-    pub fn destruct_ref(&self) -> (&RegistryId, &TokenId) {
-        (&self.0, &self.1)
-    }
-    */
 }
 
-/*
-impl<'a> From<AssetId> for AssetIdRef<'a> {
-    fn from(id: AssetId) -> Self {
-        AssetIdRef(&id.0, &id.1)
-    }
-}
-*/
 impl<'a> From<&'a AssetId> for AssetIdRef<'a> {
     fn from(id: &'a AssetId) -> Self {
         AssetIdRef(&id.0, &id.1)
@@ -54,8 +44,6 @@ impl<'a> AssetIdRef<'a> {
         (self.0, self.1)
     }
 }
-
-//const NFTS_PREFIX: &'static [u8] = [20, 0, 0, 0, 0, 0, 0, 1];
 
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]

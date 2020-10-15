@@ -23,7 +23,7 @@ use frame_support::{
 use frame_system::ensure_signed;
 use sp_std::{cmp::Eq, vec::Vec};
 use unique_assets::traits::{Unique, Mintable, Burnable};
-pub use types::{*, VerifierRegistry};
+pub use types::{*, VerifierRegistry, NFTS_PREFIX};
 use crate::{nft, proofs, anchor};
 
 // Types for this module
@@ -183,8 +183,8 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         let id = Self::create_new_registry_id()?;
 
         // Create a field of the registry that is the registry id encoded with a prefix
-        // TODO: prepend NFTS prefix - [20, 0, 0, 0, 0, 0, 0, 1]
-        info.fields.push(id.as_bytes().into());
+        let pre_reg = [NFTS_PREFIX, id.as_bytes()].concat();
+        info.fields.push(pre_reg);
 
         // Insert registry in storage
         Registries::insert(id.clone(), info);
@@ -215,7 +215,10 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // be invalid. The registry field is always in the last place.
         let registry_prop = &mint_info.proofs[ mint_info.proofs.len()-1 ].property;
         ensure!(
-            &H160::from_slice(&registry_prop[..20]) == registry_id,
+            // First 8 bytes are the nft_prefix
+            &registry_prop[..8]                      == NFTS_PREFIX &&
+            // Next 20 are the registry id
+            &H160::from_slice(&registry_prop[8..28]) == registry_id,
             Error::<T>::InvalidProofs);
         // The token id is the value of the same proof, and must match the id
         // provided in the call.
