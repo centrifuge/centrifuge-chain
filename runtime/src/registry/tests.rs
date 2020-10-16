@@ -40,14 +40,14 @@ fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256
     // Pre proof has registry_id: token_id as prop: value
     let pre_proof = Proof {
         value: token_enc,
-        salt: vec![0],
+        salt: [1; 32],
         property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
         hashes: vec![]};
 
     let proofs = vec![
         Proof {
             value: vec![1,1],
-            salt: vec![1],
+            salt: [1; 32],
             property: b"AMOUNT".to_vec(),
             hashes: vec![proofs::Proof::from(pre_proof.clone()).leaf_hash],
         },
