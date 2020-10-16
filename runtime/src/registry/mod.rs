@@ -208,9 +208,12 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         // The registry field must be a proof with its value as the token id.
         // If not, the document provided may not contain the data and would
         // be invalid. The registry field is always in the last place.
-        let registry_prop = &mint_info.proofs[ mint_info.proofs.len()-1 ].property;
+        let property_idx  = registry_info.fields.len()-1;
+        let registry_prop = &mint_info.proofs[ property_idx ].property;
         ensure!(
-            // First check that property is long enough
+            // First check that proofs list is long enough to contain the property
+            mint_info.proofs.len()                   >= registry_info.fields.len() &&
+            // Check that property is long enough
             registry_prop.len()                      >= 28 &&
             // First 8 bytes are the nft_prefix
             &registry_prop[..8]                      == NFTS_PREFIX &&
@@ -220,7 +223,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
         // The token id is the value of the same proof, and must match the id
         // provided in the call.
-        let token_value = &mint_info.proofs[ mint_info.proofs.len()-1 ].value;
+        let token_value = &mint_info.proofs[ property_idx ].value;
         ensure!(
             &U256::from_big_endian(&token_value) == token_id,
             Error::<T>::InvalidProofs);

@@ -30,18 +30,6 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
     hash_of(signing_root, signature_root)
 }
 
-/*
-fn sort_hashes(a: H256, b: H256) -> Ordering {
-    let mut h: Vec<u8> = Vec::with_capacity(64);
-    if a < b {
-        h.extend_from_slice(&a[..]);
-        h.extend_from_slice(&b[..]);
-    } else {
-        h.extend_from_slice(&b[..]);
-        h.extend_from_slice(&a[..]);
-    }
-    */
-
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
 fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
     // Encode token into big endian U256

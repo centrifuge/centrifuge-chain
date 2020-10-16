@@ -91,9 +91,6 @@ decl_module! {
         ///
         /// The dispatch origin for this call must be the asset owner.
         ///
-        /// This function will throw an error if the new owner already owns the maximum
-        /// number of this type of asset.
-        ///
         /// - `dest_account`: Receiver of the asset.
         /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
         ///   of the info that defines the asset to destroy.
