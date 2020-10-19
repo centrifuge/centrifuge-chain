@@ -103,9 +103,6 @@ decl_module! {
         ) -> DispatchResult {
             let source = ensure_signed(origin)?;
 
-            // Chain must be whitelisted
-            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
-
             // Burn additional fees
             let nft_fee: T::Balance = NFT_FEE.saturated_into();
             <fees::Module<T>>::burn_fee(&source, nft_fee)?;
