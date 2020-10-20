@@ -85,6 +85,9 @@ mod registry;
 /// nft module
 mod nft;
 
+/// radial reward claims module
+mod rad_claims;
+
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
@@ -802,9 +805,6 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
-// Frame Order in this block dictates the index of each one in the metadata
-// Any addition should be done at the bottom
-// Any deletion affects the following frames during runtime upgrades
 impl registry::Trait for Runtime {
     type Event = Event;
 }
@@ -814,6 +814,21 @@ impl nft::Trait for Runtime {
     type AssetInfo = registry::types::AssetInfo;
 }
 
+/*
+parameter_types! {
+    const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+}
+*/
+
+impl rad_claims::Trait for Runtime {
+    type Event = Event;
+    type SessionDuration = SessionDuration;
+    type UnsignedPriority = ImOnlineUnsignedPriority;
+}
+
+// Frame Order in this block dictates the index of each one in the metadata
+// Any addition should be done at the bottom
+// Any deletion affects the following frames during runtime upgrades
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -851,7 +866,8 @@ construct_runtime!(
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
 		Registry: registry::{Module, Call, Storage, Event<T>},
-		Nft: nft::{Module, Storage, Event<T>},
+		Nft: nft::{Module, Call, Storage, Event<T>},
+		RadClaims: rad_claims::{Module, Call, Storage, Event<T>},
 	}
 );
 
