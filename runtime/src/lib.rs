@@ -105,7 +105,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 235,
+    spec_version: 236,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -872,11 +872,13 @@ mod custom_migration {
     use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
     use pallet_staking::migrations::migrate as staking_upgrade;
     use frame_system::migrations::migrate as accounts_upgrade;
+    use pallet_identity::migrations::change_name_sudo_to_identity;
 
     pub struct Upgrade;
     impl OnRuntimeUpgrade for Upgrade {
         fn on_runtime_upgrade() -> Weight {
             let accounts: Vec<AccountId> = Self::get_accounts();
+            change_name_sudo_to_identity::<Runtime>();
             staking_upgrade::<Runtime>();
             accounts_upgrade::<Runtime>(accounts);
             MaximumBlockWeight::get()
