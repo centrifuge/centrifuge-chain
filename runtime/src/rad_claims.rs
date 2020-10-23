@@ -1,14 +1,15 @@
 use crate::proofs;
 use sp_core::{Encode, H256};
-use sp_runtime::traits::Hash;
 use frame_system::ensure_none;
 use crate::constants::currency;
 use sp_std::{vec::Vec, convert::TryInto};
+use sp_runtime::traits::{Hash, SaturatedConversion};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error,
     traits::Get,
     ensure, dispatch};
 use sp_runtime::{
     ModuleId,
+    traits::CheckedSub,
     transaction_validity::{
         TransactionValidity, ValidTransaction, InvalidTransaction, TransactionSource,
         TransactionPriority,
@@ -16,7 +17,7 @@ use sp_runtime::{
 };
 
 const MODULE_ID: ModuleId = ModuleId(*b"ct/claim");
-const MIN_PAYOUT: u128    = 5 * currency::RAD;
+const MIN_PAYOUT: node_primitives::Balance     = 5 * currency::RAD;
 
 
 pub trait Trait: frame_system::Trait + pallet_balances::Trait {
@@ -40,7 +41,7 @@ pub trait Trait: frame_system::Trait + pallet_balances::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as RadClaims {
         /// Total unclaimed rewards for an account.
-        AccountBalances get(fn get_account_balance): map hasher(blake2_128_concat) T::AccountId => T::Balance;
+        AccountBalances get(fn get_account_balance): map hasher(blake2_128_concat) T::AccountId => T::Balance = 0.into();
         /// Map of root hashes that correspond to lists of RAD reward claim amounts per account.
         RootHashes get(fn get_root_hash): map hasher(blake2_128_concat) T::Hash => bool;
         /// Account that is allowed to upload new root hashes.
@@ -52,6 +53,10 @@ decl_error! {
     pub enum Error for Module<T: Trait>{
         /// The combination of account id, amount, and proofs vector in a claim was invalid.
         InvalidProofs,
+        /// The payout amount attempting to be claimed is less than the minimum allowed by [MIN_PAYOUT].
+        UnderMinPayout,
+        /// Amount being claimed is less than the available amount in [AccountBalances].
+        InsufficientBalance,
     }
 }
 
@@ -75,6 +80,20 @@ decl_module! {
                      sorted_hashes: Vec<T::Hash>,
         ) -> dispatch::DispatchResult {
             ensure_none(origin)?;
+
+            let claimed = Self::get_account_balance(&account_id);
+
+            // Payout = amount - claim
+            let payout = amount.checked_sub(&claimed)
+                .ok_or(Error::<T>::InsufficientBalance)?;
+
+            // Payout must not be less than minimum allowed
+            ensure!(payout >= MIN_PAYOUT.saturated_into(),
+                    Error::<T>::UnderMinPayout);
+
+            // Set account balance to amount
+            AccountBalances::<T>::insert(account_id, amount);
+
             Ok(())
         }
     }
