@@ -54,11 +54,11 @@ pub fn validate_proofs(doc_root: H256, proofs: &Vec<Proof>, static_proofs: [H256
 fn sort_hash_of(a: H256, b: H256) -> H256 {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     if a < b {
-        h.extend_from_slice(&a[..]);
-        h.extend_from_slice(&b[..]);
+        h.extend_from_slice(a[..]);
+        h.extend_from_slice(b[..]);
     } else {
-        h.extend_from_slice(&b[..]);
-        h.extend_from_slice(&a[..]);
+        h.extend_from_slice(b[..]);
+        h.extend_from_slice(a[..]);
     }
 
     sp_io::hashing::blake2_256(&h).into()
