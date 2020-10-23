@@ -79,8 +79,8 @@ mod nfts;
 /// bridge module
 mod bridge;
 
-/// registry module
-mod registry;
+/// verifiable attributes registry module
+mod va_registry;
 
 /// nft module
 mod nft;
@@ -740,13 +740,13 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
-impl registry::Trait for Runtime {
+impl va_registry::Trait for Runtime {
     type Event = Event;
 }
 
 impl nft::Trait for Runtime {
     type Event = Event;
-    type AssetInfo = registry::types::AssetInfo;
+    type AssetInfo = va_registry::types::AssetInfo;
 }
 
 construct_runtime!(
@@ -783,7 +783,7 @@ construct_runtime!(
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
-		Registry: registry::{Module, Call, Storage, Event<T>},
+		Registry: va_registry::{Module, Call, Storage, Event<T>},
 		Nft: nft::{Module, Storage, Event<T>},
 	}
 );
@@ -1044,7 +1044,7 @@ impl_runtime_apis! {
             //let params = (&config, &whitelist);
             let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
 
-            add_benchmark!(params, batches, registry, Registry);
+            add_benchmark!(params, batches, va_registry, Registry);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 		    Ok(batches)

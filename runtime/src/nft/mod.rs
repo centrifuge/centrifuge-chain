@@ -7,7 +7,7 @@
 //! runtime can access the interface provided by this module to
 //! define user-facing logic to interact with the runtime NFTs.
 
-use crate::registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
+use crate::va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
 use codec::{Decode, Encode, FullCodec};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,

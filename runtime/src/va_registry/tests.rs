@@ -7,7 +7,7 @@ use sp_runtime::{
     traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
 };
 use std::cmp::Ordering;
-use crate::registry::{
+use crate::va_registry::{
     Error, mock::*,
     types::{AssetId, VerifierRegistry, NFTS_PREFIX},
 };
@@ -29,18 +29,6 @@ fn doc_root(static_hashes: [H256; 3]) -> H256 {
     let signing_root    = hash_of(basic_data_root, zk_data_root);
     hash_of(signing_root, signature_root)
 }
-
-/*
-fn sort_hashes(a: H256, b: H256) -> Ordering {
-    let mut h: Vec<u8> = Vec::with_capacity(64);
-    if a < b {
-        h.extend_from_slice(&a[..]);
-        h.extend_from_slice(&b[..]);
-    } else {
-        h.extend_from_slice(&b[..]);
-        h.extend_from_slice(&a[..]);
-    }
-    */
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
 fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
@@ -67,7 +55,6 @@ fn proofs_data(registry_id: H160, token_id: TokenId) -> (Vec<Proof<H256>>, [H256
     ];
     let mut leaves: Vec<H256> = proofs.iter().map(|p| proofs::Proof::from(p.clone()).leaf_hash).collect();
     leaves.sort();
-    //let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
     //let data_root = leaves.into_iter().fold_first(|p1, p2| hash_of(p1, p2)).unwrap();
     let data_root = hash_of(leaves[0], leaves[1]);
     let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
@@ -84,8 +71,8 @@ fn setup_mint(token_id: TokenId)
         H256, H256,
         (Vec<Proof<H256>>,
          [H256; 3], H256),
-        crate::registry::types::AssetInfo,
-        crate::registry::types::RegistryInfo)
+        crate::va_registry::types::AssetInfo,
+        crate::va_registry::types::RegistryInfo)
 {
     let owner     = 1;
     let origin    = Origin::signed(owner);

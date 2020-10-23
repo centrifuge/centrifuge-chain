@@ -56,7 +56,7 @@ pub struct Test;
 
 impl Trait for Test {
     type Event = ();
-    type AssetInfo = Vec<u8>;//crate::registry::types::AssetInfo;
+    type AssetInfo = Vec<u8>;
 }
 
 // system under test

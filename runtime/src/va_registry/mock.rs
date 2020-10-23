@@ -1,4 +1,4 @@
-use crate::registry::{Module, Trait};
+use crate::va_registry::{Module, Trait};
 use sp_core::H256;
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use sp_runtime::{
@@ -52,7 +52,7 @@ impl system::Trait for Test {
 
 impl crate::nft::Trait for Test {
     type Event = ();
-    type AssetInfo = crate::registry::types::AssetInfo;
+    type AssetInfo = crate::va_registry::types::AssetInfo;
 }
 
 impl crate::anchor::Trait for Test {}

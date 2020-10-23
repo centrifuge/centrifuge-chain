@@ -175,7 +175,7 @@ mod tests {
 
     impl nft::Trait for Test {
         type Event = ();
-        type AssetInfo = crate::registry::types::AssetInfo;
+        type AssetInfo = crate::va_registry::types::AssetInfo;
     }
 
     parameter_types! {

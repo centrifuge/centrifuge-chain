@@ -1,6 +1,6 @@
 use crate::nft;
 use unique_assets::traits::Unique;
-use crate::registry::types::{RegistryId, AssetId, TokenId};
+use crate::va_registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
@@ -266,7 +266,7 @@ mod tests{
 
     impl nft::Trait for Test {
         type Event = Event;
-        type AssetInfo = crate::registry::types::AssetInfo;
+        type AssetInfo = crate::va_registry::types::AssetInfo;
     }
 
 	parameter_types! {
