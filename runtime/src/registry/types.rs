@@ -5,7 +5,9 @@ use sp_std::{vec::Vec, fmt::Debug};
 use sp_core::{U256, H160};
 use crate::proofs;
 
-pub const NFTS_PREFIX: &'static [u8] = &[20, 0, 0, 0, 0, 0, 0, 1];
+pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
+// TODO: Is the padding needed?
+//pub const NFTS_PADDING: &'static [u8] = &[0; 12];
 
 /// A vector of bytes, conveniently named like it is in Solidity.
 pub type Bytes = Vec<u8>;
