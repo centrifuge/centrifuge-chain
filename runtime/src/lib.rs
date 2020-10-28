@@ -61,6 +61,9 @@ pub mod impls;
 use impls::{CurrencyToVoteHandler, Author};
 use bridge as pallet_bridge;
 
+// Bridge access control list pallet
+use bridge_acl;
+
 /// Used for anchor module
 pub mod anchor;
 

@@ -56,7 +56,7 @@ decl_module! {
         type Error = Error<T>;
         fn deposit_event() = default;
 
-        /// Update a resource mapping in the [ACL]. Existing keys will be overwritten.
+        /// Set a resource mapping in the [ACL]. Existing keys will be overwritten.
         /// The caller must be the owner of the `from` ResourceId.
         #[weight = 195_000_000]
         pub fn set(origin,

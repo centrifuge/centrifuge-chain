@@ -27,6 +27,7 @@ name = "centrifuge-chain"
 [workspace]
 members = [
     "pallets/bridge-acl",
+    "runtime",
 ]
 
 [dependencies]
