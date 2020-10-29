@@ -34,10 +34,9 @@ pub trait Trait: frame_system::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as BridgeNames {
         /// Indicates that assets of a resource can be transfered to another resource.
-        //Names: map hasher(blake2_128_concat) T::ResourceId => T::ResourceId;
         Names: map hasher(blake2_128_concat) T::ResourceId => T::Address;
-        /// Maps an owner of a resource.
-        Owner get(fn owner_of): map hasher(blake2_128_concat) T::ResourceId => T::AccountId;
+        /// Admin is able to set/remove resource mappings.
+        Admin: T::AccountId;
     }
 }
 
@@ -50,7 +49,7 @@ decl_event!(
 decl_error! {
     pub enum Error for Module<T: Trait> {
         /// The caller does not own the resource they are trying to modify.
-        NotOwnerOfResource,
+        NotAdmin,
     }
 }
 
@@ -60,26 +59,26 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Set a resource mapping in the [Names]. Existing keys will be overwritten.
-        /// The caller must be the owner of the `from` ResourceId.
+        /// The caller must be the owner of the `rid` ResourceId.
         #[weight = 195_000_000]
         pub fn set(origin,
-                   from: T::ResourceId,
-                   to: T::Address,
+                   rid: T::ResourceId,
+                   local_addr: T::Address,
         ) -> DispatchResult {
             let caller = ensure_signed(origin)?;
 
             // Call internal
-            Self::set_resource(&caller, &from, to)
+            Self::set_resource(&caller, &rid, local_addr)
         }
 
         #[weight = 195_000_000]
         pub fn remove(origin,
-                      from: T::ResourceId,
+                      rid: T::ResourceId,
         ) -> DispatchResult {
             let caller = ensure_signed(origin)?;
 
             // Call internal
-            Self::remove_resource(&caller, &from)
+            Self::remove_resource(&caller, &rid)
         }
     }
 }
@@ -89,49 +88,30 @@ decl_module! {
 // assumption is something to keep in mind if extending this module.
 impl<T: Trait> Module<T> {
     /// Update an existing resource mapping in the [Names]. Existing keys will be overwritten.
-    /// The caller must be the owner of the `from` ResourceId.
+    /// The caller must be the owner of the `rid` ResourceId.
     pub fn set_resource(caller: &T::AccountId,
-                        from: &T::ResourceId,
-                        to: T::Address,
+                        rid: &T::ResourceId,
+                        local_addr: T::Address,
     ) -> DispatchResult {
         // Caller is owner of resource
-        ensure!(caller == &Self::owner_of(from),
-                Error::<T>::NotOwnerOfResource);
+        ensure!(caller == &Admin::<T>::get(),
+                Error::<T>::NotAdmin);
 
         // Add the mapping
-        Names::<T>::mutate(from, |_| to);
+        Names::<T>::mutate(rid, |_| local_addr);
         Ok(())
-    }
-
-    /// Add a resource mapping in the [Names], and set its owner.
-    /// Existing keys will be overwritten.
-    pub fn add_resource(owner: T::AccountId,
-                        from: T::ResourceId,
-                        to: T::Address,
-    ) {
-        // Add the mapping
-        Names::<T>::insert(from.clone(), to);
-        // Set the owner
-        Self::set_owner(owner, from);
     }
 
     /// Remove a resource mapping in the [Names]. The caller must be the owner of the resouce.
     pub fn remove_resource(caller: &T::AccountId,
-                           from: &T::ResourceId,
+                           rid: &T::ResourceId,
     ) -> DispatchResult {
         // Caller is owner of resource
-        ensure!(caller == &Self::owner_of(from),
-                Error::<T>::NotOwnerOfResource);
+        ensure!(caller == &Admin::<T>::get(),
+                Error::<T>::NotAdmin);
 
         // Remove the resource mapping
-        Names::<T>::remove(from);
+        Names::<T>::remove(rid);
         Ok(())
-    }
-
-    /// Update the [Owner] mapping. If an existing key is provided, it will override the value.
-    pub fn set_owner(owner: T::AccountId,
-                     resource: T::ResourceId
-    ) {
-        Owner::<T>::insert(resource, owner);
     }
 }
