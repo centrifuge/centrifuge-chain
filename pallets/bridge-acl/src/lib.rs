@@ -10,7 +10,7 @@ use sp_runtime::traits::Member;
 use frame_system::ensure_signed;
 use frame_support::{
     decl_module, decl_storage, decl_event, decl_error,
-    ensure, dispatch::DispatchResult, traits::Get};
+    ensure, dispatch::DispatchResult, traits::{Get, EnsureOrigin}};
 
 #[cfg(test)]
 mod mock;
@@ -29,14 +29,14 @@ pub trait Trait: frame_system::Trait {
     /// A local mapping of a resource id. Represents anything that a resource id might map to. On
     /// Ethereum, this may be a contract address for transferring assets.
     type Address: Member + Default + FullCodec;
+    /// Admin is able to set/remove resource mappings.
+    type Admin: EnsureOrigin<Self::Origin>;
 }
 
 decl_storage! {
     trait Store for Module<T: Trait> as BridgeNames {
         /// Indicates that assets of a resource can be transfered to another resource.
         Names: map hasher(blake2_128_concat) T::ResourceId => T::Address;
-        /// Admin is able to set/remove resource mappings.
-        Admin: T::AccountId;
     }
 }
 
@@ -65,20 +65,20 @@ decl_module! {
                    rid: T::ResourceId,
                    local_addr: T::Address,
         ) -> DispatchResult {
-            let caller = ensure_signed(origin)?;
+            T::Admin::ensure_origin(origin)?;
 
             // Call internal
-            Self::set_resource(&caller, &rid, local_addr)
+            Self::set_resource(&rid, local_addr)
         }
 
         #[weight = 195_000_000]
         pub fn remove(origin,
                       rid: T::ResourceId,
         ) -> DispatchResult {
-            let caller = ensure_signed(origin)?;
+            T::Admin::ensure_origin(origin)?;
 
             // Call internal
-            Self::remove_resource(&caller, &rid)
+            Self::remove_resource(&rid)
         }
     }
 }
@@ -88,28 +88,16 @@ decl_module! {
 // assumption is something to keep in mind if extending this module.
 impl<T: Trait> Module<T> {
     /// Update an existing resource mapping in the [Names]. Existing keys will be overwritten.
-    /// The caller must be the owner of the `rid` ResourceId.
-    pub fn set_resource(caller: &T::AccountId,
-                        rid: &T::ResourceId,
+    pub fn set_resource(rid: &T::ResourceId,
                         local_addr: T::Address,
     ) -> DispatchResult {
-        // Caller is owner of resource
-        ensure!(caller == &Admin::<T>::get(),
-                Error::<T>::NotAdmin);
-
         // Add the mapping
         Names::<T>::mutate(rid, |_| local_addr);
         Ok(())
     }
 
-    /// Remove a resource mapping in the [Names]. The caller must be the owner of the resouce.
-    pub fn remove_resource(caller: &T::AccountId,
-                           rid: &T::ResourceId,
-    ) -> DispatchResult {
-        // Caller is owner of resource
-        ensure!(caller == &Admin::<T>::get(),
-                Error::<T>::NotAdmin);
-
+    /// Remove a resource mapping in the [Names].
+    pub fn remove_resource(rid: &T::ResourceId) -> DispatchResult {
         // Remove the resource mapping
         Names::<T>::remove(rid);
         Ok(())
