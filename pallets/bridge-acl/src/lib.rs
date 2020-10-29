@@ -24,15 +24,18 @@ pub trait Trait: frame_system::Trait {
     /// to some action on a destination chain. This may express tokenX on chain A is equivalent to
     /// tokenY on chain B, or to simply associate that some action performed on chain A should
     /// result in some other action occurring on chain B. All resource ids are considered to have a
-    /// home chain. For instance, on Ethereum, a resource id may encode the address to a mint
-    /// method of a contract.
+    /// home chain.
     type ResourceId: Member + Default + FullCodec;
+    /// A local mapping of a resource id. Represents anything that a resource id might map to. On
+    /// Ethereum, this may be a contract address for transferring assets.
+    type Address: Member + Default + FullCodec;
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as BridgeACL {
+    trait Store for Module<T: Trait> as BridgeNames {
         /// Indicates that assets of a resource can be transfered to another resource.
-        ACL: map hasher(blake2_128_concat) T::ResourceId => T::ResourceId;
+        //Names: map hasher(blake2_128_concat) T::ResourceId => T::ResourceId;
+        Names: map hasher(blake2_128_concat) T::ResourceId => T::Address;
         /// Maps an owner of a resource.
         Owner get(fn owner_of): map hasher(blake2_128_concat) T::ResourceId => T::AccountId;
     }
@@ -56,17 +59,17 @@ decl_module! {
         type Error = Error<T>;
         fn deposit_event() = default;
 
-        /// Set a resource mapping in the [ACL]. Existing keys will be overwritten.
+        /// Set a resource mapping in the [Names]. Existing keys will be overwritten.
         /// The caller must be the owner of the `from` ResourceId.
         #[weight = 195_000_000]
         pub fn set(origin,
                    from: T::ResourceId,
-                   to: T::ResourceId,
+                   to: T::Address,
         ) -> DispatchResult {
             let caller = ensure_signed(origin)?;
 
             // Call internal
-            Self::set_resource(&caller, from, to)
+            Self::set_resource(&caller, &from, to)
         }
 
         #[weight = 195_000_000]
@@ -85,34 +88,34 @@ decl_module! {
 // corresponding owner, the function interfaces defined here ensure this by construction. This
 // assumption is something to keep in mind if extending this module.
 impl<T: Trait> Module<T> {
-    /// Update a resource mapping in the [ACL]. Existing keys will be overwritten.
+    /// Update an existing resource mapping in the [Names]. Existing keys will be overwritten.
     /// The caller must be the owner of the `from` ResourceId.
     pub fn set_resource(caller: &T::AccountId,
-                        from: T::ResourceId,
-                        to: T::ResourceId,
+                        from: &T::ResourceId,
+                        to: T::Address,
     ) -> DispatchResult {
         // Caller is owner of resource
-        ensure!(caller == &Self::owner_of(&from),
+        ensure!(caller == &Self::owner_of(from),
                 Error::<T>::NotOwnerOfResource);
 
         // Add the mapping
-        ACL::<T>::insert(from, to);
+        Names::<T>::mutate(from, |_| to);
         Ok(())
     }
 
-    /// Add a resource mapping in the [ACL], and set its owner.
+    /// Add a resource mapping in the [Names], and set its owner.
     /// Existing keys will be overwritten.
     pub fn add_resource(owner: T::AccountId,
                         from: T::ResourceId,
-                        to: T::ResourceId,
+                        to: T::Address,
     ) {
         // Add the mapping
-        ACL::<T>::insert(from, to.clone());
+        Names::<T>::insert(from.clone(), to);
         // Set the owner
-        Self::set_owner(owner, to);
+        Self::set_owner(owner, from);
     }
 
-    /// Remove a resource mapping in the [ACL]. The caller must be the owner of the resouce.
+    /// Remove a resource mapping in the [Names]. The caller must be the owner of the resouce.
     pub fn remove_resource(caller: &T::AccountId,
                            from: &T::ResourceId,
     ) -> DispatchResult {
@@ -121,7 +124,7 @@ impl<T: Trait> Module<T> {
                 Error::<T>::NotOwnerOfResource);
 
         // Remove the resource mapping
-        ACL::<T>::remove(from);
+        Names::<T>::remove(from);
         Ok(())
     }
 
