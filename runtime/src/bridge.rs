@@ -1,4 +1,5 @@
 use crate::nft;
+use bridge_names;
 use unique_assets::traits::Unique;
 use crate::registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
@@ -54,6 +55,8 @@ decl_event! {
 
 decl_error! {
     pub enum Error for Module<T: Trait>{
+        /// Provided resource id is not found in bridges-names mapping.
+        ResourceIdDoesNotExist,
         InvalidTransfer,
     }
 }
@@ -98,10 +101,13 @@ decl_module! {
                               recipient: Vec<u8>,
                               from_registry: RegistryId,
                               token_id: TokenId,
-                              resource_id: ResourceId,
                               dest_id: chainbridge::ChainId,
         ) -> DispatchResult {
             let source = ensure_signed(origin)?;
+
+            /// Get resource id from registry
+            let resource_id = <bridge_names::Module<T>>::name_of(from_registry)
+                .ok_or(Error::<T>::ResourceIdDoesNotExist);
 
             // Burn additional fees
             let nft_fee: T::Balance = NFT_FEE.saturated_into();
@@ -114,6 +120,7 @@ decl_module! {
 
             // Transfer instructions for relayer
             let tid: &mut [u8] = &mut[0; 32];
+            // Ethereum is big-endian
             token_id.to_big_endian(tid);
             <chainbridge::Module<T>>::transfer_nonfungible(dest_id, resource_id, tid.to_vec(), recipient, vec![]/*assetinfo.metadata*/)
         }
