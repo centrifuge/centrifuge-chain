@@ -9,7 +9,7 @@ use codec::FullCodec;
 use sp_runtime::traits::Member;
 use frame_support::{
     decl_module, decl_storage,
-    dispatch::DispatchResult, traits::EnsureOrigin};
+    dispatch::DispatchResult, traits::{Get, EnsureOrigin}};
 
 #[cfg(test)]
 mod mock;
@@ -46,7 +46,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         /// Set a resource mapping in the [Names]. Existing keys will be overwritten.
         /// The caller must be the owner of the `rid` ResourceId.
-        #[weight = 195_000_000]
+        #[weight = T::DbWeight::get().reads_writes(0,2)]
         pub fn set(origin,
                    rid: T::ResourceId,
                    local_addr: T::Address,
@@ -57,7 +57,7 @@ decl_module! {
             Self::set_resource(rid, local_addr)
         }
 
-        #[weight = 195_000_000]
+        #[weight = T::DbWeight::get().reads_writes(1,2)]
         pub fn remove(origin,
                       rid: T::ResourceId,
         ) -> DispatchResult {
