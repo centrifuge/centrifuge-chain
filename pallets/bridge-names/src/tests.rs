@@ -10,8 +10,8 @@ fn set_resource_adds_to_storage() {
         assert_ok!( SUT::set(admin, resource_id, local_addr) );
 
         // Check that resource mapping was added to storage
-        assert_eq!(SUT::addr_of(resource_id), local_addr);
-        assert_eq!(SUT::name_of(local_addr), resource_id);
+        assert_eq!(SUT::addr_of(resource_id), Some(local_addr));
+        assert_eq!(SUT::name_of(local_addr), Some(resource_id));
     });
 }
 
@@ -23,8 +23,8 @@ fn set_resource_updates_existing_storage() {
         assert_ok!( SUT::set(admin        , 1, 3) );
 
         // Check that resource mapping was added to storage
-        assert_eq!(SUT::addr_of(1), 3);
-        assert_eq!(SUT::name_of(3), 1);
+        assert_eq!(SUT::addr_of(1), Some(3));
+        assert_eq!(SUT::name_of(3), Some(1));
     });
 }
 
@@ -38,8 +38,8 @@ fn non_admin_cannot_set_resource() {
                     sp_runtime::traits::BadOrigin);
 
         // Check that resource mapping was not added to storage
-        assert_eq!(SUT::addr_of(resource_id), 0);
-        assert_eq!(SUT::name_of(local_addr), 0);
+        assert_eq!(SUT::addr_of(resource_id), None);
+        assert_eq!(SUT::name_of(local_addr), None);
     });
 }
 
@@ -53,8 +53,8 @@ fn remove_resource_removes_from_storage() {
         assert_ok!( SUT::remove(admin, resource_id) );
 
         // Values should be back to default
-        assert_eq!(SUT::addr_of(resource_id), 0);
-        assert_eq!(SUT::name_of(local_addr), 0);
+        assert_eq!(SUT::addr_of(resource_id), None);
+        assert_eq!(SUT::name_of(local_addr), None);
     });
 }
 

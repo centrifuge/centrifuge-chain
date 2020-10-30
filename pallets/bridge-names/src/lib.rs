@@ -35,10 +35,10 @@ decl_storage! {
     trait Store for Module<T: Trait> as BridgeNames {
         /// Indicates that assets of a resource can be transfered to another resource.
         /// Maps an abstract resource id to a chain-specific address
-        ResourceToAddress get(fn addr_of): map hasher(blake2_128_concat) T::ResourceId => T::Address;
+        ResourceToAddress get(fn addr_of): map hasher(blake2_128_concat) T::ResourceId => Option<T::Address>;
         /// Maps a chain-specific address to a resource id. A mapping in [ResourceToAddress] will
         /// always correspond to a mapping here. Resources and addresses are 1 to 1.
-        AddressToResource get(fn name_of): map hasher(blake2_128_concat) T::Address => T::ResourceId;
+        AddressToResource get(fn name_of): map hasher(blake2_128_concat) T::Address => Option<T::ResourceId>;
     }
 }
 
@@ -54,7 +54,8 @@ decl_module! {
             T::Admin::ensure_origin(origin)?;
 
             // Call internal
-            Self::set_resource(rid, local_addr)
+            Self::set_resource(rid, local_addr);
+            Ok(())
         }
 
         #[weight = T::DbWeight::get().reads_writes(1,2)]
@@ -64,7 +65,8 @@ decl_module! {
             T::Admin::ensure_origin(origin)?;
 
             // Call internal
-            Self::remove_resource(&rid)
+            Self::remove_resource(&rid);
+            Ok(())
         }
     }
 }
@@ -76,20 +78,19 @@ impl<T: Trait> Module<T> {
     /// Add a new resource mapping in [Names]. Existing entries will be overwritten.
     pub fn set_resource(rid: T::ResourceId,
                         local_addr: T::Address,
-    ) -> DispatchResult {
+    ) {
         // Add the mapping both ways
         ResourceToAddress::<T>::insert(rid.clone(), local_addr.clone());
         AddressToResource::<T>::insert(local_addr, rid);
-        Ok(())
     }
 
     /// Remove a resource mapping in [Names].
-    pub fn remove_resource(rid: &T::ResourceId) -> DispatchResult {
-        let address = ResourceToAddress::<T>::get(rid);
+    pub fn remove_resource(rid: &T::ResourceId) {
+        // If it doesn't exist for some unexpected reason, still allow removal by setting default
+        let address = ResourceToAddress::<T>::get(rid).unwrap_or(T::Address::default());
 
         // Remove the resource mapping both ways
         ResourceToAddress::<T>::remove(rid);
         AddressToResource::<T>::remove(address);
-        Ok(())
     }
 }
