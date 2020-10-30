@@ -1,4 +1,4 @@
-use crate::{Error, mock::*};
+use crate::{mock::*};
 use frame_support::{assert_ok};
 
 #[test]
