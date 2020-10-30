@@ -42,18 +42,22 @@ impl system::Trait for Test {
 	type MaximumBlockLength = MaximumBlockLength;
 	type AvailableBlockRatio = AvailableBlockRatio;
 	type Version = ();
-	type PalletInfo = ();
+    type ModuleToIndex = ();
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
+    type MigrateAccount = ();
 }
 
 impl Trait for Test {
 	type Event = ();
+    type ResourceId = u32;
+    type Address = u32;
+    type Admin = frame_system::EnsureRoot<Self::AccountId>;
 }
 
-pub type TemplateModule = Module<Test>;
+pub type SUT = Module<Test>;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {

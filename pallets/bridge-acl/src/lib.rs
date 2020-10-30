@@ -36,7 +36,7 @@ pub trait Trait: frame_system::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as BridgeNames {
         /// Indicates that assets of a resource can be transfered to another resource.
-        Names: map hasher(blake2_128_concat) T::ResourceId => T::Address;
+        Names get(fn addr_of): map hasher(blake2_128_concat) T::ResourceId => T::Address;
     }
 }
 
@@ -87,12 +87,12 @@ decl_module! {
 // corresponding owner, the function interfaces defined here ensure this by construction. This
 // assumption is something to keep in mind if extending this module.
 impl<T: Trait> Module<T> {
-    /// Update an existing resource mapping in the [Names]. Existing keys will be overwritten.
+    /// Add a new resource mapping in [Names]. Existing entries will be overwritten.
     pub fn set_resource(rid: &T::ResourceId,
                         local_addr: T::Address,
     ) -> DispatchResult {
         // Add the mapping
-        Names::<T>::mutate(rid, |_| local_addr);
+        Names::<T>::insert(rid.clone(), local_addr);
         Ok(())
     }
 
