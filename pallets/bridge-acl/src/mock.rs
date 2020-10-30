@@ -51,7 +51,6 @@ impl system::Trait for Test {
 }
 
 impl Trait for Test {
-    //type Event = ();
     type ResourceId = u32;
     type Address = u32;
     type Admin = frame_system::EnsureRoot<Self::AccountId>;
