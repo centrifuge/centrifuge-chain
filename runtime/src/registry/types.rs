@@ -1,9 +1,8 @@
-//pub use crate::nft::AssetId;
+use sp_core::{U256, H160};
+use crate::{proofs, bridge};
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
-use sp_core::{U256, H160};
-use crate::proofs;
 
 pub const NFTS_PREFIX: &'static [u8] = &[20, 0, 0, 0, 0, 0, 0, 1];
 
@@ -42,6 +41,12 @@ impl<'a> From<&'a AssetId> for AssetIdRef<'a> {
 impl<'a> AssetIdRef<'a> {
     pub fn destruct(self) -> (&'a RegistryId, &'a TokenId) {
         (self.0, self.1)
+    }
+}
+
+impl From<bridge::Address> for RegistryId {
+    fn from(a: bridge::Address) -> Self {
+        H160::from_slice(&a.0[..])
     }
 }
 

@@ -4,12 +4,14 @@
 //! transferred across chains, or more abstractly, resources. A resource (defined in [ResourceId]
 //! has an owner which 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![feature(trait_alias)]
 
 use codec::FullCodec;
 use sp_runtime::traits::Member;
 use frame_support::{
     decl_module, decl_storage,
-    dispatch::DispatchResult, traits::{Get, EnsureOrigin}};
+    dispatch::DispatchResult,
+    traits::{Get, EnsureOrigin}};
 
 #[cfg(test)]
 mod mock;
@@ -17,16 +19,18 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+pub trait AsByte32 = Into<[u8; 32]> + From<[u8; 32]>;
+
 pub trait Trait: frame_system::Trait {
     /// In order to provide generality, we need some way to associate some action on a source chain
     /// to some action on a destination chain. This may express tokenX on chain A is equivalent to
     /// tokenY on chain B, or to simply associate that some action performed on chain A should
-    /// result in some other action occurring on chain B. All resource ids are considered to have a
-    /// home chain.
-    type ResourceId: Member + Default + FullCodec;
+    /// result in some other action occurring on chain B. ResourceId is defined as a 32 byte array
+    /// by ChainSafe.
+    type ResourceId: Member + Default + FullCodec + AsByte32;
     /// A local mapping of a resource id. Represents anything that a resource id might map to. On
     /// Ethereum, this may be a contract address for transferring assets.
-    type Address: Member + Default + FullCodec;
+    type Address: Member + Default + FullCodec + AsByte32;
     /// Admin is able to set/remove resource mappings.
     type Admin: EnsureOrigin<Self::Origin>;
 }
@@ -87,7 +91,7 @@ impl<T: Trait> Module<T> {
     /// Remove a resource mapping in [Names].
     pub fn remove_resource(rid: &T::ResourceId) {
         // If it doesn't exist for some unexpected reason, still allow removal by setting default
-        let address = ResourceToAddress::<T>::get(rid).unwrap_or(T::Address::default());
+        let address = ResourceToAddress::<T>::get(rid).unwrap_or_default();
 
         // Remove the resource mapping both ways
         ResourceToAddress::<T>::remove(rid);

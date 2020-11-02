@@ -1,5 +1,7 @@
 use crate::nft;
 use bridge_names;
+use core::convert::TryInto;
+use codec::{Decode, Encode};
 use unique_assets::traits::Unique;
 use crate::registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
@@ -13,7 +15,17 @@ use sp_core::{U256, Bytes};
 use sp_runtime::traits::SaturatedConversion;
 use sp_std::prelude::*;
 
-type ResourceId = chainbridge::ResourceId;
+/// Abstract identifer of an asset, for a common vocabulary across chains.
+pub type ResourceId = chainbridge::ResourceId;
+
+const ADDR_LEN: usize = 32;
+type Bytes32 = [u8; ADDR_LEN];
+/// A generic representation of a local address. A resource id points to this. It may be a
+/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
+/// as an upper bound to store efficiently.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+pub struct Address(pub Bytes32);
+
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
@@ -22,7 +34,35 @@ const TOKEN_FEE: u128 = 20 * currency::RAD;
 /// Additional Fee charged when move an NFT to target chain
 const NFT_FEE: u128 = 10 * currency::RAD;
 
-pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait + nft::Trait {
+impl From<RegistryId> for Address {
+    fn from(r: RegistryId) -> Self {
+        // Pad 12 bytes to the registry id - total 32 bytes
+        let padded = r.to_fixed_bytes().iter().copied()
+            .chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..ADDR_LEN]
+            .try_into().expect("RegistryId is 20 bytes. 12 are padded. Converting to a 32 byte array should never fail");
+
+        Address( padded )
+    }
+}
+
+// In order to be generic into T::Address
+impl From<Bytes32> for Address {
+    fn from(v: Bytes32) -> Self {
+        Address( v[..ADDR_LEN].try_into().expect("Address wraps a 32 byte array") )
+    }
+}
+impl From<Address> for Bytes32 {
+    fn from(a: Address) -> Self {
+        a.0
+    }
+}
+
+pub trait Trait: system::Trait
+               + fees::Trait
+               + pallet_balances::Trait
+               + chainbridge::Trait
+               + nft::Trait
+               + bridge_names::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -55,8 +95,10 @@ decl_event! {
 
 decl_error! {
     pub enum Error for Module<T: Trait>{
-        /// Provided resource id is not found in bridges-names mapping.
+        /// Resource id provided on initiating a transfer is not a key in bridges-names mapping.
         ResourceIdDoesNotExist,
+        /// Registry id provided on recieving a transfer is not a key in bridges-names mapping.
+        RegistryIdDoesNotExist,
         InvalidTransfer,
     }
 }
@@ -106,8 +148,11 @@ decl_module! {
             let source = ensure_signed(origin)?;
 
             /// Get resource id from registry
-            let resource_id = <bridge_names::Module<T>>::name_of(from_registry)
-                .ok_or(Error::<T>::ResourceIdDoesNotExist);
+            let reg: Address = from_registry.into();
+            let reg: Bytes32 = reg.into();
+            let reg: <T as bridge_names::Trait>::Address = reg.into();
+            let resource_id = <bridge_names::Module<T>>::name_of(reg)
+                .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
 
             // Burn additional fees
             let nft_fee: T::Balance = NFT_FEE.saturated_into();
@@ -122,7 +167,11 @@ decl_module! {
             let tid: &mut [u8] = &mut[0; 32];
             // Ethereum is big-endian
             token_id.to_big_endian(tid);
-            <chainbridge::Module<T>>::transfer_nonfungible(dest_id, resource_id, tid.to_vec(), recipient, vec![]/*assetinfo.metadata*/)
+            <chainbridge::Module<T>>::transfer_nonfungible(dest_id,
+                                                           resource_id.into(),
+                                                           tid.to_vec(),
+                                                           recipient,
+                                                           vec![]/*assetinfo.metadata*/)
         }
 
         //
@@ -135,6 +184,25 @@ decl_module! {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
+        }
+
+        #[weight = 195_000_000]
+        pub fn recieve_nonfungible(origin,
+                                   to: T::AccountId,
+                                   token_id: TokenId,
+                                   resource_id: ResourceId
+        ) -> DispatchResult {
+            let source = T::BridgeOrigin::ensure_origin(origin)?;
+
+            /// Get registry from resource id
+            let rid: <T as bridge_names::Trait>::ResourceId = resource_id.into();
+            let registry_id = <bridge_names::Module<T>>::addr_of(rid)
+                .ok_or(Error::<T>::RegistryIdDoesNotExist)?;
+            let registry_id: Address = registry_id.into().into();
+
+            // Transfer from bridge account to destination account
+            let asset_id = AssetId(registry_id.into(), token_id);
+            <nft::Module<T> as Unique>::transfer(&source, &to, &asset_id)
         }
 
         /// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.

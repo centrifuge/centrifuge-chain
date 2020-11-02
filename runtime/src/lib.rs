@@ -817,16 +817,16 @@ impl nft::Trait for Runtime {
     type AssetInfo = registry::types::AssetInfo;
 }
 
-/*
-parameter_types! {
-    const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-}
-*/
-
 impl rad_claims::Trait for Runtime {
     type Event = Event;
     type SessionDuration = SessionDuration;
     type UnsignedPriority = ImOnlineUnsignedPriority;
+}
+
+impl bridge_names::Trait for Runtime {
+    type ResourceId = bridge::ResourceId;
+    type Address = bridge::Address;
+    type Admin = frame_system::EnsureRoot<Self::AccountId>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
