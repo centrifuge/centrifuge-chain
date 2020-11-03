@@ -516,6 +516,37 @@ mod tests{
 		})
 	}
 
+    #[test]
+    fn transfer_nonfungible_asset() {
+        new_test_ext().execute_with(|| {
+            let dest_chain = 0;
+            let resource_id = NativeTokenId::get();
+            let recipient = vec![1];
+            let owner = RELAYER_B;
+            let (registry_id, token_id) = crate::registry::tests::mint_nft::<Test>(owner).destruct();
+
+            // Whitelist destination chain
+            assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+
+            let nft_owner = <crate::nft::Module<Test>>::account_for_asset(registry_id, token_id);
+            assert!(nft_owner != owner);
+
+            // Transfer nonfungible
+            assert_ok!(
+                PalletBridge::transfer_asset(
+                    Origin::signed(owner),
+                    recipient.clone(),
+                    registry_id,
+                    token_id,
+                    dest_chain));
+
+            let nft_owner = <crate::nft::Module<Test>>::account_for_asset(registry_id, token_id);
+            assert_eq!(nft_owner, RELAYER_B);
+            // Check that nft is locked in bridge account
+            // Check that transfer event was emitted
+        })
+    }
+
 
 	#[test]
 	fn execute_remark() {
