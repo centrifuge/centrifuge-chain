@@ -5,7 +5,7 @@ use crate::constants::currency;
 use sp_std::{vec::Vec, convert::TryInto};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error,
                     traits::{Get, EnsureOrigin, Currency, ExistenceRequirement::AllowDeath},
-                    ensure, dispatch::DispatchResult, weights::DispatchClass};
+                    ensure, dispatch::DispatchResult};
 use sp_runtime::{
     ModuleId,
     traits::{AccountIdConversion, CheckedSub},
@@ -107,13 +107,18 @@ decl_module! {
             let source = MODULE_ID.into_account();
             // Checking balance of Module account before proceeding
             let current_balance = T::Currency::free_balance(&source);
-            ensure!(U256::from(current_balance.saturated_into()) >= U256::from(payout.into()), Error::<T>::InsufficientBalance);
+            ensure!(U256::from(current_balance.saturated_into()) >= U256::from(payout.saturated_into()), Error::<T>::InsufficientBalance);
 
             // Set account balance to amount
-            AccountBalances::<T>::insert(account_id, amount);
+            AccountBalances::<T>::insert(account_id.clone(), amount);
 
             // Transfer payout amount
-            T::Currency::transfer(&source, &account_id, payout.into(), AllowDeath)?;
+            <pallet_balances::Module<T> as Currency<_>>::transfer(
+                &source,
+                &account_id,
+                payout,
+                AllowDeath,
+            )?;
 
             Self::deposit_event(RawEvent::Claimed(account_id, amount));
 
@@ -129,11 +134,13 @@ decl_module! {
         #[weight = 190_000_000]
         pub fn set_upload_account(origin, account_id: T::AccountId) -> DispatchResult {
             Self::can_update_upload_account(origin)?;
+
             <UploadAccount<T>>::put(account_id);
+
             Ok(())
         }
 
-        /// Stores root hash for correspondant claim merkle tree run
+        /// Stores root hash for correspondent claim merkle tree run
         ///
         /// # <weight>
         /// - Based on origin check and write op
@@ -141,9 +148,11 @@ decl_module! {
         #[weight = 185_000_000]
         pub fn store_root_hash(origin, root_hash: T::Hash) -> DispatchResult {
             let who = ensure_signed(origin)?;
+
             ensure!(Self::get_upload_account() == who, Error::<T>::MustBeAdmin);
             <RootHashes<T>>::insert(root_hash, true);
             Self::deposit_event(RawEvent::RootHashStored(root_hash));
+
             Ok(())
         }
 

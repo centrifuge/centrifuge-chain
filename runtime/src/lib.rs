@@ -799,7 +799,7 @@ impl chainbridge::Trait for Runtime {
 }
 
 parameter_types! {
-    const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 }
 
 impl rad_claims::Trait for Runtime {
@@ -849,7 +849,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Module, Call, Storage, Event<T>},
+        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
 	}
 );
 
