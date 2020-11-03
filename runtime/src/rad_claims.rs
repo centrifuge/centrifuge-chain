@@ -113,7 +113,7 @@ decl_module! {
             AccountBalances::<T>::insert(account_id, amount);
 
             // Transfer payout amount
-            T::Currency::transfer(&source, &account_id, T::Currency::From(payout.into()), AllowDeath)?;
+            T::Currency::transfer(&source, &account_id, payout.into(), AllowDeath)?;
 
             Self::deposit_event(RawEvent::Claimed(account_id, amount));
 
