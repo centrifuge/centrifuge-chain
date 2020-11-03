@@ -84,8 +84,8 @@ decl_module! {
         /// The extrinsic is validated by the custom `validate_unsigned` function below
         ///
         /// # <weight>
-		/// - Based on hashes length
-		/// # </weight>
+        /// - Based on hashes length
+        /// # </weight>
         #[weight = 195_000_000]
         pub fn claim(origin,
                      account_id: T::AccountId,
@@ -120,9 +120,12 @@ decl_module! {
             Ok(())
         }
 
+        /// Admin function that sets the allowed upload account to add root hashes
+        /// Controlled by custom origin or root
+        /// 
         /// # <weight>
-		/// - Based on origin check and write op
-		/// # </weight>
+        /// - Based on origin check and write op
+        /// # </weight>
         #[weight = 190_000_000]
         pub fn set_upload_account(origin, account_id: T::AccountId) -> DispatchResult {
             Self::can_update_upload_account(origin)?;
@@ -130,9 +133,11 @@ decl_module! {
             Ok(())
         }
 
+        /// Stores root hash for correspondant claim merkle tree run
+        ///
         /// # <weight>
-		/// - Based on origin check and write op
-		/// # </weight>
+        /// - Based on origin check and write op
+        /// # </weight>
         #[weight = 185_000_000]
         pub fn store_root_hash(origin, root_hash: T::Hash) -> DispatchResult {
             let who = ensure_signed(origin)?;
