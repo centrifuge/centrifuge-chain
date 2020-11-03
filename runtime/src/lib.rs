@@ -75,6 +75,9 @@ mod proofs;
 /// nft module
 mod nfts;
 
+/// radial reward claims module
+mod rad_claims;
+
 /// bridge module
 mod bridge;
 
@@ -795,6 +798,18 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
+parameter_types! {
+    const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+}
+
+impl rad_claims::Trait for Runtime {
+    type Event = Event;
+    type SessionDuration = SessionDuration;
+    type UnsignedPriority = UnsignedPriority;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type Currency = Balances;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -834,6 +849,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+        RadClaims: rad_claims::{Module, Call, Storage, Event<T>},
 	}
 );
 
