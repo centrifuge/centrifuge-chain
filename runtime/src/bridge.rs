@@ -341,6 +341,12 @@ mod tests{
         type AssetInfo = crate::registry::types::AssetInfo;
     }
 
+    impl bridge_names::Trait for Test {
+        type ResourceId = ResourceId;
+        type Address = Address;
+        type Admin = frame_system::EnsureRoot<Self::AccountId>;
+    }
+
 	parameter_types! {
 		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
