@@ -453,19 +453,42 @@ mod tests {
             let mut v: Vec<u8> = USER_B.encode();
             v.extend(amount.encode());
 
-            // Single tree leaf tree
+            // Single-leaf tree
             let inner_single = Call::claim(USER_B, amount, [].to_vec());
             let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
             assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_single));
 
-            // Two leaf tree
+            // Two-leaf tree
             let preimage = RadClaims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), preimage));
             assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
 
-            // 10 Leaf tree
+            // 10-leaf tree
+            let leaf_hash_0: H256 = [0; 32].into();
+            let leaf_hash_1: H256 = [1; 32].into();
+            let leaf_hash_2: H256 = leaf_hash;
+            let leaf_hash_3: H256 = [3; 32].into();
+            let leaf_hash_4: H256 = [4; 32].into();
+            let leaf_hash_5: H256 = [5; 32].into();
+            let leaf_hash_6: H256 = [6; 32].into();
+            let leaf_hash_7: H256 = [7; 32].into();
+            let leaf_hash_8: H256 = [8; 32].into();
+            let leaf_hash_9: H256 = [9; 32].into();
+            let node_0 = RadClaims::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
+            let node_1 = RadClaims::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
+            let node_2 = RadClaims::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
+            let node_3 = RadClaims::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
+            let node_4 = RadClaims::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
+            let node_00 = RadClaims::sorted_hash_of(&node_0, &node_1);
+            let node_01 = RadClaims::sorted_hash_of(&node_2, &node_3);
+            let node_000 = RadClaims::sorted_hash_of(&node_00, &node_01);
+            let node_root = RadClaims::sorted_hash_of(&node_000, &node_4);
 
+            let four_sorted_hashes: [H256; 4] = [leaf_hash_3.into(), node_0.into(), node_01.into(), node_4.into()];
+            let inner_three = Call::claim(USER_B, amount, four_sorted_hashes.to_vec());
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), node_root));
+            assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_three));
         });
     }
 }
