@@ -224,3 +224,159 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
         InvalidTransaction::Call.into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use frame_support::{
+        assert_err, assert_noop, assert_ok, dispatch::DispatchError, impl_outer_origin,
+        ord_parameter_types, parameter_types, weights::Weight,
+    };
+    use frame_system::EnsureSignedBy;
+    use sp_core::H256;
+    use sp_runtime::Perbill;
+    use sp_runtime::{
+        testing::Header,
+        traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
+    };
+    pub use pallet_balances as balances;
+
+    impl_outer_origin! {
+        pub enum Origin for Test  where system = frame_system {}
+    }
+
+    // For testing the module, we construct most of a mock runtime. This means
+    // first constructing a configuration type (`Test`) which `impl`s each of the
+    // configuration traits of modules we want to use.
+    #[derive(Clone, Eq, PartialEq)]
+    pub struct Test;
+    parameter_types! {
+        pub const BlockHashCount: u64 = 250;
+        pub const MaximumBlockWeight: Weight = 1024;
+        pub const MaximumBlockLength: u32 = 2 * 1024;
+        pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    }
+    impl frame_system::Trait for Test {
+        type AccountId = u64;
+        type Call = ();
+        type Lookup = IdentityLookup<Self::AccountId>;
+        type Index = u64;
+        type BlockNumber = u64;
+        type Hash = H256;
+        type Hashing = BlakeTwo256;
+        type Header = Header;
+        type Event = ();
+        type Origin = Origin;
+        type BlockHashCount = BlockHashCount;
+        type MaximumBlockWeight = MaximumBlockWeight;
+        type MaximumBlockLength = MaximumBlockLength;
+        type AvailableBlockRatio = AvailableBlockRatio;
+        type Version = ();
+        type ModuleToIndex = ();
+        type AccountData = balances::AccountData<u64>;
+        type OnNewAccount = ();
+        type OnKilledAccount = balances::Module<Test>;
+        type DbWeight = ();
+        type BlockExecutionWeight = ();
+        type ExtrinsicBaseWeight = ();
+        type MaximumExtrinsicWeight = ();
+        type BaseCallFilter = ();
+        type SystemWeightInfo = ();
+        type MigrateAccount = ();
+    }
+    ord_parameter_types! {
+        pub const One: u64 = 1;
+        pub const SessionDuration: u64 = 10 as u64;
+        pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    }
+
+    impl Trait for Test {
+        type Event = ();
+        type SessionDuration = SessionDuration;
+        type UnsignedPriority = UnsignedPriority;
+        type AdminOrigin = EnsureSignedBy<One, u64>;
+        type Currency = Balances;
+    }
+
+    parameter_types! {
+        pub const ExistentialDeposit: u64 = 1;
+    }
+    impl pallet_balances::Trait for Test {
+        type Balance = u64;
+        type DustRemoval = ();
+        type Event = ();
+        type ExistentialDeposit = ExistentialDeposit;
+        type AccountStore = System;
+        type WeightInfo = ();
+    }
+
+    type RadClaims = Module<Test>;
+    type System = frame_system::Module<Test>;
+    type Balances = pallet_balances::Module<Test>;
+
+    pub const ADMIN: u64 = 0x1;
+    pub const USER_A: u64 = 0x2;
+    pub const ENDOWED_BALANCE: u64 = 10000;
+
+    // This function basically just builds a genesis storage key/value store according to
+    // our desired mockup.
+    fn new_test_ext() -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let claims_module_id = MODULE_ID.into_account();
+        // pre-fill balances
+        pallet_balances::GenesisConfig::<Test> {
+            balances: vec![(ADMIN, ENDOWED_BALANCE), (USER_A, 1), (claims_module_id, ENDOWED_BALANCE)],
+        }
+            .assimilate_storage(&mut t)
+            .unwrap();
+        t.into()
+    }
+
+    #[test]
+    fn can_upload_account() {
+        new_test_ext().execute_with(|| {
+            assert_err!(RadClaims::can_update_upload_account(Origin::signed(USER_A)), BadOrigin);
+            assert_ok!(RadClaims::can_update_upload_account(Origin::signed(ADMIN)));
+        });
+    }
+
+    #[test]
+    fn set_upload_account() {
+        new_test_ext().execute_with(|| {
+            assert_eq!(RadClaims::get_upload_account(), 0x0);
+            assert_err!(RadClaims::set_upload_account(Origin::signed(USER_A), USER_A), BadOrigin);
+            assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), USER_A));
+            assert_eq!(RadClaims::get_upload_account(), USER_A);
+        });
+    }
+
+    #[test]
+    fn store_root_hash() {
+        new_test_ext().execute_with(|| {
+            assert_eq!(RadClaims::get_upload_account(), 0x0);
+            // USER_A not allowed to upload hash
+            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+            assert_err!(
+                RadClaims::store_root_hash(Origin::signed(USER_A), pre_image),
+                Error::<Test>::MustBeAdmin
+            );
+            // Adding ADMIN as allowed upload account
+            assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+            assert_eq!(RadClaims::get_upload_account(), ADMIN);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), pre_image));
+            assert_eq!(RadClaims::get_root_hash(pre_image), true);
+        });
+    }
+
+    #[test]
+    fn claim() {
+        new_test_ext().execute_with(|| {
+            let sorted_hashes: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
+            assert_ok!(RadClaims::claim(Origin::signed(ADMIN), USER_A, 100, sorted_hashes.to_vec()));
+        });
+    }
+}
