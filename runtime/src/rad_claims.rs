@@ -204,11 +204,17 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
 
             // Generate root hash
             let leaf_hash = T::Hashing::hash_of(&v);
-            let root_hash = sorted_hashes.iter()
+            let mut root_hash = sorted_hashes.iter()
                 .fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
 
+            // Initial runs might only have trees of single leaves,
+            // in this case leaf_hash is as well root_hash
+            if sorted_hashes.len() == 0 {
+                root_hash = leaf_hash;
+            }
+
             // Check that root exists in root hash storage
-            if !Self::get_root_hash(root_hash) == true {
+            if Self::get_root_hash(root_hash) == true {
                 return ValidTransaction::with_tag_prefix("RADclaim")
                     .priority(T::UnsignedPriority::get())
                     .longevity(TryInto::<u64>::try_into(
@@ -230,7 +236,7 @@ mod tests {
     use super::*;
 
     use frame_support::{
-        assert_err, assert_noop, assert_ok, dispatch::DispatchError, impl_outer_origin,
+        assert_err, assert_ok, impl_outer_origin,
         ord_parameter_types, parameter_types, weights::Weight,
     };
     use frame_system::EnsureSignedBy;
@@ -274,7 +280,7 @@ mod tests {
         type AvailableBlockRatio = AvailableBlockRatio;
         type Version = ();
         type ModuleToIndex = ();
-        type AccountData = balances::AccountData<u64>;
+        type AccountData = balances::AccountData<u128>;
         type OnNewAccount = ();
         type OnKilledAccount = balances::Module<Test>;
         type DbWeight = ();
@@ -303,7 +309,7 @@ mod tests {
         pub const ExistentialDeposit: u64 = 1;
     }
     impl pallet_balances::Trait for Test {
-        type Balance = u64;
+        type Balance = u128;
         type DustRemoval = ();
         type Event = ();
         type ExistentialDeposit = ExistentialDeposit;
@@ -317,7 +323,9 @@ mod tests {
 
     pub const ADMIN: u64 = 0x1;
     pub const USER_A: u64 = 0x2;
-    pub const ENDOWED_BALANCE: u64 = 10000;
+    // USER_B does not have existential balance
+    pub const USER_B: u64 = 0x3;
+    pub const ENDOWED_BALANCE: u128 = 10000 * currency::RAD;
 
     // This function basically just builds a genesis storage key/value store according to
     // our desired mockup.
@@ -375,8 +383,89 @@ mod tests {
     #[test]
     fn claim() {
         new_test_ext().execute_with(|| {
+            // Random sorted hashes
             let sorted_hashes: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
-            assert_ok!(RadClaims::claim(Origin::signed(ADMIN), USER_A, 100, sorted_hashes.to_vec()));
+
+            // Bad origin, signed vs unsigned
+            assert_err!(
+                RadClaims::claim(Origin::signed(USER_B), USER_B, 100 * currency::RAD, sorted_hashes.to_vec()),
+                BadOrigin
+            );
+
+            // Minimum payout not met
+            assert_err!(
+                RadClaims::claim(Origin::none(), USER_B, 4 * currency::RAD, sorted_hashes.to_vec()),
+                Error::<Test>::UnderMinPayout
+            );
+
+            // Claims Module Account does not have enough balance
+            assert_err!(
+                RadClaims::claim(Origin::none(), USER_B, 10001 * currency::RAD, sorted_hashes.to_vec()),
+                Error::<Test>::InsufficientBalance
+            );
+
+            // Ok
+            let account_balance = <pallet_balances::Module<Test>>::free_balance(USER_B);
+            assert_ok!(RadClaims::claim(Origin::none(), USER_B, 100 * currency::RAD, sorted_hashes.to_vec()));
+            assert_eq!(RadClaims::get_account_balance(USER_B), 100 * currency::RAD);
+            let account_new_balance = <pallet_balances::Module<Test>>::free_balance(USER_B);
+            assert_eq!(account_new_balance, account_balance + 100 * currency::RAD);
+
+            // Knowing that account has a balance of 100, trying to claim 50 will fail
+            // Since balance logic is accumulative
+            assert_err!(
+                RadClaims::claim(Origin::none(), USER_B, 50 * currency::RAD, sorted_hashes.to_vec()),
+                Error::<Test>::InsufficientBalance
+            );
+
+        });
+    }
+
+    #[test]
+    fn validate_unsigned_check() {
+        new_test_ext().execute_with(|| {
+            let amount: u128 = 100 * currency::RAD;
+            let sorted_hashes_long: [H256; 31] = [
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into()
+            ];
+
+            // Abuse DDoS attach check
+            let inner_long = Call::claim(USER_B, amount, sorted_hashes_long.to_vec());
+            assert_err!(
+                <RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_long),
+                InvalidTransaction::BadProof
+            );
+
+            // Root hash was never stored beforehand
+            let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
+            let inner = Call::claim(USER_B, amount, one_sorted_hashes.to_vec());
+            assert_err!(
+                <RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner),
+                InvalidTransaction::BadProof
+            );
+
+            assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+            let mut v: Vec<u8> = USER_B.encode();
+            v.extend(amount.encode());
+
+            // Single tree leaf tree
+            let inner_single = Call::claim(USER_B, amount, [].to_vec());
+            let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
+            assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_single));
+
+            // Two leaf tree
+            let preimage = RadClaims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), preimage));
+            assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
+
+            // 10 Leaf tree
+
         });
     }
 }
