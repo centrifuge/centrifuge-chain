@@ -795,6 +795,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-utility",
+ "pallet-vesting",
  "parity-scale-codec",
  "rustc-hex",
  "safe-mix",
@@ -4107,6 +4108,20 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-vesting"
+version = "2.0.0-rc6"
+source = "git+https://github.com/centrifuge/substrate.git?rev=a67d1c123842c014d845e645c1b7852c95637434#a67d1c123842c014d845e645c1b7852c95637434"
+dependencies = [
+ "enumflags2",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]

@@ -29,7 +29,7 @@ use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
 use sp_runtime::traits::{
 	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
-	OpaqueKeys, NumberFor, Saturating,
+	OpaqueKeys, NumberFor, Saturating, ConvertInto
 };
 use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
@@ -810,6 +810,18 @@ impl rad_claims::Trait for Runtime {
     type Currency = Balances;
 }
 
+parameter_types! {
+	pub const MinVestedTransfer: Balance = 1000 * RAD;
+}
+
+impl pallet_vesting::Trait for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type BlockNumberToBalance = ConvertInto;
+    type MinVestedTransfer = MinVestedTransfer;
+    type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -850,6 +862,7 @@ construct_runtime!(
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 

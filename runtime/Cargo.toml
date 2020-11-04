@@ -71,6 +71,7 @@ pallet-transaction-payment = { version = "2.0.0-rc6", git = "https://github.com/
 pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "a67d1c123842c014d845e645c1b7852c95637434", default-features = false }
 pallet-identity = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "a67d1c123842c014d845e645c1b7852c95637434", default-features = false }
 pallet-scheduler = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "a67d1c123842c014d845e645c1b7852c95637434", default-features = false }
+pallet-vesting = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "a67d1c123842c014d845e645c1b7852c95637434", default-features = false }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "a67d1c123842c014d845e645c1b7852c95637434" }
@@ -119,6 +120,7 @@ std = [
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
+    "pallet-vesting/std",
     "sp-transaction-pool/std",
     "pallet-utility/std",
     "sp-version/std",
