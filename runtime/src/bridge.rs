@@ -18,13 +18,16 @@ use sp_std::prelude::*;
 /// Abstract identifer of an asset, for a common vocabulary across chains.
 pub type ResourceId = chainbridge::ResourceId;
 
-const ADDR_LEN: usize = 32;
-type Bytes32 = [u8; ADDR_LEN];
 /// A generic representation of a local address. A resource id points to this. It may be a
 /// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
 /// as an upper bound to store efficiently.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Address(pub Bytes32);
+
+/// Length of an [Address] type
+const ADDR_LEN: usize = 32;
+
+type Bytes32 = [u8; ADDR_LEN];
 
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
@@ -187,7 +190,7 @@ decl_module! {
         }
 
         #[weight = 195_000_000]
-        pub fn recieve_nonfungible(origin,
+        pub fn receive_nonfungible(origin,
                                    to: T::AccountId,
                                    token_id: TokenId,
                                    resource_id: ResourceId
@@ -544,6 +547,78 @@ mod tests{
 		})
 	}
 
+    // Create a registry, set resource id and mint an nft.
+    fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> RegistryId {
+        let origin = Origin::signed(owner);
+
+        //let token_id = U256::one();
+        // Create registry and generate proofs
+        let (asset_id,
+             pre_image,
+             anchor_id,
+             (proofs, static_hashes, doc_root),
+             nft_data,
+             registry_info) = registry::tests::setup_mint::<Test>(origin.clone(), token_id);
+
+        // Commit document root
+        assert_ok!( <crate::anchor::Module<Test>>::commit(
+            origin.clone(),
+            pre_image,
+            doc_root,
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            crate::common::MS_PER_DAY + 1));
+
+        // Mint token with document proof
+        let (registry_id, token_id) = asset_id.clone().destruct();
+        assert_ok!(
+            <registry::Module<Test>>::mint(origin,
+                      owner,
+                      registry_id,
+                      token_id,
+                      nft_data.clone(),
+                      registry::types::MintInfo {
+                          anchor_id: anchor_id,
+                          proofs: proofs,
+                          static_hashes: static_hashes,
+                      }));
+
+        // Register resource with chainbridge
+        assert_ok!(<chainbridge::Module<Test>>::register_resource(resource_id.clone(), vec![]));
+        // Register resource in local resource mapping
+        <bridge_names::Module<Test>>::set_resource(resource_id.clone(),
+                                                   registry_id.clone().into());
+
+        registry_id
+    }
+
+    #[test]
+    fn receive_nonfungible() {
+        new_test_ext().execute_with(|| {
+            let dest_chain = 0;
+            let resource_id = NativeTokenId::get();
+            let recipient = RELAYER_A;
+            let owner     = <chainbridge::Module<Test>>::account_id();
+            let origin    = Origin::signed(owner);
+            let token_id  = U256::one();
+
+            // Create registry, map resource id, and mint nft
+            let registry_id = setup_nft(owner, token_id, resource_id);
+
+            // Whitelist destination chain
+            assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+
+            // Send nft from bridge account to user
+            assert_ok!(<Module<Test>>::receive_nonfungible(origin,
+                                                           recipient,
+                                                           token_id,
+                                                           resource_id));
+
+            // Recipient owns the nft now
+            assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+                       recipient);
+        })
+    }
+
     #[test]
     fn transfer_nonfungible_asset() {
         new_test_ext().execute_with(|| {
@@ -552,46 +627,13 @@ mod tests{
             let recipient = vec![1];
             let owner = RELAYER_A;
             let origin = Origin::signed(owner);
-
             let token_id = U256::one();
-            // Create registry and generate proofs
-            let (asset_id,
-                 pre_image,
-                 anchor_id,
-                 (proofs, static_hashes, doc_root),
-                 nft_data,
-                 registry_info) = registry::tests::setup_mint::<Test>(origin.clone(), token_id);
 
-            // Commit document root
-            assert_ok!( <crate::anchor::Module<Test>>::commit(
-                origin.clone(),
-                pre_image,
-                doc_root,
-                <Test as frame_system::Trait>::Hashing::hash_of(&0),
-                crate::common::MS_PER_DAY + 1));
-
-            // Mint token with document proof
-            let (registry_id, token_id) = asset_id.clone().destruct();
-            assert_ok!(
-                <registry::Module<Test>>::mint(origin,
-                          owner,
-                          registry_id,
-                          token_id,
-                          nft_data.clone(),
-                          registry::types::MintInfo {
-                              anchor_id: anchor_id,
-                              proofs: proofs,
-                              static_hashes: static_hashes,
-                          }));
+            // Create registry, map resource id, and mint nft
+            let registry_id = setup_nft(owner, token_id, resource_id);
 
             // Whitelist destination chain
             assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
-
-            // Register resource with chainbridge
-            assert_ok!(<chainbridge::Module<Test>>::register_resource(resource_id.clone(), vec![]));
-            // Register resource in local resource mapping
-            <bridge_names::Module<Test>>::set_resource(resource_id.clone(),
-                                                       registry_id.clone().into());
 
             // Owner owns nft
             assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),

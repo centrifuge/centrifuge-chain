@@ -46,7 +46,7 @@ impl<'a> AssetIdRef<'a> {
 
 impl From<bridge::Address> for RegistryId {
     fn from(a: bridge::Address) -> Self {
-        H160::from_slice(&a.0[..])
+        H160::from_slice(&a.0[..20])
     }
 }
 
