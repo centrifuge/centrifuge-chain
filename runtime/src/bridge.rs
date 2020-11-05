@@ -597,17 +597,19 @@ mod tests{
             assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
                        owner);
 
-            // Using account with not enough balance for fee should fail when requesting transfer
+            // Using account without enough balance for fee should fail when requesting transfer
             /*
             assert_err!(
-                PalletBridge::transfer_native(
+                PalletBridge::transfer_asset(
                     Origin::signed(RELAYER_C),
-                    amount.clone(),
                     recipient.clone(),
-                    dest_chain,
-                ),
-                "Insufficient Balance"
-            );
+                    registry_id,
+                    token_id.clone(),
+                    dest_chain),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    Some("InsufficientBalance")});
             */
 
             // Transfer nonfungible through bridge
