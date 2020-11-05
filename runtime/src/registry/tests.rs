@@ -8,30 +8,32 @@ use sp_runtime::{
 };
 use std::cmp::Ordering;
 use crate::registry::{
-    Error, mock::*,
+    self, Error, mock::*,
     types::{AssetId, VerifierRegistry, NFTS_PREFIX},
 };
 use crate::nft;
 use super::*;
 
 // Hash two hashes
-fn hash_of(a: H256, b: H256) -> H256 {
+fn hash_of<T: frame_system::Trait>(a: H256, b: H256) -> T::Hash {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     h.extend_from_slice(&a[..]);
     h.extend_from_slice(&b[..]);
-    sp_io::hashing::blake2_256(&h).into()
+    T::Hashing::hash_of(&h)
+    //sp_io::hashing::blake2_256(&h).into()
 }
 // Generate document root from static hashes
-fn doc_root(static_hashes: [H256; 3]) -> H256 {
+fn doc_root<T: frame_system::Trait>(static_hashes: [H256; 3]) -> T::Hash {
     let basic_data_root = static_hashes[0];
     let zk_data_root    = static_hashes[1];
     let signature_root  = static_hashes[2];
-    let signing_root    = hash_of(basic_data_root, zk_data_root);
-    hash_of(signing_root, signature_root)
+    let signing_root    = H256::from_slice( hash_of::<T>(basic_data_root, zk_data_root).as_ref() );
+    hash_of::<T>(signing_root, signature_root)
 }
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
-fn proofs_data<T: registry::Trait + nft::Trait>(registry_id: T::RegistryId, token_id: T::TokenId) -> (Vec<Proof<H256>>, [H256; 3], H256) {
+fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenId)
+    -> (Vec<Proof<H256>>, [H256; 3], T::Hash) {
     // Encode token into big endian U256
     let mut token_enc = Vec::<u8>::with_capacity(32);
     unsafe { token_enc.set_len(32); }
@@ -57,23 +59,33 @@ fn proofs_data<T: registry::Trait + nft::Trait>(registry_id: T::RegistryId, toke
     leaves.sort();
     //let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
     //let data_root = leaves.into_iter().fold_first(|p1, p2| hash_of(p1, p2)).unwrap();
-    let data_root = hash_of(leaves[0], leaves[1]);
-    let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-    let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    //let data_root = hash_of(leaves[0], leaves[1]);
+    let mut h: Vec<u8> = Vec::with_capacity(64);
+    h.extend_from_slice(&leaves[0][..]);
+    h.extend_from_slice(&leaves[1][..]);
+    let data_root = sp_io::hashing::blake2_256(&h).into();
+    //let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    //let zk_data_root = T::Hashing::hash_of(&0);
+    let zk_data_root = sp_io::hashing::blake2_256(&[0]).into();
+    //let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    //let sig_root     = T::Hashing::hash_of(&0);
+    let sig_root     = sp_io::hashing::blake2_256(&[0]).into();
     let static_hashes = [data_root, zk_data_root, sig_root];
-    let doc_root     = doc_root(static_hashes);
+    let doc_root     = doc_root::<T>(static_hashes);
 
     (proofs, static_hashes, doc_root)
 }
 
 // Creates a registry and returns all relevant data
-fn setup_mint<M: VerifierRegistry, T: frame_system::Trait>(origin: T::Origin, token_id: TokenId)
-    -> (Origin, AssetId,
-        H256, H256,
-        (Vec<Proof<H256>>,
-         [H256; 3], H256),
-        crate::registry::types::AssetInfo,
-        crate::registry::types::RegistryInfo)
+pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
+    -> (AssetId,
+        T::Hash, T::Hash,
+        (Vec<Proof<H256>>, [H256; 3], T::Hash),
+        registry::types::AssetInfo,
+        registry::types::RegistryInfo)
+    where T: frame_system::Trait
+           + registry::Trait
+           + nft::Trait<AssetInfo = types::AssetInfo>
 {
     //let origin    = Origin::signed(owner);
     let metadata  = vec![];
@@ -81,8 +93,10 @@ fn setup_mint<M: VerifierRegistry, T: frame_system::Trait>(origin: T::Origin, to
     // Anchor data
     //let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
     let pre_image = T::Hashing::hash_of(&0);
+    //let pre_image: H256 = sp_io::hashing::blake2_256(&[0]).into();
     //let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
     let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
+    //let anchor_id = (pre_image).using_encoded(sp_io::hashing::blake2_256).into();
 
     // Registry info
     let properties = vec![b"AMOUNT".to_vec()];
@@ -94,12 +108,22 @@ fn setup_mint<M: VerifierRegistry, T: frame_system::Trait>(origin: T::Origin, to
 
     // Create registry, get registry id
     //let registry_id = <SUT as VerifierRegistry>::create_registry(registry_info.clone());
-    let registry_id = VerifierRegistry::create_registry(registry_info.clone());
-    assert_ok!(registry_id);
-    let registry_id = registry_id.unwrap();
+    //let registry_id = <T as VerifierRegistry>::create_registry(registry_info.clone());
+    assert_ok!( <registry::Module<T>>::create_registry(origin, registry_info.clone()) );
+    //assert_ok!(registry_id);
+    //let registry_id = registry_id.unwrap();
+
+    let mut res = Vec::<u8>::with_capacity(32);
+    unsafe { res.set_len(32); }
+    U256::from_big_endian(H160::zero().as_bytes())
+         .saturating_add(U256::one())
+         .to_big_endian(&mut res);
+    // Same as registry id but an H160 instead of an associated type
+    // Assumes the created registry is the first ever
+    let registry_id = H160::from_slice(&res[0..20]);
 
     // Proofs data
-    let (proofs, static_hashes, doc_root) = proofs_data(registry_id.clone(), token_id.clone());
+    let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
 
     // Registry data
     let nft_data = AssetInfo {
@@ -109,8 +133,7 @@ fn setup_mint<M: VerifierRegistry, T: frame_system::Trait>(origin: T::Origin, to
     // Asset id
     let asset_id = AssetId(registry_id, token_id);
 
-    (origin,
-     asset_id,
+    (asset_id,
      pre_image,
      anchor_id,
      (proofs, static_hashes, doc_root),
@@ -119,31 +142,43 @@ fn setup_mint<M: VerifierRegistry, T: frame_system::Trait>(origin: T::Origin, to
 }
 
 // Convenience function, creates a registry and basic proofs, returns id of minted asset
-pub fn mint_nft<T: frame_system::Trait>(owner: T::AccountId) -> AssetId {
+/*
+pub fn mint_nft<T>(owner: T::AccountId, origin: T::Origin) -> AssetId
+    where T: frame_system::Trait
+           + anchor::Trait
+           + registry::Trait
+           //+ pallet_timestamp::Trait<Moment = u32>
+           + pallet_timestamp::Trait
+           + nft::Trait<AssetInfo = types::AssetInfo>
+{
+    //let owner = 1;
+    //let origin = Origin::signed(owner);
     let token_id = U256::one();
-    let owner = 1;
-    let origin = Origin::signed(owner);
-    let (origin,
-         asset_id,
+    let (asset_id,
          pre_image,
          anchor_id,
          (proofs, static_hashes, doc_root),
          nft_data,
-         registry_info) = setup_mint::<SUT, Test>(origin, token_id);
+         registry_info) = setup_mint::<T>(origin.clone(), token_id);
 
     // Place document anchor into storage for verification
-    assert_ok!( <anchor::Module<Test>>::commit(
+    //assert_ok!( <anchor::Module<Test>>::commit(
+    //assert_ok!( <T as anchor::Trait>::commit(
+    use sp_runtime::traits::Scale;
+    assert_ok!( <anchor::Module<T>>::commit(
         origin.clone(),
         pre_image,
         doc_root,
-        <Test as frame_system::Trait>::Hashing::hash_of(&0),
+        //<Test as frame_system::Trait>::Hashing::hash_of(&0),
+        T::Hashing::hash_of(&0),
         crate::common::MS_PER_DAY + 1) );
+        //<pallet_timestamp::Module<T>>::get().mul(<frame_system::Module<T>>::block_number())) );
 
     let (registry_id, token_id) = asset_id.clone().destruct();
 
     // Mint token with document proof
     assert_ok!(
-        SUT::mint(origin,
+        <registry::Module<T>>::mint(origin,
                   owner,
                   registry_id,
                   token_id,
@@ -156,19 +191,20 @@ pub fn mint_nft<T: frame_system::Trait>(owner: T::AccountId) -> AssetId {
 
     asset_id
 }
+*/
 
 #[test]
 fn mint_with_valid_proofs_works() {
     new_test_ext().execute_with(|| {
         let token_id = U256::one();
         let owner = 1;
-        let (origin,
-             asset_id,
+        let origin = Origin::signed(owner);
+        let (asset_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(owner, token_id);
+             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -207,13 +243,13 @@ fn mint_fails_when_dont_match_doc_root() {
     new_test_ext().execute_with(|| {
         let token_id = U256::one();
         let owner = 1;
-        let (origin,
-             asset_id,
+        let origin = Origin::signed(owner);
+        let (asset_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(owner, token_id);
+             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         let wrong_doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&pre_image);
@@ -248,13 +284,13 @@ fn duplicate_mint_fails() {
     new_test_ext().execute_with(|| {
         let token_id = U256::one();
         let owner = 1;
-        let (origin,
-             asset_id,
+        let origin = Origin::signed(owner);
+        let (asset_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(owner, token_id);
+             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -301,13 +337,13 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
     new_test_ext().execute_with(|| {
         let token_id = U256::one();
         let owner = 1;
-        let (origin,
-             asset_id,
+        let origin = Origin::signed(owner);
+        let (asset_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(owner, token_id);
+             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(

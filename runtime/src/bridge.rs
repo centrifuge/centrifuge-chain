@@ -249,10 +249,10 @@ mod tests{
 	use sp_core::hashing::blake2_128;
 	use sp_runtime::{
 		testing::Header,
-		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
+		traits::{AccountIdConversion, BlakeTwo256, Hash, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
 	};
 	use crate::bridge as pallet_bridge;
-    use crate::nft;
+    use crate::{nft, registry};
 
 	pub use pallet_balances as balances;
 
@@ -338,7 +338,7 @@ mod tests{
 
     impl nft::Trait for Test {
         type Event = Event;
-        type AssetInfo = crate::registry::types::AssetInfo;
+        type AssetInfo = registry::types::AssetInfo;
     }
 
     impl bridge_names::Trait for Test {
@@ -346,6 +346,21 @@ mod tests{
         type Address = Address;
         type Admin = frame_system::EnsureRoot<Self::AccountId>;
     }
+
+    // So that nfts can be minted
+    impl registry::Trait for Test {
+        type Event = Event;
+    }
+
+    impl crate::anchor::Trait for Test {}
+
+    impl pallet_timestamp::Trait for Test {
+        type Moment = u64;
+        type OnTimestampSet = ();
+        type MinimumPeriod = ();
+        type WeightInfo = ();
+    }
+
 
 	parameter_types! {
 		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
@@ -375,6 +390,7 @@ mod tests{
 			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
 			Fees: fees::{Module, Call, Event<T>},
             Nft: nft::{Module, Event<T>},
+            Registry: registry::{Module, Call, Event<T>},
 		}
 	);
 
@@ -523,7 +539,39 @@ mod tests{
             let resource_id = NativeTokenId::get();
             let recipient = vec![1];
             let owner = RELAYER_B;
-            let (registry_id, token_id) = crate::registry::tests::mint_nft::<Test>(owner).destruct();
+            let origin = Origin::signed(owner);
+
+            let token_id = U256::one();
+            let (asset_id,
+                 pre_image,
+                 anchor_id,
+                 (proofs, static_hashes, doc_root),
+                 nft_data,
+                 registry_info) = registry::tests::setup_mint::<Test>(origin.clone(), token_id);
+
+            // Commit document root
+            assert_ok!( <crate::anchor::Module<Test>>::commit(
+                origin.clone(),
+                pre_image,
+                doc_root,
+                <Test as frame_system::Trait>::Hashing::hash_of(&0),
+                //T::Hashing::hash_of(&0),
+                crate::common::MS_PER_DAY + 1) );
+
+            // Mint token with document proof
+            let (registry_id, token_id) = asset_id.clone().destruct();
+            assert_ok!(
+                <registry::Module<Test>>::mint(origin,
+                          owner,
+                          registry_id,
+                          token_id,
+                          nft_data.clone(),
+                          registry::types::MintInfo {
+                              anchor_id: anchor_id,
+                              proofs: proofs,
+                              static_hashes: static_hashes,
+                          }));
+            //let (registry_id, token_id) = registry::tests::mint_nft::<Test>(owner, origin).destruct();
 
             // Whitelist destination chain
             assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
