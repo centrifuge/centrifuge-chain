@@ -542,6 +542,7 @@ mod tests{
             let origin = Origin::signed(owner);
 
             let token_id = U256::one();
+            // Create registry and generate proofs
             let (asset_id,
                  pre_image,
                  anchor_id,
@@ -555,8 +556,7 @@ mod tests{
                 pre_image,
                 doc_root,
                 <Test as frame_system::Trait>::Hashing::hash_of(&0),
-                //T::Hashing::hash_of(&0),
-                crate::common::MS_PER_DAY + 1) );
+                crate::common::MS_PER_DAY + 1));
 
             // Mint token with document proof
             let (registry_id, token_id) = asset_id.clone().destruct();
@@ -571,13 +571,26 @@ mod tests{
                               proofs: proofs,
                               static_hashes: static_hashes,
                           }));
-            //let (registry_id, token_id) = registry::tests::mint_nft::<Test>(owner, origin).destruct();
 
             // Whitelist destination chain
             assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
 
+            // Owner account does not yet own nft
             let nft_owner = <crate::nft::Module<Test>>::account_for_asset(registry_id, token_id);
             assert!(nft_owner != owner);
+
+            // Using account with not enough balance for fee should fail when requesting transfer
+            /*
+            assert_err!(
+                PalletBridge::transfer_native(
+                    Origin::signed(RELAYER_C),
+                    amount.clone(),
+                    recipient.clone(),
+                    dest_chain,
+                ),
+                "Insufficient Balance"
+            );
+            */
 
             // Transfer nonfungible
             assert_ok!(
@@ -588,8 +601,10 @@ mod tests{
                     token_id,
                     dest_chain));
 
+            // Now it should own
             let nft_owner = <crate::nft::Module<Test>>::account_for_asset(registry_id, token_id);
             assert_eq!(nft_owner, RELAYER_B);
+
             // Check that nft is locked in bridge account
             // Check that transfer event was emitted
         })
