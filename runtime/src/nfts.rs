@@ -89,6 +89,7 @@ mod tests {
         assert_err, assert_ok, dispatch::DispatchError, ord_parameter_types, parameter_types,
         weights::Weight,
     };
+    //use chainbridge::ResourceId;
     use frame_system::EnsureSignedBy;
     use sp_core::hashing::blake2_128;
     use sp_core::H256;
@@ -224,6 +225,12 @@ mod tests {
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
         type WeightInfo = ();
+    }
+
+    impl bridge_names::Trait for Test {
+        type ResourceId = crate::bridge::ResourceId;
+        type Address = crate::bridge::Address;
+        type Admin = frame_system::EnsureRoot<Self::AccountId>;
     }
 
     pub const USER_A: u64 = 0x1;

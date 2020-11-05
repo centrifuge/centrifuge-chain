@@ -6,14 +6,14 @@
 
 use sp_std::prelude::*;
 use frame_support::{
-    construct_runtime, parameter_types, debug,
+    construct_runtime, parameter_types, debug, RuntimeDebug,
     weights::{
         Weight,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
-    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier},
+    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter},
 };
-use codec::Encode;
+use codec::{Encode, Decode};
 use sp_core::{
     H256,
     crypto::KeyTypeId,
@@ -61,6 +61,9 @@ pub mod impls;
 use impls::{CurrencyToVoteHandler, Author};
 use bridge as pallet_bridge;
 
+// Bridge access control list pallet
+use bridge_names;
+
 /// Used for anchor module
 pub mod anchor;
 
@@ -84,6 +87,9 @@ mod va_registry;
 
 /// nft module
 mod nft;
+
+/// radial reward claims module
+mod rad_claims;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -198,10 +204,72 @@ impl frame_system::Trait for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const MultisigDepositBase: Balance = 30 * CENTI_RAD;
+	pub const DepositBase: Balance = 30 * CENTI_RAD;
 	// Additional storage item size of 32 bytes.
-	pub const MultisigDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const DepositFactor: Balance = 5 * CENTI_RAD;
 	pub const MaxSignatories: u16 = 100;
+}
+
+impl pallet_multisig::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const ProxyDepositBase: Balance = 30 * CENTI_RAD;
+	// Additional storage item size of 32 bytes.
+	pub const ProxyDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const MaxProxies: u16 = 32;
+}
+
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+pub enum ProxyType {
+    Any,
+    NonTransfer,
+    Governance,
+    Staking,
+}
+impl Default for ProxyType { fn default() -> Self { Self::Any } }
+impl InstanceFilter<Call> for ProxyType {
+    fn filter(&self, c: &Call) -> bool {
+        match self {
+            ProxyType::Any => true,
+            ProxyType::NonTransfer => !matches!(c,
+				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+			),
+            ProxyType::Governance => matches!(c,
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
+			),
+            ProxyType::Staking => matches!(c, Call::Staking(..)),
+        }
+    }
+    fn is_superset(&self, o: &Self) -> bool {
+        match (self, o) {
+            (x, y) if x == y => true,
+            (ProxyType::Any, _) => true,
+            (_, ProxyType::Any) => false,
+            (ProxyType::NonTransfer, _) => true,
+            _ => false,
+        }
+    }
+}
+
+impl pallet_proxy::Trait for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type ProxyType = ProxyType;
+    type ProxyDepositBase = ProxyDepositBase;
+    type ProxyDepositFactor = ProxyDepositFactor;
+    type MaxProxies = MaxProxies;
+    type WeightInfo = ();
 }
 
 
@@ -496,7 +564,7 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
-	pub const TermDuration: BlockNumber = 1 * DAYS;
+	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
@@ -749,6 +817,21 @@ impl nft::Trait for Runtime {
     type AssetInfo = va_registry::types::AssetInfo;
 }
 
+impl rad_claims::Trait for Runtime {
+    type Event = Event;
+    type SessionDuration = SessionDuration;
+    type UnsignedPriority = ImOnlineUnsignedPriority;
+}
+
+impl bridge_names::Trait for Runtime {
+    type ResourceId = bridge::ResourceId;
+    type Address = bridge::Address;
+    type Admin = frame_system::EnsureRoot<Self::AccountId>;
+}
+
+// Frame Order in this block dictates the index of each one in the metadata
+// Any addition should be done at the bottom
+// Any deletion affects the following frames during runtime upgrades
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -760,7 +843,6 @@ construct_runtime!(
 		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
@@ -773,18 +855,22 @@ construct_runtime!(
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},
-		Historical: pallet_session_historical::{Module},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
+        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
+		Historical: pallet_session_historical::{Module},
+        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
+        Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
 		Registry: va_registry::{Module, Call, Storage, Event<T>},
-		Nft: nft::{Module, Storage, Event<T>},
+		Nft: nft::{Module, Call, Storage, Event<T>},
+		RadClaims: rad_claims::{Module, Call, Storage, Event<T>},
 	}
 );
 

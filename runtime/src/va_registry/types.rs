@@ -1,9 +1,8 @@
-//pub use crate::nft::AssetId;
+use sp_core::{U256, H160};
+use crate::{proofs, bridge};
 use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
-use sp_core::{U256, H160};
-use crate::proofs;
 
 pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
 // TODO: Is the padding needed?
@@ -16,7 +15,7 @@ pub type Bytes = Vec<u8>;
 pub type RegistryId = H160;
 
 /// A cryptographic salt to be combined with a value before hashing.
-pub type Salt = Bytes;
+pub type Salt = [u8; 32];
 
 /// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 /// A registry id is needed as well to uniquely identify an asset on-chain.
@@ -44,6 +43,12 @@ impl<'a> From<&'a AssetId> for AssetIdRef<'a> {
 impl<'a> AssetIdRef<'a> {
     pub fn destruct(self) -> (&'a RegistryId, &'a TokenId) {
         (self.0, self.1)
+    }
+}
+
+impl From<bridge::Address> for RegistryId {
+    fn from(a: bridge::Address) -> Self {
+        H160::from_slice(&a.0[..20])
     }
 }
 
@@ -85,7 +90,7 @@ impl From<Proof<sp_core::H256>> for proofs::Proof {
     fn from(mut p: Proof<sp_core::H256>) -> Self {
         // Generate leaf hash from property ++ value ++ salt
         p.property.extend(p.value);
-        p.property.extend(p.salt);
+        p.property.extend(&p.salt);
         let leaf_hash = sp_io::hashing::keccak_256(&p.property).into();
 
         proofs::Proof::new(leaf_hash, p.hashes)

@@ -21,6 +21,7 @@ smallvec = "1.4.0"
 static_assertions = "1.1.0"
 hex-literal = "0.2.1"
 unique_assets = { git = "https://github.com/jaybutera/unique-assets", default-features = false }
+bridge-names = { path = "../pallets/bridge-names", default-features = false }
 
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
@@ -61,7 +62,9 @@ pallet-grandpa = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/s
 pallet-im-online = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 pallet-indices = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 pallet-membership = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
+pallet-multisig = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 pallet-offences = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
+pallet-proxy = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 pallet-randomness-collective-flip = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
 pallet-session = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false, features = ["historical"] }
 pallet-staking = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "7f5382862e1f47875f05a5e7ad6219d694ffbc69", default-features = false }
@@ -98,11 +101,13 @@ std = [
     "pallet-indices/std",
     "sp-inherents/std",
     "pallet-membership/std",
+    "pallet-multisig/std",
     "pallet-identity/std",
     "pallet-scheduler/std",
     "node-primitives/std",
     "sp-offchain/std",
     "pallet-offences/std",
+    "pallet-proxy/std",
     "sp-core/std",
     "pallet-randomness-collective-flip/std",
     "sp-std/std",
@@ -125,6 +130,7 @@ std = [
     "sp-version/std",
     "sp-arithmetic/std",
     "chainbridge/std",
+    "bridge-names/std",
     "substrate-pallet-multi-account/std",
     "sp-io/std",
     "rustc-hex",

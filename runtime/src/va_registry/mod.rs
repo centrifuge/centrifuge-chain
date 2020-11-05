@@ -33,7 +33,7 @@ pub mod types;
 mod mock;
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
