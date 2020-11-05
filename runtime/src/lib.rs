@@ -800,11 +800,12 @@ impl chainbridge::Trait for Runtime {
 
 parameter_types! {
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const Longevity: u32 = 64;
 }
 
 impl rad_claims::Trait for Runtime {
     type Event = Event;
-    type SessionDuration = SessionDuration;
+    type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
     type Currency = Balances;

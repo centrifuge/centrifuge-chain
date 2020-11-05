@@ -1,10 +1,10 @@
-use sp_core::{Encode, U256};
+use sp_core::{Encode};
 use sp_runtime::traits::{Hash, SaturatedConversion};
 use frame_system::{ensure_none, ensure_root, ensure_signed};
 use crate::constants::currency;
 use sp_std::{vec::Vec, convert::TryInto};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error,
-                    traits::{Get, EnsureOrigin, Currency, ExistenceRequirement::AllowDeath},
+                    traits::{Get, EnsureOrigin, Currency, ExistenceRequirement::KeepAlive},
                     ensure, dispatch::DispatchResult};
 use sp_runtime::{
     ModuleId,
@@ -15,19 +15,16 @@ use sp_runtime::{
     }
 };
 
-const MODULE_ID: ModuleId = ModuleId(*b"ct/claim");
+const MODULE_ID: ModuleId = ModuleId(*b"rd/claim");
 const MIN_PAYOUT: node_primitives::Balance = 5 * currency::RAD;
 
 pub trait Trait: frame_system::Trait + pallet_balances::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 
-    /// An expected duration of the session.
+    /// An expected longevity of the validated extrinsic.
     ///
-    /// This parameter is used to determine the longevity of `heartbeat` transaction
-    /// and a rough time when we should start considering sending heartbeats,
-    /// since the workers avoids sending them at the very beginning of the session, assuming
-    /// there is a chance the authority will produce a block and they won't be necessary.
-    type SessionDuration: Get<Self::BlockNumber>;
+    /// This parameter is used to determine the longevity of `claim` transaction
+    type Longevity: Get<Self::BlockNumber>;
 
     /// A configuration for base priority of unsigned transactions.
     ///
@@ -94,6 +91,8 @@ decl_module! {
         ) -> DispatchResult {
             ensure_none(origin)?;
 
+            ensure!(Self::verify_proofs(&account_id, &amount, &sorted_hashes), Error::<T>::InvalidProofs);
+
             let claimed = Self::get_account_balance(&account_id);
 
             // Payout = amount - claim
@@ -105,20 +104,17 @@ decl_module! {
                     Error::<T>::UnderMinPayout);
 
             let source = MODULE_ID.into_account();
-            // Checking balance of Module account before proceeding
-            let current_balance = T::Currency::free_balance(&source);
-            ensure!(U256::from(current_balance.saturated_into()) >= U256::from(payout.saturated_into()), Error::<T>::InsufficientBalance);
-
-            // Set account balance to amount
-            AccountBalances::<T>::insert(account_id.clone(), amount);
 
             // Transfer payout amount
             <pallet_balances::Module<T> as Currency<_>>::transfer(
                 &source,
                 &account_id,
                 payout,
-                AllowDeath,
+                KeepAlive,
             )?;
+
+            // Set account balance to amount
+            AccountBalances::<T>::insert(account_id.clone(), amount);
 
             Self::deposit_event(RawEvent::Claimed(account_id, amount));
 
@@ -182,6 +178,31 @@ impl<T: Trait> Module<T> {
 
         Ok(())
     }
+
+    fn verify_proofs(account_id: &T::AccountId, amount: &T::Balance, sorted_hashes: &Vec<T::Hash>) -> bool {
+        // Number of proofs should practically never be >30. Checking this
+        // blocks abuse.
+        if sorted_hashes.len() > 30 {
+            return false;
+        }
+
+        // Concat account id : amount
+        let mut v: Vec<u8> = account_id.encode();
+        v.extend(amount.encode());
+
+        // Generate root hash
+        let leaf_hash = T::Hashing::hash_of(&v);
+        let mut root_hash = sorted_hashes.iter()
+            .fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
+
+        // Initial runs might only have trees of single leaves,
+        // in this case leaf_hash is as well root_hash
+        if sorted_hashes.len() == 0 {
+            root_hash = leaf_hash;
+        }
+
+        Self::get_root_hash(root_hash)
+    }
 }
 
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
@@ -192,33 +213,12 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
         call: &Self::Call,
     ) -> TransactionValidity {
         if let Call::claim(account_id, amount, sorted_hashes) = call {
-            // Number of proofs should practically never be >30. Checking this
-            // blocks abuse.
-            if sorted_hashes.len() > 30 {
-                return InvalidTransaction::BadProof.into()
-            }
-
-            // Concat account id : amount
-            let mut v: Vec<u8> = account_id.encode();
-            v.extend(amount.encode());
-
-            // Generate root hash
-            let leaf_hash = T::Hashing::hash_of(&v);
-            let mut root_hash = sorted_hashes.iter()
-                .fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
-
-            // Initial runs might only have trees of single leaves,
-            // in this case leaf_hash is as well root_hash
-            if sorted_hashes.len() == 0 {
-                root_hash = leaf_hash;
-            }
-
-            // Check that root exists in root hash storage
-            if Self::get_root_hash(root_hash) == true {
+            // Check that proofs are valid with a root that exists in the root hash storage
+            if Self::verify_proofs(account_id, amount, sorted_hashes.into()) {
                 return ValidTransaction::with_tag_prefix("RADclaim")
                     .priority(T::UnsignedPriority::get())
                     .longevity(TryInto::<u64>::try_into(
-                        T::SessionDuration::get() / 2.into())
+                        T::Longevity::get())
                         .unwrap_or(64_u64))
                     .propagate(true)
                     .build()
@@ -247,6 +247,7 @@ mod tests {
         traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
     };
     pub use pallet_balances as balances;
+    use pallet_balances::Error as BalancesError;
 
     impl_outer_origin! {
         pub enum Origin for Test  where system = frame_system {}
@@ -293,13 +294,13 @@ mod tests {
     }
     ord_parameter_types! {
         pub const One: u64 = 1;
-        pub const SessionDuration: u64 = 10 as u64;
+        pub const Longevity: u32 = 64;
         pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     }
 
     impl Trait for Test {
         type Event = ();
-        type SessionDuration = SessionDuration;
+        type Longevity = Longevity;
         type UnsignedPriority = UnsignedPriority;
         type AdminOrigin = EnsureSignedBy<One, u64>;
         type Currency = Balances;
@@ -353,6 +354,67 @@ mod tests {
     }
 
     #[test]
+    fn verify_proofs() {
+        new_test_ext().execute_with(|| {
+            let amount: u128 = 100 * currency::RAD;
+            let sorted_hashes_long: [H256; 31] = [
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
+                [0; 32].into()
+            ];
+
+            // Abuse DDoS attach check
+            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &sorted_hashes_long.to_vec()), false);
+
+            // Wrong sorted hashes for merkle tree
+            let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
+            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), false);
+
+            let mut v: Vec<u8> = USER_B.encode();
+            v.extend(amount.encode());
+
+            // Single-leaf tree
+            assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+            let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
+            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
+
+            // Two-leaf tree
+            let root_hash = RadClaims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
+            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), true);
+
+            // 10-leaf tree
+            let leaf_hash_0: H256 = [0; 32].into();
+            let leaf_hash_1: H256 = [1; 32].into();
+            let leaf_hash_2: H256 = leaf_hash;
+            let leaf_hash_3: H256 = [3; 32].into();
+            let leaf_hash_4: H256 = [4; 32].into();
+            let leaf_hash_5: H256 = [5; 32].into();
+            let leaf_hash_6: H256 = [6; 32].into();
+            let leaf_hash_7: H256 = [7; 32].into();
+            let leaf_hash_8: H256 = [8; 32].into();
+            let leaf_hash_9: H256 = [9; 32].into();
+            let node_0 = RadClaims::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
+            let node_1 = RadClaims::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
+            let node_2 = RadClaims::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
+            let node_3 = RadClaims::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
+            let node_4 = RadClaims::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
+            let node_00 = RadClaims::sorted_hash_of(&node_0, &node_1);
+            let node_01 = RadClaims::sorted_hash_of(&node_2, &node_3);
+            let node_000 = RadClaims::sorted_hash_of(&node_00, &node_01);
+            let node_root = RadClaims::sorted_hash_of(&node_000, &node_4);
+
+            let four_sorted_hashes: [H256; 4] = [leaf_hash_3.into(), node_0.into(), node_01.into(), node_4.into()];
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), node_root));
+            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &four_sorted_hashes.to_vec()), true);
+        });
+    }
+
+    #[test]
     fn set_upload_account() {
         new_test_ext().execute_with(|| {
             assert_eq!(RadClaims::get_upload_account(), 0x0);
@@ -367,54 +429,91 @@ mod tests {
         new_test_ext().execute_with(|| {
             assert_eq!(RadClaims::get_upload_account(), 0x0);
             // USER_A not allowed to upload hash
-            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+            let root_hash = <Test as frame_system::Trait>::Hashing::hash_of(&1);
             assert_err!(
-                RadClaims::store_root_hash(Origin::signed(USER_A), pre_image),
+                RadClaims::store_root_hash(Origin::signed(USER_A), root_hash),
                 Error::<Test>::MustBeAdmin
             );
             // Adding ADMIN as allowed upload account
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
             assert_eq!(RadClaims::get_upload_account(), ADMIN);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), pre_image));
-            assert_eq!(RadClaims::get_root_hash(pre_image), true);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
+            assert_eq!(RadClaims::get_root_hash(root_hash), true);
         });
+    }
+
+    fn pre_calculate_single_root(
+        account_id: &<Test as frame_system::Trait>::AccountId,
+        amount: &<Test as pallet_balances::Trait>::Balance,
+        other_hash: &<Test as frame_system::Trait>::Hash
+    ) -> H256 {
+        let mut v: Vec<u8> = account_id.encode();
+        v.extend(amount.encode());
+        let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
+
+        RadClaims::sorted_hash_of(&leaf_hash, other_hash)
     }
 
     #[test]
     fn claim() {
         new_test_ext().execute_with(|| {
+            let amount: u128 = 100 * currency::RAD;
             // Random sorted hashes
-            let sorted_hashes: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
+            let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
 
             // Bad origin, signed vs unsigned
             assert_err!(
-                RadClaims::claim(Origin::signed(USER_B), USER_B, 100 * currency::RAD, sorted_hashes.to_vec()),
+                RadClaims::claim(Origin::signed(USER_B), USER_B, amount, one_sorted_hashes.to_vec()),
                 BadOrigin
             );
 
+            // proof validation error - roothash not stored
+            assert_err!(
+                RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()),
+                Error::<Test>::InvalidProofs
+            );
+
+            // Set valid proofs
+            assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+
+            let short_root_hash = pre_calculate_single_root(
+                &USER_B, &(4 * currency::RAD), &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), short_root_hash));
+
             // Minimum payout not met
             assert_err!(
-                RadClaims::claim(Origin::none(), USER_B, 4 * currency::RAD, sorted_hashes.to_vec()),
+                RadClaims::claim(Origin::none(), USER_B, 4 * currency::RAD, one_sorted_hashes.to_vec()),
                 Error::<Test>::UnderMinPayout
             );
 
+            let long_root_hash = pre_calculate_single_root(
+                &USER_B, &(10001 * currency::RAD), &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), long_root_hash));
+
             // Claims Module Account does not have enough balance
             assert_err!(
-                RadClaims::claim(Origin::none(), USER_B, 10001 * currency::RAD, sorted_hashes.to_vec()),
-                Error::<Test>::InsufficientBalance
+                RadClaims::claim(Origin::none(), USER_B, 10001 * currency::RAD, one_sorted_hashes.to_vec()),
+                BalancesError::<Test, _>::InsufficientBalance
             );
 
             // Ok
+            let ok_root_hash = pre_calculate_single_root(
+                &USER_B, &amount, &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), ok_root_hash));
+
             let account_balance = <pallet_balances::Module<Test>>::free_balance(USER_B);
-            assert_ok!(RadClaims::claim(Origin::none(), USER_B, 100 * currency::RAD, sorted_hashes.to_vec()));
-            assert_eq!(RadClaims::get_account_balance(USER_B), 100 * currency::RAD);
+            assert_ok!(RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()));
+            assert_eq!(RadClaims::get_account_balance(USER_B), amount);
             let account_new_balance = <pallet_balances::Module<Test>>::free_balance(USER_B);
-            assert_eq!(account_new_balance, account_balance + 100 * currency::RAD);
+            assert_eq!(account_new_balance, account_balance + amount);
 
             // Knowing that account has a balance of 100, trying to claim 50 will fail
             // Since balance logic is accumulative
+            let past_root_hash = pre_calculate_single_root(
+                &USER_B, &(50 * currency::RAD), &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), past_root_hash));
             assert_err!(
-                RadClaims::claim(Origin::none(), USER_B, 50 * currency::RAD, sorted_hashes.to_vec()),
+                RadClaims::claim(Origin::none(), USER_B, 50 * currency::RAD, one_sorted_hashes.to_vec()),
                 Error::<Test>::InsufficientBalance
             );
 
@@ -441,54 +540,13 @@ mod tests {
                 InvalidTransaction::BadProof
             );
 
-            // Root hash was never stored beforehand
-            let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
-            let inner = Call::claim(USER_B, amount, one_sorted_hashes.to_vec());
-            assert_err!(
-                <RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner),
-                InvalidTransaction::BadProof
-            );
-
+            // Two-leaf tree success
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-            let mut v: Vec<u8> = USER_B.encode();
-            v.extend(amount.encode());
-
-            // Single-leaf tree
-            let inner_single = Call::claim(USER_B, amount, [].to_vec());
-            let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
-            assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_single));
-
-            // Two-leaf tree
-            let preimage = RadClaims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), preimage));
+            let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
+            let root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
+            let inner = Call::claim(USER_B, amount, one_sorted_hashes.to_vec());
             assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
-
-            // 10-leaf tree
-            let leaf_hash_0: H256 = [0; 32].into();
-            let leaf_hash_1: H256 = [1; 32].into();
-            let leaf_hash_2: H256 = leaf_hash;
-            let leaf_hash_3: H256 = [3; 32].into();
-            let leaf_hash_4: H256 = [4; 32].into();
-            let leaf_hash_5: H256 = [5; 32].into();
-            let leaf_hash_6: H256 = [6; 32].into();
-            let leaf_hash_7: H256 = [7; 32].into();
-            let leaf_hash_8: H256 = [8; 32].into();
-            let leaf_hash_9: H256 = [9; 32].into();
-            let node_0 = RadClaims::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
-            let node_1 = RadClaims::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
-            let node_2 = RadClaims::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
-            let node_3 = RadClaims::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
-            let node_4 = RadClaims::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
-            let node_00 = RadClaims::sorted_hash_of(&node_0, &node_1);
-            let node_01 = RadClaims::sorted_hash_of(&node_2, &node_3);
-            let node_000 = RadClaims::sorted_hash_of(&node_00, &node_01);
-            let node_root = RadClaims::sorted_hash_of(&node_000, &node_4);
-
-            let four_sorted_hashes: [H256; 4] = [leaf_hash_3.into(), node_0.into(), node_01.into(), node_4.into()];
-            let inner_three = Call::claim(USER_B, amount, four_sorted_hashes.to_vec());
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), node_root));
-            assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_three));
         });
     }
 }
