@@ -31,7 +31,7 @@ type BalanceOf<T> =
 
 /// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
-/// Additional Fee charged when move an NFT to target chain
+/// Additional Fee charged when moving an NFT to target chain
 const NFT_FEE: u128 = 10 * currency::RAD;
 
 impl From<RegistryId> for Address {
@@ -413,6 +413,18 @@ mod tests{
         }
             .assimilate_storage(&mut t)
             .unwrap();
+        fees::GenesisConfig::<Test> {
+            initial_fees: vec![(
+                // anchoring state rent fee per day
+                H256::from(&[
+                    17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31, 97,
+                    133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
+                ]),
+                // state rent 0 for tests
+                0,
+            )]}
+            .assimilate_storage(&mut t)
+            .unwrap();
         let mut ext = sp_io::TestExternalities::new(t);
         ext.execute_with(|| System::set_block_number(1));
         ext
@@ -538,7 +550,7 @@ mod tests{
             let dest_chain = 0;
             let resource_id = NativeTokenId::get();
             let recipient = vec![1];
-            let owner = RELAYER_B;
+            let owner = RELAYER_A;
             let origin = Origin::signed(owner);
 
             let token_id = U256::one();
@@ -575,9 +587,15 @@ mod tests{
             // Whitelist destination chain
             assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
 
-            // Owner account does not yet own nft
-            let nft_owner = <crate::nft::Module<Test>>::account_for_asset(registry_id, token_id);
-            assert!(nft_owner != owner);
+            // Register resource with chainbridge
+            assert_ok!(<chainbridge::Module<Test>>::register_resource(resource_id.clone(), vec![]));
+            // Register resource in local resource mapping
+            <bridge_names::Module<Test>>::set_resource(resource_id.clone(),
+                                                       registry_id.clone().into());
+
+            // Owner owns nft
+            assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+                       owner);
 
             // Using account with not enough balance for fee should fail when requesting transfer
             /*
@@ -592,21 +610,30 @@ mod tests{
             );
             */
 
-            // Transfer nonfungible
+            // Transfer nonfungible through bridge
             assert_ok!(
                 PalletBridge::transfer_asset(
                     Origin::signed(owner),
                     recipient.clone(),
                     registry_id,
-                    token_id,
+                    token_id.clone(),
                     dest_chain));
 
-            // Now it should own
-            let nft_owner = <crate::nft::Module<Test>>::account_for_asset(registry_id, token_id);
-            assert_eq!(nft_owner, RELAYER_B);
+            // Now bridge module owns the nft
+            assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+                       <chainbridge::Module<Test>>::account_id());
 
-            // Check that nft is locked in bridge account
             // Check that transfer event was emitted
+            let tid: &mut [u8] = &mut[0; 32];
+            token_id.to_big_endian(tid);
+            expect_event(chainbridge::RawEvent::NonFungibleTransfer(
+                dest_chain,
+                1,
+                resource_id,
+                tid.to_vec(),
+                recipient,
+                vec![],
+            ));
         })
     }
 
