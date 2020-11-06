@@ -16,10 +16,11 @@
 //! to generate the root. When the root hash matches that of the anchor,
 //! a mint can be verified.
 
-use sp_core::{H256, U256, H160};
 use frame_support::{
+    ensure, dispatch, traits::Get,
     decl_module, decl_storage, decl_event, decl_error,
-    ensure, dispatch};
+    weights::{DispatchClass, ClassifyDispatch, WeighData, Weight, FunctionOf, Pays}};
+use sp_core::{H256, U256, H160};
 use frame_system::ensure_signed;
 use sp_std::{cmp::Eq, vec::Vec};
 use unique_assets::traits::Mintable;
@@ -89,7 +90,7 @@ decl_module! {
         type Error = Error<T>;
         fn deposit_event() = default;
 
-        #[weight = 10_000]
+        #[weight = T::DbWeight::get().reads_writes(1,2) + 195_000_000]
         pub fn create_registry(origin,
                                info: RegistryInfo,
         ) -> dispatch::DispatchResult {
@@ -103,7 +104,13 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = 10_000]
+        #[weight = FunctionOf(
+            |args: (&T::AccountId, &RegistryId, &TokenId, &T::AssetInfo, &MintInfo<T::Hash, H256>)|
+                args.4.proofs.len().saturating_mul(100_000) as u64
+                + T::DbWeight::get().reads_writes(3,2)
+                + 195_000_000,
+            DispatchClass::Normal,
+            Pays::Yes)]
         pub fn mint(origin,
                     owner_account: <T as frame_system::Trait>::AccountId,
                     registry_id: RegistryId,
