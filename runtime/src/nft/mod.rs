@@ -94,7 +94,7 @@ decl_module! {
         /// - `dest_account`: Receiver of the asset.
         /// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
         ///   of the info that defines the asset to destroy.
-        #[weight = 10_000]
+        #[weight = T::DbWeight::get().reads_writes(1,1) + 195_000_000]
         pub fn transfer(origin,
                         dest_account: T::AccountId,
                         registry_id: RegistryId,
