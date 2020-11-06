@@ -10,8 +10,8 @@ use frame_support::{
     decl_module, decl_storage,
     dispatch::{DispatchError, DispatchResult},
     ensure,
-    storage::{child, child::ChildInfo},
-    weights::{Weight, DispatchClass},
+    storage::{child},
+    weights::{DispatchClass},
 };
 use frame_system::ensure_signed;
 use sp_runtime::traits::Hash;
@@ -104,11 +104,6 @@ decl_storage! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-
-        fn on_runtime_upgrade() -> Weight {
-			Self::migrate_anchors();
-			0
-		}
 
         /// Obtains an exclusive lock to make the next update to a certain document version
         /// identified by `anchor_id` on Centrifuge p2p network for a number of blocks given
@@ -424,41 +419,6 @@ impl<T: Trait> Module<T> {
         let idx = LatestAnchorIndex::get() + 1;
         <AnchorIndexes<T>>::insert(idx, &anchor_id);
         LatestAnchorIndex::put(idx);
-    }
-
-    pub fn migrate_anchors() -> usize {
-        sp_runtime::print("Anchor: Running Migrations");
-        let last_idx = LatestAnchorIndex::get();
-        let mut moved: Vec<ChildInfo> = [].to_vec();
-        for i in 0..last_idx {
-            let anchor_id = <AnchorIndexes<T>>::get(i+1);
-            let anchor_evict_date = <AnchorEvictDates<T>>::get(anchor_id);
-            let anchor_evict_date_enc = anchor_evict_date.encode();
-
-            // Old format
-            let cf: ChildInfo = ChildInfo::new_default(&anchor_evict_date_enc);
-            let ss_anchor_id: &[u8] = &anchor_id.encode();
-            let anchor_data_encoded = child::get_raw(&cf, ss_anchor_id.into());
-            if anchor_data_encoded.is_none() {
-                continue;
-            }
-
-            // New format
-            let prefixed_key = Self::anchor_storage_key(&anchor_evict_date_enc);
-            let new_child_info = common::generate_child_storage_key(&prefixed_key);
-            child::put_raw(&new_child_info, ss_anchor_id, &anchor_data_encoded.unwrap());
-            moved.push(cf);
-        }
-
-        // Delete moved child old keys
-        let vec_iter = moved.iter();
-        for val in vec_iter {
-            child::kill_storage(val);
-        }
-        sp_runtime::print("Anchor: Migrations ran");
-        sp_runtime::print(moved.len());
-
-        moved.len()
     }
 
     fn fee_key() -> <T as frame_system::Trait>::Hash {

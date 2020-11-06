@@ -201,7 +201,6 @@ mod tests {
         type MaximumExtrinsicWeight = ();
         type BaseCallFilter = ();
         type SystemWeightInfo = ();
-        type MigrateAccount = ();
     }
     ord_parameter_types! {
         pub const One: u64 = 1;
