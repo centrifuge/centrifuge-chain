@@ -150,7 +150,6 @@ mod tests {
         type MaximumExtrinsicWeight = ();
         type BaseCallFilter = ();
         type SystemWeightInfo = ();
-        type MigrateAccount = ();
     }
 
     impl anchor::Trait for Test {}
