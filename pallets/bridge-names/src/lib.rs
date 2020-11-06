@@ -50,7 +50,7 @@ decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
         /// Set a resource mapping in the [Names]. Existing keys will be overwritten.
         /// The caller must be the owner of the `rid` ResourceId.
-        #[weight = T::DbWeight::get().reads_writes(0,2)]
+        #[weight = T::DbWeight::get().reads_writes(0,2) + 100_000]
         pub fn set(origin,
                    rid: T::ResourceId,
                    local_addr: T::Address,
@@ -62,7 +62,7 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = T::DbWeight::get().reads_writes(1,2)]
+        #[weight = T::DbWeight::get().reads_writes(1,2) + 100_000]
         pub fn remove(origin,
                       rid: T::ResourceId,
         ) -> DispatchResult {
