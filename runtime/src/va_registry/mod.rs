@@ -104,9 +104,8 @@ decl_module! {
             Ok(())
         }
 
-        #[weight = FunctionOf(
-            |args: (&T::AccountId, &RegistryId, &TokenId, &T::AssetInfo, &MintInfo<T::Hash, H256>)|
-                args.4.proofs.len().saturating_mul(100_000) as u64
+        #[weight =
+            (mint_info.proofs.len().saturating_mul(100_000) as u64
                 + T::DbWeight::get().reads_writes(3,2)
                 + 195_000_000,
             DispatchClass::Normal,
