@@ -45,7 +45,6 @@ impl system::Trait for Test {
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
-    type MigrateAccount = ();
 }
 
 // For testing the pallet, we construct most of a mock runtime. This means
