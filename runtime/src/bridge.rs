@@ -92,7 +92,7 @@ decl_event! {
     pub enum Event<T> where
         <T as frame_system::Trait>::Hash,
     {
-        Remark(Hash),
+        Remark(Hash, ResourceId),
     }
 }
 
@@ -183,7 +183,7 @@ decl_module! {
 
         /// Executes a simple currency transfer using the chainbridge account as the source
         #[weight = 195_000_000]
-        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>, r_id: ResourceId) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
@@ -193,6 +193,7 @@ decl_module! {
         pub fn receive_nonfungible(origin,
                                    to: T::AccountId,
                                    token_id: TokenId,
+                                   _metadata: Vec<u8>,
                                    resource_id: ResourceId
         ) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
@@ -210,9 +211,9 @@ decl_module! {
 
         /// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
         #[weight = 195_000_000]
-        pub fn remark(origin, hash: T::Hash) -> DispatchResult {
+        pub fn remark(origin, hash: T::Hash, r_id: ResourceId) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
-            Self::deposit_event(RawEvent::Remark(hash));
+            Self::deposit_event(RawEvent::Remark(hash, r_id));
             Ok(())
         }
 
@@ -476,12 +477,12 @@ mod tests{
 		}
 	}
 
-	fn make_remark_proposal(hash: H256) -> Call {
-		Call::PalletBridge(crate::bridge::Call::remark(hash))
+	fn make_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
+		Call::PalletBridge(crate::bridge::Call::remark(hash, r_id))
 	}
 
-	fn make_transfer_proposal(to: u64, amount: u128) -> Call {
-		Call::PalletBridge(crate::bridge::Call::transfer(to, amount))
+	fn make_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
+		Call::PalletBridge(crate::bridge::Call::transfer(to, amount, r_id))
 	}
 
 
@@ -610,6 +611,7 @@ mod tests{
             assert_ok!(<Module<Test>>::receive_nonfungible(origin,
                                                            recipient,
                                                            token_id,
+                                                           vec![],
                                                            resource_id));
 
             // Recipient owns the nft now
@@ -685,10 +687,10 @@ mod tests{
 	fn execute_remark() {
 		new_test_ext().execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
-			let proposal = make_remark_proposal(hash.clone());
 			let prop_id = 1;
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
+			let proposal = make_remark_proposal(hash.clone(), r_id);
 			let resource = b"PalletBridge.remark".to_vec();
 
 			assert_ok!(ChainBridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
@@ -712,7 +714,7 @@ mod tests{
 				Box::new(proposal.clone())
 			));
 
-			event_exists(RawEvent::Remark(hash));
+			event_exists(RawEvent::Remark(hash, r_id));
 		})
 	}
 
@@ -720,16 +722,17 @@ mod tests{
 	fn execute_remark_bad_origin() {
 		new_test_ext().execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
+			let r_id = chainbridge::derive_resource_id(1, b"hash");
 
-			assert_ok!(PalletBridge::remark(Origin::signed(ChainBridge::account_id()), hash));
+			assert_ok!(PalletBridge::remark(Origin::signed(ChainBridge::account_id()), hash, r_id));
 			// Don't allow any signed origin except from chainbridge addr
 			assert_noop!(
-				PalletBridge::remark(Origin::signed(RELAYER_A), hash),
+				PalletBridge::remark(Origin::signed(RELAYER_A), hash, r_id),
 				DispatchError::BadOrigin
 			);
 			// Don't allow root calls
 			assert_noop!(
-				PalletBridge::remark(Origin::root(), hash),
+				PalletBridge::remark(Origin::root(), hash, r_id),
 				DispatchError::BadOrigin
 			);
 		})
@@ -740,12 +743,14 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			// Check inital state
 			let bridge_id: u64 = ChainBridge::account_id();
+            let resource_id = NativeTokenId::get();
 			assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
 			// Transfer and check result
 			assert_ok!(PalletBridge::transfer(
 				Origin::signed(ChainBridge::account_id()),
 				RELAYER_A,
-				10
+				10,
+                resource_id
 			));
 			assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
@@ -765,7 +770,7 @@ mod tests{
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"transfer");
 			let resource = b"PalletBridge.transfer".to_vec();
-			let proposal = make_transfer_proposal(RELAYER_A, 10);
+			let proposal = make_transfer_proposal(RELAYER_A, 10, r_id);
 
 			assert_ok!(ChainBridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
