@@ -154,7 +154,7 @@ impl<T: Trait> Module<T> {
         let mut res = Vec::<u8>::with_capacity(32);
         unsafe { res.set_len(32); }
         // U256 > H160 so no need for a checked_add
-        U256::from_big_endian(id.as_bytes())
+        U256::from(id.as_bytes())
              .saturating_add(U256::one())
              .to_big_endian(&mut res);
 
