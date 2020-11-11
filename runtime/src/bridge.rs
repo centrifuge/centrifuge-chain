@@ -558,7 +558,7 @@ mod tests{
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = registry::tests::setup_mint::<Test>(origin.clone(), token_id);
+             _) = registry::tests::setup_mint::<Test>(token_id);
 
         // Commit document root
         assert_ok!( <crate::anchor::Module<Test>>::commit(

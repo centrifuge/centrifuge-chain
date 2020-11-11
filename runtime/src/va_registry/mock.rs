@@ -1,9 +1,9 @@
 use sp_core::H256;
 use crate::va_registry::{Module, Trait};
-use crate::{anchor, nft, fees, va_registry};
+use crate::{nft, fees, va_registry};
 use frame_support::{impl_outer_origin, impl_outer_event, parameter_types, weights::Weight};
 use sp_runtime::{
-    traits::{Block as BlockT, BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
+    traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
 
 impl_outer_origin! {
@@ -59,7 +59,7 @@ impl frame_system::Trait for Test {
     type SystemWeightInfo = ();
 }
 
-impl crate::nft::Trait for Test {
+impl nft::Trait for Test {
     type Event = MetaEvent;
     type AssetInfo = crate::va_registry::types::AssetInfo;
 }
@@ -73,7 +73,7 @@ impl pallet_timestamp::Trait for Test {
     type WeightInfo = ();
 }
 
-impl crate::fees::Trait for Test {
+impl fees::Trait for Test {
     type Event = MetaEvent;
     type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
 }
