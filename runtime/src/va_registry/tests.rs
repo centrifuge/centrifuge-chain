@@ -1,12 +1,13 @@
+use sp_std::fmt::Debug;
 use crate::{proofs, anchor};
-use sp_runtime::traits::Hash;
-use sp_core::{H256, H160, U256, Encode};
 use crate::nft::Error as NftError;
-use frame_support::{assert_err, assert_ok};
+use sp_runtime::traits::{Hash, Member};
+use sp_core::{H256, H160, U256, Encode};
+use frame_support::{assert_err, assert_ok, Parameter};
 use crate::va_registry::{
     self, Error, mock::*,
     types::{AssetId, NFTS_PREFIX, Proof, TokenId, RegistryId,
-            MintInfo, RegistryInfo, AssetInfo},
+            MintInfo, RegistryInfo, AssetInfo, VerifierRegistry},
 };
 use crate::nft;
 
@@ -65,15 +66,6 @@ fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenI
     (proofs, static_hashes, doc_root)
 }
 
-fn last_event<T>() -> <T as frame_system::Trait>::Event
-    where T: frame_system::Trait
-{
-    frame_system::Module::<T>::events()
-        .pop()
-        .map(|e| e.event)
-        .expect("Event expected")
-}
-
 // Creates a registry and returns all relevant data
 pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
     -> (AssetId,
@@ -83,7 +75,7 @@ pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
         RegistryInfo)
     where T: frame_system::Trait
            + va_registry::Trait
-           + nft::Trait<AssetInfo = AssetInfo>
+           + nft::Trait<AssetInfo = AssetInfo>,
 {
     let metadata  = vec![];
 
@@ -99,31 +91,11 @@ pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
         fields: properties,
     };
 
-    // Create registry, get registry id
-    assert_ok!( <va_registry::Module<T>>::create_registry(origin, registry_info.clone()) );
-    //let e: Event<T> = last_event::<T>().into();
-    /*
-    let registry_id = match last_event::<T>() {
-        <T as va_registry::Trait>::Event::from(va_registry::RawEvent::RegistryCreated(r_id)) => r_id,
-        _ => panic!("Latest event is not a RegistryCreated"),
+    // Create registry, get registry id. Shouldn't fail.
+    let registry_id = match <va_registry::Module<T> as VerifierRegistry>::create_registry(registry_info.clone()) {
+        Ok(r_id) => r_id,
+        Err(e) => panic!("{:#?}", e),
     };
-    */
-    //let e = ::Module::<T>::events().pop().map(|e| e.event).expect("Event expected");
-    let registry_id = match last_event::<T>() {
-        Event::system(va_registry::RawEvent::RegistryCreated(r_id)) => r_id,
-        _ => panic!("Latest event is not a RegistryCreated"),
-    };
-
-    // Same as registry id but an H160 instead of an associated type
-    // Assumes the created registry is the first ever
-    /*
-    let mut res = Vec::<u8>::with_capacity(32);
-    unsafe { res.set_len(32); }
-    U256::from_big_endian(H160::zero().as_bytes())
-         .saturating_add(U256::one())
-         .to_big_endian(&mut res);
-    let registry_id = H160::from_slice(&res[0..20]);
-     */
 
     // Proofs data
     let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
@@ -330,11 +302,11 @@ fn create_two_registries() {
         let token_id = U256::one();
         let owner = 1;
         let origin = Origin::signed(owner);
-        let (asset_id,
-             pre_image,
-             anchor_id,
-             (proofs, static_hashes, doc_root),
-             nft_data,
-             _) = setup_mint::<Test>(origin.clone(), token_id);
+        let (asset_id1,_,_,_,_,_) = setup_mint::<Test>(origin.clone(), token_id);
+        let (asset_id2,_,_,_,_,_) = setup_mint::<Test>(origin.clone(), token_id);
+        let (reg_id1,_) = asset_id1.destruct();
+        let (reg_id2,_) = asset_id2.destruct();
+
+        assert!(reg_id1 != reg_id2);
     });
 }

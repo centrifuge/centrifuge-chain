@@ -1,10 +1,28 @@
 use sp_core::H256;
 use crate::va_registry::{Module, Trait};
 use crate::{anchor, nft, fees, va_registry};
-use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
+use frame_support::{impl_outer_origin, impl_outer_event, parameter_types, weights::Weight};
 use sp_runtime::{
     traits::{Block as BlockT, BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
+
+impl_outer_origin! {
+    pub enum Origin for Test {}
+}
+
+impl_outer_event! {
+    pub enum MetaEvent for Test {
+        frame_system<T>,
+        va_registry<T>,
+        pallet_balances<T>,
+        nft<T>,
+        fees<T>,
+    }
+}
+
+// Configure a mock runtime to test the pallet.
+#[derive(Clone, Eq, PartialEq)]
+pub struct Test;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -16,7 +34,7 @@ parameter_types! {
 impl frame_system::Trait for Test {
     type BaseCallFilter = ();
     type Origin = Origin;
-    type Call = Call;
+    type Call = ();
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -24,7 +42,7 @@ impl frame_system::Trait for Test {
     type AccountId = u64;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type Event = MetaEvent;
     type BlockHashCount = BlockHashCount;
     type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = ();
@@ -42,7 +60,7 @@ impl frame_system::Trait for Test {
 }
 
 impl crate::nft::Trait for Test {
-    type Event = Event;
+    type Event = MetaEvent;
     type AssetInfo = crate::va_registry::types::AssetInfo;
 }
 
@@ -56,7 +74,7 @@ impl pallet_timestamp::Trait for Test {
 }
 
 impl crate::fees::Trait for Test {
-    type Event = Event;
+    type Event = MetaEvent;
     type FeeChangeOrigin = frame_system::EnsureRoot<u64>;
 }
 
@@ -66,7 +84,7 @@ parameter_types! {
 impl pallet_balances::Trait for Test {
     type Balance = u64;
     type DustRemoval = ();
-    type Event = Event;
+    type Event = MetaEvent;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = frame_system::Module<Test>;
     type WeightInfo = ();
@@ -80,12 +98,13 @@ impl pallet_authorship::Trait for Test {
 }
 
 impl Trait for Test {
-    type Event = Event;
+    type Event = MetaEvent;
 }
 
 // System Under Test
 pub type SUT = Module<Test>;
 
+/*
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
 pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u64, Call, u64, ()>;
 
@@ -105,6 +124,7 @@ frame_support::construct_runtime!(
         Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
     }
 );
+*/
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
