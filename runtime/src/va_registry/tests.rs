@@ -296,14 +296,18 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 }
 
 #[test]
-fn create_two_registries() {
+fn create_multiple_registries() {
     new_test_ext().execute_with(|| {
         let token_id = U256::one();
         let (asset_id1,_,_,_,_,_) = setup_mint::<Test>(token_id);
         let (asset_id2,_,_,_,_,_) = setup_mint::<Test>(token_id);
+        let (asset_id3,_,_,_,_,_) = setup_mint::<Test>(token_id);
         let (reg_id1,_) = asset_id1.destruct();
         let (reg_id2,_) = asset_id2.destruct();
+        let (reg_id3,_) = asset_id3.destruct();
 
         assert!(reg_id1 != reg_id2);
+        assert!(reg_id1 != reg_id3);
+        assert!(reg_id2 != reg_id3);
     });
 }
