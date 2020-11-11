@@ -3,7 +3,7 @@ use crate::va_registry::{Module, Trait};
 use crate::{anchor, nft, fees, va_registry};
 use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
 use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
+    traits::{Block as BlockT, BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
 };
 
 parameter_types! {
@@ -16,7 +16,7 @@ parameter_types! {
 impl frame_system::Trait for Test {
     type BaseCallFilter = ();
     type Origin = Origin;
-    type Call = ();
+    type Call = Call;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -87,7 +87,7 @@ impl Trait for Test {
 pub type SUT = Module<Test>;
 
 pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
+pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u64, Call, u64, ()>;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -98,7 +98,7 @@ frame_support::construct_runtime!(
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
         Anchor: anchor::{Module, Call, Storage},
-        Fees: fees::{Module, Call, Event<T>},
+        Fees: fees::{Module, Event<T>},
         Nft: nft::{Module, Event<T>},
         Registry: va_registry::{Module, Call, Event<T>},
         Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},

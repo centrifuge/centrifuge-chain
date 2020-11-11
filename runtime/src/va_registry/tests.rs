@@ -1,14 +1,14 @@
-use crate::proofs;
+use crate::{proofs, anchor};
 use sp_runtime::traits::Hash;
-use sp_core::{H256, U256, Encode};
+use sp_core::{H256, H160, U256, Encode};
 use crate::nft::Error as NftError;
 use frame_support::{assert_err, assert_ok};
 use crate::va_registry::{
     self, Error, mock::*,
-    types::{AssetId, NFTS_PREFIX},
+    types::{AssetId, NFTS_PREFIX, Proof, TokenId, RegistryId,
+            MintInfo, RegistryInfo, AssetInfo},
 };
 use crate::nft;
-use super::*;
 
 // Hash two hashes
 fn hash_of<T: frame_system::Trait>(a: H256, b: H256) -> T::Hash {
@@ -67,8 +67,6 @@ fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenI
 
 fn last_event<T>() -> <T as frame_system::Trait>::Event
     where T: frame_system::Trait
-    //where T: frame_system::Trait<Event = From<va_registry::RawEvent<<T as frame_system::Trait>::Hash>>>
-    //where T: frame_system::Trait<Event = Into<va_registry::RawEvent as <<T as frame_system::Trait>::Event>>>
 {
     frame_system::Module::<T>::events()
         .pop()
@@ -81,11 +79,11 @@ pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
     -> (AssetId,
         T::Hash, T::Hash,
         (Vec<Proof<H256>>, [H256; 3], T::Hash),
-        va_registry::types::AssetInfo,
-        va_registry::types::RegistryInfo)
+        AssetInfo,
+        RegistryInfo)
     where T: frame_system::Trait
            + va_registry::Trait
-           + nft::Trait<AssetInfo = types::AssetInfo>
+           + nft::Trait<AssetInfo = AssetInfo>
 {
     let metadata  = vec![];
 
@@ -103,9 +101,16 @@ pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
 
     // Create registry, get registry id
     assert_ok!( <va_registry::Module<T>>::create_registry(origin, registry_info.clone()) );
-    let e: Event::<T> = last_event::<T>().into();
-    let registry_id = match e {
-        Event::<T>::RegistryCreated(r_id) => r_id,
+    //let e: Event<T> = last_event::<T>().into();
+    /*
+    let registry_id = match last_event::<T>() {
+        <T as va_registry::Trait>::Event::from(va_registry::RawEvent::RegistryCreated(r_id)) => r_id,
+        _ => panic!("Latest event is not a RegistryCreated"),
+    };
+    */
+    //let e = ::Module::<T>::events().pop().map(|e| e.event).expect("Event expected");
+    let registry_id = match last_event::<T>() {
+        Event::system(va_registry::RawEvent::RegistryCreated(r_id)) => r_id,
         _ => panic!("Latest event is not a RegistryCreated"),
     };
 
