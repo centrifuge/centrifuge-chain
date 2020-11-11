@@ -65,6 +65,17 @@ fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenI
     (proofs, static_hashes, doc_root)
 }
 
+fn last_event<T>() -> <T as frame_system::Trait>::Event
+    where T: frame_system::Trait
+    //where T: frame_system::Trait<Event = From<va_registry::RawEvent<<T as frame_system::Trait>::Hash>>>
+    //where T: frame_system::Trait<Event = Into<va_registry::RawEvent as <<T as frame_system::Trait>::Event>>>
+{
+    frame_system::Module::<T>::events()
+        .pop()
+        .map(|e| e.event)
+        .expect("Event expected")
+}
+
 // Creates a registry and returns all relevant data
 pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
     -> (AssetId,
@@ -92,15 +103,22 @@ pub fn setup_mint<T>(origin: T::Origin, token_id: TokenId)
 
     // Create registry, get registry id
     assert_ok!( <va_registry::Module<T>>::create_registry(origin, registry_info.clone()) );
+    let e: Event::<T> = last_event::<T>().into();
+    let registry_id = match e {
+        Event::<T>::RegistryCreated(r_id) => r_id,
+        _ => panic!("Latest event is not a RegistryCreated"),
+    };
 
     // Same as registry id but an H160 instead of an associated type
     // Assumes the created registry is the first ever
+    /*
     let mut res = Vec::<u8>::with_capacity(32);
     unsafe { res.set_len(32); }
     U256::from_big_endian(H160::zero().as_bytes())
          .saturating_add(U256::one())
          .to_big_endian(&mut res);
     let registry_id = H160::from_slice(&res[0..20]);
+     */
 
     // Proofs data
     let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
@@ -298,5 +316,20 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
                           static_hashes: static_hashes,
                       }),
             Error::<Test>::InvalidProofs);
+    });
+}
+
+#[test]
+fn create_two_registries() {
+    new_test_ext().execute_with(|| {
+        let token_id = U256::one();
+        let owner = 1;
+        let origin = Origin::signed(owner);
+        let (asset_id,
+             pre_image,
+             anchor_id,
+             (proofs, static_hashes, doc_root),
+             nft_data,
+             _) = setup_mint::<Test>(origin.clone(), token_id);
     });
 }
