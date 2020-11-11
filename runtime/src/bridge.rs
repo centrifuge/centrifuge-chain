@@ -11,7 +11,7 @@ use frame_support::{
     traits::EnsureOrigin,
 };
 use frame_system::{self as system, ensure_signed};
-use sp_core::{U256, Bytes};
+use sp_core::U256;
 use sp_runtime::traits::SaturatedConversion;
 use sp_std::prelude::*;
 
@@ -150,7 +150,7 @@ decl_module! {
         ) -> DispatchResult {
             let source = ensure_signed(origin)?;
 
-            /// Get resource id from registry
+            // Get resource id from registry
             let reg: Address = from_registry.into();
             let reg: Bytes32 = reg.into();
             let reg: <T as bridge_names::Trait>::Address = reg.into();
@@ -198,7 +198,7 @@ decl_module! {
         ) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
 
-            /// Get registry from resource id
+            // Get registry from resource id
             let rid: <T as bridge_names::Trait>::ResourceId = resource_id.into();
             let registry_id = <bridge_names::Module<T>>::addr_of(rid)
                 .ok_or(Error::<T>::RegistryIdDoesNotExist)?;
@@ -558,7 +558,7 @@ mod tests{
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = registry::tests::setup_mint::<Test>(origin.clone(), token_id);
+             _) = registry::tests::setup_mint::<Test>(origin.clone(), token_id);
 
         // Commit document root
         assert_ok!( <crate::anchor::Module<Test>>::commit(
@@ -627,7 +627,6 @@ mod tests{
             let resource_id = NativeTokenId::get();
             let recipient = vec![1];
             let owner = RELAYER_A;
-            let origin = Origin::signed(owner);
             let token_id = U256::one();
 
             // Create registry, map resource id, and mint nft

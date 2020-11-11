@@ -1,15 +1,11 @@
-use crate::nft::Error as NftError;
 use crate::proofs;
+use sp_runtime::traits::Hash;
 use sp_core::{H256, U256, Encode};
-use frame_support::{assert_err, assert_ok, Hashable};
-use sp_runtime::{
-    testing::Header,
-    traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup, Block as BlockT},
-};
-use std::cmp::Ordering;
+use crate::nft::Error as NftError;
+use frame_support::{assert_err, assert_ok};
 use crate::va_registry::{
     self, Error, mock::*,
-    types::{AssetId, VerifierRegistry, NFTS_PREFIX},
+    types::{AssetId, NFTS_PREFIX},
 };
 use crate::nft;
 use super::*;
@@ -136,7 +132,7 @@ fn mint_with_valid_proofs_works() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
+             _) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -179,9 +175,9 @@ fn mint_fails_when_dont_match_doc_root() {
         let (asset_id,
              pre_image,
              anchor_id,
-             (proofs, static_hashes, doc_root),
+             (proofs, static_hashes, _),
              nft_data,
-             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
+             _) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         let wrong_doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&pre_image);
@@ -222,7 +218,7 @@ fn duplicate_mint_fails() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
+             _) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -275,7 +271,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             registry_info) = setup_mint::<Test>(origin.clone(), token_id);
+             _) = setup_mint::<Test>(origin.clone(), token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -286,7 +282,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
             <Test as frame_system::Trait>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
-        let (registry_id, token_id) = asset_id.destruct();
+        let (registry_id, _) = asset_id.destruct();
         let token_id = U256::zero();
 
         // Mint token with document proof

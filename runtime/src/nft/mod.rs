@@ -8,21 +8,14 @@
 //! define user-facing logic to interact with the runtime NFTs.
 
 use crate::va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
+use sp_runtime::{traits::Member, RuntimeDebug};
 use codec::{Decode, Encode, FullCodec};
+use sp_std::{cmp::Eq, fmt::Debug};
+use frame_system::ensure_signed;
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
     traits::Get,
     Hashable,
-};
-use frame_system::ensure_signed;
-use sp_runtime::{
-    traits::{Hash, Member},
-    RuntimeDebug,
-};
-use sp_std::{
-    cmp::{Eq, Ordering},
-    fmt::Debug,
-    vec::Vec,
 };
 
 use unique_assets::traits::*;
@@ -151,8 +144,10 @@ impl<T: Trait>
     type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
+    /// Inserts an owner with a registry/token id.
+    /// Does not do any checks on the caller.
     fn mint(
-        caller: &Self::AccountId,
+        _caller: &Self::AccountId,
         owner_account: &Self::AccountId,
         asset_id: &AssetId,
         asset_info: <T as Trait>::AssetInfo,

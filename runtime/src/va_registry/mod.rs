@@ -19,7 +19,7 @@
 use frame_support::{
     ensure, dispatch, traits::Get,
     decl_module, decl_storage, decl_event, decl_error,
-    weights::{DispatchClass, Weight, FunctionOf, Pays}};
+    weights::{DispatchClass, Pays}};
 use sp_core::{H256, U256, H160};
 use frame_system::ensure_signed;
 use sp_std::{cmp::Eq, vec::Vec};

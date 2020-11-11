@@ -15,7 +15,6 @@ use frame_support::{
 };
 use codec::{Encode, Decode};
 use sp_core::{
-    H256,
     crypto::KeyTypeId,
     u32_trait::{_1, _2, _3, _4}
 };

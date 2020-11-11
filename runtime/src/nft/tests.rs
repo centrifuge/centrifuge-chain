@@ -1,9 +1,8 @@
 use super::*;
 use crate::nft::mock::*;
-use unique_assets::traits::*;
 use sp_core::{H160, U256};
 use crate::va_registry::types::AssetId;
-use frame_support::{assert_err, assert_ok, Hashable};
+use frame_support::{assert_err, assert_ok};
 
 #[test]
 fn mint() {
