@@ -50,6 +50,7 @@ decl_storage! {
         RegistryNonce: RegistryId;
         /// A mapping of all created registries and their metadata.
         Registries: map hasher(blake2_128_concat) RegistryId => RegistryInfo;
+        Owner get(fn owner_of): map hasher(blake2_128_concat) RegistryId => T::AccountId;
     }
 }
 
@@ -94,9 +95,9 @@ decl_module! {
         pub fn create_registry(origin,
                                info: RegistryInfo,
         ) -> dispatch::DispatchResult {
-            ensure_signed(origin)?;
+            let caller = ensure_signed(origin)?;
 
-            let registry_id = <Self as VerifierRegistry>::create_registry(info)?;
+            let registry_id = <Self as VerifierRegistry>::create_registry(caller, info)?;
 
             // Emit event
             Self::deposit_event(Event::<T>::RegistryCreated(registry_id));
@@ -179,7 +180,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
     type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
 
     // Registries with identical RegistryInfo may exist
-    fn create_registry(mut info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError> {
+    fn create_registry(caller: Self::AccountId, mut info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError> {
         // Generate registry id as nonce
         let id = Self::create_new_registry_id()?;
 
@@ -189,6 +190,8 @@ impl<T: Trait> VerifierRegistry for Module<T> {
 
         // Insert registry in storage
         Registries::insert(id.clone(), info);
+        // Caller is the owner of the registry
+        Owner::<T>::insert(id.clone(), caller);
 
         Ok(id)
     }

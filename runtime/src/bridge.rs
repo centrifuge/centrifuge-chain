@@ -551,14 +551,13 @@ mod tests{
     fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> RegistryId {
         let origin = Origin::signed(owner);
 
-        //let token_id = U256::one();
         // Create registry and generate proofs
         let (asset_id,
              pre_image,
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = registry::tests::setup_mint::<Test>(token_id);
+             _) = registry::tests::setup_mint::<Test>(owner, token_id);
 
         // Commit document root
         assert_ok!( <crate::anchor::Module<Test>>::commit(

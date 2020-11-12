@@ -145,7 +145,7 @@ pub trait VerifierRegistry {
     type MintInfo;
 
     /// Create a new instance of a registry with the associated registry info.
-    fn create_registry(info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError>;
+    fn create_registry(caller: Self::AccountId, info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError>;
 
     /// Use the mint info to verify whether the mint is a valid action.
     /// If so, use the asset info to mint an asset.

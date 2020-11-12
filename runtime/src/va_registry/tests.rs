@@ -66,7 +66,7 @@ fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenI
 }
 
 // Creates a registry and returns all relevant data
-pub fn setup_mint<T>(token_id: TokenId)
+pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
     -> (AssetId,
         T::Hash, T::Hash,
         (Vec<Proof<H256>>, [H256; 3], T::Hash),
@@ -91,7 +91,7 @@ pub fn setup_mint<T>(token_id: TokenId)
     };
 
     // Create registry, get registry id. Shouldn't fail.
-    let registry_id = match <va_registry::Module<T> as VerifierRegistry>::create_registry(registry_info.clone()) {
+    let registry_id = match <va_registry::Module<T> as VerifierRegistry>::create_registry(owner, registry_info.clone()) {
         Ok(r_id) => r_id,
         Err(e) => panic!("{:#?}", e),
     };
@@ -126,7 +126,7 @@ fn mint_with_valid_proofs_works() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = setup_mint::<Test>(token_id);
+             _) = setup_mint::<Test>(owner, token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -171,7 +171,7 @@ fn mint_fails_when_dont_match_doc_root() {
              anchor_id,
              (proofs, static_hashes, _),
              nft_data,
-             _) = setup_mint::<Test>(token_id);
+             _) = setup_mint::<Test>(owner, token_id);
 
         // Place document anchor into storage for verification
         let wrong_doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&pre_image);
@@ -212,7 +212,7 @@ fn duplicate_mint_fails() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = setup_mint::<Test>(token_id);
+             _) = setup_mint::<Test>(owner, token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -265,7 +265,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = setup_mint::<Test>(token_id);
+             _) = setup_mint::<Test>(owner, token_id);
 
         // Place document anchor into storage for verification
         assert_ok!( <anchor::Module<Test>>::commit(
@@ -298,10 +298,12 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 #[test]
 fn create_multiple_registries() {
     new_test_ext().execute_with(|| {
+        let owner1 = 1;
+        let owner2 = 1;
         let token_id = U256::one();
-        let (asset_id1,_,_,_,_,_) = setup_mint::<Test>(token_id);
-        let (asset_id2,_,_,_,_,_) = setup_mint::<Test>(token_id);
-        let (asset_id3,_,_,_,_,_) = setup_mint::<Test>(token_id);
+        let (asset_id1,_,_,_,_,_) = setup_mint::<Test>(owner1, token_id);
+        let (asset_id2,_,_,_,_,_) = setup_mint::<Test>(owner2, token_id);
+        let (asset_id3,_,_,_,_,_) = setup_mint::<Test>(owner2, token_id);
         let (reg_id1,_) = asset_id1.destruct();
         let (reg_id2,_) = asset_id2.destruct();
         let (reg_id3,_) = asset_id3.destruct();
@@ -309,5 +311,10 @@ fn create_multiple_registries() {
         assert!(reg_id1 != reg_id2);
         assert!(reg_id1 != reg_id3);
         assert!(reg_id2 != reg_id3);
+
+        // Owners own their registries
+        assert_eq!(<va_registry::Module<Test>>::owner_of(reg_id1), owner1);
+        assert_eq!(<va_registry::Module<Test>>::owner_of(reg_id2), owner2);
+        assert_eq!(<va_registry::Module<Test>>::owner_of(reg_id3), owner2);
     });
 }
