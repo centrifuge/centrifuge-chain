@@ -185,7 +185,7 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         let id = Self::create_new_registry_id()?;
 
         // Create a field of the registry that is the registry id encoded with a prefix
-        let pre_reg = [NFTS_PREFIX, id.as_bytes()].concat();
+        let pre_reg = [NFTS_PREFIX, id.as_bytes(), NFTS_PADDING].concat();
         info.fields.push(pre_reg);
 
         // Insert registry in storage

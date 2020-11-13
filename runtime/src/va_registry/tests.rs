@@ -38,7 +38,7 @@ fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenI
     let pre_proof = Proof {
         value: token_enc,
         salt: [1; 32],
-        property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
+        property: [NFTS_PREFIX, registry_id.as_bytes(), NFTS_PADDING].concat(),
         hashes: vec![]};
 
     let proofs = vec![
@@ -116,7 +116,7 @@ pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
 }
 
 #[test]
-fn mint_with_valid_proofs_works() {
+fn mint_with_valid_proofs() {
     new_test_ext().execute_with(|| {
         let token_id = U256::one();
         let owner = 1;
