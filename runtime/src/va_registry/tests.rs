@@ -5,7 +5,7 @@ use sp_core::{H256, H160, U256, Encode};
 use frame_support::{assert_err, assert_ok};
 use crate::va_registry::{
     self, Error, mock::*,
-    types::{AssetId, NFTS_PREFIX, Proof, TokenId, RegistryId,
+    types::{AssetId, NFTS_PADDING, NFTS_PREFIX, Proof, TokenId, RegistryId,
             MintInfo, RegistryInfo, AssetInfo, VerifierRegistry},
 };
 use crate::nft;
@@ -79,7 +79,7 @@ pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
     let metadata  = vec![];
 
     // Anchor data
-    let pre_image = T::Hashing::hash(&[0]);
+    let pre_image = T::Hashing::hash(&[1,2,3]);
     let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
 
     // Registry info
