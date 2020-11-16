@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
 	ElectionsConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
-	StakerStatus, StakingConfig, SystemConfig, wasm_binary_unwrap,
+	StakerStatus, StakingConfig, SystemConfig, wasm_binary_unwrap, TreasuryConfig
 };
 use node_runtime::Block;
 use node_runtime::constants::currency::*;
@@ -219,7 +219,13 @@ pub fn testnet_genesis(
         }),
         pallet_im_online: Some(ImOnlineConfig {
 			keys: vec![],
-        }),
+		}),
+		pallet_treasury: Some(TreasuryConfig {
+			// proposal_bond: Permill::from_percent(5),
+			// proposal_bond_minimum: 1 * RAD,
+			// spend_period: 1 * DAYS,
+			// burn: Permill::from_percent(50),
+		}),
 		pallet_indices: Some(IndicesConfig {
 			indices: vec![],
 		}),
