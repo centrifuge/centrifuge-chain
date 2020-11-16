@@ -273,6 +273,7 @@ pub fn testnet_genesis(
                 2_365_296_803_653,
             )],
         }),
+		pallet_vesting: Some(Default::default()),
     }
 }
 
