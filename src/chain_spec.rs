@@ -221,10 +221,7 @@ pub fn testnet_genesis(
 			keys: vec![],
 		}),
 		pallet_treasury: Some(TreasuryConfig {
-			// proposal_bond: Permill::from_percent(5),
-			// proposal_bond_minimum: 1 * RAD,
-			// spend_period: 1 * DAYS,
-			// burn: Permill::from_percent(50),
+		
 		}),
 		pallet_indices: Some(IndicesConfig {
 			indices: vec![],
