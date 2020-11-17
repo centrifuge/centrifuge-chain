@@ -11,7 +11,7 @@ use frame_support::{
         Weight,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
-    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter},
+    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter, Contains, ContainsLengthBound},
 };
 use codec::{Encode, Decode};
 use sp_core::{
@@ -768,13 +768,16 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 }
 
 parameter_types! {
-    pub const ProposalBondMinimum: Balance = 20 * RAD;
+    
     pub const SpendPeriod: BlockNumber = 6 * DAYS;
     pub const Burn: Permill = Permill::from_perthousand(2);
     pub const TreasuryModuleId: ModuleId = ModuleId(*b"cen/trsy");
 
     pub const TipCountdown: BlockNumber = 1 * DAYS;
-	pub const ProposalBond: Permill = Permill::from_percent(5);
+    pub const ProposalBond: Permill = Permill::from_percent(5);
+    pub const ProposalBondMinimum: Balance = 20 * RAD;
+
+    // The percent of the final tip which goes to the original reporter of the tip.
     pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 1 * RAD;
     pub const TipReportDepositPerByte: Balance = 1 * CENTI_RAD;
@@ -792,6 +795,31 @@ type MoreThanHalfCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>
 >;
 
+pub struct CouncilProvider;
+impl Contains<AccountId> for CouncilProvider {
+	fn contains(who: &AccountId) -> bool {
+		Council::is_member(who)
+	}
+
+	fn sorted_members() -> Vec<AccountId> {
+		Council::members()
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn add(_: &AccountId) {
+		todo!()
+	}
+}
+
+impl ContainsLengthBound for CouncilProvider {
+	fn max_len() -> usize {
+		100
+	}
+	fn min_len() -> usize {
+		0
+	}
+}
+
 
 impl pallet_treasury::Trait for Runtime {
     type ModuleId = TreasuryModuleId;
@@ -804,7 +832,7 @@ impl pallet_treasury::Trait for Runtime {
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
     type Burn = Burn;
-	type Tippers = Elections;
+	type Tippers = CouncilProvider;
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
