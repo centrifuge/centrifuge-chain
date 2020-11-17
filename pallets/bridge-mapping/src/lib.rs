@@ -1,8 +1,13 @@
 //! # Bridge Access Control List Pallet
 //!
 //! This pallet provides functionality for setting and tracking allowed paths for assets to be
-//! transferred across chains, or more abstractly, resources. A resource (defined in [ResourceId]
-//! has an owner which 
+//! transferred across chains, or more abstractly, resources. A resource is a name that represents
+//! an abstract concept, like an asset that exists across different blockchains.
+//!
+//! For example, Eth may be an abstract resource, with instances of it being the native token on
+//! Ethereum, and also a derivative token on some bridged Substrate blockchain.
+//!
+//! Resources are set and removed by an Admin account or by root.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(trait_alias)]
 
