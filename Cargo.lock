@@ -610,7 +610,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge-names"
+name = "bridge-mapping"
 version = "1.0.0"
 dependencies = [
  "frame-support",
@@ -772,7 +772,7 @@ dependencies = [
 name = "centrifuge-chain-runtime"
 version = "2.0.0"
 dependencies = [
- "bridge-names",
+ "bridge-mapping",
  "chainbridge",
  "frame-benchmarking",
  "frame-executive",

@@ -37,7 +37,7 @@ pub trait Trait: frame_system::Trait {
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as BridgeNames {
+    trait Store for Module<T: Trait> as BridgeMapping {
         /// Indicates that assets of a resource can be transfered to another resource.
         /// Maps an abstract resource id to a chain-specific address
         ResourceToAddress get(fn addr_of): map hasher(blake2_128_concat) T::ResourceId => Option<T::Address>;
@@ -57,7 +57,6 @@ decl_module! {
                    local_addr: T::Address,
         ) -> DispatchResult {
             Self::ensure_admin_or_root(origin)?;
-            //T::Admin::ensure_origin(origin)?;
 
             // Call internal
             Self::set_resource(rid, local_addr);
@@ -69,7 +68,6 @@ decl_module! {
                       rid: T::ResourceId,
         ) -> DispatchResult {
             Self::ensure_admin_or_root(origin)?;
-            //T::Admin::ensure_origin(origin)?;
 
             // Call internal
             Self::remove_resource(&rid);
@@ -82,7 +80,7 @@ decl_module! {
 // corresponding owner, the function interfaces defined here ensure this by construction. This
 // assumption is something to keep in mind if extending this module.
 impl<T: Trait> Module<T> {
-    /// Ensure that the given origin is either the pallet [Admin] or frame_system root.
+    /// Ensure that the given origin is either the pallet [AdminOrigin] or frame_system root.
     fn ensure_admin_or_root(origin: T::Origin) -> Result<(), BadOrigin> {
         T::AdminOrigin::try_origin(origin)
             .map(|_| ())

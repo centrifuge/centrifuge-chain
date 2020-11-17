@@ -61,7 +61,7 @@ use impls::{CurrencyToVoteHandler, Author};
 use bridge as pallet_bridge;
 
 // Bridge access control list pallet
-use bridge_names;
+use bridge_mapping;
 
 /// Used for anchor module
 pub mod anchor;
@@ -813,7 +813,7 @@ impl nft::Trait for Runtime {
     type AssetInfo = va_registry::types::AssetInfo;
 }
 
-impl bridge_names::Trait for Runtime {
+impl bridge_mapping::Trait for Runtime {
     type ResourceId = bridge::ResourceId;
     type Address = bridge::Address;
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
@@ -883,10 +883,11 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-		Registry: va_registry::{Module, Call, Storage, Event<T>},
-		Nft: nft::{Module, Call, Storage, Event<T>},
         RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
+		Registry: va_registry::{Module, Call, Storage, Event<T>},
+		Nft: nft::{Module, Call, Storage, Event<T>},
+        BridgeMapping: bridge_mapping::{Module, Call, Storage},
 	}
 );
 

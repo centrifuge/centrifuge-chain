@@ -226,7 +226,7 @@ mod tests {
         type WeightInfo = ();
     }
 
-    impl bridge_names::Trait for Test {
+    impl bridge_mapping::Trait for Test {
         type ResourceId = crate::bridge::ResourceId;
         type Address = crate::bridge::Address;
         type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;

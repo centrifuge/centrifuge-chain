@@ -3,7 +3,7 @@ authors = ['buterajay@protonmail.com']
 description = 'Access control list for bridge paths across chains'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'bridge-names'
+name = 'bridge-mapping'
 repository = "https://github.com/centrifuge/centrifuge-chain/pallets/bridge-acl"
 version = '1.0.0'
 

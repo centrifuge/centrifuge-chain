@@ -1,5 +1,5 @@
 use crate::nft;
-use bridge_names;
+use bridge_mapping;
 use core::convert::TryInto;
 use codec::{Decode, Encode};
 use unique_assets::traits::Unique;
@@ -63,7 +63,7 @@ pub trait Trait: system::Trait
                + pallet_balances::Trait
                + chainbridge::Trait
                + nft::Trait
-               + bridge_names::Trait {
+               + bridge_mapping::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -151,8 +151,8 @@ decl_module! {
             // Get resource id from registry
             let reg: Address = from_registry.into();
             let reg: Bytes32 = reg.into();
-            let reg: <T as bridge_names::Trait>::Address = reg.into();
-            let resource_id = <bridge_names::Module<T>>::name_of(reg)
+            let reg: <T as bridge_mapping::Trait>::Address = reg.into();
+            let resource_id = <bridge_mapping::Module<T>>::name_of(reg)
                 .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
 
             // Burn additional fees
@@ -197,8 +197,8 @@ decl_module! {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
 
             // Get registry from resource id
-            let rid: <T as bridge_names::Trait>::ResourceId = resource_id.into();
-            let registry_id = <bridge_names::Module<T>>::addr_of(rid)
+            let rid: <T as bridge_mapping::Trait>::ResourceId = resource_id.into();
+            let registry_id = <bridge_mapping::Module<T>>::addr_of(rid)
                 .ok_or(Error::<T>::RegistryIdDoesNotExist)?;
             let registry_id: Address = registry_id.into().into();
 
@@ -342,7 +342,7 @@ mod tests{
         type AssetInfo = registry::types::AssetInfo;
     }
 
-    impl bridge_names::Trait for Test {
+    impl bridge_mapping::Trait for Test {
         type ResourceId = ResourceId;
         type Address = Address;
         type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
@@ -582,7 +582,7 @@ mod tests{
         // Register resource with chainbridge
         assert_ok!(<chainbridge::Module<Test>>::register_resource(resource_id.clone(), vec![]));
         // Register resource in local resource mapping
-        <bridge_names::Module<Test>>::set_resource(resource_id.clone(),
+        <bridge_mapping::Module<Test>>::set_resource(resource_id.clone(),
                                                    registry_id.clone().into());
 
         registry_id
