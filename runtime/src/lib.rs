@@ -816,7 +816,7 @@ impl nft::Trait for Runtime {
 impl bridge_names::Trait for Runtime {
     type ResourceId = bridge::ResourceId;
     type Address = bridge::Address;
-    type Admin = frame_system::EnsureRoot<Self::AccountId>;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 }
 
 parameter_types! {

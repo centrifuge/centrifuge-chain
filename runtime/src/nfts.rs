@@ -229,7 +229,7 @@ mod tests {
     impl bridge_names::Trait for Test {
         type ResourceId = crate::bridge::ResourceId;
         type Address = crate::bridge::Address;
-        type Admin = frame_system::EnsureRoot<Self::AccountId>;
+        type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     }
 
     pub const USER_A: u64 = 0x1;

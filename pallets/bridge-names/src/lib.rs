@@ -7,7 +7,8 @@
 #![feature(trait_alias)]
 
 use codec::FullCodec;
-use sp_runtime::traits::Member;
+use sp_runtime::traits::{Member, BadOrigin};
+use frame_system::ensure_root;
 use frame_support::{
     decl_module, decl_storage,
     dispatch::DispatchResult,
@@ -32,7 +33,7 @@ pub trait Trait: frame_system::Trait {
     /// Ethereum, this may be a contract address for transferring assets.
     type Address: Member + Default + FullCodec + AsByte32;
     /// Admin is able to set/remove resource mappings.
-    type Admin: EnsureOrigin<Self::Origin>;
+    type AdminOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_storage! {
@@ -55,7 +56,8 @@ decl_module! {
                    rid: T::ResourceId,
                    local_addr: T::Address,
         ) -> DispatchResult {
-            T::Admin::ensure_origin(origin)?;
+            Self::ensure_admin_or_root(origin)?;
+            //T::Admin::ensure_origin(origin)?;
 
             // Call internal
             Self::set_resource(rid, local_addr);
@@ -66,7 +68,8 @@ decl_module! {
         pub fn remove(origin,
                       rid: T::ResourceId,
         ) -> DispatchResult {
-            T::Admin::ensure_origin(origin)?;
+            Self::ensure_admin_or_root(origin)?;
+            //T::Admin::ensure_origin(origin)?;
 
             // Call internal
             Self::remove_resource(&rid);
@@ -79,6 +82,13 @@ decl_module! {
 // corresponding owner, the function interfaces defined here ensure this by construction. This
 // assumption is something to keep in mind if extending this module.
 impl<T: Trait> Module<T> {
+    /// Ensure that the given origin is either the pallet [Admin] or frame_system root.
+    fn ensure_admin_or_root(origin: T::Origin) -> Result<(), BadOrigin> {
+        T::AdminOrigin::try_origin(origin)
+            .map(|_| ())
+            .or_else(ensure_root)
+    }
+
     /// Add a new resource mapping in [Names]. Existing entries will be overwritten.
     pub fn set_resource(rid: T::ResourceId,
                         local_addr: T::Address,

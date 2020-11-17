@@ -345,7 +345,7 @@ mod tests{
     impl bridge_names::Trait for Test {
         type ResourceId = ResourceId;
         type Address = Address;
-        type Admin = frame_system::EnsureRoot<Self::AccountId>;
+        type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     }
 
     // So that nfts can be minted

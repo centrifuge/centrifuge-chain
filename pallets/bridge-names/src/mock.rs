@@ -53,7 +53,7 @@ impl system::Trait for Test {
 impl Trait for Test {
     type ResourceId = u32;
     type Address = u32;
-    type Admin = frame_system::EnsureRoot<Self::AccountId>;
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 }
 
 pub type SUT = Module<Test>;
