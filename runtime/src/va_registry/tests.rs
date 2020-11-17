@@ -155,7 +155,7 @@ fn mint_with_valid_proofs() {
         // Nft registered to owner
         assert_eq!(
             <nft::Module<Test>>::account_for_asset::<H160,U256>(registry_id, token_id),
-            owner
+            Some(owner)
         );
     });
 }

@@ -23,6 +23,7 @@ hex-literal = "0.2.1"
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
 unique_assets = { git = "https://github.com/jaybutera/unique-assets", default-features = false }
+#unique_assets = { path = "../../unique_assets", default-features = false }
 bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
 
 # primitives

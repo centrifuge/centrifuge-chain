@@ -613,7 +613,7 @@ mod tests{
 
             // Recipient owns the nft now
             assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
-                       recipient);
+                       Some(recipient));
         })
     }
 
@@ -634,7 +634,7 @@ mod tests{
 
             // Owner owns nft
             assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
-                       owner);
+                       Some(owner));
 
             // Using account without enough balance for fee should fail when requesting transfer
             /*
@@ -662,7 +662,7 @@ mod tests{
 
             // Now bridge module owns the nft
             assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
-                       <chainbridge::Module<Test>>::account_id());
+                       Some(<chainbridge::Module<Test>>::account_id()));
 
             // Check that transfer event was emitted
             let tid: &mut [u8] = &mut[0; 32];

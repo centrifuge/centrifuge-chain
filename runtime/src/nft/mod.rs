@@ -8,6 +8,7 @@
 //! define user-facing logic to interact with the runtime NFTs.
 
 use crate::va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
+use unique_assets::traits::{Unique, Nft, Mintable};
 use sp_runtime::{traits::Member, RuntimeDebug};
 use codec::{Decode, Encode, FullCodec};
 use sp_std::{cmp::Eq, fmt::Debug};
@@ -17,8 +18,6 @@ use frame_support::{
     traits::Get,
     Hashable,
 };
-
-use unique_assets::traits::*;
 
 #[cfg(test)]
 mod mock;
@@ -47,9 +46,9 @@ impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
 decl_storage! {
     trait Store for Module<T: Trait> as Asset {
         /// A mapping from a asset ID to the account that owns it.
-        AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) TokenId => T::AccountId;
+        AccountForAsset get(fn account_for_asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) TokenId => Option<T::AccountId>;
         /// A double mapping of registry id and asset id to an asset's info.
-        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) TokenId => <T as Trait>::AssetInfo;
+        Assets get(fn asset): double_map hasher(blake2_128_concat) RegistryId, hasher(blake2_128_concat) TokenId => Option<<T as Trait>::AssetInfo>;
     }
 }
 
@@ -111,7 +110,7 @@ impl<T: Trait>
     type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
     type AccountId = <T as frame_system::Trait>::AccountId;
 
-    fn owner_of(asset_id: &AssetId) -> T::AccountId {
+    fn owner_of(asset_id: &AssetId) -> Option<T::AccountId> {
         let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
         Self::account_for_asset(registry_id, token_id)
     }
@@ -121,12 +120,10 @@ impl<T: Trait>
         dest_account: &T::AccountId,
         asset_id: &AssetId,
     ) -> dispatch::DispatchResult {
-        let owner = Self::owner_of(asset_id);
+        let owner = Self::owner_of(asset_id)
+            .ok_or(Error::<T>::NonexistentAsset)?;
         let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
 
-        // Check that owner account exists
-        ensure!(owner != T::AccountId::default(),
-                Error::<T>::NonexistentAsset);
         // Check that the caller is owner of asset
         ensure!(caller == &owner,
                 Error::<T>::NotAssetOwner);

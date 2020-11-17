@@ -32,19 +32,7 @@ fn transfer() {
         // Transfer to 2
         assert_ok!(<SUT as Unique>::transfer(&1, &2, &asset_id));
         // 2 owns asset now
-        assert_eq!(<SUT as Unique>::owner_of(&asset_id), 2);
-    });
-}
-
-#[test]
-fn transfer_err_on_default_acct() {
-    new_test_ext().execute_with(|| {
-        let asset_id = AssetId(H160::zero(), U256::zero());
-        // Mint to account 0, default account
-        assert_ok!(<SUT as Mintable>::mint(&0, &0, &asset_id, vec![]));
-        // 0 transfers to 1
-        assert_err!(<SUT as Unique>::transfer(&0, &1, &asset_id),
-                    Error::<Test>::NonexistentAsset);
+        assert_eq!(<SUT as Unique>::owner_of(&asset_id), Some(2));
     });
 }
 
