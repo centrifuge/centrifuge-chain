@@ -16,7 +16,7 @@ use frame_support::{
 use codec::{Encode, Decode};
 use sp_core::{
     crypto::KeyTypeId,
-    u32_trait::{_1, _2, _3, _4}
+    u32_trait::{_1, _2, _3, _4, _5}
 };
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
@@ -42,7 +42,7 @@ use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use frame_system::{EnsureSigned, EnsureRoot};
+use frame_system::{EnsureSigned, EnsureRoot, EnsureOneOf};
 use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
@@ -768,28 +768,42 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 }
 
 parameter_types! {
+    pub const ProposalBondMinimum: Balance = 20 * RAD;
+    pub const SpendPeriod: BlockNumber = 6 * DAYS;
+    pub const Burn: Permill = Permill::from_perthousand(2);
     pub const TreasuryModuleId: ModuleId = ModuleId(*b"cen/trsy");
+
+    pub const TipCountdown: BlockNumber = 1 * DAYS;
 	pub const ProposalBond: Permill = Permill::from_percent(5);
-	pub const ProposalBondMinimum: Balance = 1 * RAD;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
-	pub const Burn: Permill = Permill::from_percent(50);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
-	pub const TipFindersFee: Percent = Percent::from_percent(20);
+    pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 1 * RAD;
-	pub const TipReportDepositPerByte: Balance = 1 * CENTI_RAD;
+    pub const TipReportDepositPerByte: Balance = 1 * CENTI_RAD;
 }
+
+type ApproveOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>
+>;
+
+type MoreThanHalfCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>
+>;
+
 
 impl pallet_treasury::Trait for Runtime {
     type ModuleId = TreasuryModuleId;
 	type Currency = Balances;
-	type ApproveOrigin = pallet_collective::EnsureMembers<_4, AccountId, CouncilCollective>;
-	type RejectOrigin = pallet_collective::EnsureMembers<_2, AccountId, CouncilCollective>;
+	type ApproveOrigin = ApproveOrigin;
+    type RejectOrigin = MoreThanHalfCouncil;
 	type Event = Event;
 	type ProposalRejection = ();
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
-	type Burn = Burn;
+    type Burn = Burn;
 	type Tippers = Elections;
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
