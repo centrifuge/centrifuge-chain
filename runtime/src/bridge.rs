@@ -34,8 +34,6 @@ type BalanceOf<T> =
 
 /// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
-/// Additional Fee charged when moving an NFT to target chain
-const NFT_FEE: u128 = 10 * currency::RAD;
 
 impl From<RegistryId> for Address {
     fn from(r: RegistryId) -> Self {
@@ -158,7 +156,7 @@ decl_module! {
                 .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
 
             // Burn additional fees
-            let nft_fee: T::Balance = NFT_FEE.saturated_into();
+            let nft_fee: T::Balance = TOKEN_FEE.saturated_into();
             <fees::Module<T>>::burn_fee(&source, nft_fee)?;
 
             // Lock asset by transfering to bridge account
