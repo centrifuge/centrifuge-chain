@@ -29,7 +29,7 @@ use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
 use sp_runtime::traits::{
 	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
-	OpaqueKeys, NumberFor, Saturating,
+	OpaqueKeys, NumberFor, Saturating, ConvertInto
 };
 use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
@@ -75,6 +75,9 @@ mod proofs;
 /// nft module
 mod nfts;
 
+/// radial reward claims module
+mod rad_claims;
+
 /// bridge module
 mod bridge;
 
@@ -105,7 +108,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 236,
+    spec_version: 237,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -177,9 +180,6 @@ impl frame_system::Trait for Runtime {
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
-    /// MigrateAccount holds the pallets that needs an explicit account migrations.
-    /// The accounts will be coming from Custom upgrade we have below.
-    type MigrateAccount = (Balances, Identity, Democracy, Elections, ImOnline, Staking, Session);
     /// Handler for when a new account has just been created.
 	type OnNewAccount = ();
 	/// A function that is invoked when an account has been determined to be dead.
@@ -795,6 +795,31 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
+parameter_types! {
+    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const Longevity: u32 = 64;
+}
+
+impl rad_claims::Trait for Runtime {
+    type Event = Event;
+    type Longevity = Longevity;
+    type UnsignedPriority = UnsignedPriority;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type Currency = Balances;
+}
+
+parameter_types! {
+	pub const MinVestedTransfer: Balance = 1000 * RAD;
+}
+
+impl pallet_vesting::Trait for Runtime {
+    type Event = Event;
+    type Currency = Balances;
+    type BlockNumberToBalance = ConvertInto;
+    type MinVestedTransfer = MinVestedTransfer;
+    type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -834,6 +859,8 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
+        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
@@ -864,36 +891,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 
-/// Custom runtime upgrade to execute the balances migration before the account migration.
-mod custom_migration {
-    use super::*;
-
-    use sp_core::Decode;
-    use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-    use pallet_staking::migrations::migrate as staking_upgrade;
-    use frame_system::migrations::migrate as accounts_upgrade;
-    use pallet_identity::migrations::change_name_sudo_to_identity;
-
-    pub struct Upgrade;
-    impl OnRuntimeUpgrade for Upgrade {
-        fn on_runtime_upgrade() -> Weight {
-            let accounts: Vec<AccountId> = Self::get_accounts();
-            change_name_sudo_to_identity::<Runtime>();
-            staking_upgrade::<Runtime>();
-            accounts_upgrade::<Runtime>(accounts);
-            MaximumBlockWeight::get()
-        }
-    }
-
-    impl Upgrade {
-        fn get_accounts() -> Vec<AccountId> {
-            Vec::<AccountId>::decode(&mut &include_bytes!("accounts.scale")[..]).unwrap()
-        }
-    }
-}
-
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules, custom_migration::Upgrade>;
+pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.
