@@ -4,6 +4,7 @@ use frame_support::dispatch;
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
 
+/// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
 /// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
 pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
 
