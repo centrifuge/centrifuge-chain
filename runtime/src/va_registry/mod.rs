@@ -20,6 +20,7 @@ use frame_support::{
     ensure, dispatch, traits::Get,
     decl_module, decl_storage, decl_event, decl_error,
     weights::{DispatchClass, Pays}};
+use sp_runtime::traits::Hash;
 use sp_core::{H256, U256, H160};
 use frame_system::ensure_signed;
 use sp_std::{cmp::Eq, vec::Vec};
@@ -47,7 +48,7 @@ pub trait Trait: frame_system::Trait + nft::Trait + anchor::Trait {
 decl_storage! {
     trait Store for Module<T: Trait> as VARegistry {
         /// Nonce for generating new registry ids.
-        RegistryNonce: RegistryId;
+        RegistryNonce: u128;
         /// A mapping of all created registries and their metadata.
         Registries: map hasher(blake2_128_concat) RegistryId => RegistryInfo;
         Owner get(fn owner_of): map hasher(blake2_128_concat) RegistryId => T::AccountId;
@@ -148,22 +149,13 @@ impl<T: Trait> Module<T> {
     }
 
     fn create_new_registry_id() -> Result<RegistryId, dispatch::DispatchError> {
-        let id = <RegistryNonce>::get();
+        let id_nonce = <RegistryNonce>::get();
 
-        // TODO: Make a U160 type for RegistryId with the uint crate.
-        // Passing through U256 is inefficient and H160 is unneeded.
-        let mut res = Vec::<u8>::with_capacity(32);
-        unsafe { res.set_len(32); }
-        // U256 > H160 so no need for a checked_add
-        U256::from_little_endian(id.as_bytes())
-             .saturating_add(U256::one())
-             .to_little_endian(&mut res);
-
-        // Interpreted in big endian
-        let nplus1 = H160::from_slice(&res[0..20]);
+        // First 20 bytes of the runtime hash of the nonce
+        let id = H160::from_slice(&T::Hashing::hash_of(&id_nonce).as_ref()[..20]);
 
         // Update the nonce
-        <RegistryNonce>::put( nplus1 );
+        <RegistryNonce>::put( id_nonce.saturating_add(1) );
 
         Ok(id)
     }
