@@ -106,7 +106,7 @@ decl_module! {
         }
 
         #[weight =
-            (mint_info.proofs.len().saturating_mul(100_000) as u64
+            (mint_info.proofs.len().saturating_mul(1_000_000) as u64
                 + T::DbWeight::get().reads_writes(3,2)
                 + 195_000_000,
             DispatchClass::Normal,
