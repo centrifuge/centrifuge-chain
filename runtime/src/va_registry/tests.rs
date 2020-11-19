@@ -5,7 +5,7 @@ use sp_core::{H256, H160, U256, Encode};
 use frame_support::{assert_err, assert_ok};
 use crate::va_registry::{
     self, Error, mock::*,
-    types::{AssetId, NFTS_PADDING, NFTS_PREFIX, Proof, TokenId, RegistryId,
+    types::{AssetId, NFTS_PREFIX, Proof, TokenId, RegistryId,
             MintInfo, RegistryInfo, AssetInfo, VerifierRegistry},
 };
 use crate::nft;
@@ -38,7 +38,7 @@ fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenI
     let pre_proof = Proof {
         value: token_enc,
         salt: [1; 32],
-        property: [NFTS_PREFIX, registry_id.as_bytes(), NFTS_PADDING].concat(),
+        property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
         hashes: vec![]};
 
     let proofs = vec![

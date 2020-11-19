@@ -6,7 +6,6 @@ use sp_std::{vec::Vec, fmt::Debug};
 
 /// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
 pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
-pub const NFTS_PADDING: &'static [u8] = &[0; 12];
 
 /// A vector of bytes, conveniently named like it is in Solidity.
 pub type Bytes = Vec<u8>;
