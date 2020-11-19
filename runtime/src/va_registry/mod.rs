@@ -20,10 +20,10 @@ use frame_support::{
     ensure, dispatch, traits::Get,
     decl_module, decl_storage, decl_event, decl_error,
     weights::{DispatchClass, Pays}};
+use sp_std::cmp::Eq;
 use sp_runtime::traits::Hash;
 use sp_core::{H256, U256, H160};
 use frame_system::ensure_signed;
-use sp_std::{cmp::Eq, vec::Vec};
 use unique_assets::traits::Mintable;
 pub use types::{*, VerifierRegistry, NFTS_PREFIX};
 use crate::{nft, proofs, anchor};
