@@ -229,10 +229,10 @@ impl InstanceFilter<Call> for ProxyType {
         match self {
             ProxyType::Any => true,
             ProxyType::NonTransfer => !matches!(c,
-				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..)) | Call::Elections(..) 
 			),
             ProxyType::Governance => matches!(c,
-				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Treasury(..)
 			),
             ProxyType::Staking => matches!(c, Call::Staking(..)),
         }
@@ -441,9 +441,9 @@ impl pallet_staking::Trait for Runtime {
     type Currency = Balances;
     type UnixTime = Timestamp;
     type CurrencyToVote = CurrencyToVoteHandler;
-    type RewardRemainder = ();
+    type RewardRemainder = Treasury;
     type Event = Event;
-    type Slash = ();
+    type Slash = Treasury;
     type Reward = (); // rewards are minted from the void
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
@@ -526,7 +526,7 @@ impl pallet_democracy::Trait for Runtime {
     type PreimageByteDeposit = PreimageByteDeposit;
     type OperationalPreimageOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
     /// Handler for the unbalanced reduction when slashing a preimage deposit.
-    type Slash = ();
+    type Slash = Treasury;
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = MaxVotes;
@@ -574,9 +574,9 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBond = VotingBond;
 
-	type LoserCandidate = ();
-	type BadReport = ();
-	type KickedMember = ();
+	type LoserCandidate = Treasury;
+	type BadReport = Treasury;
+	type KickedMember = Treasury;
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -729,7 +729,7 @@ impl pallet_identity::Trait for Runtime {
     type MaxSubAccounts = MaxSubAccounts;
     type MaxAdditionalFields = MaxAdditionalFields;
     type MaxRegistrars = MaxRegistrars;
-    type Slashed = ();
+    type Slashed = Treasury;
     type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
     type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
     type WeightInfo = ();
@@ -820,7 +820,6 @@ impl ContainsLengthBound for CouncilProvider {
 	}
 }
 
-
 impl pallet_treasury::Trait for Runtime {
     type ModuleId = TreasuryModuleId;
 	type Currency = Balances;
@@ -839,7 +838,6 @@ impl pallet_treasury::Trait for Runtime {
     type TipReportDepositPerByte = TipReportDepositPerByte;
     type BurnDestination = ();
     type WeightInfo = ();
-
 }
 
 parameter_types! {
