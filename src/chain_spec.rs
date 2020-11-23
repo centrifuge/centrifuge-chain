@@ -170,15 +170,15 @@ pub fn testnet_genesis(
     let num_endowed_accounts = endowed_accounts.len();
 
     const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
-    const STASH: Balance = 1_000_000 * RAD;
+	const STASH: Balance = 1_000_000 * RAD;
 
-    GenesisConfig {
+	GenesisConfig {
 		frame_system: Some(SystemConfig {
 			code: wasm_binary_unwrap().to_vec(),
 			changes_trie_config: Default::default(),
 		}),
 		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned()
+			balances:  endowed_accounts.iter().cloned()
 				.map(|k| (k, ENDOWMENT))
 				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
 				.collect(),
@@ -205,13 +205,11 @@ pub fn testnet_genesis(
 		}),
 		pallet_democracy: Some(DemocracyConfig::default()),
 		pallet_elections_phragmen: Some(ElectionsConfig {
-			members: vec![],
+			members:  endowed_accounts.iter().take(((num_endowed_accounts + 1) / 2) - 1).cloned()
+				.map(|k| (k, STASH)).collect(),
 		}),
 		pallet_collective_Instance1: Some(CouncilConfig {
-			members: endowed_accounts.iter()
-						.take((num_endowed_accounts + 1) / 2)
-						.cloned()
-						.collect(),
+			members:  vec![],
 			phantom: Default::default(),
 		}),
         pallet_babe: Some(BabeConfig {

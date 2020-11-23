@@ -11,7 +11,7 @@ use frame_support::{
         Weight,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
-    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter, Contains, ContainsLengthBound},
+    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter },
 };
 use codec::{Encode, Decode};
 use sp_core::{
@@ -795,31 +795,6 @@ type MoreThanHalfCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>
 >;
 
-pub struct CouncilProvider;
-impl Contains<AccountId> for CouncilProvider {
-	fn contains(who: &AccountId) -> bool {
-		Council::is_member(who)
-	}
-
-	fn sorted_members() -> Vec<AccountId> {
-		Council::members()
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn add(_: &AccountId) {
-		todo!()
-	}
-}
-
-impl ContainsLengthBound for CouncilProvider {
-	fn max_len() -> usize {
-		100
-	}
-	fn min_len() -> usize {
-		0
-	}
-}
-
 impl pallet_treasury::Trait for Runtime {
     type ModuleId = TreasuryModuleId;
 	type Currency = Balances;
@@ -831,7 +806,7 @@ impl pallet_treasury::Trait for Runtime {
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
     type Burn = Burn;
-	type Tippers = CouncilProvider;
+	type Tippers = Elections;
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
@@ -852,7 +827,6 @@ impl bridge::Trait for Runtime {
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
 }
-
 
 parameter_types! {
     pub const ChainId: u8 = 1;
