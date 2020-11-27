@@ -58,9 +58,9 @@ pub enum Alternative {
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
-    TPublic::Pair::from_string(&format!("//{}", seed), None)
-        .expect("static values are valid; qed")
-        .public()
+	TPublic::Pair::from_string(&format!("//{}", seed), None)
+		.expect("static values are valid; qed")
+		.public()
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -75,21 +75,21 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
 /// Helper function to generate stash, controller and session key from seed
 /// Note: this should be used only for dev testnets.
 pub fn get_authority_keys_from_seed(seed: &str) -> (
-    AccountId,
-    AccountId,
-    GrandpaId,
-    BabeId,
-    ImOnlineId,
-    AuthorityDiscoveryId,
+	AccountId,
+	AccountId,
+	GrandpaId,
+	BabeId,
+	ImOnlineId,
+	AuthorityDiscoveryId,
 ) {
-    (
-        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+	(
+		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
-        get_from_seed::<GrandpaId>(seed),
-        get_from_seed::<BabeId>(seed),
-        get_from_seed::<ImOnlineId>(seed),
-        get_from_seed::<AuthorityDiscoveryId>(seed),
-    )
+		get_from_seed::<GrandpaId>(seed),
+		get_from_seed::<BabeId>(seed),
+		get_from_seed::<ImOnlineId>(seed),
+		get_from_seed::<AuthorityDiscoveryId>(seed),
+	)
 }
 
 /// Get a chain config from a spec setting.
@@ -134,10 +134,10 @@ pub fn mainnet_config() -> Result<ChainSpec, String> {
 }
 
 fn session_keys(
-    grandpa: GrandpaId,
-    babe: BabeId,
-    im_online: ImOnlineId,
-    authority_discovery: AuthorityDiscoveryId,
+	grandpa: GrandpaId,
+	babe: BabeId,
+	im_online: ImOnlineId,
+	authority_discovery: AuthorityDiscoveryId,
 ) -> SessionKeys {
 	SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
@@ -146,7 +146,7 @@ fn session_keys(
 pub fn testnet_genesis(
 	// StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
 	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
-    endowed_accounts: Option<Vec<AccountId>>,
+	endowed_accounts: Option<Vec<AccountId>>,
 ) -> GenesisConfig {
 	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
 		vec![
@@ -167,12 +167,12 @@ pub fn testnet_genesis(
 	// add a balance for the multi account id 1 created further down, this will have address
 	// 5DnGuePtDg4x7vCiUgjxrfFVVvMiA5aBDKLRbAp4SVohAMn8 on the default substrate chain
 	endowed_accounts.push(MultiAccount::multi_account_id(1));
-    let num_endowed_accounts = endowed_accounts.len();
+	let num_endowed_accounts = endowed_accounts.len();
 
-    const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
-    const STASH: Balance = 1_000_000 * RAD;
+	const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
+	const STASH: Balance = 1_000_000 * RAD;
 
-    GenesisConfig {
+	GenesisConfig {
 		frame_system: Some(SystemConfig {
 			code: wasm_binary_unwrap().to_vec(),
 			changes_trie_config: Default::default(),
@@ -214,20 +214,20 @@ pub fn testnet_genesis(
 						.collect(),
 			phantom: Default::default(),
 		}),
-        pallet_babe: Some(BabeConfig {
-            authorities: vec![],
-        }),
-        pallet_im_online: Some(ImOnlineConfig {
+		pallet_babe: Some(BabeConfig {
+			authorities: vec![],
+		}),
+		pallet_im_online: Some(ImOnlineConfig {
 			keys: vec![],
-        }),
+		}),
 		pallet_indices: Some(IndicesConfig {
 			indices: vec![],
 		}),
-        pallet_authority_discovery: Some(AuthorityDiscoveryConfig {
+		pallet_authority_discovery: Some(AuthorityDiscoveryConfig {
 			keys: vec![],
 		}),
-        pallet_grandpa: Some(GrandpaConfig {
-            authorities: vec![],
+		pallet_grandpa: Some(GrandpaConfig {
+			authorities: vec![],
 		}),
 		substrate_pallet_multi_account: Some(MultiAccountConfig{
 			multi_accounts: vec![
@@ -251,33 +251,33 @@ pub fn testnet_genesis(
 			],
 			threshold: 1,
 		}),
-        fees: Some(FeesConfig {
-            initial_fees: vec![(
-                // Anchoring state rent fee per day
-                // pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
-                // hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
-                Hash::from(&[
-                    17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-                    97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-                ]),
-                // Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
-                // 3 years, which is the expected average anchor duration. The other fee components for anchors amount
-                // to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
-                // 0.003.. RAD
-                2_365_296_803_653,
-            )],
-        }),
+		fees: Some(FeesConfig {
+			initial_fees: vec![(
+				// Anchoring state rent fee per day
+				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+				Hash::from(&[
+					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
+					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
+				]),
+				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
+				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
+				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+				// 0.003.. RAD
+				2_365_296_803_653,
+			)],
+		}),
 		pallet_vesting: Some(Default::default()),
-    }
+	}
 }
 
 fn get_default_properties(token: &str) -> sc_service::Properties {
-    let data = format!("\
+	let data = format!("\
 		{{
 			\"tokenDecimals\": 18,\
 			\"tokenSymbol\": \"{}\"\
 		}}", token);
-    serde_json::from_str(&data).unwrap()
+	serde_json::from_str(&data).unwrap()
 }
 
 fn development_config_genesis() -> GenesisConfig {
@@ -333,28 +333,28 @@ pub fn local_testnet_config() -> ChainSpec {
 fn fulvous_genesis() -> GenesisConfig {
 	testnet_genesis(
 		vec![
-            (
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].unchecked_into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-            ),
-            (
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].unchecked_into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-            ),
-        ],
-        Some(vec![
-            hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
-            hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
-            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-        ]),
+			(
+				hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+				hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
+				hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].unchecked_into(),
+				hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
+				hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
+				hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
+			),
+			(
+				hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+				hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
+				hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].unchecked_into(),
+				hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
+				hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
+				hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
+			),
+		],
+		Some(vec![
+			hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
+			hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
+			hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+		]),
 	)
 }
 
