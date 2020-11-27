@@ -771,7 +771,7 @@ parameter_types! {
     
     pub const SpendPeriod: BlockNumber = 6 * DAYS;
     pub const Burn: Permill = Permill::from_perthousand(2);
-    pub const TreasuryModuleId: ModuleId = ModuleId(*b"cen/trsy");
+    pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 
     pub const TipCountdown: BlockNumber = 1 * DAYS;
     pub const ProposalBond: Permill = Permill::from_percent(5);

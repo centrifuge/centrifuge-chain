@@ -170,7 +170,7 @@ pub fn testnet_genesis(
     let num_endowed_accounts = endowed_accounts.len();
 
     const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
-	const STASH: Balance = 1_000_000 * RAD;
+    const STASH: Balance = 1_000_000 * RAD;
 
 	GenesisConfig {
 		frame_system: Some(SystemConfig {
