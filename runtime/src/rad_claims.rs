@@ -75,6 +75,9 @@ decl_event! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+
+        const RadClaimsAccountId: T::AccountId = MODULE_ID.into_account();
+
         fn deposit_event() = default;
 
         /// Claims RAD tokens awarded through tinlake investments
@@ -171,7 +174,7 @@ impl<T: Trait> Module<T> {
             h.extend_from_slice(a.as_ref());
         }
 
-        T::Hashing::hash_of(&h).into()
+        T::Hashing::hash(&h).into()
     }
 
     /// Returns true if the given origin can update the upload account
@@ -195,7 +198,7 @@ impl<T: Trait> Module<T> {
         v.extend(amount.encode());
 
         // Generate root hash
-        let leaf_hash = T::Hashing::hash_of(&v);
+        let leaf_hash = T::Hashing::hash(&v);
         let mut root_hash = sorted_hashes.iter()
             .fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
 
@@ -219,8 +222,9 @@ impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
         if let Call::claim(account_id, amount, sorted_hashes) = call {
             // Check that proofs are valid with a root that exists in the root hash storage
             if Self::verify_proofs(account_id, amount, sorted_hashes.into()) {
-                return ValidTransaction::with_tag_prefix("RADclaim")
+                return ValidTransaction::with_tag_prefix("RadClaims")
                     .priority(T::UnsignedPriority::get())
+                    .and_provides((account_id, amount, sorted_hashes))
                     .longevity(TryInto::<u64>::try_into(
                         T::Longevity::get())
                         .unwrap_or(64_u64))
@@ -381,7 +385,7 @@ mod tests {
 
             // Single-leaf tree
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-            let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
+            let leaf_hash = <Test as frame_system::Trait>::Hashing::hash(&v);
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
             assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
 
@@ -432,7 +436,7 @@ mod tests {
         new_test_ext().execute_with(|| {
             assert_eq!(RadClaims::get_upload_account(), 0x0);
             // USER_A not allowed to upload hash
-            let root_hash = <Test as frame_system::Trait>::Hashing::hash_of(&1);
+            let root_hash = <Test as frame_system::Trait>::Hashing::hash(&[0; 32]);
             assert_err!(
                 RadClaims::store_root_hash(Origin::signed(USER_A), root_hash),
                 Error::<Test>::MustBeAdmin
@@ -452,7 +456,7 @@ mod tests {
     ) -> H256 {
         let mut v: Vec<u8> = account_id.encode();
         v.extend(amount.encode());
-        let leaf_hash = <Test as frame_system::Trait>::Hashing::hash_of(&v);
+        let leaf_hash = <Test as frame_system::Trait>::Hashing::hash(&v);
 
         RadClaims::sorted_hash_of(&leaf_hash, other_hash)
     }
