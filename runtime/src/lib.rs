@@ -90,9 +90,6 @@ mod va_registry;
 /// nft module
 mod nft;
 
-/// radial reward claims module
-mod rad_claims;
-
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
