@@ -768,19 +768,18 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 }
 
 parameter_types! {
-    
-    pub const SpendPeriod: BlockNumber = 6 * DAYS;
-    pub const Burn: Permill = Permill::from_perthousand(0);
-    pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
+	pub const Burn: Permill = Permill::from_perthousand(0);
+	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 
-    pub const TipCountdown: BlockNumber = 1 * DAYS;
-    pub const ProposalBond: Permill = Permill::from_percent(5);
-    pub const ProposalBondMinimum: Balance = 20 * RAD;
+	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+	pub const ProposalBondMinimum: Balance = 20 * RAD;
 
-    // The percent of the final tip which goes to the original reporter of the tip.
-    pub const TipFindersFee: Percent = Percent::from_percent(20);
+	// The percent of the final tip which goes to the original reporter of the tip.
+	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 1 * RAD;
-    pub const TipReportDepositPerByte: Balance = 1 * CENTI_RAD;
+	pub const TipReportDepositPerByte: Balance = 1 * CENTI_RAD;
 }
 
 type ApproveOrigin = EnsureOneOf<
@@ -796,23 +795,23 @@ type MoreThanHalfCouncil = EnsureOneOf<
 >;
 
 impl pallet_treasury::Trait for Runtime {
-    type ModuleId = TreasuryModuleId;
+	type ModuleId = TreasuryModuleId;
 	type Currency = Balances;
 	type ApproveOrigin = ApproveOrigin;
-    type RejectOrigin = MoreThanHalfCouncil;
+	type RejectOrigin = MoreThanHalfCouncil;
 	type Event = Event;
 	type ProposalRejection = ();
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
 	type SpendPeriod = SpendPeriod;
-    type Burn = Burn;
+	type Burn = Burn;
 	type Tippers = Elections;
 	type TipCountdown = TipCountdown;
 	type TipFindersFee = TipFindersFee;
 	type TipReportDepositBase = TipReportDepositBase;
-    type TipReportDepositPerByte = TipReportDepositPerByte;
-    type BurnDestination = ();
-    type WeightInfo = ();
+	type TipReportDepositPerByte = TipReportDepositPerByte;
+	type BurnDestination = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
