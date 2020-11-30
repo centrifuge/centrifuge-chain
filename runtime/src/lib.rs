@@ -11,19 +11,19 @@ use frame_support::{
         Weight,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
     },
-    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter},
+    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter },
 };
 use codec::{Encode, Decode};
 use sp_core::{
     crypto::KeyTypeId,
-    u32_trait::{_1, _2, _3, _4}
+    u32_trait::{_1, _2, _3, _4, _5}
 };
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
-	Perbill, Perquintill, ApplyExtrinsicResult,
-	impl_opaque_keys, generic, create_runtime_str, FixedPointNumber,
+	Permill, Perbill, Percent, Perquintill, ApplyExtrinsicResult,
+	impl_opaque_keys, generic, create_runtime_str, FixedPointNumber, ModuleId
 };
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
@@ -42,7 +42,7 @@ use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use frame_system::{EnsureSigned, EnsureRoot};
+use frame_system::{EnsureSigned, EnsureRoot, EnsureOneOf};
 use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
@@ -229,10 +229,10 @@ impl InstanceFilter<Call> for ProxyType {
         match self {
             ProxyType::Any => true,
             ProxyType::NonTransfer => !matches!(c,
-				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..)) | Call::Elections(..) 
 			),
             ProxyType::Governance => matches!(c,
-				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Treasury(..)
 			),
             ProxyType::Staking => matches!(c, Call::Staking(..)),
         }
@@ -443,7 +443,7 @@ impl pallet_staking::Trait for Runtime {
     type CurrencyToVote = CurrencyToVoteHandler;
     type RewardRemainder = ();
     type Event = Event;
-    type Slash = ();
+    type Slash = Treasury;
     type Reward = (); // rewards are minted from the void
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
@@ -526,7 +526,7 @@ impl pallet_democracy::Trait for Runtime {
     type PreimageByteDeposit = PreimageByteDeposit;
     type OperationalPreimageOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
     /// Handler for the unbalanced reduction when slashing a preimage deposit.
-    type Slash = ();
+    type Slash = Treasury;
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = MaxVotes;
@@ -574,9 +574,9 @@ impl pallet_elections_phragmen::Trait for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBond = VotingBond;
 
-	type LoserCandidate = ();
-	type BadReport = ();
-	type KickedMember = ();
+	type LoserCandidate = Treasury;
+	type BadReport = Treasury;
+	type KickedMember = Treasury;
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -729,7 +729,7 @@ impl pallet_identity::Trait for Runtime {
     type MaxSubAccounts = MaxSubAccounts;
     type MaxAdditionalFields = MaxAdditionalFields;
     type MaxRegistrars = MaxRegistrars;
-    type Slashed = ();
+    type Slashed = Treasury;
     type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
     type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
     type WeightInfo = ();
@@ -768,6 +768,53 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 }
 
 parameter_types! {
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
+	pub const Burn: Permill = Permill::from_perthousand(0);
+	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
+
+	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+	pub const ProposalBondMinimum: Balance = 20 * RAD;
+
+	// The percent of the final tip which goes to the original reporter of the tip.
+	pub const TipFindersFee: Percent = Percent::from_percent(20);
+	pub const TipReportDepositBase: Balance = 1 * RAD;
+	pub const TipReportDepositPerByte: Balance = 1 * CENTI_RAD;
+}
+
+type ApproveOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>
+>;
+
+type MoreThanHalfCouncil = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>
+>;
+
+impl pallet_treasury::Trait for Runtime {
+	type ModuleId = TreasuryModuleId;
+	type Currency = Balances;
+	type ApproveOrigin = ApproveOrigin;
+	type RejectOrigin = MoreThanHalfCouncil;
+	type Event = Event;
+	type ProposalRejection = ();
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type Tippers = Elections;
+	type TipCountdown = TipCountdown;
+	type TipFindersFee = TipFindersFee;
+	type TipReportDepositBase = TipReportDepositBase;
+	type TipReportDepositPerByte = TipReportDepositPerByte;
+	type BurnDestination = ();
+	type WeightInfo = ();
+}
+
+parameter_types! {
     pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 }
@@ -779,7 +826,6 @@ impl bridge::Trait for Runtime {
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
 }
-
 
 parameter_types! {
     pub const ChainId: u8 = 1;
@@ -852,6 +898,7 @@ construct_runtime!(
 		Nfts: nfts::{Module, Call, Event<T>},
 		MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
+        Treasury: pallet_treasury::{Module, Call, Storage, Config, Event<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
