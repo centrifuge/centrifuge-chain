@@ -1,3 +1,9 @@
+use crate::nft;
+use bridge_mapping;
+use core::convert::TryInto;
+use codec::{Decode, Encode};
+use unique_assets::traits::Unique;
+use crate::va_registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
 use frame_support::{
@@ -9,14 +15,55 @@ use sp_core::U256;
 use sp_runtime::traits::SaturatedConversion;
 use sp_std::prelude::*;
 
-type ResourceId = chainbridge::ResourceId;
+/// Abstract identifer of an asset, for a common vocabulary across chains.
+pub type ResourceId = chainbridge::ResourceId;
+
+/// A generic representation of a local address. A resource id points to this. It may be a
+/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
+/// as an upper bound to store efficiently.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+pub struct Address(pub Bytes32);
+
+/// Length of an [Address] type
+const ADDR_LEN: usize = 32;
+
+type Bytes32 = [u8; ADDR_LEN];
+
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
 /// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
 
-pub trait Trait: system::Trait + fees::Trait + pallet_balances::Trait + chainbridge::Trait {
+impl From<RegistryId> for Address {
+    fn from(r: RegistryId) -> Self {
+        // Pad 12 bytes to the registry id - total 32 bytes
+        let padded = r.to_fixed_bytes().iter().copied()
+            .chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..ADDR_LEN]
+            .try_into().expect("RegistryId is 20 bytes. 12 are padded. Converting to a 32 byte array should never fail");
+
+        Address( padded )
+    }
+}
+
+// In order to be generic into T::Address
+impl From<Bytes32> for Address {
+    fn from(v: Bytes32) -> Self {
+        Address( v[..ADDR_LEN].try_into().expect("Address wraps a 32 byte array") )
+    }
+}
+impl From<Address> for Bytes32 {
+    fn from(a: Address) -> Self {
+        a.0
+    }
+}
+
+pub trait Trait: system::Trait
+               + fees::Trait
+               + pallet_balances::Trait
+               + chainbridge::Trait
+               + nft::Trait
+               + bridge_mapping::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -43,12 +90,16 @@ decl_event! {
     pub enum Event<T> where
         <T as frame_system::Trait>::Hash,
     {
-        Remark(Hash),
+        Remark(Hash, ResourceId),
     }
 }
 
 decl_error! {
     pub enum Error for Module<T: Trait>{
+        /// Resource id provided on initiating a transfer is not a key in bridges-names mapping.
+        ResourceIdDoesNotExist,
+        /// Registry id provided on recieving a transfer is not a key in bridges-names mapping.
+        RegistryIdDoesNotExist,
         InvalidTransfer,
     }
 }
@@ -86,23 +137,81 @@ decl_module! {
             Ok(())
         }
 
+        /// Transfer an nft to a whitelisted destination chain. Source nft is locked in bridge account
+        /// rather than being burned.
+        #[weight = 195_000_000]
+        pub fn transfer_asset(origin,
+                              recipient: Vec<u8>,
+                              from_registry: RegistryId,
+                              token_id: TokenId,
+                              dest_id: chainbridge::ChainId,
+        ) -> DispatchResult {
+            let source = ensure_signed(origin)?;
+
+            // Get resource id from registry
+            let reg: Address = from_registry.into();
+            let reg: Bytes32 = reg.into();
+            let reg: <T as bridge_mapping::Trait>::Address = reg.into();
+            let resource_id = <bridge_mapping::Module<T>>::name_of(reg)
+                .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
+
+            // Burn additional fees
+            let nft_fee: T::Balance = TOKEN_FEE.saturated_into();
+            <fees::Module<T>>::burn_fee(&source, nft_fee)?;
+
+            // Lock asset by transfering to bridge account
+            let bridge_id = <chainbridge::Module<T>>::account_id();
+            let asset_id = AssetId(from_registry, token_id);
+            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &asset_id)?;
+
+            // Transfer instructions for relayer
+            let tid: &mut [u8] = &mut[0; 32];
+            // Ethereum is big-endian
+            token_id.to_big_endian(tid);
+            <chainbridge::Module<T>>::transfer_nonfungible(dest_id,
+                                                           resource_id.into(),
+                                                           tid.to_vec(),
+                                                           recipient,
+                                                           vec![]/*assetinfo.metadata*/)
+        }
+
         //
         // Executable calls. These can be triggered by a chainbridge transfer initiated on another chain
         //
 
         /// Executes a simple currency transfer using the chainbridge account as the source
         #[weight = 195_000_000]
-        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
+        pub fn transfer(origin, to: T::AccountId, amount: BalanceOf<T>, r_id: ResourceId) -> DispatchResult {
             let source = T::BridgeOrigin::ensure_origin(origin)?;
             T::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
             Ok(())
         }
 
+        #[weight = 195_000_000]
+        pub fn receive_nonfungible(origin,
+                                   to: T::AccountId,
+                                   token_id: TokenId,
+                                   _metadata: Vec<u8>,
+                                   resource_id: ResourceId
+        ) -> DispatchResult {
+            let source = T::BridgeOrigin::ensure_origin(origin)?;
+
+            // Get registry from resource id
+            let rid: <T as bridge_mapping::Trait>::ResourceId = resource_id.into();
+            let registry_id = <bridge_mapping::Module<T>>::addr_of(rid)
+                .ok_or(Error::<T>::RegistryIdDoesNotExist)?;
+            let registry_id: Address = registry_id.into().into();
+
+            // Transfer from bridge account to destination account
+            let asset_id = AssetId(registry_id.into(), token_id);
+            <nft::Module<T> as Unique>::transfer(&source, &to, &asset_id)
+        }
+
         /// This can be called by the chainbridge to demonstrate an arbitrary call from a proposal.
         #[weight = 195_000_000]
-        pub fn remark(origin, hash: T::Hash) -> DispatchResult {
+        pub fn remark(origin, hash: T::Hash, r_id: ResourceId) -> DispatchResult {
             T::BridgeOrigin::ensure_origin(origin)?;
-            Self::deposit_event(RawEvent::Remark(hash));
+            Self::deposit_event(RawEvent::Remark(hash, r_id));
             Ok(())
         }
 
@@ -142,9 +251,10 @@ mod tests{
 	use sp_core::hashing::blake2_128;
 	use sp_runtime::{
 		testing::Header,
-		traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
+		traits::{AccountIdConversion, BlakeTwo256, Hash, Block as BlockT, IdentityLookup}, ModuleId, Perbill,
 	};
 	use crate::bridge as pallet_bridge;
+    use crate::{nft, va_registry as registry};
 
 	pub use pallet_balances as balances;
 
@@ -180,7 +290,6 @@ mod tests{
 		type Version = ();
 		type ModuleToIndex = ();
 		type AccountData = balances::AccountData<u128>;
-		type MigrateAccount = ();
 		type OnNewAccount = ();
 		type OnKilledAccount = ();
 		type SystemWeightInfo = ();
@@ -228,6 +337,32 @@ mod tests{
 		type EventHandler = ();
 	}
 
+    impl nft::Trait for Test {
+        type Event = Event;
+        type AssetInfo = registry::types::AssetInfo;
+    }
+
+    impl bridge_mapping::Trait for Test {
+        type ResourceId = ResourceId;
+        type Address = Address;
+        type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+    }
+
+    // So that nfts can be minted
+    impl registry::Trait for Test {
+        type Event = Event;
+    }
+
+    impl crate::anchor::Trait for Test {}
+
+    impl pallet_timestamp::Trait for Test {
+        type Moment = u64;
+        type OnTimestampSet = ();
+        type MinimumPeriod = ();
+        type WeightInfo = ();
+    }
+
+
 	parameter_types! {
 		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
@@ -254,7 +389,9 @@ mod tests{
 			Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 			ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 			PalletBridge: pallet_bridge::{Module, Call, Event<T>},
-			Fees: fees::{Module, Call, Event<T>}
+			Fees: fees::{Module, Call, Event<T>},
+            Nft: nft::{Module, Event<T>},
+            Registry: registry::{Module, Call, Event<T>},
 		}
 	);
 
@@ -275,6 +412,18 @@ mod tests{
                 (RELAYER_B, 100),
             ],
         }
+            .assimilate_storage(&mut t)
+            .unwrap();
+        fees::GenesisConfig::<Test> {
+            initial_fees: vec![(
+                // anchoring state rent fee per day
+                H256::from(&[
+                    17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31, 97,
+                    133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
+                ]),
+                // state rent 0 for tests
+                0,
+            )]}
             .assimilate_storage(&mut t)
             .unwrap();
         let mut ext = sp_io::TestExternalities::new(t);
@@ -326,12 +475,12 @@ mod tests{
 		}
 	}
 
-	fn make_remark_proposal(hash: H256) -> Call {
-		Call::PalletBridge(crate::bridge::Call::remark(hash))
+	fn make_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
+		Call::PalletBridge(crate::bridge::Call::remark(hash, r_id))
 	}
 
-	fn make_transfer_proposal(to: u64, amount: u128) -> Call {
-		Call::PalletBridge(crate::bridge::Call::transfer(to, amount))
+	fn make_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
+		Call::PalletBridge(crate::bridge::Call::transfer(to, amount, r_id))
 	}
 
 
@@ -396,15 +545,148 @@ mod tests{
 		})
 	}
 
+    // Create a registry, set resource id and mint an nft.
+    fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> RegistryId {
+        let origin = Origin::signed(owner);
+
+        // Create registry and generate proofs
+        let (asset_id,
+             pre_image,
+             anchor_id,
+             (proofs, static_hashes, doc_root),
+             nft_data,
+             _) = registry::tests::setup_mint::<Test>(owner, token_id);
+
+        // Commit document root
+        assert_ok!( <crate::anchor::Module<Test>>::commit(
+            origin.clone(),
+            pre_image,
+            doc_root,
+            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            crate::common::MS_PER_DAY + 1));
+
+        // Mint token with document proof
+        let (registry_id, token_id) = asset_id.clone().destruct();
+        assert_ok!(
+            <registry::Module<Test>>::mint(origin,
+                      owner,
+                      registry_id,
+                      token_id,
+                      nft_data.clone(),
+                      registry::types::MintInfo {
+                          anchor_id: anchor_id,
+                          proofs: proofs,
+                          static_hashes: static_hashes,
+                      }));
+
+        // Register resource with chainbridge
+        assert_ok!(<chainbridge::Module<Test>>::register_resource(resource_id.clone(), vec![]));
+        // Register resource in local resource mapping
+        <bridge_mapping::Module<Test>>::set_resource(resource_id.clone(),
+                                                   registry_id.clone().into());
+
+        registry_id
+    }
+
+    #[test]
+    fn receive_nonfungible() {
+        new_test_ext().execute_with(|| {
+            let dest_chain = 0;
+            let resource_id = NativeTokenId::get();
+            let recipient = RELAYER_A;
+            let owner     = <chainbridge::Module<Test>>::account_id();
+            let origin    = Origin::signed(owner);
+            let token_id  = U256::one();
+
+            // Create registry, map resource id, and mint nft
+            let registry_id = setup_nft(owner, token_id, resource_id);
+
+            // Whitelist destination chain
+            assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+
+            // Send nft from bridge account to user
+            assert_ok!(<Module<Test>>::receive_nonfungible(origin,
+                                                           recipient,
+                                                           token_id,
+                                                           vec![],
+                                                           resource_id));
+
+            // Recipient owns the nft now
+            assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+                       Some(recipient));
+        })
+    }
+
+    #[test]
+    fn transfer_nonfungible_asset() {
+        new_test_ext().execute_with(|| {
+            let dest_chain = 0;
+            let resource_id = NativeTokenId::get();
+            let recipient = vec![1];
+            let owner = RELAYER_A;
+            let token_id = U256::one();
+
+            // Create registry, map resource id, and mint nft
+            let registry_id = setup_nft(owner, token_id, resource_id);
+
+            // Whitelist destination chain
+            assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
+
+            // Owner owns nft
+            assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+                       Some(owner));
+
+            // Using account without enough balance for fee should fail when requesting transfer
+            /*
+            assert_err!(
+                PalletBridge::transfer_asset(
+                    Origin::signed(RELAYER_C),
+                    recipient.clone(),
+                    registry_id,
+                    token_id.clone(),
+                    dest_chain),
+                DispatchError::Module {
+                    index: 0,
+                    error: 3,
+                    Some("InsufficientBalance")});
+            */
+
+            // Transfer nonfungible through bridge
+            assert_ok!(
+                PalletBridge::transfer_asset(
+                    Origin::signed(owner),
+                    recipient.clone(),
+                    registry_id,
+                    token_id.clone(),
+                    dest_chain));
+
+            // Now bridge module owns the nft
+            assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+                       Some(<chainbridge::Module<Test>>::account_id()));
+
+            // Check that transfer event was emitted
+            let tid: &mut [u8] = &mut[0; 32];
+            token_id.to_big_endian(tid);
+            expect_event(chainbridge::RawEvent::NonFungibleTransfer(
+                dest_chain,
+                1,
+                resource_id,
+                tid.to_vec(),
+                recipient,
+                vec![],
+            ));
+        })
+    }
+
 
 	#[test]
 	fn execute_remark() {
 		new_test_ext().execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
-			let proposal = make_remark_proposal(hash.clone());
 			let prop_id = 1;
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
+			let proposal = make_remark_proposal(hash.clone(), r_id);
 			let resource = b"PalletBridge.remark".to_vec();
 
 			assert_ok!(ChainBridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
@@ -428,7 +710,7 @@ mod tests{
 				Box::new(proposal.clone())
 			));
 
-			event_exists(RawEvent::Remark(hash));
+			event_exists(RawEvent::Remark(hash, r_id));
 		})
 	}
 
@@ -436,16 +718,17 @@ mod tests{
 	fn execute_remark_bad_origin() {
 		new_test_ext().execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
+			let r_id = chainbridge::derive_resource_id(1, b"hash");
 
-			assert_ok!(PalletBridge::remark(Origin::signed(ChainBridge::account_id()), hash));
+			assert_ok!(PalletBridge::remark(Origin::signed(ChainBridge::account_id()), hash, r_id));
 			// Don't allow any signed origin except from chainbridge addr
 			assert_noop!(
-				PalletBridge::remark(Origin::signed(RELAYER_A), hash),
+				PalletBridge::remark(Origin::signed(RELAYER_A), hash, r_id),
 				DispatchError::BadOrigin
 			);
 			// Don't allow root calls
 			assert_noop!(
-				PalletBridge::remark(Origin::root(), hash),
+				PalletBridge::remark(Origin::root(), hash, r_id),
 				DispatchError::BadOrigin
 			);
 		})
@@ -456,12 +739,14 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			// Check inital state
 			let bridge_id: u64 = ChainBridge::account_id();
+            let resource_id = NativeTokenId::get();
 			assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
 			// Transfer and check result
 			assert_ok!(PalletBridge::transfer(
 				Origin::signed(ChainBridge::account_id()),
 				RELAYER_A,
-				10
+				10,
+                resource_id
 			));
 			assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
@@ -481,7 +766,7 @@ mod tests{
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"transfer");
 			let resource = b"PalletBridge.transfer".to_vec();
-			let proposal = make_transfer_proposal(RELAYER_A, 10);
+			let proposal = make_transfer_proposal(RELAYER_A, 10, r_id);
 
 			assert_ok!(ChainBridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));

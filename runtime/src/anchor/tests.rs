@@ -52,7 +52,6 @@ impl frame_system::Trait for Test {
     type MaximumExtrinsicWeight = ();
     type BaseCallFilter = ();
     type SystemWeightInfo = ();
-    type MigrateAccount = ();
 }
 
 impl pallet_timestamp::Trait for Test {
@@ -1087,54 +1086,6 @@ fn test_same_day_1001_anchors() {
         // all done
         assert_ok!(Anchor::evict_anchors(Origin::signed(1)));
         assert_eq!(Anchor::get_latest_evicted_anchor_index(), 1001);
-    });
-}
-
-#[test]
-fn test_anchor_migration() {
-    use frame_support::storage::child::ChildInfo;
-
-    new_test_ext().execute_with(|| {
-        // Stored anchor in old data format:
-        // alpha-3 - ":child_storage:default:" + days_rent.enc() + [ Child_Info("anchor") + anchorID ]
-        // rc6 - "anchor" + days_rent.enc() + [ anchorID ]
-        // internally adds ":child_storage:default:" as prefix before storing
-
-        // Storagekey - days_rent.enc() [18867.enc()]
-        let storage_key: &[u8] = &[179, 73, 0, 0];
-        // Child Def
-        // let child_prefix: &[u8] = &[97, 110, 99, 104, 111, 114];
-        // Key - AnchorID
-        let child_key: &[u8; 32] = &[241, 21, 217, 102, 123, 102, 236, 112, 165, 212, 213, 131, 149,
-            180, 145, 99, 243, 158, 65, 201, 198, 9, 83, 69, 109, 182, 146, 201, 235, 159, 32, 234];
-
-        let raw_doc_root: &[u8; 32] = &[107, 84, 243, 195, 50, 123, 210, 7, 187, 43, 195, 161, 54,
-            218, 203, 82, 230, 75, 204, 83, 51, 29, 27, 125, 187, 36, 110, 3, 250, 118, 128, 186];
-        let anchor_id = sp_core::H256::from(child_key);
-        let doc_root = sp_core::H256::from(raw_doc_root);
-        let current_block: <Test as frame_system::Trait>::BlockNumber = 1000;
-        let anchor_data = AnchorData {
-            id: anchor_id,
-            doc_root: doc_root,
-            anchored_block: current_block
-        };
-        let anchor_data_encoded = anchor_data.encode();
-
-        // Store old data
-        Anchor::store_anchor(anchor_id, &storage_key.to_vec(), 18867, &anchor_data_encoded);
-        // Ensure exists using old prefix
-        let cf: ChildInfo = ChildInfo::new_default(storage_key);
-        assert_eq!(child::get_raw(&cf, child_key), Some(anchor_data_encoded));
-
-        // Ensure it doesnt exist using new prefix
-        // "anchor" + days_rent.enc() + anchorID
-        assert_eq!(Anchor::get_anchor_by_id(anchor_id), None);
-        assert_eq!(Anchor::migrate_anchors(), 1);
-        // Ensure anchor exists after migration
-        assert_eq!(Anchor::get_anchor_by_id(anchor_id), Some(anchor_data));
-
-        //Ensure old date has been removed
-        assert_eq!(child::get_raw(&cf, child_key), None);
     });
 }
 
