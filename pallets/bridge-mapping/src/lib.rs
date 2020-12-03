@@ -9,7 +9,6 @@
 //!
 //! Resources are set and removed by an Admin account or by root.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![feature(trait_alias)]
 
 use codec::FullCodec;
 use sp_runtime::traits::{Member, BadOrigin};
@@ -25,18 +24,16 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub trait AsByte32 = Into<[u8; 32]> + From<[u8; 32]>;
-
 pub trait Trait: frame_system::Trait {
     /// In order to provide generality, we need some way to associate some action on a source chain
     /// to some action on a destination chain. This may express tokenX on chain A is equivalent to
     /// tokenY on chain B, or to simply associate that some action performed on chain A should
     /// result in some other action occurring on chain B. ResourceId is defined as a 32 byte array
     /// by ChainSafe.
-    type ResourceId: Member + Default + FullCodec + AsByte32;
+    type ResourceId: Member + Default + FullCodec + Into<[u8; 32]> + From<[u8; 32]>;
     /// A local mapping of a resource id. Represents anything that a resource id might map to. On
     /// Ethereum, this may be a contract address for transferring assets.
-    type Address: Member + Default + FullCodec + AsByte32;
+    type Address: Member + Default + FullCodec + Into<[u8; 32]> + From<[u8; 32]>;
     /// Admin is able to set/remove resource mappings.
     type AdminOrigin: EnsureOrigin<Self::Origin>;
 }
