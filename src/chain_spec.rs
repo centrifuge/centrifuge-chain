@@ -387,7 +387,6 @@ pub(crate) mod tests {
 	use super::*;
 	use sp_runtime::{ModuleId, BuildStorage, traits::AccountIdConversion};
 	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccount};
-	use sp_core::sp_std::str::FromStr;
 
 	#[test]
 	fn test_centrifuge_multi_account_ids() {

@@ -903,8 +903,11 @@ mod custom_migration {
     pub struct Upgrade;
     impl OnRuntimeUpgrade for Upgrade {
         fn on_runtime_upgrade() -> Weight {
+            // This will remove all the slash related data on staking pallet
             clear_slash_data::<Runtime>();
+            // This is the total balance we lost
             let balance = 63 * RAD;
+            // this is the centrifuge CNF proxy account: 4fsNBXAXoUKxSeu9qKCD9s285dzjS7Nmh1u76s4AsidrdmdL
             let acc :AccountId = hex!("c84b10ac8baea482e93d961a52502c9ee8227a7deaffd746657c5a8655cc70ab").into();
             let res :DispatchResult = Balances::add_balance(acc, balance);
             match res{
