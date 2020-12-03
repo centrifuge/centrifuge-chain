@@ -5,6 +5,7 @@ use crate::constants::currency;
 use sp_std::{vec::Vec, convert::TryInto};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error,
                     traits::{Get, EnsureOrigin, Currency, ExistenceRequirement::KeepAlive},
+                    weights::{DispatchClass, Pays},
                     ensure, dispatch::DispatchResult};
 use sp_runtime::{
     ModuleId,
@@ -86,7 +87,10 @@ decl_module! {
         /// # <weight>
         /// - Based on hashes length
         /// # </weight>
-        #[weight = 195_000_000]
+        #[weight = (sorted_hashes.len().saturating_mul(1_000_000) as u64
+                    + T::DbWeight::get().reads_writes(2,2)
+                    + 195_000_000,
+            DispatchClass::Normal, Pays::Yes)]
         pub fn claim(origin,
                      account_id: T::AccountId,
                      amount: T::Balance,

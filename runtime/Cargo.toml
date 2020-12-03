@@ -22,6 +22,9 @@ static_assertions = "1.1.0"
 hex-literal = "0.2.1"
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
+unique_assets = { git = "https://github.com/jaybutera/unique-assets", default-features = false }
+#unique_assets = { path = "../../unique_assets", default-features = false }
+bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
 
 # primitives
 sp-authority-discovery = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
@@ -72,6 +75,7 @@ pallet-transaction-payment-rpc-runtime-api = { version = "2.0.0-rc6", git = "htt
 pallet-identity = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
 pallet-scheduler = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
 pallet-vesting = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+frame-benchmarking = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false, optional = true }
 
 [build-dependencies]
 wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
@@ -79,6 +83,9 @@ wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-run
 [features]
 default = ["std"]
 std = [
+    "bridge-mapping/std",
+    "unique_assets/std",
+    "frame-benchmarking/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",
@@ -131,3 +138,4 @@ std = [
     "rustc-hex",
     "safe-mix/std",
 ]
+runtime-benchmarks = ["frame-benchmarking"]

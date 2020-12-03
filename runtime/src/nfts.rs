@@ -81,6 +81,7 @@ mod tests {
 
     use crate::common;
     use crate::fees;
+    use crate::nft;
     use crate::nfts;
     use crate::proofs::Proof;
     use codec::Encode;
@@ -88,6 +89,7 @@ mod tests {
         assert_err, assert_ok, dispatch::DispatchError, ord_parameter_types, parameter_types,
         weights::Weight,
     };
+    //use chainbridge::ResourceId;
     use frame_system::EnsureSignedBy;
     use sp_core::hashing::blake2_128;
     use sp_core::H256;
@@ -171,6 +173,11 @@ mod tests {
         type NativeTokenId = NativeTokenId;
     }
 
+    impl nft::Trait for Test {
+        type Event = ();
+        type AssetInfo = crate::va_registry::types::AssetInfo;
+    }
+
     parameter_types! {
         pub const TestChainId: u8 = 5;
     }
@@ -217,6 +224,12 @@ mod tests {
         type ExistentialDeposit = ExistentialDeposit;
         type AccountStore = System;
         type WeightInfo = ();
+    }
+
+    impl bridge_mapping::Trait for Test {
+        type ResourceId = crate::bridge::ResourceId;
+        type Address = crate::bridge::Address;
+        type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
     }
 
     pub const USER_A: u64 = 0x1;
