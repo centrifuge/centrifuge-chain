@@ -881,7 +881,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.1"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?rev=27f8c0c3f2b2c15673e622cff56ee9ec9857f411#27f8c0c3f2b2c15673e622cff56ee9ec9857f411"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?rev=6ef2738d8179299bf94159ae9e79d3f27be5271c#6ef2738d8179299bf94159ae9e79d3f27be5271c"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1517,7 +1517,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 [[package]]
 name = "fork-tree"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
 ]
@@ -1535,7 +1535,7 @@ dependencies = [
 [[package]]
 name = "frame-benchmarking"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1553,7 +1553,7 @@ dependencies = [
 [[package]]
 name = "frame-executive"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1568,7 +1568,7 @@ dependencies = [
 [[package]]
 name = "frame-metadata"
 version = "11.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -1579,7 +1579,7 @@ dependencies = [
 [[package]]
 name = "frame-support"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "bitmask",
  "frame-metadata",
@@ -1604,7 +1604,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support-procedural-tools",
  "proc-macro2",
@@ -1615,7 +1615,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural-tools"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support-procedural-tools-derive",
  "proc-macro-crate",
@@ -1627,7 +1627,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural-tools-derive"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1637,7 +1637,7 @@ dependencies = [
 [[package]]
 name = "frame-system"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -1653,7 +1653,7 @@ dependencies = [
 [[package]]
 name = "frame-system-rpc-runtime-api"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -3628,7 +3628,7 @@ dependencies = [
 [[package]]
 name = "node-primitives"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-system",
  "parity-scale-codec",
@@ -3803,7 +3803,7 @@ dependencies = [
 [[package]]
 name = "pallet-authority-discovery"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3819,7 +3819,7 @@ dependencies = [
 [[package]]
 name = "pallet-authorship"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3834,7 +3834,7 @@ dependencies = [
 [[package]]
 name = "pallet-babe"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3859,7 +3859,7 @@ dependencies = [
 [[package]]
 name = "pallet-balances"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3873,7 +3873,7 @@ dependencies = [
 [[package]]
 name = "pallet-collective"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3888,7 +3888,7 @@ dependencies = [
 [[package]]
 name = "pallet-democracy"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3903,7 +3903,7 @@ dependencies = [
 [[package]]
 name = "pallet-elections-phragmen"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3917,7 +3917,7 @@ dependencies = [
 [[package]]
 name = "pallet-finality-tracker"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3933,7 +3933,7 @@ dependencies = [
 [[package]]
 name = "pallet-grandpa"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -3955,7 +3955,7 @@ dependencies = [
 [[package]]
 name = "pallet-identity"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "enumflags2",
  "frame-benchmarking",
@@ -3971,7 +3971,7 @@ dependencies = [
 [[package]]
 name = "pallet-im-online"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -3990,7 +3990,7 @@ dependencies = [
 [[package]]
 name = "pallet-indices"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4006,7 +4006,7 @@ dependencies = [
 [[package]]
 name = "pallet-membership"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4020,7 +4020,7 @@ dependencies = [
 [[package]]
 name = "pallet-multisig"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4035,7 +4035,7 @@ dependencies = [
 [[package]]
 name = "pallet-offences"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4050,7 +4050,7 @@ dependencies = [
 [[package]]
 name = "pallet-proxy"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4065,7 +4065,7 @@ dependencies = [
 [[package]]
 name = "pallet-randomness-collective-flip"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4078,7 +4078,7 @@ dependencies = [
 [[package]]
 name = "pallet-scheduler"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4093,7 +4093,7 @@ dependencies = [
 [[package]]
 name = "pallet-session"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4113,7 +4113,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4133,7 +4133,7 @@ dependencies = [
 [[package]]
 name = "pallet-staking-reward-curve"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -4144,7 +4144,7 @@ dependencies = [
 [[package]]
 name = "pallet-timestamp"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -4161,7 +4161,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4178,7 +4178,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
@@ -4196,7 +4196,7 @@ dependencies = [
 [[package]]
 name = "pallet-transaction-payment-rpc-runtime-api"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -4209,7 +4209,7 @@ dependencies = [
 [[package]]
 name = "pallet-utility"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -4224,7 +4224,7 @@ dependencies = [
 [[package]]
 name = "pallet-vesting"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "enumflags2",
  "frame-support",
@@ -5260,7 +5260,7 @@ dependencies = [
 [[package]]
 name = "sc-authority-discovery"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "bytes 0.5.6",
  "derive_more",
@@ -5287,7 +5287,7 @@ dependencies = [
 [[package]]
 name = "sc-basic-authorship"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "futures-timer 3.0.2",
@@ -5311,7 +5311,7 @@ dependencies = [
 [[package]]
 name = "sc-block-builder"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sc-client-api",
@@ -5328,7 +5328,7 @@ dependencies = [
 [[package]]
 name = "sc-chain-spec"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "impl-trait-for-tuples",
  "sc-chain-spec-derive",
@@ -5344,7 +5344,7 @@ dependencies = [
 [[package]]
 name = "sc-chain-spec-derive"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -5355,7 +5355,7 @@ dependencies = [
 [[package]]
 name = "sc-cli"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "ansi_term 0.12.1",
  "atty",
@@ -5402,7 +5402,7 @@ dependencies = [
 [[package]]
 name = "sc-client-api"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "fnv",
@@ -5438,7 +5438,7 @@ dependencies = [
 [[package]]
 name = "sc-client-db"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "blake2-rfc",
  "hash-db",
@@ -5468,7 +5468,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "sc-client-api",
  "sp-blockchain",
@@ -5479,7 +5479,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-babe"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "fork-tree",
@@ -5523,7 +5523,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-babe-rpc"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "futures 0.3.7",
@@ -5547,7 +5547,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-epochs"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "fork-tree",
  "parity-scale-codec",
@@ -5560,7 +5560,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-slots"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "futures-timer 3.0.2",
@@ -5583,7 +5583,7 @@ dependencies = [
 [[package]]
 name = "sc-consensus-uncles"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "log 0.4.11",
  "sc-client-api",
@@ -5597,7 +5597,7 @@ dependencies = [
 [[package]]
 name = "sc-executor"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "lazy_static",
@@ -5624,7 +5624,7 @@ dependencies = [
 [[package]]
 name = "sc-executor-common"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "log 0.4.11",
@@ -5641,7 +5641,7 @@ dependencies = [
 [[package]]
 name = "sc-executor-wasmi"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "log 0.4.11",
  "parity-scale-codec",
@@ -5656,7 +5656,7 @@ dependencies = [
 [[package]]
 name = "sc-finality-grandpa"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "finality-grandpa",
@@ -5693,7 +5693,7 @@ dependencies = [
 [[package]]
 name = "sc-finality-grandpa-rpc"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "finality-grandpa",
@@ -5714,7 +5714,7 @@ dependencies = [
 [[package]]
 name = "sc-informant"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "ansi_term 0.12.1",
  "futures 0.3.7",
@@ -5732,7 +5732,7 @@ dependencies = [
 [[package]]
 name = "sc-keystore"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "hex",
@@ -5748,7 +5748,7 @@ dependencies = [
 [[package]]
 name = "sc-light"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "hash-db",
  "lazy_static",
@@ -5767,7 +5767,7 @@ dependencies = [
 [[package]]
 name = "sc-network"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "async-std",
  "bitflags",
@@ -5820,7 +5820,7 @@ dependencies = [
 [[package]]
 name = "sc-network-gossip"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "futures-timer 3.0.2",
@@ -5835,7 +5835,7 @@ dependencies = [
 [[package]]
 name = "sc-offchain"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "bytes 0.5.6",
  "fnv",
@@ -5862,7 +5862,7 @@ dependencies = [
 [[package]]
 name = "sc-peerset"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "libp2p 0.23.0",
@@ -5875,7 +5875,7 @@ dependencies = [
 [[package]]
 name = "sc-proposer-metrics"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "log 0.4.11",
  "substrate-prometheus-endpoint",
@@ -5884,7 +5884,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "hash-db",
@@ -5916,7 +5916,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc-api"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "futures 0.3.7",
@@ -5940,7 +5940,7 @@ dependencies = [
 [[package]]
 name = "sc-rpc-server"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "jsonrpc-core",
  "jsonrpc-http-server",
@@ -5956,7 +5956,7 @@ dependencies = [
 [[package]]
 name = "sc-service"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "directories",
@@ -6017,7 +6017,7 @@ dependencies = [
 [[package]]
 name = "sc-service-test"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "env_logger",
  "fdlimit",
@@ -6054,7 +6054,7 @@ dependencies = [
 [[package]]
 name = "sc-state-db"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "log 0.4.11",
  "parity-scale-codec",
@@ -6068,7 +6068,7 @@ dependencies = [
 [[package]]
 name = "sc-telemetry"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "futures-timer 3.0.2",
@@ -6089,7 +6089,7 @@ dependencies = [
 [[package]]
 name = "sc-tracing"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "erased-serde",
  "log 0.4.11",
@@ -6107,7 +6107,7 @@ dependencies = [
 [[package]]
 name = "sc-transaction-graph"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "futures 0.3.7",
@@ -6128,7 +6128,7 @@ dependencies = [
 [[package]]
 name = "sc-transaction-pool"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "futures 0.3.7",
@@ -6521,7 +6521,7 @@ dependencies = [
 [[package]]
 name = "sp-allocator"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "log 0.4.11",
@@ -6533,7 +6533,7 @@ dependencies = [
 [[package]]
 name = "sp-api"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "hash-db",
  "parity-scale-codec",
@@ -6548,7 +6548,7 @@ dependencies = [
 [[package]]
 name = "sp-api-proc-macro"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "blake2-rfc",
  "proc-macro-crate",
@@ -6560,7 +6560,7 @@ dependencies = [
 [[package]]
 name = "sp-application-crypto"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -6572,7 +6572,7 @@ dependencies = [
 [[package]]
 name = "sp-arithmetic"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "integer-sqrt",
  "num-traits",
@@ -6585,7 +6585,7 @@ dependencies = [
 [[package]]
 name = "sp-authority-discovery"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -6597,7 +6597,7 @@ dependencies = [
 [[package]]
 name = "sp-authorship"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-inherents",
@@ -6608,7 +6608,7 @@ dependencies = [
 [[package]]
 name = "sp-block-builder"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -6620,7 +6620,7 @@ dependencies = [
 [[package]]
 name = "sp-blockchain"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "log 0.4.11",
@@ -6637,7 +6637,7 @@ dependencies = [
 [[package]]
 name = "sp-chain-spec"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "serde",
  "serde_json",
@@ -6646,7 +6646,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "futures 0.3.7",
@@ -6672,7 +6672,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-aura"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -6686,7 +6686,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-babe"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "merlin",
  "parity-scale-codec",
@@ -6705,7 +6705,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-slots"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-runtime",
@@ -6714,7 +6714,7 @@ dependencies = [
 [[package]]
 name = "sp-consensus-vrf"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "schnorrkel",
@@ -6726,7 +6726,7 @@ dependencies = [
 [[package]]
 name = "sp-core"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "base58",
  "blake2-rfc",
@@ -6770,7 +6770,7 @@ dependencies = [
 [[package]]
 name = "sp-database"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "kvdb",
  "parking_lot 0.10.2",
@@ -6779,7 +6779,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6789,7 +6789,7 @@ dependencies = [
 [[package]]
 name = "sp-externalities"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "environmental",
  "parity-scale-codec",
@@ -6800,7 +6800,7 @@ dependencies = [
 [[package]]
 name = "sp-finality-grandpa"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "finality-grandpa",
  "log 0.4.11",
@@ -6816,7 +6816,7 @@ dependencies = [
 [[package]]
 name = "sp-finality-tracker"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-inherents",
@@ -6826,7 +6826,7 @@ dependencies = [
 [[package]]
 name = "sp-inherents"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "parity-scale-codec",
@@ -6838,7 +6838,7 @@ dependencies = [
 [[package]]
 name = "sp-io"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "hash-db",
@@ -6859,7 +6859,7 @@ dependencies = [
 [[package]]
 name = "sp-keyring"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "lazy_static",
  "sp-core",
@@ -6870,7 +6870,7 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "serde",
@@ -6882,7 +6882,7 @@ dependencies = [
 [[package]]
 name = "sp-npos-elections-compact"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -6893,7 +6893,7 @@ dependencies = [
 [[package]]
 name = "sp-offchain"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "sp-api",
  "sp-core",
@@ -6903,7 +6903,7 @@ dependencies = [
 [[package]]
 name = "sp-panic-handler"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "backtrace",
  "log 0.4.11",
@@ -6912,7 +6912,7 @@ dependencies = [
 [[package]]
 name = "sp-rpc"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "serde",
  "sp-core",
@@ -6921,7 +6921,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "either",
  "hash256-std-hasher",
@@ -6943,7 +6943,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "primitive-types",
@@ -6959,7 +6959,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface-proc-macro"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "Inflector",
  "proc-macro-crate",
@@ -6971,7 +6971,7 @@ dependencies = [
 [[package]]
 name = "sp-serializer"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "serde",
  "serde_json",
@@ -6980,7 +6980,7 @@ dependencies = [
 [[package]]
 name = "sp-session"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -6993,7 +6993,7 @@ dependencies = [
 [[package]]
 name = "sp-staking"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "parity-scale-codec",
  "sp-runtime",
@@ -7003,7 +7003,7 @@ dependencies = [
 [[package]]
 name = "sp-state-machine"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "hash-db",
  "itertools 0.9.0",
@@ -7024,12 +7024,12 @@ dependencies = [
 [[package]]
 name = "sp-std"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 
 [[package]]
 name = "sp-storage"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "impl-serde 0.2.3",
  "parity-scale-codec",
@@ -7042,7 +7042,7 @@ dependencies = [
 [[package]]
 name = "sp-timestamp"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
@@ -7056,7 +7056,7 @@ dependencies = [
 [[package]]
 name = "sp-tracing"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "log 0.4.11",
  "rental",
@@ -7066,7 +7066,7 @@ dependencies = [
 [[package]]
 name = "sp-transaction-pool"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "derive_more",
  "futures 0.3.7",
@@ -7081,7 +7081,7 @@ dependencies = [
 [[package]]
 name = "sp-trie"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "hash-db",
  "memory-db",
@@ -7095,7 +7095,7 @@ dependencies = [
 [[package]]
 name = "sp-utils"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "futures-core",
@@ -7107,7 +7107,7 @@ dependencies = [
 [[package]]
 name = "sp-version"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "impl-serde 0.2.3",
  "parity-scale-codec",
@@ -7119,7 +7119,7 @@ dependencies = [
 [[package]]
 name = "sp-wasm-interface"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
@@ -7249,7 +7249,7 @@ dependencies = [
 [[package]]
 name = "substrate-build-script-utils"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "platforms",
 ]
@@ -7257,7 +7257,7 @@ dependencies = [
 [[package]]
 name = "substrate-frame-rpc-system"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "frame-system-rpc-runtime-api",
  "futures 0.3.7",
@@ -7280,7 +7280,7 @@ dependencies = [
 [[package]]
 name = "substrate-pallet-multi-account"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=31f9183860c368181f39906a9b6d0dff6eee3ea2#31f9183860c368181f39906a9b6d0dff6eee3ea2"
+source = "git+https://github.com/centrifuge/substrate-pallet-multi-account?rev=ef988aba4f73b57328110592b75d90fd0510d718#ef988aba4f73b57328110592b75d90fd0510d718"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7295,7 +7295,7 @@ dependencies = [
 [[package]]
 name = "substrate-prometheus-endpoint"
 version = "0.8.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "async-std",
  "derive_more",
@@ -7309,7 +7309,7 @@ dependencies = [
 [[package]]
 name = "substrate-test-client"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.1.30",
  "futures 0.3.7",
@@ -7335,7 +7335,7 @@ dependencies = [
 [[package]]
 name = "substrate-test-runtime"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "cfg-if 0.1.10",
  "frame-executive",
@@ -7375,7 +7375,7 @@ dependencies = [
 [[package]]
 name = "substrate-test-runtime-client"
 version = "2.0.0-rc6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 dependencies = [
  "futures 0.3.7",
  "parity-scale-codec",
@@ -7396,7 +7396,7 @@ dependencies = [
 [[package]]
 name = "substrate-wasm-builder-runner"
 version = "1.0.6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=be8bb186d87b9d2b47a2907c9b51ae1e252362c3#be8bb186d87b9d2b47a2907c9b51ae1e252362c3"
+source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 
 [[package]]
 name = "subtle"
@@ -8085,7 +8085,7 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 [[package]]
 name = "unique_assets"
 version = "0.1.0"
-source = "git+https://github.com/jaybutera/unique-assets#017cafe4266cc8091d906a012a4dc462be127b3d"
+source = "git+https://github.com/centrifuge/unique-assets?rev=d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0#d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0"
 dependencies = [
  "frame-support",
  "sp-std",

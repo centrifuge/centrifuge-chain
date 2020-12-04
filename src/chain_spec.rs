@@ -400,6 +400,8 @@ pub(crate) mod tests {
 			"4eHarY1f35y2wtbW3XKLbbnJHeztAjNsxcYEoMnjfQbKXyq3");
 		assert_eq!(MultiAccount::multi_account_id(5).to_ss58check_with_version(CentrifugeAccount),
 			"4dTzs4ktTARToFk6k12Diu8ZHeP9bPCTfh1erAGhd3THtqCZ");
+		assert_eq!(AccountId::from_ss58check("4fsNBXAXoUKxSeu9qKCD9s285dzjS7Nmh1u76s4AsidrdmdL").unwrap(),
+				   hex!("c84b10ac8baea482e93d961a52502c9ee8227a7deaffd746657c5a8655cc70ab").into())
 	}
 
 	#[test]
