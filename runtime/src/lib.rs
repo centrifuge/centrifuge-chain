@@ -60,6 +60,9 @@ pub mod impls;
 use impls::{CurrencyToVoteHandler, Author};
 use bridge as pallet_bridge;
 
+// Bridge access control list pallet
+use bridge_mapping;
+
 /// Used for anchor module
 pub mod anchor;
 
@@ -80,6 +83,12 @@ mod rad_claims;
 
 /// bridge module
 mod bridge;
+
+/// verifiable attributes registry module
+mod va_registry;
+
+/// nft module
+mod nft;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -820,6 +829,21 @@ impl pallet_vesting::Trait for Runtime {
     type WeightInfo = ();
 }
 
+impl va_registry::Trait for Runtime {
+    type Event = Event;
+}
+
+impl nft::Trait for Runtime {
+    type Event = Event;
+    type AssetInfo = va_registry::types::AssetInfo;
+}
+
+impl bridge_mapping::Trait for Runtime {
+    type ResourceId = bridge::ResourceId;
+    type Address = bridge::Address;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -861,6 +885,9 @@ construct_runtime!(
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
+		Registry: va_registry::{Module, Call, Storage, Event<T>},
+		Nft: nft::{Module, Call, Storage, Event<T>},
+        BridgeMapping: bridge_mapping::{Module, Call, Storage},
 	}
 );
 
@@ -1107,6 +1134,32 @@ impl_runtime_apis! {
 			Anchor::get_anchor_by_id(id)
 		}
 	}
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+			//config: frame_benchmarking::BenchmarkConfig
+            pallet: Vec<u8>,
+            benchmark: Vec<u8>,
+            lowest_range_values: Vec<u32>,
+            highest_range_values: Vec<u32>,
+            steps: Vec<u32>,
+            repeat: u32,
+            extra: bool
+	    ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+
+            let whitelist: Vec<TrackedStorageKey> = vec![];
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            //let params = (&config, &whitelist);
+            let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
+
+            add_benchmark!(params, batches, va_registry, Registry);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+		    Ok(batches)
+        }
+    }
 }
 
 #[cfg(test)]
