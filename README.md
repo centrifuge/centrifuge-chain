@@ -69,11 +69,11 @@ To run a node:
 
 To receive tokens, use our faucet: https://faucets.blockxlabs.com/
 
-To run a validator: https://centrifuge.hackmd.io/@pstehlik/rJ4ldDdiH
+To run a validator go to our [docs](https://docs.centrifuge.io/chain/get-started/validate/)
 
-#### 2. Amber
+#### 3. Amber
 
-tbd
+See our [docs](https://docs.centrifuge.io/chain/get-started/validate/)
 
 ### Single node development chain
 
