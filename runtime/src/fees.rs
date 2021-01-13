@@ -10,9 +10,9 @@ use frame_support::{
 use frame_system::ensure_root;
 
 /// The module's configuration trait.
-pub trait Trait: frame_system::Trait + pallet_balances::Trait + pallet_authorship::Trait {
+pub trait Trait: frame_system::Config + pallet_balances::Config + pallet_authorship::Config {
     /// The overarching event type.
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
     /// Required origin for changing fees
     type FeeChangeOrigin: EnsureOrigin<Self::Origin>;
 }
@@ -38,7 +38,7 @@ decl_storage! {
 }
 
 decl_event!(
-    pub enum Event<T> where <T as frame_system::Trait>::Hash, <T as pallet_balances::Trait>::Balance {
+    pub enum Event<T> where <T as frame_system::Config>::Hash, <T as pallet_balances::Trait>::Balance {
         FeeChanged(Hash, Balance),
     }
 );
@@ -175,7 +175,7 @@ mod tests {
         pub const MaximumBlockLength: u32 = 2 * 1024;
         pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
-    impl frame_system::Trait for Test {
+    impl frame_system::Config for Test {
         type AccountId = u64;
         type Call = ();
         type Lookup = IdentityLookup<Self::AccountId>;
@@ -270,8 +270,8 @@ mod tests {
     #[test]
     fn multiple_new_fees_are_setable() {
         new_test_ext().execute_with(|| {
-            let fee_key1 = <Test as frame_system::Trait>::Hashing::hash_of(&11111);
-            let fee_key2 = <Test as frame_system::Trait>::Hashing::hash_of(&22222);
+            let fee_key1 = <Test as frame_system::Config>::Hashing::hash_of(&11111);
+            let fee_key2 = <Test as frame_system::Config>::Hashing::hash_of(&22222);
 
             let price1: <Test as pallet_balances::Trait>::Balance = 666;
             let price2: <Test as pallet_balances::Trait>::Balance = 777;
@@ -294,7 +294,7 @@ mod tests {
     #[test]
     fn fee_is_re_setable() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&11111);
+            let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&11111);
 
             let initial_price: <Test as pallet_balances::Trait>::Balance = 666;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, initial_price));
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn fee_payment_errors_if_not_set() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
             let author_old_balance = <pallet_balances::Module<Test>>::total_balance(&100);
 
@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn fee_payment_errors_if_insufficient_balance() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
 
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
@@ -365,7 +365,7 @@ mod tests {
     #[test]
     fn fee_payment_subtracts_fees_from_account() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
             assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
@@ -388,7 +388,7 @@ mod tests {
     #[test]
     fn fee_is_gettable() {
         new_test_ext().execute_with(|| {
-            let fee_key = <Test as frame_system::Trait>::Hashing::hash_of(&111111);
+            let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&111111);
             let fee_price: <Test as pallet_balances::Trait>::Balance = 90000;
 
             //First run, the fee is not set yet and should return None

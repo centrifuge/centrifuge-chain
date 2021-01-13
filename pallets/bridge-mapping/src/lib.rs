@@ -24,7 +24,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub trait Trait: frame_system::Trait {
+pub trait Trait: frame_system::Config {
     /// In order to provide generality, we need some way to associate some action on a source chain
     /// to some action on a destination chain. This may express tokenX on chain A is equivalent to
     /// tokenY on chain B, or to simply associate that some action performed on chain A should

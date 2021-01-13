@@ -10,12 +10,12 @@ use sp_runtime::traits::SaturatedConversion;
 /// Additional Fee charged to validate NFT proofs
 const NFT_FEE: u128 = 10 * currency::RAD;
 
-pub trait Trait: anchor::Trait + pallet_balances::Trait + pallet_bridge::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Trait: anchor::Trait + pallet_balances::Config + pallet_bridge::Trait {
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 }
 
 decl_event!(
-    pub enum Event<T> where <T as frame_system::Trait>::Hash {
+    pub enum Event<T> where <T as frame_system::Config>::Hash {
         DepositAsset(Hash),
     }
 );
@@ -126,7 +126,7 @@ mod tests {
         pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
 
-    impl frame_system::Trait for Test {
+    impl frame_system::Config for Test {
         type AccountId = u64;
         type Call = Call;
         type Lookup = IdentityLookup<Self::AccountId>;
@@ -372,7 +372,7 @@ mod tests {
         [H256; 3],
         chainbridge::ChainId,
     ) {
-        let anchor_id = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+        let anchor_id = <Test as frame_system::Config>::Hashing::hash_of(&0);
         let deposit_address: [u8; 20] = [0; 20];
         let pfs: Vec<Proof> = vec![];
         let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
@@ -420,14 +420,14 @@ mod tests {
     fn invalid_proof() {
         new_test_ext().execute_with(|| {
             let deposit_address: [u8; 20] = [0; 20];
-            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
             let (pf, doc_root, static_proofs) = get_invalid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                <Test as frame_system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Config>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ));
 
@@ -450,14 +450,14 @@ mod tests {
         new_test_ext().execute_with(|| {
             let dest_id = 0;
             let deposit_address: [u8; 20] = [0; 20];
-            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
             let (pf, doc_root, static_proofs) = get_valid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                <Test as frame_system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Config>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ));
 
@@ -485,14 +485,14 @@ mod tests {
         new_test_ext().execute_with(|| {
             let dest_id = 0;
             let deposit_address: [u8; 20] = [0; 20];
-            let pre_image = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Trait>::Hashing::hash);
+            let pre_image = <Test as frame_system::Config>::Hashing::hash_of(&0);
+            let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
             let (pf, doc_root, static_proofs) = get_valid_proof();
             assert_ok!(Anchor::commit(
                 Origin::signed(2),
                 pre_image,
                 doc_root,
-                <Test as frame_system::Trait>::Hashing::hash_of(&0),
+                <Test as frame_system::Config>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ));
 

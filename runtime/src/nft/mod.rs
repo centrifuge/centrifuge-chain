@@ -25,10 +25,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub trait Trait: frame_system::Trait {
+pub trait Trait: frame_system::Config {
     /// The data type that is used to describe this type of asset.
     type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 }
 
 // A generic definition of an NFT that will be used by this pallet.
@@ -55,7 +55,7 @@ decl_storage! {
 // Empty event to satisfy type constraints
 decl_event!(
     pub enum Event<T> where
-        <T as frame_system::Trait>::AccountId,
+        <T as frame_system::Config>::AccountId,
     {
         /// Ownership of the asset has been transferred to the account.
         Transferred(RegistryId, AssetId, AccountId),
@@ -108,7 +108,7 @@ impl<T: Trait>
     Unique for Module<T>
 {
     type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
-    type AccountId = <T as frame_system::Trait>::AccountId;
+    type AccountId = <T as frame_system::Config>::AccountId;
 
     fn owner_of(asset_id: &AssetId) -> Option<T::AccountId> {
         let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
@@ -139,7 +139,7 @@ impl<T: Trait>
     Mintable for Module<T>
 {
     type Asset = Asset<AssetId, <T as Trait>::AssetInfo>;
-    type AccountId = <T as frame_system::Trait>::AccountId;
+    type AccountId = <T as frame_system::Config>::AccountId;
 
     /// Inserts an owner with a registry/token id.
     /// Does not do any checks on the caller.

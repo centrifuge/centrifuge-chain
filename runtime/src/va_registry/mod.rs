@@ -41,8 +41,8 @@ pub mod tests;
 mod benchmarking;
 
 
-pub trait Trait: frame_system::Trait + nft::Trait + anchor::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Trait: frame_system::Config + nft::Trait + anchor::Trait {
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 }
 
 decl_storage! {
@@ -58,7 +58,7 @@ decl_storage! {
 decl_event!(
     pub enum Event<T>
     where
-        <T as frame_system::Trait>::Hash,
+        <T as frame_system::Config>::Hash,
     {
         /// Successful mint of an NFT from fn [`mint`](struct.Module.html#method.mint)
         Mint(RegistryId, TokenId),
@@ -113,11 +113,11 @@ decl_module! {
             DispatchClass::Normal,
             Pays::Yes)]
         pub fn mint(origin,
-                    owner_account: <T as frame_system::Trait>::AccountId,
+                    owner_account: <T as frame_system::Config>::AccountId,
                     registry_id: RegistryId,
                     token_id: TokenId,
                     asset_info: T::AssetInfo,
-                    mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
+                    mint_info: MintInfo<<T as frame_system::Config>::Hash, H256>,
         ) -> dispatch::DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -164,12 +164,12 @@ impl<T: Trait> Module<T> {
 // Implement the verifier registry. This module verifies data fields that are custom defined
 // by a registry and provided in the MintInfo during a mint invocation.
 impl<T: Trait> VerifierRegistry for Module<T> {
-    type AccountId    = <T as frame_system::Trait>::AccountId;
+    type AccountId    = <T as frame_system::Config>::AccountId;
     type RegistryId   = RegistryId;
     type RegistryInfo = RegistryInfo;
     type AssetId      = AssetId;
     type AssetInfo    = <T as nft::Trait>::AssetInfo;
-    type MintInfo     = MintInfo<<T as frame_system::Trait>::Hash, H256>;
+    type MintInfo     = MintInfo<<T as frame_system::Config>::Hash, H256>;
 
     // Registries with identical RegistryInfo may exist
     fn create_registry(caller: Self::AccountId, mut info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError> {
@@ -188,11 +188,11 @@ impl<T: Trait> VerifierRegistry for Module<T> {
         Ok(id)
     }
 
-    fn mint(caller: &<T as frame_system::Trait>::AccountId,
-            owner_account: &<T as frame_system::Trait>::AccountId,
+    fn mint(caller: &<T as frame_system::Config>::AccountId,
+            owner_account: &<T as frame_system::Config>::AccountId,
             asset_id: &Self::AssetId,
             asset_info: T::AssetInfo,
-            mint_info: MintInfo<<T as frame_system::Trait>::Hash, H256>,
+            mint_info: MintInfo<<T as frame_system::Config>::Hash, H256>,
     ) -> Result<(), dispatch::DispatchError> {
         let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
         let registry_info = Registries::get(registry_id);

@@ -59,7 +59,7 @@ pub struct AnchorData<Hash, BlockNumber> {
 
 /// The module's configuration trait.
 pub trait Trait:
-    frame_system::Trait + pallet_timestamp::Trait + fees::Trait + pallet_balances::Trait
+    frame_system::Config + pallet_timestamp::Config + fees::Trait + pallet_balances::Config
 {
 }
 
@@ -169,7 +169,7 @@ decl_module! {
             ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
 
             let anchor_id = (anchor_id_preimage)
-                .using_encoded(<T as frame_system::Trait>::Hashing::hash);
+                .using_encoded(<T as frame_system::Config>::Hashing::hash);
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
 
             if Self::has_valid_pre_commit(anchor_id) {
@@ -292,7 +292,7 @@ impl<T: Trait> Module<T> {
 
         // concat hashes
         concatenated_bytes.extend(proof_bytes);
-        let calculated_root = <T as frame_system::Trait>::Hashing::hash(&concatenated_bytes);
+        let calculated_root = <T as frame_system::Config>::Hashing::hash(&concatenated_bytes);
         return doc_root == calculated_root;
     }
 
@@ -421,8 +421,8 @@ impl<T: Trait> Module<T> {
         LatestAnchorIndex::put(idx);
     }
 
-    fn fee_key() -> <T as frame_system::Trait>::Hash {
-        <T as frame_system::Trait>::Hashing::hash_of(&0)
+    fn fee_key() -> <T as frame_system::Config>::Hash {
+        <T as frame_system::Config>::Hashing::hash_of(&0)
     }
 }
 

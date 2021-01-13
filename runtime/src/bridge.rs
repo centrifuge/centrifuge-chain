@@ -30,7 +30,7 @@ const ADDR_LEN: usize = 32;
 type Bytes32 = [u8; ADDR_LEN];
 
 type BalanceOf<T> =
-    <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
+    <<T as Trait>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Additional Fee charged when moving native tokens to target chains (RAD)
 const TOKEN_FEE: u128 = 20 * currency::RAD;
@@ -58,13 +58,13 @@ impl From<Address> for Bytes32 {
     }
 }
 
-pub trait Trait: system::Trait
+pub trait Trait: system::Config
                + fees::Trait
-               + pallet_balances::Trait
+               + pallet_balances::Config
                + chainbridge::Trait
                + nft::Trait
                + bridge_mapping::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
     /// Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet
     type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
     type Currency: Currency<Self::AccountId>;
@@ -88,7 +88,7 @@ decl_storage! {
 
 decl_event! {
     pub enum Event<T> where
-        <T as frame_system::Trait>::Hash,
+        <T as frame_system::Config>::Hash,
     {
         Remark(Hash, ResourceId),
     }
@@ -267,7 +267,7 @@ mod tests{
 		pub const AvailableBlockRatio: Perbill = Perbill::one();
 	}
 
-	impl frame_system::Trait for Test {
+	impl frame_system::Config for Test {
 		type BaseCallFilter = ();
 		type Origin = Origin;
 		type Call = Call;
@@ -562,7 +562,7 @@ mod tests{
             origin.clone(),
             pre_image,
             doc_root,
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1));
 
         // Mint token with document proof

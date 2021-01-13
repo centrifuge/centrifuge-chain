@@ -19,8 +19,8 @@ use sp_runtime::{
 const MODULE_ID: ModuleId = ModuleId(*b"rd/claim");
 const MIN_PAYOUT: node_primitives::Balance = 5 * currency::RAD;
 
-pub trait Trait: frame_system::Trait + pallet_balances::Trait {
-    type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+pub trait Trait: frame_system::Config + pallet_balances::Config {
+    type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 
     /// An expected longevity of the validated extrinsic.
     ///
@@ -64,8 +64,8 @@ decl_error! {
 
 decl_event! {
     pub enum Event<T> where
-        <T as frame_system::Trait>::AccountId,
-        <T as frame_system::Trait>::Hash,
+        <T as frame_system::Config>::AccountId,
+        <T as frame_system::Config>::Hash,
         <T as pallet_balances::Trait>::Balance,
     {
         Claimed(AccountId, Balance),
@@ -272,7 +272,7 @@ mod tests {
         pub const MaximumBlockLength: u32 = 2 * 1024;
         pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     }
-    impl frame_system::Trait for Test {
+    impl frame_system::Config for Test {
         type AccountId = u64;
         type Call = ();
         type Lookup = IdentityLookup<Self::AccountId>;
@@ -385,7 +385,7 @@ mod tests {
 
             // Single-leaf tree
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-            let leaf_hash = <Test as frame_system::Trait>::Hashing::hash(&v);
+            let leaf_hash = <Test as frame_system::Config>::Hashing::hash(&v);
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
             assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
 
@@ -436,7 +436,7 @@ mod tests {
         new_test_ext().execute_with(|| {
             assert_eq!(RadClaims::get_upload_account(), 0x0);
             // USER_A not allowed to upload hash
-            let root_hash = <Test as frame_system::Trait>::Hashing::hash(&[0; 32]);
+            let root_hash = <Test as frame_system::Config>::Hashing::hash(&[0; 32]);
             assert_err!(
                 RadClaims::store_root_hash(Origin::signed(USER_A), root_hash),
                 Error::<Test>::MustBeAdmin
@@ -450,13 +450,13 @@ mod tests {
     }
 
     fn pre_calculate_single_root(
-        account_id: &<Test as frame_system::Trait>::AccountId,
+        account_id: &<Test as frame_system::Config>::AccountId,
         amount: &<Test as pallet_balances::Trait>::Balance,
-        other_hash: &<Test as frame_system::Trait>::Hash
+        other_hash: &<Test as frame_system::Config>::Hash
     ) -> H256 {
         let mut v: Vec<u8> = account_id.encode();
         v.extend(amount.encode());
-        let leaf_hash = <Test as frame_system::Trait>::Hashing::hash(&v);
+        let leaf_hash = <Test as frame_system::Config>::Hashing::hash(&v);
 
         RadClaims::sorted_hash_of(&leaf_hash, other_hash)
     }

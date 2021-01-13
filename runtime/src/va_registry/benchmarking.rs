@@ -40,8 +40,8 @@ fn proofs_data() -> (Vec<Proof<H256>>, [H256; 3], H256) {
             hashes: vec![],
         }];
     let data_root    = proofs::Proof::from(proofs[0].clone()).leaf_hash;
-    let zk_data_root = <Test as frame_system::Trait>::Hashing::hash_of(&0);
-    let sig_root     = <Test as frame_system::Trait>::Hashing::hash_of(&0);
+    let zk_data_root = <Test as frame_system::Config>::Hashing::hash_of(&0);
+    let sig_root     = <Test as frame_system::Config>::Hashing::hash_of(&0);
     //let zk_data_root = sp_io::hashing::keccak_256(&[0]).into();
     //let sig_root     = sp_io::hashing::keccak_256(&[0]).into();
     let static_hashes = [data_root, zk_data_root, sig_root];
@@ -62,8 +62,8 @@ benchmarks! {
         let origin = RawOrigin::Signed(_owner);
 
         // Anchor data
-        let pre_image = <T as frame_system::Trait>::Hashing::hash_of(&0);
-        let anchor_id = (pre_image).using_encoded(<T as frame_system::Trait>::Hashing::hash);
+        let pre_image = <T as frame_system::Config>::Hashing::hash_of(&0);
+        let anchor_id = (pre_image).using_encoded(<T as frame_system::Config>::Hashing::hash);
 
         // Proofs data
         let (proofs, static_hashes, doc_root) = proofs_data();
@@ -89,7 +89,7 @@ benchmarks! {
             T::Hashing::hash_of(&doc_root.as_bytes()),
             //H256::from_slice(doc_root.as_ref()),
             // Proof does not matter here
-            <T as frame_system::Trait>::Hashing::hash_of(&0),
+            <T as frame_system::Config>::Hashing::hash_of(&0),
             (100000 as u32).into())?;
 
         let mint_info = MintInfo {

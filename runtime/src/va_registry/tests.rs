@@ -11,14 +11,14 @@ use crate::va_registry::{
 use crate::nft;
 
 // Hash two hashes
-fn hash_of<T: frame_system::Trait>(a: H256, b: H256) -> T::Hash {
+fn hash_of<T: frame_system::Config>(a: H256, b: H256) -> T::Hash {
     let mut h: Vec<u8> = Vec::with_capacity(64);
     h.extend_from_slice(&a[..]);
     h.extend_from_slice(&b[..]);
     T::Hashing::hash(&h)
 }
 // Generate document root from static hashes
-fn doc_root<T: frame_system::Trait>(static_hashes: [H256; 3]) -> T::Hash {
+fn doc_root<T: frame_system::Config>(static_hashes: [H256; 3]) -> T::Hash {
     let basic_data_root = static_hashes[0];
     let zk_data_root    = static_hashes[1];
     let signature_root  = static_hashes[2];
@@ -27,7 +27,7 @@ fn doc_root<T: frame_system::Trait>(static_hashes: [H256; 3]) -> T::Hash {
 }
 
 // Some dummy proofs data useful for testing. Returns proofs, static hashes, and document root
-fn proofs_data<T: frame_system::Trait>(registry_id: RegistryId, token_id: TokenId)
+fn proofs_data<T: frame_system::Config>(registry_id: RegistryId, token_id: TokenId)
     -> (Vec<Proof<H256>>, [H256; 3], T::Hash) {
     // Encode token into big endian U256
     let mut token_enc = Vec::<u8>::with_capacity(32);
@@ -72,7 +72,7 @@ pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
         (Vec<Proof<H256>>, [H256; 3], T::Hash),
         AssetInfo,
         RegistryInfo)
-    where T: frame_system::Trait
+    where T: frame_system::Config
            + va_registry::Trait
            + nft::Trait<AssetInfo = AssetInfo>,
 {
@@ -134,7 +134,7 @@ fn mint_with_valid_proofs() {
             pre_image,
             doc_root,
             // Proof does not matter here
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, token_id) = asset_id.destruct();
@@ -174,13 +174,13 @@ fn mint_fails_when_dont_match_doc_root() {
              _) = setup_mint::<Test>(owner, token_id);
 
         // Place document anchor into storage for verification
-        let wrong_doc_root = <Test as frame_system::Trait>::Hashing::hash_of(&pre_image);
+        let wrong_doc_root = <Test as frame_system::Config>::Hashing::hash_of(&pre_image);
         assert_ok!( <anchor::Module<Test>>::commit(
             origin.clone(),
             pre_image.clone(),
             wrong_doc_root,
             // Proof does not matter here
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, token_id) = asset_id.destruct();
@@ -220,7 +220,7 @@ fn duplicate_mint_fails() {
             pre_image,
             doc_root,
             // Proof does not matter here
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, token_id) = asset_id.destruct();
@@ -273,7 +273,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
             pre_image,
             doc_root,
             // Proof does not matter here
-            <Test as frame_system::Trait>::Hashing::hash_of(&0),
+            <Test as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, _) = asset_id.destruct();

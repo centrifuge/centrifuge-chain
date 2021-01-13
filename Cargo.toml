@@ -45,63 +45,63 @@ structopt = { version = "0.3.8" , optional = true }
 serde_json = "1.0"
 
 # primitives
-sp-authority-discovery = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-consensus-babe = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-grandpa-primitives = { version = "2.0.0-rc6", package = "sp-finality-grandpa", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-core = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-runtime = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-timestamp = { version = "2.0.0-rc6", default-features = false,  git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-finality-tracker = { version = "2.0.0-rc6", default-features = false,  git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-inherents = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-consensus = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-transaction-pool = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-blockchain = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-block-builder = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-runtime-interface = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
-sp-io = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
+sp-authority-discovery = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-consensus-babe = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+grandpa-primitives = { branch = "rococo-v1", package = "sp-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
+sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-timestamp = { branch = "rococo-v1", default-features = false,  git = "https://github.com/paritytech/substrate.git" }
+#sp-finality-tracker = { branch = "rococo-v1", default-features = false,  git = "https://github.com/paritytech/substrate.git" }
+sp-inherents = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-consensus = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-transaction-pool = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-blockchain = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-block-builder = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sp-runtime-interface = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 # client dependencies
-sc-client-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-chain-spec = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-transaction-pool = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-network = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus-babe = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-grandpa = { version = "0.8.0-rc6", package = "sc-finality-grandpa", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-finality-grandpa-rpc = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-client-db = { default-features = false, version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-offchain = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-rpc = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-basic-authorship = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-service = { version = "0.8.0-rc6", default-features = false, git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-cli = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-executor = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus-epochs = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus-babe-rpc = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-authority-discovery = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-rpc-api = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-keystore = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+sc-client-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-chain-spec = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-consensus = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-transaction-pool = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-network = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-babe = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+grandpa = { branch = "rococo-v1", package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }
+sc-finality-grandpa-rpc = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-client-db = { default-features = false, branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-offchain = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-rpc = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-basic-authorship = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-service = { branch = "rococo-v1", default-features = false, git = "https://github.com/paritytech/substrate.git" }
+sc-cli = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-executor = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-epochs = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-consensus-babe-rpc = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-authority-discovery = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-rpc-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-keystore = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
 # frame dependencies
-pallet-transaction-payment-rpc = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-substrate-frame-rpc-system  = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-pallet-im-online = { default-features = false, version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+pallet-transaction-payment-rpc = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+substrate-frame-rpc-system  = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+pallet-im-online = { default-features = false, branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
 # node-specific dependencies
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
-node-primitives = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+node-primitives = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
 [build-dependencies]
 vergen = "3.0.4"
-substrate-build-script-utils  = { version = "2.0.0-rc6", optional = true, git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+substrate-build-script-utils  = { branch = "rococo-v1", optional = true, git = "https://github.com/paritytech/substrate.git" }
 
 [dev-dependencies]
-sc-service-test = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+sc-service-test = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 tempfile = "3.1.0"
-sp-keyring = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-frame-system = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-pallet-transaction-payment = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+sp-keyring = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+frame-system = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+pallet-transaction-payment = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
 [features]
 default = [ "std" ]
