@@ -9,9 +9,10 @@ use frame_support::{
     construct_runtime, parameter_types, debug, RuntimeDebug,
     weights::{
         Weight,
-        constants::{RocksDbWeight, WEIGHT_PER_SECOND},
-    },
-    traits::{Currency, KeyOwnerProofSystem, Randomness, LockIdentifier, InstanceFilter},
+        constants::{RocksDbWeight, WEIGHT_PER_SECOND}},
+    traits::{
+        U128CurrencyToVote, Currency, KeyOwnerProofSystem,
+        Randomness, LockIdentifier, InstanceFilter},
 };
 use codec::{Encode, Decode};
 use sp_core::{
@@ -56,8 +57,7 @@ pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
-pub mod impls;
-use impls::CurrencyToVoteHandler;
+//pub mod impls;
 use bridge as pallet_bridge;
 
 // Bridge access control list pallet
@@ -138,12 +138,7 @@ const AVERAGE_ON_INITIALIZE_WEIGHT: Perbill = Perbill::from_percent(10);
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
     pub const MaximumBlockWeight: Weight = 0.5 * WEIGHT_PER_SECOND;
-    //pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
-    //pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    // Assume 10% of weight for average on_initialize calls.
-    //pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
-    //    .saturating_sub(AVERAGE_ON_INITIALIZE_WEIGHT) * MaximumBlockWeight::get();
 }
 
 //const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
@@ -257,6 +252,7 @@ impl InstanceFilter<Call> for ProxyType {
     }
 }
 
+/*
 impl pallet_proxy::Config for Runtime {
     type Event = Event;
     type Call = Call;
@@ -267,6 +263,7 @@ impl pallet_proxy::Config for Runtime {
     type MaxProxies = MaxProxies;
     type WeightInfo = ();
 }
+*/
 
 
 impl pallet_utility::Config for Runtime {
@@ -447,7 +444,7 @@ parameter_types! {
 impl pallet_staking::Config for Runtime {
     type Currency = Balances;
     type UnixTime = Timestamp;
-    type CurrencyToVote = CurrencyToVoteHandler;
+    type CurrencyToVote = U128CurrencyToVote;
     type RewardRemainder = ();
     type Event = Event;
     type Slash = ();
@@ -567,7 +564,7 @@ parameter_types! {
 }
 
 // Make sure that there are no more than `CouncilMaxMembers` members elected via elections-phragmen.
-const_assert!(DesiredMembers::get() <= CouncilMaxMembers);
+const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 
 impl pallet_elections_phragmen::Config for Runtime {
 	type Event = Event;
@@ -575,7 +572,7 @@ impl pallet_elections_phragmen::Config for Runtime {
     type Currency = Balances;
 	type ChangeMembers = Council;
     type InitializeMembers = Council;
-    type CurrencyToVote = CurrencyToVoteHandler;
+    type CurrencyToVote = U128CurrencyToVote;
 
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
@@ -868,7 +865,7 @@ construct_runtime!(
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		Historical: pallet_session_historical::{Module},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+        //Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
