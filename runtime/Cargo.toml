@@ -12,7 +12,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 # external pallet
 #substrate-pallet-multi-account = { branch = "rococo-v1", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "ef988aba4f73b57328110592b75d90fd0510d718", default-features = false }
 # chainbridge = { version = "0.0.1", git = "https://github.com/centrifuge/chainbridge-substrate.git", rev = "6ef2738d8179299bf94159ae9e79d3f27be5271c" , default-features = false}
-chainbridge = { path = "../../chainbridge-substrate/chainbridge", default-features = false}
+chainbridge = { git = "https://github.com/jaybutera/chainbridge-substrate", default-features = false}
 #unique_assets = { version = "0.1.0", git = "https://github.com/centrifuge/unique-assets", rev = "d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0", default-features = false }
 unique_assets = { version = "0.1.0", path = "../../unique_assets", default-features = false }
 bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
