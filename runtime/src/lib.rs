@@ -137,16 +137,16 @@ type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 const AVERAGE_ON_INITIALIZE_WEIGHT: Perbill = Perbill::from_percent(10);
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
-    pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
+    pub const MaximumBlockWeight: Weight = 0.5 * WEIGHT_PER_SECOND;
+    //pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
     pub const Version: RuntimeVersion = VERSION;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-    /// Assume 10% of weight for average on_initialize calls.
-    pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
-		.saturating_sub(AVERAGE_ON_INITIALIZE_WEIGHT) * MaximumBlockWeight::get();
+    //pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    // Assume 10% of weight for average on_initialize calls.
+    //pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
+    //    .saturating_sub(AVERAGE_ON_INITIALIZE_WEIGHT) * MaximumBlockWeight::get();
 }
 
-const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
+//const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
 
 impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
@@ -173,15 +173,15 @@ impl frame_system::Config for Runtime {
     /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
     type BlockHashCount = BlockHashCount;
     /// Maximum weight of each block. With a default weight system of 1byte == 1weight, 4mb is ok.
-    type MaximumBlockWeight = MaximumBlockWeight;
+    //type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = RocksDbWeight;
-    type BlockExecutionWeight = BlockExecutionWeight;
-    type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
-    type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
+    //type BlockExecutionWeight = BlockExecutionWeight;
+    //type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
+    //type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
     /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
-    type MaximumBlockLength = MaximumBlockLength;
+    //type MaximumBlockLength = MaximumBlockLength;
     /// Portion of the block weight that is available to all normal transactions.
-	type AvailableBlockRatio = AvailableBlockRatio;
+	//type AvailableBlockRatio = AvailableBlockRatio;
 	/// Get the chain's current version.
 	type Version = Version;
 	/// Convert a module to its index in the runtime.
