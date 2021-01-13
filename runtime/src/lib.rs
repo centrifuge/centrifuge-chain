@@ -300,7 +300,7 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
-    MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+    pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
     pub const MaxScheduledPerBlock: u32 = 50;
 }
 

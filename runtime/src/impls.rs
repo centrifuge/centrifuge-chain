@@ -10,10 +10,7 @@ use sp_arithmetic::Perbill;
 
 pub struct DealWithFees;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-    fn on_unbalanced(mut fees_then_tips: impl Iterator<Item=NegativeImbalance>) {
-        let amount = fees_then_tips
-            .fold(Imbalance::zero(), |acc: NegativeImbalance, x| acc.merge(x));
-
+    fn on_nonzero_unbalanced(amount: NegativeImbalance) {
         Balances::resolve_creating(&Authorship::author(), amount);
     }
 }
