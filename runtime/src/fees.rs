@@ -4,7 +4,7 @@ use frame_support::{
     decl_event, decl_module, decl_storage,
     dispatch::DispatchResult,
     ensure,
-    traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReason},
+    traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
     weights::DispatchClass,
 };
 use frame_system::ensure_root;
@@ -38,7 +38,7 @@ decl_storage! {
 }
 
 decl_event!(
-    pub enum Event<T> where <T as frame_system::Config>::Hash, <T as pallet_balances::Trait>::Balance {
+    pub enum Event<T> where <T as frame_system::Config>::Hash, <T as pallet_balances::Config>::Balance {
         FeeChanged(Hash, Balance),
     }
 );
@@ -84,7 +84,7 @@ impl<T: Trait> Module<T> {
         let _ = <pallet_balances::Module<T> as Currency<_>>::withdraw(
             from,
             fee,
-            WithdrawReason::Fee.into(),
+            WithdrawReasons::Fee.into(),
             ExistenceRequirement::KeepAlive,
         )?;
 
@@ -96,7 +96,7 @@ impl<T: Trait> Module<T> {
         let value = <pallet_balances::Module<T> as Currency<_>>::withdraw(
             &from,
             fee,
-            WithdrawReason::Fee.into(),
+            WithdrawReasons::Fee.into(),
             ExistenceRequirement::KeepAlive,
         )?;
 

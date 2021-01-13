@@ -185,7 +185,7 @@ impl frame_system::Config for Runtime {
 	/// Get the chain's current version.
 	type Version = Version;
 	/// Convert a module to its index in the runtime.
-	type ModuleToIndex = ModuleToIndex;
+	//type ModuleToIndex = ModuleToIndex;
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -758,27 +758,6 @@ impl nfts::Trait for Runtime {
     type Event = Event;
 }
 
-/*
-parameter_types! {
-	pub const MultiAccountSigDepositBase: Balance = 30 * CENTI_RAD;
-	pub const MultiAccountDepositBase: Balance = 30 * CENTI_RAD;
-	pub const MultiAccountSigDepositFactor: Balance = 5 * CENTI_RAD;
-	pub const MultiAccountDepositFactor: Balance = 5 * CENTI_RAD;
-	pub const MultiAccountMaxSignatories: u16 = 100;
-}
-
-impl substrate_pallet_multi_account::Trait for Runtime {
-    type Event = Event;
-    type Call = Call;
-    type Currency = Balances;
-    type MultiAccountDepositBase = MultiAccountDepositBase;
-    type MultiAccountDepositFactor =  MultiAccountDepositFactor;
-    type MultisigDepositBase = MultiAccountSigDepositBase;
-    type MultisigDepositFactor = MultiAccountSigDepositFactor;
-    type MaxSignatories = MultiAccountMaxSignatories;
-}
-*/
-
 parameter_types! {
     pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
@@ -875,7 +854,6 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
 		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
-		//FinalityTracker: pallet_finality_tracker::{Module, Call, Inherent},
 		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
@@ -884,7 +862,6 @@ construct_runtime!(
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
 		Nfts: nfts::{Module, Call, Event<T>},
-		//MultiAccount: substrate_pallet_multi_account::{Module, Call, Storage, Event<T>, Config<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},

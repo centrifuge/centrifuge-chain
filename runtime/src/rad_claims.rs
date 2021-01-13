@@ -66,7 +66,7 @@ decl_event! {
     pub enum Event<T> where
         <T as frame_system::Config>::AccountId,
         <T as frame_system::Config>::Hash,
-        <T as pallet_balances::Trait>::Balance,
+        <T as pallet_balances::Config>::Balance,
     {
         Claimed(AccountId, Balance),
         RootHashStored(Hash),
