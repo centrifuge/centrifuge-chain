@@ -84,7 +84,7 @@ impl<T: Trait> Module<T> {
         let _ = <pallet_balances::Module<T> as Currency<_>>::withdraw(
             from,
             fee,
-            WithdrawReasons::Fee.into(),
+            WithdrawReasons::FEE.into(),
             ExistenceRequirement::KeepAlive,
         )?;
 
@@ -96,7 +96,7 @@ impl<T: Trait> Module<T> {
         let value = <pallet_balances::Module<T> as Currency<_>>::withdraw(
             &from,
             fee,
-            WithdrawReasons::Fee.into(),
+            WithdrawReasons::FEE.into(),
             ExistenceRequirement::KeepAlive,
         )?;
 

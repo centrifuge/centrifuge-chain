@@ -362,7 +362,7 @@ impl<T: Trait> Module<T> {
                 }
                 key
             })
-            .map(|key| child::kill_storage(&key))
+            .map(|key| child::kill_storage(&key, None))
             .count()
     }
 
