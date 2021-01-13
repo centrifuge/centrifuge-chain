@@ -2,11 +2,21 @@
 
 use node_primitives::Balance;
 use sp_runtime::traits::Convert;
-use frame_support::traits::Currency;
-use crate::Balances;
+use frame_support::traits::{Imbalance, Currency, OnUnbalanced};
+use crate::{Balances, Authorship, NegativeImbalance};
 use frame_support::weights::{WeightToFeeCoefficient, WeightToFeePolynomial, WeightToFeeCoefficients};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
+
+pub struct DealWithFees;
+impl OnUnbalanced<NegativeImbalance> for DealWithFees {
+    fn on_unbalanced(mut fees_then_tips: impl Iterator<Item=NegativeImbalance>) {
+        let amount = fees_then_tips
+            .fold(Imbalance::zero(), |acc: NegativeImbalance, x| acc.merge(x));
+
+        Balances::resolve_creating(&Authorship::author(), amount);
+    }
+}
 
 /// Struct that handles the conversion of Balance -> `u64`. This is used for staking's election
 /// calculation.

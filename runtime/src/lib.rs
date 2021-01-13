@@ -8,8 +8,8 @@ use sp_std::prelude::*;
 use frame_support::{
     construct_runtime, parameter_types, debug, RuntimeDebug,
     weights::{
-        Weight,
-        constants::{RocksDbWeight, WEIGHT_PER_SECOND}},
+        Weight, DispatchClass,
+        constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
         U128CurrencyToVote, Currency, KeyOwnerProofSystem,
         Randomness, LockIdentifier, InstanceFilter},
@@ -32,6 +32,9 @@ use sp_runtime::traits::{
 	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
 	OpaqueKeys, NumberFor, Saturating, ConvertInto
 };
+use frame_system::{
+    EnsureSigned, EnsureRoot, EnsureOneOf,
+    limits::{BlockWeights, BlockLength}};
 use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -42,8 +45,7 @@ use pallet_grandpa::fg_primitives;
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
-pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment};
-use frame_system::{EnsureSigned, EnsureRoot};
+pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment, CurrencyAdapter};
 use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
@@ -57,7 +59,9 @@ pub use pallet_balances::Call as BalancesCall;
 pub use pallet_staking::StakerStatus;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
-//pub mod impls;
+pub mod impls;
+use impls::DealWithFees;
+
 use bridge as pallet_bridge;
 
 // Bridge access control list pallet
@@ -135,10 +139,40 @@ pub fn native_version() -> NativeVersion {
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 
 const AVERAGE_ON_INITIALIZE_WEIGHT: Perbill = Perbill::from_percent(10);
+/// We assume that ~10% of the block weight is consumed by `on_initalize` handlers.
+/// This is used to limit the maximal weight of a single extrinsic.
+const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(10);
+/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used
+/// by  Operational  extrinsics.
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+/// We allow for half a second of compute with a 3 second average block time.
+const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND / 2;
+
 parameter_types! {
     pub const BlockHashCount: BlockNumber = 250;
-    pub const MaximumBlockWeight: Weight = 0.5 * WEIGHT_PER_SECOND;
+    pub const MaximumBlockWeight: Weight = MAXIMUM_BLOCK_WEIGHT;
     pub const Version: RuntimeVersion = VERSION;
+    pub RuntimeBlockLength: BlockLength =
+        BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+    pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
+        .base_block(BlockExecutionWeight::get())
+        .for_class(DispatchClass::all(), |weights| {
+            weights.base_extrinsic = ExtrinsicBaseWeight::get();
+        })
+        .for_class(DispatchClass::Normal, |weights| {
+            weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
+        })
+        .for_class(DispatchClass::Operational, |weights| {
+            weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
+            // Operational transactions have some extra reserved space, so that they
+            // are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
+            weights.reserved = Some(
+                MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
+            );
+        })
+        .avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
+        .build_or_panic();
+    pub const SS58Prefix: u8 = 42;
 }
 
 //const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
@@ -167,20 +201,13 @@ impl frame_system::Config for Runtime {
     type Event = Event;
     /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
     type BlockHashCount = BlockHashCount;
-    /// Maximum weight of each block. With a default weight system of 1byte == 1weight, 4mb is ok.
-    //type MaximumBlockWeight = MaximumBlockWeight;
     type DbWeight = RocksDbWeight;
-    //type BlockExecutionWeight = BlockExecutionWeight;
-    //type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
-    //type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
-    /// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
-    //type MaximumBlockLength = MaximumBlockLength;
-    /// Portion of the block weight that is available to all normal transactions.
-	//type AvailableBlockRatio = AvailableBlockRatio;
+    type BlockWeights = RuntimeBlockWeights;
+    type BlockLength = RuntimeBlockLength;
+    type PalletInfo = PalletInfo;
+    type SS58Prefix = SS58Prefix;
 	/// Get the chain's current version.
 	type Version = Version;
-	/// Convert a module to its index in the runtime.
-	//type ModuleToIndex = ModuleToIndex;
 	/// Data to be associated with an account (other than nonce/transaction counter, which this
 	/// module does regardless).
 	type AccountData = pallet_balances::AccountData<Balance>;
@@ -273,7 +300,8 @@ impl pallet_utility::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+    MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+    pub const MaxScheduledPerBlock: u32 = 50;
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -283,6 +311,7 @@ impl pallet_scheduler::Config for Runtime {
     type Call = Call;
     type MaximumWeight = MaximumSchedulerWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
+    type MaxScheduledPerBlock = MaxScheduledPerBlock;
     type WeightInfo = ();
 }
 
@@ -295,6 +324,7 @@ impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
+    type WeightInfo = ();
 
     type KeyOwnerProofSystem = Historical;
 
@@ -333,9 +363,12 @@ parameter_types! {
     // the minimum fee for an anchor is 500,000ths of a RAD.
     // This is set to a value so you can still get some return without getting your account removed.
     pub const ExistentialDeposit: Balance = 1 * MICRO_RAD;
+    // For weight estimation, we assume that the most locks on an individual account will be 50.
+    pub const MaxLocks: u32 = 50;
 }
 
 impl pallet_balances::Config for Runtime {
+    type MaxLocks = MaxLocks;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	/// Handler for the unbalanced reduction when removing a dust account.
@@ -359,6 +392,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
+    type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate =
@@ -439,6 +473,10 @@ parameter_types! {
 	pub const MaxIterations: u32 = 10;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
 	pub MinSolutionScoreBump: Perbill = Perbill::from_rational_approximation(5u32, 10_000);
+    pub OffchainSolutionWeightLimit: Weight = RuntimeBlockWeights::get()
+        .get(DispatchClass::Normal)
+        .max_extrinsic.expect("Normal extrinsics have a weight limit configured; qed")
+        .saturating_sub(BlockExecutionWeight::get());
 }
 
 impl pallet_staking::Config for Runtime {
@@ -463,6 +501,7 @@ impl pallet_staking::Config for Runtime {
     type MinSolutionScoreBump = MinSolutionScoreBump;
     type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
     type UnsignedPriority = StakingUnsignedPriority;
+    type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
     type WeightInfo = ();
 }
 
@@ -475,6 +514,7 @@ parameter_types! {
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_RAD;
+    pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }
 
@@ -482,6 +522,9 @@ impl pallet_democracy::Config for Runtime {
 	type Proposal = Call;
 	type Event = Event;
 	type Currency = Balances;
+    type BlacklistOrigin = EnsureRoot<AccountId>;
+    // To cancel a proposal before it has been passed, must be root.
+    type CancelProposalOrigin = EnsureRoot<AccountId>;
 
 	/// The minimum period of locking and the period between a proposal being approved and enacted.
 	///
@@ -534,6 +577,7 @@ impl pallet_democracy::Config for Runtime {
     type Scheduler = Scheduler;
     type PalletsOrigin = OriginCaller;
     type MaxVotes = MaxVotes;
+    type MaxProposals = MaxProposals;
     type WeightInfo = ();
 }
 
@@ -551,6 +595,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
     type MotionDuration = CouncilMotionDuration;
     type MaxProposals = CouncilMaxProposals;
     type MaxMembers = CouncilMaxMembers;
+    type DefaultVote = pallet_collective::PrimeDefaultVote;
     type WeightInfo = ();
 }
 
@@ -699,6 +744,8 @@ impl pallet_grandpa::Config for Runtime {
 
     type HandleEquivocation =
         pallet_grandpa::EquivocationHandler<Self::KeyOwnerIdentification, Offences>;
+
+    type WeightInfo = ();
 }
 
 /*
@@ -1026,6 +1073,14 @@ impl_runtime_apis! {
 
 		fn current_epoch_start() -> sp_consensus_babe::SlotNumber {
 			Babe::current_epoch_start()
+		}
+
+		fn current_epoch() -> sp_consensus_babe::Epoch {
+			Babe::current_epoch()
+		}
+
+		fn next_epoch() -> sp_consensus_babe::Epoch {
+			Babe::next_epoch()
 		}
 
 		fn generate_key_ownership_proof(
