@@ -40,8 +40,8 @@ use sp_version::RuntimeVersion;
 use sp_version::NativeVersion;
 use sp_core::OpaqueMetadata;
 use sp_io::hashing::blake2_128;
-use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
-use pallet_grandpa::fg_primitives;
+//use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
+//use pallet_grandpa::fg_primitives;
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
@@ -423,7 +423,7 @@ impl pallet_authorship::Config for Runtime {
 
 impl_opaque_keys! {
     pub struct SessionKeys {
-        pub grandpa: Grandpa,
+        //pub grandpa: Grandpa,
         pub babe: Babe,
 		pub im_online: ImOnline,
 		pub authority_discovery: AuthorityDiscovery,
@@ -728,6 +728,7 @@ impl pallet_offences::Config for Runtime {
 
 impl pallet_authority_discovery::Config for Runtime {}
 
+/*
 impl pallet_grandpa::Config for Runtime {
     type Event = Event;
     type Call = Call;
@@ -747,6 +748,7 @@ impl pallet_grandpa::Config for Runtime {
 
     type WeightInfo = ();
 }
+*/
 
 /*
 parameter_types! {
@@ -898,7 +900,7 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
 		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
-		Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
+		//Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		Offences: pallet_offences::{Module, Call, Storage, Event},
@@ -1022,6 +1024,7 @@ impl_runtime_apis! {
 		}
     }
 
+    /*
     impl fg_primitives::GrandpaApi<Block> for Runtime {
 		fn grandpa_authorities() -> GrandpaAuthorityList {
 			Grandpa::grandpa_authorities()
@@ -1053,6 +1056,7 @@ impl_runtime_apis! {
 				.map(fg_primitives::OpaqueKeyOwnershipProof::new)
 		}
 	}
+    */
 
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
         fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
