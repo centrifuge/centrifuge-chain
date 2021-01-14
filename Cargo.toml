@@ -88,6 +88,16 @@ pallet-transaction-payment-rpc = { branch = "rococo-v1", git = "https://github.c
 substrate-frame-rpc-system  = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 pallet-im-online = { default-features = false, branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
+# Cumulus dependencies
+cumulus-network = {git = 'https://github.com/paritytech/cumulus', branch = 'master'}
+cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', branch = 'master'}
+cumulus-service = {git = 'https://github.com/paritytech/cumulus', branch = 'master'}
+
+# Polkadot dependencies
+polkadot-parachain = {git = 'https://github.com/paritytech/polkadot', branch = 'rococo-v1'}
+polkadot-primitives = {git = 'https://github.com/paritytech/polkadot', branch = 'rococo-v1'}
+polkadot-service = {git = 'https://github.com/paritytech/polkadot', branch = 'rococo-v1'}
+
 # node-specific dependencies
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
 node-primitives = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }

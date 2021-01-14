@@ -29,6 +29,7 @@ serde = { version = "1.0.102", optional = true }
 
 # parachain
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
+cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = "rococo-v1"}
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 
