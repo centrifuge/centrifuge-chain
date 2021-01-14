@@ -922,7 +922,7 @@ construct_runtime!(
 		Nft: nft::{Module, Call, Storage, Event<T>},
         BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
-        ParachainInfo: parachain_info::{Module, Storage, Config},
+        ParachainInfo: parachain_info::{Module, Storage},
 	}
 );
 

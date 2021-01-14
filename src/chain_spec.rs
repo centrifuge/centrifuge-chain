@@ -3,14 +3,14 @@ use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
 use serde::{Serialize, Deserialize};
 use node_runtime::{
 	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
-	ElectionsConfig, FeesConfig, GrandpaConfig, ImOnlineConfig, IndicesConfig, MultiAccount, MultiAccountConfig, SessionConfig, SessionKeys,
+	ElectionsConfig, FeesConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
 	StakerStatus, StakingConfig, SystemConfig, wasm_binary_unwrap,
 };
 use node_runtime::Block;
 use node_runtime::constants::currency::*;
 use sc_service;
 use hex_literal::hex;
-use grandpa_primitives::{AuthorityId as GrandpaId};
+//use grandpa_primitives::{AuthorityId as GrandpaId};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
@@ -77,7 +77,7 @@ pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
 pub fn get_authority_keys_from_seed(seed: &str) -> (
     AccountId,
     AccountId,
-    GrandpaId,
+    //GrandpaId,
     BabeId,
     ImOnlineId,
     AuthorityDiscoveryId,
@@ -85,7 +85,7 @@ pub fn get_authority_keys_from_seed(seed: &str) -> (
     (
         get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
-        get_from_seed::<GrandpaId>(seed),
+        //get_from_seed::<GrandpaId>(seed),
         get_from_seed::<BabeId>(seed),
         get_from_seed::<ImOnlineId>(seed),
         get_from_seed::<AuthorityDiscoveryId>(seed),
@@ -134,18 +134,18 @@ pub fn mainnet_config() -> Result<ChainSpec, String> {
 }
 
 fn session_keys(
-    grandpa: GrandpaId,
+    //grandpa: GrandpaId,
     babe: BabeId,
     im_online: ImOnlineId,
     authority_discovery: AuthorityDiscoveryId,
 ) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, authority_discovery }
+	SessionKeys { babe, im_online, authority_discovery }
 }
 
 /// Helper function to create GenesisConfig for testing
 pub fn testnet_genesis(
 	// StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
-	initial_authorities: Vec<(AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
+	initial_authorities: Vec<(AccountId, AccountId, /*GrandpaId,*/ BabeId, ImOnlineId, AuthorityDiscoveryId)>,
     endowed_accounts: Option<Vec<AccountId>>,
 ) -> GenesisConfig {
 	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
@@ -166,7 +166,7 @@ pub fn testnet_genesis(
 	});
 	// add a balance for the multi account id 1 created further down, this will have address
 	// 5DnGuePtDg4x7vCiUgjxrfFVVvMiA5aBDKLRbAp4SVohAMn8 on the default substrate chain
-	endowed_accounts.push(MultiAccount::multi_account_id(1));
+	//endowed_accounts.push(MultiAccount::multi_account_id(1));
     let num_endowed_accounts = endowed_accounts.len();
 
     const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
@@ -225,15 +225,6 @@ pub fn testnet_genesis(
 		}),
         pallet_authority_discovery: Some(AuthorityDiscoveryConfig {
 			keys: vec![],
-		}),
-        pallet_grandpa: Some(GrandpaConfig {
-            authorities: vec![],
-		}),
-		substrate_pallet_multi_account: Some(MultiAccountConfig{
-			multi_accounts: vec![
-				// Add the first 3 accounts to a 2-of-3 multi account
-				(endowed_accounts[0].clone(), 2, vec![endowed_accounts[1].clone(), endowed_accounts[2].clone()]),
-			],
 		}),
 		pallet_bridge: Some(PalletBridgeConfig{
 			// Whitelist chains Ethereum - 0
