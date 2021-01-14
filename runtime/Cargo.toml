@@ -14,7 +14,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 # chainbridge = { version = "0.0.1", git = "https://github.com/centrifuge/chainbridge-substrate.git", rev = "6ef2738d8179299bf94159ae9e79d3f27be5271c" , default-features = false}
 chainbridge = { git = "https://github.com/jaybutera/chainbridge-substrate", default-features = false}
 #unique_assets = { version = "0.1.0", git = "https://github.com/centrifuge/unique-assets", rev = "d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0", default-features = false }
-unique_assets = { version = "0.1.0", path = "../../unique_assets", default-features = false }
+unique_assets = { version = "0.1.0", git = "https://github.com/jaybutera/unique-assets", default-features = false }
 bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
 
 # third-party dependencies
@@ -28,7 +28,6 @@ rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
 
 # parachain
-#cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus.git", default-features = false, rev = "a51df009d8bc5a8b58f9790ce0959d45d6fc98ef" }
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
