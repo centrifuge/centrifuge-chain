@@ -44,7 +44,7 @@ use sp_io::hashing::blake2_128;
 //use pallet_grandpa::fg_primitives;
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use pallet_transaction_payment_rpc_runtime_api::RuntimeDispatchInfo;
+use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment, CurrencyAdapter};
 use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
@@ -872,9 +872,14 @@ impl bridge_mapping::Trait for Runtime {
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 }
 
+parameter_types! {
+	pub storage ParachainId: cumulus_primitives::ParaId = 10001.into();
+}
+
 impl cumulus_parachain_upgrade::Config for Runtime {
     type Event = Event;
     type OnValidationData = ();
+    type SelfParaId = ParachainId;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -955,9 +960,6 @@ pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExt
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
-
-// Add parachain runtime features
-cumulus_runtime::register_validate_block!(Block, Executive);
 
 decl_runtime_apis! {
     /// The API to query anchoring info.
@@ -1130,6 +1132,9 @@ impl_runtime_apis! {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
+		fn query_fee_details(uxt: <Block as BlockT>::Extrinsic, len: u32) -> FeeDetails<Balance> {
+			TransactionPayment::query_fee_details(uxt, len)
+		}
 	}
 
 	impl sp_session::SessionKeys<Block> for Runtime {
@@ -1176,6 +1181,9 @@ impl_runtime_apis! {
         }
     }
 }
+
+// Add parachain runtime features
+cumulus_runtime::register_validate_block!(Block, Executive);
 
 #[cfg(test)]
 mod tests {

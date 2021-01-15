@@ -33,6 +33,9 @@ cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', default-fea
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 
+# polkadot dependencies
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
+
 # primitives
 sp-authority-discovery = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
 sp-consensus-babe = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
