@@ -60,6 +60,7 @@ sp-blockchain = { branch = "rococo-v1", git = "https://github.com/paritytech/sub
 sp-block-builder = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sp-runtime-interface = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-trie = { branch = "rococo-v1", git = 'https://github.com/paritytech/substrate', default-features = false }
 
 # client dependencies
 sc-client-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
@@ -83,6 +84,10 @@ sc-authority-discovery = { branch = "rococo-v1", git = "https://github.com/parit
 sc-rpc-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-keystore = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
+# Cli specific
+frame-benchmarking-cli = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+node-inspect = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+
 # frame dependencies
 pallet-transaction-payment-rpc = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 substrate-frame-rpc-system  = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
@@ -90,6 +95,7 @@ pallet-im-online = { default-features = false, branch = "rococo-v1", git = "http
 
 # Cumulus dependencies
 cumulus-network = {git = 'https://github.com/paritytech/cumulus', branch = 'rococo-v1'}
+cumulus-consensus = {git = 'https://github.com/paritytech/cumulus', branch = 'rococo-v1'}
 cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', branch = 'rococo-v1'}
 cumulus-service = {git = 'https://github.com/paritytech/cumulus', branch = 'rococo-v1'}
 
@@ -107,6 +113,7 @@ vergen = "3.0.4"
 substrate-build-script-utils  = { branch = "rococo-v1", optional = true, git = "https://github.com/paritytech/substrate.git" }
 
 [dev-dependencies]
+#sc-keystore = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-service-test = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 tempfile = "3.1.0"
 sp-keyring = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
