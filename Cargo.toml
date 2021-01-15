@@ -36,10 +36,10 @@ codec = { package = "parity-scale-codec", version = "1.3.4" }
 serde = { version = "1.0.102", features = ["derive"] }
 futures = { version = "0.3.1", features = ["compat"] }
 hex-literal = "0.2.1"
-jsonrpc-core = "14.2.0"
-jsonrpc-core-client = { version = "14.2.0", features = ["http", "ws"] }
-jsonrpc-derive = "14.2.0"
-jsonrpc-pubsub = "14.2.0"
+jsonrpc-core = "15.1.0"
+jsonrpc-core-client = { version = "15.1.0", features = ["http", "ws"] }
+jsonrpc-derive = "15.1.0"
+jsonrpc-pubsub = "15.1.0"
 log = "0.4.8"
 structopt = { version = "0.3.8" , optional = true }
 serde_json = "1.0"
