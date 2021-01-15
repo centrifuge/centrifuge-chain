@@ -1,140 +1,70 @@
-use sc_chain_spec::ChainSpecExtension;
-use sp_core::{Pair, Public, crypto::UncheckedInto, sr25519};
-use serde::{Serialize, Deserialize};
-use node_runtime::{
-	AuthorityDiscoveryConfig, BabeConfig, BalancesConfig, PalletBridgeConfig, CouncilConfig, DemocracyConfig,
-	ElectionsConfig, FeesConfig, ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys,
-	StakerStatus, StakingConfig, SystemConfig, wasm_binary_unwrap,
-};
-use node_runtime::Block;
-use node_runtime::constants::currency::*;
-use sc_service;
+// Copyright 2019 Parity Technologies (UK) Ltd.
+// This file is part of Cumulus.
+
+// Cumulus is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Cumulus is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
+
+use cumulus_primitives::ParaId;
 use hex_literal::hex;
-//use grandpa_primitives::{AuthorityId as GrandpaId};
+use node_runtime::{SessionKeys, StakerStatus, constants::currency::RAD};
 use sp_consensus_babe::{AuthorityId as BabeId};
 use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use sp_runtime::{Perbill, traits::{Verify, IdentifyAccount}};
-
-pub use node_primitives::{AccountId, Balance, Hash, Signature};
-pub use node_runtime::GenesisConfig;
+use node_primitives::{AccountId, Balance, Hash, Signature};
+use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
+use serde::{Deserialize, Serialize};
+use sp_core::{sr25519, Pair, Public};
+use sp_runtime::{Perbill, traits::{IdentifyAccount, Verify}};
 
-/// Node `ChainSpec` extensions.
-///
-/// Additional parameters for some Substrate core modules,
-/// customizable from the chain spec.
-#[derive(Default, Clone, Serialize, Deserialize, ChainSpecExtension)]
-#[serde(rename_all = "camelCase")]
-pub struct Extensions {
-	/// Block numbers with known hashes.
-	pub fork_blocks: sc_client_api::ForkBlocks<Block>,
-	/// Known bad block hashes.
-	pub bad_blocks: sc_client_api::BadBlocks<Block>,
-}
-
-/// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<
-	GenesisConfig,
-	Extensions,
->;
-
-/// The chain specification option.
-#[derive(Clone, Debug)]
-pub enum Alternative {
-	/// Whatever the current runtime is, with just Alice as an auth.
-	Development,
-	/// Whatever the current runtime is, with simple Alice/Bob auths.
-	LocalTestnet,
-	/// The Fulvous testnet.
-	Fulvous,
-	/// The Flint testnet.
-	Flint,
-	/// The Amber testnet.
-	Amber,
-	/// Mainnet.
-	Mainnet,
-}
+/// Specialized `ChainSpec` for the normal parachain runtime.
+pub type ChainSpec = sc_service::GenericChainSpec<node_runtime::GenesisConfig, Extensions>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
-    TPublic::Pair::from_string(&format!("//{}", seed), None)
-        .expect("static values are valid; qed")
-        .public()
+	TPublic::Pair::from_string(&format!("//{}", seed), None)
+		.expect("static values are valid; qed")
+		.public()
+}
+
+/// The extensions for the [`ChainSpec`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
+#[serde(deny_unknown_fields)]
+pub struct Extensions {
+	/// The relay chain of the Parachain.
+	pub relay_chain: String,
+	/// The id of the Parachain.
+	pub para_id: u32,
+}
+
+impl Extensions {
+	/// Try to get the extension from the given `ChainSpec`.
+	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Self> {
+		sc_chain_spec::get_extension(chain_spec.extensions())
+	}
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
 
 /// Helper function to generate an account ID from seed
-pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId where
-	AccountPublic: From<<TPublic::Pair as Pair>::Public>
+pub fn get_account_id_from_seed<TPublic: Public>(seed: &str) -> AccountId
+where
+	AccountPublic: From<<TPublic::Pair as Pair>::Public>,
 {
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-/// Helper function to generate stash, controller and session key from seed
-/// Note: this should be used only for dev testnets.
-pub fn get_authority_keys_from_seed(seed: &str) -> (
-    AccountId,
-    AccountId,
-    //GrandpaId,
-    BabeId,
-    ImOnlineId,
-    AuthorityDiscoveryId,
-) {
-    (
-        get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
-		get_account_id_from_seed::<sr25519::Public>(seed),
-        //get_from_seed::<GrandpaId>(seed),
-        get_from_seed::<BabeId>(seed),
-        get_from_seed::<ImOnlineId>(seed),
-        get_from_seed::<AuthorityDiscoveryId>(seed),
-    )
-}
-
-/// Get a chain config from a spec setting.
-impl Alternative {
-	pub(crate) fn load(self) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-		Ok(match self {
-			Alternative::Development => Box::new(development_config()),
-			Alternative::LocalTestnet => Box::new(local_testnet_config()),
-			Alternative::Fulvous => Box::new(fulvous_config()?),
-			Alternative::Flint => Box::new(flint_config()?),
-			Alternative::Amber => Box::new(amber_config()?),
-			Alternative::Mainnet => Box::new(mainnet_config()?),
-		})
-	}
-
-	pub(crate) fn from(s: &str) -> Option<Self> {
-		match s {
-			"dev" => Some(Alternative::Development),
-			"local" => Some(Alternative::LocalTestnet),
-			"fulvous" => Some(Alternative::Fulvous),
-			"flint" => Some(Alternative::Flint),
-			"amber" => Some(Alternative::Amber),
-			"" | "mainnet" => Some(Alternative::Mainnet),
-			_ => None,
-		}
-	}
-}
-
-/// Flint testnet generator
-pub fn flint_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/flint-cc3-raw-spec.json")[..])
-}
-
-/// Amber testnet generator
-pub fn amber_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/amber-cc2-raw-spec.json")[..])
-}
-
-/// Mainnet generator
-pub fn mainnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/mainnet-raw-spec.json")[..])
-}
-
 fn session_keys(
-    //grandpa: GrandpaId,
     babe: BabeId,
     im_online: ImOnlineId,
     authority_discovery: AuthorityDiscoveryId,
@@ -142,48 +72,91 @@ fn session_keys(
 	SessionKeys { babe, im_online, authority_discovery }
 }
 
-/// Helper function to create GenesisConfig for testing
-pub fn testnet_genesis(
-	// StashId, ControllerId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId
-	initial_authorities: Vec<(AccountId, AccountId, /*GrandpaId,*/ BabeId, ImOnlineId, AuthorityDiscoveryId)>,
-    endowed_accounts: Option<Vec<AccountId>>,
-) -> GenesisConfig {
-	let mut endowed_accounts: Vec<AccountId> = endowed_accounts.unwrap_or_else(|| {
-		vec![
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie"),
-			get_account_id_from_seed::<sr25519::Public>("Dave"),
-			get_account_id_from_seed::<sr25519::Public>("Eve"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-		]
-	});
-	// add a balance for the multi account id 1 created further down, this will have address
-	// 5DnGuePtDg4x7vCiUgjxrfFVVvMiA5aBDKLRbAp4SVohAMn8 on the default substrate chain
-	//endowed_accounts.push(MultiAccount::multi_account_id(1));
-    let num_endowed_accounts = endowed_accounts.len();
+pub fn get_chain_spec(id: ParaId) -> ChainSpec {
+	ChainSpec::from_genesis(
+		"Local Testnet",
+		"local_testnet",
+		ChainType::Local,
+		move || {
+			testnet_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+				],
+				id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Extensions {
+			relay_chain: "westend-dev".into(),
+			para_id: id.into(),
+		},
+	)
+}
 
-    const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
+pub fn staging_test_net(id: ParaId) -> ChainSpec {
+	ChainSpec::from_genesis(
+		"Staging Testnet",
+		"staging_testnet",
+		ChainType::Live,
+		move || {
+			testnet_genesis(
+				hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
+				vec![
+					hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
+				],
+				id,
+			)
+		},
+		Vec::new(),
+		None,
+		None,
+		None,
+		Extensions {
+			relay_chain: "westend-dev".into(),
+			para_id: id.into(),
+		},
+	)
+}
+
+fn testnet_genesis(
+	initial_authorities: Vec<(AccountId, AccountId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
+	//root_key: AccountId,
+	endowed_accounts: Vec<AccountId>,
+	id: ParaId,
+) -> node_runtime::GenesisConfig {
+    let num_endowed_accounts = endowed_accounts.len();
     const STASH: Balance = 1_000_000 * RAD;
 
-    GenesisConfig {
-		frame_system: Some(SystemConfig {
-			code: wasm_binary_unwrap().to_vec(),
+	node_runtime::GenesisConfig {
+		frame_system: Some(node_runtime::SystemConfig {
+			code: node_runtime::WASM_BINARY
+				.expect("WASM binary was not build, please build it!")
+				.to_vec(),
 			changes_trie_config: Default::default(),
 		}),
-		pallet_balances: Some(BalancesConfig {
-			balances: endowed_accounts.iter().cloned()
-				.map(|k| (k, ENDOWMENT))
-				.chain(initial_authorities.iter().map(|x| (x.0.clone(), STASH)))
+		pallet_balances: Some(node_runtime::BalancesConfig {
+			balances: endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, 1 << 60))
 				.collect(),
 		}),
-		pallet_session: Some(SessionConfig {
+		pallet_session: Some(node_runtime::SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.0.clone(), session_keys(
 					x.2.clone(),
@@ -193,7 +166,7 @@ pub fn testnet_genesis(
 				))
 			}).collect::<Vec<_>>(),
 		}),
-		pallet_staking: Some(StakingConfig {
+		pallet_staking: Some(node_runtime::StakingConfig {
 			validator_count: initial_authorities.len() as u32 * 2,
 			minimum_validator_count: initial_authorities.len() as u32,
 			stakers: initial_authorities.iter().map(|x| {
@@ -203,30 +176,30 @@ pub fn testnet_genesis(
 			slash_reward_fraction: Perbill::from_percent(10),
 			.. Default::default()
 		}),
-		pallet_democracy: Some(DemocracyConfig::default()),
-		pallet_elections_phragmen: Some(ElectionsConfig {
+		pallet_democracy: Some(node_runtime::DemocracyConfig::default()),
+		pallet_elections_phragmen: Some(node_runtime::ElectionsConfig {
 			members: vec![],
 		}),
-		pallet_collective_Instance1: Some(CouncilConfig {
+		pallet_collective_Instance1: Some(node_runtime::CouncilConfig {
 			members: endowed_accounts.iter()
 						.take((num_endowed_accounts + 1) / 2)
 						.cloned()
 						.collect(),
 			phantom: Default::default(),
 		}),
-        pallet_babe: Some(BabeConfig {
+        pallet_babe: Some(node_runtime::BabeConfig {
             authorities: vec![],
         }),
-        pallet_im_online: Some(ImOnlineConfig {
+        pallet_im_online: Some(node_runtime::ImOnlineConfig {
 			keys: vec![],
         }),
-		pallet_indices: Some(IndicesConfig {
+		pallet_indices: Some(node_runtime::IndicesConfig {
 			indices: vec![],
 		}),
-        pallet_authority_discovery: Some(AuthorityDiscoveryConfig {
+        pallet_authority_discovery: Some(node_runtime::AuthorityDiscoveryConfig {
 			keys: vec![],
 		}),
-		pallet_bridge: Some(PalletBridgeConfig{
+		pallet_bridge: Some(node_runtime::PalletBridgeConfig{
 			// Whitelist chains Ethereum - 0
 			chains: vec![0],
 			// Register resourceIDs
@@ -242,7 +215,7 @@ pub fn testnet_genesis(
 			],
 			threshold: 1,
 		}),
-        fees: Some(FeesConfig {
+        fees: Some(node_runtime::FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
                 // pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
@@ -259,156 +232,6 @@ pub fn testnet_genesis(
             )],
         }),
 		pallet_vesting: Some(Default::default()),
-    }
-}
-
-fn get_default_properties(token: &str) -> sc_service::Properties {
-    let data = format!("\
-		{{
-			\"tokenDecimals\": 18,\
-			\"tokenSymbol\": \"{}\"\
-		}}", token);
-    serde_json::from_str(&data).unwrap()
-}
-
-fn development_config_genesis() -> GenesisConfig {
-	testnet_genesis(
-		vec![
-			get_authority_keys_from_seed("Alice"),
-		],
-		None,
-	)
-}
-
-/// Development config (single validator Alice)
-pub fn development_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"Development",
-		"dev",
-		ChainType::Development,
-		development_config_genesis,
-		vec![],
-		None,
-		None,
-		Some(get_default_properties("DRAD")),
-		Default::default(),
-	)
-}
-
-fn local_testnet_genesis() -> GenesisConfig {
-	testnet_genesis(
-		vec![
-			get_authority_keys_from_seed("Alice"),
-			get_authority_keys_from_seed("Bob"),
-		],
-		None,
-	)
-}
-
-/// Local testnet config (multivalidator Alice + Bob)
-pub fn local_testnet_config() -> ChainSpec {
-	ChainSpec::from_genesis(
-		"Local Testnet",
-		"local_testnet",
-		ChainType::Local,
-		local_testnet_genesis,
-		vec![],
-		None,
-		None,
-		Some(get_default_properties("DRAD")),
-		Default::default(),
-	)
-}
-
-#[allow(dead_code)]
-fn fulvous_genesis() -> GenesisConfig {
-	testnet_genesis(
-		vec![
-            (
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].into(),
-                hex!["8f9f7766fb5f36aeeed7a05b5676c14ae7c13043e3079b8a850131784b6d15d8"].unchecked_into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-                hex!["a23153e26c377a172c803e35711257c638e6944ad0c0627db9e3fc63d8503639"].unchecked_into(),
-            ),
-            (
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].into(),
-                hex!["be1ce959980b786c35e521eebece9d4fe55c41385637d117aa492211eeca7c3d"].unchecked_into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-                hex!["42a6fcd852ef2fe2205de2a3d555e076353b711800c6b59aef67c7c7c1acf04d"].unchecked_into(),
-            ),
-        ],
-        Some(vec![
-            hex!["20caaa19510a791d1f3799dac19f170938aeb0e58c3d1ebf07010532e599d728"].into(),
-            hex!["9efc9f132428d21268710181fe4315e1a02d838e0e5239fe45599f54310a7c34"].into(),
-            hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-        ]),
-	)
-}
-
-/// Local testnet config (multivalidator Alice + Bob)
-pub fn fulvous_config() -> Result<ChainSpec,String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/fulvous-raw-spec.json")[..])
-	// Keeping this as in case we want to regenerate the fulvous raw later
-	// ChainSpec::from_genesis(
-	// 	"Fulvous Testnet",
-	// 	"fulvous",
-	// 	ChainType::Live,
-	// 	fulvous_genesis,
-	// 	vec![],
-	// 	None,
-	// 	Some("flvs"),
-	// 	Some(get_default_properties("TRAD")),
-	// 	Default::default(),
-	// )
-}
-
-pub fn load_spec(id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-	match Alternative::from(id) {
-		Some(spec) => spec.load(),
-		None => Err(String::from("Unknown network ID")),
-	}
-}
-
-#[cfg(test)]
-pub(crate) mod tests {
-	use super::*;
-	use sp_runtime::{ModuleId, BuildStorage, traits::AccountIdConversion};
-	use sp_core::crypto::{Ss58Codec, Ss58AddressFormat::CentrifugeAccount};
-
-	#[test]
-	fn test_centrifuge_multi_account_ids() {
-		assert_eq!(MultiAccount::multi_account_id(1).to_ss58check_with_version(CentrifugeAccount),
-			"4d4KMh9TuvpbBZmw3VTpbFewd1Vwpyo45g1du4xFfNEmUKQV");
-		assert_eq!(MultiAccount::multi_account_id(2).to_ss58check_with_version(CentrifugeAccount),
-			"4ghzKGVmwh7wKFaWVF3d4QTbg21AbTo4mMPM5YUkkQasth4e");
-		assert_eq!(MultiAccount::multi_account_id(3).to_ss58check_with_version(CentrifugeAccount),
-			"4fM9N5BuADmbYBn4SPNnSVhfD9TVoBc83BC3ZJWei5FmAunc");
-		assert_eq!(MultiAccount::multi_account_id(4).to_ss58check_with_version(CentrifugeAccount),
-			"4eHarY1f35y2wtbW3XKLbbnJHeztAjNsxcYEoMnjfQbKXyq3");
-		assert_eq!(MultiAccount::multi_account_id(5).to_ss58check_with_version(CentrifugeAccount),
-			"4dTzs4ktTARToFk6k12Diu8ZHeP9bPCTfh1erAGhd3THtqCZ");
-		assert_eq!(AccountId::from_ss58check("4fsNBXAXoUKxSeu9qKCD9s285dzjS7Nmh1u76s4AsidrdmdL").unwrap(),
-				   hex!("c84b10ac8baea482e93d961a52502c9ee8227a7deaffd746657c5a8655cc70ab").into())
-	}
-
-	#[test]
-	fn test_centrifuge_bridge_account_id() {
-		let account_id: AccountId = ModuleId(*b"cb/bridg").into_account();
-		assert_eq!(account_id.to_ss58check_with_version(CentrifugeAccount),
-			"4dpEcgqFor2TJw9uWSjx2JpjkNmTic2UjJAK1j9fRtcTUoRu");
-	}
-
-	#[test]
-	fn test_create_development_chain_spec() {
-		development_config().build_storage().unwrap();
-	}
-
-	#[test]
-	fn test_create_local_testnet_chain_spec() {
-		local_testnet_config().build_storage().unwrap();
+		parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
 	}
 }
