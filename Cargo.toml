@@ -61,6 +61,7 @@ sp-block-builder = { branch = "rococo-v1", git = "https://github.com/paritytech/
 sp-runtime-interface = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-trie = { branch = "rococo-v1", git = 'https://github.com/paritytech/substrate', default-features = false }
+sp-keystore = { branch = "rococo-v1", git = 'https://github.com/paritytech/substrate', default-features = false }
 
 # client dependencies
 sc-client-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
@@ -84,6 +85,7 @@ sc-authority-discovery = { branch = "rococo-v1", git = "https://github.com/parit
 sc-rpc-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-keystore = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-tracing = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-sync-state-rpc = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
 # Cli specific
 frame-benchmarking-cli = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
