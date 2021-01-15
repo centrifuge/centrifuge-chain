@@ -232,6 +232,6 @@ fn testnet_genesis(
             )],
         }),
 		pallet_vesting: Some(Default::default()),
-		parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
+		//parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
 	}
 }
