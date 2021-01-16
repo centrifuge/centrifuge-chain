@@ -79,7 +79,7 @@ pub trait Storage {
         _child_definition: &[u8],
         _child_type: u32,
     ) {
-        sp_io::default_child_storage::storage_kill(strip_if_prefix(storage_key));
+        sp_io::default_child_storage::storage_kill(strip_if_prefix(storage_key), Some(10000));
     }
 
 

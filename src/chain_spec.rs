@@ -64,6 +64,24 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
+/// Helper function to generate stash, controller and session key from seed
+/// Note: this should be used only for dev testnets.
+pub fn get_authority_keys_from_seed(seed: &str) -> Vec<(
+	AccountId,
+	AccountId,
+	BabeId,
+	ImOnlineId,
+	AuthorityDiscoveryId,
+)> {
+	vec![(
+		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
+		get_account_id_from_seed::<sr25519::Public>(seed),
+		get_from_seed::<BabeId>(seed),
+		get_from_seed::<ImOnlineId>(seed),
+		get_from_seed::<AuthorityDiscoveryId>(seed),
+	)]
+}
+
 fn session_keys(
     babe: BabeId,
     im_online: ImOnlineId,
@@ -79,7 +97,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 		ChainType::Local,
 		move || {
 			testnet_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_authority_keys_from_seed("Alice"),
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -108,30 +126,30 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 	)
 }
 
-pub fn staging_test_net(id: ParaId) -> ChainSpec {
-	ChainSpec::from_genesis(
-		"Staging Testnet",
-		"staging_testnet",
-		ChainType::Live,
-		move || {
-			testnet_genesis(
-				hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
-				vec![
-					hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
-				],
-				id,
-			)
-		},
-		Vec::new(),
-		None,
-		None,
-		None,
-		Extensions {
-			relay_chain: "westend-dev".into(),
-			para_id: id.into(),
-		},
-	)
-}
+// pub fn staging_test_net(id: ParaId) -> ChainSpec {
+// 	ChainSpec::from_genesis(
+// 		"Staging Testnet",
+// 		"staging_testnet",
+// 		ChainType::Live,
+// 		move || {
+// 			testnet_genesis(
+// 				hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
+// 				vec![
+// 					hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
+// 				],
+// 				id,
+// 			)
+// 		},
+// 		Vec::new(),
+// 		None,
+// 		None,
+// 		None,
+// 		Extensions {
+// 			relay_chain: "westend-dev".into(),
+// 			para_id: id.into(),
+// 		},
+// 	)
+// }
 
 fn testnet_genesis(
 	initial_authorities: Vec<(AccountId, AccountId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
@@ -162,7 +180,6 @@ fn testnet_genesis(
 					x.2.clone(),
 					x.3.clone(),
 					x.4.clone(),
-					x.5.clone(),
 				))
 			}).collect::<Vec<_>>(),
 		}),
