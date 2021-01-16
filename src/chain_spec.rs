@@ -17,9 +17,6 @@
 use cumulus_primitives::ParaId;
 use hex_literal::hex;
 use node_runtime::{SessionKeys, constants::currency::RAD};
-//use sp_consensus_babe::{AuthorityId as BabeId};
-//use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
-//use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use node_primitives::{AccountId, Balance, Hash, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
@@ -63,36 +60,6 @@ where
 {
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
-
-/// Helper function to generate stash, controller and session key from seed
-/// Note: this should be used only for dev testnets.
-/*
-pub fn get_authority_keys_from_seed(seed: &str) -> Vec<(
-	AccountId,
-	AccountId,
-	BabeId,
-	ImOnlineId,
-	AuthorityDiscoveryId,
-)> {
-	vec![(
-		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
-		get_account_id_from_seed::<sr25519::Public>(seed),
-		get_from_seed::<BabeId>(seed),
-		get_from_seed::<ImOnlineId>(seed),
-		get_from_seed::<AuthorityDiscoveryId>(seed),
-	)]
-}
-*/
-
-/*
-fn session_keys(
-    babe: BabeId,
-    im_online: ImOnlineId,
-    authority_discovery: AuthorityDiscoveryId,
-) -> SessionKeys {
-	SessionKeys { babe, im_online, authority_discovery }
-}
-*/
 
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 	ChainSpec::from_genesis(
@@ -156,7 +123,6 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 // }
 
 fn testnet_genesis(
-	//initial_authorities: Vec<(AccountId, AccountId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
@@ -178,27 +144,6 @@ fn testnet_genesis(
 				.map(|k| (k, 1 << 60))
 				.collect(),
 		}),
-        /*
-		pallet_session: Some(node_runtime::SessionConfig {
-			keys: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.0.clone(), session_keys(
-					x.2.clone(),
-					x.3.clone(),
-					x.4.clone(),
-				))
-			}).collect::<Vec<_>>(),
-		}),
-		pallet_staking: Some(node_runtime::StakingConfig {
-			validator_count: initial_authorities.len() as u32 * 2,
-			minimum_validator_count: initial_authorities.len() as u32,
-			stakers: initial_authorities.iter().map(|x| {
-				(x.0.clone(), x.1.clone(), STASH, StakerStatus::Validator)
-			}).collect(),
-			invulnerables: initial_authorities.iter().map(|x| x.0.clone()).collect(),
-			slash_reward_fraction: Perbill::from_percent(10),
-			.. Default::default()
-		}),
-        */
 		pallet_democracy: Some(node_runtime::DemocracyConfig::default()),
 		pallet_elections_phragmen: Some(node_runtime::ElectionsConfig {
 			members: vec![],
@@ -210,24 +155,9 @@ fn testnet_genesis(
 						.collect(),
 			phantom: Default::default(),
 		}),
-        /*
-        pallet_babe: Some(node_runtime::BabeConfig {
-            authorities: vec![],
-        }),
-        */
-        /*
-        pallet_im_online: Some(node_runtime::ImOnlineConfig {
-			keys: vec![],
-        }),
-        */
 		pallet_indices: Some(node_runtime::IndicesConfig {
 			indices: vec![],
 		}),
-        /*
-        pallet_authority_discovery: Some(node_runtime::AuthorityDiscoveryConfig {
-			keys: vec![],
-		}),
-        */
 		pallet_bridge: Some(node_runtime::PalletBridgeConfig{
 			// Whitelist chains Ethereum - 0
 			chains: vec![0],
