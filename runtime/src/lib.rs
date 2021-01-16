@@ -431,18 +431,17 @@ impl FindAuthor<AccountId> for SudoAuthor {
 }
 */
 
-/*
 parameter_types! {
 	pub const UncleGenerations: BlockNumber = 5;
 }
 
+// We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
 	type FindAuthor = (); // Author is sudo in cumulus parachain, but won't be payed as a unit tuple.
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = (ImOnline);
+	type EventHandler = ();
 }
-*/
 
 impl_opaque_keys! {
 	pub struct SessionKeys {}
@@ -925,7 +924,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Module, Call, Event},
 		//Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-		//Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		//Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},

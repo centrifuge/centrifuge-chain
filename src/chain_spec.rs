@@ -16,10 +16,10 @@
 
 use cumulus_primitives::ParaId;
 use hex_literal::hex;
-use node_runtime::{SessionKeys, StakerStatus, constants::currency::RAD};
-use sp_consensus_babe::{AuthorityId as BabeId};
+use node_runtime::{SessionKeys, constants::currency::RAD};
+//use sp_consensus_babe::{AuthorityId as BabeId};
 //use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
-use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+//use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use node_primitives::{AccountId, Balance, Hash, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
@@ -66,6 +66,7 @@ where
 
 /// Helper function to generate stash, controller and session key from seed
 /// Note: this should be used only for dev testnets.
+/*
 pub fn get_authority_keys_from_seed(seed: &str) -> Vec<(
 	AccountId,
 	AccountId,
@@ -81,6 +82,7 @@ pub fn get_authority_keys_from_seed(seed: &str) -> Vec<(
 		get_from_seed::<AuthorityDiscoveryId>(seed),
 	)]
 }
+*/
 
 /*
 fn session_keys(
@@ -99,7 +101,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 		ChainType::Local,
 		move || {
 			testnet_genesis(
-				get_authority_keys_from_seed("Alice"),
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
