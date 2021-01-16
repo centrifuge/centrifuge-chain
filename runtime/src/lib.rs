@@ -42,8 +42,8 @@ use sp_core::OpaqueMetadata;
 use sp_io::hashing::blake2_128;
 //use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 //use pallet_grandpa::fg_primitives;
-use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
-use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+//use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
+//use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment, CurrencyAdapter};
 //use pallet_session::{historical as pallet_session_historical};
@@ -83,7 +83,7 @@ mod proofs;
 mod nfts;
 
 /// radial reward claims module
-mod rad_claims;
+//mod rad_claims;
 
 /// bridge module
 mod bridge;
@@ -419,16 +419,30 @@ impl pallet_timestamp::Config for Runtime {
     type WeightInfo = ();
 }
 
+// In a cumulus parachain, sudo is always the block author
+/*
+struct SudoAuthor;
+
+impl FindAuthor<AccountId> for SudoAuthor {
+    fn find_author<'a, I>(digests: I) -> Option<AccountId>
+        where I: 'a + Iterator<Item=()> {
+        //sudo
+    }
+}
+*/
+
+/*
 parameter_types! {
 	pub const UncleGenerations: BlockNumber = 5;
 }
 
 impl pallet_authorship::Config for Runtime {
-	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
+	type FindAuthor = (); // Author is sudo in cumulus parachain, but won't be payed as a unit tuple.
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = (Staking, ImOnline);
+	type EventHandler = (ImOnline);
 }
+*/
 
 impl_opaque_keys! {
 	pub struct SessionKeys {}
@@ -650,6 +664,7 @@ impl pallet_elections_phragmen::Config for Runtime {
     type WeightInfo = ();
 }
 
+/*
 parameter_types! {
 	pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_SLOTS as _;
 	pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -718,10 +733,11 @@ impl pallet_im_online::Config for Runtime {
 	type AuthorityId = ImOnlineId;
 	type Event = Event;
     type SessionDuration = SessionDuration;
-    type ReportUnresponsiveness = Offences;
+    type ReportUnresponsiveness = ();
     type UnsignedPriority = ImOnlineUnsignedPriority;
     type WeightInfo = ();
 }
+*/
 
 /*
 parameter_types! {
@@ -842,6 +858,7 @@ impl chainbridge::Trait for Runtime {
     type ProposalLifetime = ProposalLifetime;
 }
 
+/*
 parameter_types! {
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const Longevity: u32 = 64;
@@ -854,6 +871,7 @@ impl rad_claims::Trait for Runtime {
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
     type Currency = Balances;
 }
+*/
 
 parameter_types! {
 	pub const MinVestedTransfer: Balance = 1000 * RAD;
@@ -907,7 +925,7 @@ construct_runtime!(
 		Utility: pallet_utility::{Module, Call, Event},
 		//Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
+		//Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
 		//Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
@@ -916,7 +934,7 @@ construct_runtime!(
 		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
 		//Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
-		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+		//ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		//AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
 		//Offences: pallet_offences::{Module, Call, Storage, Event},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
@@ -931,7 +949,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         //Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        //RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
 		Registry: va_registry::{Module, Call, Storage, Event<T>},
 		Nft: nft::{Module, Call, Storage, Event<T>},

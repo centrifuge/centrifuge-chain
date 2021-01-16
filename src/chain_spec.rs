@@ -18,7 +18,7 @@ use cumulus_primitives::ParaId;
 use hex_literal::hex;
 use node_runtime::{SessionKeys, StakerStatus, constants::currency::RAD};
 use sp_consensus_babe::{AuthorityId as BabeId};
-use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
+//use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use node_primitives::{AccountId, Balance, Hash, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
@@ -82,6 +82,7 @@ pub fn get_authority_keys_from_seed(seed: &str) -> Vec<(
 	)]
 }
 
+/*
 fn session_keys(
     babe: BabeId,
     im_online: ImOnlineId,
@@ -89,6 +90,7 @@ fn session_keys(
 ) -> SessionKeys {
 	SessionKeys { babe, im_online, authority_discovery }
 }
+*/
 
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 	ChainSpec::from_genesis(
@@ -211,9 +213,11 @@ fn testnet_genesis(
             authorities: vec![],
         }),
         */
+        /*
         pallet_im_online: Some(node_runtime::ImOnlineConfig {
 			keys: vec![],
         }),
+        */
 		pallet_indices: Some(node_runtime::IndicesConfig {
 			indices: vec![],
 		}),
