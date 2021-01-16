@@ -85,6 +85,7 @@ pallet-transaction-payment-rpc-runtime-api = { branch = "rococo-v1", git = "http
 pallet-identity = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
 pallet-scheduler = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
+pallet-sudo = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
 frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false, optional = true }
 
 [build-dependencies]

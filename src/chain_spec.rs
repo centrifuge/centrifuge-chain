@@ -152,8 +152,8 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 // }
 
 fn testnet_genesis(
-	initial_authorities: Vec<(AccountId, AccountId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
-	//root_key: AccountId,
+	//initial_authorities: Vec<(AccountId, AccountId, BabeId, ImOnlineId, AuthorityDiscoveryId)>,
+	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
 ) -> node_runtime::GenesisConfig {
@@ -174,6 +174,7 @@ fn testnet_genesis(
 				.map(|k| (k, 1 << 60))
 				.collect(),
 		}),
+        /*
 		pallet_session: Some(node_runtime::SessionConfig {
 			keys: initial_authorities.iter().map(|x| {
 				(x.0.clone(), x.0.clone(), session_keys(
@@ -193,6 +194,7 @@ fn testnet_genesis(
 			slash_reward_fraction: Perbill::from_percent(10),
 			.. Default::default()
 		}),
+        */
 		pallet_democracy: Some(node_runtime::DemocracyConfig::default()),
 		pallet_elections_phragmen: Some(node_runtime::ElectionsConfig {
 			members: vec![],
@@ -204,18 +206,22 @@ fn testnet_genesis(
 						.collect(),
 			phantom: Default::default(),
 		}),
+        /*
         pallet_babe: Some(node_runtime::BabeConfig {
             authorities: vec![],
         }),
+        */
         pallet_im_online: Some(node_runtime::ImOnlineConfig {
 			keys: vec![],
         }),
 		pallet_indices: Some(node_runtime::IndicesConfig {
 			indices: vec![],
 		}),
+        /*
         pallet_authority_discovery: Some(node_runtime::AuthorityDiscoveryConfig {
 			keys: vec![],
 		}),
+        */
 		pallet_bridge: Some(node_runtime::PalletBridgeConfig{
 			// Whitelist chains Ethereum - 0
 			chains: vec![0],
@@ -249,6 +255,7 @@ fn testnet_genesis(
             )],
         }),
 		pallet_vesting: Some(Default::default()),
+        pallet_sudo: Some(node_runtime::SudoConfig { key: root_key }),
 		//parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
 	}
 }

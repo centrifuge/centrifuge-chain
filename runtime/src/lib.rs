@@ -46,7 +46,7 @@ use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment, CurrencyAdapter};
-use pallet_session::{historical as pallet_session_historical};
+//use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
 use crate::anchor::AnchorData;
 use pallet_collective::EnsureProportionMoreThan;
@@ -56,7 +56,7 @@ use static_assertions::const_assert;
 pub use sp_runtime::BuildStorage;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_balances::Call as BalancesCall;
-pub use pallet_staking::StakerStatus;
+//pub use pallet_staking::StakerStatus;
 
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
@@ -246,6 +246,7 @@ parameter_types! {
 	pub const MaxProxies: u16 = 32;
 }
 
+/*
 /// The type used to represent the kinds of proxying allowed.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
 pub enum ProxyType {
@@ -278,6 +279,7 @@ impl InstanceFilter<Call> for ProxyType {
         }
     }
 }
+*/
 
 /*
 impl pallet_proxy::Config for Runtime {
@@ -299,6 +301,11 @@ impl pallet_utility::Config for Runtime {
     type WeightInfo = ();
 }
 
+impl pallet_sudo::Config for Runtime {
+    type Call = Call;
+    type Event = Event;
+}
+
 parameter_types! {
     pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
     pub const MaxScheduledPerBlock: u32 = 50;
@@ -315,6 +322,7 @@ impl pallet_scheduler::Config for Runtime {
     type WeightInfo = ();
 }
 
+/*
 parameter_types! {
     pub const EpochDuration: u64 = EPOCH_DURATION_IN_SLOTS;
     pub const ExpectedBlockTime: Moment = MILLISECS_PER_BLOCK;
@@ -341,6 +349,7 @@ impl pallet_babe::Config for Runtime {
     type HandleEquivocation =
     pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences>;
 }
+*/
 
 parameter_types! {
 	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
@@ -405,7 +414,7 @@ parameter_types! {
 impl pallet_timestamp::Config for Runtime {
     /// A timestamp: milliseconds since the unix epoch.
     type Moment = Moment;
-    type OnTimestampSet = Babe;
+    type OnTimestampSet = ();
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }
@@ -422,14 +431,10 @@ impl pallet_authorship::Config for Runtime {
 }
 
 impl_opaque_keys! {
-    pub struct SessionKeys {
-        //pub grandpa: Grandpa,
-        pub babe: Babe,
-		pub im_online: ImOnline,
-		pub authority_discovery: AuthorityDiscovery,
-    }
+	pub struct SessionKeys {}
 }
 
+/*
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
 }
@@ -451,6 +456,7 @@ impl pallet_session::historical::Config for Runtime {
 	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
 	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
 }
+*/
 
 // set to almost three percent to correct for a bug, see https://github.com/paritytech/substrate/issues/4964 for
 // details and https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=e6490da3bfb28f69c7f6e6393ec6bb0c
@@ -463,6 +469,7 @@ const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
 	maximum: THREE_PERCENT_INFLATION,
 };
 
+/*
 parameter_types! {
 	pub const SessionsPerEra: sp_staking::SessionIndex = 4; // 1 day
 	pub const BondingDuration: pallet_staking::EraIndex = 7; // 7 days
@@ -504,6 +511,7 @@ impl pallet_staking::Config for Runtime {
     type OffchainSolutionWeightLimit = OffchainSolutionWeightLimit;
     type WeightInfo = ();
 }
+*/
 
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
@@ -715,6 +723,7 @@ impl pallet_im_online::Config for Runtime {
     type WeightInfo = ();
 }
 
+/*
 parameter_types! {
 	pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * MaximumBlockWeight::get();
 }
@@ -727,6 +736,7 @@ impl pallet_offences::Config for Runtime {
 }
 
 impl pallet_authority_discovery::Config for Runtime {}
+*/
 
 /*
 impl pallet_grandpa::Config for Runtime {
@@ -895,20 +905,20 @@ construct_runtime!(
 	{
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		Utility: pallet_utility::{Module, Call, Event},
-		Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
+		//Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
 		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Module, Storage},
-		Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
-		Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
+		//Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+		//Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
 		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
 		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
 		//Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
 		ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
-		AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
-		Offences: pallet_offences::{Module, Call, Storage, Event},
+		//AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
+		//Offences: pallet_offences::{Module, Call, Storage, Event},
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
@@ -917,7 +927,7 @@ construct_runtime!(
 		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
 		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
-		Historical: pallet_session_historical::{Module},
+		//Historical: pallet_session_historical::{Module},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         //Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
@@ -928,6 +938,7 @@ construct_runtime!(
         BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
         ParachainInfo: parachain_info::{Module, Storage},
+        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
@@ -1060,6 +1071,7 @@ impl_runtime_apis! {
 	}
     */
 
+    /*
 	impl sp_consensus_babe::BabeApi<Block> for Runtime {
         fn configuration() -> sp_consensus_babe::BabeGenesisConfiguration {
 			// The choice of `c` parameter (where `1 - c` represents the
@@ -1118,6 +1130,7 @@ impl_runtime_apis! {
 			AuthorityDiscovery::authorities()
 		}
 	}
+    */
 
     impl frame_system_rpc_runtime_api::AccountNonceApi<Block, AccountId, Index> for Runtime {
         fn account_nonce(account: AccountId) -> Index {
