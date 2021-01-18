@@ -32,7 +32,7 @@ parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-fe
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = "rococo-v1"}
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
-#cumulus-message-broker = {git = 'https://github.com/paritytech/cumulus', branch = 'rococo-v1'}
+cumulus-message-broker = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = 'rococo-v1'}
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
@@ -151,6 +151,6 @@ std = [
     "rustc-hex",
     "safe-mix/std",
     "cumulus-runtime/std",
-    #"cumulus-message-broker/std",
+    "cumulus-message-broker/std",
 ]
 runtime-benchmarks = ["frame-benchmarking"]
