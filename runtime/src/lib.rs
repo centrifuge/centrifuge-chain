@@ -610,14 +610,9 @@ impl bridge_mapping::Trait for Runtime {
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 }
 
-parameter_types! {
-	pub storage ParachainId: cumulus_primitives::ParaId = 200.into();
-}
-
 impl cumulus_parachain_upgrade::Config for Runtime {
     type Event = Event;
     type OnValidationData = ();
-    //type SelfParaId = ParachainId;
     type SelfParaId = parachain_info::Module<Runtime>;
 }
 
