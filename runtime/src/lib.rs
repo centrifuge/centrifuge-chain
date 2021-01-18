@@ -611,14 +611,22 @@ impl bridge_mapping::Trait for Runtime {
 }
 
 parameter_types! {
-	pub storage ParachainId: cumulus_primitives::ParaId = 10001.into();
+	pub storage ParachainId: cumulus_primitives::ParaId = 200.into();
 }
 
 impl cumulus_parachain_upgrade::Config for Runtime {
     type Event = Event;
     type OnValidationData = ();
-    type SelfParaId = ParachainId;
+    //type SelfParaId = ParachainId;
+    type SelfParaId = parachain_info::Module<Runtime>;
 }
+
+/*
+impl cumulus_message_broker::Config for Runtime {
+	type DownwardMessageHandlers = ();
+	type HrmpMessageHandlers = ();
+}
+*/
 
 impl parachain_info::Config for Runtime {}
 
@@ -666,6 +674,7 @@ construct_runtime!(
         BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
         ParachainInfo: parachain_info::{Module, Storage},
+        //MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );

@@ -91,7 +91,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 		None,
 		None,
 		Extensions {
-			relay_chain: "westend-dev".into(),
+			relay_chain: "centrifuge-dev".into(),
 			para_id: id.into(),
 		},
 	)

@@ -28,10 +28,11 @@ rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
 
 # parachain
+parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = "rococo-v1"}
 cumulus-runtime = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
-parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
+#cumulus-message-broker = {git = 'https://github.com/paritytech/cumulus', branch = 'rococo-v1'}
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
@@ -89,7 +90,8 @@ pallet-sudo = { branch = "rococo-v1", git = "https://github.com/paritytech/subst
 frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false, optional = true }
 
 [build-dependencies]
-wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+#wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+substrate-wasm-builder = "3.0.0"
 
 [features]
 default = ["std"]
@@ -149,5 +151,6 @@ std = [
     "rustc-hex",
     "safe-mix/std",
     "cumulus-runtime/std",
+    #"cumulus-message-broker/std",
 ]
 runtime-benchmarks = ["frame-benchmarking"]

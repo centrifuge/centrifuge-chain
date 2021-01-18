@@ -809,7 +809,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-wasm-builder-runner 1.0.6",
+ "substrate-wasm-builder 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "unique_assets",
 ]
 
@@ -871,7 +871,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "substrate-wasm-builder-runner 2.0.0",
+ "substrate-wasm-builder-runner",
 ]
 
 [[package]]
@@ -9168,11 +9168,6 @@ dependencies = [
  "walkdir",
  "wasm-gc-api",
 ]
-
-[[package]]
-name = "substrate-wasm-builder-runner"
-version = "1.0.6"
-source = "git+https://github.com/centrifuge/substrate.git?rev=e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd#e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd"
 
 [[package]]
 name = "substrate-wasm-builder-runner"
