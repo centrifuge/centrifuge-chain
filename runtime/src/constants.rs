@@ -8,6 +8,11 @@ pub mod currency {
     pub const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
     pub const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
     pub const RAD: Balance = 100 * CENTI_RAD;
+
+    pub const fn deposit(items: u32, bytes: u32) -> Balance {
+        items as Balance * 15 * CENTI_RAD + (bytes as Balance) * 6 * CENTI_RAD
+    }
+
 }
 
 /// Time.

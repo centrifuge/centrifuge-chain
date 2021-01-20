@@ -83,7 +83,7 @@ mod proofs;
 mod nfts;
 
 /// radial reward claims module
-//mod rad_claims;
+mod rad_claims;
 
 /// bridge module
 mod bridge;
@@ -244,8 +244,56 @@ parameter_types! {
 	// Additional storage item size of 32 bytes.
 	pub const ProxyDepositFactor: Balance = 5 * CENTI_RAD;
 	pub const MaxProxies: u16 = 32;
+	pub const AnnouncementDepositBase: Balance = deposit(1, 8);
+	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
+	pub const MaxPending: u16 = 32;
 }
 
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+pub enum ProxyType {
+    Any,
+    NonTransfer,
+    Governance
+}
+impl Default for ProxyType { fn default() -> Self { Self::Any } }
+impl InstanceFilter<Call> for ProxyType {
+    fn filter(&self, c: &Call) -> bool {
+        match self {
+            ProxyType::Any => true,
+            ProxyType::NonTransfer => !matches!(c,
+				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+			),
+            ProxyType::Governance => matches!(c,
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
+			)
+        }
+    }
+    fn is_superset(&self, o: &Self) -> bool {
+        match (self, o) {
+            (x, y) if x == y => true,
+            (ProxyType::Any, _) => true,
+            (_, ProxyType::Any) => false,
+            (ProxyType::NonTransfer, _) => true,
+            _ => false,
+        }
+    }
+}
+
+impl pallet_proxy::Config for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type ProxyType = ProxyType;
+    type ProxyDepositBase = ProxyDepositBase;
+    type ProxyDepositFactor = ProxyDepositFactor;
+    type MaxProxies = MaxProxies;
+    type WeightInfo = ();
+    type MaxPending = MaxPending;
+    type CallHasher = BlakeTwo256;
+    type AnnouncementDepositBase = AnnouncementDepositBase;
+    type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
 
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
@@ -584,6 +632,19 @@ impl chainbridge::Trait for Runtime {
 }
 
 parameter_types! {
+    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const Longevity: u32 = 64;
+}
+
+impl rad_claims::Trait for Runtime {
+    type Event = Event;
+    type Longevity = Longevity;
+    type UnsignedPriority = UnsignedPriority;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type Currency = Balances;
+}
+
+parameter_types! {
 	pub const MinVestedTransfer: Balance = 1000 * RAD;
 }
 
@@ -657,9 +718,9 @@ construct_runtime!(
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		//Historical: pallet_session_historical::{Module},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        //Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
+        Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        //RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
 		Registry: va_registry::{Module, Call, Storage, Event<T>},
 		Nft: nft::{Module, Call, Storage, Event<T>},
