@@ -6,6 +6,7 @@
   outputs = { self, nixpkgs, ... }: {
         defaultPackage.x86_64-linux =
           with import nixpkgs { system = "x86_64-linux"; };
+
           rustPlatform.buildRustPackage {
             pname = "centrifuge-chain";
             version = "2.0.0";
@@ -14,9 +15,11 @@
 
             cargoSha256 = "sha256-zB7PO3woCV9r3VYWzsk/DmUIc8+LVf86rWhG9FEpD18=";
 
-            nativeBuildInputs = [ pkg-config ];
+            nativeBuildInputs = [ clang pkg-config ];
             buildInputs = [ openssl ];
 
+            LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
+            PROTOC = "${protobuf}/bin/protoc";
             BUILD_DUMMY_WASM_BINARY = 1;
           };
   };
