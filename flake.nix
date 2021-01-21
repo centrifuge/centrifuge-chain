@@ -21,6 +21,8 @@
             LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
             PROTOC = "${protobuf}/bin/protoc";
             BUILD_DUMMY_WASM_BINARY = 1;
+
+            doCheck = false;
           };
   };
 }
