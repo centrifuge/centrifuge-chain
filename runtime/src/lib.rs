@@ -253,11 +253,6 @@ impl pallet_utility::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl pallet_sudo::Config for Runtime {
-    type Call = Call;
-    type Event = Event;
-}
-
 parameter_types! {
     pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
     pub const MaxScheduledPerBlock: u32 = 50;
@@ -342,25 +337,13 @@ impl pallet_timestamp::Config for Runtime {
     type WeightInfo = ();
 }
 
-// In a cumulus parachain, sudo is always the block author
-/*
-struct SudoAuthor;
-
-impl FindAuthor<AccountId> for SudoAuthor {
-    fn find_author<'a, I>(digests: I) -> Option<AccountId>
-        where I: 'a + Iterator<Item=()> {
-        //sudo
-    }
-}
-*/
-
 parameter_types! {
 	pub const UncleGenerations: BlockNumber = 5;
 }
 
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
-	type FindAuthor = (); // Author is sudo in cumulus parachain, but won't be payed as a unit tuple.
+	type FindAuthor = ();
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
 	type EventHandler = ();
@@ -668,7 +651,6 @@ construct_runtime!(
         ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
         ParachainInfo: parachain_info::{Module, Storage},
         MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
