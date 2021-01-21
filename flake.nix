@@ -14,6 +14,9 @@
 
             cargoSha256 = "sha256-zB7PO3woCV9r3VYWzsk/DmUIc8+LVf86rWhG9FEpD18=";
 
+            nativeBuildInputs = [ pkg-config ];
+            buildInputs = [ openssl ];
+
             BUILD_DUMMY_WASM_BINARY = 1;
           };
   };
