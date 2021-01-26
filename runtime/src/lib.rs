@@ -172,7 +172,7 @@ parameter_types! {
         })
         .avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
         .build_or_panic();
-    pub const SS58Prefix: u8 = 36;
+    pub const SS58Prefix: u8 = 42;
 }
 
 //const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
@@ -726,7 +726,7 @@ construct_runtime!(
 		Nft: nft::{Module, Call, Storage, Event<T>},
         BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
-        ParachainInfo: parachain_info::{Module, Storage},
+        // ParachainInfo: parachain_info::{Module, Storage, Config<T>},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );

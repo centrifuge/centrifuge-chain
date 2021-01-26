@@ -62,6 +62,10 @@ where
 }
 
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
+	if id == ParaId::from(10001) {
+		return charcoal_chain_spec();
+	}
+
 	ChainSpec::from_genesis(
 		"Local Testnet",
 		"local_testnet",
@@ -95,6 +99,10 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 			para_id: id.into(),
 		},
 	)
+}
+
+fn charcoal_chain_spec() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec.json")[..]).unwrap()
 }
 
 // pub fn staging_test_net(id: ParaId) -> ChainSpec {
@@ -192,6 +200,6 @@ fn testnet_genesis(
         }),
 		pallet_vesting: Some(Default::default()),
         pallet_sudo: Some(node_runtime::SudoConfig { key: root_key }),
-		//parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
+		// parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
 	}
 }
