@@ -156,7 +156,27 @@ where
 		})?;
 
 	let rpc_client = client.clone();
-	let rpc_extensions_builder = Box::new(move |_, _| rpc_ext_builder(rpc_client.clone()));
+	// let rpc_extensions_builder = Box::new(move |_, _| rpc_ext_builder(rpc_client.clone()));
+
+	let rpc_extensions_builder = {
+		let client = rpc_client.clone();
+		let pool = transaction_pool.clone();
+		let network = network.clone();
+		let is_authority = parachain_config.role.is_network_authority();
+
+		let builder = move |deny_unsafe, subscription_executor| {
+			let deps = crate::rpc::FullDeps {
+				network: network.clone(),
+				client: client.clone(),
+				pool: pool.clone(),
+				deny_unsafe,
+				is_authority,
+			};
+
+			crate::rpc::create_full(deps, subscription_executor)
+		};
+		Box::new(builder)
+	};
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: None,

@@ -183,12 +183,13 @@ decl_module! {
                 .map_err(|_e| "Can not convert timestamp to u64")
                 .unwrap();
 
+            // TODO replace this logic by treasury account
             // we use the fee config setup on genesis for anchoring to calculate the state rent
-            let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
-                <T as pallet_balances::Config>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
-
-            // pay state rent to block author
-            <fees::Module<T>>::pay_fee_to_author(who, fee)?;
+            // let fee = <fees::Module<T>>::price_of(Self::fee_key()).unwrap() *
+            //     <T as pallet_balances::Config>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            //
+            // // pay state rent to block author
+            // <fees::Module<T>>::pay_fee_to_author(who, fee)?;
 
             let block_num = <frame_system::Module<T>>::block_number();
             let anchor_data = AnchorData {

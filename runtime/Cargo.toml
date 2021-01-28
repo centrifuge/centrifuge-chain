@@ -1,7 +1,7 @@
 [package]
 name = "centrifuge-chain-runtime"
 version = "2.0.0"
-authors = ["philip@centrifuge.io"]
+authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
 license = "LGPL-3.0"
