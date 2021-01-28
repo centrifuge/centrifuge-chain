@@ -32,7 +32,7 @@ members = [
 
 [dependencies]
 # third-party dependencies
-codec = { package = "parity-scale-codec", version = "1.3.4" }
+codec = { package = "parity-scale-codec", version = "1.3.6", default-features = false }
 serde = { version = "1.0.102", features = ["derive"] }
 futures = { version = "0.3.1", features = ["compat"] }
 hex-literal = "0.2.1"
@@ -68,6 +68,7 @@ sc-client-api = { branch = "rococo-v1", git = "https://github.com/paritytech/sub
 sc-chain-spec = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-consensus = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-transaction-pool = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
+sc-telemetry = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-network = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-consensus-babe = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 grandpa = { branch = "rococo-v1", package = "sc-finality-grandpa", git = "https://github.com/paritytech/substrate.git" }

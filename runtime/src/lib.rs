@@ -461,6 +461,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * RAD;
 	pub const VotingBond: Balance = 50 * CENTI_RAD;
+	pub const VotingBondBase: Balance = 50 * CENTI_RAD;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
@@ -481,11 +482,13 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to submit one's candidacy.
 	type CandidacyBond = CandidacyBond;
 
+    /// Base deposit associated with voting
+    type VotingBondBase = VotingBondBase;
+
 	/// How much should be locked up in order to be able to submit votes.
-	type VotingBond = VotingBond;
+	type VotingBondFactor = VotingBond;
 
 	type LoserCandidate = ();
-	type BadReport = ();
 	type KickedMember = ();
 
 	/// Number of members to elect.
@@ -593,16 +596,20 @@ impl bridge_mapping::Trait for Runtime {
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 }
 
+/*
 impl cumulus_parachain_upgrade::Config for Runtime {
     type Event = Event;
     type OnValidationData = ();
     type SelfParaId = parachain_info::Module<Runtime>;
 }
+*/
 
+/*
 impl cumulus_message_broker::Config for Runtime {
 	type DownwardMessageHandlers = ();
 	type HrmpMessageHandlers = ();
 }
+*/
 
 impl parachain_info::Config for Runtime {}
 
@@ -648,9 +655,9 @@ construct_runtime!(
 		Registry: va_registry::{Module, Call, Storage, Event<T>},
 		Nft: nft::{Module, Call, Storage, Event<T>},
         BridgeMapping: bridge_mapping::{Module, Call, Storage},
-        ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
+        //ParachainUpgrade: cumulus_parachain_upgrade::{Module, Call, Storage, Inherent, Event},
         ParachainInfo: parachain_info::{Module, Storage},
-        MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
+        //MessageBroker: cumulus_message_broker::{Module, Storage, Call, Inherent},
 	}
 );
 
