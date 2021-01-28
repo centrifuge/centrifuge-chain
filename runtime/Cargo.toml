@@ -39,6 +39,8 @@ xcm-handler = {git = 'https://github.com/paritytech/cumulus', default-features =
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
 
 # primitives
 sp-authority-discovery = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
@@ -156,6 +158,8 @@ std = [
     "cumulus-runtime/std",
     "cumulus-parachain-system/std",
     "xcm/std",
+    "xcm-executor/std",
+    "xcm-builder/std",
     "xcm-handler/std",
     #"cumulus-message-broker/std",
 ]

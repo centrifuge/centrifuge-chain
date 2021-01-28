@@ -807,6 +807,8 @@ dependencies = [
  "substrate-wasm-builder 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "unique_assets",
  "xcm",
+ "xcm-builder",
+ "xcm-executor",
  "xcm-handler",
 ]
 
