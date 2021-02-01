@@ -61,7 +61,7 @@ fn load_spec(
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Cumulus Test Parachain Collator".into()
+		"Centrifuge Charcoal Parachain Collator".into()
 	}
 
 	fn impl_version() -> String {
