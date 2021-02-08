@@ -30,6 +30,7 @@
       in
           pkgs.dockerTools.buildImage {
             name = "centrifuge-chain";
+            tag = "latest";
 
             config = {
               Volumes = {
