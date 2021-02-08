@@ -4,6 +4,20 @@
   inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
 
   outputs = { self, nixpkgs, ... }: {
+        dockerContainer.x86_64-linux = let
+          pkgs = import nixpkgs { system = "x86_64-linux"; };
+        in
+          pkgs.dockerTools.buildImage {
+            name = "centrifuge-chain";
+
+            Volumes = {
+                "/data" = {};
+            };
+            config = {
+               Cmd = [ "${self.defaultPackage.x86_64-linux}/bin/centrifuge-chain" ];
+            };
+        };
+
         defaultPackage.x86_64-linux =
           with import nixpkgs { system = "x86_64-linux"; };
 
