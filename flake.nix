@@ -9,40 +9,40 @@
   in
     {
       defaultPackage.x86_64-linux =
-          with import nixpkgs { system = "x86_64-linux"; };
+        with import nixpkgs { system = "x86_64-linux"; };
 
-          rustPlatform.buildRustPackage {
-            pname = name;
-            version = version;
+        rustPlatform.buildRustPackage {
+          pname = name;
+          version = version;
 
-            src = self;
+          src = self;
 
-            cargoSha256 = "sha256-zB7PO3woCV9r3VYWzsk/DmUIc8+LVf86rWhG9FEpD18=";
+          cargoSha256 = "sha256-zB7PO3woCV9r3VYWzsk/DmUIc8+LVf86rWhG9FEpD18=";
 
-            nativeBuildInputs = [ clang pkg-config ];
-            buildInputs = [ openssl ];
+          nativeBuildInputs = [ clang pkg-config ];
+          buildInputs = [ openssl ];
 
-            LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
-            PROTOC = "${protobuf}/bin/protoc";
-            BUILD_DUMMY_WASM_BINARY = 1;
+          LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
+          PROTOC = "${protobuf}/bin/protoc";
+          BUILD_DUMMY_WASM_BINARY = 1;
 
-            doCheck = false;
-          };
+          doCheck = false;
+        };
 
       packages.x86_64-linux.dockerContainer = let
         pkgs = import nixpkgs { system = "x86_64-linux"; };
       in
-          pkgs.dockerTools.buildImage {
-            name = name;
-            tag = version;
+        pkgs.dockerTools.buildImage {
+          name = name;
+          tag = version;
 
-            config = {
-              Volumes = {
-                  "/data" = {};
-              };
-              Cmd = [ "${self.defaultPackage.x86_64-linux}/bin/centrifuge-chain" ];
+          config = {
+            Volumes = {
+                "/data" = {};
             };
-        };
+            Cmd = [ "${self.defaultPackage.x86_64-linux}/bin/centrifuge-chain" ];
+          };
+      };
 
     };
 }
