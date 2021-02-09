@@ -3,13 +3,17 @@
 
   inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
 
-  outputs = { self, nixpkgs, ... }: {
+  outputs = { self, nixpkgs, ... }: let
+    name = "centrifuge-chain";
+    version = "2.0.0";
+  in
+    {
       defaultPackage.x86_64-linux =
           with import nixpkgs { system = "x86_64-linux"; };
 
           rustPlatform.buildRustPackage {
-            pname = "centrifuge-chain";
-            version = "2.0.0";
+            pname = name;
+            version = version;
 
             src = self;
 
@@ -26,11 +30,11 @@
           };
 
       packages.x86_64-linux.dockerContainer = let
-          pkgs = import nixpkgs { system = "x86_64-linux"; };
+        pkgs = import nixpkgs { system = "x86_64-linux"; };
       in
           pkgs.dockerTools.buildImage {
-            name = "centrifuge-chain";
-            tag = "latest";
+            name = name;
+            tag = version;
 
             config = {
               Volumes = {
