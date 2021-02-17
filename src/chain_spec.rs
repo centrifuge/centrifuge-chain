@@ -61,14 +61,18 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
+pub fn charcoal_local_network() -> ChainSpec {
+	get_chain_spec(ParaId::from(10001))
+}
+
 pub fn get_chain_spec(id: ParaId) -> ChainSpec {
-	if id == ParaId::from(10001) {
-		return charcoal_chain_spec();
-	}
+	// if id == ParaId::from(10001) {
+	// 	return charcoal_chain_spec();
+	// }
 
 	ChainSpec::from_genesis(
-		"Local Testnet",
-		"local_testnet",
+		"Charcoal Local Testnet",
+		"charcoal_local_testnet",
 		ChainType::Local,
 		move || {
 			testnet_genesis(
@@ -95,7 +99,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 		None,
 		None,
 		Extensions {
-			relay_chain: "centrifuge-dev".into(),
+			relay_chain: "rococo-local".into(),
 			para_id: id.into(),
 		},
 	)

@@ -52,6 +52,7 @@ fn load_spec(
 			&include_bytes!("../res/track.json")[..],
 		)?)),
         */
+		"charcoal" => Ok(Box::new(chain_spec::charcoal_local_network())),
 		"" => Ok(Box::new(chain_spec::get_chain_spec(para_id))),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
