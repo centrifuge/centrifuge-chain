@@ -158,13 +158,20 @@ decl_module! {
         #[weight = 190_000_000]
         pub fn commit(origin, anchor_id_preimage: T::Hash, doc_root: T::Hash, proof: T::Hash, stored_until_date: T::Moment) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(<pallet_timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
-                "Stored until date must be at least a day later than the current date");
-
             // validate the eviction date
             let eviction_date_u64 = TryInto::<u64>::try_into(stored_until_date)
                 .map_err(|_e| "Can not convert eviction date to u64")
                 .unwrap();
+            let nowt = <pallet_timestamp::Module<T>>::get();
+            let now: u64 = TryInto::<u64>::try_into(nowt)
+                .map_err(|_e| "Can not convert eviction date to u64")
+                .unwrap();
+
+            ensure!(now + common::MS_PER_DAY < eviction_date_u64, "Stored until date must be at least a day later than the current date");
+
+            // ensure!(<pallet_timestamp::Module<T>>::get() + T::Moment::from(common::MS_PER_DAY.try_into().unwrap()) < stored_until_date,
+            //     "Stored until date must be at least a day later than the current date");
+
             let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
             ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
 

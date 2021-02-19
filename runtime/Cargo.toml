@@ -12,13 +12,13 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 # external pallet
 #substrate-pallet-multi-account = { branch = "rococo-v1", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "ef988aba4f73b57328110592b75d90fd0510d718", default-features = false }
 # chainbridge = { version = "0.0.1", git = "https://github.com/centrifuge/chainbridge-substrate.git", rev = "6ef2738d8179299bf94159ae9e79d3f27be5271c" , default-features = false}
-chainbridge = { git = "https://github.com/jaybutera/chainbridge-substrate", default-features = false}
+#chainbridge = { git = "https://github.com/jaybutera/chainbridge-substrate", default-features = false}
 #unique_assets = { version = "0.1.0", git = "https://github.com/centrifuge/unique-assets", rev = "d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0", default-features = false }
-unique_assets = { version = "0.1.0", git = "https://github.com/jaybutera/unique-assets", default-features = false }
-bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
+#unique_assets = { version = "0.1.0", git = "https://github.com/jaybutera/unique-assets", default-features = false }
+#bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
 
 # third-party dependencies
-codec = { package = "parity-scale-codec", version = "1.3.6", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 integer-sqrt = { version = "0.1.2" }
 safe-mix = { version = "1.0", default-features = false }
 smallvec = "1.4.0"
@@ -30,11 +30,10 @@ serde = { version = "1.0.102", optional = true }
 # parachain
 parachain-info = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
 #cumulus-parachain-upgrade = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
-cumulus-parachain-system = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
-cumulus-primitives = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = "rococo-v1"}
-cumulus-runtime = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
+cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/cumulus.git", default-features = false, branch = "rococo-v1" }
+cumulus-primitives-core = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = "rococo-v1"}
 #cumulus-message-broker = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = 'rococo-v1'}
-xcm-handler = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = 'rococo-v1'}
+cumulus-pallet-xcm-handler = {git = 'https://github.com/paritytech/cumulus', default-features = false, branch = 'rococo-v1'}
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "rococo-v1" }
@@ -101,8 +100,8 @@ substrate-wasm-builder = "3.0.0"
 [features]
 default = ["std"]
 std = [
-    "bridge-mapping/std",
-    "unique_assets/std",
+#    "bridge-mapping/std",
+#    "unique_assets/std",
     "frame-benchmarking/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
@@ -150,17 +149,16 @@ std = [
     "pallet-utility/std",
     "sp-version/std",
     "sp-arithmetic/std",
-    "chainbridge/std",
+#    "chainbridge/std",
     #"substrate-pallet-multi-account/std",
     "sp-io/std",
     "rustc-hex",
     "safe-mix/std",
-    "cumulus-runtime/std",
-    "cumulus-parachain-system/std",
+    "cumulus-pallet-parachain-system/std",
     "xcm/std",
     "xcm-executor/std",
     "xcm-builder/std",
-    "xcm-handler/std",
+    "cumulus-pallet-xcm-handler/std",
     #"cumulus-message-broker/std",
 ]
 runtime-benchmarks = ["frame-benchmarking"]

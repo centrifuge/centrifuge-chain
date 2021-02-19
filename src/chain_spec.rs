@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use cumulus_primitives::ParaId;
 use hex_literal::hex;
 use node_runtime::{SessionKeys, constants::currency::RAD};
 use node_primitives::{AccountId, Balance, Hash, Signature};
@@ -62,10 +61,6 @@ where
 }
 
 pub fn charcoal_local_network() -> ChainSpec {
-	get_chain_spec(ParaId::from(10001))
-}
-
-pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 	// if id == ParaId::from(10001) {
 	// 	return charcoal_chain_spec();
 	// }
@@ -91,7 +86,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				id,
+				10001_u32.into(),
 			)
 		},
 		vec![],
@@ -100,7 +95,7 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 		None,
 		Extensions {
 			relay_chain: "rococo-local".into(),
-			para_id: id.into(),
+			para_id: 10001_u32.into(),
 		},
 	)
 }
@@ -137,7 +132,7 @@ fn charcoal_chain_spec() -> ChainSpec {
 fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	id: ParaId,
+	id: u32,
 ) -> node_runtime::GenesisConfig {
     let num_endowed_accounts = endowed_accounts.len();
     const STASH: Balance = 1_000_000 * RAD;
@@ -170,22 +165,22 @@ fn testnet_genesis(
 		pallet_indices: Some(node_runtime::IndicesConfig {
 			indices: vec![],
 		}),
-		pallet_bridge: Some(node_runtime::PalletBridgeConfig{
-			// Whitelist chains Ethereum - 0
-			chains: vec![0],
-			// Register resourceIDs
-			resources: vec![
-				// xRAD ResourceID to PalletBridge.transfer method (for incoming txs)
-				(hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"], hex!["50616c6c65744272696467652e7472616e73666572"].iter().cloned().collect())
-			],
-			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-			// Fulvous Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
-			relayers: vec![
-				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
-				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-			],
-			threshold: 1,
-		}),
+		// pallet_bridge: Some(node_runtime::PalletBridgeConfig{
+		// 	// Whitelist chains Ethereum - 0
+		// 	chains: vec![0],
+		// 	// Register resourceIDs
+		// 	resources: vec![
+		// 		// xRAD ResourceID to PalletBridge.transfer method (for incoming txs)
+		// 		(hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"], hex!["50616c6c65744272696467652e7472616e73666572"].iter().cloned().collect())
+		// 	],
+		// 	// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+		// 	// Fulvous Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+		// 	relayers: vec![
+		// 		hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+		// 		hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+		// 	],
+		// 	threshold: 1,
+		// }),
         fees: Some(node_runtime::FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day

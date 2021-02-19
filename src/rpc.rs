@@ -108,7 +108,7 @@ pub struct FullDeps<C, P> {
 pub type IoHandler = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P>(
+pub fn create_full<C, P, B>(
 	deps: FullDeps<C, P>,
 	subscription_task_executor: SubscriptionTaskExecutor,
 ) -> jsonrpc_core::IoHandler<sc_rpc_api::Metadata> where
@@ -121,8 +121,8 @@ pub fn create_full<C, P>(
 	C::Api: BlockBuilder<Block>,
 	C::Api: AnchorRuntimeApi<Block>,
 	P: TransactionPool + 'static,
-	// B: sc_client_api::Backend<Block> + Send + Sync + 'static,
-	// B::State: sc_client_api::backend::StateBackend<sp_runtime::traits::HashFor<Block>>,
+	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
+	B::State: sc_client_api::backend::StateBackend<sp_runtime::traits::HashFor<Block>>,
 {
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
 	//use pallet_contracts_rpc::{Contracts, ContractsApi};

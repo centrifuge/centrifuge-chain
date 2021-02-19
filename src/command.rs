@@ -19,7 +19,8 @@ use crate::{
 	cli::{Cli, RelayChainCli, Subcommand},
 };
 use codec::Encode;
-use cumulus_primitives::{genesis::generate_genesis_block, ParaId};
+use cumulus_client_service::genesis::generate_genesis_block;
+use cumulus_primitives_core::ParaId;
 use log::info;
 use node_runtime::Block;
 use polkadot_parachain::primitives::AccountIdConversion;
@@ -37,7 +38,6 @@ use std::{io::Write, net::SocketAddr};
 
 fn load_spec(
 	id: &str,
-	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
         /*
@@ -53,7 +53,6 @@ fn load_spec(
 		)?)),
         */
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_local_network())),
-		"" => Ok(Box::new(chain_spec::get_chain_spec(para_id))),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
 		)?)),
@@ -92,7 +91,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		load_spec(id, self.run.parachain_id.unwrap_or(100).into())
+		load_spec(id)
 	}
 
 	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -220,13 +219,12 @@ pub fn run() -> Result<()> {
 			})
 		}
 		Some(Subcommand::ExportGenesisState(params)) => {
-			let mut builder = sc_cli::GlobalLoggerBuilder::new("");
+			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
 			let block: Block = generate_genesis_block(&load_spec(
 				&params.chain.clone().unwrap_or_default(),
-				params.parachain_id.into(),
 			)?)?;
 			let raw_header = block.header().encode();
 			let output_buf = if params.raw {
@@ -244,7 +242,7 @@ pub fn run() -> Result<()> {
 			Ok(())
 		}
 		Some(Subcommand::ExportGenesisWasm(params)) => {
-			let mut builder = sc_cli::GlobalLoggerBuilder::new("");
+			let mut builder = sc_cli::LoggerBuilder::new("");
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
