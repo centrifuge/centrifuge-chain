@@ -77,7 +77,7 @@ pallet-vesting = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/s
 frame-benchmarking = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false, optional = true }
 
 [build-dependencies]
-wasm-builder-runner = { version = "1.0.6", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
 
 [features]
 default = ["std"]
