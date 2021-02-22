@@ -22,5 +22,5 @@ jobs:
           signingKey: "${{ secrets.CACHIX_SIGNING_KEY }}"
       - run: nix build -L
       - run: nix build -L .#dockerContainer
-      - run: docker load -i $(nix build -L .#dockerContainer)
+      - run: docker load -i $(nix build -L .#dockerContainer --no-link)
       - run: docker images ls
