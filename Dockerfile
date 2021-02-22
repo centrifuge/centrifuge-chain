@@ -22,7 +22,6 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
 	rustup toolchain install $RUST_TOOLCHAIN && \
 	rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN && \
 	rustup default $RUST_TOOLCHAIN && \
-	rustup default stable && \
 	cargo build "--$PROFILE"
 
 # ===== SECOND STAGE ======
