@@ -28,4 +28,4 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - run: docker push centrifuge-chain:latest
+      - run: docker push centrifuge/centrifuge-chain:latest
