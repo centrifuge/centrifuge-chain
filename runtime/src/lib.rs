@@ -75,10 +75,10 @@ use xcm_executor::{
 pub mod impls;
 use impls::DealWithFees;
 
-use bridge as pallet_bridge;
+// use bridge as pallet_bridge;
 
 // Bridge access control list pallet
-use bridge_mapping;
+// use bridge_mapping;
 
 /// Used for anchor module
 pub mod anchor;
@@ -93,19 +93,19 @@ mod common;
 mod proofs;
 
 /// nft module
-mod nfts;
+// mod nfts;
 
 /// radial reward claims module
 mod rad_claims;
 
 /// bridge module
-mod bridge;
+// mod bridge;
 
 /// verifiable attributes registry module
-mod va_registry;
+// mod va_registry;
 
 /// nft module
-mod nft;
+// mod nft;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -257,7 +257,7 @@ impl pallet_multisig::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl cumulus_parachain_system::Config for Runtime {
+impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = parachain_info::Module<Runtime>;
@@ -270,7 +270,7 @@ impl parachain_info::Config for Runtime {}
 parameter_types! {
 	pub const RococoLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 	pub const RococoNetwork: NetworkId = NetworkId::Polkadot;
-	pub RelayChainOrigin: Origin = xcm_handler::Origin::Relay.into();
+	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Junction::Parachain {
 		id: ParachainInfo::parachain_id().into()
 	}.into();
@@ -296,7 +296,7 @@ type LocalAssetTransactor = xcm_builder::CurrencyAdapter<
 type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
-	SiblingParachainAsNative<xcm_handler::Origin, Origin>,
+	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
 	SignedAccountId32AsNative<RococoNetwork, Origin>,
 );
 
@@ -313,7 +313,7 @@ impl Config for XcmConfig {
     type LocationInverter = LocationInverter<Ancestry>;
 }
 
-impl xcm_handler::Config for Runtime {
+impl cumulus_pallet_xcm_handler::Config for Runtime {
     type Event = Event;
     type XcmExecutor = XcmExecutor<XcmConfig>;
     type UpwardMessageSender = ParachainSystem;
@@ -667,37 +667,37 @@ impl fees::Trait for Runtime {
 	type FeeChangeOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
-impl nfts::Trait for Runtime {
-    type Event = Event;
-}
+// impl nfts::Trait for Runtime {
+//     type Event = Event;
+// }
 
-parameter_types! {
-    pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
-}
+// parameter_types! {
+//     pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
+// 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+// }
+//
+// impl bridge::Trait for Runtime {
+// 	type Event = Event;
+// 	type BridgeOrigin = EnsureSigned<AccountId>;
+// 	type Currency = Balances;
+// 	type HashId = HashId;
+// 	type NativeTokenId = NativeTokenId;
+// }
 
-impl bridge::Trait for Runtime {
-	type Event = Event;
-	type BridgeOrigin = EnsureSigned<AccountId>;
-	type Currency = Balances;
-	type HashId = HashId;
-	type NativeTokenId = NativeTokenId;
-}
 
-
-parameter_types! {
-    pub const ChainId: u8 = 1;
-    pub const ProposalLifetime: u32 = 100;
-}
-
-impl chainbridge::Trait for Runtime {
-    type Event = Event;
-    type Proposal = Call;
-    type ChainId = ChainId;
-	/// A 75% majority of the council can update bridge settings.
-	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
-    type ProposalLifetime = ProposalLifetime;
-}
+// parameter_types! {
+//     pub const ChainId: u8 = 1;
+//     pub const ProposalLifetime: u32 = 100;
+// }
+//
+// impl chainbridge::Trait for Runtime {
+//     type Event = Event;
+//     type Proposal = Call;
+//     type ChainId = ChainId;
+// 	/// A 75% majority of the council can update bridge settings.
+// 	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+//     type ProposalLifetime = ProposalLifetime;
+// }
 
 parameter_types! {
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -724,20 +724,20 @@ impl pallet_vesting::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl va_registry::Trait for Runtime {
-    type Event = Event;
-}
+// impl va_registry::Trait for Runtime {
+//     type Event = Event;
+// }
+//
+// impl nft::Trait for Runtime {
+//     type Event = Event;
+//     type AssetInfo = va_registry::types::AssetInfo;
+// }
 
-impl nft::Trait for Runtime {
-    type Event = Event;
-    type AssetInfo = va_registry::types::AssetInfo;
-}
-
-impl bridge_mapping::Trait for Runtime {
-    type ResourceId = bridge::ResourceId;
-    type Address = bridge::Address;
-    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
-}
+// impl bridge_mapping::Trait for Runtime {
+//     type ResourceId = bridge::ResourceId;
+//     type Address = bridge::Address;
+//     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+// }
 
 /*
 impl cumulus_parachain_upgrade::Config for Runtime {
@@ -782,10 +782,10 @@ construct_runtime!(
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Anchor: anchor::{Module, Call, Storage},
 		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
-		Nfts: nfts::{Module, Call, Event<T>},
+		// Nfts: nfts::{Module, Call, Event<T>},
         Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
-		ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
+		// PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
+		// ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
 		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
 		//Historical: pallet_session_historical::{Module},
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
@@ -793,11 +793,11 @@ construct_runtime!(
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
         RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
-		Registry: va_registry::{Module, Call, Storage, Event<T>},
-		Nft: nft::{Module, Call, Storage, Event<T>},
-        BridgeMapping: bridge_mapping::{Module, Call, Storage},
-        ParachainSystem: cumulus_parachain_system::{Module, Call, Storage, Inherent, Event},
-        XcmHandler: xcm_handler::{Module, Event<T>, Origin},
+		// Registry: va_registry::{Module, Call, Storage, Event<T>},
+		// Nft: nft::{Module, Call, Storage, Event<T>},
+        // BridgeMapping: bridge_mapping::{Module, Call, Storage},
+        ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
+        XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
         ParachainInfo: parachain_info::{Module, Storage},
 	}
 );
@@ -961,7 +961,7 @@ impl_runtime_apis! {
 }
 
 // Add parachain runtime features
-cumulus_runtime::register_validate_block!(Block, Executive);
+cumulus_pallet_parachain_system::register_validate_block!(Block, Executive);
 
 #[cfg(test)]
 mod tests {

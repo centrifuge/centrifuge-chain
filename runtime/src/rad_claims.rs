@@ -41,7 +41,7 @@ pub trait Trait: frame_system::Config + pallet_balances::Config {
 decl_storage! {
     trait Store for Module<T: Trait> as RadClaims {
         /// Total unclaimed rewards for an account.
-        AccountBalances get(fn get_account_balance): map hasher(blake2_128_concat) T::AccountId => T::Balance = 0.into();
+        AccountBalances get(fn get_account_balance): map hasher(blake2_128_concat) T::AccountId => T::Balance;
         /// Map of root hashes that correspond to lists of RAD reward claim amounts per account.
         RootHashes get(fn get_root_hash): map hasher(blake2_128_concat) T::Hash => bool;
         /// Account that is allowed to upload new root hashes.
