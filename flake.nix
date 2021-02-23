@@ -34,7 +34,7 @@
       in
         pkgs.dockerTools.buildImage {
           name = name;
-          tag = version;
+          tag = "latest";
 
           config = {
             Volumes = {
