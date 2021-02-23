@@ -52,7 +52,9 @@ fn load_spec(
 			&include_bytes!("../res/track.json")[..],
 		)?)),
         */
-		"charcoal" => Ok(Box::new(chain_spec::charcoal_local_network())),
+		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network())),
+		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network())),
+		"charcoal-chachacha" => Ok(Box::new(chain_spec::charcoal_chachacha_config())),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
 		)?)),

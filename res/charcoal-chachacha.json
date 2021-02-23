@@ -1,12 +1,17 @@
 {
-  "name": "Charcoal Local Testnet",
-  "id": "charcoal_local_testnet",
-  "chainType": "Local",
+  "name": "Charcoal Chachacha Testnet",
+  "id": "charcoal_chachacha_testnet",
+  "chainType": "Live",
   "bootNodes": [],
-  "telemetryEndpoints": null,
-  "protocolId": null,
+  "telemetryEndpoints": [
+    [
+      "/dns/telemetry.polkadot.io/tcp/443/x-parity-wss/%2Fsubmit%2F",
+      0
+    ]
+  ],
+  "protocolId": "charcoal",
   "properties": null,
-  "relay_chain": "rococo-local",
+  "relay_chain": "rococo-chachacha",
   "para_id": 10001,
   "consensusEngine": null,
   "lightSyncState": null,

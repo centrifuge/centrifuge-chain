@@ -22,6 +22,9 @@ use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{Perbill, traits::{IdentifyAccount, Verify}};
+use sc_telemetry::TelemetryEndpoints;
+
+const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec` for the normal parachain runtime.
 pub type ChainSpec = sc_service::GenericChainSpec<node_runtime::GenesisConfig, Extensions>;
@@ -61,10 +64,6 @@ where
 }
 
 pub fn charcoal_local_network() -> ChainSpec {
-	// if id == ParaId::from(10001) {
-	// 	return charcoal_chain_spec();
-	// }
-
 	ChainSpec::from_genesis(
 		"Charcoal Local Testnet",
 		"charcoal_local_testnet",
@@ -100,8 +99,47 @@ pub fn charcoal_local_network() -> ChainSpec {
 	)
 }
 
-fn charcoal_chain_spec() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec.json")[..]).unwrap()
+pub fn charcoal_chachacha_staging_network() -> ChainSpec {
+	ChainSpec::from_genesis(
+		"Charcoal Chachacha Testnet",
+		"charcoal_chachacha_testnet",
+		ChainType::Live,
+		move || {
+			testnet_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+					get_account_id_from_seed::<sr25519::Public>("Dave"),
+					get_account_id_from_seed::<sr25519::Public>("Eve"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+					get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+				],
+				10001_u32.into(),
+			)
+		},
+		vec![],
+		Some(
+			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot telemetry url is valid; qed"),
+		),
+		Some("charcoal"),
+		None,
+		Extensions {
+			relay_chain: "rococo-chachacha".into(),
+			para_id: 10001_u32.into(),
+		},
+	)
+}
+
+pub fn charcoal_chachacha_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-chachacha.json")[..]).unwrap()
 }
 
 // pub fn staging_test_net(id: ParaId) -> ChainSpec {
