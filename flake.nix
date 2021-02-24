@@ -33,7 +33,7 @@
         pkgs = import nixpkgs { system = "x86_64-linux"; };
       in
         pkgs.dockerTools.buildImage {
-          name = name;
+          name = "centrifuge.io/${name}";
           tag = "latest";
 
           config = {
