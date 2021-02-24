@@ -4,7 +4,7 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit="256"]
 
-use sp_std::prelude::*;
+use sp_std::{prelude::*, convert::TryFrom};
 use frame_support::{
     construct_runtime, parameter_types, debug, RuntimeDebug,
     weights::{
@@ -30,7 +30,7 @@ use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
 use sp_runtime::traits::{
 	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
-	OpaqueKeys, NumberFor, Saturating, ConvertInto
+	OpaqueKeys, NumberFor, Saturating, ConvertInto, Convert
 };
 use frame_system::{
     EnsureSigned, EnsureRoot, EnsureOneOf,
@@ -59,6 +59,8 @@ pub use pallet_balances::Call as BalancesCall;
 //pub use pallet_staking::StakerStatus;
 
 // XCM imports
+use cumulus_primitives_core::relay_chain::Balance as RelayChainBalance;
+use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction, MultiLocation, NetworkId};
 use xcm_builder::{
@@ -269,24 +271,47 @@ impl parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub const RococoLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
-	pub const RococoNetwork: NetworkId = NetworkId::Polkadot;
+	pub const ChachachaNetwork: NetworkId = NetworkId::Polkadot;
+    //pub ChachachaNetwork: NetworkId = NetworkId::Named("chachacha".into());
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Junction::Parachain {
 		id: ParachainInfo::parachain_id().into()
 	}.into();
 }
 
+pub struct AccountId32Convert;
+impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
+	fn convert(account_id: AccountId) -> [u8; 32] {
+		account_id.into()
+	}
+}
+
 type LocationConverter = (
 	ParentIsDefault<AccountId>,
 	SiblingParachainConvertsVia<Sibling, AccountId>,
-	AccountId32Aliases<RococoNetwork, AccountId>,
+	AccountId32Aliases<ChachachaNetwork, AccountId>,
 );
+
+// This is a simplified CurrencyId for xtokens pallet, as of now, Centrifuge has only
+// the native token CHA. See Acala's implementation for a multi-token example
+// https://github.com/AcalaNetwork/Acala/blob/eb746187fc1fa96f7ef8429e6ed39cde587fbe5e/primitives/src/lib.rs#L149
+pub struct CurrencyId;
+impl TryFrom<Vec<u8>> for CurrencyId {
+    type Error = ();
+    fn try_from(v: Vec<u8>) -> Result<CurrencyId, Self::Error> {
+        if v.as_slice() == b"CHA" {
+            Ok(CurrencyId)
+        } else { Err(()) }
+    }
+}
 
 type LocalAssetTransactor = xcm_builder::CurrencyAdapter<
 	// Use this currency:
 	Balances,
 	// Use this currency when it is a fungible asset matching the given location or name:
-	IsConcrete<RococoLocation>,
+    // TODO: This impl handles the case of relay<->parachain, but DOT cannot be stored on
+    // Centrifuge so this is not useful. We can just re-implement the type w/o relay case.
+	IsConcreteWithGeneralKey<CurrencyId, RelayToNative>,
 	// Do a simple punn to convert an AccountId32 MultiLocation into a native chain account ID:
 	LocationConverter,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly):
@@ -297,7 +322,7 @@ type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
 	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
-	SignedAccountId32AsNative<RococoNetwork, Origin>,
+	SignedAccountId32AsNative<ChachachaNetwork, Origin>,
 );
 
 
@@ -318,6 +343,39 @@ impl cumulus_pallet_xcm_handler::Config for Runtime {
     type XcmExecutor = XcmExecutor<XcmConfig>;
     type UpwardMessageSender = ParachainSystem;
     type HrmpMessageSender = ParachainSystem;
+}
+
+pub struct RelayToNative;
+impl Convert<RelayChainBalance, Balance> for RelayToNative {
+	fn convert(val: u128) -> Balance {
+		// native is 18
+		// relay is 12
+		val * 1_000_000
+	}
+}
+
+pub struct NativeToRelay;
+impl Convert<Balance, RelayChainBalance> for NativeToRelay {
+	fn convert(val: u128) -> Balance {
+		// native is 18
+		// relay is 12
+		val / 1_000_000
+	}
+}
+
+parameter_types! {
+	pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
+}
+
+impl orml_xtokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type ToRelayChainBalance = NativeToRelay;
+	type AccountId32Convert = AccountId32Convert;
+	type RelayChainNetworkId = PolkadotNetworkId;
+	type ParaId = ParachainInfo;
+	type AccountIdConverter = LocationConverter;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
 parameter_types! {
@@ -799,6 +857,7 @@ construct_runtime!(
         ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
         ParachainInfo: parachain_info::{Module, Storage},
+        XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
 	}
 );
 
