@@ -263,8 +263,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = parachain_info::Module<Runtime>;
-	type DownwardMessageHandlers = ();
-	type HrmpMessageHandlers = ();
+	type DownwardMessageHandlers = XcmHandler;
+	type HrmpMessageHandlers = XcmHandler;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -861,9 +861,9 @@ construct_runtime!(
 		// Nft: nft::{Module, Call, Storage, Event<T>},
         // BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
-        XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
         ParachainInfo: parachain_info::{Module, Storage},
         XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
+        XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
