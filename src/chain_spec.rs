@@ -236,6 +236,7 @@ fn testnet_genesis(
             )],
         }),
 		pallet_vesting: Some(Default::default()),
+        pallet_sudo: Some(node_runtime::SudoConfig { key: root_key }),
 		// parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
 	}
 }

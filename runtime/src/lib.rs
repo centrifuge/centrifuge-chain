@@ -271,8 +271,8 @@ impl parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub const RococoLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
-	pub const ChachachaNetwork: NetworkId = NetworkId::Polkadot;
-    //pub ChachachaNetwork: NetworkId = NetworkId::Named("chachacha".into());
+	pub const PolkadotNetwork: NetworkId = NetworkId::Polkadot;
+    //pub PolkadotNetwork: NetworkId = NetworkId::Named("chachacha".into());
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Junction::Parachain {
 		id: ParachainInfo::parachain_id().into()
@@ -289,17 +289,17 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 type LocationConverter = (
 	ParentIsDefault<AccountId>,
 	SiblingParachainConvertsVia<Sibling, AccountId>,
-	AccountId32Aliases<ChachachaNetwork, AccountId>,
+	AccountId32Aliases<PolkadotNetwork, AccountId>,
 );
 
 // This is a simplified CurrencyId for xtokens pallet, as of now, Centrifuge has only
-// the native token CHA. See Acala's implementation for a multi-token example
+// the native token RAD. See Acala's implementation for a multi-token example
 // https://github.com/AcalaNetwork/Acala/blob/eb746187fc1fa96f7ef8429e6ed39cde587fbe5e/primitives/src/lib.rs#L149
 pub struct CurrencyId;
 impl TryFrom<Vec<u8>> for CurrencyId {
     type Error = ();
     fn try_from(v: Vec<u8>) -> Result<CurrencyId, Self::Error> {
-        if v.as_slice() == b"CHA" {
+        if v.as_slice() == b"RAD" {
             Ok(CurrencyId)
         } else { Err(()) }
     }
@@ -322,7 +322,7 @@ type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
 	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
-	SignedAccountId32AsNative<ChachachaNetwork, Origin>,
+	SignedAccountId32AsNative<PolkadotNetwork, Origin>,
 );
 
 
@@ -812,6 +812,12 @@ impl cumulus_message_broker::Config for Runtime {
 }
 */
 
+impl pallet_sudo::Config for Runtime {
+	type Call = Call;
+	type Event = Event;
+}
+
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -858,6 +864,7 @@ construct_runtime!(
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
         ParachainInfo: parachain_info::{Module, Storage},
         XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
+        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
