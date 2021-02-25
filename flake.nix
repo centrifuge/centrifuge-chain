@@ -37,7 +37,11 @@
           tag = "latest";
 
           config = {
-            ExposedPorts = [ "30333/tcp" "9933/tcp" "9944/tcp" ];
+            ExposedPorts = {
+              "30333/tcp" = {};
+              "9933/tcp" = {};
+              "9944/tcp" = {};
+            };
             Volumes = {
                 "/data" = {};
             };
