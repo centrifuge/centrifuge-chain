@@ -37,6 +37,7 @@
           tag = "latest";
 
           config = {
+            ExposedPorts = [ 30333 9933 9944 ];
             Volumes = {
                 "/data" = {};
             };
