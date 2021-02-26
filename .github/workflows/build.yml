@@ -34,7 +34,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
       - name: Tag docker image
-        run: docker tag centrifugeio/centrifuge-chain:latest "centrifugeio/centrifuge-chain:$(date-u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
+        run: docker tag centrifugeio/centrifuge-chain:latest "centrifugeio/centrifuge-chain:$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
       - name: Push to Docker Hub
-        run: docker push centrifugeio/centrifuge-chain:latest && docker push "centrifugeio/centrifuge-chain:$(date-u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
+        run: docker push centrifugeio/centrifuge-chain:latest && docker push "centrifugeio/centrifuge-chain:$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
         if: steps.extract_branch.outputs.branch == 'master'
