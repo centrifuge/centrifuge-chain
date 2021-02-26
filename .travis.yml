@@ -3,9 +3,6 @@
 sudo: true
 language: rust
 
-services:
-  - docker
-
 before_cache:
   # Travis can't cache files that are not readable by "others"
   - chmod -R a+r $HOME/.cargo
@@ -40,9 +37,6 @@ jobs:
     - stage: "Build runtime"
       if: (NOT type IN (pull_request)) AND (branch = master || tag IS present)
       script: TARGET=build-runtime travis_wait 180 ./ci/script.sh
-    - stage: "Build and push Docker image"
-      if: (NOT type IN (pull_request)) AND (branch = master)
-      script: travis_wait 180 ./ci/docker.sh
 
 addons:
   apt:
