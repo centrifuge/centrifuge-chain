@@ -25,6 +25,31 @@ Build Wasm and native code:
 cargo build --release
 ```
 
+
+### Building with Nix: Binary & Docker Container
+[Learn more and install Nix](https://nixos.org/guides/install-nix.html)
+
+You can build the binary using nix flakes by running:
+```
+nix-build -L
+```
+
+To build the docker container and load it into the docker client use the following two commands:
+```
+nix-build -L .#dockerContainer
+docker load -i result
+```
+
+#### centrifuge-chain bi
+
+#### Cachix Binary Cache
+You can use the cachix binary cache to speed up build times:
+
+```
+cachix use centrifuge-chain
+```
+
+
 ## Run
 
 ### Tests
