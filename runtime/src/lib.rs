@@ -270,9 +270,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
-	pub const RococoLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 	pub const PolkadotNetwork: NetworkId = NetworkId::Polkadot;
-    //pub PolkadotNetwork: NetworkId = NetworkId::Named("chachacha".into());
+    //pub const CentrifugeNetwork: NetworkId = NetworkId::Named("cent".into());
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Junction::Parachain {
 		id: ParachainInfo::parachain_id().into()
@@ -289,6 +288,7 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 type LocationConverter = (
 	ParentIsDefault<AccountId>,
 	SiblingParachainConvertsVia<Sibling, AccountId>,
+    // TODO: Make this CentrifugeNetwork
 	AccountId32Aliases<PolkadotNetwork, AccountId>,
 );
 
@@ -363,16 +363,13 @@ impl Convert<Balance, RelayChainBalance> for NativeToRelay {
 	}
 }
 
-parameter_types! {
-	pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
-}
 
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type ToRelayChainBalance = NativeToRelay;
 	type AccountId32Convert = AccountId32Convert;
-	type RelayChainNetworkId = PolkadotNetworkId;
+	type RelayChainNetworkId = PolkadotNetwork;
 	type ParaId = ParachainInfo;
 	type AccountIdConverter = LocationConverter;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
@@ -861,7 +858,7 @@ construct_runtime!(
 		// Nft: nft::{Module, Call, Storage, Event<T>},
         // BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
-        ParachainInfo: parachain_info::{Module, Storage},
+        ParachainInfo: parachain_info::{Module, Storage, Config},
         XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},

@@ -4951,6 +4951,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "parity-scale-codec",
+ "serde",
 ]
 
 [[package]]

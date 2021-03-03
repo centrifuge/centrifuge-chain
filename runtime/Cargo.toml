@@ -159,6 +159,7 @@ std = [
     "rustc-hex",
     "safe-mix/std",
     "cumulus-pallet-parachain-system/std",
+    "parachain-info/std",
     "xcm/std",
     "xcm-executor/std",
     "xcm-builder/std",
