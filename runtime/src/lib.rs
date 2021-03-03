@@ -856,7 +856,7 @@ construct_runtime!(
         // BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
-        ParachainInfo: parachain_info::{Module, Storage},
+        ParachainInfo: parachain_info::{Module, Storage, Config},
         XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
 	}
 );
