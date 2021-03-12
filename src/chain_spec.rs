@@ -176,33 +176,33 @@ fn testnet_genesis(
     const STASH: Balance = 1_000_000 * RAD;
 
 	node_runtime::GenesisConfig {
-		frame_system: Some(node_runtime::SystemConfig {
+		frame_system: node_runtime::SystemConfig {
 			code: node_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
 			changes_trie_config: Default::default(),
-		}),
-		pallet_balances: Some(node_runtime::BalancesConfig {
+		},
+		pallet_balances: node_runtime::BalancesConfig {
 			balances: endowed_accounts
 				.iter()
 				.cloned()
 				.map(|k| (k, 1 << 60))
 				.collect(),
-		}),
-		pallet_democracy: Some(node_runtime::DemocracyConfig::default()),
-		pallet_elections_phragmen: Some(node_runtime::ElectionsConfig {
+		},
+		pallet_democracy: node_runtime::DemocracyConfig::default(),
+		pallet_elections_phragmen: node_runtime::ElectionsConfig {
 			members: vec![],
-		}),
-		pallet_collective_Instance1: Some(node_runtime::CouncilConfig {
+		},
+		pallet_collective_Instance1: node_runtime::CouncilConfig {
 			members: endowed_accounts.iter()
 						.take((num_endowed_accounts + 1) / 2)
 						.cloned()
 						.collect(),
 			phantom: Default::default(),
-		}),
-		pallet_indices: Some(node_runtime::IndicesConfig {
+		},
+		pallet_indices: node_runtime::IndicesConfig {
 			indices: vec![],
-		}),
+		},
 		// pallet_bridge: Some(node_runtime::PalletBridgeConfig{
 		// 	// Whitelist chains Ethereum - 0
 		// 	chains: vec![0],
@@ -219,7 +219,7 @@ fn testnet_genesis(
 		// 	],
 		// 	threshold: 1,
 		// }),
-        fees: Some(node_runtime::FeesConfig {
+        fees: node_runtime::FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
                 // pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
@@ -234,8 +234,8 @@ fn testnet_genesis(
                 // 0.003.. RAD
                 2_365_296_803_653,
             )],
-        }),
-		pallet_vesting: Some(Default::default()),
+        },
+		pallet_vesting: Default::default(),
 		// parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
 	}
 }
