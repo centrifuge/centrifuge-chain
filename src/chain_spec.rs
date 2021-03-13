@@ -15,6 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use hex_literal::hex;
+use cumulus_primitives_core::ParaId;
 use node_runtime::{SessionKeys, constants::currency::RAD};
 use node_primitives::{AccountId, Balance, Hash, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
@@ -170,7 +171,7 @@ pub fn charcoal_chachacha_config() -> ChainSpec {
 fn testnet_genesis(
 	root_key: AccountId,
 	endowed_accounts: Vec<AccountId>,
-	id: u32,
+	id: ParaId,
 ) -> node_runtime::GenesisConfig {
     let num_endowed_accounts = endowed_accounts.len();
     const STASH: Balance = 1_000_000 * RAD;
@@ -236,6 +237,7 @@ fn testnet_genesis(
             )],
         },
 		pallet_vesting: Default::default(),
-		// parachain_info: Some(node_runtime::ParachainInfoConfig { parachain_id: id }),
+		pallet_sudo: node_runtime::SudoConfig { key: root_key },
+		parachain_info: node_runtime::ParachainInfoConfig { parachain_id: id },
 	}
 }
