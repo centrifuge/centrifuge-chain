@@ -231,6 +231,7 @@ pub enum ProxyType {
     NonTransfer,
     Governance,
     Staking,
+    Vesting,
 }
 impl Default for ProxyType { fn default() -> Self { Self::Any } }
 impl InstanceFilter<Call> for ProxyType {
@@ -238,12 +239,30 @@ impl InstanceFilter<Call> for ProxyType {
         match self {
             ProxyType::Any => true,
             ProxyType::NonTransfer => !matches!(c,
-				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+				Call::Balances(..) |
+				Call::Indices(pallet_indices::Call::transfer(..))
 			),
             ProxyType::Governance => matches!(c,
-				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
+				Call::Democracy(..) |
+				Call::Council(..) |
+				Call::Elections(..) |
+				Call::Utility(..)
 			),
-            ProxyType::Staking => matches!(c, Call::Staking(..)),
+            ProxyType::Staking => matches!(c,
+                Call::Staking(..) |
+                Call::Session(..) |
+				Call::Utility(..)
+            ),
+            ProxyType::Vesting => matches!(c,
+                Call::Staking(..) |
+                Call::Session(..) |
+                Call::Democracy(..) |
+				Call::Council(..) |
+				Call::Elections(..) |
+				Call::Vesting(pallet_vesting::Call::vest(..)) |
+				Call::Vesting(pallet_vesting::Call::vest_other(..)) |
+				Call::Utility(..)
+            ),
         }
     }
     fn is_superset(&self, o: &Self) -> bool {
