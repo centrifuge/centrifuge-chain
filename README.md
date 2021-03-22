@@ -25,6 +25,31 @@ Build Wasm and native code:
 cargo build --release
 ```
 
+
+### Building with Nix: Binary & Docker Container
+[Learn more and install Nix](https://nixos.org/guides/install-nix.html)
+
+You can build the binary using nix flakes by running:
+```
+nix-build -L
+```
+
+To build the docker container and load it into the docker client use the following two commands:
+```
+nix-build -L .#dockerContainer
+docker load -i result
+```
+
+#### centrifuge-chain bi
+
+#### Cachix Binary Cache
+You can use the cachix binary cache to speed up build times:
+
+```
+cachix use centrifuge-chain
+```
+
+
 ## Run
 
 ### Tests
@@ -69,11 +94,11 @@ To run a node:
 
 To receive tokens, use our faucet: https://faucets.blockxlabs.com/
 
-To run a validator: https://centrifuge.hackmd.io/@pstehlik/rJ4ldDdiH
+To run a validator go to our [docs](https://docs.centrifuge.io/chain/get-started/validate/)
 
-#### 2. Amber
+#### 3. Amber
 
-tbd
+See our [docs](https://docs.centrifuge.io/chain/get-started/validate/)
 
 ### Single node development chain
 
