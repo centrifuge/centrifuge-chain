@@ -32,8 +32,8 @@ type Bytes32 = [u8; ADDR_LEN];
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
 
-/// Additional Fee charged when moving native tokens to target chains (RAD)
-const TOKEN_FEE: u128 = 20 * currency::RAD;
+/// Additional Fee charged when moving native tokens to target chains (CFG)
+const TOKEN_FEE: u128 = 20 * currency::CFG;
 
 impl From<RegistryId> for Address {
     fn from(r: RegistryId) -> Self {
@@ -365,6 +365,7 @@ mod tests{
 
 	parameter_types! {
 		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+		//TODO rename xRAD to xCFG and create new mapping
 		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 	}
 
@@ -398,7 +399,7 @@ mod tests{
 	pub const RELAYER_A: u64 = 0x2;
 	pub const RELAYER_B: u64 = 0x3;
 	pub const RELAYER_C: u64 = 0x4;
-	pub const ENDOWED_BALANCE: u128 = 100 * currency::RAD;
+	pub const ENDOWED_BALANCE: u128 = 100 * currency::CFG;
 
     pub fn new_test_ext() -> sp_io::TestExternalities {
         let bridge_id = ModuleId(*b"cb/bridg").into_account();
@@ -489,7 +490,7 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			let dest_chain = 0;
 			let resource_id = NativeTokenId::get();
-			let amount: u128 = 20 * currency::RAD;
+			let amount: u128 = 20 * currency::CFG;
 			let recipient = vec![99];
 
 			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
@@ -541,7 +542,7 @@ mod tests{
 
 			// Account balance should be reduced amount + fee
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, 60 * currency::RAD);
+			assert_eq!(account_current_balance, 60 * currency::CFG);
 		})
 	}
 

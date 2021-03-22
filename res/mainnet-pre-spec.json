@@ -7,7 +7,7 @@
   "properties": {
     "ss58Format": 36,
     "tokenDecimals": 18,
-    "tokenSymbol": "RAD"
+    "tokenSymbol": "CFG"
   },
   "consensusEngine": null,
   "genesis": {

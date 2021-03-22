@@ -78,8 +78,8 @@ mod proofs;
 /// nft module
 mod nfts;
 
-/// radial reward claims module
-mod rad_claims;
+/// CFG reward claims module
+mod cfg_claims;
 
 /// bridge module
 mod bridge;
@@ -200,9 +200,9 @@ impl frame_system::Trait for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const DepositBase: Balance = 30 * CENTI_RAD;
+	pub const DepositBase: Balance = 30 * CENTI_CFG;
 	// Additional storage item size of 32 bytes.
-	pub const DepositFactor: Balance = 5 * CENTI_RAD;
+	pub const DepositFactor: Balance = 5 * CENTI_CFG;
 	pub const MaxSignatories: u16 = 100;
 }
 
@@ -218,9 +218,9 @@ impl pallet_multisig::Trait for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const ProxyDepositBase: Balance = 30 * CENTI_RAD;
+	pub const ProxyDepositBase: Balance = 30 * CENTI_CFG;
 	// Additional storage item size of 32 bytes.
-	pub const ProxyDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const ProxyDepositFactor: Balance = 5 * CENTI_CFG;
 	pub const MaxProxies: u16 = 32;
 }
 
@@ -316,7 +316,7 @@ impl pallet_babe::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
+	pub const IndexDeposit: Balance = 1 * MILLI_CFG;
 }
 
 impl pallet_indices::Trait for Runtime {
@@ -333,9 +333,9 @@ impl pallet_indices::Trait for Runtime {
 }
 
 parameter_types! {
-    // the minimum fee for an anchor is 500,000ths of a RAD.
+    // the minimum fee for an anchor is 500,000ths of a CFG.
     // This is set to a value so you can still get some return without getting your account removed.
-    pub const ExistentialDeposit: Balance = 1 * MICRO_RAD;
+    pub const ExistentialDeposit: Balance = 1 * MICRO_CFG;
 }
 
 impl pallet_balances::Trait for Runtime {
@@ -353,8 +353,8 @@ impl pallet_balances::Trait for Runtime {
 }
 
 parameter_types! {
-    /// TransactionByteFee is set to 0.01 MicroRAD
-    pub const TransactionByteFee: Balance = 1 * (MICRO_RAD / 100);
+    /// TransactionByteFee is set to 0.01 MicroCFG
+    pub const TransactionByteFee: Balance = 1 * (MICRO_CFG / 100);
 	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
@@ -476,10 +476,10 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
     pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 10 * RAD;
+	pub const MinimumDeposit: Balance = 10 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
-	pub const PreimageByteDeposit: Balance = 100 * MICRO_RAD;
+	pub const PreimageByteDeposit: Balance = 100 * MICRO_CFG;
 	pub const MaxVotes: u32 = 100;
 }
 
@@ -558,8 +558,8 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 1000 * RAD;
-	pub const VotingBond: Balance = 50 * CENTI_RAD;
+	pub const CandidacyBond: Balance = 1000 * CFG;
+	pub const VotingBond: Balance = 50 * CENTI_CFG;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
@@ -723,9 +723,9 @@ impl pallet_finality_tracker::Trait for Runtime {
 parameter_types! {
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
-    pub const BasicDeposit: Balance = 100 * RAD;
-    pub const FieldDeposit: Balance = 25 * RAD;
-    pub const SubAccountDeposit: Balance = 20 * RAD;
+    pub const BasicDeposit: Balance = 100 * CFG;
+    pub const FieldDeposit: Balance = 25 * CFG;
+    pub const SubAccountDeposit: Balance = 20 * CFG;
     pub const MaxRegistrars: u32 = 20;
 }
 
@@ -758,10 +758,10 @@ impl nfts::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MultiAccountSigDepositBase: Balance = 30 * CENTI_RAD;
-	pub const MultiAccountDepositBase: Balance = 30 * CENTI_RAD;
-	pub const MultiAccountSigDepositFactor: Balance = 5 * CENTI_RAD;
-	pub const MultiAccountDepositFactor: Balance = 5 * CENTI_RAD;
+	pub const MultiAccountSigDepositBase: Balance = 30 * CENTI_CFG;
+	pub const MultiAccountDepositBase: Balance = 30 * CENTI_CFG;
+	pub const MultiAccountSigDepositFactor: Balance = 5 * CENTI_CFG;
+	pub const MultiAccountDepositFactor: Balance = 5 * CENTI_CFG;
 	pub const MultiAccountMaxSignatories: u16 = 100;
 }
 
@@ -778,6 +778,7 @@ impl substrate_pallet_multi_account::Trait for Runtime {
 
 parameter_types! {
     pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
+	//TODO rename xRAD to xCFG and create new mapping
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 }
 
@@ -809,7 +810,7 @@ parameter_types! {
     pub const Longevity: u32 = 64;
 }
 
-impl rad_claims::Trait for Runtime {
+impl cfg_claims::Trait for Runtime {
     type Event = Event;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
@@ -818,7 +819,7 @@ impl rad_claims::Trait for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1000 * RAD;
+	pub const MinVestedTransfer: Balance = 1000 * CFG;
 }
 
 impl pallet_vesting::Trait for Runtime {
@@ -883,7 +884,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        CfgClaims: cfg_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
 		Registry: va_registry::{Module, Call, Storage, Event<T>},
 		Nft: nft::{Module, Call, Storage, Event<T>},
@@ -918,41 +919,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Extrinsic type that has already been checked.
 pub type CheckedExtrinsic = generic::CheckedExtrinsic<AccountId, Call, SignedExtra>;
 
-/// Custom runtime upgrade to execute the balances migration before the account migration.
-mod custom_migration {
-    use super::*;
-
-    use frame_support::{traits::OnRuntimeUpgrade, weights::Weight};
-    use pallet_staking::migrations::clear_slash_data;
-    use hex_literal::hex;
-    use sp_runtime::{DispatchResult};
-
-    pub struct Upgrade;
-    impl OnRuntimeUpgrade for Upgrade {
-        fn on_runtime_upgrade() -> Weight {
-            // This will remove all the slash related data on staking pallet
-            clear_slash_data::<Runtime>();
-            // This is the total balance we lost
-            let balance = 63 * RAD;
-            // this is the centrifuge CNF proxy account: 4fsNBXAXoUKxSeu9qKCD9s285dzjS7Nmh1u76s4AsidrdmdL
-            let acc :AccountId = hex!("c84b10ac8baea482e93d961a52502c9ee8227a7deaffd746657c5a8655cc70ab").into();
-            let res :DispatchResult = Balances::add_balance(acc, balance);
-            match res{
-                Ok(()) => {
-                    sp_runtime::print("Account balance updated");
-                }
-
-                Err(_)=> {
-                    sp_runtime::print("Failed to update account balance");
-                }
-            }
-            MaximumBlockWeight::get()
-        }
-    }
-}
-
 /// Executive: handles dispatch to the various modules.
-pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules, custom_migration::Upgrade>;
+pub type Executive = frame_executive::Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllModules>;
 
 decl_runtime_apis! {
     /// The API to query anchoring info.
