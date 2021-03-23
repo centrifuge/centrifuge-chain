@@ -99,6 +99,7 @@ mod tests {
         Perbill,
     };
     use sp_std::prelude::*;
+    use frame_benchmarking::frame_support::traits::EnsureOrigin;
 
     pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
     pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
@@ -172,6 +173,7 @@ mod tests {
         type Currency = Balances;
         type HashId = HashId;
         type NativeTokenId = NativeTokenId;
+        type AdminOrigin = EnsureSignedBy<One, u64>;
     }
 
     impl nft::Trait for Test {

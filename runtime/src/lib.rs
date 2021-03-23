@@ -807,6 +807,7 @@ impl bridge::Trait for Runtime {
 	type Currency = Balances;
 	type HashId = HashId;
 	type NativeTokenId = NativeTokenId;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 }
 
 
