@@ -421,7 +421,7 @@ mod tests{
 	pub const RELAYER_A: u64 = 0x2;
 	pub const RELAYER_B: u64 = 0x3;
 	pub const RELAYER_C: u64 = 0x4;
-	pub const ENDOWED_BALANCE: u128 = 100 * currency::CFG;
+	pub const ENDOWED_BALANCE: u128 = 10000 * currency::CFG;
 
     pub fn new_test_ext() -> sp_io::TestExternalities {
         let bridge_id = ModuleId(*b"cb/bridg").into_account();
@@ -432,7 +432,7 @@ mod tests{
             balances: vec![
                 (bridge_id, ENDOWED_BALANCE),
                 (RELAYER_A, ENDOWED_BALANCE),
-                (RELAYER_B, 100),
+                (RELAYER_B, 2000),
             ],
         }
             .assimilate_storage(&mut t)
@@ -529,7 +529,7 @@ mod tests{
 			);
 
 			let mut account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
-			assert_eq!(account_current_balance, 100);
+			assert_eq!(account_current_balance, 2000);
 
 			// Using account with enough balance for fee but not for transfer amount
 			assert_err!(
@@ -544,7 +544,7 @@ mod tests{
 
 			// Account balance should be reverted to original balance
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
-			assert_eq!(account_current_balance, 100);
+			assert_eq!(account_current_balance, 2000);
 
 			// Success
 			assert_ok!(PalletBridge::transfer_native(
@@ -564,7 +564,7 @@ mod tests{
 
 			// Account balance should be reduced amount + fee
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, 60 * currency::CFG);
+			assert_eq!(account_current_balance, 7980 * currency::CFG);
 		})
 	}
 
