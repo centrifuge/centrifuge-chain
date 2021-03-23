@@ -7,6 +7,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
+use crate::va_registry::AssetInfo;
 
 impl_outer_origin! {
     pub enum Origin for Test {}
@@ -52,6 +53,12 @@ impl system::Trait for Test {
 // configuration traits of pallets we want to use.
 #[derive(Clone, Eq, PartialEq)]
 pub struct Test;
+
+impl From<AssetInfo> for Vec<u8> {
+    fn from(x: AssetInfo) -> Self {
+        x.metadata
+    }
+}
 
 impl Trait for Test {
     type Event = ();

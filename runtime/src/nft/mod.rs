@@ -7,7 +7,7 @@
 //! runtime can access the interface provided by this module to
 //! define user-facing logic to interact with the runtime NFTs.
 
-use crate::va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
+use crate::va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId, AssetInfo};
 use unique_assets::traits::{Unique, Nft, Mintable};
 use sp_runtime::{traits::Member, RuntimeDebug};
 use codec::{Decode, Encode, FullCodec};
@@ -18,6 +18,7 @@ use frame_support::{
     traits::Get,
     Hashable,
 };
+use sp_std::prelude::*;
 
 #[cfg(test)]
 mod mock;
@@ -27,7 +28,7 @@ mod tests;
 
 pub trait Trait: frame_system::Trait {
     /// The data type that is used to describe this type of asset.
-    type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
+    type AssetInfo: Hashable + Member + Debug + Default + FullCodec + From<AssetInfo>;
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 }
 
@@ -159,7 +160,12 @@ impl<T: Trait>
 
         // Insert into storage
         AccountForAsset::<T>::insert(registry_id, token_id, owner_account);
-        Assets::<T>::insert(registry_id, token_id, asset_info);
+
+        //TODO(mig) Remove once we have storage fee for metadata
+        let empty_info: <T as Trait>::AssetInfo = AssetInfo {
+            metadata: vec![],
+        }.into();
+        Assets::<T>::insert(registry_id, token_id, empty_info);
 
         Ok(())
     }
