@@ -260,8 +260,7 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Council(..) |
 				Call::Elections(..) |
 				Call::Vesting(pallet_vesting::Call::vest(..)) |
-				Call::Vesting(pallet_vesting::Call::vest_other(..)) |
-				Call::Utility(..)
+				Call::Vesting(pallet_vesting::Call::vest_other(..))
             ),
         }
     }
