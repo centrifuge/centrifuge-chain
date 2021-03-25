@@ -73,7 +73,7 @@ endef
 
 # Check (i.e. compile without generating binary code) chain project's source code
 define check_chain_source_code
-	docker container run \
+	@docker container run \
 		--rm -it \
 		--env SKIP_WASM_BUILD=1 \
 		--volume $(CURDIR):/workspace \
