@@ -36,6 +36,8 @@
           name = "centrifugeio/${name}";
           tag = "latest";
 
+          contents = self.defaultPackage.x86_64-linux;
+
           config = {
             ExposedPorts = {
               "30333/tcp" = {};
@@ -45,7 +47,7 @@
             Volumes = {
                 "/data" = {};
             };
-            Entrypoint = [ "${self.defaultPackage.x86_64-linux}/bin/centrifuge-chain" ];
+            Entrypoint = [ "/bin/centrifuge-chain" ];
           };
       };
 
