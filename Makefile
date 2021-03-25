@@ -63,22 +63,22 @@ endef
 
 # Build Centrifuge chain's executable
 define build_chain_executable
-	@docker container \
-		run --rm -it \
+	@docker container run \
+		--rm -it \
 		--volume $(CURDIR):/workspace \
 		--workdir /workspace \
-		$(SANDBOX_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
+		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
 		cargo build --release	
 endef
 
 # Check (i.e. compile without generating binary code) chain project's source code
 define check_chain_source_code
-	@docker container \
-		run --rm -it \
+	docker container run \
+		--rm -it \
 		--env SKIP_WASM_BUILD=1 \
 		--volume $(CURDIR):/workspace \
 		--workdir /workspace \
-		$(SANDBOX_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
+		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
 		cargo check --release	
 endef
 
