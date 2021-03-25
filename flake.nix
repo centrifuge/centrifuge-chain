@@ -45,7 +45,7 @@
             Volumes = {
                 "/data" = {};
             };
-            Cmd = [ "${self.defaultPackage.x86_64-linux}/bin/centrifuge-chain" ];
+            Entrypoint = [ "${self.defaultPackage.x86_64-linux}/bin/centrifuge-chain" ];
           };
       };
 
