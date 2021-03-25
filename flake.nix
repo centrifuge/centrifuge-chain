@@ -17,7 +17,7 @@
 
           src = self;
 
-          cargoSha256 = "sha256-zB7PO3woCV9r3VYWzsk/DmUIc8+LVf86rWhG9FEpD18=";
+          cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
           nativeBuildInputs = [ clang pkg-config ];
           buildInputs = [ openssl ];

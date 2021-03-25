@@ -169,8 +169,8 @@ pub fn testnet_genesis(
 	endowed_accounts.push(MultiAccount::multi_account_id(1));
     let num_endowed_accounts = endowed_accounts.len();
 
-    const ENDOWMENT: Balance = 300_000_000 * RAD; // 3% of total supply
-    const STASH: Balance = 1_000_000 * RAD;
+    const ENDOWMENT: Balance = 300_000_000 * CFG; // 3% of total supply
+    const STASH: Balance = 1_000_000 * CFG;
 
     GenesisConfig {
 		frame_system: Some(SystemConfig {
@@ -240,7 +240,7 @@ pub fn testnet_genesis(
 			chains: vec![0],
 			// Register resourceIDs
 			resources: vec![
-				// xRAD ResourceID to PalletBridge.transfer method (for incoming txs)
+				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
 				(hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"], hex!["50616c6c65744272696467652e7472616e73666572"].iter().cloned().collect())
 			],
 			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
@@ -260,10 +260,10 @@ pub fn testnet_genesis(
                     17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
                     97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
                 ]),
-                // Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
+                // Daily state rent, defined such that it will amount to 0.00259.. CFG (2_590_000_000_000_040) over
                 // 3 years, which is the expected average anchor duration. The other fee components for anchors amount
-                // to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
-                // 0.003.. RAD
+                // to about 0.00041.. CFG (410_000_000_000_000), such that the total anchor price for 3 years will be
+                // 0.003.. CFG
                 2_365_296_803_653,
             )],
         }),
@@ -299,7 +299,7 @@ pub fn development_config() -> ChainSpec {
 		vec![],
 		None,
 		None,
-		Some(get_default_properties("DRAD")),
+		Some(get_default_properties("DCFG")),
 		Default::default(),
 	)
 }
@@ -324,7 +324,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		vec![],
 		None,
 		None,
-		Some(get_default_properties("DRAD")),
+		Some(get_default_properties("DCFG")),
 		Default::default(),
 	)
 }
@@ -370,7 +370,7 @@ pub fn fulvous_config() -> Result<ChainSpec,String> {
 	// 	vec![],
 	// 	None,
 	// 	Some("flvs"),
-	// 	Some(get_default_properties("TRAD")),
+	// 	Some(get_default_properties("TCFG")),
 	// 	Default::default(),
 	// )
 }

@@ -7,7 +7,7 @@
   "protocolId": "flvs",
   "properties": {
     "tokenDecimals": 18,
-    "tokenSymbol": "TRAD"
+    "tokenSymbol": "TCFG"
   },
   "forkBlocks": null,
   "badBlocks": null,

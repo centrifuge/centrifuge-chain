@@ -8,7 +8,7 @@ use crate::constants::currency;
 use sp_runtime::traits::SaturatedConversion;
 
 /// Additional Fee charged to validate NFT proofs
-const NFT_FEE: u128 = 10 * currency::RAD;
+const NFT_FEE: u128 = 10 * currency::CFG;
 
 pub trait Trait: anchor::Trait + pallet_balances::Trait + pallet_bridge::Trait {
     type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
@@ -99,6 +99,7 @@ mod tests {
         Perbill,
     };
     use sp_std::prelude::*;
+    use frame_benchmarking::frame_support::traits::EnsureOrigin;
 
     pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
     pub type UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic<u32, u64, Call, ()>;
@@ -162,6 +163,7 @@ mod tests {
 
     parameter_types! {
         pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+        //TODO rename xRAD to xCFG and create new mapping
         pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
     }
 
@@ -171,6 +173,7 @@ mod tests {
         type Currency = Balances;
         type HashId = HashId;
         type NativeTokenId = NativeTokenId;
+        type AdminOrigin = EnsureSignedBy<One, u64>;
     }
 
     impl nft::Trait for Test {
@@ -252,7 +255,7 @@ mod tests {
         .unwrap();
 
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(USER_A, 100 * currency::RAD)],
+            balances: vec![(USER_A, 100 * currency::CFG)],
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -508,7 +511,7 @@ mod tests {
 
             // Account balance should be reduced amount + fee
             let account_current_balance = <pallet_balances::Module<Test>>::free_balance(USER_A);
-            assert_eq!(account_current_balance, 90 * currency::RAD);
+            assert_eq!(account_current_balance, 90 * currency::CFG);
         })
     }
 }

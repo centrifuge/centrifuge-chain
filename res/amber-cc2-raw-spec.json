@@ -11,7 +11,7 @@
   "protocolId": "amber-cc2",
   "properties": {
     "tokenDecimals": 18,
-    "tokenSymbol": "ARAD"
+    "tokenSymbol": "ACFG"
   },
   "consensusEngine": null,
   "genesis": {

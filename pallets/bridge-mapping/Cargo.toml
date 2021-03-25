@@ -18,13 +18,13 @@ package = 'parity-scale-codec'
 version = '1.3.4'
 
 [dependencies]
-frame-support = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
-frame-system = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
-sp-runtime = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
+frame-support = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+frame-system = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+sp-runtime = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
 
 [dev-dependencies]
-sp-core = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
-sp-io = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
+sp-core = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+sp-io = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
 
 [features]
 default = ['std']
