@@ -30,7 +30,7 @@
         };
 
       packages.x86_64-linux.dockerContainer = let
-        pkgs = import nixpkgs { system = "x86_64-linux"; };
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
       in
         pkgs.dockerTools.buildImage {
           name = "centrifugeio/${name}";
