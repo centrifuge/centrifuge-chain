@@ -75,7 +75,6 @@ endef
 define check_chain_source_code
 	@docker container run \
 		--rm -it \
-		--env SKIP_WASM_BUILD=1 \
 		--volume $(CURDIR):/workspace \
 		--workdir /workspace \
 		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
