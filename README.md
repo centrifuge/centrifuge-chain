@@ -16,7 +16,7 @@ curl https://sh.rustup.rs -sSf | sh
 Initialize your Wasm Build environment:
 
 ```bash
-./scripts/init.sh
+RUST_TOOLCHAIN=nightly-2020-08-16 ./scripts/init.sh
 ```
 
 Build Wasm and native code:
