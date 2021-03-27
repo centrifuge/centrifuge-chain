@@ -39,6 +39,9 @@
           contents = self.defaultPackage.x86_64-linux;
 
           config = {
+            Env = [
+              "PATH=/bin/centrifuge-chain"
+            ];
             ExposedPorts = {
               "30333/tcp" = {};
               "9933/tcp" = {};
