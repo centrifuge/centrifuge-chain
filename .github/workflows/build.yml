@@ -5,8 +5,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      BUILD_TIMESTAMP: $(date -u +%Y%m%d%H%M%S)
     steps:
       - uses: actions/checkout@v2
         with:
@@ -23,6 +21,14 @@ jobs:
           name: centrifuge-chain
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - run: nix build -L
+
+  docker:
+    if: ${{ github.event.pull_request.head.repo.full_name == 'centrifuge/centrifuge-chain' }}
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TIMESTAMP: $(date -u +%Y%m%d%H%M%S)
+    steps:
       - run: nix build -L .#dockerContainer
       - run: docker load -i result
       - name: Extract branch name
@@ -44,4 +50,3 @@ jobs:
       - name: Push rev to Docker Hub
         run: docker push "centrifugeio/centrifuge-chain:${BUILD_TIMESTAMP}-$(git rev-parse --short HEAD)"
         if: steps.extract_branch.outputs.branch == 'master'
-
