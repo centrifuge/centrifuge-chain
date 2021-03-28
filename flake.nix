@@ -21,7 +21,7 @@
       ).gitignoreSource;
     in
     {
-      defaultPackage.x86_64-linux =
+      packages.x86_64-linux.centrifuge-chain =
         pkgs.rustPlatform.buildRustPackage {
           pname = name;
           version = version;
@@ -39,6 +39,8 @@
 
           doCheck = false;
         };
+
+      defaultPackage.x86_64-linux = inputs.self.packages.x86_64-linux.centrifuge-chain;
 
       packages.x86_64-linux.dockerContainer =
         pkgs.dockerTools.buildImage {
