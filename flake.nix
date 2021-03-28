@@ -1,11 +1,18 @@
 {
   description = "Nix package for centrifuge-chain";
 
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
+  inputs = {
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
+    gitignore-nix = {
+      url = github:hercules-ci/gitignore.nix;
+      flake = false;
+    };
+  };
 
-  outputs = { self, nixpkgs, ... }: let
+  outputs = { self, nixpkgs, ... }@inputs: let
     name = "centrifuge-chain";
     version = "2.0.0";
+    gitignore = (import inputs.gitignore-nix { inherit (nixpkgs.legacyPackages.x86_64-linux) lib; }).gitignoreSource;
   in
     {
       defaultPackage.x86_64-linux =
@@ -15,7 +22,7 @@
           pname = name;
           version = version;
 
-          src = self;
+          src = gitignore ./.;
 
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
