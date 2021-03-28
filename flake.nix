@@ -9,15 +9,15 @@
     };
   };
 
-  outputs = { self, nixpkgs, ... }@inputs:
+  outputs = inputs:
     let
       name = "centrifuge-chain";
       version = "2.0.0";
-      gitignore = (import inputs.gitignore-nix { inherit (nixpkgs.legacyPackages.x86_64-linux) lib; }).gitignoreSource;
+      gitignore = (import inputs.gitignore-nix { inherit (inputs.nixpkgs.legacyPackages.x86_64-linux) lib; }).gitignoreSource;
     in
     {
       defaultPackage.x86_64-linux =
-        with import nixpkgs { system = "x86_64-linux"; };
+        with import inputs.nixpkgs { system = "x86_64-linux"; };
 
         rustPlatform.buildRustPackage {
           pname = name;
@@ -39,13 +39,13 @@
 
       packages.x86_64-linux.dockerContainer =
         let
-          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
         in
         pkgs.dockerTools.buildImage {
           name = "centrifugeio/${name}";
           tag = "latest";
 
-          contents = self.defaultPackage.x86_64-linux;
+          contents = inputs.self.defaultPackage.x86_64-linux;
 
           config = {
             Env = [
