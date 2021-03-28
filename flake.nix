@@ -9,11 +9,12 @@
     };
   };
 
-  outputs = { self, nixpkgs, ... }@inputs: let
-    name = "centrifuge-chain";
-    version = "2.0.0";
-    gitignore = (import inputs.gitignore-nix { inherit (nixpkgs.legacyPackages.x86_64-linux) lib; }).gitignoreSource;
-  in
+  outputs = { self, nixpkgs, ... }@inputs:
+    let
+      name = "centrifuge-chain";
+      version = "2.0.0";
+      gitignore = (import inputs.gitignore-nix { inherit (nixpkgs.legacyPackages.x86_64-linux) lib; }).gitignoreSource;
+    in
     {
       defaultPackage.x86_64-linux =
         with import nixpkgs { system = "x86_64-linux"; };
@@ -36,9 +37,10 @@
           doCheck = false;
         };
 
-      packages.x86_64-linux.dockerContainer = let
-        pkgs = nixpkgs.legacyPackages.x86_64-linux;
-      in
+      packages.x86_64-linux.dockerContainer =
+        let
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+        in
         pkgs.dockerTools.buildImage {
           name = "centrifugeio/${name}";
           tag = "latest";
@@ -50,16 +52,16 @@
               "PATH=/bin/centrifuge-chain"
             ];
             ExposedPorts = {
-              "30333/tcp" = {};
-              "9933/tcp" = {};
-              "9944/tcp" = {};
+              "30333/tcp" = { };
+              "9933/tcp" = { };
+              "9944/tcp" = { };
             };
             Volumes = {
-                "/data" = {};
+              "/data" = { };
             };
             Entrypoint = [ "/bin/centrifuge-chain" ];
           };
-      };
+        };
 
     };
 }
