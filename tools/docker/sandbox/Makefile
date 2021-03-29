@@ -4,7 +4,7 @@
 #                                                                              #
 # tools/docker/sandbox/Makefile                                                #
 #                                                                              #
-# Handcrafted since 2020 by Centrifuge Project                                 #
+# Handcrafted since 2020 by Centrifugians                                      #
 # All rights reserved                                                          #
 #                                                                              #
 #                                                                              #
@@ -35,7 +35,7 @@ define display_help_message
 	@echo ""
 	@echo "$(COLOR_BLUE)Sandbox$(COLOR_RESET)"
 	@echo ""
-	@echo "Handcrafted since 2020 by Centrifuge tribe"
+	@echo "Handcrafted since 2020 by Centrifugians"
 	@echo "All rights reserved"
 	@echo ""
 	@echo "$(COLOR_WHITE)Usage:$(COLOR_RESET)"
@@ -44,6 +44,7 @@ define display_help_message
 	@echo "$(COLOR_WHITE)Commands:$(COLOR_RESET)"
 	@echo "  $(COLOR_BLUE)setup$(COLOR_RESET)        	- Build sandbox' Docker image"
 	@echo "  $(COLOR_BLUE)clean$(COLOR_RESET)         - Delete (local) sandbox' Docker image"
+	@echo "  $(COLOR_BLUE)purge$(COLOR_RESET)         - Remove (local) dangling Docker images and unused containers"
 	@echo ""
 endef
 
@@ -68,6 +69,18 @@ define remove_sandbox_docker_image
 	@docker image rm $(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) > /dev/null 2>&1 || true
 endef
 
+# Remove dangling Docker images and stopped containers
+#
+# When building a Docker image, it is frequent that this process
+# crashes, producing intermediate (hence dangling) containers and
+# file system layers. This function helps cleaning up such 'junks'.
+# This function should be called at the end of an image building
+# process.
+define purge_docker_images_and_containers
+	@docker ps -aq --no-trunc | xargs docker rm
+	@docker images -q --filter dangling=true | xargs docker rmi
+endef
+
 
 # ------------------------------------------------------------------------------
 # TARGETS DEFINITION
@@ -79,7 +92,7 @@ endef
 # name should be .PHONY. This typically includes 'all', 'help', 'build', 'clean',
 # and so on.
 
-.PHONY: all help setup delete
+.PHONY: all help setup clean purge
 
 # Set default target if none is specified
 .DEFAULT_GOAL := help
@@ -92,3 +105,6 @@ setup:
 
 clean:
 	$(call remove_sandbox_docker_image)
+
+purge:
+	$(call purge_docker_images_and_containers)

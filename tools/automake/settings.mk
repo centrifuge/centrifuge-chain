@@ -4,7 +4,7 @@
 #                                                                             #
 # tools/automake/settings.mk                                                  #
 #                                                                             #
-# Handcrafted since 2020 by Centrifuge tribe                                  #
+# Handcrafted since 2020 by Centrifugians                                     #
 # All rights reserved                                                         #
 #                                                                             #
 #                                                                             #
@@ -28,3 +28,8 @@ RUSTUP_VERSION=1.23.1
 
 # Default Rust toolchain (depends on Substrate's version) to use in developer' sandbox
 RUST_TOOLCHAIN=nightly-2020-08-16
+
+# Sandbox container configuration (should be tweaked according to host machine)
+SANDBOX_CONFIG_MEMORY_SIZE=10GB
+SANDBOX_CONFIG_SWAP_SIZE=2GB
+SANDBOX_CONFIG_CPUS=2

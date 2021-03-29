@@ -6,3 +6,6 @@
 **/*.rs.bk
 
 .idea
+
+# Local Cargo registry (created when running compilation in ephemeral Centrifuge sandbox) - see 'tools/docker/sandbox'
+.cargo

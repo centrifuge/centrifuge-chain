@@ -5,6 +5,28 @@
 
 Centrifuge Chain is [Centrifuge](https://centrifuge.io)'s [substrate](https://github.com/paritytech/substrate) based chain.
 
+## Getting started
+
+A quick way to land and develop on Centrifuge chain is by means of a containerized environment with Docker (NixOS is also supported as a bundling tool), that we use to call the **Centrifuge sandbox**. For doing so, you should first enter the following command:
+
+```sh
+$ make setup    # Build the Centrifuge' sandbox Docker image
+```
+
+Then to build or check the Centrifuge chain's code in the sandbox, you can enter
+
+```sh
+$ make check    # Compile the Centrifuge chain's code (no executable is generated)
+```
+
+or
+
+```sh
+$ make build    # Compile and build Centrifuge executable
+```
+
+For more information, simply type `make` or `make help` in your terminal.
+
 ## Build
 
 Install Rust:

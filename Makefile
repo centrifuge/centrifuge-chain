@@ -4,7 +4,7 @@
 #                                                                             #
 # Makefile                                                                    #
 #                                                                             #
-# Handcrafted since 2020 by Centrifuge tribe                                  #
+# Handcrafted since 2020 by Centrifugians                                     #
 # All rights reserved                                                         #
 #                                                                             #
 #                                                                             #
@@ -35,7 +35,7 @@ define display_help_message
 	@echo ""
 	@echo "$(COLOR_BLUE)Parachain$(COLOR_RESET)"
 	@echo ""
-	@echo "Handcrafted since 2020 by Centrifuge tribe"
+	@echo "Handcrafted since 2020 by Centrifugians"
 	@echo "All rights reserved"
 	@echo ""
 	@echo "$(COLOR_WHITE)Usage:$(COLOR_RESET)"
@@ -56,6 +56,15 @@ define setup_sandbox
 	@$(MAKE) -C ./tools/docker/sandbox setup
 endef
 
+# Clean up project's generated resources
+#
+# This function remove resources generated while working on this project,
+# including binary files, local Cargo index/cache or local Docker images
+# of the Centrifuge (developer) sandbox.
+define clean_project
+	@rm -rf .cargo || true
+endef 
+
 # Delete developer sandbox's Docker image
 define clean_sandbox
 	@$(MAKE) -C ./tools/docker/sandbox clean
@@ -65,7 +74,9 @@ endef
 define build_chain_executable
 	@docker container run \
 		--rm -it \
-		--volume $(CURDIR):/workspace \
+		--memory=$(SANDBOX_CONFIG_MEMORY_SIZE) \
+		--cpus=$(SANDBOX_CONFIG_CPUS) \
+		--volume $(PWD):/workspace \
 		--workdir /workspace \
 		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
 		cargo build --release	
@@ -75,7 +86,9 @@ endef
 define check_chain_source_code
 	@docker container run \
 		--rm -it \
-		--volume $(CURDIR):/workspace \
+		--memory=$(SANDBOX_CONFIG_MEMORY_SIZE) \
+		--cpus=$(SANDBOX_CONFIG_CPUS) \
+		--volume $(PWD):/workspace \
 		--workdir /workspace \
 		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
 		cargo check --release	
@@ -103,6 +116,7 @@ help:
 setup: sandbox-setup
 
 clean: sandbox-clean
+	$(call clean_project)
 
 build:
 	$(call build_chain_executable)

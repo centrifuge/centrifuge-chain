@@ -4,7 +4,7 @@
 #                                                                             #
 # tools/automake/colors.mk                                                    #
 #                                                                             #
-# Handcrafted since 2020 by Centrifuge tribe                                  #
+# Handcrafted since 2020 by Centrifugians                                     #
 # All rights reserved                                                         #
 #                                                                             #
 #                                                                             #

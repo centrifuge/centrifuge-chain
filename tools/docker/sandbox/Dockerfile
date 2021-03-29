@@ -1,3 +1,17 @@
+
+###############################################################################
+# Centrifuge                                                                  #
+# Cash on Steroids                                                            #
+#                                                                             #
+# tools/docker/sandbox/Dockerfile                                             #
+#                                                                             #
+# Handcrafted since 2020 by Centrifugians                                     #
+# All rights reserved                                                         #
+#                                                                             #
+#                                                                             #
+# Description: Developer sandbox container's entrypoint script.               #
+###############################################################################
+
 FROM debian:buster-slim
 
 ARG ARG_RUST_VERSION="1.51.0"
@@ -6,19 +20,24 @@ ARG ARG_RUST_TOOLCHAIN="nightly-2020-08-16"
 ARG ARG_IMAGE_BUILD_DATE=""
 ARG ARG_IMAGE_VERSION=""
 
-LABEL io.centrifuge.chain.sandbox.maintainer="tribe@centrifuge.io" \
-      io.centrifuge.chain.sandbox.image.version="${ARG_IMAGE_VERSION}" \
+LABEL io.centrifuge.chain.sandbox.maintainer="centrifugians@centrifuge.io" \
+      io.centrifuge.chain.sandbox.image.version="$ARG_IMAGE_VERSION" \
       io.centrifuge.chain.sandbox.image.description="Developer sandbox for building and testing Centrifuge chain" \
-      io.centrifuge.chain.sandbox.image.vendorName="Centrifuge Gmbh" \
-      io.centrifuge.chain.sandbox.image.buildDate="${ARG_IMAGE_BUILD_DATE}" 
+      io.centrifuge.chain.sandbox.image.vendorName="Centrifuge" \
+      io.centrifuge.chain.sandbox.image.buildDate="$ARG_IMAGE_BUILD_DATE" 
 
-ENV RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=${ARG_RUST_VERSION} \
-    RUSTUP_VERSION=${ARG_RUSTUP_VERSION} \
-    RUST_TOOLCHAIN=${ARG_RUST_TOOLCHAIN}
+# Define environment variables (see also 'scripts/docker-entrypoint.sh' file)
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV CARGO_REGISTRY_PATH=$CARGO_HOME/registry
+ENV PATH=$CARGO_HOME/bin:$PATH
+ENV RUST_VERSION=$ARG_RUST_VERSION
+ENV RUSTUP_VERSION=$ARG_RUSTUP_VERSION
+ENV RUST_TOOLCHAIN=$ARG_RUST_TOOLCHAIN
+ENV WORKSPACE_PATH=/workspace
+ENV PROJECT_CARGO_REGISTRY_PATH=$WORKSPACE_PATH/.cargo/registry
 
+# Install packages
 RUN set -eux; \
     apt-get -y update; \
     # Install default packages (i.e. clan, ssl, ...)
@@ -26,6 +45,7 @@ RUN set -eux; \
 		  libssl-dev clang lld libclang-dev make cmake \
 		  git pkg-config curl time rhash ca-certificates jq \
       ca-certificates \
+      toilet \
       gcc \
       libc6-dev \
       wget \
@@ -42,25 +62,38 @@ RUN set -eux; \
         *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
     esac; \
     # Install Rustup
-    url="https://static.rust-lang.org/rustup/archive/1.23.1/${rustArch}/rustup-init"; \
-    wget "$url"; \
-    echo "${rustupSha256} *rustup-init" | sha256sum -c -; \
+    wget "https://static.rust-lang.org/rustup/archive/1.23.1/$rustArch/rustup-init"; \
+    echo "$rustupSha256 *rustup-init" | sha256sum -c -; \
     chmod +x rustup-init; \
-    ./rustup-init -y --no-modify-path --profile minimal --default-toolchain ${ARG_RUST_VERSION} --default-host ${rustArch}; \
+    ./rustup-init -y --no-modify-path --profile minimal --default-toolchain $ARG_RUST_VERSION --default-host $rustArch; \
     rm rustup-init; \
     chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
     \
     # Install nightly and stable toolchains, as well as WASM
-    rustup update ${ARG_RUST_TOOLCHAIN}; \
+    rustup update $ARG_RUST_TOOLCHAIN; \
     rustup update stable; \
-    rustup target add wasm32-unknown-unknown --toolchain ${ARG_RUST_TOOLCHAIN}; \
-    rustup default ${ARG_RUST_TOOLCHAIN}; \
+    rustup component add rust-src --toolchain $ARG_RUST_TOOLCHAIN; \
+    rustup target add wasm32-unknown-unknown --toolchain $ARG_RUST_TOOLCHAIN; \
+    rustup default $ARG_RUST_TOOLCHAIN; \
     \
-    # Cargo clean up (generally more than 250MB)
-	  rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git" /root/.cache/sccache; \
+    # Clean up Cargo index and cache (generally more than 250MB)
+	  rm -rf $CARGO_REGISTRY_PATH $CARGO_HOME/git /root/.cache/sccache; \
     \
     # Remove unecessary packages and clean up package manager's cache
     apt-get remove -y --auto-remove \
       wget; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*;
+
+# Install container's entry point script
+COPY ./scripts/docker-entrypoint.sh /
+RUN chmod 755 /docker-entrypoint.sh
+
+# Set working directory (on which the project to be compiled should be mounted, when running a container)
+WORKDIR $WORKSPACE_PATH
+
+# Volume on which Centrifuge chain's code is mounted
+VOLUME $WORKSPACE_PATH
+
+# Bootstrap container using an entrypoint script
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
