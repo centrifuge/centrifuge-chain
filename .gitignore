@@ -6,3 +6,6 @@
 **/*.rs.bk
 
 .idea
+
+# nix-related symlink
+result
