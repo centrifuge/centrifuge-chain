@@ -39,6 +39,7 @@ pub trait Trait: frame_system::Trait + pallet_balances::Trait {
 }
 
 decl_storage! {
+    // RadClaims is essentially the CFG Token Claim, just with the deprecated name of the CFG token
     trait Store for Module<T: Trait> as RadClaims {
         /// Total unclaimed rewards for an account.
         AccountBalances get(fn get_account_balance): map hasher(blake2_128_concat) T::AccountId => T::Balance = 0.into();
@@ -75,8 +76,6 @@ decl_event! {
 
 decl_module! {
     pub struct Module<T: Trait> for enum Call where origin: T::Origin {
-
-        const CfgClaimsAccountId: T::AccountId = MODULE_ID.into_account();
 
         fn deposit_event() = default;
 
