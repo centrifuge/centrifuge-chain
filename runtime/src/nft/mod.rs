@@ -159,7 +159,10 @@ impl<T: Trait>
 
         // Insert into storage
         AccountForAsset::<T>::insert(registry_id, token_id, owner_account);
-        Assets::<T>::insert(registry_id, token_id, asset_info);
+
+        //TODO(mig) Pass metadata on asset_info as soon as we have storage fees
+        let empty_asset: <T as Trait>::AssetInfo = Default::default();
+        Assets::<T>::insert(registry_id, token_id, empty_asset);
 
         Ok(())
     }

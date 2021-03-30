@@ -10,7 +10,7 @@ use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
     traits::EnsureOrigin,
 };
-use frame_system::{self as system, ensure_signed};
+use frame_system::{self as system, ensure_signed, ensure_root};
 use sp_core::U256;
 use sp_runtime::traits::SaturatedConversion;
 use sp_std::prelude::*;
@@ -27,13 +27,13 @@ pub struct Address(pub Bytes32);
 /// Length of an [Address] type
 const ADDR_LEN: usize = 32;
 
+/// Additional Fee charged when moving NFTs to target chains (RAD)
+const NFT_TOKEN_FEE: u128 = 20 * currency::CFG;
+
 type Bytes32 = [u8; ADDR_LEN];
 
 type BalanceOf<T> =
     <<T as Trait>::Currency as Currency<<T as frame_system::Trait>::AccountId>>::Balance;
-
-/// Additional Fee charged when moving native tokens to target chains (RAD)
-const TOKEN_FEE: u128 = 20 * currency::RAD;
 
 impl From<RegistryId> for Address {
     fn from(r: RegistryId) -> Self {
@@ -71,10 +71,14 @@ pub trait Trait: system::Trait
     /// Ids can be defined by the runtime and passed in, perhaps from blake2b_128 hashes.
     type HashId: Get<ResourceId>;
     type NativeTokenId: Get<ResourceId>;
+	type AdminOrigin: EnsureOrigin<Self::Origin>;
 }
 
 decl_storage! {
-    trait Store for Module<T: Trait> as PalletBridge {}
+    trait Store for Module<T: Trait> as PalletBridge {
+    	/// Additional Fee charged when moving native tokens to target chains (CFG)
+    	TokenTransferFee get(fn token_transfer_fee) :T::Balance = (2000 * currency::CFG).saturated_into();
+    }
 
     add_extra_genesis {
         config(chains): Vec<u8>;
@@ -116,7 +120,7 @@ decl_module! {
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
             let source = ensure_signed(origin)?;
 
-            let token_fee: T::Balance = TOKEN_FEE.saturated_into();
+            let token_fee: T::Balance = TokenTransferFee::<T>::get();
 			let total_amount = U256::from(amount.saturated_into()).saturating_add(U256::from(token_fee.saturated_into()));
 
             // Ensure account has enough balance for both fee and transfer
@@ -156,10 +160,10 @@ decl_module! {
                 .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
 
             // Burn additional fees
-            let nft_fee: T::Balance = TOKEN_FEE.saturated_into();
+            let nft_fee: T::Balance = NFT_TOKEN_FEE.saturated_into();
             <fees::Module<T>>::burn_fee(&source, nft_fee)?;
 
-            // Lock asset by transfering to bridge account
+            // Lock asset by transferring to bridge account
             let bridge_id = <chainbridge::Module<T>>::account_id();
             let asset_id = AssetId(from_registry, token_id);
             <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &asset_id)?;
@@ -215,6 +219,15 @@ decl_module! {
             Ok(())
         }
 
+        /// update token transfer fee
+        #[weight = 195_000_000]
+		pub fn set_token_transfer_fee(origin, fee: T::Balance) -> DispatchResult {
+			Self::ensure_admin(origin)?;
+			TokenTransferFee::<T>::mutate(|transfer_token_fee| {
+				*transfer_token_fee = fee
+			});
+			Ok(())
+		}
     }
 }
 
@@ -237,6 +250,13 @@ impl<T: Trait> Module<T> {
             <chainbridge::Module<T>>::register_resource(*re, m.clone()).unwrap_or_default();
         }
     }
+
+	fn ensure_admin(o: T::Origin) -> DispatchResult {
+		<T as Trait>::AdminOrigin::try_origin(o)
+			.map(|_| ())
+			.or_else(ensure_root)?;
+		Ok(())
+	}
 }
 
 #[cfg(test)]
@@ -257,6 +277,7 @@ mod tests{
     use crate::{nft, va_registry as registry};
 
 	pub use pallet_balances as balances;
+	use sp_runtime::DispatchError::BadOrigin;
 
 	const TEST_THRESHOLD: u32 = 2;
 
@@ -365,6 +386,7 @@ mod tests{
 
 	parameter_types! {
 		pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+		//TODO rename xRAD to xCFG and create new mapping
 		pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
 	}
 
@@ -374,6 +396,7 @@ mod tests{
 		type Currency = Balances;
 		type HashId = HashId;
 		type NativeTokenId = NativeTokenId;
+		type AdminOrigin = EnsureSignedBy<One, u64>;
 	}
 
 	pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
@@ -398,7 +421,7 @@ mod tests{
 	pub const RELAYER_A: u64 = 0x2;
 	pub const RELAYER_B: u64 = 0x3;
 	pub const RELAYER_C: u64 = 0x4;
-	pub const ENDOWED_BALANCE: u128 = 100 * currency::RAD;
+	pub const ENDOWED_BALANCE: u128 = 10000 * currency::CFG;
 
     pub fn new_test_ext() -> sp_io::TestExternalities {
         let bridge_id = ModuleId(*b"cb/bridg").into_account();
@@ -409,7 +432,7 @@ mod tests{
             balances: vec![
                 (bridge_id, ENDOWED_BALANCE),
                 (RELAYER_A, ENDOWED_BALANCE),
-                (RELAYER_B, 100),
+                (RELAYER_B, 2000),
             ],
         }
             .assimilate_storage(&mut t)
@@ -489,7 +512,7 @@ mod tests{
 		new_test_ext().execute_with(|| {
 			let dest_chain = 0;
 			let resource_id = NativeTokenId::get();
-			let amount: u128 = 20 * currency::RAD;
+			let amount: u128 = 20 * currency::CFG;
 			let recipient = vec![99];
 
 			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
@@ -506,7 +529,7 @@ mod tests{
 			);
 
 			let mut account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
-			assert_eq!(account_current_balance, 100);
+			assert_eq!(account_current_balance, 2000);
 
 			// Using account with enough balance for fee but not for transfer amount
 			assert_err!(
@@ -521,7 +544,7 @@ mod tests{
 
 			// Account balance should be reverted to original balance
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
-			assert_eq!(account_current_balance, 100);
+			assert_eq!(account_current_balance, 2000);
 
 			// Success
 			assert_ok!(PalletBridge::transfer_native(
@@ -541,7 +564,7 @@ mod tests{
 
 			// Account balance should be reduced amount + fee
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, 60 * currency::RAD);
+			assert_eq!(account_current_balance, 7980 * currency::CFG);
 		})
 	}
 
@@ -756,6 +779,17 @@ mod tests{
 				RELAYER_A,
 				10,
 			))]);
+		})
+	}
+
+	#[test]
+	fn update_transfer_token_fee() {
+		new_test_ext().execute_with(||{
+			let current_fee = PalletBridge::token_transfer_fee();
+			assert_eq!(current_fee, 2000 * currency::CFG);
+			let new_fee = 3000 * currency::CFG;
+			assert_ok!(PalletBridge::set_token_transfer_fee(Origin::signed(1), new_fee));
+			assert_eq!(new_fee, PalletBridge::token_transfer_fee());
 		})
 	}
 

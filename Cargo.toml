@@ -45,63 +45,63 @@ structopt = { version = "0.3.8" , optional = true }
 serde_json = "1.0"
 
 # primitives
-sp-authority-discovery = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-consensus-babe = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-grandpa-primitives = { version = "2.0.0-rc6", package = "sp-finality-grandpa", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-core = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-runtime = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-timestamp = { version = "2.0.0-rc6", default-features = false,  git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-finality-tracker = { version = "2.0.0-rc6", default-features = false,  git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-inherents = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-consensus = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-transaction-pool = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-blockchain = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-block-builder = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sp-runtime-interface = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
-sp-io = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd", default-features = false }
+sp-authority-discovery = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-consensus-babe = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+grandpa-primitives = { version = "2.0.0-rc6", package = "sp-finality-grandpa", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-core = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-runtime = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-timestamp = { version = "2.0.0-rc6", default-features = false,  git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-finality-tracker = { version = "2.0.0-rc6", default-features = false,  git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-inherents = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-consensus = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-transaction-pool = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-blockchain = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-block-builder = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sp-runtime-interface = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
+sp-io = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3", default-features = false }
 
 # client dependencies
-sc-client-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-chain-spec = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-transaction-pool = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-network = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus-babe = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-grandpa = { version = "0.8.0-rc6", package = "sc-finality-grandpa", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-finality-grandpa-rpc = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-client-db = { default-features = false, version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-offchain = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-rpc = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-basic-authorship = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-service = { version = "0.8.0-rc6", default-features = false, git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-cli = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-executor = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus-epochs = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-consensus-babe-rpc = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-authority-discovery = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-rpc-api = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-sc-keystore = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+sc-client-api = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-chain-spec = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-consensus = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-transaction-pool = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-network = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-consensus-babe = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+grandpa = { version = "0.8.0-rc6", package = "sc-finality-grandpa", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-finality-grandpa-rpc = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-client-db = { default-features = false, version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-offchain = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-rpc = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-basic-authorship = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-service = { version = "0.8.0-rc6", default-features = false, git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-cli = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-executor = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-consensus-epochs = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-consensus-babe-rpc = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-authority-discovery = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-rpc-api = { version = "0.8.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+sc-keystore = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
 
 # frame dependencies
-pallet-transaction-payment-rpc = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-substrate-frame-rpc-system  = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-pallet-im-online = { default-features = false, version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+pallet-transaction-payment-rpc = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+substrate-frame-rpc-system  = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+pallet-im-online = { default-features = false, version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
 
 # node-specific dependencies
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
-node-primitives = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+node-primitives = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
 
 [build-dependencies]
 vergen = "3.0.4"
-substrate-build-script-utils  = { version = "2.0.0-rc6", optional = true, git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+substrate-build-script-utils  = { version = "2.0.0-rc6", optional = true, git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
 
 [dev-dependencies]
-sc-service-test = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+sc-service-test = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
 tempfile = "3.1.0"
-sp-keyring = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-frame-system = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
-pallet-transaction-payment = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
+sp-keyring = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+frame-system = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
+pallet-transaction-payment = { version = "2.0.0-rc6", git = "https://github.com/centrifuge/substrate.git", rev = "be8bb186d87b9d2b47a2907c9b51ae1e252362c3" }
 
 [features]
 default = [ "std" ]

@@ -14,7 +14,7 @@
   "properties": {
     "ss58Format": 36,
     "tokenDecimals": 18,
-    "tokenSymbol": "RAD"
+    "tokenSymbol": "CFG"
   },
   "consensusEngine": null,
   "genesis": {
@@ -81,10 +81,10 @@
 // Centrifuge Team Member #3 Controller
           ["4eU6D8cfrx7CyUR6v7kvvi2mU2GeWH6uYXwbYPXW4d8bvDov", 100000000000000000000],
 
-// Ethereum Radial Supply Special Account (400M RAD ETH supply - migrated RAD at Genesis)
+// Ethereum CFG Supply Special Account (400M CFG ETH supply - migrated CFG at Genesis)
           ["4dpEcgqFor2TJw9uWSjx2JpjkNmTic2UjJAK1j9fRtcTUoRu", 380804969000000000000000000],
 // CNF Multisig holding various funds:
-// 4.650M RAD in Grants and Token Awards
+// 4.650M CFG in Grants and Token Awards
 // 4M in tokens held for Centrifuge Team members who were not able to provide a key at genesis.
 // 5k for the Faucet
           ["4d4KMh9TuvpbBZmw3VTpbFewd1Vwpyo45g1du4xFfNEmUKQV", 13025170000000000000000000],

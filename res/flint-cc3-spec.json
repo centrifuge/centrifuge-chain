@@ -11,7 +11,7 @@
   "protocolId": "flint-cc3",
   "properties": {
     "tokenDecimals": 18,
-    "tokenSymbol": "FRAD"
+    "tokenSymbol": "FCFG"
   },
   "consensusEngine": null,
   "genesis": {
