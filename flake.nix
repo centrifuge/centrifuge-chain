@@ -61,7 +61,7 @@
             Volumes = {
               "/data" = { };
             };
-            Entrypoint = [ "/bin/centrifuge-chain" ];
+            Entrypoint = [ "centrifuge-chain" ];
           };
         };
 
