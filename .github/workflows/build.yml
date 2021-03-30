@@ -22,7 +22,7 @@ jobs:
       - run: nix build -L
 
   docker:
-    if: ${{ github.event.pull_request.head.repo.full_name == 'centrifuge/centrifuge-chain' }}
+    if: ${{ github.ref == 'ref/heads/master' || github.ref == 'ref/heads/fix-docker' }}
     needs: build
     runs-on: ubuntu-latest
     env:
@@ -46,7 +46,5 @@ jobs:
         run: docker images
       - name: Push latest to Docker Hub
         run: docker push centrifugeio/centrifuge-chain:latest
-        if: steps.extract_branch.outputs.branch == 'master'
       - name: Push rev to Docker Hub
         run: docker push "centrifugeio/centrifuge-chain:${BUILD_TIMESTAMP}-$(git rev-parse --short HEAD)"
-        if: steps.extract_branch.outputs.branch == 'master'
