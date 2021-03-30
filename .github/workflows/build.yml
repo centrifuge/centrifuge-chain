@@ -2,7 +2,7 @@ name: "build"
 on:
   pull_request:
   push:
-    branches: [master,fix-docke]
+    branches: [master, fix-docker]
 jobs:
   build:
     runs-on: ubuntu-latest
