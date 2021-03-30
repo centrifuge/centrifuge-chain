@@ -51,7 +51,7 @@
 
           config = {
             Env = [
-              "PATH=/bin/centrifuge-chain"
+              "PATH=/bin:$PATH"
             ];
             ExposedPorts = {
               "30333/tcp" = { };
