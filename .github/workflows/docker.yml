@@ -1,15 +1,11 @@
 name: "docker"
 on:
   push:
-    branches: [master, fix-docker]
+    branches: [master]
 jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Set Build Timestamp Env Var
-        run: echo "build_timestamp=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
-      - name: check env var
-        run: echo "HOLA${{ env.build_timestamp }}ADIOS"
       - uses: actions/checkout@v2
         with:
           # Nix Flakes doesn't work on shallow clones
@@ -35,6 +31,8 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
+      - name: Set Build Timestamp Env Var
+        run: echo "build_timestamp=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
       - name: Tag docker image
         run: docker tag centrifugeio/centrifuge-chain:latest "centrifugeio/centrifuge-chain:${{ env.build_timestamp }}-$(git rev-parse --short HEAD)"
       - name: List images
