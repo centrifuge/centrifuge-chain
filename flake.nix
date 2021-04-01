@@ -26,9 +26,15 @@
           in
           srcIgnored path type
           # ignore CI directories
-          || !(type == "directory" && p == ".github")
+          || !(type == "directory" && (p == ".github" || p == "ci"))
+          # ignore CI files
+          || !(p == ".travis.yml" || p == "cloudbuild.yaml")
           # ignore flake.(nix|lock)
-          || !(p == "flake.nix" || p == "flake.lock");
+          || !(p == "flake.nix" || p == "flake.lock")
+          # ignore docker files
+          || !(p == ".dockerignore" || p == "docker-compose.yml")
+          # ignore misc
+          || !(p == "rustfmt.toml");
 
     in
     {
