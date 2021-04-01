@@ -79,7 +79,7 @@ mod proofs;
 mod nfts;
 
 /// CFG reward claims module
-mod cfg_claims;
+mod rad_claims;
 
 /// bridge module
 mod bridge;
@@ -117,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 241,
+    spec_version: 242,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -829,7 +829,7 @@ parameter_types! {
     pub const Longevity: u32 = 64;
 }
 
-impl cfg_claims::Trait for Runtime {
+impl rad_claims::Trait for Runtime {
     type Event = Event;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
@@ -903,7 +903,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        CfgClaims: cfg_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
 		Registry: va_registry::{Module, Call, Storage, Event<T>},
 		Nft: nft::{Module, Call, Storage, Event<T>},
