@@ -21,11 +21,14 @@
           srcIgnored = gitignore.gitignoreFilter src;
         in
         path: type:
+          let
+            p = baseNameOf path;
+          in
           srcIgnored path type
-          # ignore .github/
-          || !(type == "directory" && baseNameOf path == ".github")
+          # ignore CI directories
+          || !(type == "directory" && p == ".github")
           # ignore flake.(nix|lock)
-          || !(baseNameOf path == "flake.nix" || baseNameOf path == "flake.lock");
+          || !(p == "flake.nix" || p == "flake.lock");
 
     in
     {
