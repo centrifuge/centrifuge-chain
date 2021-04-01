@@ -34,7 +34,5 @@ jobs:
         run: docker tag centrifugeio/centrifuge-chain:latest "centrifugeio/centrifuge-chain:${{ env.build_timestamp }}-$(git rev-parse --short HEAD)"
       - name: List images
         run: docker images
-      - name: Push latest to Docker Hub
-        run: docker push centrifugeio/centrifuge-chain:latest
-      - name: Push rev to Docker Hub
-        run: docker push "centrifugeio/centrifuge-chain:${{ env.build_timestamp }}-$(git rev-parse --short HEAD)"
+      - name: Push image to Docker Hub
+        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
