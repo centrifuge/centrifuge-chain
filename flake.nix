@@ -3,10 +3,6 @@
 
   inputs = {
     nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
-    gitignore-nix = {
-      url = github:hercules-ci/gitignore.nix;
-      flake = false;
-    };
   };
 
   outputs = inputs:
@@ -16,25 +12,22 @@
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
       gitignore = (import inputs.gitignore-nix { inherit (inputs.nixpkgs.legacyPackages.x86_64-linux) lib; });
 
-      srcFilter = src:
+      srcFilter = path: type:
         let
-          srcIgnored = gitignore.gitignoreFilter src;
+          p = baseNameOf path;
         in
-        path: type:
-          let
-            p = baseNameOf path;
-          in
-          srcIgnored path type
-          # ignore CI directories
-          || !(type == "directory" && (p == ".github" || p == "ci"))
-          # ignore CI files
-          || !(p == ".travis.yml" || p == "cloudbuild.yaml")
-          # ignore flake.(nix|lock)
-          || !(p == "flake.nix" || p == "flake.lock")
-          # ignore docker files
-          || !(p == ".dockerignore" || p == "docker-compose.yml")
-          # ignore misc
-          || !(p == "rustfmt.toml");
+          !(
+            # ignore CI directories
+            (type == "directory" && (p == ".github" || p == "ci")) ||
+            # ignore CI files
+            (p == ".travis.yml" || p == "cloudbuild.yaml") ||
+            # ignore flake.(nix|lock)
+            (p == "flake.nix" || p == "flake.lock") ||
+            # ignore docker files
+            (p == ".dockerignore" || p == "docker-compose.yml") ||
+            # ignore misc
+            (p == "rustfmt.toml")
+          );
 
     in
     {
@@ -45,7 +38,7 @@
 
           src = pkgs.lib.cleanSourceWith {
             src = ./.;
-            filter = srcFilter ./.;
+            filter = srcFilter;
             name = "centrifuge-chain-source";
           };
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
