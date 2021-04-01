@@ -10,10 +10,9 @@
       name = "centrifuge-chain";
       version = "2.0.0";
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-      gitignore = (import inputs.gitignore-nix { inherit (inputs.nixpkgs.legacyPackages.x86_64-linux) lib; });
 
       # srcFilter is used to keep out of the build non-source files,
-      # so that we don't trigger a rebuild when not necessary.
+      # so that we only trigger a rebuild when necessary.
       srcFilter = path: type:
         let
           p = baseNameOf path;
