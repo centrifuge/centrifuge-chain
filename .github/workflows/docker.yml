@@ -27,10 +27,8 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-      - name: Set build timestamp env var
-        run: echo "build_timestamp=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
       - name: Tag image
-        run: docker tag centrifugeio/centrifuge-chain:latest "centrifugeio/centrifuge-chain:${{ env.build_timestamp }}-$(git rev-parse --short HEAD)"
+        run: docker tag centrifugeio/centrifuge-chain:latest "centrifugeio/centrifuge-chain:$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
       - name: List images
         run: docker images
       - name: Push image to Docker Hub
