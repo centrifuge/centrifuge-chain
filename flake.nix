@@ -14,7 +14,19 @@
       name = "centrifuge-chain";
       version = "2.0.0";
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-      gitignore = (import inputs.gitignore-nix { inherit (inputs.nixpkgs.legacyPackages.x86_64-linux) lib; }).gitignoreSource;
+      gitignore = (import inputs.gitignore-nix { inherit (inputs.nixpkgs.legacyPackages.x86_64-linux) lib; });
+
+      srcFilter = src:
+        let
+          srcIgnored = gitignore.gitignoreFilter src;
+        in
+        path: type:
+          srcIgnored path type
+          # ignore .github/
+          || !(type == "directory" && baseNameOf path == ".github")
+          # ignore flake.(nix|lock)
+          || !(baseNameOf path == "flake.nix" || baseNameOf path == "flake.lock");
+
     in
     {
       packages.x86_64-linux.centrifuge-chain =
@@ -22,8 +34,11 @@
           pname = name;
           version = version;
 
-          src = gitignore ./.;
-
+          src = pkgs.lib.cleanSourceWith {
+            src = ./.;
+            filter = srcFilter ./.;
+            name = "centrifuge-chain-source";
+          };
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
           nativeBuildInputs = with pkgs; [ clang pkg-config ];
