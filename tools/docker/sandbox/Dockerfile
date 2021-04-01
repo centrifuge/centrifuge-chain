@@ -37,6 +37,9 @@ ENV RUST_TOOLCHAIN=$ARG_RUST_TOOLCHAIN
 ENV WORKSPACE_PATH=/workspace
 ENV PROJECT_CARGO_REGISTRY_PATH=$WORKSPACE_PATH/.cargo/registry
 
+# Exposed TCP/IP ports
+EXPOSE 30333 9933 9944
+
 # Install packages
 RUN set -eux; \
     apt-get -y update; \

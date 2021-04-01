@@ -46,6 +46,7 @@ define display_help_message
 	@echo "  $(COLOR_BLUE)clean$(COLOR_RESET)                 - Clean up project (Docker images, binaries, ...)"
 	@echo "  $(COLOR_BLUE)build$(COLOR_RESET)                 - Build Centrifuge chain's executable (release)"
 	@echo "  $(COLOR_BLUE)check$(COLOR_RESET)                 - Check Centrifuge chain's code (without generating an executable)"
+	@echo "  $(COLOR_BLUE)start$(COLOR_RESET)                 - Start a single-node Centrifuge chain (for development)"
 	@echo "  $(COLOR_BLUE)sandbox-setup$(COLOR_RESET)         - Setup developer sandbox's Docker image"
 	@echo "  $(COLOR_BLUE)sandbox-clean$(COLOR_RESET)         - Delete developer sandbox's Docker image"
 	@echo ""
@@ -94,6 +95,20 @@ define check_chain_source_code
 		cargo check --release	
 endef
 
+# Start single-node Centrifuge chain for development purpose
+define start_single_node_chain
+	@docker container run \
+		--rm -it \
+		--publish 30333:30333 \
+		--publish 9933:9933 \
+		--publish 9944:9944 \
+		--memory=$(SANDBOX_CONFIG_MEMORY_SIZE) \
+		--cpus=$(SANDBOX_CONFIG_CPUS) \
+		--volume $(PWD):/workspace \
+		--workdir /workspace \
+		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
+		target/release/$(CENTRIFUGE_CHAIN_EXECUTABLE) --dev
+endef
 
 # -----------------------------------------------------------------------------
 # TARGETS DEFINITION
@@ -105,7 +120,7 @@ endef
 # name should be .PHONY. This typically includes 'all', 'help', 'build', 'clean',
 # and so on.
 
-.PHONY: all help setup clean check sandbox-setup sandbox-clean chain-build
+.PHONY: all help setup clean check start sandbox-setup sandbox-clean chain-build
 
 # Set default target if none is specified
 .DEFAULT_GOAL := help
@@ -123,6 +138,13 @@ build:
 
 check:
 	$(call check_chain_source_code)
+
+start:
+ifneq ("$(wildcard target/release/$(CENTRIFUGE_CHAIN_EXECUTABLE))", "")
+	$(call start_single_node_chain)
+else
+	@echo "Cannot find Centrifuge chain's executable. Please run $(COLOR_WHITE)make build$(COLOR_RESET) first!"	
+endif
 
 sandbox-setup:
 	$(call setup_sandbox)
