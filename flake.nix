@@ -19,7 +19,7 @@
 
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
-          nativeBuildInputs = with pkgs; [ clang pkg-config ];
+          nativeBuildInputs = with pkgs; [ clang git pkg-config ];
           buildInputs = with pkgs; [ openssl ];
 
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
