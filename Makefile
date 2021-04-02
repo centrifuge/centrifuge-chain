@@ -47,6 +47,7 @@ define display_help_message
 	@echo "  $(COLOR_BLUE)build$(COLOR_RESET)                 - Build Centrifuge chain's executable (release)"
 	@echo "  $(COLOR_BLUE)check$(COLOR_RESET)                 - Check Centrifuge chain's code (without generating an executable)"
 	@echo "  $(COLOR_BLUE)start$(COLOR_RESET)                 - Start a single-node Centrifuge chain (for development)"
+	@echo "  $(COLOR_BLUE)test$(COLOR_RESET)                  - Test Centrifuge chain's code"
 	@echo "  $(COLOR_BLUE)sandbox-setup$(COLOR_RESET)         - Setup developer sandbox's Docker image"
 	@echo "  $(COLOR_BLUE)sandbox-clean$(COLOR_RESET)         - Delete developer sandbox's Docker image"
 	@echo ""
@@ -83,7 +84,7 @@ define build_chain_executable
 		cargo build --release	
 endef
 
-# Check (i.e. compile without generating binary code) chain project's source code
+# Check (i.e. compile without generating binary code) Centrifuge chain's source code
 define check_chain_source_code
 	@docker container run \
 		--rm -it \
@@ -93,6 +94,18 @@ define check_chain_source_code
 		--workdir /workspace \
 		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
 		cargo check --release	
+endef
+
+# Test (i.e. execute unit tests) Centrifuge chain' source code
+define test_chain_source_code
+	@docker container run \
+		--rm -it \
+		--memory=$(SANDBOX_CONFIG_MEMORY_SIZE) \
+		--cpus=$(SANDBOX_CONFIG_CPUS) \
+		--volume $(PWD):/workspace \
+		--workdir /workspace \
+		$(SANDBOX_DOCKER_IMAGE_NAME):$(SANDBOX_DOCKER_IMAGE_TAG) \
+		cargo test --release	
 endef
 
 # Start single-node Centrifuge chain for development purpose
@@ -110,6 +123,7 @@ define start_single_node_chain
 		target/release/$(CENTRIFUGE_CHAIN_EXECUTABLE) --dev
 endef
 
+
 # -----------------------------------------------------------------------------
 # TARGETS DEFINITION
 # -----------------------------------------------------------------------------
@@ -120,7 +134,7 @@ endef
 # name should be .PHONY. This typically includes 'all', 'help', 'build', 'clean',
 # and so on.
 
-.PHONY: all help setup clean check start sandbox-setup sandbox-clean chain-build
+.PHONY: all help setup clean check test start sandbox-setup sandbox-clean chain-build
 
 # Set default target if none is specified
 .DEFAULT_GOAL := help
@@ -138,6 +152,9 @@ build:
 
 check:
 	$(call check_chain_source_code)
+
+test:
+	$(call test_chain_source_code)
 
 start:
 ifneq ("$(wildcard target/release/$(CENTRIFUGE_CHAIN_EXECUTABLE))", "")
