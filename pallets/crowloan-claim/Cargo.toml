@@ -1,12 +1,12 @@
 [package]
-authors = ['Centrifuge <https://github.com/substrate-developer-hub>']
-description = 'Crowdloan claim module.'
+authors = ['The Centrifugians Tribe']
+description = 'A claim module or pallet for processing crowdloan reward payouts.'
 edition = '2018'
 homepage = 'https://centrifuge.io'
-license = 'Unlicense'
+license = "LGPL-3.0"
 name = 'crowdloan-claim'
-repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
-version = '3.0.0'
+repository = 'https://github.com/centrifuge/centrifuge-chain'
+version = '2.0.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
