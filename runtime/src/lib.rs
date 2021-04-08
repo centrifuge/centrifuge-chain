@@ -271,11 +271,11 @@ impl parachain_info::Config for Runtime {}
 
 parameter_types! {
     pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
-    pub const CentrifugeNetwork: NetworkId = NetworkId::Named("centrifuge".into());
+    // pub const CentrifugeNetwork: NetworkId = NetworkId::Named("centrifuge".into());
 	//pub const RococoLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
 	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
-			id: ParachainInfo::get().into(),
+			id: ParachainInfo::parachain_id().into(),
 		});
 }
 
@@ -289,7 +289,7 @@ impl Convert<AccountId, [u8; 32]> for AccountId32Convert {
 type LocationConverter = (
 	ParentIsDefault<AccountId>,
 	SiblingParachainConvertsVia<Sibling, AccountId>,
-	AccountId32Aliases<CentrifugeNetwork, AccountId>,
+	AccountId32Aliases<PolkadotNetworkId, AccountId>,
 );
 
 // This is a simplified CurrencyId for xtokens pallet, as of now, Centrifuge has only
@@ -322,7 +322,7 @@ type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
 	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
-	SignedAccountId32AsNative<CentrifugeNetwork, Origin>,
+	SignedAccountId32AsNative<PolkadotNetworkId, Origin>,
 );
 
 
@@ -859,7 +859,6 @@ construct_runtime!(
 		// Nft: nft::{Module, Call, Storage, Event<T>},
         // BridgeMapping: bridge_mapping::{Module, Call, Storage},
         ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
-        XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
         ParachainInfo: parachain_info::{Module, Storage, Config},
         XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
