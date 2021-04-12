@@ -1017,6 +1017,9 @@ impl_runtime_apis! {
             let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
 
             add_benchmark!(params, batches, va_registry, Registry);
+            
+            // add runtime benchmarking for the crowdloan claim module
+            //add_benchmark!(oarams, batches, crowdloan_claim, CrowdloanClaim)
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 		    Ok(batches)
