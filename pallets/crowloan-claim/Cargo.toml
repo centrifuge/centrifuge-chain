@@ -1,12 +1,12 @@
 [package]
+name = 'crowdloan-claim'
+description = 'Module for processing crowdloan reward claims.'
 authors = ['The Centrifugians Tribe']
-description = 'A claim module or pallet for processing crowdloan reward payouts.'
 edition = '2018'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
-name = 'crowdloan-claim'
 repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '2.0.0'
+version = '0.0.1'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -19,21 +19,22 @@ package = 'parity-scale-codec'
 version = '2.0.0'
 
 [dependencies]
-frame-support = { default-features = false, version = '3.0.0' }
-frame-system = { default-features = false, version = '3.0.0' }
-sp-std = { default-features = false, version = '3.0.0' }
+frame-support = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+frame-system = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false, path = "../benchmarking", optional = true }
+sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.119" }
-sp-core = { default-features = false, version = '3.0.0' }
-sp-io = { default-features = false, version = '3.0.0' }
-sp-runtime = { default-features = false, version = '3.0.0' }
+sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [features]
 default = ['std']
 std = [
     'codec/std',
     'frame-support/std',
-    'frame-system/std',
-    'sp-std/std',
+    'frame-system/std'
 ]
+
+runtime-benchmarks = ["frame-benchmarking"]
