@@ -9,3 +9,6 @@
 
 # nix-related symlink
 result
+
+# Local Cargo registry (created when running compilation in ephemeral Centrifuge sandbox) - see 'tools/docker/sandbox'
+.cargo
