@@ -53,6 +53,8 @@ use frame_support::{
 
 use frame_system::ensure_signed;
 
+pub mod reward;
+
 #[cfg(test)]
 mod mock;
 
