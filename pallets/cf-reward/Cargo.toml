@@ -1,11 +1,10 @@
 [package]
-name = 'crowdloan-claim'
-description = 'Module for processing crowdloan reward claims.'
-authors = ['The Centrifugians Tribe']
+authors = ['Centrifuge GmbH']
+description = 'The reward pallet that rewards contributors in bids for parachain slots for the centrifuge chain.'
 edition = '2018'
-homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
+name = 'cf-reward'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/cf-reward"
 version = '0.0.1'
 
 [package.metadata.docs.rs]
@@ -21,11 +20,11 @@ version = '2.0.0'
 [dependencies]
 frame-support = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-system = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
-frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false, path = "../benchmarking", optional = true }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1.0.119" }
 sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
@@ -34,7 +33,6 @@ default = ['std']
 std = [
     'codec/std',
     'frame-support/std',
-    'frame-system/std'
+    'frame-system/std',
+    'crowdloan-claim/std'
 ]
-
-runtime-benchmarks = ["frame-benchmarking"]

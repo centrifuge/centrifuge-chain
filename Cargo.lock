@@ -731,6 +731,8 @@ name = "centrifuge-chain"
 version = "2.0.0"
 dependencies = [
  "centrifuge-chain-runtime",
+ "cf-reward",
+ "crowdloan-claim",
  "cumulus-client-consensus-relay-chain",
  "cumulus-client-network",
  "cumulus-client-service",
@@ -883,6 +885,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4aedb84272dbe89af497cf81375129abda4fc0a9e7c5d317498c15cc30c0d27"
 dependencies = [
  "nom",
+]
+
+[[package]]
+name = "cf-reward"
+version = "0.0.1"
+dependencies = [
+ "crowdloan-claim",
+ "frame-support",
+ "frame-system",
+ "pallet-vesting",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

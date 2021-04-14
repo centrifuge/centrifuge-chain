@@ -1,7 +1,7 @@
 use frame_support::sp_runtime::traits::{IdentifyAccount, Member, AtLeast32BitUnsigned, MaybeSerializeDeserialize, MaybeSerialize};
 use frame_support::Parameter;
 use frame_support::dispatch::Codec;
-use sp_core::sp_std::fmt::Debug;
+use frame_support::dispatch::fmt::Debug;
 use sp_runtime::traits::MaybeDisplay;
 
 /// Reward Trait of the Claim Pallet
