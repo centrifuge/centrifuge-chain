@@ -34,11 +34,16 @@
 //! [Runtime Benchmarking](https://substrate.dev/docs/en/knowledgebase/runtime/benchmarking). Retrieved April 10th, 2021.
 
 
+#![cfg(feature = "runtime-benchmarks")]
+
+
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
+mod benchmarking;
+pub mod weights;
 
-use crate::{*, Module as PalletModule};
+use crate::{*, Module as ClaimModule};
 use frame_benchmarking::{benchmarks, account, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 
@@ -47,9 +52,9 @@ pub struct Module<T: Config<I>, I: Instance>(CrowdloanClaimModule<T, I>);
 
   benchmarks! {
     benchmark_name {
-      /* setup initial state */
+      // setup initial state
     }: {
-      /* the code to be benchmarked */
+      // benchmark code
     } verify {
       /* verifying final state */
     }
@@ -61,7 +66,7 @@ pub struct Module<T: Config<I>, I: Instance>(CrowdloanClaimModule<T, I>);
   // ----------------------------------------------------------------------------
 
   impl_benchmark_test_suite!(
-    PalletModule,
+    ClaimModule,
     crate::tests::new_test_ext(),
     crate::tests::Test,
   );

@@ -27,7 +27,7 @@ name = "centrifuge-chain"
 [workspace]
 members = [
     "pallets/bridge-mapping",
-    "pallets/crowloan-claim",
+    "pallets/crowdloan-claim",
     "runtime",
 ]
 
@@ -114,6 +114,13 @@ polkadot-cli = {git = 'https://github.com/paritytech/polkadot', branch = 'rococo
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
 node-primitives = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 
+# Internal dependencies
+[dependencies.crowdloan-claim]
+default_features = false
+#git = 'https://github.com/centrifuge-chain/substrate-pallets-library.git'
+path="pallets/crowdloan-claim"
+version="0.0.1"
+
 [build-dependencies]
 vergen = "3.0.4"
 substrate-build-script-utils  = { branch = "rococo-v1", optional = true, git = "https://github.com/paritytech/substrate.git" }
@@ -132,5 +139,10 @@ std = [
 	"sc-service/db",
 	"structopt",
 	"substrate-build-script-utils",
-	"sp-consensus-babe/std"
+	"sp-consensus-babe/std",
+  "crowdloan-claim/std"
+]
+
+runtime-benchmarks = [
+  "crowdloan-claim/runtime-benchmarks"
 ]

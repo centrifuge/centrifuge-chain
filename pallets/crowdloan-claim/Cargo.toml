@@ -1,6 +1,6 @@
 [package]
 name = 'crowdloan-claim'
-description = 'Module for processing crowdloan reward claims.'
+description = 'Module for processing crowdloan reward claims from contributors.'
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
@@ -21,7 +21,7 @@ version = '2.0.0'
 [dependencies]
 frame-support = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-system = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
-frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false, path = "../benchmarking", optional = true }
+frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false, optional = true }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]

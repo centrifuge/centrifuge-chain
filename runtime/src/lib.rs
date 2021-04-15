@@ -82,6 +82,9 @@ use impls::DealWithFees;
 // Bridge access control list pallet
 // use bridge_mapping;
 
+// Crowdloan claim module
+use crowdloan_claim;
+
 /// Used for anchor module
 pub mod anchor;
 
@@ -816,6 +819,15 @@ impl pallet_sudo::Config for Runtime {
     type Event = Event;
 }
 
+// Implement crowdloan claim module's configuration trait for the runtime
+//
+// See [`crowdloan-claim`]()
+impl crowdloan_claim::Config for Runtime {
+  type Call = Call;
+  type Event = Event;
+  type WeightInfo = ();
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -863,6 +875,9 @@ construct_runtime!(
         XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
+
+        // Crowdloan claim module
+        CrowdloanClaim: crowdloan_claim::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
@@ -1019,7 +1034,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, va_registry, Registry);
             
             // add runtime benchmarking for the crowdloan claim module
-            //add_benchmark!(oarams, batches, crowdloan_claim, CrowdloanClaim)
+            add_benchmark!(oarams, batches, crowdloan-claim, CrowdloanClaim)
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 		    Ok(batches)
