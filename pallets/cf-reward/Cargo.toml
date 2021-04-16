@@ -21,6 +21,8 @@ version = '2.0.0'
 frame-support = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 frame-system = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-balances = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-indices = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 
@@ -34,5 +36,7 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
-    'crowdloan-claim/std'
+    'crowdloan-claim/std',
+    'pallet-vesting/std',
+    'pallet-balances/std'
 ]

@@ -894,6 +894,8 @@ dependencies = [
  "crowdloan-claim",
  "frame-support",
  "frame-system",
+ "pallet-balances",
+ "pallet-indices",
  "pallet-vesting",
  "parity-scale-codec",
  "sp-core",
