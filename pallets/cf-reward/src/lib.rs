@@ -1,37 +1,52 @@
+// Copyright 2019-2021 Centrifuge Inc.
+// This file is part of Cent-Chain.
+
+// Cent-Chain is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Cent-Chain is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Cent-Chain.  If not, see <http://www.gnu.org/licenses/>.
+
 //! # Reward module for Centrifuge Parachain Campaigns
 //!
 //! ## Overview
+//! The function of this pallet is to provide the centrifuge specific reward functionality for
+//! contributors of the relay chain crowdloan. In order to provide this functionality the pallet
+//! implements the `Reward` Trait from the `Claim` Pallet.
+//! Before any rewards can be provided to contributors the pallet MUST be initialized, so that the
+//! modules account holds the necessary funds to reward.
+//! All rewards are payed in form of a `vested_transfer` with a fixed vesting time. The vesting time
+//! is defined via the modules `Config` trait.
 //!
-//! The module does implement the Claim Pallets Reward trait so, that it can be used with alongside.
-//! TODO: Describe the rewarding process.
+//! ## Callable Functions
 //!
-//! ## Callable functions
+//! - `initialize` - Initializes the module by transfering founds to the modules account and activating an init-lock
 //!
-//! `initialize` - Initializes the module by transfering founds to the modules account and activating an init-lock
+//! ## Implementations
+//!
+//! - [`Reward`](crowdloan_claim::reward::Reward) : Rewarding functionality for contributors in a relay
+//!   chain crowdloan.
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::{decl_module, decl_storage, decl_event, decl_error, dispatch, weights::{Weight}, Parameter, ensure};
-use frame_system::{ensure_signed, ensure_root, RawOrigin};
+use frame_support::{decl_module, decl_storage, decl_event, decl_error, weights::{Weight}, Parameter, ensure};
+use frame_system::{ensure_root, RawOrigin};
 use sp_runtime::traits::{Member, MaybeSerialize, Convert};
 use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize};
 use frame_support::dispatch::{Codec, DispatchError};
 use frame_support::dispatch::fmt::Debug;
-use frame_support::traits::{Get, Currency, LockableCurrency, LockIdentifier};
+use frame_support::traits::{Get, Currency, ExistenceRequirement::{AllowDeath }};
 use frame_support::dispatch::DispatchResult;
 use crowdloan_claim::reward::Reward;
-use pallet_vesting::VestingInfo;
-use frame_support::storage::*;
-use frame_support::traits::ExistenceRequirement::{KeepAlive, AllowDeath};
-use sp_runtime::{
-    ModuleId,
-    traits::{AccountIdConversion, CheckedSub, StaticLookup},
-    transaction_validity::{
-        TransactionValidity, ValidTransaction, InvalidTransaction, TransactionSource,
-        TransactionPriority,
-    }
-};
+use sp_runtime::{ModuleId, traits::{AccountIdConversion, StaticLookup}};
 
 
 #[cfg(test)]
@@ -39,9 +54,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
 
 pub trait Config: frame_system::Config + pallet_vesting::Config {
     /// Timer after which the Module can be initalized again. This should probably be less than
@@ -87,20 +99,18 @@ decl_event!{
     }
 }
 
-
 decl_storage! {
     trait Store for Module<T: Config> as Reward {
-        NextInit get(fn next_init) : T::BlockNumber;
+        NextInit get(fn next_init) config(): T::BlockNumber;
+        ModuleAccount get(fn mod_account) : T::AccountId = MODULE_ID.into_account();
+        ConversionRate get(fn conversion_rate) config(): BalanceOf<T>;
     }
 }
 
-
 decl_error! {
 	pub enum Error for Module<T: Config> {
-        /// Not enough funds in the pot for paying a reward payout
+        /// Not enough funds in the pot for paying a reward
         NotEnoughFunds,
-        /// Vesting schedule already exists
-        AlreadyVested,
         /// Initalization before the last lease period is over
         OngoingLease,
     }
@@ -116,20 +126,18 @@ decl_module! {
         fn deposit_event() = default;
 
         /// Initialize the module.
-        /// Basically this call
-        ///
-        /// Can/Must be weightless as the call must come from root.
+        /// This dispatchable function must be called from a root account, so that other accounts
+        /// can not block the module via a random initialization. Furthermore it is important, that
+        /// the module has enough funds, as a later funding is not possible.
         // TODO: Add correct weight function
         #[weight = 10_000]
         fn initialize(origin, source: T::AccountId, amount: BalanceOf<T>) -> DispatchResult {
             ensure_root(origin)?;
 
-
             let now = <frame_system::Module<T>>::block_number();
             ensure!(now > <NextInit<T>>::get(), Error::<T>::OngoingLease);
 
             let target = &MODULE_ID.into_account();
-            // Transfer payout amount
             // TODO: Should we choose: KeepAlive or AllowDeath here?
             T::Currency::transfer(
                 &source,
@@ -148,9 +156,8 @@ decl_module! {
 }
 
 impl<T: Config> Module<T> {
-    fn convert_to_rad(contribution: &T::RelayChainBalance) -> <T::Currency as Currency<T::AccountId>>::Balance {
-        // TODO: Currently 1:1 conversion
-        contribution.clone().into()
+    fn convert_to_native(contribution: T::RelayChainBalance) -> <T::Currency as Currency<T::AccountId>>::Balance {
+        contribution.into() * <ConversionRate<T>>::get()
     }
 }
 
@@ -158,21 +165,9 @@ impl<T: Config> Reward for Module<T> {
     type ParachainAccountId = T::AccountId;
     type ContributionAmount = T::RelayChainBalance;
 
-    fn reward(who: &Self::ParachainAccountId, contribution: &Self::ContributionAmount) -> Result<(), ()> {
-        // Create Vesting Schedule
-        //
-        // - What happens if the Account already has a vesting schedule from another Pallet?
-        //      -> This MUST be tested
-        // - What happens, when the vesting amount is to little?
-        //      -> Direct payout?
-        // - What happens when the lease period is over?
-        //      -> Install a hook on finalize, that triggers a root signed transaction so that
-        //         all balances will be transfered to the contributors. The hook is called each time
-        //         checks the current block n and if we are at  n = start_of_lease + time_of_lease -1
-        //         then it will trigger
-
+    fn reward(who: Self::ParachainAccountId, contribution: Self::ContributionAmount) -> DispatchResult {
         let schedule = pallet_vesting::VestingInfo {
-            locked: Self::convert_to_rad(contribution),
+            locked: Self::convert_to_native(contribution),
             per_block: <<T as pallet_vesting::Config>::BlockNumberToBalance>::convert(T::VestingPeriod::get()),
             starting_block: <frame_system::Module<T>>::block_number(),
         };
@@ -186,15 +181,28 @@ impl<T: Config> Reward for Module<T> {
             schedule
         ).map_err(|vest_err| {
             match vest_err {
-                DispatchError::Module { index, error, message } => {
-                    // TODO: Create correct error handling that claim module can use:
-                    //  If:
-                    //    a) Amount to vest to little -> Direct Payout (Risks: Contributors could prevent vesting with many little contributions)
-                    //    b) Vesting schedule already exists -> Signal claim, to NOT store account and allow claiming again
-                    ()
+                DispatchError::Module { index: _, error: _, message } => {
+                    message.map_or(vest_err, |msg| {
+                        match msg {
+                            "InsufficientBalance" => Into::<DispatchError>::into(Error::<T>::NotEnoughFunds),
+                            "AmountLow" => { vest_err
+                                // TODO: Should we do this? Or should we set MinVestAmount = 1?
+                                /*T::Currency::transfer(
+                                    &from,
+                                    &target,
+                                    Self::convert_to_native(contribution),
+                                    ExistenceRequirement::AllowDeath,
+                                )*/
+                            },
+                            _ => vest_err,
+                        }
+                    })
+
                 },
-                _ => (), //Todo:: vest_err,
+                _ => vest_err,
             }
+        }).map(|_| {
+            Self::deposit_event(RawEvent::RewardClaimed(who));
         })
     }
 }

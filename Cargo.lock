@@ -898,6 +898,7 @@ dependencies = [
  "pallet-indices",
  "pallet-vesting",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
