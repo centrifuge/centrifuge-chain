@@ -13,14 +13,17 @@
 
 // You should have received a copy of the GNU General Public License
 // along with Cent-Chain.  If not, see <http://www.gnu.org/licenses/>.
-use crate::{self as pallet_cf_rewards, Module, Config, BalanceOf};
+use crate::{self as pallet_rewards, Config};
 use frame_support::{construct_runtime, parameter_types, weights::Weight};
-use sp_core::{ed25519, Pair, H256};
+use sp_core::{H256};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
+use frame_system::EnsureSignedBy;
+use frame_support::traits::Contains;
+use frame_support::sp_runtime::traits::AccountIdConversion;
 
 pub type AccountId = u64;
 pub type Balance = u64;
@@ -37,7 +40,7 @@ construct_runtime!(
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
         Vesting: pallet_vesting::{Module, Call, Config<T>, Storage, Event<T>},
-        Rewards: pallet_cf_rewards::{Module, Call, Config<T>, Storage, Event<T>},
+        Rewards: pallet_rewards::{Module, Call, Config, Storage, Event<T>},
     }
 );
 
@@ -90,7 +93,7 @@ impl pallet_balances::Config for Test {
 
 parameter_types! {
     pub const TestMinVestedTransfer: u64 = 16;
-    pub static TestExistentialDeposit: u64 = 0;
+    pub static TestExistentialDeposit: u64 = 1;
 }
 
 impl pallet_vesting::Config for Test {
@@ -102,16 +105,32 @@ impl pallet_vesting::Config for Test {
 }
 
 parameter_types! {
-    pub const TestLeasePeriod: u64 = 4;
-    pub const TestVestingPeriod: u64 = 3;
+    pub const One: u64 = 1;
+}
+
+pub struct TestWeightInfo;
+
+impl pallet_rewards::weight::WeightInfo for TestWeightInfo {
+    fn initialize() -> u64 { 0 }
+    fn reward() -> u64 { 0 }
+    fn set_vesting_start() -> u64 { 0 }
+    fn set_vesting_period() -> u64 { 0 }
+    fn set_conversion_rate() -> u64 { 0 }
+    fn set_direct_payout_ratio() -> u64 { 0 }
 }
 
 impl Config for Test {
-    type LeasePeriod = TestLeasePeriod;
-    type VestingPeriod = TestVestingPeriod;
     type Event = Event;
     type RelayChainBalance = Balance;
     type RelayChainAccountId = AccountId;
+    type AdminOrigin = EnsureSignedBy<One, u64>;
+    type WeightInfo = TestWeightInfo;
+}
+
+impl Contains<u64> for One {
+    fn sorted_members() -> Vec<u64> {
+        vec![1]
+    }
 }
 
 pub struct ExtBuilder {
@@ -142,7 +161,7 @@ impl ExtBuilder {
                 (3, 30 * self.existential_deposit),
                 (4, 40 * self.existential_deposit),
                 (12, 10 * self.existential_deposit),
-                (111, 101 * self.existential_deposit),
+                (super::MODULE_ID.into_account(), 101 * self.existential_deposit),
             ],
         }.assimilate_storage(&mut t).unwrap();
 
@@ -155,9 +174,9 @@ impl ExtBuilder {
         }.assimilate_storage(&mut t).unwrap();
 
 
-        pallet_cf_rewards::GenesisConfig::<Test> {
-            next_init: 0,
-            conversion_rate: 1,
+        pallet_rewards::GenesisConfig {
+            conversion: 80,
+            direct_payout: 20,
         }.assimilate_storage(&mut t).unwrap();
 
         let mut ext = sp_io::TestExternalities::new(t);
@@ -170,9 +189,9 @@ impl ExtBuilder {
     }
 }
 
-pub(crate) fn reward_events() -> Vec<pallet_cf_rewards::Event<Test>> {
+pub(crate) fn reward_events() -> Vec<pallet_rewards::Event<Test>> {
     System::events().into_iter().map(|r| r.event).filter_map(|e| {
-        if let Event::pallet_cf_rewards(inner) = e {
+        if let Event::pallet_rewards(inner) = e {
             Some(inner)
         } else {
             None

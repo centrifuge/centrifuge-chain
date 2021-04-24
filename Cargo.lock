@@ -731,7 +731,6 @@ name = "centrifuge-chain"
 version = "2.0.0"
 dependencies = [
  "centrifuge-chain-runtime",
- "cf-reward",
  "crowdloan-claim",
  "cumulus-client-consensus-relay-chain",
  "cumulus-client-network",
@@ -804,6 +803,7 @@ dependencies = [
  "substrate-frame-rpc-system",
  "tempfile",
  "vergen",
+ "vesting-reward",
 ]
 
 [[package]]
@@ -885,23 +885,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4aedb84272dbe89af497cf81375129abda4fc0a9e7c5d317498c15cc30c0d27"
 dependencies = [
  "nom",
-]
-
-[[package]]
-name = "cf-reward"
-version = "0.0.1"
-dependencies = [
- "crowdloan-claim",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "pallet-indices",
- "pallet-vesting",
- "parity-scale-codec",
- "serde",
- "sp-core",
- "sp-io",
- "sp-runtime",
 ]
 
 [[package]]
@@ -10481,6 +10464,23 @@ name = "version_check"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
+
+[[package]]
+name = "vesting-reward"
+version = "0.0.1"
+dependencies = [
+ "crowdloan-claim",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "pallet-indices",
+ "pallet-vesting",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
 
 [[package]]
 name = "void"

@@ -3,7 +3,7 @@ authors = ['Centrifuge GmbH']
 description = 'The reward pallet that rewards contributors in bids for parachain slots for the centrifuge chain.'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'cf-reward'
+name = 'vesting-reward'
 repository = "https://github.com/centrifuge/centrifuge-chain/pallets/cf-reward"
 version = '0.0.1'
 
@@ -26,6 +26,7 @@ pallet-balances = { branch = "rococo-v1", git = "https://github.com/paritytech/s
 pallet-indices = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
+# substrate-fixed = { git = 'https://github.com/encointer/substrate-fixed.git', rev = "b33d186888c60f38adafcfc0ec3a21aab263aef1" }
 
 [dev-dependencies]
 sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
