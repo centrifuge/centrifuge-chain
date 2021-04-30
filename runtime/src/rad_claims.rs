@@ -1,22 +1,25 @@
-use sp_core::{Encode};
-use sp_runtime::traits::{Hash, SaturatedConversion};
-use frame_system::{ensure_none, ensure_root, ensure_signed};
 use crate::constants::currency;
-use sp_std::{vec::Vec, convert::TryInto};
-use frame_support::{decl_module, decl_storage, decl_event, decl_error,
-                    traits::{Get, EnsureOrigin, Currency, ExistenceRequirement::KeepAlive},
-                    weights::{DispatchClass, Pays},
-                    ensure, dispatch::DispatchResult};
+use frame_support::{
+    decl_error, decl_event, decl_module, decl_storage,
+    dispatch::DispatchResult,
+    ensure,
+    traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, Get},
+    weights::{DispatchClass, Pays},
+    PalletId,
+};
+use frame_system::{ensure_none, ensure_root, ensure_signed};
+use sp_core::Encode;
+use sp_runtime::traits::{Hash, SaturatedConversion};
 use sp_runtime::{
-    ModuleId,
     traits::{AccountIdConversion, CheckedSub},
     transaction_validity::{
-        TransactionValidity, ValidTransaction, InvalidTransaction, TransactionSource,
-        TransactionPriority,
-    }
+        InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity,
+        ValidTransaction,
+    },
 };
+use sp_std::{convert::TryInto, vec::Vec};
 
-const MODULE_ID: ModuleId = ModuleId(*b"rd/claim");
+const MODULE_ID: PalletId = PalletId(*b"rd/claim");
 const MIN_PAYOUT: node_primitives::Balance = 5 * currency::RAD;
 
 pub trait Trait: frame_system::Config + pallet_balances::Config {
@@ -130,7 +133,7 @@ decl_module! {
 
         /// Admin function that sets the allowed upload account to add root hashes
         /// Controlled by custom origin or root
-        /// 
+        ///
         /// # <weight>
         /// - Based on origin check and write op
         /// # </weight>
@@ -186,7 +189,11 @@ impl<T: Trait> Module<T> {
         Ok(())
     }
 
-    fn verify_proofs(account_id: &T::AccountId, amount: &T::Balance, sorted_hashes: &Vec<T::Hash>) -> bool {
+    fn verify_proofs(
+        account_id: &T::AccountId,
+        amount: &T::Balance,
+        sorted_hashes: &Vec<T::Hash>,
+    ) -> bool {
         // Number of proofs should practically never be >30. Checking this
         // blocks abuse.
         if sorted_hashes.len() > 30 {
@@ -199,7 +206,8 @@ impl<T: Trait> Module<T> {
 
         // Generate root hash
         let leaf_hash = T::Hashing::hash(&v);
-        let mut root_hash = sorted_hashes.iter()
+        let mut root_hash = sorted_hashes
+            .iter()
             .fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
 
         // Initial runs might only have trees of single leaves,
@@ -215,21 +223,16 @@ impl<T: Trait> Module<T> {
 impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
     type Call = Call<T>;
 
-    fn validate_unsigned(
-        _source: TransactionSource,
-        call: &Self::Call,
-    ) -> TransactionValidity {
+    fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
         if let Call::claim(account_id, amount, sorted_hashes) = call {
             // Check that proofs are valid with a root that exists in the root hash storage
             if Self::verify_proofs(account_id, amount, sorted_hashes.into()) {
                 return ValidTransaction::with_tag_prefix("RadClaims")
                     .priority(T::UnsignedPriority::get())
                     .and_provides((account_id, amount, sorted_hashes))
-                    .longevity(TryInto::<u64>::try_into(
-                        T::Longevity::get())
-                        .unwrap_or(64_u64))
+                    .longevity(TryInto::<u64>::try_into(T::Longevity::get()).unwrap_or(64_u64))
                     .propagate(true)
-                    .build()
+                    .build();
             } else {
                 return InvalidTransaction::BadProof.into();
             }
@@ -244,18 +247,18 @@ mod tests {
     use super::*;
 
     use frame_support::{
-        assert_err, assert_ok, impl_outer_origin,
-        ord_parameter_types, parameter_types, weights::Weight,
+        assert_err, assert_ok, impl_outer_origin, ord_parameter_types, parameter_types,
+        weights::Weight,
     };
     use frame_system::EnsureSignedBy;
+    pub use pallet_balances as balances;
+    use pallet_balances::Error as BalancesError;
     use sp_core::H256;
     use sp_runtime::Perbill;
     use sp_runtime::{
         testing::Header,
         traits::{BadOrigin, BlakeTwo256, Hash, IdentityLookup},
     };
-    pub use pallet_balances as balances;
-    use pallet_balances::Error as BalancesError;
 
     impl_outer_origin! {
         pub enum Origin for Test  where system = frame_system {}
@@ -345,17 +348,24 @@ mod tests {
         let claims_module_id = MODULE_ID.into_account();
         // pre-fill balances
         pallet_balances::GenesisConfig::<Test> {
-            balances: vec![(ADMIN, ENDOWED_BALANCE), (USER_A, 1), (claims_module_id, ENDOWED_BALANCE)],
+            balances: vec![
+                (ADMIN, ENDOWED_BALANCE),
+                (USER_A, 1),
+                (claims_module_id, ENDOWED_BALANCE),
+            ],
         }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        .assimilate_storage(&mut t)
+        .unwrap();
         t.into()
     }
 
     #[test]
     fn can_upload_account() {
         new_test_ext().execute_with(|| {
-            assert_err!(RadClaims::can_update_upload_account(Origin::signed(USER_A)), BadOrigin);
+            assert_err!(
+                RadClaims::can_update_upload_account(Origin::signed(USER_A)),
+                BadOrigin
+            );
             assert_ok!(RadClaims::can_update_upload_account(Origin::signed(ADMIN)));
         });
     }
@@ -365,20 +375,51 @@ mod tests {
         new_test_ext().execute_with(|| {
             let amount: u128 = 100 * currency::RAD;
             let sorted_hashes_long: [H256; 31] = [
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into()
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
             ];
 
             // Abuse DDoS attach check
-            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &sorted_hashes_long.to_vec()), false);
+            assert_eq!(
+                RadClaims::verify_proofs(&USER_B, &amount, &sorted_hashes_long.to_vec()),
+                false
+            );
 
             // Wrong sorted hashes for merkle tree
             let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
-            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), false);
+            assert_eq!(
+                RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()),
+                false
+            );
 
             let mut v: Vec<u8> = USER_B.encode();
             v.extend(amount.encode());
@@ -387,12 +428,18 @@ mod tests {
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
             let leaf_hash = <Test as frame_system::Config>::Hashing::hash(&v);
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
-            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
+            assert_eq!(
+                RadClaims::verify_proofs(&USER_B, &amount, &[].to_vec()),
+                true
+            );
 
             // Two-leaf tree
             let root_hash = RadClaims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
-            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), true);
+            assert_eq!(
+                RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()),
+                true
+            );
 
             // 10-leaf tree
             let leaf_hash_0: H256 = [0; 32].into();
@@ -415,9 +462,17 @@ mod tests {
             let node_000 = RadClaims::sorted_hash_of(&node_00, &node_01);
             let node_root = RadClaims::sorted_hash_of(&node_000, &node_4);
 
-            let four_sorted_hashes: [H256; 4] = [leaf_hash_3.into(), node_0.into(), node_01.into(), node_4.into()];
+            let four_sorted_hashes: [H256; 4] = [
+                leaf_hash_3.into(),
+                node_0.into(),
+                node_01.into(),
+                node_4.into(),
+            ];
             assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), node_root));
-            assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &four_sorted_hashes.to_vec()), true);
+            assert_eq!(
+                RadClaims::verify_proofs(&USER_B, &amount, &four_sorted_hashes.to_vec()),
+                true
+            );
         });
     }
 
@@ -425,7 +480,10 @@ mod tests {
     fn set_upload_account() {
         new_test_ext().execute_with(|| {
             assert_eq!(RadClaims::get_upload_account(), 0x0);
-            assert_err!(RadClaims::set_upload_account(Origin::signed(USER_A), USER_A), BadOrigin);
+            assert_err!(
+                RadClaims::set_upload_account(Origin::signed(USER_A), USER_A),
+                BadOrigin
+            );
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), USER_A));
             assert_eq!(RadClaims::get_upload_account(), USER_A);
         });
@@ -452,7 +510,7 @@ mod tests {
     fn pre_calculate_single_root(
         account_id: &<Test as frame_system::Config>::AccountId,
         amount: &<Test as pallet_balances::Trait>::Balance,
-        other_hash: &<Test as frame_system::Config>::Hash
+        other_hash: &<Test as frame_system::Config>::Hash,
     ) -> H256 {
         let mut v: Vec<u8> = account_id.encode();
         v.extend(amount.encode());
@@ -470,7 +528,12 @@ mod tests {
 
             // Bad origin, signed vs unsigned
             assert_err!(
-                RadClaims::claim(Origin::signed(USER_B), USER_B, amount, one_sorted_hashes.to_vec()),
+                RadClaims::claim(
+                    Origin::signed(USER_B),
+                    USER_B,
+                    amount,
+                    one_sorted_hashes.to_vec()
+                ),
                 BadOrigin
             );
 
@@ -483,47 +546,77 @@ mod tests {
             // Set valid proofs
             assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
 
-            let short_root_hash = pre_calculate_single_root(
-                &USER_B, &(4 * currency::RAD), &one_sorted_hashes[0]);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), short_root_hash));
+            let short_root_hash =
+                pre_calculate_single_root(&USER_B, &(4 * currency::RAD), &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(
+                Origin::signed(ADMIN),
+                short_root_hash
+            ));
 
             // Minimum payout not met
             assert_err!(
-                RadClaims::claim(Origin::none(), USER_B, 4 * currency::RAD, one_sorted_hashes.to_vec()),
+                RadClaims::claim(
+                    Origin::none(),
+                    USER_B,
+                    4 * currency::RAD,
+                    one_sorted_hashes.to_vec()
+                ),
                 Error::<Test>::UnderMinPayout
             );
 
-            let long_root_hash = pre_calculate_single_root(
-                &USER_B, &(10001 * currency::RAD), &one_sorted_hashes[0]);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), long_root_hash));
+            let long_root_hash =
+                pre_calculate_single_root(&USER_B, &(10001 * currency::RAD), &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(
+                Origin::signed(ADMIN),
+                long_root_hash
+            ));
 
             // Claims Module Account does not have enough balance
             assert_err!(
-                RadClaims::claim(Origin::none(), USER_B, 10001 * currency::RAD, one_sorted_hashes.to_vec()),
+                RadClaims::claim(
+                    Origin::none(),
+                    USER_B,
+                    10001 * currency::RAD,
+                    one_sorted_hashes.to_vec()
+                ),
                 BalancesError::<Test, _>::InsufficientBalance
             );
 
             // Ok
-            let ok_root_hash = pre_calculate_single_root(
-                &USER_B, &amount, &one_sorted_hashes[0]);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), ok_root_hash));
+            let ok_root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(
+                Origin::signed(ADMIN),
+                ok_root_hash
+            ));
 
             let account_balance = <pallet_balances::Module<Test>>::free_balance(USER_B);
-            assert_ok!(RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()));
+            assert_ok!(RadClaims::claim(
+                Origin::none(),
+                USER_B,
+                amount,
+                one_sorted_hashes.to_vec()
+            ));
             assert_eq!(RadClaims::get_account_balance(USER_B), amount);
             let account_new_balance = <pallet_balances::Module<Test>>::free_balance(USER_B);
             assert_eq!(account_new_balance, account_balance + amount);
 
             // Knowing that account has a balance of 100, trying to claim 50 will fail
             // Since balance logic is accumulative
-            let past_root_hash = pre_calculate_single_root(
-                &USER_B, &(50 * currency::RAD), &one_sorted_hashes[0]);
-            assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), past_root_hash));
+            let past_root_hash =
+                pre_calculate_single_root(&USER_B, &(50 * currency::RAD), &one_sorted_hashes[0]);
+            assert_ok!(RadClaims::store_root_hash(
+                Origin::signed(ADMIN),
+                past_root_hash
+            ));
             assert_err!(
-                RadClaims::claim(Origin::none(), USER_B, 50 * currency::RAD, one_sorted_hashes.to_vec()),
+                RadClaims::claim(
+                    Origin::none(),
+                    USER_B,
+                    50 * currency::RAD,
+                    one_sorted_hashes.to_vec()
+                ),
                 Error::<Test>::InsufficientBalance
             );
-
         });
     }
 
@@ -532,12 +625,37 @@ mod tests {
         new_test_ext().execute_with(|| {
             let amount: u128 = 100 * currency::RAD;
             let sorted_hashes_long: [H256; 31] = [
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
-                [0; 32].into()
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
+                [0; 32].into(),
             ];
 
             // Abuse DDoS attach check
