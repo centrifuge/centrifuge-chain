@@ -30,28 +30,22 @@
 
 use crate as pallet_crowdloan_reward;
 
-use frame_support::{
-  parameter_types,
-  weights::Weight
-};
+use frame_support::{parameter_types, traits::Contains, weights::Weight};
 
 use frame_system::EnsureSignedBy;
 
 use sp_core::H256;
 
-use sp_io::TestExternalities;
-
 use sp_runtime::{
-  testing::Header,
-  traits::{ 
+  ModuleId, 
+  Perbill, 
+  testing::Header, traits::{ 
     BlakeTwo256,
     IdentityLookup
-  }
+  },
 };
 
 use crate::traits::WeightInfo;
-
-use frame_system as system;
 
 
 // ----------------------------------------------------------------------------
@@ -79,11 +73,12 @@ impl WeightInfo for MockWeightInfo {
   }
 
   fn set_conversion_rate() ->  Weight {
-    10_000 as Weight
+    0 as Weight
   }
 
   fn set_direct_payout_ratio() ->  Weight {
     0 as Weight
+  }
 }
 
 type AccountId = u64;
@@ -102,21 +97,16 @@ frame_support::construct_runtime!(
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
     Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
     Vesting: pallet_vesting::{Module, Call, Config<T>, Storage, Event<T>},
-    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
+    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config<T>, Storage, Event<T>},
   }
 );
 
-parameter_types! {
-  pub const BlockHashCount: u64 = 250;
-  pub const MaximumBlockWeight: Weight = 1024;
-  pub const MaximumBlockLength: u32 = 2 * 1024;
-  pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-}
-
+// Parameterize balances pallet
 parameter_types! {
   pub const MaxLocks: u32 = 10;
 }
 
+// Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for MockRuntime {
   type MaxLocks = ();
   type Balance = Balance;
@@ -127,11 +117,13 @@ impl pallet_balances::Config for MockRuntime {
   type WeightInfo = ();
 }
 
+// Parameterize vesting pallet
 parameter_types! {
   pub const TestMinVestedTransfer: u64 = 16;
   pub static TestExistentialDeposit: u64 = 1;
 }
 
+// Implement vesting pallet configuration for mock runtime
 impl pallet_vesting::Config for MockRuntime {
   type Event = Event;
   type Currency = Balances;
@@ -140,20 +132,20 @@ impl pallet_vesting::Config for MockRuntime {
   type WeightInfo = ();
 }
 
+// Parameterize crowdloan reward pallet configuration
 parameter_types! {
   pub const One: u64 = 1;
+  pub const CrowdloanModuleId: ModuleId = ModuleId(*b"cc/rwrd");
 }
 
-parameter_types! {
-  pub const One: u64 = 1;
-}
-
+// Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
   type Event = Event;
+  type ModuleId = CrowdloanModuleId;
   type RelayChainBalance = Balance;
   type RelayChainAccountId = AccountId;
   type AdminOrigin = EnsureSignedBy<One, u64>;
-  type WeightInfo = TestWeightInfo;
+  type WeightInfo = MockWeightInfo;
 }
 
 impl Contains<u64> for One {
@@ -162,7 +154,16 @@ impl Contains<u64> for One {
   }
 }
 
-impl system::Config for MockRuntime {
+// Parameterize frame system pallet
+parameter_types! {
+  pub const BlockHashCount: u64 = 250;
+  pub const MaximumBlockWeight: Weight = 1024;
+  pub const MaximumBlockLength: u32 = 2 * 1024;
+  pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+}
+
+// Implement frame system pallet configuration for mock runtime
+impl frame_system::Config for MockRuntime {
   type BaseCallFilter = ();
   type BlockWeights = ();
   type BlockLength = ();
@@ -192,22 +193,25 @@ impl system::Config for MockRuntime {
 // Test externalities
 // ----------------------------------------------------------------------------
 
-// Declare test externalities builder structure
-pub struct ExternalityBuilder {
+// Test externalities builder type declaraction.
+//
+// This type is mainly used for mocking storage in tests. It is the type alias 
+// for an in-memory, hashmap-based externalities implementation.
+pub struct TestExternalitiesBuilder {
   existential_deposit: u64
 }
 
 // Implement default trait for test externalities builder 
-impl Default for ExtBuilder {
+impl Default for TestExternalitiesBuilder {
   fn default() -> Self {
-      Self {
-          existential_deposit: 1,
-      }
+    Self {
+      existential_deposit: 1,
+    }
   }
 }
 
 // Implement test externalities builder
-impl ExternalityBuilder {
+impl TestExternalitiesBuilder {
   pub(crate) fn existential_deposit(mut self, existential_deposit: u64) -> Self {
     self.existential_deposit = existential_deposit;
     self
@@ -219,33 +223,33 @@ impl ExternalityBuilder {
     let mut t = frame_system::GenesisConfig::default().build_storage::<MockRuntime>().unwrap();
 
     pallet_balances::GenesisConfig::<MockRuntime> {
-        balances: vec![
-            (1, 10 * self.existential_deposit),
-            (2, 20 * self.existential_deposit),
-            (3, 30 * self.existential_deposit),
-            (4, 40 * self.existential_deposit),
-            (12, 10 * self.existential_deposit),
-            (super::MODULE_ID.into_account(), 101 * self.existential_deposit),
-        ],
+      balances: vec![
+        (1, 10 * self.existential_deposit),
+        (2, 20 * self.existential_deposit),
+        (3, 30 * self.existential_deposit),
+        (4, 40 * self.existential_deposit),
+        (12, 10 * self.existential_deposit),
+        (T::ModuleId.into_account(), 101 * self.existential_deposit),
+      ],
     }.assimilate_storage(&mut t).unwrap();
 
     pallet_vesting::GenesisConfig::<MockRuntime> {
-        vesting: vec![
-            (1, 0, 10, 5 * self.existential_deposit),
-            (2, 10, 20, 0),
-            (12, 10, 20, 5 * self.existential_deposit)
-        ],
+      vesting: vec![
+        (1, 0, 10, 5 * self.existential_deposit),
+        (2, 10, 20, 0),
+        (12, 10, 20, 5 * self.existential_deposit)
+      ],
     }.assimilate_storage(&mut t).unwrap();
 
 
-    pallet_rewards::GenesisConfig {
-        conversion: 80,
-        direct_payout: 20,
+    pallet_crowdloan_reward::GenesisConfig {
+      conversion: 80,
+      direct_payout: 20,
     }.assimilate_storage(&mut t).unwrap();
 
     let mut ext = sp_io::TestExternalities::new(t);
     ext.execute_with(|| {
-        System::set_block_number(1);
+      System::set_block_number(1);
     });
     ext.execute_with(execute);
 
@@ -253,7 +257,7 @@ impl ExternalityBuilder {
   }
 }
 
-fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
+pub(crate) fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
   System::events().into_iter().map(|r| r.event).filter_map(|e| {
       if let Event::pallet_crowdloan_reward(inner) = e {
           Some(inner)

@@ -18,6 +18,17 @@
 
 //! # Crowdloan reward pallet
 //!
+//! This pallet implements a specific rewarding strategy for crowdloan
+//! campaign. It worth pointing out that this pallet works hand in hand
+//! with the [`pallet-crowdloan-claim`] pallet, the latter being responsible
+//! for managing reward claims (including security aspects, such as malicious
+//! Denial of Service or replay attacks).
+//!
+//! - \[`Config`]
+//! - \[`Call`]
+//! - \[`Pallet`]
+//! - \[`Reward`](pallet_crowdloan_claim::traits::Reward)
+//!
 //! ## Overview
 //! The function of this pallet is to provide the Centrifuge-specific reward functionality for
 //! contributors of the relay chain crowdloan. In order to provide this functionality the pallet
@@ -27,7 +38,26 @@
 //! All rewards are payed in form of a `vested_transfer` with a fixed vesting time. The vesting time
 //! is defined via the modules `Config` trait.
 //!
-//! ## Callable Functions
+//! ## Terminology
+//! For information on terms and concepts used in this pallet,
+//! please refer to the [pallet' specification document](https://centrifuge.hackmd.io/JIGbo97DSiCPFnBFN62aTQ?both).
+//!
+//! ## Goals
+//! 
+//! ## Usage
+//!
+//! ## Interface
+//!
+//! ### Supported Origins
+//! Valid origin is an administrator or root.
+//!
+//! ### Types
+//!
+//! ### Events
+//!
+//! ### Errors
+//!
+//! ### Dispatchable Functions
 //!
 //! - [`set_vesting_start`] : Origin must be admin or root, and allows to set the start of the vesting
 //!    after the initialization.
@@ -38,16 +68,21 @@
 //! - [`set_direct_payout_ratio`] : Origin must be admin or root, and allows to set the ratio between
 //!    vested and direct payout amount after the initialization.
 //!
-//! ## Implementations
+//! ### Public Functions
 //!
-//! - [`Reward`](crowdloan_claim::reward::Reward) : Rewarding functionality for contributors in a relay
-//!   chain crowdloan.
+//! ## Genesis Configuration
+//!
+//! ## Dependencies
+//! This pallet works hand in hand with [`pallet-crowdloan-claim`] pallet. In fact, it must
+//! implement this pallet's [`pallet-crowdloan-claim::traits::Reward`] trait so that to interact.
+//!
+//! ## References
 //! 
 //! ## Credits
 //! Frederik Schultz <frederik@centrifuge.io>
 
 
-// Ensure we're `no_std` when compiling for Wasm.
+// Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 
@@ -58,7 +93,7 @@
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 
-// Mock runtime and unit tests
+// Mock runtime and unit test cases
 mod mock;
 mod tests;
 
@@ -68,37 +103,60 @@ mod benchmarking;
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
 
-//use frame_support::dispatch::DispatchResult;
-use frame_support::pallet_prelude::*;
-use frame_system::{ensure_root};
-
-use sp_runtime::transaction_validity::{
-    InvalidTransaction, 
-    ValidTransaction, 
-    TransactionValidity
+use frame_support::{
+  dispatch::{
+    Codec,
+    DispatchResult,
+    fmt::Debug,
+  },
+  ensure,  
+  Parameter, 
+  sp_runtime::traits::{
+    AtLeast32BitUnsigned, 
+    CheckedSub,
+    MaybeSerializeDeserialize, 
+    Saturating, 
+  }, 
+  traits::{
+    Get, 
+    Currency, 
+    ExistenceRequirement::KeepAlive, 
+    EnsureOrigin
+  }, 
+  weights::Weight
 };
 
+use frame_system::{
+  ensure_root,
+  RawOrigin
+};
+
+use sp_runtime::{
+  ModuleId,
+  Perbill,
+  traits::{
+    Convert, 
+    CheckedDiv,
+    MaybeSerialize, 
+    Member,
+    StaticLookup,    
+    Zero,
+  }
+};
+
+// Claim reward trait to be implemented
 use pallet_crowdloan_claim::traits::Reward;
+
+pub use crate::traits::WeightInfo;
 
 
 // ----------------------------------------------------------------------------
-// Traits declaration
+// Traits and types declaration
 // ----------------------------------------------------------------------------
 
 pub mod traits {
 
-  use frame_support::{
-    weights::{Weight}
-  };
-  
-  use frame_support::sp_runtime::traits::{Member, AtLeast32BitUnsigned, MaybeSerializeDeserialize, MaybeSerialize};
-  use frame_support::Parameter;
-  use frame_support::dispatch::{Codec, DispatchResult};
-  use frame_support::dispatch::fmt::Debug;
-  use sp_runtime::traits::{MaybeDisplay, Bounded, MaybeMallocSizeOf};
-  use sp_runtime::sp_std::hash::Hash;
-  use sp_runtime::sp_std::str::FromStr;
-  
+  use super::*;
   
   /// A trait for extrinsincs weight information
   ///
@@ -114,29 +172,26 @@ pub mod traits {
   }
 } // end of 'traits' module
 
-
 /// A type alias for the balance type from this pallet's point of view.
 type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 
+// ----------------------------------------------------------------------------
+// Pallet module
+// ----------------------------------------------------------------------------
+
 // Crowdloan claim pallet module
 //
-// The name of the pallet is provided by `construct_runtime` and is used as
-// the unique identifier for the pallet's storage. It is not defined in the 
+// The name of the pallet is provided by `construct_runtime` macro and is used
+// as the unique identifier for the pallet's storage. It is not defined in the 
 // pallet itself.
 #[frame_support::pallet]
 pub mod pallet {
 
-  use sp_runtime::traits::{MaybeSerialize};
-	use frame_support::{
-    dispatch::fmt::Debug,
-    pallet_prelude::*,
-    traits::{EnsureOrigin}
-  };
-
+	use super::*;
+  use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-  pub use crate::traits::WeightInfo;
-
+  
   // Declare pallet structure placeholder
   #[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -148,9 +203,34 @@ pub mod pallet {
   // ----------------------------------------------------------------------------
 
   #[pallet::config]
-	/// Generic pallet parameters definition
-  pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_vesting::Config {
+    /// Constant configuration parameter to store the module identifier for the pallet.
+    ///
+    /// The module identifier may be of the form ```ModuleId(*b"cc/rwrd")```.
+    #[pallet::constant]
+    type ModuleId: Get<ModuleId>;
+  
+    /// Associated type for Event enum
+    type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+    /// The balance type of the relay chain
+    type RelayChainBalance: Parameter + Member + 
+      AtLeast32BitUnsigned + Codec + Default + Copy +
+      MaybeSerializeDeserialize + Debug +
+      Into<BalanceOf<Self>>;
+
+    /// AccountId of the relay chain
+    type RelayChainAccountId: Parameter + Member + 
+      MaybeSerializeDeserialize + Debug + 
+      MaybeSerialize + Ord +
+      Default;
+
+    /// Admin or the module. I.e. this is necessary in cases, where the vesting parameters need
+    /// to be changed without an additional initialization.
+    type AdminOrigin: EnsureOrigin<Self::Origin>;
+
+    /// Weight information for extrinsics in this pallet
+    type WeightInfo: WeightInfo;
   }
   
 
@@ -164,7 +244,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
   // Additional argument to specify the metadata to use for given type
 	#[pallet::metadata(T::AccountId = "AccountId")]
-  pub enum Event<T> {
+  pub enum Event<T: Config> {
     /// Event emitted when a reward claim was processed successfully.
     /// \[who, direct_reward, vested_reward\]
     RewardClaimed(T::AccountId, BalanceOf<T>, BalanceOf<T>),
@@ -184,7 +264,7 @@ pub mod pallet {
     UpdateVestingPeriod(T::BlockNumber),
   
     /// Start of vesting has been updated
-    UpadteVestingStart(T::BlockNumber),
+    UpdateVestingStart(T::BlockNumber),
   }
 
 
@@ -195,7 +275,7 @@ pub mod pallet {
   /// The conversion rate between relay chain and native chain balances.
   #[pallet::storage]
   #[pallet::getter(fn conversion_rate)]      
-  pub(super) type ConversionRate<T: Config>  = StorageValue<_, Perbill, ValueQuery>;
+  pub(super) type ConversionRate<T: Config> = StorageValue<_, Perbill, ValueQuery>;
         
   /// Which ratio of the rewards are payed directly. The rest is transferred via a vesting schedule.
   #[pallet::storage]
@@ -217,31 +297,22 @@ pub mod pallet {
   // Pallet genesis configuration
   // ----------------------------------------------------------------------------
 
-  // Pallet genesis configuration type definition
+  /// Pallet genesis configuration type declaration.
+  ///
+  /// It allows to build genesis storage.
   #[pallet::genesis_config]
-	#[derive(Default)]
-	pub struct GenesisConfig<T: Config> {
+  #[derive(Default)]
+	pub struct GenesisConfig {
     conversion: u32,
     direct_payout: u32
   }
 
-  // Default genesis configuration settings
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-        conversion: Default::default(),
-				direct_payout: Default::default()
-			}
-		}
-	}
-
-  // Build of the genesis configuration for the pallet
+  // Implement genesis configuration for the pallet
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 	 	fn build(&self) {
-      <ConversionRate<T>>::put(RatePerbill::from_percent(self.conversion));
-      <DirectPayoutRatio<T>>::put(RatePerbill::from_percent(self.direct_payout));
+      <ConversionRate<T>>::put(Perbill::from_percent(self.conversion));
+      <DirectPayoutRatio<T>>::put(Perbill::from_percent(self.direct_payout));
 		}
 	}
 
@@ -283,7 +354,6 @@ pub mod pallet {
 
   #[pallet::error]
 	pub enum Error<T> {
-
     /// Invalid call to an administrative extrinsics
     MustBeAdministrator,
 
@@ -308,23 +378,22 @@ pub mod pallet {
   #[pallet::call]
 	impl<T:Config> Pallet<T> {
 
-    /// Set start of vesting period.
-    ///
-    #[pallet::weight(T::WeightInfo::set_vesting_start())]
+    /// Set the start of the vesting period.
+    #[pallet::weight(<T as pallet::Config>::WeightInfo::set_vesting_start())]
     pub(crate) fn set_vesting_start(origin: OriginFor<T>, start: T::BlockNumber) -> DispatchResultWithPostInfo {
-        T::AdminOrigin::try_origin(origin)
-            .map(|_| ())
-            .or_else(ensure_root)?;
+      // Ensure that only an administrator or root entity triggered the transaction
+      ensure!(Self::is_origin_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
 
-        ensure!(
-            start >= <frame_system::Module<T>>::block_number(),
-            Error::<T>::ElapsedTime
-        );
-        <VestingStart<T>>::put(start);
+      ensure!(
+        start >= <frame_system::Module<T>>::block_number(),
+        Error::<T>::ElapsedTime
+      );
 
-        Self::deposit_event(Event::UpadteVestingStart(start));
+      <VestingStart<T>>::put(start);
 
-        Ok(().into)
+      Self::deposit_event(Event::UpdateVestingStart(start));
+
+      Ok(().into())
     }
 
     /// Set vesting period.
@@ -332,10 +401,10 @@ pub mod pallet {
     /// This administrative transaction allows to modify the vesting period
     /// after a previous [`initialize`] transaction was triggered in order
     /// to perform seminal pallet configuration.
-    #[pallet::weight(T::WeightInfo::set_vesting_period())]
+    #[pallet::weight(<T as pallet::Config>::WeightInfo::set_vesting_period())]
     pub(crate)fn set_vesting_period(origin: OriginFor<T>, period: T::BlockNumber) -> DispatchResultWithPostInfo {
       // Ensure that only an administrator or root entity triggered the transaction
-      ensure!(Self::is_origin_administrator, Error::<T>::MustBeAdministrator);
+      ensure!(Self::is_origin_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
       
       <VestingPeriod<T>>::put(period);
 
@@ -351,13 +420,13 @@ pub mod pallet {
     /// tokens. This dispatchable function is used to modify the
     /// rate of conversion after the pallet has already been
     /// initialized via [`initialize`] transaction.
-    #[pallet::weight(T::WeightInfo::set_conversion_rate())]
+    #[pallet::weight(<T as pallet::Config>::WeightInfo::set_conversion_rate())]
     pub(crate)fn set_conversion_rate(origin: OriginFor<T>, rate: u32) -> DispatchResultWithPostInfo {
       // Ensure that only an administrator or root entity triggered the transaction
-      ensure!(Self::is_origin_administrator, Error::<T>::MustBeAdministrator);
+      ensure!(Self::is_origin_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
 
       let rate = Perbill::from_percent(rate);
-      <ConversionRate>::put(rate);
+      <ConversionRate<T>>::put(rate);
 
       Self::deposit_event(Event::UpdateConversionRate(rate));
 
@@ -369,14 +438,14 @@ pub mod pallet {
     /// This administrative function allows to modify the ratio
     /// between vested and direct payout amount after the pallet
     /// was initialized via a call to the [`initialize`] transaction.
-    #[pallet::weight(T::WeightInfo::set_direct_payout_ratio())]
+    #[pallet::weight(<T as pallet::Config>::WeightInfo::set_direct_payout_ratio())]
     pub(crate) fn set_direct_payout_ratio(origin: OriginFor<T>, ratio: u32) -> DispatchResultWithPostInfo {
       // Ensure that only an administrator or root entity triggered the transaction
-      ensure!(Self::is_origin_administrator, Error::<T>::MustBeAdministrator);
+      ensure!(Self::is_origin_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
       
       let ratio = Perbill::from_percent(ratio);
       
-      <DirectPayoutRatio>::put(ratio);
+      <DirectPayoutRatio<T>>::put(ratio);
 
       Self::deposit_event(Event::UpdateDirectPayoutRatio(ratio));
 
@@ -390,15 +459,127 @@ pub mod pallet {
 // Pallet implementation block
 // ----------------------------------------------------------------------------
 
-// Public and privatate functions implementation
+// Pallet implementation block.
+//
+// This main implementation block contains two categories of functions, namely:
+// - Public functions: These are functions that are `pub` and generally fall into 
+//   inspector functions (i.e. immutables) that do not write to storage and operation 
+//   functions that do (i.e. mutables).
+// - Private functions: These are private helpers or utilities that cannot be called 
+//   from other pallets.
 impl<T: Config> Pallet<T> {
+
+  /// The account ID of the crowdclaim reward pallet.
+	///
+	/// This actually does computation. If you need to keep using it, then make sure you cache the
+	/// value and only call this once.
+	pub fn account_id() -> T::AccountId {
+		T::ModuleId::get().into_account()
+	}
+
+  // Check if a transaction was called by an administrator or root entity.
+  fn is_origin_administrator(origin: T::Origin) -> DispatchResult {
+    T::AdminOrigin::try_origin(origin)
+      .map(|_| ())
+      .or_else(ensure_root)?;
+
+    Ok(())
+  }  
+
+  // Convert a contribution in relay chain's token to the parachain's native token
+  fn convert_to_native(contribution: T::RelayChainBalance) -> BalanceOf<T> {
+    //(contribution.into()/Self::full_percent()) * Self::conversion_rate()
+    let contribution = Into::<BalanceOf<T>>::into(contribution);
+    Self::conversion_rate() *  contribution
+  }
+}
+
+
+// ----------------------------------------------------------------------------
+// Reward trait implementation
+// ----------------------------------------------------------------------------
+
+// Reward trait implementation for the pallet
+impl<T: Config> Reward for Pallet<T>
+  where BalanceOf<T>: Send + Sync
+{
+  type ParachainAccountId = T::AccountId;
+  type ContributionAmount = T::RelayChainBalance;
+  type BlockNumber = T::BlockNumber;
+
+  // Configure reward pallet
+  fn initialize(
+      conversion_rate: u32,
+      direct_payout_ratio: u32,
+      vesting_period: Self::BlockNumber,
+      vesting_start: Self::BlockNumber
+  ) -> DispatchResult
+  {
+    ensure!(
+      vesting_start >= <frame_system::Module<T>>::block_number(),
+      Error::<T>::ElapsedTime
+    );
+
+    <VestingStart<T>>::set(vesting_start);
+    <VestingPeriod<T>>::set(vesting_period);
+
+    let ratio = Perbill::from_percent(direct_payout_ratio);
+    <DirectPayoutRatio<T>>::put(ratio);
+
+    let rate = Perbill::from_percent(conversion_rate);
+    <ConversionRate<T>>::set(rate);
+
+    Self::deposit_event(Event::RewardModuleInitialized(
+        vesting_start,
+        vesting_period,
+        rate,
+        ratio)
+    );
+
+    Ok(())
+  }
+
+
+  // Reward a payout for a claim on a given parachain account
+  fn reward(who: Self::ParachainAccountId, contribution: Self::ContributionAmount) -> DispatchResult {
+    let reward = Self::convert_to_native(contribution);
+    let from: <T as frame_system::Config>::AccountId = Self::account_id();
     
-    // Check if a transaction was called by an administrator or root entity.
-    fn is_origin_administrator(origin: T::OriginFor<T>) -> DispatchResult {
-      T::AdminOrigin::try_origin(origin)
-        .map(|_| ())
-        .or_else(ensure_root)?;
-  
-      Ok(())
-    }  
+    // Ensure transfer will go through and we want to keep the module account alive.
+    let free_balance = <T as pallet_vesting::Config>::Currency::free_balance(&from)
+      .checked_sub(&<T as pallet_vesting::Config>::Currency::minimum_balance()).unwrap_or(Zero::zero());
+    ensure!( free_balance > reward, Error::<T>::NotEnoughFunds );
+
+    let direct_reward = Self::direct_payout_ratio() * reward;
+    let vested_reward = (Perbill::one().saturating_sub(Self::direct_payout_ratio())) * reward;
+
+    ensure!(
+      vested_reward >= <T as pallet_vesting::Config>::MinVestedTransfer::get(),
+      pallet_vesting::Error::<T>::AmountLow
+    );
+
+    // Ensure the division is correct or we give everything on the first block
+    let per_block = vested_reward.checked_div(&<<T as pallet_vesting::Config>::BlockNumberToBalance>::convert(Self::vesting_period()))
+      .unwrap_or(vested_reward);
+    
+      let schedule = pallet_vesting::VestingInfo {
+      locked: vested_reward,
+      per_block,
+      starting_block: Self::vesting_start()
+    };
+
+    let to = <T::Lookup as StaticLookup>::unlookup(who.clone());
+
+    <pallet_vesting::Module<T>>::vested_transfer(
+      T::Origin::from(RawOrigin::Signed(from.clone())),
+      to,
+      schedule
+    )?;
+
+    T::Currency::transfer(&from, &who, direct_reward, KeepAlive)?;
+
+    Self::deposit_event(Event::RewardClaimed(who, direct_reward, vested_reward));
+
+    Ok(())
+  }
 }
