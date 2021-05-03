@@ -103,13 +103,14 @@ mod benchmarking;
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
 
+// Runtime, system and frame primitives
 use frame_support::{
   dispatch::{
     Codec,
     DispatchResult,
     fmt::Debug,
   },
-  ensure,  
+  ensure,
   Parameter, 
   sp_runtime::traits::{
     AtLeast32BitUnsigned, 
@@ -135,6 +136,7 @@ use sp_runtime::{
   ModuleId,
   Perbill,
   traits::{
+    AccountIdConversion,
     Convert, 
     CheckedDiv,
     MaybeSerialize, 
@@ -147,6 +149,7 @@ use sp_runtime::{
 // Claim reward trait to be implemented
 use pallet_crowdloan_claim::traits::Reward;
 
+// Extrinsics weight information
 pub use crate::traits::WeightInfo;
 
 
@@ -206,10 +209,28 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_vesting::Config {
     /// Constant configuration parameter to store the module identifier for the pallet.
     ///
-    /// The module identifier may be of the form ```ModuleId(*b"cc/rwrd")```.
+    /// The module identifier may be of the form ```ModuleId(*b"cc/rwrd")```. This
+    /// constant is set when building this config trait for the runtime.
+    ///
+    /// # Example
+    /// ```rust
+    /// …
+    /// // Parameterize crowdloan reward pallet configuration
+    /// parameter_types! {
+    ///   pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rwrd");
+    /// }
+    ///
+    /// // Implement crowdloan reward pallet's configuration trait for the runtime
+    /// impl pallet_crowdloarn_reward::Config for Runtime {
+    ///   type Event = Event;
+    ///   type WeightInfo = ();
+    ///   type ModuleId = CrowdloanRewardModuleId;
+    /// }
+    /// …
+    /// ```
     #[pallet::constant]
     type ModuleId: Get<ModuleId>;
-  
+    
     /// Associated type for Event enum
     type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -462,19 +483,21 @@ pub mod pallet {
 // Pallet implementation block.
 //
 // This main implementation block contains two categories of functions, namely:
-// - Public functions: These are functions that are `pub` and generally fall into 
-//   inspector functions (i.e. immutables) that do not write to storage and operation 
-//   functions that do (i.e. mutables).
-// - Private functions: These are private helpers or utilities that cannot be called 
-//   from other pallets.
+//
+// - Public functions: These are functions that are `pub` and generally fall
+//   into inspector functions (i.e. immutables) that do not write to storage 
+//   and operation functions that do (i.e. mutables).
+//
+// - Private functions: These are private helpers or utilities that cannot be
+//   called from other pallets.
 impl<T: Config> Pallet<T> {
 
-  /// The account ID of the crowdclaim reward pallet.
+  /// Return the account identifier of the crowdloan reward pallet.
 	///
-	/// This actually does computation. If you need to keep using it, then make sure you cache the
-	/// value and only call this once.
+	/// This actually does computation. If you need to keep using it, then make
+	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
-		T::ModuleId::get().into_account()
+	  T::ModuleId::get().into_account()
 	}
 
   // Check if a transaction was called by an administrator or root entity.

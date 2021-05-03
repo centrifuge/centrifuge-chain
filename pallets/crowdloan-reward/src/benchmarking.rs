@@ -69,7 +69,7 @@ use frame_system::RawOrigin;
 
 benchmarks!{
   
-  sample_benchmark_name {
+git   sample_benchmark_name {
     // setup initial state
   }: {
     // benchmark code

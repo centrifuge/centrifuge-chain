@@ -135,13 +135,13 @@ impl pallet_vesting::Config for MockRuntime {
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
   pub const One: u64 = 1;
-  pub const CrowdloanModuleId: ModuleId = ModuleId(*b"cc/rwrd");
+  pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rwrd");
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
   type Event = Event;
-  type ModuleId = CrowdloanModuleId;
+  type ModuleId = CrowdloanRewardModuleId;
   type RelayChainBalance = Balance;
   type RelayChainAccountId = AccountId;
   type AdminOrigin = EnsureSignedBy<One, u64>;
