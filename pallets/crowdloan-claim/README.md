@@ -1,18 +1,18 @@
-# Claim Module for Crowdloan Campaign
+# Crowdloan Claim Pallet
 
 <!-- TOC -->
 
-- [Claim Module for Crowdloan Campaign](#claim-module-for-crowdloan-campaign)
+- [Crowdloan Claim Pallet](#crowdloan-claim-pallet)
   - [Overview](#overview)
-  - [Module Usage](#module-usage)
-    - [Add the Module to your Runtime](#add-the-module-to-your-runtime)
+  - [Pallet Usage](#pallet-usage)
+    - [Add the Pallet to your Runtime](#add-the-pallet-to-your-runtime)
     - [Configure your Runtime](#configure-your-runtime)
-  - [Module Dependencies](#module-dependencies)
-  - [Module Interface](#module-interface)
+  - [Pallet Dependencies](#pallet-dependencies)
+  - [Pallet Interface](#pallet-interface)
     - [Types Declaration](#types-declaration)
     - [Dispatchable Functions](#dispatchable-functions)
-    - [Module Errors](#module-errors)
-  - [Module Documentation](#module-documentation)
+    - [Pallet Errors](#pallet-errors)
+  - [Pallet Documentation](#pallet-documentation)
   - [References](#references)
   - [License](#license)
 
@@ -31,12 +31,12 @@ parachain (on a parachain account). Otherwise, if the campaign miserably fail, t
 locked DOTs are given back to the contributor.
 
 This rather "generic" Claim Module` acts as a proxy between the contributor,
-who claims a reward payout, and the `Reward Module`, that concretely implement
+who claims a reward payout, and the `Reward Pallet`, that concretely implement
 the rewarding strategy, using vesting or not, for instance.
 
-## Module Usage
+## Pallet Usage
 
-### Add the Module to your Runtime
+### Add the Pallet to your Runtime
 
 In order to add this pallet to your runtime, you should add the following lines
 to your parachain's main `Cargo.toml` file:
@@ -44,7 +44,7 @@ to your parachain's main `Cargo.toml` file:
 ```toml
 # -- snip --
 
-[dependencies.crowdloan-claim]            # <-- Add the new dependency
+[dependencies.pallet-crowdloan-claim]            # <-- Add the new dependency
 default_features = false
 git = 'https://github.com/centrifuge-chain/substrate-pallets-library.git'
 
@@ -53,29 +53,29 @@ git = 'https://github.com/centrifuge-chain/substrate-pallets-library.git'
 [features]
 std = [
     # -- snip --
-    'crowdloan-claim/std',                # <-- Add this line
+    'pallet-crowdloan-claim/std',                # <-- Add this line
 ]
 ```
 
 ### Configure your Runtime
 
-## Module Dependencies
+## Pallet Dependencies
 
-This pallet works hand in hand with the [`Reward Module`]().
+This pallet works hand in hand with the [`Reward Pallet`]().
 
-## Module Interface
+## Pallet Interface
 
 ### Types Declaration
 
-The following table describe associated types of this module:
+The following table describe associated types of this Pallet:
 
 | Associated Type | Description |
 | --------------- | ----------- |
-| `WeightInfo` | Weight information for module's dispatchable functions (or extrinsics) |
+| `WeightInfo` | Weight information for Pallet's dispatchable functions (or extrinsics) |
 
 ### Dispatchable Functions
 
-This module (or pallet)  provides the following dispatchable (or callable) functions:
+This Pallet (or pallet)  provides the following dispatchable (or callable) functions:
 
 | Function | Description | Error(s) |
 | -------- | ---------- | ----------- | -------- |
@@ -83,17 +83,17 @@ This module (or pallet)  provides the following dispatchable (or callable) funct
 | `claim_reward` | origin | … | … |
 | `claim_reward_with_identity_proof` | origin | … | … |
 
-### Module Errors
+### Pallet Errors
 
-This module exports the following errors:
+This pallet exports the following errors:
 
 | Error | Description |
 | ----- | ----------- |
 | `NotEnoughFunds` | … |
 
-## Module Documentation
+## Pallet Documentation
 
-You can see this module's reference documentation with the following command:
+You can see this pallet's reference documentation with the following command:
 
 ```sh
 $ cargo doc --package crowdloan-claim --open

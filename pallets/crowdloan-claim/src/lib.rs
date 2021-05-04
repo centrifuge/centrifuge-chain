@@ -15,34 +15,76 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # Claim module for crowdloan compaign
+//! # Crowdloan claim pallet
+//!
+//! A pallet used for claiming reward payouts for crowdloan campaigns. This
+//! does not implement the rewarding strategy, that is the role of the 
+//! [`pallet-crowdloan-reward`] pallet.
 //!
 //! - \[`Config`]
 //! - \[`Call`]
 //! - \[`Pallet`]
 //!
 //! ## Overview
+//! This pallet is used to proces reward claims from contributors who locked
+//! tokens on the Polkadot/Kusama relay chain for participating in a crowdloan
+//! campaign for a parachain slot acquisition.
 //!
-//! This module (or pallet) is used to proces reward claims from Contributors
-//! who locked tokens on the Polkadot/Kusama relay chain for participating in
-//! a crowdloan campaign for a parachain slot acquisition.
+//! This module is intimately bound to the [`pallet-crowdloan-reward`] pallet, where
+//! the rewarding strategy is implemented.
 //!
-//! This module is intimately bound to the [`crowdloan-reward `] module, where
-//! the rewarding strategy (or logic) is implemented.
+//! ## Terminology
+//! For information on terms and concepts used in this pallet,
+//! please refer to the pallet' specification document.
+//!
+//! ## Goals
+//! The aim of this pallet is to ensure that a contributor who's claiming a reward
+//! is eligible for it and avoid potential attacks, such as, for instance, Denial of
+//! Service (DoS) or spams (e.g. massive calls of unsigned claim transactions, that
+//! are free of charge and can be used as a vector to lock down the network.
 //! 
+//! ## Usage
+//!
 //! ## Interface
 //!
-//! ### Types Declaration
+//! ### Supported Origins
+//! Valid origin is an administrator or root.
+//!
+//! ### Types
+//!
+//! ### Events
+//!
+//! ### Errors
+//!
 //! ### Dispatchable Functions
 //!
-//! Callable functions (or extrinsics), also considered as transactions, materialize the module interface
-//! (or contract). Here's the callable functions implemented in this module:
+//! Callable functions (or extrinsics), also considered as transactions, materialize the
+//! pallet contract. Here's the callable functions implemented in this module:
+//!
+//! [`claim_reward_unsigned`] Note that this extrinsics is invoked via an unsigned (and hence feeless)
+//! transactions. A throttling mechanism for slowing down transactions beat exists, so that 
+//! to prevent massive malicious claims that could potentially impact the network.
 //! 
+//! ### Public Functions
+//!
+//! ## Genesis Configuration
+//!
+//! ## Dependencies
+//! As stated in the overview of this pallet, the latter relies on the [`pallet-crowdloan-reward`]
+//! pallet to implement the specific rewarding strategy of a parachain.
+//! A rewarding pallet must implement the [`pallet-crowdloan-claim::traits::Reward`] trait that is
+//! declared in this pallet.
+//! For this pallet to be able to interact with a reward pallet, it must be loosely coupled to the
+//! former using an associated type which includes the [`pallet-crowdloan-claim::traits::Reward`]
+//! trait.
+//!
 //! ## References
-//! [Building a Custom Pallet](https://substrate.dev/docs/en/tutorials/build-a-dapp/pallet). Retrieved April 5th, 2021.
+//! - [Building a Custom Pallet](https://substrate.dev/docs/en/tutorials/build-a-dapp/pallet). Retrieved April 5th, 2021.
+//!
+//! ## Credits
+//! The Centrifugians Tribe <tribe@centrifuge.io>
 
-
-// Ensure we're `no_std` when compiling for Wasm.
+// Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 
@@ -50,241 +92,495 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
+
+// Mock runtime and unit test cases
+mod mock;
+mod tests;
+
+// Runtime benchmarking features
+mod benchmarking;
+
+// Extrinsics weight information (computed through runtime benchmarking)
+pub mod weights;
+
+// Runtime, system and frame primitives
 use frame_support::{
-  decl_error, decl_event, decl_module, decl_storage, 
-  traits::{Currency}, 
-  weights::{Weight}
+  dispatch::{
+    Codec,
+    DispatchResult,
+    fmt::Debug,
+  },
+  ensure,
+  Parameter, 
+  sp_runtime::traits::{
+    AtLeast32BitUnsigned, 
+    MaybeSerialize,
+    MaybeSerializeDeserialize,
+    Member,
+  }, 
+  traits::{
+    Get, 
+    EnsureOrigin,
+  }, 
+  weights::Weight
+};
+
+use frame_system::{
+  ensure_root,
 };
 
 use sp_runtime::{
+  ModuleId,
+  sp_std::{
+    hash::Hash,
+    str::FromStr,
+  },
   traits::{
-    AtLeast32BitUnsigned,
-    Hash,
-    MaybeSerializeDeserialize,
-    Member,
-    Parameter,
+    AccountIdConversion,
+    Bounded,
+    MaybeDisplay,
+    MaybeMallocSizeOf,
   }
 };
 
-use frame_system::ensure_signed;
-
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
-// Measure the weight of the module's extrinsics (i.e. callable functions)
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-pub mod weights;
+// Extrinsics weight information
+pub use crate::traits::WeightInfo;
 
 
 // ----------------------------------------------------------------------------
-// Runtime configuration
+// Traits and types declaration
 // ----------------------------------------------------------------------------
 
-// Runtime types and constants definition.
-//
-// If the module depends on other pallets, their configuration traits should be
-// added to the inherited traits list.
-pub trait Config: frame_system::Config {
+pub mod traits {
 
-  /// This module emits events, and hence, depends on the runtime's definition of event
-  type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
-
-  /// Weight information for module's dispatchable functions (or extrinsics)
-  ///
-  /// Weights are calculated using the 
-  type WeightInfo: WeightInfo;
-
-  /// Crowdloan module storage trie root
-  ///
-  /// This type defines a hashed data structure which contains the list
-  /// of contributors who participate in the parachain slot auction, as
-  /// well as their respective amount of tokens they locked on their 
-  /// relay chain account (see RelayChainAccount)
-  type CrowdloanStorageTrieRoot: Hash;
-
-  /// Contribution currency type
-  ///
-  /// The contribution currency depends on the relay chain on which
-  /// the contributor locked her/his native tokens.
-  type ContributionCurrency: Currency<Self::AccountId>;
-
-  /// Crowdloan contribution amount.
-  type ContributionAmount: Parameter
-    + Member
-    + AtLeast32BitUnsigned
-    + Default
-    + Copy
-    + MaybeSerializeDeserialize
-    + Ord;
-
-  /// Contributor's relay chain account type.
-  ///
-  /// In order to participate to a crowdloan campaign, the contributor
-  /// locks native tokens on a relay chain account. For forgoing staking,
-  /// a reward is then paid out on a [`ContributorParachainAccountId`].
-  type ContributorRelayChainAccountId: Self::AccountId;
-}
-
-/// Callable functions (i.e. transaction) weight trait
-///
-/// See https://substrate.dev/docs/en/knowledgebase/learn-substrate/weight
-/// See https://substrate.dev/docs/en/knowledgebase/runtime/fees
-pub trait WeightInfo {
-  fn initialize() -> Weight;
-	fn claim_reward() -> Weight;
-  //fn verify_contributor() -> Weight;
-}
-
-// Define transaction weights to be used when testing
-pub struct TestWeightInfo;
-impl WeightInfo for TestWeightInfo {
-  fn initialize() -> Weight { 0 }
-	fn claim_reward() -> Weight { 0 }
-  // fn verify_contributor() -> Weight { 0 }
-}
-
-
-// ----------------------------------------------------------------------------
-// Runtime events
-// ----------------------------------------------------------------------------
-
-// Events are a simple means of reporting specific conditions and circumstances
-// that have happened that users, Dapps and/or chain explorers would find
-// interesting and otherwise difficult to detect.
-// Events can be used, for instance, to provide the module with life-cycle hooks
-// other components can bind to.
-//
-// See https://substrate.dev/docs/en/knowledgebase/runtime/events
-decl_event! { 
-
-  pub enum Event<T> where
-		AccountId = <T as frame_system::Config>::AccountId,
-    ContributorRelayChainAccountId = <T as frame_system::Config>::ContributorRelayChainAccountId
-	{
-    /// Event emitted when a reward claim was processed successfully
-    RewardClaimed(AccountId, ContributorRelayChainAccountId),
-
-    /// Event triggered when the list of contributors is successfully uploaded
-    ClaimModuleInitialized(AccountId),
-
-    /// Contributor who claimed a reward is not the owner of the rewarding account on the parachain
-    NotOwnerOfContributorAccount(AccountId),
-  }
-}
-
-
-// ----------------------------------------------------------------------------
-// Runtime storage
-// ----------------------------------------------------------------------------
-
-// This allows for type-safe usage of the Substrate storage database, so you can
-// keep things around between blocks.
-decl_storage! { 
-
-  trait Store for Module<T: Config> as Claim {
-
-    /// List of contributors and their respective contributions.
-    ///
-    /// This is a copy of the child trie root stored in the [`crownloan`] module
-    /// during the campaign. 
-    CrowdloanTrieRoot get(fn crowdloan_trie_root): T::CrowdloanStorageTrieRoot;
-
-
-    /// List of processed reward claims
-    Contributor: map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, bool);
-  }
-}
-
-
-// ----------------------------------------------------------------------------
-// Module-specific errors
-// ----------------------------------------------------------------------------
-
-decl_error! {
-
-	pub enum Error for Module<T: Config> {
-    /// Not enough funds in the pot for paying a reward payout
-    NotEnoughFunds,
+  use super::*;
   
-    /// Invalid (e.g. malicious replay attack) or malformed reward claim
-    InvalidClaim,
-
-    /// Cannot check the contributor's identity
-    UnverifiedContributor,
-  }
-}
-
-
-// ----------------------------------------------------------------------------
-// Dispatchable functions (i.e. module contract)
-// ----------------------------------------------------------------------------
-
-decl_module! {
-
-  /// Claim module declaration.
-  /// 
-  /// This defines the `Module` struct that is ultimately exported from this pallet.
-  /// It defines the callable functions that this module exposes and orchestrates
-  /// actions this pallet takes throughout block execution.
-  /// Dispatchable functions allows users to interact with the pallet and invoke state changes.
+  /// Weight information for pallet extrinsics
   ///
-  /// See https://substrate.dev/docs/en/knowledgebase/runtime/macros#decl_module
-  pub struct Module<T: Config> for enum Call where origin: T::Origin {
+  /// Weights are calculated using runtime benchmarking features.
+  /// See [`benchmarking`] module for more information. 
+  pub trait WeightInfo {
+    fn claim_reward_unsigned() -> Weight;
+    fn initialize() -> Weight;
+  }
 
-    // Initialize errors
-    //
-    // It is worth pointing out that callable functions herein do not have a return
-    // type explicitely defined. However, they are all returning DispatchResult, that is
-    // implicitely added by the `decl_module` macro.
-    type Error = Error<T>;
+  /// A trait used for (loosely) coupling the claim and the reward pallets.
+  ///
+  /// ## Overview
+  /// The crowdloan reward mechanism is separated from the crowdloan claiming process, the latter
+  /// being generic, acting as a kind of proxy to the rewarding mechanism, that is specific to 
+  /// to each crowdloan campaign. The aim of this pallet is to ensure that a claim for a reward
+  /// payout is well-formed, checking for replay attacks, spams or invalid claim (e.g. unknown
+  /// contributor, exceeding reward amount, ...).
+  /// See the [`crowdloan-reward`] pallet, that implements a reward mechanism with vesting, for
+  /// instance.
+  ///
+  /// ## Example
+  /// ```rust
+  /// 
+  /// ```
+  pub trait Reward {
 
-    // Initialize events
-    //
-    // When used by the module, the events must be first initialized.
-    fn deposit_event() = default;
+    /// The account from the parachain, that the claimer provided in her/his transaction.
+    type ParachainAccountId: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeSerialize + Ord
+      + Default;
 
-    // Initialize the claim module context
-    //
-    // # <weight>
-    // # </weight>
-    #[weight = T::WeightInfo::initialize()]
-    fn initialize() {
-      Ok(())
-    }
+    /// The contribution amount in the token of the relay chain.
+    type ContributionAmount: AtLeast32BitUnsigned + 
+      Codec +   
+      Copy +
+      Debug +
+      Default + 
+      MaybeSerializeDeserialize +
+      Member + 
+      Parameter;
 
+    /// Block number type used by the runtime
+    type BlockNumber: Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeDisplay +
+      AtLeast32BitUnsigned + Default + Bounded + Copy + Hash +
+      FromStr + MaybeMallocSizeOf;
 
-    /// Allow a contributor participating in a crowdloan campaign to claim her/his reward payout
+    /// Rewarding function that will be called ones the Claim Pallet has verified the claimer
+    /// If this function returns successfully, any subsequent claim of the same claimer will be
+    /// rejected by the claim module.
+    fn reward(who: Self::ParachainAccountId, contribution: Self::ContributionAmount) -> DispatchResult;
+
+    /// Initialize function that will be called during the initialization of the crowdloan claim pallet.
     ///
-    /// # <weight>
-    /// # </weight>
-    #[weight = T::WeightInfo::claim_reward()]
-    fn claim_reward(origin) {
+    /// The main purpose of this function is to allow a dynamic configuration of the crowdloan reward
+    /// pallet.
+    fn initialize(
+      conversion_rate: u32,
+      direct_payout_ratio: u32,
+      vesting_period: Self::BlockNumber,
+      vesting_start: Self::BlockNumber
+    ) -> DispatchResult;
+  }
+} // end of 'traits' module
 
-      // Ensure the extrinsic was signed and get the signer
-      // See https://substrate.dev/docs/en/knowledgebase/runtime/origin
-      let contributor = ensure_signed(origin)?;
 
-      // Emit an event that the reward claim was processed successfully
-      //Self::deposit_event(RawEvent::ClaimCreated(contributor));
+/// A type alias for the balance type from this pallet's point of view.
+//type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
+
+/// A type alias for contributors list's child trie root hash.
+///
+/// When setting up the pallet via the [`initialize`] transaction, the
+/// child trie root hash containing all contributions, is transfered from
+/// the [`crowdloan`] pallet' storage to [`Contributions`] storage item
+// of this pallet.
+/// The [`Contributions`] root hash is used to check if a contributor is
+/// eligible for a reward payout and to get the amount of her/his contribution
+/// (in relay chain's native token) to a crowdloan campaign.
+type ChildTrieRootHash<T> = <T as frame_system::Config>::Hash;
+
+
+// ----------------------------------------------------------------------------
+// Pallet module
+// ----------------------------------------------------------------------------
+
+// Crowdloan claim pallet module
+//
+// The name of the pallet is provided by `construct_runtime` and is used as
+// the unique identifier for the pallet's storage. It is not defined in the 
+// pallet itself.
+#[frame_support::pallet]
+pub mod pallet {
+
+	use super::*;
+  use frame_support::pallet_prelude::*;
+	use frame_system::pallet_prelude::*;
+
+  // Crowdloan claim pallet type declaration.
+  //
+  // This structure is a placeholder for traits and functions implementation
+  // for the pallet.
+  #[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	pub struct Pallet<T>(_);
+
+
+  // ----------------------------------------------------------------------------
+  // Pallet configuration
+  // ----------------------------------------------------------------------------
+
+  /// Crowdloan claim pallet's configuration trait
+  ///
+  /// Types In this configuration trait
+  #[pallet::config]
+  pub trait Config: frame_system::Config {
+
+    /// Associated type for Event enum
+    type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+    /// Constant configuration parameter to store the module identifier for the pallet.
+    ///
+    /// The module identifier may be of the form ```ModuleId(*b"cc/claim")```.
+    #[pallet::constant]
+    type ModuleId: Get<ModuleId>;
+
+    /// Contributor account on the relay chain
+/* 
+    type ContributorAccount: 
+      Debug + 
+      Default +
+      Parameter + 
+      MaybeSerialize +
+      MaybeSerializeDeserialize +
+      Member + 
+      Ord;
+*/
+
+		/// Interval (in block numbers) between two successive (unsigned) claim transactions
+    ///
+		/// This ensures that we only accept unsigned claim transactions once, every 
+    /// `ClaimInterval` blocks. A kind of trick for throttling unsigned 
+    /// transactions and prevent .
+    /// But why? In fact, a contributor claiming for a reward payout may not have 
+    /// enough parachain tokens for doing so.
+    /// So that to circumvent this problem, claim transactions are processed by the
+    /// unsigned (and hence feeless) [`claim_reward_unsigned`] transaction (or
+    /// extrinsics).
+    /// Because the [`claim_reward_unsigned`] function can be called at no cost, one
+    /// must ensure that the latter is not used by a malicious user for spams or
+    /// potential Deny of Service (DoS) attacks 
+		#[pallet::constant]
+		type ClaimInterval: Get<Self::BlockNumber>;
+
+    /// Entity which is allowed to perform administrative transactions
+    type AdminOrigin: EnsureOrigin<Self::Origin>;
+
+    /// Weight information for extrinsics in this pallet
+		type WeightInfo: WeightInfo;
+  }
+  
+
+  // ----------------------------------------------------------------------------
+  // Pallet events
+  // ----------------------------------------------------------------------------
+
+  // The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
+  #[pallet::event]
+  // The macro generates a function on Pallet to deposit an event
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+  // Additional argument to specify the metadata to use for given type
+	#[pallet::metadata(T::AccountId = "AccountId")]
+	pub enum Event<T: Config> {
+
+    /// Event triggered when a reward has already been processed.
+    /// \[who, when, amount\]
+    ClaimAlreadyProcessed(T::AccountId, u32),
+
+    /// Event emitted when the crowdloan claim pallet is properly configured.
+    PalletInitialized(),
+  }
+
+
+  // ----------------------------------------------------------------------------
+  // Pallet storage items
+  // ----------------------------------------------------------------------------
+  
+  ///  Store latest claim value
+  #[pallet::storage]
+	#[pallet::getter(fn value)]
+  pub type ClaimValue<T> = StorageValue<_, u32>;
+
+  /// List of contributors and their respective contributions.
+  ///
+  /// This child trie root hash contains the list of contributors and their respective 
+  /// contributions. Polkadot provides an efficient base-16 modified Merkle Patricia tree 
+  /// for implementing [`trie`](https://github.com/paritytech/trie) data structure.
+  /// This root hash is copied from the relaychain's [`crowdloan`](https://github.com/paritytech/polkadot/blob/rococo-v1/runtime/common/src/crowdloan.rs) 
+  /// module via the signed [`initialize`] transaction (or extrinsics). It is used to
+  /// check if a contributor is elligible for a reward payout.
+  #[pallet::storage]
+	#[pallet::getter(fn contributions)]
+  pub(super) type Contributions<T> = StorageValue<_, ChildTrieRootHash<T>>;
+
+  /// A map containing the list of claims for reward payouts that were successfuly processed
+  #[pallet::storage]
+	#[pallet::getter(fn claims)]
+  pub(super) type ClaimsProcessed<T> = StorageValue<_, u32>;
+
+  /// Defines the block when next claim transaction can be placed (called a tick)
+	///
+	/// To prevent spam (or Denial of Service - DOS) of unsigned claim transactions 
+  /// on the network, claim we only allow one transaction every `T::ClaimInterval`
+	/// blocks. This storage entry defines the next tick when a new claim transaction
+  /// can be performed. It acts as a kind of throttling mechanism for (feeless)
+  /// claim transactions to be executed at a definite beat.
+  #[pallet::storage]
+	#[pallet::getter(fn next_unsigned_transaction_at)]
+	pub(super) type ClaimTransactionTick<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery>;
+
+  
+  // ----------------------------------------------------------------------------
+  // Pallet lifecycle hooks
+  // ----------------------------------------------------------------------------
+  
+  #[pallet::hooks]
+	impl<T:Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+    // `on_initialize` is executed at the beginning of the block before any extrinsic are
+		// dispatched.
+		//
+		// This function must return the weight consumed by `on_initialize` and `on_finalize`.
+		fn on_initialize(_n: T::BlockNumber) -> Weight {
+      // TODO:
+      // Rreturn a default weight for now. It must be replaced by a weight from
+      // WeightInfo
+      0
+		}
+
+		// `on_finalize` is executed at the end of block after all extrinsic are dispatched.
+		fn on_finalize(_n: T::BlockNumber) {
+			// clean upd data/state 
+		}
+
+		// A runtime code run after every block and have access to extended set of APIs.
+		//
+		// For instance you can generate extrinsics for the upcoming produced block.
+		fn offchain_worker(_n: T::BlockNumber) {
+      // nothing done here, folks!
+		}
+  }
+
+
+  // ----------------------------------------------------------------------------
+  // Pallet errors
+  // ----------------------------------------------------------------------------
+
+  #[pallet::error]
+	pub enum Error<T> {
+    /// Cannot re-initialize the pallet
+    PalletAlreadyInitialized,
+
+    /// Claim has already been processed (replay attack, probably)
+    ClaimAlreadyProcessed,
+
+    /// Sensitive transactions can only be performed by administrator entity (e.g. Sudo or Democracy pallet)
+    MustBeAdministrator,
+
+    /// Testing error message
+    EmptyClaimValue,
+
+    /// The reward amount that is claimed does not correspond to the one of the contribution
+    InvalidClaimAmount,
+
+    /// Error raise if storage overflow
+    StorageOverflow
+  }
+
+
+  // ----------------------------------------------------------------------------
+  // Pallet dispatchable functions
+  // ----------------------------------------------------------------------------
+
+  // Declare Call struct and implement dispatchable (or callable) functions.
+  //
+  // Dispatchable functions are transactions modifying the state of the chain. They
+  // are also called extrinsics are constitute the pallet's public interface.
+  // Note that each parameter used in functions must implement `Clone`, `Debug`, 
+  // `Eq`, `PartialEq` and `Codec` traits.
+  #[pallet::call]
+	impl<T:Config> Pallet<T> {
+
+    /// Claim for a reward payout via an unsigned transaction
+    ///
+    /// An unsigned transaction is free of fees. We need such an unsigned transaction
+    /// as some contributors may not have enought parachain tokens for claiming their 
+    /// reward payout. The [`validate_unsigned`] function first checks the validity of
+    /// this transaction, so that to prevent potential frauds or attacks.
+    /// Moreover, so that to prevent unsigned transactions spam, this function can be
+    /// called only once every [`Config::ClaimInterval`] ticks (or blocks).
+		/// Transactions that call that function are de-duplicated on the pool level
+		/// via `validate_unsigned` implementation and also are rendered invalid if
+		/// the function has already been called in current "session".
+    /// It is worth pointing out that despite unsigned transactions are free of charge, 
+    /// a weight must be assigned to them so that to prevent a single block of having
+    /// infinite number of such transactions.
+    /// See [`validate_unsigned`]
+    /// See [`Config::ClaimInterval`]]
+		#[pallet::weight(T::WeightInfo::claim_reward_unsigned())]
+		pub(crate) fn claim_reward_unsigned(
+      origin: OriginFor<T>,
+      relaychain_account_id: T::AccountId,
+      parachain_account_id: T::AccountId
+    ) -> DispatchResultWithPostInfo {
+      // Ensures that the function can only be called via an unsigned transaction			
+      ensure_none(origin)?;
+
+      // Compute new claim transaction tick at which a new claim can be placed
+      Self::increment_claim_transaction_tick();
+			
+      Ok(().into())
+		}
+
+    /// Initialize the claim pallet
+    ///
+    /// This administrative function is used to transfer the list of contributors 
+    /// and their respective contributions, stored as a child trie root hash in 
+    /// the relay chain's [`crowdloan`](https://github.com/paritytech/polkadot/blob/rococo-v1/runtime/common/src/crowdloan.rs)
+    /// module, to [`Contributions`] storage item.
+    /// This transaction can only be called via a signed transactions.
+    /// The [`contributions`] parameter contains the hash of the crowdloan pallet's child 
+    /// trie root. It is later used for proving that a contributor effectively contribute
+    /// to the crowdloan campaign, and that the amount of the contribution is correct as 
+    /// well.
+    #[pallet::weight(T::WeightInfo::initialize())]
+		pub(crate) fn initialize(origin: OriginFor<T>, contributions: ChildTrieRootHash<T>) -> DispatchResultWithPostInfo {
+
+      // Ensure that only administrator entity can perform this administrative transaction
+      ensure!(Self::is_origin_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
+
+      // Store crowdloan pallet's child trie root hash (containing the list of contributors)
+      <Contributions<T>>::put(contributions);
+
       
-      Ok(())
+      // Trigger an event so that to inform that the pallet was successfully initialized
+      Self::deposit_event(Event::PalletInitialized());
+
+      Ok(().into())
     }
+  }
 
 
-    /// Verify the contributor's identity
-    ///
-    /// Before a contributor can claim a reward payout for the tokens she/he locked on
-    /// Polkadot/Kusama relay chain, her/his relay chain and parachain accounts must first
-    /// be bound together.
-    /// Being in a trustless configuration where the parachain does not know contributors, 
-    /// the latter must provide with a proof of their identity. 
-    #[weight = T::WeightInfo::verify_contributor()]
-    fn verify_contributor() {
-      Ok(())
-    }
+  // ----------------------------------------------------------------------------
+  // Pallet unsigned transactions validation
+  // ----------------------------------------------------------------------------
+
+  #[pallet::validate_unsigned]
+	impl<T: Config> ValidateUnsigned for Pallet<T> {
+		
+    type Call = Call<T>;
+
+		/// Validate unsigned transactions
+		///
+		/// Unsigned transactions are generally disallowed. However, since a contributor
+    /// claiming a reward payout may not have the necessary tokens on the parachain to
+    /// pay the fees of the claim, the [`claim_reward_unsigned`] transactions must be 
+    /// unsigned.
+    /// Here, we make sure such unsigned, and remember, feeless unsigned transactions
+    /// can be used for malicious spams or Deny of Service (DoS) attacks.
+    fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+
+      // Now let's check if the transaction has any chance to succeed.
+      let next_claim_transaction_tick = <ClaimTransactionTick<T>>::get();
+      if next_claim_transaction_tick > <frame_system::Pallet<T>>::block_number() {
+        return InvalidTransaction::Stale.into();
+      }
+
+			// For now, only the claim transaction's validity is checked
+			if let Call::claim_reward_unsigned(account_id, amount) = call {
+        // TODO [tankofzion]: to compile
+        InvalidTransaction::Call.into()
+
+        //Self::validate_transaction_parameters(&payload.block_number, &payload.price)
+			} else {
+				InvalidTransaction::Call.into()
+			}
+		}
+	}
+} // end of 'pallet' module
+
+
+// ----------------------------------------------------------------------------
+// Pallet implementation block
+// ----------------------------------------------------------------------------
+
+// Pallet implementation block.
+//
+// This main implementation block contains two categories of functions, namely:
+// - Public functions: These are functions that are `pub` and generally fall into 
+//   inspector functions that do not write to storage and operation functions that do.
+// - Private functions: These are private helpers or utilities that cannot be called 
+//   from other pallets.
+impl<T: Config> Pallet<T> {
+   
+  /// Return the account identifier of the crowdloan claim pallet.
+	///
+	/// This actually does computation. If you need to keep using it, then make
+	/// sure you cache the value and only call this once.
+	pub fn account_id() -> T::AccountId {
+	  T::ModuleId::get().into_account()
+	}
+
+  // Check if the origin is an administrator or represents the root.
+  fn is_origin_administrator(origin: T::Origin) -> DispatchResult {
+		T::AdminOrigin::try_origin(origin)
+			.map(|_| ())
+			.or_else(ensure_root)?;
+
+		Ok(())
+	}
+
+  // Compute the block (called tick) when next unsigned claim transaction can be placed.
+  fn increment_claim_transaction_tick() {
+  	
+    // Get current claim transaction tick (i.e. the block number)
+    let current_tick = <frame_system::Pallet<T>>::block_number();
+
+    // Increment the tick (namely block number) to when the next claim transaction can be placed
+    <ClaimTransactionTick<T>>::put(current_tick + T::ClaimInterval::get());
   }
 }
