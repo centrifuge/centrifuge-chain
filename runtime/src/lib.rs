@@ -6,19 +6,16 @@
 
 use sp_std::{prelude::*, convert::TryFrom};
 use frame_support::{
-    construct_runtime, parameter_types, debug, RuntimeDebug,
+    construct_runtime, parameter_types, RuntimeDebug,
     weights::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
-        U128CurrencyToVote, Currency, KeyOwnerProofSystem,
+        U128CurrencyToVote, Currency,
         Randomness, LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
-use sp_core::{
-    crypto::KeyTypeId,
-    u32_trait::{_1, _2, _3, _4}
-};
+use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
@@ -29,17 +26,15 @@ use sp_runtime::{
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
 use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
-	OpaqueKeys, NumberFor, Saturating, ConvertInto, Convert
+	BlakeTwo256, Block as BlockT, StaticLookup, ConvertInto, Convert
 };
 use frame_system::{
-    EnsureSigned, EnsureRoot, EnsureOneOf,
+    EnsureRoot,
     limits::{BlockWeights, BlockLength}};
 use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_core::OpaqueMetadata;
-use sp_io::hashing::blake2_128;
 //use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 //use pallet_grandpa::fg_primitives;
 //use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
@@ -60,7 +55,6 @@ pub use pallet_balances::Call as BalancesCall;
 
 // XCM imports
 use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance};
-use orml_xcm_support::MultiCurrencyAdapter;
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction::{self, Parent, Parachain}, MultiLocation::{self, X1, X2}, NetworkId, MultiAsset};
 use xcm_builder::{
@@ -112,7 +106,6 @@ mod rad_claims;
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
-use sp_runtime::generic::Era;
 use crate::impls::WeightToFee;
 
 // Make the WASM binary available.
@@ -420,9 +413,9 @@ impl Convert<Balance, RelayChainBalance> for NativeToRelay {
 
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
-    fn convert(id: CurrencyId) -> Option<MultiLocation> {
+    fn convert(_id: CurrencyId) -> Option<MultiLocation> {
         Some(X2(Parent, Parachain { id: ParachainInfo::get().into() }))
-	}
+    }
 }
 impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Option<CurrencyId> {
