@@ -22,16 +22,36 @@ use sp_core::{
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
+
 use sp_runtime::{
-	Perbill, Perquintill, ApplyExtrinsicResult,
-	impl_opaque_keys, generic, create_runtime_str, FixedPointNumber,
+  ApplyExtrinsicResult,
+  create_runtime_str, 
+  curve::PiecewiseLinear,
+  FixedPointNumber,
+  generic, 
+	impl_opaque_keys, 
+  ModuleId,
+	Perbill, 
+  Perquintill,
+  traits::{
+    BlakeTwo256, 
+    Block as BlockT,
+    Convert,
+    ConvertInto,
+    NumberFor,
+    OpaqueKeys,
+    self,  
+    StaticLookup, 
+    SaturatedConversion,
+    Saturating,
+  },
+  transaction_validity::{
+    TransactionPriority,
+    TransactionSource, 
+    TransactionValidity,
+  },
 };
-use sp_runtime::curve::PiecewiseLinear;
-use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
-use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
-	OpaqueKeys, NumberFor, Saturating, ConvertInto, Convert
-};
+
 use frame_system::{
     EnsureSigned, EnsureRoot, EnsureOneOf,
     limits::{BlockWeights, BlockLength}};
@@ -82,8 +102,9 @@ use impls::DealWithFees;
 // Bridge access control list pallet
 // use bridge_mapping;
 
-// Crowdloan claim module
-use crowdloan_claim;
+// Crowdloan campaign support pallets
+use pallet_crowdloan_claim;
+use pallet_crowdloan_reward;
 
 /// Used for anchor module
 pub mod anchor;
@@ -819,19 +840,40 @@ impl pallet_sudo::Config for Runtime {
     type Event = Event;
 }
 
-// Implement crowdloan claim module's configuration trait for the runtime
-//
-// See [`crowdloan-claim`]()
-impl crowdloan_claim::Config for Runtime {
-  type Call = Call;
+// Parameterize crowdloan reward pallet configuration
+parameter_types! {
+  pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
+  pub const ClaimInterval: BlockNumber = 128;
+}
+
+// Implement crowdloan claim pallet's configuration trait for the runtime
+impl pallet_crowdloan_claim::Config for Runtime {
   type Event = Event;
   type WeightInfo = ();
+  type ModuleId = CrowdloanClaimModuleId;
+  type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+  type ClaimInterval = ClaimInterval;
+}
+
+// Parameterize crowdloan reward pallet configuration
+parameter_types! {
+  pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
+}
+
+// Implement crowdloan reward pallet's configuration trait for the runtime
+impl pallet_crowdloan_reward::Config for Runtime {
+  type Event = Event;
+  type WeightInfo = ();
+  type ModuleId = CrowdloanRewardModuleId;
+  type RelayChainBalance = Balance;
+  type RelayChainAccountId = AccountId;
+  type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
-construct_runtime!(
+frame_support::construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
 		NodeBlock = node_primitives::Block,
@@ -876,8 +918,9 @@ construct_runtime!(
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 
-        // Crowdloan claim module
-        CrowdloanClaim: crowdloan_claim::{Module, Call, Storage, Event<T>, Config<T>},
+    // Crowdloan campaign claim and reward payout processing pallets
+    CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
 	}
 );
 
@@ -1034,7 +1077,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, va_registry, Registry);
             
             // add runtime benchmarking for the crowdloan claim module
-            add_benchmark!(oarams, batches, crowdloan-claim, CrowdloanClaim)
+            add_benchmark!(params, batches, pallet-crowdloan-claim, CrowdloanClaim);
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 		    Ok(batches)
