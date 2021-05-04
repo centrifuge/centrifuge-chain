@@ -58,10 +58,10 @@ use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance}
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{Junction::{self, Parent, Parachain}, MultiLocation::{self, X1, X2}, NetworkId, MultiAsset};
 use xcm_builder::{
-    IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom, AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible,
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SovereignSignedViaLocation,
+	SovereignSignedViaLocation, IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom,
+	AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible,
 };
 use xcm_executor::{
 	Config, XcmExecutor,
@@ -261,7 +261,7 @@ parameter_types! {
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
-    type SelfParaId = parachain_info::Module<Runtime>;
+	type SelfParaId = parachain_info::Module<Runtime>;
 	type DownwardMessageHandlers = cumulus_primitives_utility::UnqueuedDmpAsParent<
 		MaxDownwardMessageWeight,
 		XcmExecutor<XcmConfig>,
@@ -383,15 +383,6 @@ impl Config for XcmConfig {
     type Trader = FixedRateOfConcreteFungible<WeightPrice>;
     type ResponseHandler = (); // Don't handle responses for now.
 }
-
-// impl cumulus_pallet_xcm_handler::Config for Runtime {
-//     type Event = Event;
-//     type XcmExecutor = XcmExecutor<XcmConfig>;
-//     type UpwardMessageSender = ParachainSystem;
-//     type HrmpMessageSender = ParachainSystem;
-//     type SendXcmOrigin = EnsureRoot<AccountId>;
-//     type AccountIdConverter = LocationConverter;
-// }
 
 pub struct RelayToNative;
 impl Convert<RelayChainBalance, Balance> for RelayToNative {

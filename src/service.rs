@@ -144,7 +144,7 @@ where
 		.inherent_data_providers
 		.register_provider(sp_timestamp::InherentDataProvider)
 		.unwrap();
-    let (mut telemetry, telemetry_worker_handle) = params.other;
+	let (mut telemetry, telemetry_worker_handle) = params.other;
 	let polkadot_full_node =
 		cumulus_client_service::build_polkadot_full_node(polkadot_config, collator_key.clone(), telemetry_worker_handle).map_err(
 			|e| match e {
@@ -213,8 +213,8 @@ where
 		backend: backend.clone(),
 		network: network.clone(),
 		network_status_sinks,
-	    system_rpc_tx,
-            telemetry: telemetry.as_mut(),
+		system_rpc_tx,
+		telemetry: telemetry.as_mut(),
 	})?;
 
 	let announce_block = {
@@ -227,8 +227,8 @@ where
 			task_manager.spawn_handle(),
 			client.clone(),
 			transaction_pool,
-		    prometheus_registry.as_ref(),
-                    telemetry.as_ref().map(|x| x.handle()),
+			prometheus_registry.as_ref(),
+			telemetry.as_ref().map(|x| x.handle()),
 		);
 		let spawner = task_manager.spawn_handle();
 
