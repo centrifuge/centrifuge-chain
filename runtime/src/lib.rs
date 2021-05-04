@@ -61,7 +61,7 @@ use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
 	SovereignSignedViaLocation, IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible,
+	AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible, EnsureXcmOrigin,
 };
 use xcm_executor::{
 	Config, XcmExecutor,
@@ -285,9 +285,9 @@ pub type XcmRouter = (
 
 impl pallet_xcm::Config for Runtime {
 	type Event = Event;
-	type SendXcmOrigin = pallet_xcm::EnsureXcm<()>;
+	type SendXcmOrigin = EnsureXcmOrigin<Origin, ()>; // No allowed origins
 	type XcmRouter = XcmRouter;
-	type ExecuteXcmOrigin = pallet_xcm::EnsureXcm<()>;
+	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, ()>; // No allowed origins
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
