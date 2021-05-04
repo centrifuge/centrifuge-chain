@@ -97,10 +97,6 @@ pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/su
 pallet-sudo = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false }
 frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git",  default-features = false, optional = true }
 
-# Orml
-orml-xtokens = { branch = "stanly-update-cumulus", git = "https://github.com/stanly-johnson/open-runtime-module-library", default-features = false }
-orml-xcm-support = { branch = "stanly-update-cumulus", git = "https://github.com/stanly-johnson/open-runtime-module-library", default-features = false }
-
 [build-dependencies]
 #wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
 substrate-wasm-builder = "3.0.0"
@@ -169,8 +165,6 @@ std = [
     "xcm-executor/std",
     "xcm-builder/std",
     "cumulus-pallet-xcm/std",
-    "orml-xtokens/std",
-    "orml-xcm-support/std",
     #"cumulus-message-broker/std",
 ]
 runtime-benchmarks = ["frame-benchmarking"]

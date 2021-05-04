@@ -435,34 +435,6 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 	}
 }
 
-pub struct HandleXcm;
-impl orml_xcm_support::XcmHandler<AccountId, Call> for HandleXcm {
-    fn execute_xcm(origin: AccountId, xcm: xcm::v0::Xcm<Call>) -> sp_runtime::DispatchResult {
-        use xcm::v0::ExecuteXcm;
-		let xcm_origin = X1(Junction::AccountId32 {
-			network: xcm::v0::NetworkId::Any,
-			id: AccountId32Convert::convert(origin),
-		});
-		XcmExecutor::<XcmConfig>::execute_xcm(xcm_origin, xcm, 1000);
-		Ok(())
-	}
-}
-
-parameter_types! {
-	pub SelfLocation: MultiLocation = X2(Parent, Parachain { id: ParachainInfo::get().into() });
-}
-
-impl orml_xtokens::Config for Runtime {
-    type Event = Event;
-    type Balance = Balance;
-    type CurrencyId = CurrencyId;
-    type CurrencyIdConvert = CurrencyIdConvert;
-    type AccountId32Convert = AccountId32Convert;
-    type SelfLocation = SelfLocation;
-    type XcmHandler = HandleXcm;
-}
-
-
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
 	pub const ProxyDepositBase: Balance = 30 * CENTI_RAD;
@@ -945,13 +917,10 @@ construct_runtime!(
 		// Nft: nft::{Pallet, Call, Storage, Event<T>},
         // BridgeMapping: bridge_mapping::{Pallet, Call, Storage},
         ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>},
-            //        XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Event<T>, Origin},
             PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
             CumulusXcm: cumulus_pallet_xcm::{Pallet, Origin},
 	    XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>},
         ParachainInfo: parachain_info::{Pallet, Storage, Config},
-        XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>},
-//        XcmHandler: cumulus_pallet_xcm_handler::{Pallet, Call, Event<T>, Origin},
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
