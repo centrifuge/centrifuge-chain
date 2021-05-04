@@ -322,13 +322,25 @@ pub mod pallet {
   ///
   /// It allows to build genesis storage.
   #[pallet::genesis_config]
-  #[derive(Default)]
 	pub struct GenesisConfig {
-    conversion: u32,
-    direct_payout: u32
+    #[doc = "Conversion rate between relay chain and parachain tokens."]
+    pub conversion: u32,
+    #[doc = "Direct reward payout ratio."]
+    pub direct_payout: u32
   }
 
-  // Implement genesis configuration for the pallet
+  // The default value for the genesis config type.
+	#[cfg(feature = "std")]
+	impl Default for GenesisConfig {
+		fn default() -> Self {
+			Self {
+				conversion: 80,
+        direct_payout: 20,
+			}
+		}
+	}
+
+  // The build of genesis configuration for the pallet.
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 	 	fn build(&self) {
@@ -357,7 +369,7 @@ pub mod pallet {
 
 		// `on_finalize` is executed at the end of block after all extrinsic are dispatched.
 		fn on_finalize(_n: T::BlockNumber) {
-			// clean upd data/state 
+			// clean up data/state 
 		}
 
 		// A runtime code run after every block and have access to extended set of APIs.
@@ -422,6 +434,9 @@ pub mod pallet {
     /// This administrative transaction allows to modify the vesting period
     /// after a previous [`initialize`] transaction was triggered in order
     /// to perform seminal pallet configuration.
+    ///
+    /// ## Emits
+    /// UpdateVestingPeriod
     #[pallet::weight(<T as pallet::Config>::WeightInfo::set_vesting_period())]
     pub(crate)fn set_vesting_period(origin: OriginFor<T>, period: T::BlockNumber) -> DispatchResultWithPostInfo {
       // Ensure that only an administrator or root entity triggered the transaction
@@ -561,7 +576,6 @@ impl<T: Config> Reward for Pallet<T>
 
     Ok(())
   }
-
 
   // Reward a payout for a claim on a given parachain account
   fn reward(who: Self::ParachainAccountId, contribution: Self::ContributionAmount) -> DispatchResult {

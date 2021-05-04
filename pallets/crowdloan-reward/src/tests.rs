@@ -25,17 +25,16 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use super::*;
+//use super::*;
 use crate::{
-  self as pallet_crowdloan_reward,
   Error as CrowdloanRewardError,
-  mock::*
+  mock::*,
+  self as pallet_crowdloan_reward,
+  *
 };
 
 use frame_support::{
   assert_noop,
-  dispatch::{DispatchError},
-  sp_runtime::traits::AccountIdConversion,
   traits::VestingSchedule
 };
 
@@ -75,19 +74,19 @@ fn not_admin_for_setters() {
     .execute_with(|| {
       assert_noop!(
         CrowdloanReward::set_vesting_start(Origin::signed(2), 1),
-        DispatchError::BadOrigin
+        CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
       );
       assert_noop!(
         CrowdloanReward::set_vesting_period(Origin::signed(2), 3),
-        DispatchError::BadOrigin
+        CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
       );
       assert_noop!(
         CrowdloanReward::set_conversion_rate(Origin::signed(2), 100),
-        DispatchError::BadOrigin
+        CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
       );
       assert_noop!(
         CrowdloanReward::set_direct_payout_ratio(Origin::signed(2), 10),
-        DispatchError::BadOrigin
+        CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
       );
     });
 }
@@ -131,7 +130,7 @@ fn reward_participant() {
         CrowdloanReward::initialize(80, 20, 4, 3).unwrap()
     })
     .execute_with(|| {
-      let mod_account = pallet_crowdloan_reward::ModuleId.into_account();
+      let mod_account = CrowdloanReward::account_id(); 
       let mod_balance = Balances::free_balance(&mod_account);
       let rew_balance = Balances::free_balance(&4);
 
@@ -181,7 +180,7 @@ fn account_already_vesting() {
     .execute_with(|| {
       assert_noop!(
         CrowdloanReward::reward(1, 30),
-        CrowdloanRewardError::<MockRuntime>::ExistingVestingSchedule);
+        pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule);
     });
 }
 #[test]
@@ -195,6 +194,6 @@ fn reward_amount_to_low_for_vesting() {
     .execute_with(|| {
       assert_noop!(
         CrowdloanReward::reward(1, 15),
-        CrowdloanRewardError::<MockRuntime>::AmountLow);
+        pallet_vesting::Error::<MockRuntime>::AmountLow);
     });
 }

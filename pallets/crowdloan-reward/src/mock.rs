@@ -53,30 +53,30 @@ use crate::traits::WeightInfo;
 // ----------------------------------------------------------------------------
 
 // Extrinsics weight information used for testing
-struct MockWeightInfo;
+pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
   fn initialize() -> Weight { 
     0 as Weight 
   }
 
-  fn reward() ->  Weight {
+  fn reward() -> Weight {
     0 as Weight
   }
 
-  fn set_vesting_start() ->  Weight {
+  fn set_vesting_start() -> Weight {
     0 as Weight
   }
   
-  fn set_vesting_period() ->  Weight {
+  fn set_vesting_period() -> Weight {
     0 as Weight
   }
 
-  fn set_conversion_rate() ->  Weight {
+  fn set_conversion_rate() -> Weight {
     0 as Weight
   }
 
-  fn set_direct_payout_ratio() ->  Weight {
+  fn set_direct_payout_ratio() -> Weight {
     0 as Weight
   }
 }
@@ -97,13 +97,14 @@ frame_support::construct_runtime!(
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
     Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
     Vesting: pallet_vesting::{Module, Call, Config<T>, Storage, Event<T>},
-    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config<T>, Storage, Event<T>},
+    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
   }
 );
 
 // Parameterize balances pallet
 parameter_types! {
   pub const MaxLocks: u32 = 10;
+  pub const ExistentialDeposit: u64 = 1;
 }
 
 // Implement balances pallet configuration for mock runtime
@@ -112,15 +113,14 @@ impl pallet_balances::Config for MockRuntime {
   type Balance = Balance;
   type Event = Event;
   type DustRemoval = ();
-  type ExistentialDeposit = TestExistentialDeposit;
+  type ExistentialDeposit = ExistentialDeposit;
   type AccountStore = System;
   type WeightInfo = ();
 }
 
 // Parameterize vesting pallet
 parameter_types! {
-  pub const TestMinVestedTransfer: u64 = 16;
-  pub static TestExistentialDeposit: u64 = 1;
+  pub const MinVestedTransfer: u64 = 16;
 }
 
 // Implement vesting pallet configuration for mock runtime
@@ -128,14 +128,14 @@ impl pallet_vesting::Config for MockRuntime {
   type Event = Event;
   type Currency = Balances;
   type BlockNumberToBalance = sp_runtime::traits::Identity;
-  type MinVestedTransfer = TestMinVestedTransfer;
+  type MinVestedTransfer = MinVestedTransfer;
   type WeightInfo = ();
 }
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
   pub const One: u64 = 1;
-  pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rwrd");
+  pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime
@@ -212,15 +212,16 @@ impl Default for TestExternalitiesBuilder {
 
 // Implement test externalities builder
 impl TestExternalitiesBuilder {
-  pub(crate) fn existential_deposit(mut self, existential_deposit: u64) -> Self {
+
+  pub fn existential_deposit(mut self, existential_deposit: u64) -> Self {
     self.existential_deposit = existential_deposit;
     self
   }
 
   // Build a genesis storage key/value store
-  pub(crate) fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
-    TEST_EXISTENTIAL_DEPOSIT.with(|v| *v.borrow_mut() = self.existential_deposit);
-    let mut t = frame_system::GenesisConfig::default().build_storage::<MockRuntime>().unwrap();
+  pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
+
+    let mut storage = frame_system::GenesisConfig::default().build_storage::<MockRuntime>().unwrap();
 
     pallet_balances::GenesisConfig::<MockRuntime> {
       balances: vec![
@@ -229,9 +230,9 @@ impl TestExternalitiesBuilder {
         (3, 30 * self.existential_deposit),
         (4, 40 * self.existential_deposit),
         (12, 10 * self.existential_deposit),
-        (T::ModuleId.into_account(), 101 * self.existential_deposit),
+        (CrowdloanReward::account_id(), 101 * self.existential_deposit),
       ],
-    }.assimilate_storage(&mut t).unwrap();
+    }.assimilate_storage(&mut storage).unwrap();
 
     pallet_vesting::GenesisConfig::<MockRuntime> {
       vesting: vec![
@@ -239,23 +240,18 @@ impl TestExternalitiesBuilder {
         (2, 10, 20, 0),
         (12, 10, 20, 5 * self.existential_deposit)
       ],
-    }.assimilate_storage(&mut t).unwrap();
+    }.assimilate_storage(&mut storage).unwrap();
 
+    //pallet_crowdloan_reward::GenesisConfig::default().assimilate_storage(&mut storage).unwrap();
 
-    pallet_crowdloan_reward::GenesisConfig {
-      conversion: 80,
-      direct_payout: 20,
-    }.assimilate_storage(&mut t).unwrap();
-
-    let mut ext = sp_io::TestExternalities::new(t);
+    let mut ext = sp_io::TestExternalities::new(storage);
     ext.execute_with(|| {
       System::set_block_number(1);
     });
     ext.execute_with(execute);
-
     ext
   }
-}
+} // end of 'TestExternalitiesBuilder' implementation
 
 pub(crate) fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
   System::events().into_iter().map(|r| r.event).filter_map(|e| {
@@ -266,3 +262,4 @@ pub(crate) fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>
       }
   }).collect()
 }
+
