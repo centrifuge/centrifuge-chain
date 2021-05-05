@@ -1,13 +1,35 @@
 {
   description = "Nix package for centrifuge-chain";
 
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
+  inputs = {
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
+  };
 
   outputs = inputs:
     let
       name = "centrifuge-chain";
       version = "2.0.0";
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+
+      # srcFilter is used to keep out of the build non-source files,
+      # so that we only trigger a rebuild when necessary.
+      srcFilter = path: type:
+        let
+          p = baseNameOf path;
+        in
+          !(
+            # ignore CI directories
+            (type == "directory" && (p == ".github" || p == "ci")) ||
+            # ignore CI files
+            p == ".travis.yml" || p == "cloudbuild.yaml" ||
+            # ignore flake.(nix|lock)
+            p == "flake.nix" || p == "flake.lock" ||
+            # ignore docker files
+            p == ".dockerignore" || p == "docker-compose.yml" ||
+            # ignore misc
+            p == "rustfmt.toml"
+          );
+
     in
     {
       packages.x86_64-linux.centrifuge-chain =
@@ -15,8 +37,11 @@
           pname = name;
           version = version;
 
-          src = inputs.self;
-
+          src = pkgs.lib.cleanSourceWith {
+            src = ./.;
+            filter = srcFilter;
+            name = "centrifuge-chain-source";
+          };
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
           nativeBuildInputs = with pkgs; [ clang pkg-config ];
