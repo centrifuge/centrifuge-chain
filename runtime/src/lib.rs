@@ -6,19 +6,16 @@
 
 use sp_std::{prelude::*, convert::TryFrom};
 use frame_support::{
-    construct_runtime, parameter_types, debug, RuntimeDebug,
+    construct_runtime, parameter_types, RuntimeDebug,
     weights::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
-        U128CurrencyToVote, Currency, KeyOwnerProofSystem,
-        Randomness, LockIdentifier, InstanceFilter},
+        U128CurrencyToVote, Currency,
+        Randomness, LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
-use sp_core::{
-    crypto::KeyTypeId,
-    u32_trait::{_1, _2, _3, _4}
-};
+use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
 use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
@@ -29,17 +26,15 @@ use sp_runtime::{
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
 use sp_runtime::traits::{
-	self, BlakeTwo256, Block as BlockT, StaticLookup, SaturatedConversion,
-	OpaqueKeys, NumberFor, Saturating, ConvertInto, Convert
+	BlakeTwo256, Block as BlockT, StaticLookup, ConvertInto, Convert
 };
 use frame_system::{
-    EnsureSigned, EnsureRoot, EnsureOneOf,
+    EnsureRoot,
     limits::{BlockWeights, BlockLength}};
 use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_core::OpaqueMetadata;
-use sp_io::hashing::blake2_128;
 //use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 //use pallet_grandpa::fg_primitives;
 //use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
@@ -59,17 +54,16 @@ pub use pallet_balances::Call as BalancesCall;
 //pub use pallet_staking::StakerStatus;
 
 // XCM imports
-use cumulus_primitives_core::relay_chain::Balance as RelayChainBalance;
-use orml_xcm_support::{CurrencyIdConverter, IsConcreteWithGeneralKey, MultiCurrencyAdapter};
+use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance};
 use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{Junction, MultiLocation, NetworkId};
+use xcm::v0::{Junction::{self, Parent, Parachain}, MultiLocation::{self, X1, X2}, NetworkId, MultiAsset};
 use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative,
 	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SovereignSignedViaLocation,
+	SovereignSignedViaLocation, IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom,
+	AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible, EnsureXcmOrigin,
 };
 use xcm_executor::{
-	traits::{IsConcrete, NativeAsset},
 	Config, XcmExecutor,
 };
 
@@ -112,7 +106,6 @@ mod rad_claims;
 /// Constant values used within the runtime.
 pub mod constants;
 use constants::{time::*, currency::*};
-use sp_runtime::generic::Era;
 use crate::impls::WeightToFee;
 
 // Make the WASM binary available.
@@ -239,6 +232,7 @@ impl frame_system::Config for Runtime {
 	/// All resources should be cleaned up associated with the given account.
 	type OnKilledAccount = ();
     type SystemWeightInfo = ();
+	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 }
 
 parameter_types! {
@@ -259,21 +253,58 @@ impl pallet_multisig::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    	pub const MaxDownwardMessageWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 10;
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
+}
+
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = parachain_info::Module<Runtime>;
-	type DownwardMessageHandlers = XcmHandler;
-	type HrmpMessageHandlers = XcmHandler;
+	type DownwardMessageHandlers = cumulus_primitives_utility::UnqueuedDmpAsParent<
+		MaxDownwardMessageWeight,
+		XcmExecutor<XcmConfig>,
+		Call,
+	>;
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type XcmpMessageHandler = XcmpQueue;
+	type ReservedXcmpWeight = ReservedXcmpWeight;
 }
 
 impl parachain_info::Config for Runtime {}
 
+/// The means for routing XCM messages which are not for local execution into the right message
+/// queues.
+pub type XcmRouter = (
+	// Two routers - use UMP to communicate with the relay chain:
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem>,
+	// ..and XCMP to communicate with the sibling chains.
+	XcmpQueue,
+);
+
+impl pallet_xcm::Config for Runtime {
+	type Event = Event;
+	type SendXcmOrigin = EnsureXcmOrigin<Origin, ()>; // No allowed origins
+	type XcmRouter = XcmRouter;
+	type ExecuteXcmOrigin = EnsureXcmOrigin<Origin, ()>; // No allowed origins
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+impl cumulus_pallet_xcm::Config for Runtime {}
+
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ChannelInfo = ParachainSystem;
+}
+
 parameter_types! {
+	pub const RelayLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
     pub const PolkadotNetworkId: NetworkId = NetworkId::Polkadot;
-    pub const CentrifugeNetwork: NetworkId = NetworkId::Named("centrifuge".into());
+    pub CentrifugeNetwork: NetworkId = NetworkId::Named("centrifuge".into());
 	//pub const RococoLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
-	pub RelayChainOrigin: Origin = cumulus_pallet_xcm_handler::Origin::Relay.into();
+	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = MultiLocation::X1(Junction::Parachain {
 			id: ParachainInfo::get().into(),
 		});
@@ -295,6 +326,7 @@ type LocationConverter = (
 // This is a simplified CurrencyId for xtokens pallet, as of now, Centrifuge has only
 // the native token RAD. See Acala's implementation for a multi-token example
 // https://github.com/AcalaNetwork/Acala/blob/eb746187fc1fa96f7ef8429e6ed39cde587fbe5e/primitives/src/lib.rs#L149
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
 pub struct CurrencyId;
 impl TryFrom<Vec<u8>> for CurrencyId {
     type Error = ();
@@ -311,7 +343,7 @@ type LocalAssetTransactor = xcm_builder::CurrencyAdapter<
 	// Use this currency when it is a fungible asset matching the given location or name:
     // TODO: This impl handles the case of relay<->parachain, but DOT cannot be stored on
     // Centrifuge so this is not useful. We can just re-implement the type w/o relay case.
-    IsConcreteWithGeneralKey<CurrencyId, RelayToNative>,
+    IsConcrete<RelayLocation>,
 	// Do a simple punn to convert an AccountId32 MultiLocation into a native chain account ID:
 	LocationConverter,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly):
@@ -321,30 +353,35 @@ type LocalAssetTransactor = xcm_builder::CurrencyAdapter<
 type LocalOriginConverter = (
 	SovereignSignedViaLocation<LocationConverter, Origin>,
 	RelayChainAsNative<RelayChainOrigin, Origin>,
-	SiblingParachainAsNative<cumulus_pallet_xcm_handler::Origin, Origin>,
+	SiblingParachainAsNative<cumulus_pallet_xcm::Origin, Origin>,
 	SignedAccountId32AsNative<CentrifugeNetwork, Origin>,
 );
 
+pub type Barrier = (
+	TakeWeightCredit,
+	AllowTopLevelPaidExecutionFrom<All<MultiLocation>>,
+	AllowUnpaidExecutionFrom<All<MultiLocation>>, // TODO: Fees?
+);
+
+parameter_types! {
+	pub UnitWeightCost: Weight = 1_000;
+	pub const WeightPrice: (MultiLocation, u128) = (MultiLocation::X1(Junction::Parent), 1_000);
+}
 
 pub struct XcmConfig;
 impl Config for XcmConfig {
     type Call = Call;
-    type XcmSender = XcmHandler;
+    type XcmSender = XcmRouter;
     // How to withdraw and deposit an asset.
     type AssetTransactor = LocalAssetTransactor;
     type OriginConverter = LocalOriginConverter;
     type IsReserve = NativeAsset;
-    type IsTeleporter = ();
+    type IsTeleporter = (); // Don't allow any teleports
     type LocationInverter = LocationInverter<Ancestry>;
-}
-
-impl cumulus_pallet_xcm_handler::Config for Runtime {
-    type Event = Event;
-    type XcmExecutor = XcmExecutor<XcmConfig>;
-    type UpwardMessageSender = ParachainSystem;
-    type HrmpMessageSender = ParachainSystem;
-    type SendXcmOrigin = EnsureRoot<AccountId>;
-    type AccountIdConverter = LocationConverter;
+    type Barrier = Barrier;
+    type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
+    type Trader = FixedRateOfConcreteFungible<WeightPrice>;
+    type ResponseHandler = (); // Don't handle responses for now.
 }
 
 pub struct RelayToNative;
@@ -365,17 +402,29 @@ impl Convert<Balance, RelayChainBalance> for NativeToRelay {
     }
 }
 
-impl orml_xtokens::Config for Runtime {
-    type Event = Event;
-    type Balance = Balance;
-    type ToRelayChainBalance = NativeToRelay;
-    type AccountId32Convert = AccountId32Convert;
-    type RelayChainNetworkId = PolkadotNetworkId;
-    type ParaId = ParachainInfo;
-    type AccountIdConverter = LocationConverter;
-    type XcmExecutor = XcmExecutor<XcmConfig>;
+pub struct CurrencyIdConvert;
+impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
+    fn convert(_id: CurrencyId) -> Option<MultiLocation> {
+        Some(X2(Parent, Parachain { id: ParachainInfo::get().into() }))
+    }
 }
-
+impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(location: MultiLocation) -> Option<CurrencyId> {
+		match location {
+		    X2(Parent, Parachain { id }) if ParaId::from(id) == ParachainInfo::get() => Some(CurrencyId {}),
+			_ => None,
+		}
+	}
+}
+impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset::ConcreteFungible { id, amount: _ } = asset {
+			Self::convert(id)
+		} else {
+			None
+		}
+	}
+}
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
@@ -492,7 +541,7 @@ impl pallet_balances::Config for Runtime {
 	/// The minimum amount required to keep an account open.
 	type ExistentialDeposit = ExistentialDeposit;
 	/// The means of storing the balances of an account.
-	type AccountStore = frame_system::Module<Runtime>;
+	type AccountStore = System;
     type WeightInfo = ();
 }
 
@@ -659,8 +708,8 @@ parameter_types! {
 const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 
 impl pallet_elections_phragmen::Config for Runtime {
-	type Event = Event;
-    type ModuleId = ElectionsPhragmenModuleId;
+    type Event = Event;
+    type PalletId = ElectionsPhragmenModuleId;
     type Currency = Balances;
 	type ChangeMembers = Council;
     type InitializeMembers = Council;
@@ -825,45 +874,45 @@ construct_runtime!(
 		NodeBlock = node_primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		Utility: pallet_utility::{Module, Call, Event},
-		//Babe: pallet_babe::{Module, Call, Storage, Config, Inherent, ValidateUnsigned},
-		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
-		Authorship: pallet_authorship::{Module, Call, Storage, Inherent},
-		Balances: pallet_balances::{Module, Call, Storage, Config<T>, Event<T>},
-		TransactionPayment: pallet_transaction_payment::{Module, Storage},
-		//Staking: pallet_staking::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
-		//Session: pallet_session::{Module, Call, Storage, Event, Config<T>},
-		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>},
-		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
-		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
-		//Grandpa: pallet_grandpa::{Module, Call, Storage, Config, Event, ValidateUnsigned},
-		//ImOnline: pallet_im_online::{Module, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
-		//AuthorityDiscovery: pallet_authority_discovery::{Module, Call, Config},
-		//Offences: pallet_offences::{Module, Call, Storage, Event},
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
-		Anchor: anchor::{Module, Call, Storage},
-		Fees: fees::{Module, Call, Storage, Event<T>, Config<T>},
-		// Nfts: nfts::{Module, Call, Event<T>},
-        Identity: pallet_identity::{Module, Call, Storage, Event<T>},
-		// PalletBridge: pallet_bridge::{Module, Call, Storage, Event<T>, Config<T>},
-		// ChainBridge: chainbridge::{Module, Call, Storage, Event<T>},
-		Indices: pallet_indices::{Module, Call, Storage, Config<T>, Event<T>},
-		//Historical: pallet_session_historical::{Module},
-        Scheduler: pallet_scheduler::{Module, Call, Storage, Event<T>},
-        Proxy: pallet_proxy::{Module, Call, Storage, Event<T>},
-		Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Module, Call, Storage, Event<T>, ValidateUnsigned},
-        Vesting: pallet_vesting::{Module, Call, Storage, Event<T>, Config<T>},
-		// Registry: va_registry::{Module, Call, Storage, Event<T>},
-		// Nft: nft::{Module, Call, Storage, Event<T>},
-        // BridgeMapping: bridge_mapping::{Module, Call, Storage},
-        ParachainSystem: cumulus_pallet_parachain_system::{Module, Call, Storage, Inherent, Event},
-        XcmHandler: cumulus_pallet_xcm_handler::{Module, Event<T>, Origin},
-        ParachainInfo: parachain_info::{Module, Storage, Config},
-        XTokens: orml_xtokens::{Module, Storage, Call, Event<T>},
-        XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
-        Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Utility: pallet_utility::{Pallet, Call, Event},
+		//Babe: pallet_babe::{Pallet, Call, Storage, Config, Inherent, ValidateUnsigned},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
+		//Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+		//Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
+		Democracy: pallet_democracy::{Pallet, Call, Storage, Config, Event<T>},
+		Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		Elections: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>},
+		//Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event, ValidateUnsigned},
+		//ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
+		//AuthorityDiscovery: pallet_authority_discovery::{Pallet, Call, Config},
+		//Offences: pallet_offences::{Pallet, Call, Storage, Event},
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage},
+		Anchor: anchor::{Pallet, Call, Storage},
+		Fees: fees::{Pallet, Call, Storage, Event<T>, Config<T>},
+		// Nfts: nfts::{Pallet, Call, Event<T>},
+        Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
+		// PalletBridge: pallet_bridge::{Pallet, Call, Storage, Event<T>, Config<T>},
+		// ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
+		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>},
+		//Historical: pallet_session_historical::{Pallet},
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
+        Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
+		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
+        RadClaims: rad_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+        Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
+		// Registry: va_registry::{Pallet, Call, Storage, Event<T>},
+		// Nft: nft::{Pallet, Call, Storage, Event<T>},
+        // BridgeMapping: bridge_mapping::{Pallet, Call, Storage},
+        ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>},
+            PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin},
+            CumulusXcm: cumulus_pallet_xcm::{Pallet, Origin},
+	    XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>},
+        ParachainInfo: parachain_info::{Pallet, Storage, Config},
+        Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
 	}
 );
 
@@ -943,7 +992,7 @@ impl_runtime_apis! {
 		}
 
 		fn random_seed() -> <Block as BlockT>::Hash {
-			RandomnessCollectiveFlip::random_seed()
+			RandomnessCollectiveFlip::random_seed().0
 		}
 	}
 

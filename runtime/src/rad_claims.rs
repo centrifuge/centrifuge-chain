@@ -6,9 +6,8 @@ use sp_std::{vec::Vec, convert::TryInto};
 use frame_support::{decl_module, decl_storage, decl_event, decl_error,
                     traits::{Get, EnsureOrigin, Currency, ExistenceRequirement::KeepAlive},
                     weights::{DispatchClass, Pays},
-                    ensure, dispatch::DispatchResult};
+                    ensure, dispatch::DispatchResult, PalletId};
 use sp_runtime::{
-    ModuleId,
     traits::{AccountIdConversion, CheckedSub},
     transaction_validity::{
         TransactionValidity, ValidTransaction, InvalidTransaction, TransactionSource,
@@ -16,7 +15,7 @@ use sp_runtime::{
     }
 };
 
-const MODULE_ID: ModuleId = ModuleId(*b"rd/claim");
+const MODULE_ID: PalletId = PalletId(*b"rd/claim");
 const MIN_PAYOUT: node_primitives::Balance = 5 * currency::RAD;
 
 pub trait Trait: frame_system::Config + pallet_balances::Config {
