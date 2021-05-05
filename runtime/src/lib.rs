@@ -231,7 +231,7 @@ pub enum ProxyType {
     NonTransfer,
     Governance,
     Staking,
-    Vesting,
+    NonProxy,
 }
 impl Default for ProxyType { fn default() -> Self { Self::Any } }
 impl InstanceFilter<Call> for ProxyType {
@@ -253,15 +253,17 @@ impl InstanceFilter<Call> for ProxyType {
                 Call::Session(..) |
 				Call::Utility(..)
             ),
-            ProxyType::Vesting => matches!(c,
-                Call::Staking(..) |
-                Call::Session(..) |
-                Call::Democracy(..) |
-				Call::Council(..) |
-				Call::Elections(..) |
-				Call::Vesting(pallet_vesting::Call::vest(..)) |
-				Call::Vesting(pallet_vesting::Call::vest_other(..))
-            ),
+            ProxyType::NonProxy => !matches!(c,
+                Call::Proxy(pallet_proxy::Call::add_proxy(..)) |
+                Call::Proxy(pallet_proxy::Call::remove_proxy(..)) |
+                Call::Proxy(pallet_proxy::Call::remove_proxies(..)) |
+                Call::Proxy(pallet_proxy::Call::anonymous(..)) |
+                Call::Proxy(pallet_proxy::Call::kill_anonymous(..)) |
+                Call::Proxy(pallet_proxy::Call::announce(..)) |
+                Call::Proxy(pallet_proxy::Call::remove_announcement(..)) |
+                Call::Proxy(pallet_proxy::Call::reject_announcement(..)) |
+                Call::Proxy(pallet_proxy::Call::proxy_announced(..)) |
+            )
         }
     }
     fn is_superset(&self, o: &Self) -> bool {
