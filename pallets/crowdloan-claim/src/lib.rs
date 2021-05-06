@@ -707,7 +707,11 @@ impl<T: Config> Pallet<T> {
         // rebuild child info
         let mut buf = Vec::new();
         buf.extend_from_slice(b"crowdloan");
-        buf.extend_from_slice(&Self::crowdloan_trie_index().ok_or(Error::<T>::PalletNotInitialized)?.encode()[..]);
+        buf.extend_from_slice(
+            &Self::crowdloan_trie_index()
+                .ok_or(Error::<T>::PalletNotInitialized)?
+                .encode()[..],
+        );
         let child_info = ChildInfo::new_default(T::Hashing::hash(&buf[..]).as_ref());
 
         // We could unwrap here, as we check in the calling function if module is initialized (i.e. if contributions is set)

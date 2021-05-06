@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-// # Crowdloan reward pallet's transactions benchmarking
+// # Crowdlan reward pallet's transactions benchmarking
 //
 // ## Overview
 // A limited number of extrinsics can be executed per block. In fact, Substrate
@@ -54,14 +54,14 @@
 // ----------------------------------------------------------------------------
 
 
-use crate::*;
 use frame_benchmarking::{
-  account, 
+  account,
   benchmarks,
   impl_benchmark_test_suite
 };
 use frame_system::RawOrigin;
 
+use crate::*;
 
 // ----------------------------------------------------------------------------
 // Benchmark cases
@@ -76,7 +76,7 @@ git   sample_benchmark_name {
   } verify {
     // verifying final state
   }
-} 
+}
 
 
 // ----------------------------------------------------------------------------

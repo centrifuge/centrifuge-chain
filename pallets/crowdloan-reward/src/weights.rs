@@ -21,15 +21,15 @@
 //! In fact, weights are calculated using runtime benchmarking.
 
 use frame_support::{
-  weights::{Weight}
+  weights::Weight
 };
 
 use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 
-  fn initialize() -> Weight { 
-    10_000 as Weight 
+  fn initialize() -> Weight {
+    10_000 as Weight
   }
 
   fn reward() ->  Weight {
@@ -39,7 +39,7 @@ impl WeightInfo for () {
   fn set_vesting_start() ->  Weight {
     10_000 as Weight
   }
-  
+
   fn set_vesting_period() ->  Weight {
     10_000 as Weight
   }

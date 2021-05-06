@@ -28,25 +28,20 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate as pallet_crowdloan_reward;
-
 use frame_support::{parameter_types, traits::Contains, weights::Weight};
-
 use frame_system::EnsureSignedBy;
-
 use sp_core::H256;
-
 use sp_runtime::{
-  ModuleId, 
-  Perbill, 
-  testing::Header, traits::{ 
+  ModuleId,
+  Perbill,
+  testing::Header, traits::{
     BlakeTwo256,
     IdentityLookup
   },
 };
 
+use crate as pallet_crowdloan_reward;
 use crate::traits::WeightInfo;
-
 
 // ----------------------------------------------------------------------------
 // Mock runtime
@@ -56,8 +51,8 @@ use crate::traits::WeightInfo;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-  fn initialize() -> Weight { 
-    0 as Weight 
+  fn initialize() -> Weight {
+    0 as Weight
   }
 
   fn reward() -> Weight {
@@ -67,7 +62,7 @@ impl WeightInfo for MockWeightInfo {
   fn set_vesting_start() -> Weight {
     0 as Weight
   }
-  
+
   fn set_vesting_period() -> Weight {
     0 as Weight
   }
@@ -94,7 +89,7 @@ frame_support::construct_runtime!(
     NodeBlock = Block,
     UncheckedExtrinsic = UncheckedExtrinsic,
   {
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+    System: frame_system::{Module, Call, Config, Storage, Event<T>},
     Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
     Vesting: pallet_vesting::{Module, Call, Config<T>, Storage, Event<T>},
     CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Storage, Event<T>},
@@ -145,6 +140,7 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
   type ModuleId = CrowdloanRewardModuleId;
   type RelayChainBalance = Balance;
   type RelayChainAccountId = AccountId;
+  type Conversion = Balance;
   type AdminOrigin = EnsureSignedBy<One, u64>;
   type WeightInfo = MockWeightInfo;
 }
@@ -231,7 +227,7 @@ impl TestExternalitiesBuilder {
         (3, 30 * self.existential_deposit),
         (4, 40 * self.existential_deposit),
         (12, 10 * self.existential_deposit),
-        (CrowdloanReward::account_id(), 101 * self.existential_deposit),
+        (CrowdloanReward::account_id(), 1000 * self.existential_deposit),
       ],
     }.assimilate_storage(&mut storage).unwrap();
 
