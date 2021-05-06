@@ -577,6 +577,11 @@ where
             pallet_vesting::Error::<T>::AmountLow
         );
 
+        ensure!(
+            pallet_vesting::Module::<T>::vesting(&who).is_none(),
+            pallet_vesting::Error::<T>::ExistingVestingSchedule
+        );
+
         // Ensure the division is correct or we give everything on the first block
         let per_block = vested_reward
             .checked_div(

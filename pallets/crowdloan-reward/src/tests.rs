@@ -159,14 +159,9 @@ fn account_already_vesting() {
             CrowdloanReward::initialize(2, Perbill::from_percent(20), 4, 3).unwrap()
         })
         .execute_with(|| {
-            let mod_account = CrowdloanReward::account_id();
-            let mod_balance = Balances::free_balance(&mod_account);
-            // We can NOT assert_noop! here, as this error is an op in state currently!
-            assert_eq!(
-                CrowdloanReward::reward(1, 30).unwrap_err(),
-                Into::<DispatchError>::into(
-                    pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
-                )
+            assert_noop!(
+                CrowdloanReward::reward(1, 30),
+                pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
             );
 
             assert_eq!(mod_balance, Balances::free_balance(&mod_account));
