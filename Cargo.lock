@@ -4641,23 +4641,32 @@ dependencies = [
 
 [[package]]
 name = "pallet-crowdloan-claim"
-version = "0.0.1"
+version = "2.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex",
+ "lazy_static",
  "log 0.4.14",
  "pallet-balances",
+ "pallet-crowdloan-reward",
+ "pallet-vesting",
  "parity-scale-codec",
+ "sc-rpc-api",
  "serde",
  "sp-core",
  "sp-io",
+ "sp-keyring",
  "sp-runtime",
+ "sp-state-machine",
+ "sp-std",
+ "sp-trie",
 ]
 
 [[package]]
 name = "pallet-crowdloan-reward"
-version = "0.0.1"
+version = "2.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",

@@ -91,7 +91,11 @@ use frame_support::{
     dispatch::{fmt::Debug, Codec, DispatchResult},
     ensure,
     sp_runtime::traits::{AtLeast32BitUnsigned, CheckedSub, Saturating},
-    traits::{Currency, EnsureOrigin, ExistenceRequirement::KeepAlive, Get},
+    traits::{
+        Currency, EnsureOrigin,
+        ExistenceRequirement::{AllowDeath, KeepAlive},
+        Get,
+    },
     weights::Weight,
 };
 use frame_system::{ensure_root, RawOrigin};
@@ -590,14 +594,25 @@ where
 
         let to = <T::Lookup as StaticLookup>::unlookup(who.clone());
 
-        // TODO: Transfer first and then revert it in case the vesting fails. Otherwise one could get direct payout multuple times by providing an already vesting account
+        T::Currency::transfer(&from, &who, direct_reward, KeepAlive)?;
+
+        // Currently I know no way to secure that both extrinsic (transfer, vested_transfer)
+        // will be successful or be reverted if one of them changes.
+        // So, as `vested_transfer` is not revertible, we first transfer the direct amount, and then
+        // the vested amount. If first fails, we simply abort. If second fails, we are transferring
+        // the direct payout back to the module.
+        //
+        // NOTE: This procedure does change the state...
         <pallet_vesting::Module<T>>::vested_transfer(
             T::Origin::from(RawOrigin::Signed(from.clone())),
             to,
             schedule,
-        )?;
-
-        T::Currency::transfer(&from, &who, direct_reward, KeepAlive)?;
+        )
+        .map_err(|err| {
+            T::Currency::transfer(&who, &from, direct_reward, AllowDeath)
+                .err()
+                .unwrap_or_else(|| err)
+        })?;
 
         Self::deposit_event(Event::RewardClaimed(who, direct_reward, vested_reward));
 
