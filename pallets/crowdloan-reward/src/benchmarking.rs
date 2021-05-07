@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-// # Crowdlan reward pallet's transactions benchmarking
+// # Crowdloan reward pallet's transactions benchmarking
 //
 // ## Overview
 // A limited number of extrinsics can be executed per block. In fact, Substrate

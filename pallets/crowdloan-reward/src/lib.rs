@@ -77,7 +77,7 @@
 //! ## References
 //!
 //! ## Credits
-//! Frederik Schultz <frederik@centrifuge.io>
+//! Frederik Schulz <frederik@centrifuge.io>
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -113,10 +113,13 @@ use pallet_crowdloan_claim::traits::Reward;
 pub use crate::traits::WeightInfo;
 
 // Mock runtime and unit test cases
+#[cfg(test)]
 mod mock;
+#[cfg(test)]
 mod tests;
 
 // Runtime benchmarking features
+#[cfg(test)]
 mod benchmarking;
 
 // Extrinsics weight information (computed through runtime benchmarking)
