@@ -28,7 +28,7 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_crowdloan_claim,Config};
+use crate::{self as pallet_crowdloan_claim, Config};
 
 use frame_support::{
   parameter_types, 
@@ -48,10 +48,33 @@ use sp_runtime::{
   traits::{ 
     BlakeTwo256,
     IdentityLookup,
+  },
+  transaction_validity::{
+    InvalidTransaction, 
+    TransactionPriority,
+    TransactionSource,
+    TransactionValidity, 
+    ValidTransaction, 
   }
 };
 
+// Trie data structure manipulation features
+use sp_trie::*;
+
 use crate::traits::WeightInfo;
+
+
+// ----------------------------------------------------------------------------
+// Type alias, constants
+// ----------------------------------------------------------------------------
+
+type AccountId = u64;
+type Balance = u64;
+
+// Fake testing users
+pub const ADMIN_USER: u64 = 0x1;
+pub const NORMAL_USER: u64 = 0x2;
+
 
 
 // ----------------------------------------------------------------------------
@@ -62,7 +85,7 @@ use crate::traits::WeightInfo;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-  fn claim_reward_unsigned() -> Weight { 
+  fn claim_reward() -> Weight { 
     0 as Weight 
   }
 
@@ -82,7 +105,9 @@ frame_support::construct_runtime!(
     UncheckedExtrinsic = UncheckedExtrinsic,
   {
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-    CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+    Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
+    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
+    CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
   }
 );
 
@@ -111,18 +136,38 @@ impl frame_system::Config for MockRuntime {
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 }
 
+// Parameterize balances pallet
+parameter_types! {
+  pub const MaxLocks: u32 = 10;
+  pub const ExistentialDeposit: u64 = 1;
+}
+
+// Implement balances pallet configuration for mock runtime
+impl pallet_balances::Config for MockRuntime {
+  type MaxLocks = ();
+  type Balance = Balance;
+  type Event = Event;
+  type DustRemoval = ();
+  type ExistentialDeposit = ExistentialDeposit;
+  type AccountStore = System;
+  type WeightInfo = ();
+}
+
 // Parameterize crowdloan claim pallet
 parameter_types! {
   pub const One: u64 = 1;
   pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
-  pub const ClaimInterval: u64 = 128;
+  pub const ClaimTransactionInterval: u64 = 128;
+  pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
+  pub const ClaimTransactionLongevity: u32 = 64;
+  pub const RewardMechanism: RewardMechanism = CrowdloanReward;
 }
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
@@ -131,7 +176,13 @@ impl Config for MockRuntime {
   type ModuleId = CrowdloanClaimModuleId;
   type WeightInfo = MockWeightInfo;
   type AdminOrigin = EnsureSignedBy<One, u64>;
-  type ClaimInterval = ClaimInterval;
+  type ClaimCurrency = Balances;
+  type RelayChainBalance = Balance;
+  type RelayChainAccountId = AccountId;
+  type ClaimTransactionInterval = ClaimTransactionInterval;
+  type ClaimTransactionPriority = ClaimTransactionPriority;
+  type ClaimTransactionLongevity = ClaimTransactionLongevity;
+  type RewardMechanism = RewardMechanism;
 }
 
 impl Contains<u64> for One {
@@ -152,6 +203,7 @@ impl Contains<u64> for One {
 pub struct TestExternalitiesBuilder;
 
 impl TestExternalitiesBuilder {
+
   // Build a genesis storage key/value store
 	pub(crate) fn build() -> TestExternalities {
 		let storage = frame_system::GenesisConfig::default()

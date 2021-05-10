@@ -26,8 +26,10 @@
 // ----------------------------------------------------------------------------
 
 use crate::{
-  *, 
-  mock::*
+  Error as CrowdloanClaimError,
+  mock::*,
+  self as pallet_crowdloan_claim,
+  *
 };
 
 use frame_support::{
@@ -50,11 +52,9 @@ use frame_support::{
 // pallet's child-trie storage item.
 // sr_io::child_storage_root 
 #[test]
-fn test_initialize_pallet() {
+fn test_valid_initialize_transaction() {
   TestExternalitiesBuilder::build().execute_with(|| {
-		//assert_ok!(CrowdloanClaim::initialize(Origin::signed(1),  ));
-    let flag = true;
-    assert!(flag == true, "Flag is true folks");
+		assert_ok!(CrowdloanClaim::initialize(Origin::signed(ADMIN_USER), 0).is_ok());
 	})
 }
 
@@ -67,8 +67,25 @@ fn test_initialize_pallet() {
 fn test_claim_wrong_reward_amount() {
   TestExternalitiesBuilder::build().execute_with(|| {
 		assert_noop!(
-			CrowdloanClaim::claim_reward_unsigned(Origin::signed(1), 39, 39),
-			Error::<MockRuntime>::InvalidClaimAmount
+			CrowdloanClaim::claim_reward_unsigned(Origin::signed(1), 0),
+			CrowdloanClaimError::<MockRuntime>::InvalidClaimAmount
 		);
 	});
 }
+
+// Test various claim transaction regimes.
+//
+// A contributor may not have the enough tokens on the parachain
+// so that to place a claim (even if she/he's elligible for the claim).
+// This test checks that a a reward claim transaction may be called
+// from an unsigned origin only.
+#[test]
+fn test_invalid_signed_claim_transaction() {
+  TestExternalitiesBuilder::build().execute_with(|| {
+		assert_noop!(
+			CrowdloanClaim::claim_reward_unsigned(Origin::signed(1), 0),
+			CrowdloanClaimError::<MockRuntime>::InvalidClaimAmount
+		);
+	});
+}
+ 

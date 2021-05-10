@@ -19,11 +19,14 @@ frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytec
 log = { version = "0.4.14", default-features = false }
 pallet-balances = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-std = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 [dev-dependencies]
 serde = { version = "1.0.119" }
 sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-trie = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+pallet-crowdloan-claim = {path='../crowdloan-claim', default_features = false }
 
 [features]
 default = ['std']
@@ -32,6 +35,8 @@ std = [
   'frame-support/std',
   'frame-system/std',
   'log/std',
+  'pallet-balances/std',
+  'sp-std/std',
 ]
 
 runtime-benchmarks = ["frame-benchmarking"]

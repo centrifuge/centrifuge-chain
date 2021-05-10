@@ -21,7 +21,7 @@
 //! In fact, weights are calculated using runtime benchmarking.
 
 use frame_support::{
-  weights::{Weight}
+  weights::Weight,
 };
 
 use crate::traits::WeightInfo;
@@ -32,7 +32,7 @@ impl WeightInfo for () {
     10_000 as Weight
   }
 
-  fn claim_reward_unsigned() -> Weight { 
+  fn claim_reward() -> Weight { 
     10_000 as Weight 
   }
 }
