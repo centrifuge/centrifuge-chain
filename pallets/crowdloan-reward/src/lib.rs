@@ -192,11 +192,11 @@ type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<<T as f
 pub mod pallet {
 
 	use super::*;
-  use frame_support::pallet_prelude::*;
+    use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
   
-  // Declare pallet structure placeholder
-  #[pallet::pallet]
+    // Declare pallet structure placeholder
+    #[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 

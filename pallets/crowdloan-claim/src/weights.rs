@@ -28,11 +28,19 @@ use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 
-  fn initialize() -> Weight {
-    10_000 as Weight
-  }
+    fn initialize() -> Weight {
+        10_000 as Weight
+    }
 
-  fn claim_reward() -> Weight { 
-    10_000 as Weight 
-  }
+    fn register_contributor() -> Weight { 
+        10_000 as Weight 
+    }
+
+    fn evaluate_reward() -> Weight { 
+        10_000 as Weight 
+    }
+
+    fn claim_reward() -> Weight { 
+        10_000 as Weight 
+    }
 }

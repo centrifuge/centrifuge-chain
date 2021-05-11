@@ -6,7 +6,7 @@ edition = '2018'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
 repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '0.0.1'
+version = '2.0.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -24,11 +24,11 @@ serde = { version = "1.0.119" }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 
 # local dependencies
-[dependencies.pallet-crowdloan-claim]
-default_features = false
-path='../crowdloan-claim'
+pallet-crowdloan-claim = { path='../crowdloan-claim', default_features = false }
+
 
 [dev-dependencies]
+pallet-crowdloan-claim = { path='../crowdloan-claim', default_features = false }
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 serde = { version = "1.0.119" }
 sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }

@@ -26,14 +26,15 @@
 // ----------------------------------------------------------------------------
 
 use crate::{
-  Error as CrowdloanClaimError,
-  mock::*,
-  self as pallet_crowdloan_claim,
-  *
+    Error as CrowdloanClaimError,
+    mock::*,
+    self as pallet_crowdloan_claim,
+    *
 };
 
 use frame_support::{
-  assert_noop
+    assert_noop, 
+    assert_ok,
 };
 
 
@@ -53,8 +54,8 @@ use frame_support::{
 // sr_io::child_storage_root 
 #[test]
 fn test_valid_initialize_transaction() {
-  TestExternalitiesBuilder::build().execute_with(|| {
-		assert_ok!(CrowdloanClaim::initialize(Origin::signed(ADMIN_USER), 0).is_ok());
+    TestExternalitiesBuilder::build().execute_with(|| {
+		assert_ok!(CrowdloanClaim::initialize(Origin::signed(ADMIN_USER), 0));
 	})
 }
 
@@ -65,7 +66,7 @@ fn test_valid_initialize_transaction() {
 // if a contributor asking for a reward payout is elligible or not for it.
 #[test]
 fn test_claim_wrong_reward_amount() {
-  TestExternalitiesBuilder::build().execute_with(|| {
+    TestExternalitiesBuilder::build().execute_with(|| {
 		assert_noop!(
 			CrowdloanClaim::claim_reward_unsigned(Origin::signed(1), 0),
 			CrowdloanClaimError::<MockRuntime>::InvalidClaimAmount

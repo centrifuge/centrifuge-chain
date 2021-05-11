@@ -3,18 +3,18 @@
 <!-- TOC -->
 
 - [Crowdloan Claim Pallet](#crowdloan-claim-pallet)
-  - [Overview](#overview)
-  - [Pallet Usage](#pallet-usage)
-    - [Add the Pallet to your Runtime](#add-the-pallet-to-your-runtime)
-    - [Configure your Runtime](#configure-your-runtime)
-  - [Pallet Dependencies](#pallet-dependencies)
-  - [Pallet Interface](#pallet-interface)
-    - [Types Declaration](#types-declaration)
-    - [Dispatchable Functions](#dispatchable-functions)
-    - [Pallet Errors](#pallet-errors)
-  - [Pallet Documentation](#pallet-documentation)
-  - [References](#references)
-  - [License](#license)
+    - [Overview](#overview)
+    - [Pallet Usage](#pallet-usage)
+        - [Add the Pallet to your Parachain Runtime](#add-the-pallet-to-your-parachain-runtime)
+        - [Configure the Pallet](#configure-the-pallet)
+    - [Pallet Dependencies](#pallet-dependencies)
+    - [Pallet Interface](#pallet-interface)
+        - [Types Declaration](#types-declaration)
+        - [Dispatchable Functions](#dispatchable-functions)
+        - [Pallet Errors](#pallet-errors)
+    - [Pallet Documentation](#pallet-documentation)
+    - [References](#references)
+    - [License](#license)
 
 <!-- /TOC -->
 
@@ -30,13 +30,15 @@ during the crowdloan campaign, contributors are rewarded in native tokens of the
 parachain (on a parachain account). Otherwise, if the campaign miserably fail, the
 locked DOTs are given back to the contributor.
 
-This rather "generic" Claim Module` acts as a proxy between the contributor,
-who claims a reward payout, and the `Reward Pallet`, that concretely implement
-the rewarding strategy, using vesting or not, for instance.
+This rather "generic" Claim Module` acts as a proxy between the contributor
+who claims a reward payout and the `Reward Pallet`, that concretely implement
+the rewarding mechanism, using vesting or not, for instance. The two pallets
+are loosely-coupled by means of the `RewardMechanism` trait (see Configure 
+the Pallet below).
 
 ## Pallet Usage
 
-### Add the Pallet to your Runtime
+### Add the Pallet to your Parachain Runtime
 
 In order to add this pallet to your runtime, you should add the following lines
 to your parachain's main `Cargo.toml` file:
@@ -46,7 +48,8 @@ to your parachain's main `Cargo.toml` file:
 
 [dependencies.pallet-crowdloan-claim]            # <-- Add the new dependency
 default_features = false
-git = 'https://github.com/centrifuge-chain/substrate-pallets-library.git'
+git = 'https://github.com/centrifuge-chain/pallet-crowdloan-claim.git'
+branch = master
 
 # -- snip --
 
@@ -57,8 +60,21 @@ std = [
 ]
 ```
 
-### Configure your Runtime
+### Configure the Pallet
 
+Now that the pallet is added to your runtime,  the latter must be configured
+for your runtime (in `[runtime_path]/lib.rs` file):
+
+```rust
+
+construct_runtime! {
+    …
+
+    // Crowdloan campaign claim and reward payout processing pallets
+    CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
+}
+```
 ## Pallet Dependencies
 
 This pallet works hand in hand with the [`Reward Pallet`]().

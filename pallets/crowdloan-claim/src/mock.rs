@@ -85,11 +85,19 @@ pub const NORMAL_USER: u64 = 0x2;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-    fn claim_reward() -> Weight { 
+    fn initialize() -> Weight { 
         0 as Weight 
     }
 
-    fn initialize() -> Weight { 
+    fn register_contributor() -> Weight { 
+        0 as Weight 
+    }
+
+    fn evaluate_reward() -> Weight { 
+        0 as Weight 
+    }
+
+    fn claim_reward() -> Weight { 
         0 as Weight 
     }
 }
@@ -106,8 +114,8 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
-        CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
-        CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
+        CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Storage, Event<T>},
+        CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Storage, Event<T>, ValidateUnsigned},
     }
 );
 
@@ -160,14 +168,42 @@ impl pallet_balances::Config for MockRuntime {
     type WeightInfo = ();
 }
 
-// Parameterize crowdloan claim pallet
+parameter_types! {
+    pub const TestMinVestedTransfer: u64 = 16;
+    pub static TestExistentialDeposit: u64 = 1;
+}
+
+// Parameterize vesting pallet configuration
+impl pallet_vesting::Config for MockRuntime {
+    type Event = Event;
+    type Currency = Balances;
+    type BlockNumberToBalance = sp_runtime::traits::Identity;
+    type MinVestedTransfer = TestMinVestedTransfer;
+    type WeightInfo = ();
+}
+
+// Parameterize crowdloan reward pallet configuration
 parameter_types! {
     pub const One: u64 = 1;
+    pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
+}
+
+// Implement crowdloan reward pallet's configuration trait for the runtime
+impl pallet_crowdloan_reward::Config for MockRuntime {
+    type Event = Event;
+    type ModuleId = CrowdloanRewardModuleId;
+    type RelayChainBalance = Balance;
+    type RelayChainAccountId = AccountId;
+    type AdminOrigin = EnsureSignedBy<One, u64>;
+    type WeightInfo = ();
+}
+
+// Parameterize crowdloan claim pallet
+parameter_types! {
     pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
     pub const ClaimTransactionInterval: u64 = 128;
     pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
     pub const ClaimTransactionLongevity: u32 = 64;
-    pub const RewardMechanism: RewardMechanism = CrowdloanReward;
 }
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
@@ -181,7 +217,7 @@ impl Config for MockRuntime {
     type ClaimTransactionInterval = ClaimTransactionInterval;
     type ClaimTransactionPriority = ClaimTransactionPriority;
     type ClaimTransactionLongevity = ClaimTransactionLongevity;
-    type RewardMechanism = RewardMechanism;
+    type RewardMechanism = CrowdloanReward;
 }
 
 impl Contains<u64> for One {

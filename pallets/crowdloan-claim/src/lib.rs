@@ -137,8 +137,11 @@ use frame_system::{
   ensure_root,
 };
 
+use sp_core::crypto::AccountId32;
+
 use sp_runtime::{
     ModuleId,
+    MultiSignature,
     RuntimeDebug,
     sp_std::{
         hash::Hash,
@@ -149,6 +152,7 @@ use sp_runtime::{
         Bounded,
         MaybeDisplay,
         MaybeMallocSizeOf,
+        Verify,
     },
     transaction_validity::{
         InvalidTransaction, 
@@ -156,7 +160,7 @@ use sp_runtime::{
         TransactionSource,
         TransactionValidity, 
         ValidTransaction, 
-    }
+    },
 };
 
 use sp_std::convert::TryInto;
@@ -178,8 +182,10 @@ pub mod traits {
     /// Weights are calculated using runtime benchmarking features.
     /// See [`benchmarking`] module for more information. 
     pub trait WeightInfo {
-        fn claim_reward() -> Weight;
         fn initialize() -> Weight;
+        fn register_contributor() -> Weight;
+        fn evaluate_reward() -> Weight;
+        fn claim_reward() -> Weight;
     }
 
     /// A trait used for loosely coupling the claim pallet with a reward mechanism.
@@ -327,7 +333,14 @@ pub mod pallet {
 
         /// Contributor's account identifier on the relay chain.
         type RelayChainAccountId: 
-            Parameter + Member + MaybeSerializeDeserialize + Debug + MaybeSerialize + Ord + Default;
+            Debug + 
+            Default +
+            Into<AccountId32> +
+            MaybeSerialize + 
+            MaybeSerializeDeserialize + 
+            Member + 
+            Ord +
+            Parameter;
 
         /// The balance type of the relay chain
         type RelayChainBalance: Parameter + Member + 
@@ -376,9 +389,9 @@ pub mod pallet {
         /// parameters.
         type ClaimTransactionLongevity: Get<Self::BlockNumber>;
 
-        /// Reward payout mechanism.
+        /// The reward payout mechanism this claim pallet uses.
         ///
-        /// This associated type allows for a loosely coupled regime between
+        /// This associated type allows to implement a loosely-coupled regime between
         /// claiming and rewarding pallets.
         type RewardMechanism: RewardMechanism; 
 
@@ -401,6 +414,14 @@ pub mod pallet {
     // Additional argument to specify the metadata to use for given type
     #[pallet::metadata(T::AccountId = "AccountId")]
     pub enum Event<T: Config> {
+
+        /// A new contributor was registered, being elligible for future reward payout claims
+        ///
+        /// A registered contributor proves her/his identity to the parachain,
+        /// given a relay chain account id, a parachain account id and a
+        /// signature, in order to prove her/his native identity.
+        /// \[relaychain_account_id, parachain_account_id\]
+        ContributorRegistered(T::RelayChainAccountId, ParachainAccountIdOf<T>),
 
         /// Event triggered when a reward has already been processed.
         /// \[who, amount\]
@@ -427,10 +448,23 @@ pub mod pallet {
 	#[pallet::getter(fn contributions)]
     pub(super) type Contributions<T: Config> = StorageValue<_, ChildTrieRootHashOf<T>, OptionQuery>;
 
+    /// List of registered contributors.
+    ///
+    /// To become elligible for a reward payout, a contributor must first prove
+    /// that she/he contributed, by proving her/his relay chain identity. For doing
+    /// so, the signed [`register_contributor`] transaction must be first called. 
+    #[pallet::storage]
+	#[pallet::getter(fn claimed_relay_chain_ids)]
+	pub type RegisteredContributors<T: Config> = StorageMap<
+        _, 
+        Blake2_128Concat, 
+        T::RelayChainAccountId, ()
+    >;
+
     /// A map containing the list of claims for reward payouts that were successfuly processed
     #[pallet::storage]
 	#[pallet::getter(fn claims_processed)]
-    pub(super) type ClaimsProcessed<T: Config> = StorageMap<
+    pub(super) type ProcessedClaims<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
         T::RelayChainAccountId, T::BlockNumber
@@ -488,6 +522,14 @@ pub mod pallet {
         /// Cannot re-initialize the pallet
         PalletAlreadyInitialized,
 
+        /// The contributor has already been registered.
+        ///
+        /// A contributor cannot be registered more than once. Only the parachain 
+        /// account on which she/he would like to be rewarded can be modified, 
+        /// using [`set_reward_account`] transaction.
+        ContributorAlreadyRegistered,
+
+
         /// Claim has already been processed (replay attack, probably)
         ClaimAlreadyProcessed,
 
@@ -500,8 +542,11 @@ pub mod pallet {
         /// The reward amount that is claimed does not correspond to the one of the contribution
         InvalidClaimAmount,
 
-        /// Error raise if storage overflow
-        StorageOverflow
+        /// The signature provided by the contributor when registering is not valid.
+        ///
+        /// The consequence is that the relaychain and parachain accounts being not
+        /// associated, the contributor is not elligible for a reward payout.
+        InvalidContributorSignature,
     }
 
 
@@ -545,17 +590,17 @@ pub mod pallet {
             ensure_none(origin)?;
 
             // Be sure user has not already claimed her/his reward payout
-            ensure!(!ClaimsProcessed::<T>::contains_key(&relaychain_account_id), Error::<T>::ClaimAlreadyProcessed);
+            ensure!(!ProcessedClaims::<T>::contains_key(&relaychain_account_id), Error::<T>::ClaimAlreadyProcessed);
 
             // Compute new claim transaction tick at which a new claim can be placed
             Self::increment_claim_transaction_tick();
 
             // Invoke the reward payout mechanism
-            T::RewardMechanism::reward( parachain_account_id, claimed_amount)?;
+            T::RewardMechanism::reward(parachain_account_id, claimed_amount)?;
             
             // Store this claim in the list of processed claims (so that to process it only once)
             // TODO [TankOfZion]: `Module` must be replaced by `Pallet` when all code base will be ported to FRAME v2
-            <ClaimsProcessed<T>>::insert(relaychain_account_id, <frame_system::Module<T>>::block_number()); 
+            <ProcessedClaims<T>>::insert(&relaychain_account_id, <frame_system::Module<T>>::block_number()); 
             
             Ok(().into())
 		}
@@ -585,6 +630,50 @@ pub mod pallet {
 
             // Trigger an event so that to inform that the pallet was successfully initialized
             Self::deposit_event(Event::PalletInitialized());
+
+            Ok(().into())
+        }
+
+        /// Bind contributor's relaychain account with one on the parachain.
+        ///
+        /// This function aims at proving that the contributor's identity on
+        /// the relay chain is valid, using a signature. She/he also provides
+        /// a parachain account on which the reward payout must be transfered
+        /// and the amount she/he contributed to.
+        /// The [`signature`] is used as the proof.
+        #[pallet::weight(<T as Config>::WeightInfo::register_contributor())]
+		pub(crate) fn register_contributor(
+            origin: OriginFor<T>,
+            relaychain_account_id: T::RelayChainAccountId,
+            parachain_account_id: ParachainAccountIdOf<T>,
+            signature: MultiSignature,
+        ) -> DispatchResultWithPostInfo {
+            
+            // Be sure this administrative function is called via a signed transaction
+            ensure_signed(origin)?;
+
+            // Now check if the contributor's native identity on the relaychain is valid
+            let payload = parachain_account_id.encode();
+            ensure!(
+                signature.verify(payload.as_slice(), &relaychain_account_id.clone().into()),
+                Error::<T>::InvalidContributorSignature
+            );
+
+            // Then check if the given contributor has not already been registered
+            ensure!(
+                <RegisteredContributors<T>>::get(&relaychain_account_id).is_none(),
+                Error::<T>::ContributorAlreadyRegistered
+            );
+
+            // Keep track of this newly registered contributor
+            // TODO [TankOfZion]: add "when" (i.e. blocknumber) was the contributor registered
+            <RegisteredContributors<T>>::insert(&relaychain_account_id, ());
+
+            // Emit an event when user registration is successfully done
+            Self::deposit_event(Event::ContributorRegistered(
+                relaychain_account_id,
+                parachain_account_id,
+            ));
 
             Ok(().into())
         }
