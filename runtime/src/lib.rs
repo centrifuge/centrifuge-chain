@@ -17,7 +17,7 @@ use frame_support::{
 use codec::{Encode, Decode};
 use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
-use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
+use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
 	Perbill, Perquintill, ApplyExtrinsicResult,
@@ -448,7 +448,7 @@ impl InstanceFilter<Call> for ProxyType {
         match self {
             ProxyType::Any => true,
             ProxyType::NonTransfer => !matches!(c,
-				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+				Call::Balances(..)
 			),
             ProxyType::Governance => matches!(c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
@@ -500,23 +500,6 @@ impl pallet_scheduler::Config for Runtime {
     type MaximumWeight = MaximumSchedulerWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = MaxScheduledPerBlock;
-    type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
-}
-
-impl pallet_indices::Config for Runtime {
-    /// The type for recording indexing into the account enumeration. If this ever overflows, there
-    /// will be problems!
-    type AccountIndex = AccountIndex;
-    /// The currency trait.
-    type Currency = Balances;
-    /// The deposit needed for reserving an index.
-    type Deposit = IndexDeposit;
-    /// The overarching event type.
-    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -895,7 +878,6 @@ construct_runtime!(
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
 		// PalletBridge: pallet_bridge::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
-		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>},
 		//Historical: pallet_session_historical::{Pallet},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},

@@ -201,9 +201,6 @@ fn testnet_genesis(
 						.collect(),
 			phantom: Default::default(),
 		},
-		pallet_indices: node_runtime::IndicesConfig {
-			indices: vec![],
-		},
 		// pallet_bridge: Some(node_runtime::PalletBridgeConfig{
 		// 	// Whitelist chains Ethereum - 0
 		// 	chains: vec![0],
