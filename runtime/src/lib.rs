@@ -25,9 +25,7 @@ use sp_runtime::{
 };
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
-use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, StaticLookup, ConvertInto, Convert
-};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto, Convert};
 use frame_system::{
     EnsureRoot,
     limits::{BlockWeights, BlockLength}};
@@ -208,7 +206,7 @@ impl frame_system::Config for Runtime {
     /// The identifier used to distinguish between accounts.
     type AccountId = AccountId;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = Indices;
+    type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
     /// The header type.
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
     /// The overarching event type.
@@ -917,7 +915,7 @@ construct_runtime!(
 );
 
 /// The address format for describing accounts.
-pub type Address = <Indices as StaticLookup>::Source;
+pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
