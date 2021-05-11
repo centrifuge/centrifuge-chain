@@ -147,7 +147,7 @@ use sp_runtime::{
 };
 
 // Claim reward trait to be implemented
-use pallet_crowdloan_claim::traits::Reward;
+use pallet_crowdloan_claim::traits::RewardMechanism;
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo;
@@ -217,7 +217,7 @@ pub mod pallet {
     /// …
     /// // Parameterize crowdloan reward pallet configuration
     /// parameter_types! {
-    ///   pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rwrd");
+    ///   pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
     /// }
     ///
     /// // Implement crowdloan reward pallet's configuration trait for the runtime
@@ -296,11 +296,12 @@ pub mod pallet {
   /// The conversion rate between relay chain and native chain balances.
   #[pallet::storage]
   #[pallet::getter(fn conversion_rate)]      
-  pub(super) type ConversionRate<T: Config> = StorageValue<_, Perbill, ValueQuery>;
+  pub(super) type ConversionRate<T: Config> = StorageValue<_, Perbill, ValueQuery> ;
         
   /// Which ratio of the rewards are payed directly. The rest is transferred via a vesting schedule.
   #[pallet::storage]
-  #[pallet::getter(fn direct_payout_ratio)]      
+  #[pallet::getter(fn direct_payout_ratio)]   
+  
   pub(super) type DirectPayoutRatio<T: Config>  = StorageValue<_, Perbill, ValueQuery>;
   
   /// Over which period are the contributions vested.
@@ -317,37 +318,37 @@ pub mod pallet {
   // ----------------------------------------------------------------------------
   // Pallet genesis configuration
   // ----------------------------------------------------------------------------
-
+	
   /// Pallet genesis configuration type declaration.
   ///
   /// It allows to build genesis storage.
-  #[pallet::genesis_config]
-	pub struct GenesisConfig {
-    #[doc = "Conversion rate between relay chain and parachain tokens."]
-    pub conversion: u32,
-    #[doc = "Direct reward payout ratio."]
-    pub direct_payout: u32
-  }
+  // #[pallet::genesis_config]
+	// pub struct GenesisConfig {
+  //   #[doc = "Conversion rate between relay chain and parachain tokens."]
+  //   pub conversion: u32,
+  //   #[doc = "Direct reward payout ratio."]
+  //   pub direct_payout: u32
+  // }
 
   // The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {
-				conversion: 80,
-        direct_payout: 20,
-			}
-		}
-	}
+	// #[cfg(feature = "std")]
+	// impl Default for GenesisConfig {
+	// 	fn default() -> Self {
+	// 		Self {
+	// 			conversion: 80,
+  //       direct_payout: 20,
+	// 		}
+	// 	}
+	// }
 
   // The build of genesis configuration for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-	 	fn build(&self) {
-      <ConversionRate<T>>::put(Perbill::from_percent(self.conversion));
-      <DirectPayoutRatio<T>>::put(Perbill::from_percent(self.direct_payout));
-		}
-	}
+	// #[pallet::genesis_build]
+	// impl<T: Config> GenesisBuild<T> for GenesisConfig {
+	//  	fn build(&self) {
+  //     <ConversionRate<T>>::put(Perbill::from_percent(self.conversion));
+  //     <DirectPayoutRatio<T>>::put(Perbill::from_percent(self.direct_payout));
+	// 	}
+	// }
 
 
   // ----------------------------------------------------------------------------
@@ -378,6 +379,10 @@ pub mod pallet {
 		fn offchain_worker(_n: T::BlockNumber) {
       // nothing done here, folks!
 		}
+
+		fn on_runtime_upgrade() -> Weight { 0 }
+
+		fn integrity_test() {}
   }
 
 
@@ -538,7 +543,7 @@ impl<T: Config> Pallet<T> {
 // ----------------------------------------------------------------------------
 
 // Reward trait implementation for the pallet
-impl<T: Config> Reward for Pallet<T>
+impl<T: Config> RewardMechanism for Pallet<T>
   where BalanceOf<T>: Send + Sync
 {
   type ParachainAccountId = T::AccountId;

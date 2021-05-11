@@ -78,7 +78,7 @@ impl WeightInfo for MockWeightInfo {
 
   fn set_direct_payout_ratio() -> Weight {
     0 as Weight
-  }
+  }  
 }
 
 type AccountId = u64;
@@ -97,7 +97,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
     Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
     Vesting: pallet_vesting::{Module, Call, Config<T>, Storage, Event<T>},
-    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
+    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Storage, Event<T>},
   }
 );
 
@@ -136,6 +136,7 @@ impl pallet_vesting::Config for MockRuntime {
 parameter_types! {
   pub const One: u64 = 1;
   pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
+  pub const SumOfFunds: u32 = 100;
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime

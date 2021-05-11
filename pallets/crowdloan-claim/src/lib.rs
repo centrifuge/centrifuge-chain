@@ -159,7 +159,7 @@ use sp_runtime::{
     }
 };
 
-use std::convert::TryInto;
+use sp_std::convert::TryInto;
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;
@@ -258,7 +258,7 @@ pub mod traits {
 /// A type alias for the balance type from this pallet's point of view.
 type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
 
-/// A type alias for contributors list's child trie root hash.
+/// A type alias for crowdloan's child trie root hash, from this claim pallet's point of view.
 ///
 /// When setting up the pallet via the [`initialize`] transaction, the
 /// child trie root hash containing all contributions, is transfered from
@@ -267,13 +267,13 @@ type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
 /// The [`Contributions`] root hash is used to check if a contributor is
 /// eligible for a reward payout and to get the amount of her/his contribution
 /// (in relay chain's native token) to a crowdloan campaign.
-type ChildTrieRootHash<T> = <T as frame_system::Config>::Hash;
+type ChildTrieRootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
-type ParachainAccountId<T> = <<T as Config>::RewardMechanism as traits::RewardMechanism>::ParachainAccountId;
+type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as traits::RewardMechanism>::ParachainAccountId;
 
 /// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
-type ContributionAmount<T> = <<T as Config>::RewardMechanism as traits::RewardMechanism>::ContributionAmount;
+type ContributionAmountOf<T> = <<T as Config>::RewardMechanism as traits::RewardMechanism>::ContributionAmount;
 
 
 // ----------------------------------------------------------------------------
@@ -347,7 +347,9 @@ pub mod pallet {
         /// extrinsics).
         /// Because the [`claim_reward`] function can be called at no cost, one
         /// must ensure that the latter is not used by a malicious user for spams or
-        /// potential Deny of Service (DoS) attacks 
+        /// potential Deny of Service (DoS) attacks.
+        /// Perhaps sessions can also be used here, so that to build a transaction
+        /// throttling mechanism (see how grandpa pallet works, for instance).
         #[pallet::constant]
         type ClaimTransactionInterval: Get<Self::BlockNumber>;
 
@@ -402,7 +404,7 @@ pub mod pallet {
 
         /// Event triggered when a reward has already been processed.
         /// \[who, amount\]
-        ClaimAlreadyProcessed(T::RelayChainAccountId, ContributionAmount<T>),
+        ClaimAlreadyProcessed(T::RelayChainAccountId, ContributionAmountOf<T>),
 
         /// Event emitted when the crowdloan claim pallet is properly configured.
         PalletInitialized(),
@@ -423,7 +425,7 @@ pub mod pallet {
     /// check if a contributor is elligible for a reward payout.
     #[pallet::storage]
 	#[pallet::getter(fn contributions)]
-    pub(super) type Contributions<T: Config> = StorageValue<_, ChildTrieRootHash<T>, OptionQuery>;
+    pub(super) type Contributions<T: Config> = StorageValue<_, ChildTrieRootHashOf<T>, OptionQuery>;
 
     /// A map containing the list of claims for reward payouts that were successfuly processed
     #[pallet::storage]
@@ -536,8 +538,8 @@ pub mod pallet {
 		pub(crate) fn claim_reward(
             origin: OriginFor<T>,
             relaychain_account_id: T::RelayChainAccountId,
-            parachain_account_id: ParachainAccountId<T>, 
-            claimed_amount: ContributionAmount<T>
+            parachain_account_id: ParachainAccountIdOf<T>, 
+            claimed_amount: ContributionAmountOf<T>
         ) -> DispatchResultWithPostInfo {
             // Ensures that this function can only be called via an unsigned transaction			
             ensure_none(origin)?;
@@ -570,7 +572,7 @@ pub mod pallet {
         /// to the crowdloan campaign, and that the amount of the contribution is correct as 
         /// well.
         #[pallet::weight(<T as Config>::WeightInfo::initialize())]
-		pub(crate) fn initialize(origin: OriginFor<T>, contributions: ChildTrieRootHash<T>) -> DispatchResultWithPostInfo {
+		pub(crate) fn initialize(origin: OriginFor<T>, contributions: ChildTrieRootHashOf<T>) -> DispatchResultWithPostInfo {
 
             // Ensure that only administrator entity can perform this administrative transaction
             ensure!(Self::ensure_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
@@ -679,7 +681,7 @@ impl<T: Config> Pallet<T> {
     // contributors. Given the contributor's relay chain acccount identifier, the claimed amount 
     // (in relay chain tokens) and the parachain account identifier, this function proves that the 
     // contributor's claim is valid.
-    fn verify_reward_payout_proof(self, relaychain_account_id: T::RelayChainAccountId,  parachain_account_id: ParachainAccountId<T>, contribution_amount: ContributionAmount<T>) -> DispatchResult {
+    fn verify_reward_payout_proof(self, relaychain_account_id: T::RelayChainAccountId,  parachain_account_id: ParachainAccountIdOf<T>, contribution_amount: ContributionAmountOf<T>) -> DispatchResult {
         
         // TODO [ThankOfZion] - Work in progress
         Ok(())

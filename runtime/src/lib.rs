@@ -6,6 +6,7 @@
 
 use sp_std::{prelude::*, convert::TryFrom};
 use frame_support::{
+    Blake2_128,
     construct_runtime, parameter_types, debug, RuntimeDebug,
     weights::{
         Weight, DispatchClass,
@@ -55,11 +56,13 @@ use sp_runtime::{
 use frame_system::{
     EnsureSigned, EnsureRoot, EnsureOneOf,
     limits::{BlockWeights, BlockLength}};
-use sp_version::RuntimeVersion;
+
+    use sp_version::RuntimeVersion;
+
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_core::OpaqueMetadata;
-use sp_io::hashing::blake2_128;
+//use sp_io::hashing::blake2_128; // replaced with frame_support::Blake2_128
 //use pallet_grandpa::{AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList};
 //use pallet_grandpa::fg_primitives;
 //use pallet_im_online::sr25519::{AuthorityId as ImOnlineId};
@@ -579,12 +582,12 @@ parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-    pub const InstantAllowed: bool = false;
+  pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 10 * RAD;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_RAD;
-    pub const MaxProposals: u32 = 100;
+  pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }
 
@@ -842,32 +845,39 @@ impl pallet_sudo::Config for Runtime {
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-  pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
-  pub const ClaimInterval: BlockNumber = 128;
+    pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
+    pub const ClaimTransactionInterval: BlockNumber = 128;
+    pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const ClaimTransactionLongevity: u32 = 64;
 }
 
 // Implement crowdloan claim pallet's configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
-  type Event = Event;
-  type WeightInfo = ();
-  type ModuleId = CrowdloanClaimModuleId;
-  type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-  type ClaimInterval = ClaimInterval;
+    type Event = Event;
+    type ModuleId = CrowdloanClaimModuleId;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type ClaimTransactionInterval = ClaimTransactionInterval;
+    type ClaimTransactionPriority = ClaimTransactionPriority;
+    type ClaimTransactionLongevity = ClaimTransactionLongevity;
+    type RelayChainBalance = Balance;
+    type RelayChainAccountId = AccountId;
+    type RewardMechanism = CrowdloanReward;
+    type WeightInfo = ();
 }
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-  pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
+    pub const CrowdloanRewardModuleId: ModuleId = ModuleId(*b"cc/rewrd");
 }
 
 // Implement crowdloan reward pallet's configuration trait for the runtime
 impl pallet_crowdloan_reward::Config for Runtime {
-  type Event = Event;
-  type WeightInfo = ();
-  type ModuleId = CrowdloanRewardModuleId;
-  type RelayChainBalance = Balance;
-  type RelayChainAccountId = AccountId;
-  type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type Event = Event;
+    type WeightInfo = ();
+    type ModuleId = CrowdloanRewardModuleId;
+    type RelayChainBalance = Balance;
+    type RelayChainAccountId = AccountId;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -918,9 +928,9 @@ frame_support::construct_runtime!(
         XcmHandler: cumulus_pallet_xcm_handler::{Module, Call, Event<T>, Origin},
         Sudo: pallet_sudo::{Module, Call, Storage, Config<T>, Event<T>},
 
-    // Crowdloan campaign claim and reward payout processing pallets
-    CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
-    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
+        // Crowdloan campaign claim and reward payout processing pallets
+        CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Storage, Event<T>, ValidateUnsigned},
+        CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Storage, Event<T>},
 	}
 );
 

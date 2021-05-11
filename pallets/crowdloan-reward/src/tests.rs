@@ -25,7 +25,6 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-//use super::*;
 use crate::{
   Error as CrowdloanRewardError,
   mock::*,

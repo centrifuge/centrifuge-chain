@@ -85,13 +85,13 @@ pub const NORMAL_USER: u64 = 0x2;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-  fn claim_reward() -> Weight { 
-    0 as Weight 
-  }
+    fn claim_reward() -> Weight { 
+        0 as Weight 
+    }
 
-  fn initialize() -> Weight { 
-    0 as Weight 
-  }
+    fn initialize() -> Weight { 
+        0 as Weight 
+    }
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
@@ -99,22 +99,22 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-  pub enum MockRuntime where 
-    Block = Block,
-    NodeBlock = Block,
-    UncheckedExtrinsic = UncheckedExtrinsic,
-  {
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-    Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
-    CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
-    CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
-  }
+    pub enum MockRuntime where 
+        Block = Block,
+        NodeBlock = Block,
+        UncheckedExtrinsic = UncheckedExtrinsic,
+    {
+        System: frame_system::{Module, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
+        CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Config, Storage, Event<T>},
+        CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Config, Storage, Event<T>, ValidateUnsigned},
+    }
 );
 
 // Parameterize frame system pallet
 parameter_types! {
-  pub const BlockHashCount: u64 = 250;
-	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(1024);
+    pub const BlockHashCount: u64 = 250;
+    pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights::simple_max(1024);
 }
 
 // Implement frame system configuration for the mock runtime
@@ -145,50 +145,49 @@ impl frame_system::Config for MockRuntime {
 
 // Parameterize balances pallet
 parameter_types! {
-  pub const MaxLocks: u32 = 10;
-  pub const ExistentialDeposit: u64 = 1;
+    pub const MaxLocks: u32 = 10;
+    pub const ExistentialDeposit: u64 = 1;
 }
 
 // Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for MockRuntime {
-  type MaxLocks = ();
-  type Balance = Balance;
-  type Event = Event;
-  type DustRemoval = ();
-  type ExistentialDeposit = ExistentialDeposit;
-  type AccountStore = System;
-  type WeightInfo = ();
+    type MaxLocks = ();
+    type Balance = Balance;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
 }
 
 // Parameterize crowdloan claim pallet
 parameter_types! {
-  pub const One: u64 = 1;
-  pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
-  pub const ClaimTransactionInterval: u64 = 128;
-  pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
-  pub const ClaimTransactionLongevity: u32 = 64;
-  pub const RewardMechanism: RewardMechanism = CrowdloanReward;
+    pub const One: u64 = 1;
+    pub const CrowdloanClaimModuleId: ModuleId = ModuleId(*b"cc/claim");
+    pub const ClaimTransactionInterval: u64 = 128;
+    pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const ClaimTransactionLongevity: u32 = 64;
+    pub const RewardMechanism: RewardMechanism = CrowdloanReward;
 }
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
-  type Event = Event;
-  type ModuleId = CrowdloanClaimModuleId;
-  type WeightInfo = MockWeightInfo;
-  type AdminOrigin = EnsureSignedBy<One, u64>;
-  type ClaimCurrency = Balances;
-  type RelayChainBalance = Balance;
-  type RelayChainAccountId = AccountId;
-  type ClaimTransactionInterval = ClaimTransactionInterval;
-  type ClaimTransactionPriority = ClaimTransactionPriority;
-  type ClaimTransactionLongevity = ClaimTransactionLongevity;
-  type RewardMechanism = RewardMechanism;
+    type Event = Event;
+    type ModuleId = CrowdloanClaimModuleId;
+    type WeightInfo = MockWeightInfo;
+    type AdminOrigin = EnsureSignedBy<One, u64>;
+    type RelayChainBalance = Balance;
+    type RelayChainAccountId = AccountId;
+    type ClaimTransactionInterval = ClaimTransactionInterval;
+    type ClaimTransactionPriority = ClaimTransactionPriority;
+    type ClaimTransactionLongevity = ClaimTransactionLongevity;
+    type RewardMechanism = RewardMechanism;
 }
 
 impl Contains<u64> for One {
-  fn sorted_members() -> Vec<u64> {
-      vec![1]
-  }
+    fn sorted_members() -> Vec<u64> {
+        vec![1]
+    }
 }
 
 
