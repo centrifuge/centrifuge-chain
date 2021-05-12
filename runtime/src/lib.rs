@@ -17,7 +17,7 @@ use frame_support::{
 use codec::{Encode, Decode};
 use sp_core::u32_trait::{_1, _2, _3, _4};
 pub use node_primitives::{AccountId, Signature};
-use node_primitives::{AccountIndex, Balance, BlockNumber, Hash, Index, Moment};
+use node_primitives::{Balance, BlockNumber, Hash, Index, Moment};
 use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_runtime::{
 	Perbill, Perquintill, ApplyExtrinsicResult,
@@ -25,9 +25,7 @@ use sp_runtime::{
 };
 use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource, TransactionPriority};
-use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, StaticLookup, ConvertInto, Convert
-};
+use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto, Convert};
 use frame_system::{
     EnsureRoot,
     limits::{BlockWeights, BlockLength}};
@@ -129,10 +127,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 240,
+    spec_version: 1000,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 1,
+    transaction_version: 2,
 };
 
 /// Native version.
@@ -208,7 +206,7 @@ impl frame_system::Config for Runtime {
     /// The identifier used to distinguish between accounts.
     type AccountId = AccountId;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
-    type Lookup = Indices;
+    type Lookup = sp_runtime::traits::AccountIdLookup<AccountId, ()>;
     /// The header type.
     type Header = generic::Header<BlockNumber, BlakeTwo256>;
     /// The overarching event type.
@@ -450,7 +448,7 @@ impl InstanceFilter<Call> for ProxyType {
         match self {
             ProxyType::Any => true,
             ProxyType::NonTransfer => !matches!(c,
-				Call::Balances(..) | Call::Indices(pallet_indices::Call::transfer(..))
+				Call::Balances(..)
 			),
             ProxyType::Governance => matches!(c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..)
@@ -502,23 +500,6 @@ impl pallet_scheduler::Config for Runtime {
     type MaximumWeight = MaximumSchedulerWeight;
     type ScheduleOrigin = EnsureRoot<AccountId>;
     type MaxScheduledPerBlock = MaxScheduledPerBlock;
-    type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const IndexDeposit: Balance = 1 * MILLI_RAD;
-}
-
-impl pallet_indices::Config for Runtime {
-    /// The type for recording indexing into the account enumeration. If this ever overflows, there
-    /// will be problems!
-    type AccountIndex = AccountIndex;
-    /// The currency trait.
-    type Currency = Balances;
-    /// The deposit needed for reserving an index.
-    type Deposit = IndexDeposit;
-    /// The overarching event type.
-    type Event = Event;
     type WeightInfo = ();
 }
 
@@ -897,7 +878,6 @@ construct_runtime!(
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
 		// PalletBridge: pallet_bridge::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
-		Indices: pallet_indices::{Pallet, Call, Storage, Config<T>, Event<T>},
 		//Historical: pallet_session_historical::{Pallet},
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
@@ -917,7 +897,7 @@ construct_runtime!(
 );
 
 /// The address format for describing accounts.
-pub type Address = <Indices as StaticLookup>::Source;
+pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
