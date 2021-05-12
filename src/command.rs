@@ -40,18 +40,8 @@ fn load_spec(
 	id: &str,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-        /*
-		"staging" => Ok(Box::new(chain_spec::staging_test_net(para_id))),
-		"tick" => Ok(Box::new(chain_spec::ChainSpec::from_json_bytes(
-			&include_bytes!("../res/tick.json")[..],
-		)?)),
-		"trick" => Ok(Box::new(chain_spec::ChainSpec::from_json_bytes(
-			&include_bytes!("../res/trick.json")[..],
-		)?)),
-		"track" => Ok(Box::new(chain_spec::ChainSpec::from_json_bytes(
-			&include_bytes!("../res/track.json")[..],
-		)?)),
-        */
+		"charcoal-rococo" => Ok(Box::new(chain_spec::charcoal_rococo_config())),
+		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network())),
 		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network())),
 		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network())),
 		"charcoal-chachacha" => Ok(Box::new(chain_spec::charcoal_chachacha_config())),
