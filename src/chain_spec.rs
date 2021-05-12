@@ -16,7 +16,7 @@
 
 use hex_literal::hex;
 use cumulus_primitives_core::ParaId;
-use node_runtime::{SessionKeys, constants::currency::RAD};
+use node_runtime::{SessionKeys, constants::currency::RAD, AuraId};
 use node_primitives::{AccountId, Balance, Hash, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
@@ -72,6 +72,10 @@ pub fn charcoal_local_network() -> ChainSpec {
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Bob"),
+				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
@@ -148,6 +152,10 @@ pub fn charcoal_chachacha_staging_network() -> ChainSpec {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
+					get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Bob"),
+				],
+				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
 					get_account_id_from_seed::<sr25519::Public>("Charlie"),
@@ -213,6 +221,7 @@ pub fn charcoal_rococo_config() -> ChainSpec {
 
 fn testnet_genesis(
 	root_key: AccountId,
+	initial_authorities: Vec<AuraId>,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
 ) -> node_runtime::GenesisConfig {
@@ -279,5 +288,9 @@ fn testnet_genesis(
 		pallet_vesting: Default::default(),
 		pallet_sudo: node_runtime::SudoConfig { key: root_key },
 		parachain_info: node_runtime::ParachainInfoConfig { parachain_id: id },
+		cumulus_pallet_aura_ext: Default::default(),
+		pallet_aura: node_runtime::AuraConfig {
+			authorities: initial_authorities,
+		},
 	}
 }
