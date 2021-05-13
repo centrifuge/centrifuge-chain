@@ -46,71 +46,71 @@ structopt = { version = "0.3.8" , optional = true }
 serde_json = "1.0"
 
 # primitives
-sp-authority-discovery = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-consensus-babe = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-core = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-timestamp = { default-features = false,  git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+sp-authority-discovery = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-consensus-babe = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-timestamp = { default-features = false,  git = "https://github.com/centrifuge/substrate", branch = "master" }
 #sp-finality-tracker = { branch = "rococo-v1", default-features = false,  git = "https://github.com/paritytech/substrate.git" }
-sp-inherents = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-consensus = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-transaction-pool = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-api = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-blockchain = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-block-builder = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-runtime-interface = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
-sp-trie = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
-sp-keystore = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
+sp-inherents = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-consensus = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-transaction-pool = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-api = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-blockchain = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-block-builder = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-runtime-interface = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-trie = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-keystore = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 # client dependencies
-sc-client-api = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-chain-spec = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-consensus = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-transaction-pool = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-telemetry = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-network = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-consensus-babe = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-grandpa = { package = "sc-finality-grandpa", git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-finality-grandpa-rpc = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-client-db = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-offchain = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-rpc = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-basic-authorship = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-service = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-cli = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-executor = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-consensus-epochs = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-consensus-babe-rpc = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-authority-discovery = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-rpc-api = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-keystore = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-tracing = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sc-sync-state-rpc = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-substrate-prometheus-endpoint = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-session = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-offchain = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-sp-consensus-aura = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+sc-client-api = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-chain-spec = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-consensus = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-transaction-pool = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-telemetry = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-network = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-consensus-babe = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+grandpa = { package = "sc-finality-grandpa", git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-finality-grandpa-rpc = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-client-db = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-offchain = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-rpc = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-basic-authorship = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-service = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-cli = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-executor = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-consensus-epochs = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-consensus-babe-rpc = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-authority-discovery = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-rpc-api = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-keystore = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-tracing = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sc-sync-state-rpc = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+substrate-prometheus-endpoint = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-session = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-offchain = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+sp-consensus-aura = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # Cli specific
-frame-benchmarking-cli = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-node-inspect = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+frame-benchmarking-cli = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+node-inspect = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # frame dependencies
-pallet-transaction-payment-rpc = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-substrate-frame-rpc-system  = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-pallet-im-online = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+pallet-transaction-payment-rpc = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+substrate-frame-rpc-system  = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+pallet-im-online = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # Cumulus dependencies
-cumulus-client-network = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-client-consensus-relay-chain = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-primitives-core = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-client-service = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-client-consensus-aura = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-client-consensus-common = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-primitives-parachain-inherent = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
-cumulus-client-cli = {git = 'https://github.com/centrifuge/cumulus', branch = "centrifuge"}
+cumulus-client-network = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-client-consensus-relay-chain = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-primitives-core = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-client-service = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-client-consensus-aura = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-client-consensus-common = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-primitives-parachain-inherent = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
+cumulus-client-cli = {git = "https://github.com/centrifuge/cumulus", branch = "centrifuge" }
 
 # Polkadot dependencies
 polkadot-parachain = {git = "https://github.com/centrifuge/polkadot", branch = "centrifuge" }
@@ -120,19 +120,19 @@ polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centri
 
 # node-specific dependencies
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
-node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 [build-dependencies]
 vergen = "3.0.4"
-substrate-build-script-utils  = { optional = true, git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+substrate-build-script-utils  = { optional = true, git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 [dev-dependencies]
 #sc-keystore = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
-sc-service-test = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+sc-service-test = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 tempfile = "3.1.0"
-sp-keyring = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-frame-system = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-pallet-transaction-payment = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
+sp-keyring = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+pallet-transaction-payment = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 [features]
 default = [ "std" ]

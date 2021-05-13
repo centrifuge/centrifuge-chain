@@ -18,13 +18,13 @@ package = 'parity-scale-codec'
 version = '2.0.0'
 
 [dependencies]
-frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
-frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
+frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "centrifuge" }
+sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [features]
 default = ['std']

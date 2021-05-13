@@ -28,16 +28,16 @@ rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
 
 # parachain
-parachain-info = { git = "https://github.com/centrifuge/cumulus.git", default-features = false, branch = "centrifuge"}
+parachain-info = { git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 #cumulus-parachain-upgrade = { git = "https://github.com/centrifuge/cumulus.git", default-features = false, branch = "rococo-v1" }
-cumulus-pallet-parachain-system = { git = "https://github.com/centrifuge/cumulus.git", default-features = false, branch = "centrifuge"}
-cumulus-primitives-core = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = "centrifuge"}
-cumulus-primitives-utility = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = "centrifuge"}
+cumulus-pallet-parachain-system = { git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
+cumulus-primitives-core = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
+cumulus-primitives-utility = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 #cumulus-message-broker = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = 'rococo-v1'}
-cumulus-pallet-xcm = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = "centrifuge"}
-cumulus-pallet-xcmp-queue = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = "centrifuge"}
-cumulus-pallet-dmp-queue = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = "centrifuge"}
-cumulus-pallet-aura-ext = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = "centrifuge"}
+cumulus-pallet-xcm = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
+cumulus-pallet-xcmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
+cumulus-pallet-dmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
+cumulus-pallet-aura-ext = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 
 
 # polkadot dependencies
@@ -48,57 +48,57 @@ xcm-executor = { git = "https://github.com/centrifuge/polkadot", default-feature
 xcm-builder = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
 
 # primitives
-sp-authority-discovery = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-consensus-babe = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-block-builder = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "centrifuge" }
-sp-inherents = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-offchain = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-core = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-io = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-staking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-session = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-transaction-pool = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-version = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-sp-consensus-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "centrifuge" }
+sp-authority-discovery = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-consensus-babe = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-block-builder = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
+sp-inherents = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-offchain = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-staking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-session = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-transaction-pool = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-version = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-consensus-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # frame dependencies
-frame-executive = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-frame-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-frame-system = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-frame-system-rpc-runtime-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-authority-discovery = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-babe = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-collective = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-democracy = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-elections-phragmen = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
+frame-executive = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+frame-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+frame-system-rpc-runtime-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-authority-discovery = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-babe = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-collective = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-democracy = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-elections-phragmen = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 #pallet-finality-tracker = { branch = "rococo-v1", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
-pallet-grandpa = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-im-online = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-indices = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-membership = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-multisig = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-offences = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-proxy = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-session = { git = "https://github.com/centrifuge/substrate",  default-features = false, features = ["historical"] , branch = "centrifuge" }
-pallet-staking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-staking-reward-curve = { git = "https://github.com/centrifuge/substrate", branch = "centrifuge" }
-pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-utility = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-transaction-payment = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-identity = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-scheduler = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "centrifuge" }
-pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "centrifuge" }
+pallet-grandpa = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-im-online = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-indices = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-membership = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-multisig = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-offences = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-proxy = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-session = { git = "https://github.com/centrifuge/substrate",  default-features = false, features = ["historical"] , branch = "master" }
+pallet-staking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-staking-reward-curve = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-utility = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-transaction-payment = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-identity = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-scheduler = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 [build-dependencies]
 #wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
