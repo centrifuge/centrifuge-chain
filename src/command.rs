@@ -262,9 +262,7 @@ pub fn run() -> Result<()> {
 
 				let polkadot_cli = RelayChainCli::new(
 					&config,
-					[RelayChainCli::executable_name().to_string()]
-						.iter()
-						.chain(cli.relaychain_args.iter()),
+					cli.relaychain_args.iter(),
 				);
 
 				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(100));
@@ -277,6 +275,7 @@ pub fn run() -> Result<()> {
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
 				let task_executor = config.task_executor.clone();
+				info!("{:?} {:?}", 	polkadot_cli.is_dev(), polkadot_cli.chain_id(polkadot_cli.is_dev().unwrap()));
 				let polkadot_config = SubstrateCli::create_configuration(
 					&polkadot_cli,
 					&polkadot_cli,
@@ -288,6 +287,7 @@ pub fn run() -> Result<()> {
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
+				info!("Polkadot config: {:?}", polkadot_config.chain_spec.id());
 
 				crate::service::start_node(config, key, polkadot_config, id)
 					.await

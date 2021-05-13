@@ -74,7 +74,6 @@ pub fn charcoal_local_network() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -98,7 +97,7 @@ pub fn charcoal_local_network() -> ChainSpec {
 		None,
 		None,
 		Extensions {
-			relay_chain: "rococo-local".into(),
+			relay_chain: "polkadot-local".into(),
 			para_id: 10001_u32.into(),
 		},
 	)
@@ -153,7 +152,6 @@ pub fn charcoal_chachacha_staging_network() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),

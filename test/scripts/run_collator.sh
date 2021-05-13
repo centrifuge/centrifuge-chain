@@ -18,8 +18,8 @@ fi
 # name the variable with the incoming args so it isn't overwritten later by function calls
 args=( "$@" )
 
-alice="0.0.0.0"
-bob="0.0.0.0"
+alice="127.0.0.1"
+bob="127.0.0.1"
 alice_p2p_port="30333"
 alice_rpc_port="9933"
 bob_p2p_port="30344"

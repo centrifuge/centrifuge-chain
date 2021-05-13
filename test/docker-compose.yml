@@ -8,12 +8,12 @@ services:
       - "9933:9933"
       - "9944:9944"
     volumes:
-      - "/data"
       - type: bind
-        source: ./rococo-local.json
+        source: ./polkadot-local.json
         target: /chainspec.json
         read_only: true
     command: >
+      polkadot
       --chain=/chainspec.json
       --base-path=/data
       --port 30333
@@ -24,6 +24,7 @@ services:
       --ws-external
       --rpc-methods=Unsafe
       --alice
+      --log="main,debug"
 
   node_bob:
     container_name: bob
@@ -33,12 +34,12 @@ services:
       - "9935:9933"
       - "9945:9944"
     volumes:
-      - "/data"
       - type: bind
-        source: ./rococo-local.json
+        source: ./polkadot-local.json
         target: /chainspec.json
         read_only: true
     command: >
+      polkadot
       --chain=/chainspec.json
       --base-path=/data
       --port 30333
