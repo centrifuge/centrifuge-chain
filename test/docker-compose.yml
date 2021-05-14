@@ -48,9 +48,3 @@ services:
       --rpc-cors all
       --rpc-methods=Unsafe
       --bob
-
-  ui:
-   image: jacogr/polkadot-js-apps
-   container_name: apps
-   ports:
-     - "3000:80"

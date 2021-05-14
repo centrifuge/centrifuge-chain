@@ -150,3 +150,13 @@ Summary:
   Wasm       : ./target/srtool/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm
 ```
 4. `Proposal` hash should match the runtime upgrade proposal
+
+## Running a local 2 relay and 1 collator chain
+
+1. Start relay chain validators alice and bob with `docker-compose -f ./test/docker-compose.yml up -d`
+2. Then start collator using `./test/scripts/init.sh`
+3. The above  commands also outputs before the starting thr collator the genesis state and path to wasm
+4. Go to `polkadotjs appss` and choose the development node, which is the relay node
+5. Then onboard parachain with sudo.parasSudoWrapper.sudoScheduleParaInitialize with paraID: 2000, genesis state, wasm, and Parachain: Yes
+6. Once successful, collator should be producing blocks in approximately 2 minute. You can check this on the UI at parachains overview
+

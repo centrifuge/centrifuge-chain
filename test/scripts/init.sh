@@ -8,9 +8,8 @@ rm -rf /tmp/centrifuge-chain
 yarn global add @polkadot/api-cli@0.32.1
 
 genesis=$(./target/release/centrifuge-chain export-genesis-state --chain=charcoal-chachacha-local)
-wasm="0x"$(xxd -p ./target/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm)
-wasm=$(echo $wasm | sed "s/ //g")
-#echo $genesis > /tmp/gen.txt
+echo "Genesis state:" $genesis
+echo "WASM:" "./target/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm"
 #echo $wasm > /tmp/wasm.txt
 
 #polkadot-js-api \
