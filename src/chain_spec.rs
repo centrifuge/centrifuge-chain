@@ -97,8 +97,8 @@ pub fn charcoal_local_network() -> ChainSpec {
 		None,
 		None,
 		Extensions {
-			relay_chain: "polkadot-local".into(),
-			para_id: 10001_u32.into(),
+			relay_chain: "./res/rococo-local.json".into(),
+			para_id: 2000_u32.into(),
 		},
 	)
 }

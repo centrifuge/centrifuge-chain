@@ -1,4 +1,4 @@
-// Copyright 2019 Parity Technologies (UK) Ltd.
+// Copyright 2019-2021 Parity Technologies (UK) Ltd.
 // This file is part of Cumulus.
 
 // Cumulus is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@ use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
-use polkadot_primitives::v0::CollatorPair;
+use polkadot_primitives::v1::CollatorPair;
 use node_primitives::{Block, Hash};
 use node_runtime::RuntimeApi;
 use sc_client_api::ExecutorProvider;
@@ -39,6 +39,9 @@ use std::sync::Arc;
 use substrate_prometheus_endpoint::Registry;
 
 pub use sc_executor::NativeExecutor;
+
+type BlockNumber = u32;
+type Header = sp_runtime::generic::Header<BlockNumber, sp_runtime::traits::BlakeTwo256>;
 
 // Native executor instance.
 native_executor_instance!(

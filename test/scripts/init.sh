@@ -3,29 +3,29 @@
 set -e
 
 cargo build --release
-rm -rf /tmp/centriug-chain
-
-# export genesis state
-mkdir -p /tmp/centrifuge-chain/{genesis,runtime}
-./target/release/centrifuge-chain export-genesis-state --chain=charcoal-chachacha-local /tmp/centrifuge-chain/genesis/genesis-state
-
-cp ./target/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm /tmp/centrifuge-chain/runtime/
+rm -rf /tmp/centrifuge-chain
 
 yarn global add @polkadot/api-cli@0.32.1
+
+genesis=$(./target/release/centrifuge-chain export-genesis-state --chain=charcoal-chachacha-local)
+wasm="0x"$(xxd -p ./target/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm)
+wasm=$(echo $wasm | sed "s/ //g")
+#echo $genesis > /tmp/gen.txt
+#echo $wasm > /tmp/wasm.txt
 
 #polkadot-js-api \
 #        --ws ws://0.0.0.0:9944 \
 #        --seed "//Alice" \
-#        tx.registrar.register \
-#            10001 \
-#            "$(cat /tmp/centrifuge-chain/genesis/genesis-state)" \
-#            @/tmp/centrifuge-chain/runtime/centrifuge_chain_runtime.compact.wasm
+#        --sudo \
+#        tx.parasSudoWrapper.sudoScheduleParaInitialize \
+#        2000 \
+#        "{ \"genesisHead\":\"${genesis?}\", \"validationCode\": \"${wasm}\", \"parachain\": true }"
 
 
 # run collator
 ./test/scripts/run_collator.sh \
   --chain=charcoal-chachacha-local --alice \
-  --base-path=/tmp/centriuge-chain/data \
+  --base-path=/tmp/centrifuge-chain/data \
   --port 30355 \
   --rpc-port 9936 \
   --ws-port 9946 \

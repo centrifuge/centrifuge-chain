@@ -297,6 +297,7 @@ impl pallet_xcm::Config for Runtime {
     // No allowed origins
 	type XcmExecutor = XcmExecutor<XcmConfig>;
     type XcmTeleportFilter = ();
+    type XcmReserveTransferFilter = ();
     type Weigher = FixedWeightBounds<UnitWeightCost, Call>;
 }
 
@@ -354,14 +355,14 @@ impl TryFrom<Vec<u8>> for CurrencyId {
 type LocalAssetTransactor = xcm_builder::CurrencyAdapter<
 	// Use this currency:
 	Balances,
-	// Use this currency when it is a fungible asset matching the given location or name:
-    // TODO: This impl handles the case of relay<->parachain, but DOT cannot be stored on
-    // Centrifuge so this is not useful. We can just re-implement the type w/o relay case.
+    // Use this currency when it is a fungible asset matching the given location or name:
     IsConcrete<RelayLocation>,
 	// Do a simple punn to convert an AccountId32 MultiLocation into a native chain account ID:
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly):
 	AccountId,
+    // We don't track any teleports.
+    (),
 >;
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
@@ -581,7 +582,7 @@ parameter_types! {
 impl pallet_timestamp::Config for Runtime {
     /// A timestamp: milliseconds since the unix epoch.
     type Moment = Moment;
-    type OnTimestampSet = ();
+    type OnTimestampSet = Aura;
     type MinimumPeriod = MinimumPeriod;
     type WeightInfo = ();
 }

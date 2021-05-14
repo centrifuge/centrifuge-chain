@@ -2,18 +2,17 @@ version: '3.7'
 services:
   node_alice:
     container_name: alice
-    image: "parity/polkadot:${BRANCH:-latest}"
+    image: "parity/polkadot:v0.9.1"
     ports:
       - "30333:30333"
       - "9933:9933"
       - "9944:9944"
     volumes:
       - type: bind
-        source: ./polkadot-local.json
+        source: ../res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
-      polkadot
       --chain=/chainspec.json
       --base-path=/data
       --port 30333
@@ -24,22 +23,21 @@ services:
       --ws-external
       --rpc-methods=Unsafe
       --alice
-      --log="main,debug"
+      --log="sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace"
 
   node_bob:
     container_name: bob
-    image: "parity/polkadot:${BRANCH:-latest}"
+    image: "parity/polkadot:v0.9.1"
     ports:
       - "30344:30333"
       - "9935:9933"
       - "9945:9944"
     volumes:
       - type: bind
-        source: ./polkadot-local.json
+        source: ../res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
-      polkadot
       --chain=/chainspec.json
       --base-path=/data
       --port 30333
