@@ -112,6 +112,10 @@ pub fn charcoal_rococo_staging_network() -> ChainSpec {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
+					get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Bob"),
+				],
+				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_account_id_from_seed::<sr25519::Public>("Bob"),
 					get_account_id_from_seed::<sr25519::Public>("Charlie"),
@@ -152,6 +156,7 @@ pub fn charcoal_chachacha_staging_network() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -191,31 +196,6 @@ pub fn charcoal_chachacha_config() -> ChainSpec {
 pub fn charcoal_rococo_config() -> ChainSpec {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-rococo-raw-spec.json")[..]).unwrap()
 }
-
-// pub fn staging_test_net(id: ParaId) -> ChainSpec {
-// 	ChainSpec::from_genesis(
-// 		"Staging Testnet",
-// 		"staging_testnet",
-// 		ChainType::Live,
-// 		move || {
-// 			testnet_genesis(
-// 				hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
-// 				vec![
-// 					hex!["9ed7705e3c7da027ba0583a22a3212042f7e715d3c168ba14f1424e2bc111d00"].into(),
-// 				],
-// 				id,
-// 			)
-// 		},
-// 		Vec::new(),
-// 		None,
-// 		None,
-// 		None,
-// 		Extensions {
-// 			relay_chain: "westend-dev".into(),
-// 			para_id: id.into(),
-// 		},
-// 	)
-// }
 
 fn testnet_genesis(
 	root_key: AccountId,

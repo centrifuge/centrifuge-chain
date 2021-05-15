@@ -376,8 +376,6 @@ type XcmOriginToTransactDispatchOrigin = (
     // Native converter for Relay-chain (Parent) location; will converts to a `Relay` origin when
     // recognised.
 	RelayChainAsNative<RelayChainOrigin, Origin>,
-    // Native converter for sibling Parachains; will convert to a `SiblingPara` origin when
-    // recognised.
     // Superuser converter for the Relay-chain (Parent) location. This will allow it to issue a
     // transaction from the Root origin.
     ParentAsSuperuser<Origin>,
