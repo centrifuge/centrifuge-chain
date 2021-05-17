@@ -1,0 +1,25 @@
+on:
+  push:
+    branches: [master]
+  pull_request:
+name: Checks
+jobs:
+  runtime-check:
+    name: Runtime check
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_TOOLCHAIN: "nightly-2021-03-15"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          default: true
+      - uses: Swatinem/rust-cache@v1
+      - name: check  runtime changes
+        run: ./ci/check_runtime_changes.sh
