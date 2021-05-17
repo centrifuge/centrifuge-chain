@@ -8,20 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v13
-        with:
-          install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-2.4pre20201221_9fab14a/install
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-      - uses: cachix/cachix-action@v10
-        with:
-          name: centrifuge-chain
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-      - run: nix build -L .#dockerContainer
-      - name: Load built image into Docker
-        run: docker load -i result
+      - name: Build docker
+        run: docker build -t centrifugeio/centrifuge-chain:latest
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -37,4 +26,6 @@ jobs:
       - name: List images
         run: docker images
       - name: Push image to Docker Hub
-        run: docker push --all-tags --quiet centrifugeio/centrifuge-chain
+        run: |
+          docker rmi centrifugeio/centrifuge-chain:latest
+          docker push --all-tags --quiet centrifugeio/centrifuge-chain

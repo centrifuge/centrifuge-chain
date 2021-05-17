@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master]
+    branches: [master, parachain]
   pull_request:
 name: Build
 jobs:
@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target: [build-client, build-runtime]
+        target: [build-client]
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN: "nightly-2021-03-15"
