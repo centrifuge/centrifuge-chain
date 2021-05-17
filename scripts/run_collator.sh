@@ -24,6 +24,7 @@ alice_p2p_port="30333"
 alice_rpc_port="9933"
 bob_p2p_port="30344"
 bob_rpc_port="9935"
+chain="${RELAY_CHAIN_SPEC:-./res/rococo-local.json}"
 
 
 get_id () {
@@ -49,7 +50,7 @@ bootnode () {
     echo "/ip4/$node/tcp/$p2p_port/p2p/$id"
 }
 
-args+=( "--" "--bootnodes=$(bootnode "$alice" "$alice_p2p_port" "$alice_rpc_port")" "--bootnodes=$(bootnode "$bob" "$bob_p2p_port" "$bob_rpc_port")" )
+args+=( "--" "--chain=${chain}" "--bootnodes=$(bootnode "$alice" "$alice_p2p_port" "$alice_rpc_port")" "--bootnodes=$(bootnode "$bob" "$bob_p2p_port" "$bob_rpc_port")" )
 
 set -x
 "$ctpc" "${args[@]}"

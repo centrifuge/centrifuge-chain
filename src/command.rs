@@ -257,12 +257,13 @@ pub fn run() -> Result<()> {
 				// TODO
 				let key = sp_core::Pair::generate().0;
 
-				let para_id =
-					chain_spec::Extensions::try_get(&*config.chain_spec).map(|e| e.para_id);
+				let para_id = cli.run.parachain_id;
 
 				let polkadot_cli = RelayChainCli::new(
 					&config,
-					cli.relaychain_args.iter(),
+					[RelayChainCli::executable_name().to_string()]
+						.iter()
+						.chain(cli.relaychain_args.iter()),
 				);
 
 				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(100));
@@ -275,7 +276,6 @@ pub fn run() -> Result<()> {
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
 				let task_executor = config.task_executor.clone();
-				info!("{:?} {:?}", 	polkadot_cli.is_dev(), polkadot_cli.chain_id(polkadot_cli.is_dev().unwrap()));
 				let polkadot_config = SubstrateCli::create_configuration(
 					&polkadot_cli,
 					&polkadot_cli,
@@ -283,11 +283,13 @@ pub fn run() -> Result<()> {
 				)
 					.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
+				info!("Relay-chain Chain spec: {:?}", polkadot_cli.shared_params().chain_id(polkadot_cli.shared_params().is_dev()));
+				info!("Parachain spec: {:?}", cli.run.base.shared_params.chain);
 				info!("Parachain id: {:?}", id);
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
-				info!("Polkadot config: {:?}", polkadot_config.chain_spec.id());
+
 
 				crate::service::start_node(config, key, polkadot_config, id)
 					.await
@@ -325,12 +327,12 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.import_params()
 	}
 
-	fn network_params(&self) -> Option<&NetworkParams> {
-		self.base.base.network_params()
-	}
-
 	fn keystore_params(&self) -> Option<&KeystoreParams> {
 		self.base.base.keystore_params()
+	}
+
+	fn network_params(&self) -> Option<&NetworkParams> {
+		self.base.base.network_params()
 	}
 
 	fn base_path(&self) -> Result<Option<BasePath>> {
@@ -338,36 +340,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 			.shared_params()
 			.base_path()
 			.or_else(|| self.base_path.clone().map(Into::into)))
-	}
-
-	fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_http(default_listen_port)
-	}
-
-	fn rpc_ipc(&self) -> Result<Option<String>> {
-		self.base.base.rpc_ipc()
-	}
-
-	fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
-		self.base.base.rpc_ws(default_listen_port)
-	}
-
-	fn prometheus_config(&self, default_listen_port: u16) -> Result<Option<PrometheusConfig>> {
-		self.base.base.prometheus_config(default_listen_port)
-	}
-
-	fn init<C: SubstrateCli>(&self) -> Result<()> {
-		unreachable!("PolkadotCli is never initialized; qed");
-	}
-
-	fn chain_id(&self, is_dev: bool) -> Result<String> {
-		let chain_id = self.base.base.chain_id(is_dev)?;
-
-		Ok(if chain_id.is_empty() {
-			self.chain_id.clone().unwrap_or_default()
-		} else {
-			chain_id
-		})
 	}
 
 	fn role(&self, is_dev: bool) -> Result<sc_service::Role> {
@@ -382,6 +354,22 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.state_cache_child_ratio()
 	}
 
+	fn chain_id(&self, is_dev: bool) -> Result<String> {
+		self.base.base.chain_id(is_dev)
+	}
+
+	fn rpc_http(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+		self.base.base.rpc_http(default_listen_port)
+	}
+
+	fn rpc_ipc(&self) -> Result<Option<String>> {
+		self.base.base.rpc_ipc()
+	}
+
+	fn rpc_ws(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+		self.base.base.rpc_ws(default_listen_port)
+	}
+
 	fn rpc_methods(&self) -> Result<sc_service::config::RpcMethods> {
 		self.base.base.rpc_methods()
 	}
@@ -392,6 +380,17 @@ impl CliConfiguration<Self> for RelayChainCli {
 
 	fn rpc_cors(&self, is_dev: bool) -> Result<Option<Vec<String>>> {
 		self.base.base.rpc_cors(is_dev)
+	}
+
+	fn prometheus_config(&self, default_listen_port: u16) -> Result<Option<PrometheusConfig>> {
+		self.base.base.prometheus_config(default_listen_port)
+	}
+
+	fn telemetry_endpoints(
+		&self,
+		chain_spec: &Box<dyn ChainSpec>,
+	) -> Result<Option<sc_telemetry::TelemetryEndpoints>> {
+		self.base.base.telemetry_endpoints(chain_spec)
 	}
 
 	fn telemetry_external_transport(&self) -> Result<Option<sc_service::config::ExtTransport>> {
@@ -418,10 +417,7 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.announce_block()
 	}
 
-	fn telemetry_endpoints(
-		&self,
-		chain_spec: &Box<dyn ChainSpec>,
-	) -> Result<Option<sc_telemetry::TelemetryEndpoints>> {
-		self.base.base.telemetry_endpoints(chain_spec)
+	fn init<C: SubstrateCli>(&self) -> Result<()> {
+		unreachable!("PolkadotCli is never initialized; qed");
 	}
 }

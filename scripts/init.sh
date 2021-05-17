@@ -22,9 +22,10 @@ start-parachain)
   echo "Building parachain..."
   cargo build --release
   rm -rf /tmp/centrifuge-chain
-  chain="${CHAIN:-charcoal-chachacha-local}"
+  chain="${PARA_CHAIN_SPEC:-charcoal-chachacha-local}"
   ./scripts/run_collator.sh \
     --chain=$chain --alice \
+    --parachain-id=2000 \
     --base-path=/tmp/centrifuge-chain/data \
     --port 30355 \
     --rpc-port 9936 \
