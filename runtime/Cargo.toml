@@ -98,13 +98,9 @@ orml-xtokens = { branch = "master", git = "https://github.com/open-web3-stack/op
 orml-xcm-support = { branch = "master", git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false }
 
 # local dependencies
-[dependencies.pallet-crowdloan-claim]
-default_features = false
-path='../pallets/crowdloan-claim'
+pallet-crowdloan-claim = { path='../pallets/crowdloan-claim', default_features = false }
+pallet-crowdloan-reward = { path='../pallets/crowdloan-reward', default_features = false }
 
-[dependencies.pallet-crowdloan-reward]
-default_features = false
-path='../pallets/crowdloan-reward'
 
 [build-dependencies]
 #wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }

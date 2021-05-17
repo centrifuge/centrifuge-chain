@@ -92,9 +92,6 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-// Re-export in crate namespace (for runtime construction)
-pub use pallet::*;
-
 // Mock runtime and unit test cases
 mod mock;
 mod tests;
@@ -104,6 +101,9 @@ mod benchmarking;
 
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
+
+// Cryptographic proofs verification package
+mod proofs;
 
 use codec::{
     Decode, 
@@ -136,6 +136,9 @@ use frame_support::{
 use frame_system::{
   ensure_root,
 };
+
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
 
 use sp_core::crypto::AccountId32;
 
@@ -221,7 +224,7 @@ pub mod traits {
             Codec +   
             Copy +
             Debug +
-            Default + 
+            Default +
             MaybeSerializeDeserialize +
             Member + 
             Parameter;
@@ -529,9 +532,14 @@ pub mod pallet {
         /// using [`set_reward_account`] transaction.
         ContributorAlreadyRegistered,
 
-
         /// Claim has already been processed (replay attack, probably)
         ClaimAlreadyProcessed,
+
+        /// The proof of a contribution is invalid
+        InvalidProofOfContribution,
+
+        /// Claimed amount is out of boundaries (too low or too high)
+        ClaimedAmountIsOutOfBoundaries,
 
         /// Sensitive transactions can only be performed by administrator entity (e.g. Sudo or Democracy pallet)
         MustBeAdministrator,
@@ -577,6 +585,8 @@ pub mod pallet {
         /// It is worth pointing out that despite unsigned transactions are free of charge, 
         /// a weight must be assigned to them so that to prevent a single block of having
         /// infinite number of such transactions.
+        /// The [`contributor_identity_proof`] is built using a signature of the contributor's
+        /// parachain account id with the claimer key.
         /// See [`validate_unsigned`]
         /// See [`Config::ClaimTransactionInterval`]]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_reward())]
@@ -584,7 +594,9 @@ pub mod pallet {
             origin: OriginFor<T>,
             relaychain_account_id: T::RelayChainAccountId,
             parachain_account_id: ParachainAccountIdOf<T>, 
-            claimed_amount: ContributionAmountOf<T>
+            claimed_amount: ContributionAmountOf<T>,
+            identity_proof: MultiSignature,
+            contribution_proof: [proof_type_here]
         ) -> DispatchResultWithPostInfo {
             // Ensures that this function can only be called via an unsigned transaction			
             ensure_none(origin)?;
@@ -592,8 +604,18 @@ pub mod pallet {
             // Be sure user has not already claimed her/his reward payout
             ensure!(!ProcessedClaims::<T>::contains_key(&relaychain_account_id), Error::<T>::ClaimAlreadyProcessed);
 
+            // Claimed amount must be positive value
+            ensure!(claimed_amount > 0, Error::<T>::ClaimedAmountIsOutOfBoundaries);
+
             // Compute new claim transaction tick at which a new claim can be placed
             Self::increment_claim_transaction_tick();
+
+            // Check (trustless) contributor identity
+            ensure!(Self::verify_contributor_identity_proof(relaychain_account_id, parachain_account_id, identity_proof), Error::<T>::InvalidContributorSignature);
+
+            // Check the contributor's proof of contribution
+            // TODO:
+            ensure!(Self::verify_contribution_proof(relaychain_account_id, claimed_amount, [contribution_proof_here]).is_ok(), Error::<T>::InvalidProofOfContribution);
 
             // Invoke the reward payout mechanism
             T::RewardMechanism::reward(parachain_account_id, claimed_amount)?;
@@ -633,50 +655,6 @@ pub mod pallet {
 
             Ok(().into())
         }
-
-        /// Bind contributor's relaychain account with one on the parachain.
-        ///
-        /// This function aims at proving that the contributor's identity on
-        /// the relay chain is valid, using a signature. She/he also provides
-        /// a parachain account on which the reward payout must be transfered
-        /// and the amount she/he contributed to.
-        /// The [`signature`] is used as the proof.
-        #[pallet::weight(<T as Config>::WeightInfo::register_contributor())]
-		pub(crate) fn register_contributor(
-            origin: OriginFor<T>,
-            relaychain_account_id: T::RelayChainAccountId,
-            parachain_account_id: ParachainAccountIdOf<T>,
-            signature: MultiSignature,
-        ) -> DispatchResultWithPostInfo {
-            
-            // Be sure this administrative function is called via a signed transaction
-            ensure_signed(origin)?;
-
-            // Now check if the contributor's native identity on the relaychain is valid
-            let payload = parachain_account_id.encode();
-            ensure!(
-                signature.verify(payload.as_slice(), &relaychain_account_id.clone().into()),
-                Error::<T>::InvalidContributorSignature
-            );
-
-            // Then check if the given contributor has not already been registered
-            ensure!(
-                <RegisteredContributors<T>>::get(&relaychain_account_id).is_none(),
-                Error::<T>::ContributorAlreadyRegistered
-            );
-
-            // Keep track of this newly registered contributor
-            // TODO [TankOfZion]: add "when" (i.e. blocknumber) was the contributor registered
-            <RegisteredContributors<T>>::insert(&relaychain_account_id, ());
-
-            // Emit an event when user registration is successfully done
-            Self::deposit_event(Event::ContributorRegistered(
-                relaychain_account_id,
-                parachain_account_id,
-            ));
-
-            Ok(().into())
-        }
     }
 
 
@@ -705,7 +683,7 @@ pub mod pallet {
                 return InvalidTransaction::Stale.into();
             }
 
-            if let Call::claim_reward(relaychain_account_id, parachain_account_id, claimed_amount) = call {
+            if let Call::claim_reward(relaychain_account_id, parachain_account_id, claimed_amount, identity_proof, contribution_proof) = call {
                 // Only the claim reward transaction can be invoked via an unsigned regime
                 return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
                     .priority(T::ClaimTransactionPriority::get())
@@ -764,15 +742,41 @@ impl<T: Config> Pallet<T> {
         <ClaimTransactionTick<T>>::put(current_tick + T::ClaimTransactionInterval::get());
     }
 
+    // Bind contributor's relaychain account with one on the parachain.
+    //
+    // This function aims at proving that the contributor's identity on
+    // the relay chain is valid, using a signature. She/he also provides
+    // a parachain account on which the reward payout must be transfered
+    // and the amount she/he contributed to.
+    // The [`signature`] is used as the proof.
+    fn verify_contributor_identity_proof(
+        relaychain_account_id: T::RelayChainAccountId,
+        parachain_account_id: ParachainAccountIdOf<T>,
+        signature: MultiSignature,
+    ) -> DispatchResult {
+        
+        // Now check if the contributor's native identity on the relaychain is valid
+        let payload = parachain_account_id.encode();
+        ensure!(
+            signature.verify(payload.as_slice(), &relaychain_account_id.clone().into()),
+            Error::<T>::InvalidContributorSignature
+        );
+
+        Ok(())
+    }
+
     // Verify that the contributor is elligible for a reward payout.
     //
     // The [`Contributions`] child trie root hash contains all contributions and their respective
     // contributors. Given the contributor's relay chain acccount identifier, the claimed amount 
     // (in relay chain tokens) and the parachain account identifier, this function proves that the 
     // contributor's claim is valid.
-    fn verify_reward_payout_proof(self, relaychain_account_id: T::RelayChainAccountId,  parachain_account_id: ParachainAccountIdOf<T>, contribution_amount: ContributionAmountOf<T>) -> DispatchResult {
+    fn verify_contribution_proof(relaychain_account_id: T::RelayChainAccountId, contribution_amount: ContributionAmountOf<T>, proof: [storage_proof_here]) -> DispatchResult {
         
-        // TODO [ThankOfZion] - Work in progress
+        // TODO [insert proof checking here]
+        //read_child_proof_check( ... )
+
         Ok(())
     }
 }
+
