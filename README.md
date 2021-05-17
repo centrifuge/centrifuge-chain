@@ -30,7 +30,7 @@ cargo build --release
 ### Tests
 
 ```bash
-cargo test --release
+cargo test -p centrifuge-chain-runtime --release
 ```
 
 ### Start local Relay chain(alice and bob) and Parachain(alice)  
