@@ -14,11 +14,11 @@ rustup --version
 cargo --version
 
 case $TARGET in
-	"build-client")
+	build-client)
 		cargo build --release "$@"
 		;;
 
-	"runtime-test")
+	runtime-test)
 		cargo test -p centrifuge-chain-runtime --release
 		wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
         tar xzf master.tar.gz &&
@@ -35,7 +35,7 @@ case $TARGET in
         echo "Uploaded code coverage"
 		;;
 
-  "build-runtime")
+  build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
     export PACKAGE=centrifuge-chain-runtime
     docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
