@@ -2,33 +2,24 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2020-08-16}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-03-15}"
 
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
 
-# Install rustup and the specified rust toolchain.
-curl https://sh.rustup.rs -sSf | sh -s -- -y
-
-# Load cargo environment. Specifically, put cargo into PATH.
-source ~/.cargo/env
-
-sudo apt-get -y update
-sudo apt-get install -y cmake pkg-config libssl-dev
-
-./scripts/init.sh
+./scripts/init.sh install-toolchain
 
 rustc --version
 rustup --version
 cargo --version
 
 case $TARGET in
-	"build-client")
+	build-client)
 		cargo build --release "$@"
 		;;
 
-	"runtime-test")
-		cargo test -p centrifuge-chain-runtime
+	runtime-test)
+		cargo test -p centrifuge-chain-runtime --release
 		wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
         tar xzf master.tar.gz &&
         cd kcov-master &&
@@ -44,8 +35,7 @@ case $TARGET in
         echo "Uploaded code coverage"
 		;;
 
-  "build-runtime")
+  build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
-    export PACKAGE=centrifuge-chain-runtime
-    docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home centrifugeio/srtool:$RUSTC_VERSION build
+    docker run --rm -e RUNTIME_DIR=./runtime -e PACKAGE=centrifuge-chain-runtime -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
 esac
