@@ -9,7 +9,7 @@ services:
       - "9944:9944"
     volumes:
       - type: bind
-        source: ../res/rococo-local.json
+        source: ./res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
@@ -23,7 +23,7 @@ services:
       --ws-external
       --rpc-methods=Unsafe
       --alice
-      --log="sc_basic_authorship=trace,cumulus-consensus=trace,cumulus-collator=trace,collator_protocol=trace,collation_generation=trace"
+      --log="main,info"
 
   node_bob:
     container_name: bob
@@ -34,7 +34,7 @@ services:
       - "9945:9944"
     volumes:
       - type: bind
-        source: ../res/rococo-local.json
+        source: ./res/rococo-local.json
         target: /chainspec.json
         read_only: true
     command: >
@@ -48,3 +48,4 @@ services:
       --rpc-cors all
       --rpc-methods=Unsafe
       --bob
+      --log="main,info"
