@@ -368,7 +368,7 @@ pub fn build_import_queue(
 		.map_err(Into::into)
 }
 
-/// Start a rococo-test parachain node.
+/// Start a parachain node.
 pub async fn start_node(
 	parachain_config: Configuration,
 	collator_key: CollatorPair,

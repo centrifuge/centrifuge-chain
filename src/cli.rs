@@ -107,9 +107,6 @@ pub struct RelayChainCli {
 	/// The actual relay chain cli object.
 	pub base: polkadot_cli::RunCmd,
 
-	/// Optional chain id that should be passed to the relay chain.
-	pub chain_id: Option<String>,
-
 	/// The base path that should be used by the relay chain.
 	pub base_path: Option<PathBuf>,
 }
@@ -120,15 +117,12 @@ impl RelayChainCli {
 		para_config: &sc_service::Configuration,
 		relay_chain_args: impl Iterator<Item = &'a String>,
 	) -> Self {
-		let extension = chain_spec::Extensions::try_get(&*para_config.chain_spec);
-		let chain_id = extension.map(|e| e.relay_chain.clone());
 		let base_path = para_config
 			.base_path
 			.as_ref()
-			.map(|x| x.path().join("polkadot"));
+			.map(|x| x.path().join("relay-chain"));
 		Self {
 			base_path,
-			chain_id,
 			base: polkadot_cli::RunCmd::from_iter(relay_chain_args),
 		}
 	}
