@@ -169,7 +169,7 @@ pub mod pallet {
 
     // Declare pallet structure placeholder
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
 
     // ----------------------------------------------------------------------------
@@ -251,7 +251,7 @@ pub mod pallet {
     // The macro generates event metadata and derive Clone, Debug, Eq, PartialEq and Codec
     #[pallet::event]
     // The macro generates a function on Pallet to deposit an event
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::generate_deposit(pub (super) fn deposit_event)]
     // Additional argument to specify the metadata to use for given type
     #[pallet::metadata(T::AccountId = "AccountId")]
     pub enum Event<T: Config> {
@@ -285,6 +285,7 @@ pub mod pallet {
     pub fn OnRateEmpty<T: Config>() -> BalanceOf<T> {
         Into::<BalanceOf<T>>::into(T::Conversion::from(1_000_000_000_000_000_000u64))
     }
+
     #[pallet::storage]
     #[pallet::getter(fn conversion_rate)]
     /// The conversion rate between relay chain and native chain balances.
@@ -295,6 +296,7 @@ pub mod pallet {
     pub fn OnRatioEmpty() -> Perbill {
         Perbill::from_percent(20)
     }
+
     #[pallet::storage]
     #[pallet::getter(fn direct_payout_ratio)]
     /// Which ratio of the rewards are payed directly. The rest is transferred via a vesting schedule.
@@ -389,7 +391,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Set the start of the vesting period.
-        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_vesting_start())]
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_vesting_start())]
         pub(crate) fn set_vesting_start(
             origin: OriginFor<T>,
             start: T::BlockNumber,
@@ -415,7 +417,7 @@ pub mod pallet {
         ///
         /// ## Emits
         /// UpdateVestingPeriod
-        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_vesting_period())]
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_vesting_period())]
         pub(crate) fn set_vesting_period(
             origin: OriginFor<T>,
             period: T::BlockNumber,
@@ -440,7 +442,7 @@ pub mod pallet {
         /// tokens. This dispatchable function is used to modify the
         /// rate of conversion after the pallet has already been
         /// initialized via [`initialize`] transaction.
-        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_conversion_rate())]
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_conversion_rate())]
         pub(crate) fn set_conversion_rate(
             origin: OriginFor<T>,
             rate: BalanceOf<T>,
@@ -462,7 +464,7 @@ pub mod pallet {
         /// This administrative function allows to modify the ratio
         /// between vested and direct payout amount after the pallet
         /// was initialized via a call to the [`initialize`] transaction.
-        #[pallet::weight(<T as pallet::Config>::WeightInfo::set_direct_payout_ratio())]
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_direct_payout_ratio())]
         pub(crate) fn set_direct_payout_ratio(
             origin: OriginFor<T>,
             ratio: u32,

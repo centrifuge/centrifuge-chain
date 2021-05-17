@@ -55,9 +55,9 @@
 
 
 use frame_benchmarking::{
-  account,
-  benchmarks,
-  impl_benchmark_test_suite
+    account,
+    benchmarks,
+    impl_benchmark_test_suite,
 };
 use frame_system::RawOrigin;
 
@@ -67,15 +67,14 @@ use crate::*;
 // Benchmark cases
 // ----------------------------------------------------------------------------
 
-benchmarks!{
-  
-git   sample_benchmark_name {
-    // setup initial state
-  }: {
-    // benchmark code
-  } verify {
-    // verifying final state
-  }
+benchmarks! {
+git sample_benchmark_name {
+        // setup initial state
+    }: {
+        // benchmark code
+    } verify {
+        // verifying final state
+    }
 }
 
 
@@ -99,7 +98,7 @@ git   sample_benchmark_name {
 // The line generates three steps per benchmark, with repeat=1 and the three steps are
 //   [low, mid, high] of the range.
 impl_benchmark_test_suite!(
-  Pallet,
-  crate::tests::new_test_ext(),
-  crate::tests::Test,
+    Pallet,
+    crate::tests::new_test_ext(),
+    crate::tests::Test,
 );

@@ -50,7 +50,7 @@ fn initalize_module() {
         .existential_deposit(1)
         .build(|| System::set_block_number(4))
         .execute_with(|| {
-            assert!(CrowdloanReward::initialize(3, Perbill::from_percent(12), 4, 4).is_ok());
+            assert!(CrowdloanReward::initialize(3, Perbill::from_percent(12), 4, 4,).is_ok());
         });
 }
 
@@ -167,6 +167,7 @@ fn account_already_vesting() {
             assert_eq!(mod_balance, Balances::free_balance(&mod_account));
         });
 }
+
 #[test]
 fn reward_amount_to_low_for_vesting() {
     TestExternalitiesBuilder::default()
