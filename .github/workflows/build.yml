@@ -21,7 +21,12 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - uses: Swatinem/rust-cache@v1
+      - if: matrix.target == 'build-runtime'
+        uses: Swatinem/rust-cache@v1
+        with: # cache the runtime target instead of root target for build-runtime
+          working-directory: ./runtime/
+      - if: matrix.target == 'build-client'
+        uses: Swatinem/rust-cache@v1
       - name: ${{ matrix.target }}
         run: ./ci/script.sh
         env:
