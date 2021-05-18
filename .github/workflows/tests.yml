@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target: [runtime-test]
+        target: [tests]
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN: "nightly-2021-03-15"
@@ -22,8 +22,8 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
       - uses: Swatinem/rust-cache@v1
-#      - name: Runtime tests
-#        run: ./ci/script.sh
-#        env:
-#          TARGET: ${{ matrix.target }}
+      - name: Tests
+        run: ./ci/script.sh
+        env:
+          TARGET: ${{ matrix.target }}
 

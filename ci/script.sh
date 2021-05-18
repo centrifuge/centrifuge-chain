@@ -18,8 +18,8 @@ case $TARGET in
 		cargo build --release "$@"
 		;;
 
-	runtime-test)
-		cargo test -p centrifuge-chain-runtime --release
+	tests)
+		cargo test -p bridge-mapping --release
 		wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
         tar xzf master.tar.gz &&
         cd kcov-master &&

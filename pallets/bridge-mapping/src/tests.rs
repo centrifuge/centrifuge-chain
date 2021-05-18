@@ -66,6 +66,7 @@ fn remove_resource_removes_from_storage() {
 fn non_admin_cannot_remove() {
     new_test_ext().execute_with(|| {
         let user = Origin::signed(0);
-        assert_err!(BridgeMapping::remove(user, [1; 32]),sp_runtime::traits::BadOrigin);
+        let resource_id = [1; 32];
+        assert_err!(BridgeMapping::remove(user, resource_id),sp_runtime::traits::BadOrigin);
     });
 }
