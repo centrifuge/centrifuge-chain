@@ -39,12 +39,13 @@ use std::{io::Write, net::SocketAddr};
 
 fn load_spec(
 	id: &str,
+	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
 		"charcoal-rococo" => Ok(Box::new(chain_spec::charcoal_rococo_config())),
-		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network())),
-		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network())),
-		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network())),
+		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network(para_id))),
+		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
+		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network(para_id))),
 		"charcoal-chachacha" => Ok(Box::new(chain_spec::charcoal_chachacha_config())),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
@@ -84,7 +85,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		load_spec(id)
+		load_spec(id, self.run.parachain_id.unwrap_or(10001).into())
 	}
 
 	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -213,7 +214,8 @@ pub fn run() -> Result<()> {
 			let _ = builder.init();
 
 			let block: Block = generate_genesis_block(&load_spec(
-				&params.chain.clone().unwrap_or_default())?)?;
+				&params.chain.clone().unwrap_or_default(),
+				params.parachain_id.unwrap_or(10001).into())?)?;
 			let raw_header = block.header().encode();
 			let output_buf = if params.raw {
 				raw_header

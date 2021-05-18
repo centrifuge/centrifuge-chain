@@ -47,7 +47,7 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-pub fn charcoal_local_network() -> ChainSpec {
+pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Charcoal Local Testnet",
 		"charcoal_local_testnet",
@@ -72,7 +72,7 @@ pub fn charcoal_local_network() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				10001_u32.into(),
+				para_id,
 			)
 		},
 		vec![],
@@ -83,7 +83,7 @@ pub fn charcoal_local_network() -> ChainSpec {
 	)
 }
 
-pub fn charcoal_rococo_staging_network() -> ChainSpec {
+pub fn charcoal_rococo_staging_network(para_id: ParaId) -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Charcoal Rococo Testnet",
 		"charcoal_rococo_testnet",
@@ -93,7 +93,6 @@ pub fn charcoal_rococo_staging_network() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -109,7 +108,7 @@ pub fn charcoal_rococo_staging_network() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				10001_u32.into(),
+				para_id,
 			)
 		},
 		vec![],
@@ -123,7 +122,7 @@ pub fn charcoal_rococo_staging_network() -> ChainSpec {
 	)
 }
 
-pub fn charcoal_chachacha_staging_network() -> ChainSpec {
+pub fn charcoal_chachacha_staging_network(para_id: ParaId) -> ChainSpec {
 	ChainSpec::from_genesis(
 		"Charcoal Chachacha Testnet",
 		"charcoal_chachacha_testnet",
@@ -133,7 +132,6 @@ pub fn charcoal_chachacha_staging_network() -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -149,7 +147,7 @@ pub fn charcoal_chachacha_staging_network() -> ChainSpec {
 					get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 					get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 				],
-				10001_u32.into(),
+				para_id,
 			)
 		},
 		vec![],
