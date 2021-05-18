@@ -265,13 +265,13 @@ pub mod pallet {
 
         /// Direct payout ratio for contributors has been updated
         /// \[payout_ratio\]
-        UpdateDirectPayoutRatio(Perbill),
+        DirectPayoutRatioUpdated(Perbill),
 
         /// Conversion rate from relay to native token has been updated
-        UpdateConversionRate(BalanceOf<T>),
+        ConversionRateUpdated(BalanceOf<T>),
 
         /// Vesting period has been updated
-        UpdateVestingPeriod(T::BlockNumber),
+        VestingPeriodUpdated(T::BlockNumber),
 
         /// Start of vesting has been updated
         UpdateVestingStart(T::BlockNumber),
@@ -430,7 +430,7 @@ pub mod pallet {
 
             <VestingPeriod<T>>::put(period);
 
-            Self::deposit_event(Event::UpdateVestingPeriod(period));
+            Self::deposit_event(Event::VestingPeriodUpdated(period));
 
             Ok(().into())
         }
@@ -454,7 +454,7 @@ pub mod pallet {
             );
             <ConversionRate<T>>::put(rate);
 
-            Self::deposit_event(Event::UpdateConversionRate(rate));
+            Self::deposit_event(Event::ConversionRateUpdated(rate));
 
             Ok(().into())
         }
@@ -479,7 +479,7 @@ pub mod pallet {
 
             <DirectPayoutRatio<T>>::put(ratio);
 
-            Self::deposit_event(Event::UpdateDirectPayoutRatio(ratio));
+            Self::deposit_event(Event::DirectPayoutRatioUpdated(ratio));
 
             Ok(().into())
         }

@@ -23,7 +23,7 @@
 // ----------------------------------------------------------------------------
 
 use frame_support::{assert_noop, traits::VestingSchedule};
-use sp_runtime::{DispatchError, Perbill};
+use sp_runtime::Perbill;
 
 use crate::{self as pallet_crowdloan_reward, mock::*, Error as CrowdloanRewardError, *};
 
@@ -135,6 +135,39 @@ fn reward_participant() {
 }
 
 #[test]
+fn zero_direct_payout_reward() {
+    TestExternalitiesBuilder::default()
+        .existential_deposit(1)
+        .build(|| {
+            System::set_block_number(1);
+            CrowdloanReward::initialize(2, Perbill::from_percent(0), 4, 3).unwrap()
+        })
+        .execute_with(|| {
+            let mod_account = CrowdloanReward::account_id();
+            let mod_balance = Balances::free_balance(&mod_account);
+            let rew_balance = Balances::free_balance(&4);
+
+            assert!(CrowdloanReward::reward(4, 50).is_ok());
+            // Reward in native is contribution * 2. Hence, here 50 * 2 = 100
+            assert_eq!(Balances::free_balance(&mod_account), mod_balance - 100);
+
+            assert_eq!(Vesting::vesting_balance(&4), Some(100));
+            // Ensure that no direct payout happened
+            assert_eq!(Balances::usable_balance(&4), rew_balance);
+
+            System::set_block_number(7);
+            assert_eq!(System::block_number(), 7);
+            // Account has fully vested
+            assert_eq!(Vesting::vesting_balance(&4), Some(0));
+
+            let events = reward_events();
+            assert!(events.iter().any(|event| {
+                *event == pallet_crowdloan_reward::Event::<MockRuntime>::RewardClaimed(4, 0, 100)
+            }));
+        });
+}
+
+#[test]
 fn not_enough_funds_to_reward() {
     TestExternalitiesBuilder::default()
         .existential_deposit(1)
@@ -163,8 +196,6 @@ fn account_already_vesting() {
                 CrowdloanReward::reward(1, 30),
                 pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
             );
-
-            assert_eq!(mod_balance, Balances::free_balance(&mod_account));
         });
 }
 
