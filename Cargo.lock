@@ -4651,10 +4651,12 @@ dependencies = [
  "pallet-crowdloan-reward",
  "pallet-vesting",
  "parity-scale-codec",
+ "sc-rpc-api",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-state-machine",
  "sp-std",
  "sp-trie",
 ]

@@ -92,24 +92,10 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-// Mock runtime and unit test cases
-mod mock;
-mod tests;
-
-// Runtime benchmarking features
-mod benchmarking;
-
-// Extrinsics weight information (computed through runtime benchmarking)
-pub mod weights;
-
-// Cryptographic proofs verification package
-mod proofs;
-
 use codec::{
-    Decode, 
+    Decode,
     Encode
 };
-
 // Runtime, system and frame primitives
 use frame_support::{
     dispatch::{
@@ -118,68 +104,66 @@ use frame_support::{
         fmt::Debug,
     },
     ensure,
-    Parameter, 
+    Parameter,
     sp_runtime::traits::{
-        AtLeast32BitUnsigned, 
+        AtLeast32BitUnsigned,
         MaybeSerialize,
         MaybeSerializeDeserialize,
         Member,
-    }, 
+    },
     traits::{
-        Currency,
-        Get, 
         EnsureOrigin,
-    }, 
+        Get,
+    },
     weights::Weight
 };
-
-use frame_system::{
-  ensure_root,
-};
+use frame_system::ensure_root;
+use sp_core::crypto::AccountId32;
+use sp_core::Hasher;
+use sp_core::storage::ChildInfo;
+use sp_runtime::{ModuleId, MultiSignature, sp_std::{
+    hash::Hash,
+    str::FromStr,
+}, traits::{
+    AccountIdConversion,
+    Bounded,
+    MaybeDisplay,
+    MaybeMallocSizeOf,
+    Verify,
+    Zero,
+}};
+use sp_state_machine::read_child_proof_check;
+use sp_std::convert::TryInto;
+use sp_trie::StorageProof;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 
-use sp_core::crypto::AccountId32;
-
-use sp_runtime::{
-    ModuleId,
-    MultiSignature,
-    RuntimeDebug,
-    sp_std::{
-        hash::Hash,
-        str::FromStr,
-    },
-    traits::{
-        AccountIdConversion,
-        Bounded,
-        MaybeDisplay,
-        MaybeMallocSizeOf,
-        Verify,
-    },
-    transaction_validity::{
-        InvalidTransaction, 
-        TransactionPriority,
-        TransactionSource,
-        TransactionValidity, 
-        ValidTransaction, 
-    },
-};
-
-use sp_std::convert::TryInto;
-
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;
 
+// Mock runtime and unit test cases
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
+// Runtime benchmarking features
+#[cfg(test)]
+mod benchmarking;
+
+// Extrinsics weight information (computed through runtime benchmarking)
+pub mod weights;
 
 // ----------------------------------------------------------------------------
 // Traits and types declaration
 // ----------------------------------------------------------------------------
 
 pub mod traits {
+    use sp_runtime::traits::Zero;
 
     use super::*;
-    
+
     /// Weight information for pallet extrinsics
     ///
     /// Weights are calculated using runtime benchmarking features.
@@ -227,7 +211,8 @@ pub mod traits {
             Default +
             MaybeSerializeDeserialize +
             Member + 
-            Parameter;
+            Parameter +
+            Zero;
 
         /// Block number type used by the runtime
         type BlockNumber:
@@ -284,6 +269,11 @@ type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as traits::Reward
 /// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
 type ContributionAmountOf<T> = <<T as Config>::RewardMechanism as traits::RewardMechanism>::ContributionAmount;
 
+/// Index of the crowdloan campaign inside the
+/// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
+/// on polkadot.
+type TrieIndex = u32;
+
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -296,12 +286,12 @@ type ContributionAmountOf<T> = <<T as Config>::RewardMechanism as traits::Reward
 // pallet itself.
 #[frame_support::pallet]
 pub mod pallet {
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
 
     use crate::traits::RewardMechanism;
 
     use super::*;
-    use frame_support::pallet_prelude::*;
-    use frame_system::pallet_prelude::*;
 
     // Crowdloan claim pallet type declaration.
     //
@@ -392,6 +382,7 @@ pub mod pallet {
         /// parameters.
         type ClaimTransactionLongevity: Get<Self::BlockNumber>;
 
+
         /// The reward payout mechanism this claim pallet uses.
         ///
         /// This associated type allows to implement a loosely-coupled regime between
@@ -432,6 +423,9 @@ pub mod pallet {
 
         /// Event emitted when the crowdloan claim pallet is properly configured.
         PalletInitialized(),
+
+        /// Event emitted when a reward has been claimed successfully.
+        RewardClaimed(T::RelayChainAccountId, ParachainAccountIdOf<T>, ContributionAmountOf<T>),
     }
 
 
@@ -451,18 +445,12 @@ pub mod pallet {
 	#[pallet::getter(fn contributions)]
     pub(super) type Contributions<T: Config> = StorageValue<_, ChildTrieRootHashOf<T>, OptionQuery>;
 
-    /// List of registered contributors.
+    /// TrieIndex of the crowdloan campaign inside the relay-chain crowdloan module.
     ///
-    /// To become elligible for a reward payout, a contributor must first prove
-    /// that she/he contributed, by proving her/his relay chain identity. For doing
-    /// so, the signed [`register_contributor`] transaction must be first called. 
+    /// This is needed in order to build the correct keys for proof check.
     #[pallet::storage]
-	#[pallet::getter(fn claimed_relay_chain_ids)]
-	pub type RegisteredContributors<T: Config> = StorageMap<
-        _, 
-        Blake2_128Concat, 
-        T::RelayChainAccountId, ()
-    >;
+	#[pallet::getter(fn trie_index)]
+	pub type CrowdloanTrieIndex<T: Config> = StorageValue< _, TrieIndex>;
 
     /// A map containing the list of claims for reward payouts that were successfuly processed
     #[pallet::storage]
@@ -524,6 +512,9 @@ pub mod pallet {
 	pub enum Error<T> {
         /// Cannot re-initialize the pallet
         PalletAlreadyInitialized,
+
+        /// Cannot call reward before pallet is initialized
+        PalletNotInitialized,
 
         /// The contributor has already been registered.
         ///
@@ -596,33 +587,37 @@ pub mod pallet {
             parachain_account_id: ParachainAccountIdOf<T>, 
             claimed_amount: ContributionAmountOf<T>,
             identity_proof: MultiSignature,
-            contribution_proof: [proof_type_here]
+            contribution_proof: Vec<Vec<u8>>
         ) -> DispatchResultWithPostInfo {
             // Ensures that this function can only be called via an unsigned transaction			
             ensure_none(origin)?;
+
+            // Ensure that the module has been initialized before calling this
+            ensure!(<Contributions<T>>::get() != None, Error::<T>::PalletNotInitialized);
 
             // Be sure user has not already claimed her/his reward payout
             ensure!(!ProcessedClaims::<T>::contains_key(&relaychain_account_id), Error::<T>::ClaimAlreadyProcessed);
 
             // Claimed amount must be positive value
-            ensure!(claimed_amount > 0, Error::<T>::ClaimedAmountIsOutOfBoundaries);
+            ensure!(!claimed_amount.is_zero(), Error::<T>::ClaimedAmountIsOutOfBoundaries);
 
             // Compute new claim transaction tick at which a new claim can be placed
             Self::increment_claim_transaction_tick();
 
             // Check (trustless) contributor identity
-            ensure!(Self::verify_contributor_identity_proof(relaychain_account_id, parachain_account_id, identity_proof), Error::<T>::InvalidContributorSignature);
+            Self::verify_contributor_identity_proof(relaychain_account_id.clone(), parachain_account_id.clone(), identity_proof)?;
 
             // Check the contributor's proof of contribution
-            // TODO:
-            ensure!(Self::verify_contribution_proof(relaychain_account_id, claimed_amount, [contribution_proof_here]).is_ok(), Error::<T>::InvalidProofOfContribution);
+            Self::verify_contribution_proof(relaychain_account_id.clone(), claimed_amount, contribution_proof)?;
 
             // Invoke the reward payout mechanism
-            T::RewardMechanism::reward(parachain_account_id, claimed_amount)?;
+            T::RewardMechanism::reward(parachain_account_id.clone(), claimed_amount)?;
             
             // Store this claim in the list of processed claims (so that to process it only once)
             // TODO [TankOfZion]: `Module` must be replaced by `Pallet` when all code base will be ported to FRAME v2
-            <ProcessedClaims<T>>::insert(&relaychain_account_id, <frame_system::Module<T>>::block_number()); 
+            <ProcessedClaims<T>>::insert(&relaychain_account_id, <frame_system::Module<T>>::block_number());
+
+            Self::deposit_event(Event::RewardClaimed(relaychain_account_id, parachain_account_id, claimed_amount));
             
             Ok(().into())
 		}
@@ -639,16 +634,19 @@ pub mod pallet {
         /// to the crowdloan campaign, and that the amount of the contribution is correct as 
         /// well.
         #[pallet::weight(<T as Config>::WeightInfo::initialize())]
-		pub(crate) fn initialize(origin: OriginFor<T>, contributions: ChildTrieRootHashOf<T>) -> DispatchResultWithPostInfo {
+		pub(crate) fn initialize(origin: OriginFor<T>, contributions: ChildTrieRootHashOf<T>, index: TrieIndex) -> DispatchResultWithPostInfo {
 
             // Ensure that only administrator entity can perform this administrative transaction
             ensure!(Self::ensure_administrator(origin) == Ok(()), Error::<T>::MustBeAdministrator);
 
-            // Ensure that the pallet has not already been initialized 
+            // Ensure that the pallet has not already been initialized
+            // TODO: Should we change this? This would basically allow the pallet to be used exactly once, without an RuntimeUpgrade.
             ensure!(<Contributions<T>>::get() == None, Error::<T>::PalletAlreadyInitialized);
 
             // Store relay chain's child trie root hash (containing the list of contributors and their contributions)
             <Contributions<T>>::put(contributions);
+
+            <CrowdloanTrieIndex<T>>::put(index);
 
             // Trigger an event so that to inform that the pallet was successfully initialized
             Self::deposit_event(Event::PalletInitialized());
@@ -683,7 +681,7 @@ pub mod pallet {
                 return InvalidTransaction::Stale.into();
             }
 
-            if let Call::claim_reward(relaychain_account_id, parachain_account_id, claimed_amount, identity_proof, contribution_proof) = call {
+            if let Call::claim_reward(relaychain_account_id, parachain_account_id, claimed_amount, _identity_proof, _contribution_proof) = call {
                 // Only the claim reward transaction can be invoked via an unsigned regime
                 return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
                     .priority(T::ClaimTransactionPriority::get())
@@ -746,14 +744,14 @@ impl<T: Config> Pallet<T> {
     //
     // This function aims at proving that the contributor's identity on
     // the relay chain is valid, using a signature. She/he also provides
-    // a parachain account on which the reward payout must be transfered
+    // a parachain account on which the reward payout must be transferred
     // and the amount she/he contributed to.
     // The [`signature`] is used as the proof.
     fn verify_contributor_identity_proof(
         relaychain_account_id: T::RelayChainAccountId,
         parachain_account_id: ParachainAccountIdOf<T>,
         signature: MultiSignature,
-    ) -> DispatchResult {
+    ) -> DispatchResult{
         
         // Now check if the contributor's native identity on the relaychain is valid
         let payload = parachain_account_id.encode();
@@ -765,18 +763,42 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // Verify that the contributor is elligible for a reward payout.
+    // Verify that the contributor is eligible for a reward payout.
     //
     // The [`Contributions`] child trie root hash contains all contributions and their respective
-    // contributors. Given the contributor's relay chain acccount identifier, the claimed amount 
+    // contributors. Given the contributor's relay chain account identifier, the claimed amount
     // (in relay chain tokens) and the parachain account identifier, this function proves that the 
     // contributor's claim is valid.
-    fn verify_contribution_proof(relaychain_account_id: T::RelayChainAccountId, contribution_amount: ContributionAmountOf<T>, proof: [storage_proof_here]) -> DispatchResult {
-        
-        // TODO [insert proof checking here]
-        //read_child_proof_check( ... )
+    fn verify_contribution_proof(
+        relay_account: T::RelayChainAccountId,
+        contribution: ContributionAmountOf<T>,
+        proof: Vec<Vec<u8>>,
+    ) -> DispatchResult {
 
-        Ok(())
+        let proof = StorageProof::new(proof);
+        let keys = vec![relay_account.encode()];
+
+        // rebuild child info
+        let mut buf = Vec::new();
+        buf.extend_from_slice(b"crowdloan");
+        buf.extend_from_slice(&Self::trie_index().encode()[..]);
+        let child_info = ChildInfo::new_default(T::Hashing::hash(&buf[..]).as_ref());
+
+        // We could unwrap here, as we check in the calling function if module is initialized (i.e. if contributions is set)
+        // but better be safe than sorry...
+        let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
+
+        read_child_proof_check::<T::Hashing, Vec<Vec<u8>>>(root, proof, &child_info, keys)
+            .map_or(Err(Error::<T>::InvalidProofOfContribution.into()), |mut key_value_map| {
+                key_value_map.get_mut(&relay_account.encode())
+                    .map_or(&None, |map_val| map_val).as_ref()
+                    .map_or(Err(Error::<T>::InvalidProofOfContribution.into()), |storage_val| {
+
+                        let (value, _memo): (ContributionAmountOf<T>, Vec<u8>) = Decode::decode::<&[u8]>(&mut storage_val.as_ref()).unwrap_or((Zero::zero(), Vec::new()));
+                        ensure!(value == contribution, Error::<T>::InvalidProofOfContribution);
+
+                        Ok(())
+                    })
+            })
     }
 }
-
