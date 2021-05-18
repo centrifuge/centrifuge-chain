@@ -9,7 +9,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target: [tests]
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN: "nightly-2021-03-15"
@@ -21,9 +20,12 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
+          components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v1
-      - name: Tests
-        run: ./ci/script.sh
-        env:
-          TARGET: ${{ matrix.target }}
+        with:
+          args: "-p bridge-mapping"
+      - uses: Swatinem/fucov@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          directory: coverage
 
