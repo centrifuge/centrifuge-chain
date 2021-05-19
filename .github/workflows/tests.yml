@@ -22,9 +22,9 @@ jobs:
           default: true
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/fucov@v1
         with:
           args: "-p bridge-mapping"
-      - uses: Swatinem/fucov@v1
       - uses: codecov/codecov-action@v1
         with:
           directory: coverage
