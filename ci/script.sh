@@ -21,4 +21,8 @@ case $TARGET in
   build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
     docker run --rm -e RUNTIME_DIR=./runtime -e PACKAGE=centrifuge-chain-runtime -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
+    ;;
+
+  tests)
+    cargo test -p bridge-mapping --release
 esac
