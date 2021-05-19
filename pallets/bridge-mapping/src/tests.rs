@@ -1,5 +1,5 @@
 use crate::{mock::*};
-use frame_support::{assert_ok, assert_err};
+use frame_support::{assert_ok, assert_noop};
 
 #[test]
 fn set_resource_adds_to_storage() {
@@ -39,7 +39,7 @@ fn non_admin_cannot_set_resource() {
         let user = Origin::signed(0);
         let resource_id = [1; 32];
         let local_addr  = [2; 32];
-        assert_err!(BridgeMapping::set(user, resource_id, local_addr), sp_runtime::traits::BadOrigin);
+        assert_noop!(BridgeMapping::set(user, resource_id, local_addr), sp_runtime::traits::BadOrigin);
 
         // Check that resource mapping was not added to storage
         assert_eq!(BridgeMapping::addr_of(resource_id), None);
@@ -67,6 +67,6 @@ fn non_admin_cannot_remove() {
     new_test_ext().execute_with(|| {
         let user = Origin::signed(0);
         let resource_id = [1; 32];
-        assert_err!(BridgeMapping::remove(user, resource_id),sp_runtime::traits::BadOrigin);
+        assert_noop!(BridgeMapping::remove(user, resource_id),sp_runtime::traits::BadOrigin);
     });
 }
