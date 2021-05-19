@@ -725,7 +725,7 @@ dependencies = [
 
 [[package]]
 name = "bridge-mapping"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -2201,6 +2201,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c4c9e43643f5a3be4ca5b67d26b98031ff9db6806c3440ae32e02e3ceac3f1b"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "fees"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

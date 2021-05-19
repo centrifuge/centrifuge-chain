@@ -27,8 +27,9 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-    "pallets/bridge-mapping",
-    "runtime",
+	"pallets/bridge-mapping",
+	"pallets/fees",
+	"runtime",
 ]
 
 [dependencies]

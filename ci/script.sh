@@ -24,5 +24,5 @@ case $TARGET in
     ;;
 
   tests)
-    cargo test -p bridge-mapping --release
+    cargo test -p bridge-mapping -p fees --release
 esac
