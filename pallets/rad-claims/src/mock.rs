@@ -34,8 +34,6 @@ use crate::{
 };
 
 use frame_support::{
-    impl_outer_origin, 
-    ord_parameter_types, 
     PalletId, 
     parameter_types, 
     weights::Weight
@@ -60,7 +58,6 @@ use sp_runtime::{
 use crate::traits::WeightInfo;
 
 pub use pallet_balances as balances;
-use pallet_balances::Error as BalancesError;
 use centrifuge_runtime::constants::currency;
 
 
@@ -75,7 +72,7 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-    fn claim() -> Weight { 
+    fn claim(hashes_length: usize) -> Weight { 
         0 as Weight 
     }
 

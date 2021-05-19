@@ -89,7 +89,7 @@ benchmarks!{
 // the following command:
 // 
 // ```sh
-// $ cargo test -p pallet-crowdloan-claim --all-features
+// $ cargo test -p pallet-rad-claims --all-features
 // ```
 //
 // At the end of the execution, the following message is printed in the result:

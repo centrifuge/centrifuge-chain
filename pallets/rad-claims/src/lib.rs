@@ -110,8 +110,9 @@ use frame_support::{
     PalletId,
     traits::{
         Currency,
-        Get, 
         EnsureOrigin,
+        ExistenceRequirement::KeepAlive,
+        Get, 
     }, 
     weights::Weight
 };
@@ -120,15 +121,16 @@ use frame_system::{
   ensure_root,
 };
 
-// Re-export in crate namespace (for runtime construction)
-pub use pallet::*;
-
 use sp_runtime::{
     sp_std::{
-        hash::Hash,
+        convert::TryInto,
+        vec::Vec,
     },
     traits::{
         AccountIdConversion,
+        CheckedSub,
+        Hash,
+        SaturatedConversion,
     },
     transaction_validity::{
         InvalidTransaction, 
@@ -139,10 +141,15 @@ use sp_runtime::{
     },
 };
 
-use sp_std::convert::TryInto;
+use sp_core::{Encode};
+
+//use sp_std::convert::TryInto;
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;
+
+// Re-export in crate namespace (for runtime construction)
+pub use pallet::*;
 
 
 // ----------------------------------------------------------------------------
@@ -158,7 +165,7 @@ pub mod traits {
     /// Weights are calculated using runtime benchmarking features.
     /// See [`benchmarking`] module for more information. 
     pub trait WeightInfo {
-        fn claim() -> Weight;
+        fn claim(hashes_length: usize) -> Weight;
         fn set_upload_account() -> Weight;
         fn store_root_hash() -> Weight;
     }
@@ -180,6 +187,7 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::SaturatedConversion;
 
     // Crowdloan claim pallet type declaration.
     //
@@ -222,7 +230,7 @@ pub mod pallet {
         /// This constant is set via [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
         /// macro when configuring a runtime.
         #[pallet::constant]
-        type MinimalPayoutAmount: Get<u128>;
+        type MinimalPayoutAmount: Get<node_primitives::Balance>;
 
         /// Constant configuration parameter to store the module identifier for the pallet.
         ///
@@ -259,7 +267,7 @@ pub mod pallet {
         Claimed(T::AccountId, <T as pallet_balances::Config>::Balance),
 
         /// Event triggered when the root hash is stored
-        RootHashStored(T::Hash),
+        RootHashStored(<T as frame_system::Config>::Hash),
     }
 
 
@@ -270,12 +278,12 @@ pub mod pallet {
     /// Total unclaimed rewards for an account.
     #[pallet::storage]
 	#[pallet::getter(fn get_account_balance)]
-    pub type AccountBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance>;
+    pub type AccountBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
     /// Map of root hashes that correspond to lists of RAD reward claim amounts per account.
     #[pallet::storage]
 	#[pallet::getter(fn get_root_hash)]
-    pub type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, bool>;
+    pub type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, bool, ValueQuery>;
     
     /// Account that is allowed to upload new root hashes.
     #[pallet::storage]
@@ -289,13 +297,13 @@ pub mod pallet {
 
 	// The genesis configuration type.
 	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
+	pub struct GenesisConfig {
         // nothing to do folks!!!!
     }
 
 	// The default value for the genesis config type.
 	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
+	impl Default for GenesisConfig {
 		fn default() -> Self {
 			Self {
                 // nothing to do folks!!!!
@@ -305,7 +313,7 @@ pub mod pallet {
 
 	// The build of genesis for the pallet.
 	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
             // nothing to do folks!!!!
 		}
@@ -389,7 +397,7 @@ pub mod pallet {
         /// # <weight>
         /// - Based on hashes length
         /// # </weight>
-        #[pallet::weight(<T as Config>::WeightInfo::claim())]
+        #[pallet::weight(<T as Config>::WeightInfo::claim(sorted_hashes.len()))]
         pub fn claim(
             origin: OriginFor<T>,
             account_id: T::AccountId,
@@ -407,10 +415,10 @@ pub mod pallet {
             // Payout = amount - claim
             let payout = amount.checked_sub(&claimed).ok_or(Error::<T>::InsufficientBalance)?;
 
-            // Payout must not be less than minimum allowed
+            // Payout must not be less than the minimum allowed
             ensure!(payout >= <MinimalPayoutAmount<T>>::get().saturated_into(), Error::<T>::UnderMinPayout);
 
-            let source = MODULE_ID.into_account();
+            let source = Self::account_id();
 
             // Transfer payout amount
             <pallet_balances::Pallet<T> as Currency<_>>::transfer(
@@ -525,7 +533,7 @@ pub mod pallet {
 //   from other pallets.
 impl<T: Config> Pallet<T> {
    
-    /// Return the account identifier of the crowdloan claim pallet.
+    /// Return the account identifier of the RAD claims pallet.
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
