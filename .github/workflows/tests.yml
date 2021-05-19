@@ -20,14 +20,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-          components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v1
-#      - uses: Swatinem/fucov@v1
-#        with:
-#          args: "-p bridge-mapping"
-#      - uses: codecov/codecov-action@v1
-#        with:
-#          directory: coverage
       - name: Run tests
         run: ./ci/script.sh
         env:
