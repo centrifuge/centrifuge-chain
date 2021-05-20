@@ -367,7 +367,7 @@ pub mod pallet {
         /// Protected operation, must be performed by admin
         MustBeAdmin,
 
-        /// The payout amount attempting to be claimed is less than the minimum allowed by [MIN_PAYOUT].
+        /// The payout amount attempting to be claimed is less than the minimum allowed by [`MinimalPayoutAmount`].
         UnderMinPayout,
     }
 
