@@ -92,11 +92,11 @@
 // ----------------------------------------------------------------------------
 
 // Mock runtime and unit test cases
+#[cfg(test)]
 mod mock;
-mod tests;
 
-// Runtime benchmarking features
-mod benchmarking;
+#[cfg(test)]
+mod tests;
 
 // Extrinsics weight information (should be replaced by `weights` later, when runtime benchmarking will be in place)
 mod weights_default;

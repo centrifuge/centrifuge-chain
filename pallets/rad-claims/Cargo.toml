@@ -38,5 +38,3 @@ std = [
   'pallet-balances/std',
   'sp-std/std',
 ]
-
-runtime-benchmarks = ["frame-benchmarking"]
