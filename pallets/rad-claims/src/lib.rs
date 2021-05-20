@@ -52,10 +52,10 @@
 //! ### Events
 //!
 //! ### Errors
-//! <code>\`InsufficientBalance\`</code> Amount being claimed is less than the available amount in [AccountBalances].
+//! <code>\`InsufficientBalance\`</code> Amount being claimed is less than the available amount in [`ClaimedAmounts`].
 //! <code>\`InvalidProofs\`</code> The combination of account id, amount, and proofs vector in a claim was invalid.
 //! <code>\`MustBeAdmin\`</code> Protected operation, must be performed by admin.
-//! <code>\`UnderMinPayout\`</code> The payout amount attempting to be claimed is less than the minimum allowed by [MIN_PAYOUT].
+//! <code>\`UnderMinPayout\`</code> The payout amount attempting to be claimed is less than the minimum allowed by [`MinimalPayoutAmount`].
 //!
 //! ### Dispatchable Functions
 //!
@@ -274,10 +274,10 @@ pub mod pallet {
     // Pallet storage items
     // ------------------------------------------------------------------------
 
-    /// Total unclaimed rewards for an account.
+    /// Total claimed amounts for all accounts.
     #[pallet::storage]
-	#[pallet::getter(fn get_account_balance)]
-    pub type AccountBalances<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+	#[pallet::getter(fn get_claimed_amount)]
+    pub type ClaimedAmounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
     /// Map of root hashes that correspond to lists of RAD reward claim amounts per account.
     #[pallet::storage]
@@ -334,7 +334,7 @@ pub mod pallet {
     #[pallet::error]
 	pub enum Error<T> {
 
-        /// Amount being claimed is less than the available amount in [`AccountBalances`].
+        /// Amount being claimed is less than the available amount in [`ClaimedAmounts`].
         InsufficientBalance,
 
         /// The combination of account id, amount, and proofs vector in a claim was invalid.
@@ -385,7 +385,7 @@ pub mod pallet {
 
             ensure!(Self::verify_proofs(&account_id, &amount, &sorted_hashes), Error::<T>::InvalidProofs);
 
-            let claimed = Self::get_account_balance(&account_id);
+            let claimed = Self::get_claimed_amount(&account_id);
 
             // Payout = amount - claim
             let payout = amount.checked_sub(&claimed).ok_or(Error::<T>::InsufficientBalance)?;
@@ -404,7 +404,7 @@ pub mod pallet {
             )?;
 
             // Set account balance to amount
-            AccountBalances::<T>::insert(account_id.clone(), amount);
+            ClaimedAmounts::<T>::insert(account_id.clone(), amount);
 
             Self::deposit_event(Event::Claimed(account_id, amount));
 
