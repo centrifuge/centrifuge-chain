@@ -324,31 +324,7 @@ pub mod pallet {
     // ----------------------------------------------------------------------------
     
     #[pallet::hooks]
-	impl<T:Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-
-        // `on_initialize` is executed at the beginning of the block before any extrinsic are
-		// dispatched.
-		//
-		// This function must return the weight consumed by `on_initialize` and `on_finalize`.
-		fn on_initialize(_n: T::BlockNumber) -> Weight {
-            // TODO:
-            // Rreturn a default weight for now. It must be replaced by a weight from
-            // WeightInfo
-            0
-		}
-
-		// `on_finalize` is executed at the end of block after all extrinsic are dispatched.
-		fn on_finalize(_n: T::BlockNumber) {
-			// clean up data/state 
-		}
-
-		// A runtime code run after every block and have access to extended set of APIs.
-		//
-		// For instance you can generate extrinsics for the upcoming produced block.
-		fn offchain_worker(_n: T::BlockNumber) {
-            // nothing done here, folks!
-		}
-    }
+	impl<T:Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 
     // ------------------------------------------------------------------------
