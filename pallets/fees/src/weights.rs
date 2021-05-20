@@ -1,4 +1,4 @@
-use frame_support::{weights::{Weight, constants::RocksDbWeight}};
+use frame_support::{weights::Weight};
 
 /// Weight functions needed for Fees.
 pub trait WeightInfo {
@@ -7,8 +7,6 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
     fn set_fee() -> Weight {
-        (100_000 as Weight).saturating_add(
-            RocksDbWeight::get().reads_writes(0, 1)
-        )
+        195_000_000
     }
 }

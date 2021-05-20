@@ -3,8 +3,7 @@ use frame_support::{
     assert_ok, assert_err, assert_noop,
     dispatch::DispatchError
 };
-use sp_runtime::traits::{BadOrigin};
-use sp_core::Hasher;
+use sp_runtime::traits::{BadOrigin, Hash};
 
 #[test]
 fn can_change_fee() {
@@ -17,8 +16,8 @@ fn can_change_fee() {
 #[test]
 fn multiple_new_fees_are_setable() {
     new_test_ext().execute_with(|| {
-        let fee_key1 = <Test as frame_system::Config>::Hashing::hash(&vec![1]);
-        let fee_key2 = <Test as frame_system::Config>::Hashing::hash(&vec![2]);
+        let fee_key1 = <Test as frame_system::Config>::Hashing::hash_of(&1);
+        let fee_key2 = <Test as frame_system::Config>::Hashing::hash_of(&2);
 
         let price1: <Test as pallet_balances::Config>::Balance = 666;
         let price2: <Test as pallet_balances::Config>::Balance = 777;
@@ -41,7 +40,7 @@ fn multiple_new_fees_are_setable() {
 #[test]
 fn fee_is_re_setable() {
     new_test_ext().execute_with(|| {
-        let fee_key = <Test as frame_system::Config>::Hashing::hash(&vec![1]);
+        let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&1);
 
         let initial_price: <Test as pallet_balances::Config>::Balance = 666;
         assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, initial_price));
@@ -63,7 +62,7 @@ fn fee_is_re_setable() {
 #[test]
 fn fee_payment_errors_if_not_set() {
     new_test_ext().execute_with(|| {
-        let fee_key = <Test as frame_system::Config>::Hashing::hash(&vec![1]);
+        let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&1);
         let fee_price: <Test as pallet_balances::Config>::Balance = 90000;
         let author_old_balance = <pallet_balances::Pallet<Test>>::free_balance(&100);
 
@@ -92,7 +91,7 @@ fn fee_payment_errors_if_not_set() {
 #[test]
 fn fee_payment_errors_if_insufficient_balance() {
     new_test_ext().execute_with(|| {
-        let fee_key = <Test as frame_system::Config>::Hashing::hash(&vec![1]);
+        let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&1);
         let fee_price: <Test as pallet_balances::Config>::Balance = 90000;
 
         assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
@@ -112,7 +111,7 @@ fn fee_payment_errors_if_insufficient_balance() {
 #[test]
 fn fee_payment_subtracts_fees_from_account() {
     new_test_ext().execute_with(|| {
-        let fee_key = <Test as frame_system::Config>::Hashing::hash(&vec![1]);
+        let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&1);
         let fee_price: <Test as pallet_balances::Config>::Balance = 90000;
         assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
@@ -135,7 +134,7 @@ fn fee_payment_subtracts_fees_from_account() {
 #[test]
 fn fee_is_gettable() {
     new_test_ext().execute_with(|| {
-        let fee_key = <Test as frame_system::Config>::Hashing::hash(&vec![1]);
+        let fee_key = <Test as frame_system::Config>::Hashing::hash_of(&1);
         let fee_price: <Test as pallet_balances::Config>::Balance = 90000;
 
         //First run, the fee is not set yet and should return None

@@ -57,7 +57,7 @@ pub mod pallet {
     // The genesis config type.
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config>{
-        initial_fees: Vec<(T::Hash, T::Balance)>
+        pub initial_fees: Vec<(T::Hash, T::Balance)>
     }
 
     // The default value for the genesis config type.

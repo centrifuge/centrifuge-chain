@@ -29,6 +29,7 @@ path = "src/main.rs"
 members = [
 	"pallets/bridge-mapping",
 	"pallets/fees",
+	"pallets/anchors",
 	"runtime",
 ]
 
