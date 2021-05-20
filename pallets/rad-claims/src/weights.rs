@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! Crowdloan claim pallet's extrinsics weight information
+//! Rad claim pallet's extrinsics weight information
 //! 
 //! Note that the following weights are used only for development.
 //! In fact, weights are calculated using runtime benchmarking.

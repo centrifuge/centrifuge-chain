@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # RAD token claims pallet
+//! # RAD token claims processing pallet
 //!
 //! This pallet implement a reward claim mechanism with vesting, for
 //! rewarding RAD tokens awarded through [Tinlake](https://tinlake.centrifuge.io)
@@ -176,7 +176,7 @@ pub mod traits {
 // Pallet module
 // ----------------------------------------------------------------------------
 
-// Crowdloan claim pallet module
+// Rad claim pallet module
 //
 // The name of the pallet is provided by `construct_runtime` and is used as
 // the unique identifier for the pallet's storage. It is not defined in the 
@@ -188,7 +188,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
-    // Crowdloan claim pallet type declaration.
+    // Rad claim pallet type declaration.
     //
     // This structure is a placeholder for traits and functions implementation
     // for the pallet.
@@ -201,7 +201,7 @@ pub mod pallet {
     // Pallet configuration
     // ------------------------------------------------------------------------
 
-    /// Crowdloan claim pallet's configuration trait.
+    /// Rad claim pallet's configuration trait.
     ///
     /// Associated types and constants are declared in this trait. If the pallet
     /// depends on other super-traits, the latter must be added to this trait, 
