@@ -187,7 +187,6 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::SaturatedConversion;
 
     // Crowdloan claim pallet type declaration.
     //
@@ -416,7 +415,7 @@ pub mod pallet {
             let payout = amount.checked_sub(&claimed).ok_or(Error::<T>::InsufficientBalance)?;
 
             // Payout must not be less than the minimum allowed
-            ensure!(payout >= <MinimalPayoutAmount<T>>::get().saturated_into(), Error::<T>::UnderMinPayout);
+            ensure!(payout >= T::MinimalPayoutAmount::get().saturated_into(), Error::<T>::UnderMinPayout);
 
             let source = Self::account_id();
 
@@ -565,7 +564,16 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    // TODO: need function documentation
+    // Verifies lexicographically-sorted proofs.
+    //
+    // This function essentially proceeds as follows, in order to verifiy proofs:
+    // 1. A leaf hash is first built, namely `Hash(account_id + amount)`, with the account and the amount
+    // 2. The leaf is then passed to iterator as the first accumulative value to the 'sorted_hash_of' function
+    // 3. Then 'sorted_hash_of' function hashes both 'hash1' and 'hash2' together, and the order depends on 
+    //    which one is "bigger".
+    //    This approach avoids having an extra byte that tells if the hash is left or right so they can 
+    //    be concatenated accordingly before hashing
+    // 4. And finally, it checks that the resulting root hash matches with the one stored
     fn verify_proofs(account_id: &T::AccountId, amount: &T::Balance, sorted_hashes: &Vec<T::Hash>) -> bool {
         // Number of proofs should practically never be >30. Checking this
         // blocks abuse.

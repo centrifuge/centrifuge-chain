@@ -26,17 +26,15 @@
 // ----------------------------------------------------------------------------
 
 use crate::{
-    mock::*,
-    Error as RadClaimsError,
     self as pallet_rad_claims,
+    mock::*,
     *
 };
 
 use frame_support::{
     assert_err,
     assert_noop,
-    assert_ok,
-    impl_outer_origin
+    assert_ok
 };
 
 use sp_core::H256;
@@ -256,7 +254,7 @@ fn validate_unsigned_check() {
         ];
 
         // Abuse DDoS attach check
-        let inner_long = RadClaims::claim(USER_B, amount, sorted_hashes_long.to_vec());
+        let inner_long = pallet_rad_claims::Call::claim(USER_B, amount, sorted_hashes_long.to_vec());
         assert_noop!(
             <RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_long),
             InvalidTransaction::BadProof
@@ -267,7 +265,7 @@ fn validate_unsigned_check() {
         let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
         let root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
         assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
-        let inner = RadClaims::claim(USER_B, amount, one_sorted_hashes.to_vec());
+        let inner = pallet_rad_claims::Call::claim(USER_B, amount, one_sorted_hashes.to_vec());
         assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
     });
 }

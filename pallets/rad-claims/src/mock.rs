@@ -36,6 +36,7 @@ use crate::{
 use frame_support::{
     PalletId, 
     parameter_types, 
+    traits::SortedMembers, 
     weights::Weight
 };
 
@@ -50,9 +51,7 @@ use sp_runtime::{
         BlakeTwo256, 
         IdentityLookup
     }, 
-    transaction_validity::{
-        TransactionPriority, 
-    },
+    transaction_validity::TransactionPriority,
 };
 
 use crate::traits::WeightInfo;
@@ -67,12 +66,13 @@ use centrifuge_runtime::constants::currency;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
+type Balance = u128;
 
 // Implement testint extrinsic weights for the pallet
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-    fn claim(hashes_length: usize) -> Weight { 
+    fn claim(_hashes_length: usize) -> Weight { 
         0 as Weight 
     }
 
@@ -107,7 +107,7 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RadClaims: pallet_rad_claims::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+        RadClaims: pallet_rad_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
     }
 );
 
@@ -133,12 +133,14 @@ impl frame_system::Config for MockRuntime {
     type BlockLength = ();
     type Version = ();
     type PalletInfo = PalletInfo;
-    type AccountData = balances::AccountData<u128>;
-    type OnNewAccount = ();
-    type OnKilledAccount = balances::Pallet<MockRuntime>;
     type DbWeight = ();
+    type AccountData = balances::AccountData<Balance>;
+    type OnNewAccount = ();
+    type OnKilledAccount = ();
     type BaseCallFilter = ();
     type SystemWeightInfo = ();
+    type SS58Prefix = ();
+    type OnSetCode = ();
 }
 
 // Parameterize FRAME balances pallet
@@ -148,12 +150,13 @@ parameter_types! {
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
 impl pallet_balances::Config for MockRuntime {
-    type Balance = u128;
+    type Balance = Balance;
     type DustRemoval = ();
-    type Event = ();
+    type Event = Event;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type MaxLocks = ();
 }
 
 // Parameterize RAD claims pallet
@@ -162,7 +165,14 @@ parameter_types! {
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: u128 = node_primitives::Balance = 5 * currency::RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
+}
+
+
+impl SortedMembers<u64> for One {
+    fn sorted_members() -> Vec<u64> {
+        vec![1]
+    }
 }
 
 // Implement RAD claims pallet configuration trait for the mock runtime
@@ -173,6 +183,8 @@ impl Config for MockRuntime {
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type Currency = Balances;
+    type MinimalPayoutAmount = MinimalPayoutAmount;
+    type WeightInfo = ();
 }
 
 
@@ -184,30 +196,20 @@ impl Config for MockRuntime {
 //
 // This type is mainly used for mocking storage in tests. It is the type alias 
 // for an in-memory, hashmap-based externalities implementation.
-pub struct TestExternalitiesBuilder {
-    existential_deposit: u64
-}
+pub struct TestExternalitiesBuilder {}
 
 // Default trait implementation for test externalities builder
 impl Default for TestExternalitiesBuilder {
 	fn default() -> Self {
-		Self {
-            existential_deposit: 1
-		}
+		Self {}
 	}
 }
 
 impl TestExternalitiesBuilder {
-    
-    // Set FRAME balances pallet's existential deposit
-    pub fn existential_deposit(mut self, existential_deposit: u64) -> Self {
-        self.existential_deposit = existential_deposit;
-        self
-    }
-    
+        
     // Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
+		let mut storage = frame_system::GenesisConfig::default()
             .build_storage::<MockRuntime>()
             .unwrap();
 
@@ -220,9 +222,6 @@ impl TestExternalitiesBuilder {
             ],
         }.assimilate_storage(&mut storage).unwrap();
         
-        let mut externalities = TestExternalities::new(storage);
-
-        externalities.execute_with(|| System::set_block_number(1));
-	    externalities
+        TestExternalities::new(storage)
     }
 }

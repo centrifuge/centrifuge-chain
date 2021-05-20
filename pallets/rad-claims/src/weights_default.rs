@@ -23,8 +23,6 @@
 use frame_support::{
     weights::{
         constants::RocksDbWeight,
-        DispatchClass, 
-        Pays, 
         Weight,
     }
 };
@@ -35,10 +33,10 @@ use crate::traits::WeightInfo;
 impl WeightInfo for () {
 
     fn claim( hashes_length: usize ) -> Weight {
-        (hashes_length.saturating_mul(1_000_000) as u64
-            + RocksDbWeight::get().reads_writes(2,2)
-            + 195_000_000,
-        DispatchClass::Normal, Pays::Yes) as Weight
+        (195_000_000 as Weight).saturating_add(
+            hashes_length.saturating_mul(1_000_000) as Weight +
+            RocksDbWeight::get().reads_writes(2,2)
+        )
     }
 
     fn set_upload_account() -> Weight { 

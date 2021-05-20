@@ -28,10 +28,9 @@ to your parachain's main `Cargo.toml` file:
 ```toml
 # -- snip --
 
-[dependencies.pallet-rad-claims]            # <-- Add the new dependency
-default_features = false
-git = 'https://github.com/centrifuge-chain/pallet-rad-claims.git'
-branch = master
+[dependencies]
+
+pallet-rad-claims = { branch = 'master', git = 'https://github.com/centrifuge-chain/pallet-rad-claims.git' }
 
 # -- snip --
 
@@ -49,13 +48,16 @@ for your runtime (in `[runtime_path]/lib.rs` file):
 
 ```rust
 
+node_primitives::Balance
+use centrifuge_runtime::constants::currency;
+
 // Parameterize Rad claims pallet
-ord_parameter_types! {
+parameter_types! {
     pub const RadClaimsPalletId: ModuleId = PalletId(*b"rd/claim");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub cosnt MinimalPayoutAmount: u128 = node_primitives::Balance = 5 * currency::RAD;
+    pub cosnt MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
 }
 
 // Implement Rad claims pallet configuration trait for the mock runtime
@@ -80,7 +82,7 @@ construct_runtime! {
 You can see this pallet's reference documentation with the following command:
 
 ```sh
-$ cargo doc --package rad-claims --open
+$ cargo doc --package pallet-rad-claims --open
 ```
 
 The table of contents for this markdown file is automatically generated using the [`auto-markdown-toc`](https://marketplace.visualstudio.com/items?itemName=huntertran.auto-markdown-toc) extension for Visual StudioCode.
