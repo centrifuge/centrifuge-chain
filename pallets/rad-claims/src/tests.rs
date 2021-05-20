@@ -32,7 +32,6 @@ use crate::{
 };
 
 use frame_support::{
-    assert_err,
     assert_noop,
     assert_ok
 };
@@ -68,7 +67,7 @@ pub const ENDOWED_BALANCE: u128 = 10000 * currency::RAD;
 #[test]
 fn can_upload_account() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        assert_err!(RadClaims::can_update_upload_account(Origin::signed(USER_A)), BadOrigin);
+        assert_noop!(RadClaims::can_update_upload_account(Origin::signed(USER_A)), BadOrigin);
         assert_ok!(RadClaims::can_update_upload_account(Origin::signed(ADMIN)));
     });
 }
@@ -138,7 +137,7 @@ fn verify_proofs() {
 fn set_upload_account() {
     TestExternalitiesBuilder::default().build().execute_with( || {
         assert_eq!(RadClaims::get_upload_account(), 0x0);
-        assert_err!(RadClaims::set_upload_account(Origin::signed(USER_A), USER_A), BadOrigin);
+        assert_noop!(RadClaims::set_upload_account(Origin::signed(USER_A), USER_A), BadOrigin);
         assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), USER_A));
         assert_eq!(RadClaims::get_upload_account(), USER_A);
     });
@@ -150,7 +149,7 @@ fn store_root_hash() {
         assert_eq!(RadClaims::get_upload_account(), 0x0);
         // USER_A not allowed to upload hash
         let root_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&[0; 32]);
-        assert_err!(
+        assert_noop!(
             RadClaims::store_root_hash(Origin::signed(USER_A), root_hash),
             Error::<MockRuntime>::MustBeAdmin
         );
@@ -188,7 +187,7 @@ fn claim() {
         );
 
         // proof validation error - roothash not stored
-        assert_err!(
+        assert_noop!(
             RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::InvalidProofs
         );
