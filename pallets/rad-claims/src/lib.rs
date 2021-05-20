@@ -484,9 +484,8 @@ pub mod pallet {
                             .unwrap_or(64_u64))
                         .propagate(true)
                         .build()
-                } else {
-                    return InvalidTransaction::BadProof.into();
                 }
+                return InvalidTransaction::BadProof.into();
             }
     
             InvalidTransaction::Call.into()
