@@ -98,8 +98,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Extrinsics weight information (should be replaced by `weights` later, when runtime benchmarking will be in place)
-mod weights_default;
+// Extrinsics weight information
+mod weights;
 
 // Runtime, system and frame primitives
 use frame_support::{
