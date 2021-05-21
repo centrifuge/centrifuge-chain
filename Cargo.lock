@@ -878,6 +878,7 @@ dependencies = [
  "log 0.4.14",
  "node-inspect",
  "node-primitives",
+ "pallet-anchors",
  "pallet-im-online",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
@@ -958,6 +959,7 @@ dependencies = [
  "hex-literal 0.2.1",
  "integer-sqrt",
  "node-primitives",
+ "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -966,6 +968,7 @@ dependencies = [
  "pallet-collective",
  "pallet-democracy",
  "pallet-elections-phragmen",
+ "pallet-fees",
  "pallet-grandpa",
  "pallet-identity",
  "pallet-im-online",
@@ -4935,6 +4938,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ use frame_support::{storage::child, dispatch::{DispatchResult, DispatchError}};
 pub use pallet::*;
 pub mod weights;
 pub use weights::*;
-use std::convert::TryInto;
+use sp_std::{convert::TryInto, vec::Vec};
 use sp_runtime::traits::Hash;
 
 #[cfg(feature = "std")]
@@ -64,7 +64,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use super::*;
-    use std::convert::TryInto;
+    use sp_std::{convert::TryInto, vec::Vec};
     use sp_runtime::traits::Hash;
 
     // Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
