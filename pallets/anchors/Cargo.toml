@@ -14,20 +14,20 @@ targets = ['x86_64-unknown-linux-gnu']
 serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
 
-pallet-fees = { default-features = false, path = "../fees" }
 
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-fees = { default-features = false, path = "../fees" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
 [features]
 default = ['std']
@@ -36,7 +36,5 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'pallet-timestamp/std',
-    'pallet-balances/std',
     'pallet-fees/std',
-    'pallet-authorship/std',
 ]

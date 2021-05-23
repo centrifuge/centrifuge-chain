@@ -109,6 +109,7 @@ impl SortedMembers<u64> for One{
 }
 
 impl pallet_fees::Config for Test {
+    type Currency = Balances;
     type Event = ();
     type FeeChangeOrigin = EnsureSignedBy<One, u64>;
     type WeightInfo = ();

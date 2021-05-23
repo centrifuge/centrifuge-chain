@@ -74,7 +74,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + pallet_timestamp::Config + pallet_fees::Config + pallet_balances::Config {
+    pub trait Config: frame_system::Config + pallet_timestamp::Config + pallet_fees::Config  {
         /// Type representing the weight of this pallet
         type WeightInfo: WeightInfo;
     }
@@ -265,7 +265,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::FeeNotSet)?;
 
             let fee = base_fee *
-                <T as pallet_balances::Config>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+                pallet_fees::BalanceOf::<T>::from(stored_until_date_from_epoch - today_in_days_from_epoch);
 
             // pay state rent to block author
             <pallet_fees::Pallet<T>>::pay_fee_to_author(who, fee)?;

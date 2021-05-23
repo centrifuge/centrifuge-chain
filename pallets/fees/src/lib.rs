@@ -27,6 +27,8 @@ pub struct Fee<Hash, Balance> {
     price: Balance,
 }
 
+pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
 #[frame_support::pallet]
 pub mod pallet {
     // Import various types used to declare pallet in scope.
@@ -41,7 +43,9 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + pallet_balances::Config + pallet_authorship::Config {
+    pub trait Config: frame_system::Config + pallet_authorship::Config {
+        /// The currency mechanism.
+        type Currency: frame_support::traits::Currency<Self::AccountId>;
         /// The overarching event type.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// Required origin for changing fees
@@ -56,7 +60,7 @@ pub mod pallet {
     // The genesis config type.
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config>{
-        pub initial_fees: Vec<(T::Hash, T::Balance)>
+        pub initial_fees: Vec<(T::Hash, BalanceOf<T>)>
     }
 
     // The default value for the genesis config type.
@@ -82,12 +86,12 @@ pub mod pallet {
     /// Stores the Fees associated with a Hash identifier
     #[pallet::storage]
     #[pallet::getter(fn fee)]
-    pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, T::Hash, Fee<T::Hash, T::Balance>>;
+    pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, T::Hash, Fee<T::Hash, BalanceOf<T>>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        FeeChanged(T::Hash, T::Balance),
+        FeeChanged(T::Hash, BalanceOf<T>),
     }
 
     #[pallet::error]
@@ -100,7 +104,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Set the given fee for the key
         #[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
-        pub fn set_fee(origin: OriginFor<T>, key: T::Hash, new_price: T::Balance) -> DispatchResult {
+        pub fn set_fee(origin: OriginFor<T>, key: T::Hash, new_price: BalanceOf<T>) -> DispatchResult {
             Self::can_change_fee(origin)?;
             Self::change_fee(key, new_price);
             Self::deposit_event(Event::FeeChanged(key, new_price));
@@ -120,8 +124,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Burns Fee from account
-    pub fn burn_fee(from: &T::AccountId, fee: T::Balance) -> DispatchResult {
-        let _ = <pallet_balances::Pallet<T> as Currency<_>>::withdraw(
+    pub fn burn_fee(from: &T::AccountId, fee: BalanceOf<T>) -> DispatchResult {
+        let _ = T::Currency::withdraw(
             from,
             fee,
             WithdrawReasons::FEE.into(),
@@ -132,8 +136,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Pay the given fee
-    pub fn pay_fee_to_author(from: T::AccountId, fee: T::Balance) -> DispatchResult {
-        let value = <pallet_balances::Pallet<T> as Currency<_>>::withdraw(
+    pub fn pay_fee_to_author(from: T::AccountId, fee: BalanceOf<T>) -> DispatchResult {
+        let value = T::Currency::withdraw(
             &from,
             fee,
             WithdrawReasons::FEE.into(),
@@ -141,12 +145,12 @@ impl<T: Config> Pallet<T> {
         )?;
 
         let author = <pallet_authorship::Pallet<T>>::author();
-        <pallet_balances::Pallet<T> as Currency<_>>::resolve_creating(&author, value);
+        T::Currency::resolve_creating(&author, value);
         Ok(())
     }
 
     /// Returns the current fee for the key
-    pub fn price_of(key: T::Hash) -> Option<T::Balance> {
+    pub fn price_of(key: T::Hash) -> Option<BalanceOf<T>> {
         //why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
         let fee = <Fees<T>>::get(key)?;
         Some(fee.price)
@@ -162,7 +166,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Change the fee for the given key
-    fn change_fee(key: T::Hash, fee: T::Balance) {
+    fn change_fee(key: T::Hash, fee: BalanceOf<T>) {
         let new_fee = Fee {
             key: key.clone(),
             price: fee,

@@ -15,13 +15,13 @@ codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive
 
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [features]
 default = ['std']
@@ -30,5 +30,4 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'pallet-authorship/std',
-    'pallet-balances/std'
 ]
