@@ -9,6 +9,7 @@ use codec::Encode;
 use sp_core::H256;
 use frame_support::traits::Randomness;
 use std::time::Instant;
+use frame_support::dispatch::DispatchError;
 
 #[test]
 fn basic_pre_commit() {
@@ -66,7 +67,7 @@ fn pre_commit_fail_anchor_exists() {
         // fails because of existing anchor
         assert_noop!(
             Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-            "Anchor already exists"
+            DispatchError::Module{ index: 5, error: 0, message: Some("AnchorAlreadyExists") }
         );
     });
 }
@@ -89,7 +90,7 @@ fn pre_commit_fail_anchor_exists_different_acc() {
         // fails because of existing anchor
         assert_noop!(
             Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-            "Anchor already exists"
+            DispatchError::Module{ index: 5, error: 0, message: Some("AnchorAlreadyExists") }
         );
     });
 }
@@ -117,7 +118,7 @@ fn pre_commit_fail_pre_commit_exists() {
         // fail, pre-commit exists
         assert_noop!(
             Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-            "A valid pre-commit already exists"
+            DispatchError::Module{ index: 5, error: 4, message: Some("PreCommitAlreadyExists") }
         );
 
         // expire the pre-commit
@@ -153,7 +154,7 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
         // fail, pre-commit exists
         assert_noop!(
             Anchors::pre_commit(Origin::signed(2), anchor_id, signing_root),
-            "A valid pre-commit already exists"
+            DispatchError::Module{ index: 5, error: 4, message: Some("PreCommitAlreadyExists") }
         );
 
         // expire the pre-commit
@@ -232,7 +233,7 @@ fn basic_commit() {
                 <Test as frame_system::Config>::Hashing::hash_of(&0),
                 2 // some arbitrary store until date that is less than the required minimum
             ),
-            "Stored until date must be at least a day later than the current date"
+            DispatchError::Module{ index: 5, error: 1, message: Some("AnchorStoreDateInPast") }
         );
     });
 }
@@ -265,7 +266,7 @@ fn commit_fail_anchor_exists() {
                 <Test as frame_system::Config>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ),
-            "Anchor already exists"
+            DispatchError::Module{ index: 5, error: 0, message: Some("AnchorAlreadyExists") }
         );
 
         // different acc
@@ -277,7 +278,7 @@ fn commit_fail_anchor_exists() {
                 <Test as frame_system::Config>::Hashing::hash_of(&0),
                 common::MS_PER_DAY + 1
             ),
-            "Anchor already exists"
+            DispatchError::Module{ index: 5, error: 0, message: Some("AnchorAlreadyExists") }
         );
     });
 }
@@ -306,7 +307,7 @@ fn basic_pre_commit_commit() {
                 proof,
                 common::MS_PER_DAY + 1
             ),
-            "Pre-commit proof not valid"
+            DispatchError::Module{ index: 5, error: 6, message: Some("InvalidPreCommitProof")}
         );
 
         // happy
@@ -378,7 +379,7 @@ fn pre_commit_commit_fail_from_another_acc() {
                 proof,
                 common::MS_PER_DAY + 1
             ),
-            "Pre-commit owned by someone else"
+            DispatchError::Module{ index: 5, error: 5, message: Some("NotOwnerOfPreCommit") }
         );
     });
 }
@@ -617,7 +618,7 @@ fn pre_commit_and_then_evict() {
                 Origin::signed(1),
                 Anchors::determine_pre_commit_eviction_bucket(block_height_0).unwrap()
             ),
-            "eviction only possible for bucket expiring < current block height"
+            DispatchError::Module{ index: 5, error: 10, message: Some("EvictionNotPossible") }
         );
 
         // test that eviction works after expiration time
@@ -696,7 +697,7 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
                 proof,
                 common::MS_PER_DAY + 1
             ),
-            "Pre-commit owned by someone else"
+           DispatchError::Module{ index: 5, error: 5, message: Some("NotOwnerOfPreCommit") }
         );
     });
 }

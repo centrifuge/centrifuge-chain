@@ -151,6 +151,42 @@ pub mod pallet {
     #[pallet::getter(fn get_evicted_anchor_root_by_day)]
     pub(super) type EvictedAnchorRoots<T: Config> = StorageMap<_, Blake2_256, u32, Vec<u8>>;
 
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Anchor with anchor_id already exists
+        AnchorAlreadyExists,
+
+        /// Anchor store date must be in now or future
+        AnchorStoreDateInPast,
+
+        /// Anchor store date must not be more than max store date
+        AnchorStoreDateAboveMaxLimit,
+
+        /// State rent fee not set in the Fee Pallet
+        FeeNotSet,
+
+        /// Pre-commit already exists
+        PreCommitAlreadyExists,
+
+        /// Sender is not the owner of pre commit
+        NotOwnerOfPreCommit,
+
+        /// Invalid pre commit proof
+        InvalidPreCommitProof,
+
+        /// Pre Commit expiration block too big
+        PreCommitExpirationTooBig,
+
+        /// Eviction date too big for conversion
+        EvictionDateTooBig,
+
+        /// Failed to convert epoch in MS to days
+        FailedToConvertEpochToDays,
+
+        /// Bucket eviction not possible
+        EvictionNotPossible,
+    }
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Obtains an exclusive lock to make the next update to a certain document version
@@ -168,8 +204,9 @@ pub mod pallet {
         #[pallet::weight(<T as pallet::Config>::WeightInfo::pre_commit())]
         pub fn pre_commit(origin: OriginFor<T>, anchor_id: T::Hash, signing_root: T::Hash) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
-            ensure!(!Self::has_valid_pre_commit(anchor_id), "A valid pre-commit already exists");
+
+            ensure!(Self::get_anchor_by_id(anchor_id).is_none(), Error::<T>::AnchorAlreadyExists);
+            ensure!(!Self::has_valid_pre_commit(anchor_id), Error::<T>::PreCommitAlreadyExists);
 
             let expiration_block = <frame_system::Pallet<T>>::block_number()  +
                 T::BlockNumber::from(Self::pre_commit_expiration_duration_blocks() as u32);
@@ -196,38 +233,37 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             // validate the eviction date
             let eviction_date_u64 = TryInto::<u64>::try_into(stored_until_date)
-                .map_err(|_e| "Can not convert eviction date to u64")
-                .unwrap();
+                .or(Err(Error::<T>::EvictionDateTooBig))?;
             let nowt = <pallet_timestamp::Pallet<T>>::get();
             let now: u64 = TryInto::<u64>::try_into(nowt)
-                .map_err(|_e| "Can not convert eviction date to u64")
-                .unwrap();
+                .or(Err(Error::<T>::EvictionDateTooBig))?;
 
-            ensure!(now + common::MS_PER_DAY < eviction_date_u64, "Stored until date must be at least a day later than the current date");
+            ensure!(now + common::MS_PER_DAY < eviction_date_u64, Error::<T>::AnchorStoreDateInPast);
 
             let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
-            ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, "The provided stored until date is more than the maximum allowed from now");
+            ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, Error::<T>::AnchorStoreDateAboveMaxLimit);
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as frame_system::Config>::Hashing::hash);
-            ensure!(Self::get_anchor_by_id(anchor_id).is_none(), "Anchor already exists");
+            ensure!(Self::get_anchor_by_id(anchor_id).is_none(), Error::<T>::AnchorAlreadyExists);
 
             if Self::has_valid_pre_commit(anchor_id) {
-                ensure!(<PreCommits<T>>::get(anchor_id).unwrap().identity == who.clone(), "Pre-commit owned by someone else");
-                ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), "Pre-commit proof not valid");
+                <PreCommits<T>>::get(anchor_id)
+                    .filter(|pre_commit| pre_commit.identity == who.clone())
+                    .ok_or(Error::<T>::NotOwnerOfPreCommit)?;
+                ensure!(Self::has_valid_pre_commit_proof(anchor_id, doc_root, proof), Error::<T>::InvalidPreCommitProof);
             }
 
             // pay the state rent
             let today_in_days_from_epoch = TryInto::<u64>::try_into(<pallet_timestamp::Pallet<T>>::get())
                 .map(common::get_days_since_epoch)
-                .map_err(|_e| "Can not convert timestamp to u64")
-                .unwrap();
+                .or(Err(Error::<T>::FailedToConvertEpochToDays))?;
 
             // TODO(dev): move the fee to treasury account once its integrated instead of burning fee
             // we use the fee config setup on genesis for anchoring to calculate the state rent
             let base_fee = <pallet_fees::Pallet<T>>::price_of(Self::fee_key())
-                .ok_or("Fee not set for anchor state rent")
-                .unwrap();
+                .ok_or(Error::<T>::FeeNotSet)?;
+
             let fee = base_fee *
                 <T as pallet_balances::Config>::Balance::from(stored_until_date_from_epoch - today_in_days_from_epoch);
 
@@ -243,7 +279,6 @@ pub mod pallet {
 
             let prefixed_key = Self::anchor_storage_key(&stored_until_date_from_epoch.encode());
             Self::store_anchor(anchor_id, &prefixed_key, stored_until_date_from_epoch, &anchor_data.encode());
-
             Ok(())
         }
 
@@ -254,8 +289,7 @@ pub mod pallet {
         #[pallet::weight(<T as pallet::Config>::WeightInfo::evict_pre_commits())]
         pub fn evict_pre_commits(origin: OriginFor<T>, evict_bucket: T::BlockNumber) -> DispatchResult {
             ensure_signed(origin)?;
-            ensure!(<frame_system::Pallet<T>>::block_number() >= evict_bucket,
-                "eviction only possible for bucket expiring < current block height");
+            ensure!(<frame_system::Pallet<T>>::block_number() >= evict_bucket, Error::<T>::EvictionNotPossible);
 
             let pre_commits_count = Self::get_pre_commits_count_in_evict_bucket(evict_bucket).unwrap_or_default();
             for idx in (0..pre_commits_count).rev() {
@@ -263,8 +297,8 @@ pub mod pallet {
                     break;
                 }
 
-                Self::get_pre_commit_in_evict_bucket_by_index(
-                    (evict_bucket, idx)).map(|pre_commit_id| <PreCommits<T>>::remove(pre_commit_id));
+                Self::get_pre_commit_in_evict_bucket_by_index((evict_bucket, idx))
+                    .map(|pre_commit_id| <PreCommits<T>>::remove(pre_commit_id));
 
                 <PreCommitEvictionBuckets<T>>::remove((evict_bucket, idx));
 
@@ -290,8 +324,7 @@ pub mod pallet {
             // get the today counting epoch, so that we can remove the corresponding child trie
             let today_in_days_from_epoch = TryInto::<u64>::try_into(current_timestamp)
                 .map(common::get_days_since_epoch)
-                .map_err(|_e| "Can not convert timestamp to u64")
-                .unwrap();
+                .or(Err(Error::<T>::FailedToConvertEpochToDays))?;
             let evict_date = <LatestEvictedDate<T>>::get().unwrap_or_default();
 
             // remove child tries starting from day next to last evicted day
@@ -311,20 +344,18 @@ impl<T: Config> Pallet<T> {
     /// Checks if the given `anchor_id` has a valid pre-commit, i.e it has a pre-commit with
     /// `expiration_block` < `current_block_number`.
     fn has_valid_pre_commit(anchor_id: T::Hash) -> bool {
-        if !<PreCommits<T>>::contains_key(&anchor_id) {
-            return false;
+        match <PreCommits<T>>::get(anchor_id) {
+            Some(pre_commit) => pre_commit.expiration_block > <frame_system::Pallet<T>>::block_number(),
+            None => false,
         }
-
-        <PreCommits<T>>::get(anchor_id).unwrap().expiration_block > <frame_system::Pallet<T>>::block_number()
     }
 
     /// Checks if `hash(signing_root, proof) == doc_root` for the given `anchor_id`. Concatenation
     /// of `signing_root` and `proof` is done in a fixed order (signing_root + proof).
     /// assumes there is a valid pre-commit under PreCommits
     fn has_valid_pre_commit_proof(anchor_id: T::Hash, doc_root: T::Hash, proof: T::Hash) -> bool {
-        let signing_root = match <PreCommits<T>>::get(anchor_id)
-            .map(|pre_commit| pre_commit.signing_root) {
-            Some(signing_root) => signing_root,
+        let signing_root = match <PreCommits<T>>::get(anchor_id){
+            Some(pre_commit) => pre_commit.signing_root,
             None => return false
         };
         let mut concatenated_bytes = signing_root.as_ref().to_vec();
@@ -372,19 +403,16 @@ impl<T: Config> Pallet<T> {
     /// This can be used to determine which eviction bucket a pre-commit
     /// should be put into for later eviction.
     fn determine_pre_commit_eviction_bucket(pre_commit_expiration_block: T::BlockNumber) -> Result<T::BlockNumber, DispatchError> {
-        let result = TryInto::<u32>::try_into(pre_commit_expiration_block);
-        match result {
-            Ok(u32_expiration_block) => {
+        TryInto::<u32>::try_into(pre_commit_expiration_block)
+            .and_then(|expiration_block|{
                 let expiration_horizon = Self::pre_commit_expiration_duration_blocks() as u32
                     * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
-                let put_into_bucket = u32_expiration_block
-                    - (u32_expiration_block % expiration_horizon)
+                let put_into_bucket = expiration_block
+                    - (expiration_block % expiration_horizon)
                     + expiration_horizon;
 
                 Ok(T::BlockNumber::from(put_into_bucket))
-            }
-            Err(_e) => Err(DispatchError::Other("pre commit expiration block too big")),
-        }
+            }).or(Err(Error::<T>::PreCommitExpirationTooBig.into()))
     }
 
     /// Remove child tries starting with `from` day to `until` day returning the
@@ -412,12 +440,10 @@ impl<T: Config> Pallet<T> {
             // limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
             .take(MAX_LOOP_IN_TX as usize)
             // get eviction date of the anchor given by index
-            .map(|idx| {
-                (idx, <AnchorIndexes<T>>::get(idx))
-            }).filter(|(_, maybe_anchor_index)|{
-                maybe_anchor_index.is_some()
-            }).map(|(idx, anchor_index)|{
-                (idx, anchor_index.unwrap(), <AnchorEvictDates<T>>::get(anchor_index.unwrap()).unwrap_or_default())
+            .filter_map(|idx|{
+                let  anchor_index = <AnchorIndexes<T>>::get(idx)?;
+                let eviction_date = <AnchorEvictDates<T>>::get(anchor_index).unwrap_or_default();
+                Some((idx, anchor_index, eviction_date))
             })
             // filter out evictable anchors, anchor_evict_date can be 0 when evicting before any anchors are created
             .filter(|(_, _, anchor_evict_date)| anchor_evict_date <= &yesterday)
@@ -438,7 +464,7 @@ impl<T: Config> Pallet<T> {
         let child_info = common::generate_child_storage_key(&prefixed_key);
 
         child::get_raw(&child_info, anchor_id.as_ref())
-            .map(|data| AnchorData::decode(&mut &*data).ok().unwrap())
+            .and_then(|data| AnchorData::decode(&mut &*data).ok())
     }
 
     pub fn anchor_storage_key(storage_key: &[u8]) -> Vec<u8> {
