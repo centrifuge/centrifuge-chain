@@ -1,6 +1,6 @@
 use crate::{mock::*};
 use frame_support::{
-    assert_ok, assert_err, assert_noop,
+    assert_ok, assert_noop,
     dispatch::DispatchError
 };
 use sp_runtime::traits::{BadOrigin, Hash};
@@ -66,7 +66,13 @@ fn fee_payment_errors_if_not_set() {
         let fee_price: <Test as pallet_balances::Config>::Balance = 90000;
         let author_old_balance = <pallet_balances::Pallet<Test>>::free_balance(&100);
 
-        assert_err!(Fees::pay_fee(1, fee_key), "fee not found for key");
+        assert_noop!(
+            Fees::pay_fee(1, fee_key),
+            DispatchError::Module {
+                    index: 3,
+                    error: 0,
+                    message: Some("FeeNotFoundForKey"),
+                });
 
         assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
@@ -77,7 +83,7 @@ fn fee_payment_errors_if_not_set() {
         assert_eq!(author_new_balance - author_old_balance, fee_price);
 
         // second time paying will lead to account having insufficient balance
-        assert_err!(
+        assert_noop!(
                 Fees::pay_fee(1, fee_key),
                 DispatchError::Module {
                     index: 2,
@@ -97,7 +103,7 @@ fn fee_payment_errors_if_insufficient_balance() {
         assert_ok!(Fees::set_fee(Origin::signed(1), fee_key, fee_price));
 
         // account 3 is not endowed in the test setup
-        assert_err!(
+        assert_noop!(
                 Fees::pay_fee(3, fee_key),
                 DispatchError::Module {
                     index: 2,
@@ -120,7 +126,7 @@ fn fee_payment_subtracts_fees_from_account() {
         assert_ok!(Fees::pay_fee(1, fee_key));
 
         //second time paying will lead to account having insufficient balance
-        assert_err!(
+        assert_noop!(
                 Fees::pay_fee(1, fee_key),
                 DispatchError::Module {
                     index: 2,
@@ -165,7 +171,7 @@ fn fee_burn_fee_from_account() {
         assert_eq!(account_current_balance - fee_amount, account_new_balance);
 
         //second time burn will lead to account having insufficient balance
-        assert_err!(
+        assert_noop!(
                 Fees::burn_fee(&100, account_new_balance + 1),
                 DispatchError::Module {
                     index: 2,

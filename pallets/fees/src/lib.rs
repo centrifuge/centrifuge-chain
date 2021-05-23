@@ -8,7 +8,6 @@ use frame_system::ensure_root;
 use frame_support::{
     traits::{EnsureOrigin, Currency, ExistenceRequirement, WithdrawReasons},
     dispatch::DispatchResult,
-    ensure
 };
 
 pub use pallet::*;
@@ -91,6 +90,12 @@ pub mod pallet {
         FeeChanged(T::Hash, T::Balance),
     }
 
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Fee associated to given key not found
+        FeeNotFoundForKey
+    }
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Set the given fee for the key
@@ -104,15 +109,13 @@ pub mod pallet {
     }
 }
 
+
 impl<T: Config> Pallet<T> {
     /// Called by any other module who wants to trigger a fee payment for a given account.
     /// The current fee price can be retrieved via Fees::price_of()
     pub fn pay_fee(from: T::AccountId, key: T::Hash) -> DispatchResult {
-        ensure!(<Fees<T>>::contains_key(key), "fee not found for key");
-
-        let single_fee = <Fees<T>>::get(key).unwrap();
-        Self::pay_fee_to_author(from, single_fee.price)?;
-
+        let fee = <Fees<T>>::get(key).ok_or(Error::<T>::FeeNotFoundForKey)?;
+        Self::pay_fee_to_author(from, fee.price)?;
         Ok(())
     }
 
@@ -145,12 +148,8 @@ impl<T: Config> Pallet<T> {
     /// Returns the current fee for the key
     pub fn price_of(key: T::Hash) -> Option<T::Balance> {
         //why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
-        if <Fees<T>>::contains_key(&key) {
-            let single_fee = <Fees<T>>::get(&key).unwrap();
-            Some(single_fee.price)
-        } else {
-            None
-        }
+        let fee = <Fees<T>>::get(key)?;
+        Some(fee.price)
     }
 
     /// Returns true if the given origin can change the fee
