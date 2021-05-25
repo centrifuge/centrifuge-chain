@@ -1,10 +1,10 @@
 [package]
-authors = ['buterajay@protonmail.com']
-description = 'Access control list for bridge paths across chains'
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = 'Fees pallet for runtime'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'pallet-bridge-mapping'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/bridge-mapping"
+name = 'pallet-fees'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/fees"
 version = '2.0.0'
 
 [package.metadata.docs.rs]
@@ -15,11 +15,13 @@ codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive
 
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [features]
 default = ['std']
@@ -27,4 +29,5 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'pallet-authorship/std',
 ]

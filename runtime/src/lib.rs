@@ -41,7 +41,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 pub use pallet_transaction_payment::{Multiplier, TargetedFeeAdjustment, CurrencyAdapter};
 //use pallet_session::{historical as pallet_session_historical};
 use sp_inherents::{InherentData, CheckInherentsResult};
-use crate::anchor::AnchorData;
+use pallet_anchors::AnchorData;
 use pallet_collective::EnsureProportionMoreThan;
 use static_assertions::const_assert;
 pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -74,15 +74,6 @@ use impls::DealWithFees;
 // Bridge access control list pallet
 // use bridge_mapping;
 
-/// Used for anchor module
-pub mod anchor;
-
-/// Fees for TXs
-mod fees;
-
-/// common utilities
-mod common;
-
 /// proofs utilities
 mod proofs;
 
@@ -107,6 +98,7 @@ use constants::{time::*, currency::*};
 use crate::impls::WeightToFee;
 use xcm::opaque::v0::{Xcm, ExecuteXcm};
 use xcm_executor::traits::WeightBounds;
+use pallet_anchors::WeightInfo;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -772,13 +764,17 @@ impl pallet_identity::Config for Runtime {
     type WeightInfo = ();
 }
 
-impl anchor::Trait for Runtime {}
+impl pallet_anchors::Config for Runtime {
+    type WeightInfo = ();
+}
 
 /// Fees module implementation
-impl fees::Trait for Runtime {
-	type Event = Event;
+impl pallet_fees::Config for Runtime {
+    type Currency = Balances;
+    type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type WeightInfo = ();
 }
 
 // impl nfts::Trait for Runtime {
@@ -907,8 +903,8 @@ construct_runtime!(
 		//ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>},
 		//AuthorityDiscovery: pallet_authority_discovery::{Pallet, Call, Config},
 		//Offences: pallet_offences::{Pallet, Call, Storage, Event},
-		Anchor: anchor::{Pallet, Call, Storage},
-		Fees: fees::{Pallet, Call, Storage, Event<T>, Config<T>},
+		Anchor: pallet_anchors::{Pallet, Call, Config, Storage},
+		Fees: pallet_fees::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// Nfts: nfts::{Pallet, Call, Event<T>},
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>},
 		// PalletBridge: pallet_bridge::{Pallet, Call, Storage, Event<T>, Config<T>},

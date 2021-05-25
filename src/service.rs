@@ -25,7 +25,6 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use polkadot_primitives::v1::CollatorPair;
 use node_primitives::{Block, Hash};
-use node_runtime::RuntimeApi;
 use sc_client_api::ExecutorProvider;
 use sc_executor::native_executor_instance;
 use sc_network::NetworkService;
@@ -37,11 +36,8 @@ use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use std::sync::Arc;
 use substrate_prometheus_endpoint::Registry;
-
+use crate::api::{AnchorApi, Anchor};
 pub use sc_executor::NativeExecutor;
-
-type BlockNumber = u32;
-type Header = sp_runtime::generic::Header<BlockNumber, sp_runtime::traits::BlakeTwo256>;
 
 // Native executor instance.
 native_executor_instance!(
@@ -382,7 +378,13 @@ pub async fn start_node(
 		collator_key,
 		polkadot_config,
 		id,
-		|_| Default::default(),
+		|client| {
+			let mut io = jsonrpc_core::IoHandler::default();
+			io.extend_with(
+				AnchorApi::to_delegate(Anchor::new(client.clone()))
+			);
+			io
+		},
 		build_import_queue,
 		|client,
 		 prometheus_registry,

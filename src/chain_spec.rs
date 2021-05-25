@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use hex_literal::hex;
 use cumulus_primitives_core::ParaId;
-use node_runtime::{SessionKeys, constants::currency::RAD, AuraId};
-use node_primitives::{AccountId, Balance, Hash, Signature};
-use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
+use node_runtime::AuraId;
+use node_primitives::{AccountId, Hash, Signature};
 use sc_service::ChainType;
-use serde::{Deserialize, Serialize};
 use sp_core::{sr25519, Pair, Public};
-use sp_runtime::{Perbill, traits::{IdentifyAccount, Verify}};
+use sp_runtime::{traits::{IdentifyAccount, Verify}};
 use sc_telemetry::TelemetryEndpoints;
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -178,7 +175,6 @@ fn testnet_genesis(
 	id: ParaId,
 ) -> node_runtime::GenesisConfig {
     let num_endowed_accounts = endowed_accounts.len();
-    const STASH: Balance = 1_000_000 * RAD;
 
 	node_runtime::GenesisConfig {
 		frame_system: node_runtime::SystemConfig {
@@ -221,7 +217,7 @@ fn testnet_genesis(
 		// 	],
 		// 	threshold: 1,
 		// }),
-        fees: node_runtime::FeesConfig {
+        pallet_fees: node_runtime::FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
                 // pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
@@ -244,5 +240,6 @@ fn testnet_genesis(
 		pallet_aura: node_runtime::AuraConfig {
 			authorities: initial_authorities,
 		},
+		pallet_anchors: Default::default()
 	}
 }

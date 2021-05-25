@@ -1,11 +1,13 @@
-use crate::*;
 use sp_core::H256;
 use frame_support::{parameter_types};
 use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup}, testing::Header,
 };
 use frame_system as system;
-use crate as bridge_mapping;
+use crate::{
+    self as pallet_bridge_mapping,
+    *
+};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -18,7 +20,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        BridgeMapping: bridge_mapping::{Pallet, Call, Config, Storage},
+        BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 	}
 );
 

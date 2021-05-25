@@ -1,7 +1,7 @@
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use node_primitives::{BlockNumber, Hash};
-use node_runtime::anchor::AnchorData;
+use pallet_anchors::AnchorData;
 pub use node_runtime::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;

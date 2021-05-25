@@ -724,18 +724,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge-mapping"
-version = "1.0.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "sp-core",
- "sp-io",
- "sp-runtime",
-]
-
-[[package]]
 name = "bs58"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -890,6 +878,7 @@ dependencies = [
  "log 0.4.14",
  "node-inspect",
  "node-primitives",
+ "pallet-anchors",
  "pallet-im-online",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
@@ -970,6 +959,7 @@ dependencies = [
  "hex-literal 0.2.1",
  "integer-sqrt",
  "node-primitives",
+ "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
  "pallet-authorship",
@@ -978,6 +968,7 @@ dependencies = [
  "pallet-collective",
  "pallet-democracy",
  "pallet-elections-phragmen",
+ "pallet-fees",
  "pallet-grandpa",
  "pallet-identity",
  "pallet-im-online",
@@ -4932,6 +4923,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-anchors"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-fees",
+ "pallet-randomness-collective-flip",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-aura"
 version = "3.0.0"
 source = "git+https://github.com/centrifuge/substrate?branch=master#af14d493bec4d6ecdfd7b309df6c82d5d978469c"
@@ -5042,6 +5053,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-bridge-mapping"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-collective"
 version = "3.0.0"
 source = "git+https://github.com/centrifuge/substrate?branch=master#af14d493bec4d6ecdfd7b309df6c82d5d978469c"
@@ -5103,6 +5126,20 @@ dependencies = [
  "sp-npos-elections",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-fees"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]

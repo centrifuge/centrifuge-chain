@@ -26,8 +26,6 @@ mod tests;
 pub mod weights;
 pub use weights::*;
 
-// Definition of the pallet logic, to be aggregated at runtime definition through
-// `construct_runtime`.
 #[frame_support::pallet]
 pub mod pallet {
     // Import various types used to declare pallet in scope.
@@ -96,7 +94,7 @@ pub mod pallet {
         /// Set a resource mapping in the [Names]. Existing keys will be overwritten.
         /// The caller must be the owner of the `rid` ResourceId.
         #[pallet::weight(<T as pallet::Config>::WeightInfo::set())]
-        pub (super) fn set(origin: OriginFor<T>, rid: T::ResourceId, local_addr: T::Address, ) -> DispatchResult {
+        pub (super) fn set(origin: OriginFor<T>, rid: T::ResourceId, local_addr: T::Address) -> DispatchResult {
             Self::ensure_admin_or_root(origin)?;
 
             // Call internal
@@ -115,9 +113,6 @@ pub mod pallet {
     }
 }
 
-// Even though the storage structure of this Module does not guarantee that every resource has a
-// corresponding owner, the function interfaces defined here ensure this by construction. This
-// assumption is something to keep in mind if extending this module.
 impl<T: Config> Pallet<T> {
     /// Ensure that the given origin is either the pallet [AdminOrigin] or frame_system root.
     fn ensure_admin_or_root(origin: T::Origin) -> Result<(), BadOrigin> {

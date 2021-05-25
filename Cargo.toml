@@ -27,8 +27,10 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-    "pallets/bridge-mapping",
-    "runtime",
+	"pallets/bridge-mapping",
+	"pallets/fees",
+	"pallets/anchors",
+	"runtime",
 ]
 
 [dependencies]
@@ -98,6 +100,7 @@ frame-benchmarking-cli = { git = "https://github.com/centrifuge/substrate", bran
 node-inspect = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # frame dependencies
+pallet-anchors = { path = "./pallets/anchors", default-features = false }
 pallet-transaction-payment-rpc = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 substrate-frame-rpc-system  = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 pallet-im-online = { default-features = false, git = "https://github.com/centrifuge/substrate", branch = "master" }

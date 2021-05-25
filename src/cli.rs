@@ -18,7 +18,6 @@ use std::path::PathBuf;
 
 use sc_cli;
 use structopt::StructOpt;
-use crate::chain_spec;
 
 #[derive(Debug, StructOpt)]
 pub enum Subcommand {

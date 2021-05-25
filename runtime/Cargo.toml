@@ -16,6 +16,8 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 #unique_assets = { version = "0.1.0", git = "https://github.com/centrifuge/unique-assets", rev = "d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0", default-features = false }
 #unique_assets = { version = "0.1.0", git = "https://github.com/jaybutera/unique-assets", default-features = false }
 #bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
+pallet-fees = { path = "../pallets/fees", default-features = false }
+pallet-anchors = { path = "../pallets/anchors", default-features = false }
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
@@ -109,6 +111,8 @@ default = ["std"]
 std = [
 #    "bridge-mapping/std",
 #    "unique_assets/std",
+    "pallet-fees/std",
+    "pallet-anchors/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",
