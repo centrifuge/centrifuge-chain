@@ -8,7 +8,11 @@ pub use pallet::*;
 pub mod weights;
 pub use weights::*;
 use sp_std::{convert::TryInto, vec::Vec};
-use sp_runtime::traits::Hash;
+use sp_runtime::{
+    traits::Hash,
+    ArithmeticError
+};
+use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -25,11 +29,11 @@ mod common;
 /// This is the maximum expected time for document consensus to take place between a pre-commit of an anchor and a
 /// commit to be received for the pre-committed anchor. Currently we expect to provide around 80 mins for this.
 /// Since our current block time as per chain_spec.rs is 6s, we set this to 80 * 60 secs / 6 secs/block = 800 blocks.
-const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u64 = 800;
+const PRE_COMMIT_EXPIRATION_DURATION_BLOCKS: u32 = 800;
 
 /// MUST be higher than 1 to assure that pre-commits are around during their validity time frame
 /// The higher the number, the more pre-commits will be collected in a single eviction bucket
-const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u64 = 5;
+const PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER: u32 = 5;
 
 /// Determines how many loop iterations are allowed to run at a time inside the runtime.
 const MAX_LOOP_IN_TX: u64 = 500;
@@ -208,8 +212,9 @@ pub mod pallet {
             ensure!(Self::get_anchor_by_id(anchor_id).is_none(), Error::<T>::AnchorAlreadyExists);
             ensure!(!Self::has_valid_pre_commit(anchor_id), Error::<T>::PreCommitAlreadyExists);
 
-            let expiration_block = <frame_system::Pallet<T>>::block_number()  +
-                T::BlockNumber::from(Self::pre_commit_expiration_duration_blocks() as u32);
+            let expiration_block = <frame_system::Pallet<T>>::block_number()
+                .checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
+                .ok_or(ArithmeticError::Overflow)?;
             <PreCommits<T>>::insert(anchor_id, PreCommitData {
                 signing_root,
                 identity: who.clone(),
@@ -241,7 +246,7 @@ pub mod pallet {
             ensure!(now + common::MS_PER_DAY < eviction_date_u64, Error::<T>::AnchorStoreDateInPast);
 
             let stored_until_date_from_epoch = common::get_days_since_epoch(eviction_date_u64);
-            ensure!(Self::anchor_storage_max_days_from_now() >= stored_until_date_from_epoch, Error::<T>::AnchorStoreDateAboveMaxLimit);
+            ensure!(stored_until_date_from_epoch <= STORAGE_MAX_DAYS, Error::<T>::AnchorStoreDateAboveMaxLimit);
 
             let anchor_id = (anchor_id_preimage)
                 .using_encoded(<T as frame_system::Config>::Hashing::hash);
@@ -263,9 +268,13 @@ pub mod pallet {
             // we use the fee config setup on genesis for anchoring to calculate the state rent
             let base_fee = <pallet_fees::Pallet<T>>::price_of(Self::fee_key())
                 .ok_or(Error::<T>::FeeNotSet)?;
+            let multiplier = stored_until_date_from_epoch
+                .checked_sub(today_in_days_from_epoch)
+                .ok_or(ArithmeticError::Underflow)?;
 
-            let fee = base_fee *
-                pallet_fees::BalanceOf::<T>::from(stored_until_date_from_epoch - today_in_days_from_epoch);
+            let fee = base_fee
+                .checked_mul(&pallet_fees::BalanceOf::<T>::from(multiplier))
+                .ok_or(ArithmeticError::Overflow)?;
 
             // pay state rent to block author
             <pallet_fees::Pallet<T>>::pay_fee_to_author(who, fee)?;
@@ -278,7 +287,7 @@ pub mod pallet {
             };
 
             let prefixed_key = Self::anchor_storage_key(&stored_until_date_from_epoch.encode());
-            Self::store_anchor(anchor_id, &prefixed_key, stored_until_date_from_epoch, &anchor_data.encode());
+            Self::store_anchor(anchor_id, &prefixed_key, stored_until_date_from_epoch, &anchor_data.encode())?;
             Ok(())
         }
 
@@ -325,15 +334,18 @@ pub mod pallet {
             let today_in_days_from_epoch = TryInto::<u64>::try_into(current_timestamp)
                 .map(common::get_days_since_epoch)
                 .or(Err(Error::<T>::FailedToConvertEpochToDays))?;
-            let evict_date = <LatestEvictedDate<T>>::get().unwrap_or_default();
-
-            // remove child tries starting from day next to last evicted day
-            let _evicted_trie_count = Self::evict_anchor_child_tries(evict_date + 1, today_in_days_from_epoch);
+            let evict_date = <LatestEvictedDate<T>>::get().unwrap_or_default()
+                .checked_add(1)
+                .ok_or(ArithmeticError::Overflow)?;
 
             // store yesterday as the last day of eviction
-            let yesterday = today_in_days_from_epoch - 1;
+            let yesterday = today_in_days_from_epoch.checked_sub(1)
+                .ok_or(ArithmeticError::Underflow)?;
+
+            // remove child tries starting from day next to last evicted day
+            let _evicted_trie_count = Self::evict_anchor_child_tries(evict_date, today_in_days_from_epoch);
+            let _evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday)?;
             <LatestEvictedDate<T>>::put(yesterday);
-            let _evicted_anchor_indexes_count = Self::remove_anchor_indexes(yesterday);
 
             Ok(())
         }
@@ -367,16 +379,6 @@ impl<T: Config> Pallet<T> {
         return doc_root == calculated_root;
     }
 
-    /// How long before we expire a pre-commit
-    fn pre_commit_expiration_duration_blocks() -> u64 {
-        PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
-    }
-
-    /// Get the maximum days allowed for an anchor to be stored on chain from unix epoch onwards.
-    fn anchor_storage_max_days_from_now() -> u32 {
-        STORAGE_MAX_DAYS
-    }
-
     /// Puts the pre-commit (based on anchor_id) into the correct eviction bucket
     fn put_pre_commit_into_eviction_bucket(
         anchor_id: T::Hash,
@@ -386,16 +388,19 @@ impl<T: Config> Pallet<T> {
         let evict_after_block = Self::determine_pre_commit_eviction_bucket(expiration_block)?;
 
         // get current index in eviction bucket and increment
-        let mut eviction_bucket_size =
+        let eviction_bucket_size =
             Self::get_pre_commits_count_in_evict_bucket(evict_after_block).unwrap_or_default();
+
+        let idx = eviction_bucket_size
+            .checked_add(1)
+            .ok_or(ArithmeticError::Overflow)?;
 
         // add to eviction bucket and update bucket counter
         <PreCommitEvictionBuckets<T>>::insert(
             (evict_after_block.clone(), eviction_bucket_size.clone()),
             anchor_id,
         );
-        eviction_bucket_size += 1;
-        <PreCommitEvictionBucketIndex<T>>::insert(evict_after_block, eviction_bucket_size);
+        <PreCommitEvictionBucketIndex<T>>::insert(evict_after_block, idx);
         Ok(())
     }
 
@@ -403,16 +408,19 @@ impl<T: Config> Pallet<T> {
     /// This can be used to determine which eviction bucket a pre-commit
     /// should be put into for later eviction.
     fn determine_pre_commit_eviction_bucket(pre_commit_expiration_block: T::BlockNumber) -> Result<T::BlockNumber, DispatchError> {
-        TryInto::<u32>::try_into(pre_commit_expiration_block)
+        let expiration_horizon = PRE_COMMIT_EXPIRATION_DURATION_BLOCKS
+            .checked_mul(PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER)
+            .ok_or(ArithmeticError::Overflow)?;
+        let expiration_block = TryInto::<u32>::try_into(pre_commit_expiration_block)
+            .or(Err(Error::<T>::PreCommitExpirationTooBig))?;
+        expiration_block
+            .checked_sub(expiration_block % expiration_horizon)
+            .ok_or(ArithmeticError::Underflow)
             .and_then(|expiration_block|{
-                let expiration_horizon = Self::pre_commit_expiration_duration_blocks() as u32
-                    * PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u32;
-                let put_into_bucket = expiration_block
-                    - (expiration_block % expiration_horizon)
-                    + expiration_horizon;
-
-                Ok(T::BlockNumber::from(put_into_bucket))
-            }).or(Err(Error::<T>::PreCommitExpirationTooBig.into()))
+                expiration_block.checked_add(expiration_horizon).ok_or(ArithmeticError::Overflow)
+            })
+            .and_then(|put_into_bucket| Ok(T::BlockNumber::from(put_into_bucket)))
+            .or_else(|res| Err(DispatchError::Arithmetic(res)))
     }
 
     /// Remove child tries starting with `from` day to `until` day returning the
@@ -435,8 +443,16 @@ impl<T: Config> Pallet<T> {
     /// Iterate from the last evicted anchor to latest anchor, while removing indexes that
     /// are no longer valid because they belong to an expired/evicted anchor. The loop is
     /// only allowed to run MAX_LOOP_IN_TX at a time.
-    fn remove_anchor_indexes(yesterday: u32) -> usize {
-        (<LatestEvictedAnchorIndex<T>>::get().unwrap_or_default() + 1..<LatestAnchorIndex<T>>::get().unwrap_or_default() + 1)
+    fn remove_anchor_indexes(yesterday: u32) -> Result<usize, DispatchError> {
+        let evicted_index = <LatestEvictedAnchorIndex<T>>::get()
+            .unwrap_or_default()
+            .checked_add(1)
+            .ok_or(ArithmeticError::Overflow)?;
+        let anchor_index = <LatestAnchorIndex<T>>::get()
+            .unwrap_or_default()
+            .checked_add(1)
+            .ok_or(ArithmeticError::Overflow)?;
+        let count = ( evicted_index..anchor_index)
             // limit to only MAX_LOOP_IN_TX number of anchor indexes to remove
             .take(MAX_LOOP_IN_TX as usize)
             // get eviction date of the anchor given by index
@@ -453,7 +469,8 @@ impl<T: Config> Pallet<T> {
                 <AnchorIndexes<T>>::remove(idx);
                 <LatestEvictedAnchorIndex<T>>::put(idx);
             })
-            .count()
+            .count();
+        Ok(count)
     }
 
     /// Get an anchor by its id in the child storage
@@ -474,15 +491,19 @@ impl<T: Config> Pallet<T> {
         prefixed_key
     }
 
-    fn store_anchor(anchor_id: T::Hash, prefixed_key: &Vec<u8>, stored_until_date_from_epoch: u32, anchor_data_encoded: &[u8]) {
+    fn store_anchor(anchor_id: T::Hash, prefixed_key: &Vec<u8>, stored_until_date_from_epoch: u32, anchor_data_encoded: &[u8]) -> DispatchResult {
+        let idx = <LatestAnchorIndex<T>>::get().unwrap_or_default()
+            .checked_add(1)
+            .ok_or(ArithmeticError::Overflow)?;
+
         let child_info = common::generate_child_storage_key(prefixed_key);
         child::put_raw(&child_info, anchor_id.as_ref(), &anchor_data_encoded);
 
         // update indexes
         <AnchorEvictDates<T>>::insert(&anchor_id, &stored_until_date_from_epoch);
-        let idx = <LatestAnchorIndex<T>>::get().unwrap_or_default() + 1;
         <AnchorIndexes<T>>::insert(idx, &anchor_id);
         <LatestAnchorIndex<T>>::put(idx);
+        Ok(())
     }
 
     fn fee_key() -> <T as frame_system::Config>::Hash {

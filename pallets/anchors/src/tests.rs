@@ -1,4 +1,4 @@
-use crate::{mock::*};
+use crate::{mock::*, PRE_COMMIT_EXPIRATION_DURATION_BLOCKS};
 use frame_support::{
     assert_ok, assert_noop,
 };
@@ -37,7 +37,7 @@ fn basic_pre_commit() {
         assert_eq!(a.signing_root, signing_root);
         assert_eq!(
             a.expiration_block,
-            Anchors::pre_commit_expiration_duration_blocks()
+            PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64
         );
     });
 }
@@ -112,7 +112,7 @@ fn pre_commit_fail_pre_commit_exists() {
         assert_eq!(a.signing_root, signing_root);
         assert_eq!(
             a.expiration_block,
-            Anchors::pre_commit_expiration_duration_blocks()
+            PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64
         );
 
         // fail, pre-commit exists
@@ -122,7 +122,7 @@ fn pre_commit_fail_pre_commit_exists() {
         );
 
         // expire the pre-commit
-        System::set_block_number(Anchors::pre_commit_expiration_duration_blocks() + 2);
+        System::set_block_number(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64 + 2);
         assert_ok!(Anchors::pre_commit(
             Origin::signed(1),
             anchor_id,
@@ -148,7 +148,7 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
         assert_eq!(a.signing_root, signing_root);
         assert_eq!(
             a.expiration_block,
-            Anchors::pre_commit_expiration_duration_blocks()
+            PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64
         );
 
         // fail, pre-commit exists
@@ -158,7 +158,7 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
         );
 
         // expire the pre-commit
-        System::set_block_number(Anchors::pre_commit_expiration_duration_blocks() + 2);
+        System::set_block_number(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64 + 2);
         assert_ok!(Anchors::pre_commit(
             Origin::signed(2),
             anchor_id,
@@ -339,7 +339,7 @@ fn pre_commit_expired_when_anchoring() {
             signing_root
         ));
         // expire the pre-commit
-        System::set_block_number(Anchors::pre_commit_expiration_duration_blocks() + 2);
+        System::set_block_number(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64 + 2);
 
         // happy from a different account
         assert_ok!(Anchors::commit(
@@ -390,7 +390,7 @@ fn pre_commit_commit_bucket_gets_determined_correctly() {
     new_test_ext().execute_with(|| {
         let current_block: <Test as frame_system::Config>::BlockNumber = 1;
         let expected_evict_bucket: <Test as frame_system::Config>::BlockNumber =
-            crate::PRE_COMMIT_EXPIRATION_DURATION_BLOCKS * crate::PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER;
+            crate::PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64 * crate::PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u64;
         assert_eq!(
             Ok(expected_evict_bucket),
             Anchors::determine_pre_commit_eviction_bucket(current_block)
@@ -549,7 +549,7 @@ fn pre_commit_with_pre_commit_eviction_bucket_registration() {
         assert_eq!(pre_commit_0.identity, 1);
         assert_eq!(
             pre_commit_0.expiration_block,
-            block_height_0 + Anchors::pre_commit_expiration_duration_blocks()
+            block_height_0 + PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64
         );
 
         // verify the registration in evict bucket of anchor 0
@@ -654,12 +654,12 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
         let anchor_id = (pre_image).using_encoded(<Test as frame_system::Config>::Hashing::hash);
         let (doc_root, signing_root, proof) = Test::test_document_hashes();
         // use as a start block a block that is before an eviction bucket boundary
-        let start_block = Anchors::pre_commit_expiration_duration_blocks()
-            * crate::PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER
+        let start_block = PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64
+            * crate::PRE_COMMIT_EVICTION_BUCKET_MULTIPLIER as u64
             * 2
             - 1;
         // expected expiry block of pre-commit
-        let expiration_block = start_block + Anchors::pre_commit_expiration_duration_blocks(); // i.e 4799 + 800
+        let expiration_block = start_block + PRE_COMMIT_EXPIRATION_DURATION_BLOCKS as u64; // i.e 4799 + 800
 
         System::set_block_number(start_block);
         // happy
@@ -880,27 +880,27 @@ fn test_remove_anchor_indexes() {
         assert_eq!(Anchors::get_latest_anchor_index().unwrap(), 2000);
 
         // first MAX_LOOP_IN_TX items
-        let removed = Anchors::remove_anchor_indexes(2);
+        let removed = Anchors::remove_anchor_indexes(2).unwrap();
         assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
         assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 500);
 
         // second MAX_LOOP_IN_TX items
-        let removed = Anchors::remove_anchor_indexes(2);
+        let removed = Anchors::remove_anchor_indexes(2).unwrap();
         assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
         assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1000);
 
         // third MAX_LOOP_IN_TX items
-        let removed = Anchors::remove_anchor_indexes(2);
+        let removed = Anchors::remove_anchor_indexes(2).unwrap();
         assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
         assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 1500);
 
         // fourth MAX_LOOP_IN_TX items
-        let removed = Anchors::remove_anchor_indexes(2);
+        let removed = Anchors::remove_anchor_indexes(2).unwrap();
         assert_eq!(removed as u64, crate::MAX_LOOP_IN_TX);
         assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 2000);
 
         // all done
-        let removed = Anchors::remove_anchor_indexes(2);
+        let removed = Anchors::remove_anchor_indexes(2).unwrap();
         assert_eq!(removed, 0);
         assert_eq!(Anchors::get_latest_evicted_anchor_index().unwrap(), 2000);
     });
