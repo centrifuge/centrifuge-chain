@@ -55,38 +55,44 @@ use frame_support::{
 #[test]
 fn test_valid_initialize_transaction() {
     TestExternalitiesBuilder::build().execute_with(|| {
-		assert_ok!(CrowdloanClaim::initialize(Origin::signed(ADMIN_USER), 0));
+        // TODO: Correct hash root here! Correct tri index!
+		assert_ok!(CrowdloanClaim::initialize(Origin::signed(ADMIN_USER), 0, 0));
 	})
 }
 
-// Test if the amount that is claimed either exceeds or is less than the contribution.
-//
-// The child trie root hash stored in [`Contributions`] storage item contains all the
-// contributions made during the crowdloan campaign, and hence, can be used to check
-// if a contributor asking for a reward payout is elligible or not for it.
 #[test]
-fn test_claim_wrong_reward_amount() {
-    TestExternalitiesBuilder::build().execute_with(|| {
-		assert_noop!(
-			CrowdloanClaim::claim_reward_unsigned(Origin::signed(1), 0),
-			CrowdloanClaimError::<MockRuntime>::InvalidClaimAmount
-		);
-	});
+fn test_init_double() {
+    // TODO: Init and then INit again
 }
 
-// Test various claim transaction regimes.
-//
-// A contributor may not have the enough tokens on the parachain
-// so that to place a claim (even if she/he's elligible for the claim).
-// This test checks that a a reward claim transaction may be called
-// from an unsigned origin only.
 #[test]
 fn test_invalid_signed_claim_transaction() {
-  TestExternalitiesBuilder::build().execute_with(|| {
-		assert_noop!(
-			CrowdloanClaim::claim_reward_unsigned(Origin::signed(1), 0),
-			CrowdloanClaimError::<MockRuntime>::InvalidClaimAmount
-		);
-	});
+    // TODO: Signed transaction, here which should fail
 }
- 
+
+#[test]
+fn test_valid_claim() {
+    // TODO: Unsigend tx, with amount, proof etc, and previous init of module
+}
+
+#[test]
+fn test_invalid_claim_invalid_proof() {
+    // TODO: Init module, invalid proof for tx
+}
+
+#[test]
+fn test_invalid_claim_wrong_amount() {
+    // TODO: init module, valid proof, wrong amount
+}
+
+#[test]
+fn test_invalid_claim_wrong_relayaccount() {
+    // TODO: init module, valid proof, valid amount, wrong relay account
+}
+
+#[test]
+fn test_invalid_claim_mod_not_initalized() {
+    // TODO: claim wohtout init of module
+}
+
+
