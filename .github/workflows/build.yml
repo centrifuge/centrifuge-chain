@@ -26,17 +26,17 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
       - if: matrix.target == 'build-runtime'
-        uses: Swatinem/rust-cache@v1.3.0
+        uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
         with: # cache the runtime target instead of root target for build-runtime
           working-directory: ./runtime/
           target-dir: ./target/srtool
       - if: matrix.target == 'build-client'
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
       - name: ${{ matrix.target }}
         run: ./ci/script.sh
         env:
