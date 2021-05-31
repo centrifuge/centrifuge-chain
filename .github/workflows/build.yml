@@ -31,9 +31,10 @@ jobs:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
       - if: matrix.target == 'build-runtime'
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v1.3.0
         with: # cache the runtime target instead of root target for build-runtime
           working-directory: ./runtime/
+          target-dir: ./target/srtool
       - if: matrix.target == 'build-client'
         uses: Swatinem/rust-cache@v1
       - name: ${{ matrix.target }}

@@ -11,7 +11,7 @@ use frame_support::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
-        U128CurrencyToVote, Currency,
+        U128CurrencyToVote, Currency, MaxEncodedLen,
         Randomness, LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
@@ -459,7 +459,7 @@ parameter_types! {
 }
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub enum ProxyType {
     Any,
     NonTransfer,
@@ -1070,31 +1070,11 @@ impl_runtime_apis! {
 		}
 	}
 
-    // #[cfg(feature = "runtime-benchmarks")]
-    // impl frame_benchmarking::Benchmark<Block> for Runtime {
-    //     fn dispatch_benchmark(
-	// 		//config: frame_benchmarking::BenchmarkConfig
-    //         pallet: Vec<u8>,
-    //         benchmark: Vec<u8>,
-    //         lowest_range_values: Vec<u32>,
-    //         highest_range_values: Vec<u32>,
-    //         steps: Vec<u32>,
-    //         repeat: u32,
-    //         extra: bool
-	//     ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-    //         use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-    //
-    //         let whitelist: Vec<TrackedStorageKey> = vec![];
-    //         let mut batches = Vec::<BenchmarkBatch>::new();
-    //         //let params = (&config, &whitelist);
-    //         let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
-    //
-    //         add_benchmark!(params, batches, va_registry, Registry);
-    //
-    //         if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
-	// 	    Ok(batches)
-    //     }
-    // }
+    impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
+		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
+			ParachainSystem::collect_collation_info()
+		}
+	}
 }
 
 // Add parachain runtime features
@@ -1102,18 +1082,3 @@ cumulus_pallet_parachain_system::register_validate_block!(
 	Runtime,
 	cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 );
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use frame_system::offchain::CreateSignedTransaction;
-
-    #[test]
-    fn validate_transaction_submitter_bounds() {
-        fn is_submit_signed_transaction<T>() where
-            T: CreateSignedTransaction<Call>,
-        {}
-
-        is_submit_signed_transaction::<Runtime>();
-    }
-}
