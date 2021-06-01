@@ -31,6 +31,7 @@ members = [
 	"pallets/bridge-mapping",
 	"pallets/fees",
 	"pallets/anchors",
+    "pallets/rad-claims",
 	"runtime",
 ]
 

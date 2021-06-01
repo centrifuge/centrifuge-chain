@@ -21,7 +21,7 @@ pallet-balances = { branch = "master", git = "https://github.com/centrifuge/subs
 sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
-centrifuge-runtime = { package = "centrifuge-chain-runtime", path='../../runtime', default_features = false }
+#centrifuge-runtime = { package = "centrifuge-chain-runtime", path='../../runtime', default_features = false }
 
 [dev-dependencies]
 centrifuge-runtime = { package = "centrifuge-chain-runtime", path='../../runtime', default_features = false }

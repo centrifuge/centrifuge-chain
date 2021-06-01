@@ -7,12 +7,13 @@
 use sp_std::{prelude::*, convert::TryFrom};
 use frame_support::{
     construct_runtime, parameter_types, RuntimeDebug,
+    PalletId,
     weights::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
         U128CurrencyToVote, Currency,
-        Randomness, LockIdentifier, InstanceFilter, All, Get},
+        LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
 use sp_core::u32_trait::{_1, _2, _3, _4};
@@ -53,18 +54,18 @@ pub use pallet_balances::Call as BalancesCall;
 //pub use pallet_staking::StakerStatus;
 
 // XCM imports
-use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance, DmpMessageHandler};
+use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance};
 use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{MultiAsset, MultiLocation, MultiLocation::*, Junction::*, BodyId, NetworkId};
+use xcm::v0::{MultiAsset, MultiLocation, MultiLocation::*, Junction::*, NetworkId};
 use xcm_builder::{
 	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, ParentAsSuperuser,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, ParentAsSuperuser,
 	SovereignSignedViaLocation, IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible, EnsureXcmOrigin,
-    UsingComponents, SignedToAccountId32
+	AllowUnpaidExecutionFrom, FixedWeightBounds, EnsureXcmOrigin,
+    UsingComponents,
 };
 use xcm_executor::{Config, XcmExecutor};
-use pallet_xcm::{XcmPassthrough, EnsureXcm, IsMajorityOfBody};
+use pallet_xcm::XcmPassthrough;
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
 use impls::DealWithFees;
@@ -81,7 +82,7 @@ mod proofs;
 // mod nfts;
 
 /// radial reward claims module
-mod rad_claims;
+//mod rad_claims;
 
 /// bridge module
 // mod bridge;
@@ -96,9 +97,6 @@ mod rad_claims;
 pub mod constants;
 use constants::{time::*, currency::*};
 use crate::impls::WeightToFee;
-use xcm::opaque::v0::{Xcm, ExecuteXcm};
-use xcm_executor::traits::WeightBounds;
-use pallet_anchors::WeightInfo;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -777,6 +775,26 @@ impl pallet_fees::Config for Runtime {
     type WeightInfo = ();
 }
 
+// Parameterize RAD claims pallet
+parameter_types! {
+    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
+    pub const Longevity: u32 = 64;
+    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * constants::currency::RAD;
+}
+
+// Implement RAD claims pallet configuration trait for the runtime
+impl pallet_rad_claims::Config for Runtime {
+    type Event = Event;
+    type PalletId = RadClaimsPalletId;
+    type Longevity = Longevity;
+    type UnsignedPriority = UnsignedPriority;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type Currency = Balances;
+    type MinimalPayoutAmount = MinimalPayoutAmount;
+    type WeightInfo = ();
+}
+
 // impl nfts::Trait for Runtime {
 //     type Event = Event;
 // }
@@ -809,18 +827,6 @@ impl pallet_fees::Config for Runtime {
 //     type ProposalLifetime = ProposalLifetime;
 // }
 
-parameter_types! {
-    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const Longevity: u32 = 64;
-}
-
-impl rad_claims::Trait for Runtime {
-    type Event = Event;
-    type Longevity = Longevity;
-    type UnsignedPriority = UnsignedPriority;
-    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-    type Currency = Balances;
-}
 
 parameter_types! {
 	pub const MinVestedTransfer: Balance = 1000 * RAD;
@@ -913,7 +919,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+        RadClaims: pallet_rad_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// Registry: va_registry::{Pallet, Call, Storage, Event<T>},
 		// Nft: nft::{Pallet, Call, Storage, Event<T>},
