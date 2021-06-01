@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! Rad claims pallet testing environment and utilities
+//! Bridge pallet testing environment and utilities
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
@@ -54,7 +54,6 @@ use sp_runtime::{
 use crate::traits::WeightInfo;
 
 pub use pallet_balances as balances;
-use centrifuge_runtime::constants::currency::RAD;
 
 
 // ----------------------------------------------------------------------------
@@ -69,26 +68,31 @@ type Balance = u128;
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-    fn claim(_hashes_length: usize) -> Weight { 
-        0 as Weight 
+    fn receive_nonfungible() -> Weight {
+        195_000_000 as Weight
     }
 
-    fn set_upload_account() -> Weight { 
-        0 as Weight 
+    fn remark() -> Weight {
+        195_000_000 as Weight
     }
 
-    fn store_root_hash() -> Weight { 
-        0 as Weight 
+    fn transfer() -> Weight {
+        195_000_000 as Weight
+    }
+
+    fn transfer_asset() -> Weight {
+        195_000_000 as Weight
+    }
+
+    fn transfer_native() -> Weight {
+        195_000_000 as Weight
     }
 }
 
-pub const ADMIN: u64 = 0x1;
-pub const USER_A: u64 = 0x2;
-
-// USER_B does not have existential balance
-pub const USER_B: u64 = 0x3;
-
-pub const ENDOWED_BALANCE: u128 = 10000 * currency::RAD;
+pub const RELAYER_A: u64 = 0x2;
+pub const RELAYER_B: u64 = 0x3;
+pub const RELAYER_C: u64 = 0x4;
+pub const ENDOWED_BALANCE: u128 = 100 * currency::RAD;
 
 
 // ----------------------------------------------------------------------------
@@ -104,7 +108,11 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RadClaims: pallet_rad_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
+        ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
+        PalletBridge: pallet_bridge::{Pallet, Call, Event<T>},
+        Fees: pallet_fees::{Pallet, Call, Event<T>},
+        Nft: pallet_nft::{Pallet, Event<T>},
+        Registry: pallet_registry::{Pallet, Call, Event<T>},
     }
 );
 
@@ -156,31 +164,90 @@ impl pallet_balances::Config for MockRuntime {
     type MaxLocks = ();
 }
 
-// Parameterize RAD claims pallet
+// Parameterize chain bridge pallet
 parameter_types! {
-    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
-    pub const One: u64 = 1;
-    pub const Longevity: u32 = 64;
-    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
+    pub const TestChainId: u8 = 5;
+    pub const ProposalLifetime: u64 = 10;
 }
 
+// Implement chain bridge pallet configuration trait for the mock runtime
+impl pallet_chainbridge::Config for MockRuntime {
+    type Event = Event;
+    type Proposal = Call;
+    type ChainId = TestChainId;
+    type AdminOrigin = EnsureSignedBy<One, u64>;
+    type ProposalLifetime = ProposalLifetime;
+}
 
-impl SortedMembers<u64> for One {
+// Parameterize fees and authorship pallets origin
+parameter_types! {
+    pub const One: u64 = 1;
+}
+
+impl SortedMembers<u64> for One{
     fn sorted_members() -> Vec<u64> {
         vec![1]
     }
 }
 
-// Implement RAD claims pallet configuration trait for the mock runtime
+// Implement fees pallet configuration trait for the mock runtime
+impl pallet_fees::Config for MockRuntime {
+    type Currency = Balances;
+    type Event = ();
+    type FeeChangeOrigin = EnsureSignedBy<One, u64>;
+    type WeightInfo = ();
+}
+
+// Implement FRAME authorship bridge pallet configuration trait for the mock runtime
+impl pallet_authorship::Config for MockRuntime {
+    type FindAuthor = ();
+    type UncleGenerations = ();
+    type FilterUncle = ();
+    type EventHandler = ();
+}
+
+// Implement 
+impl nft::Config for MockRuntime {
+    type Event = Event;
+    type AssetInfo = pallet_registry::types::AssetInfo;
+}
+
+impl bridge_mapping::Config for MockRuntime {
+    type ResourceId = ResourceId;
+    type Address = Address;
+    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+}
+
+// So that nfts can be minted
+impl pallet_registry::Config for MockRuntime {
+    type Event = Event;
+}
+
+// Implement anchor pallet configuration trait for the mock runtime
+impl crate::anchor::Config for MockRuntime {}
+
+
+// Implement FRAME timestamp pallet configuration trait for the mock runtime
+impl pallet_timestamp::Config for MockRuntime {
+    type Moment = u64;
+    type OnTimestampSet = ();
+    type MinimumPeriod = ();
+    type WeightInfo = ();
+}
+
+// Parameterize bridge pallet 
+parameter_types! {
+    pub HashId: pallet_chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub NativeTokenId: pallet_chainbridge::ResourceId = pallet_chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+}
+
+// Implement bridge pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
     type Event = Event;
-    type PalletId = RadClaimsPalletId;
-    type Longevity = Longevity;
-    type UnsignedPriority = UnsignedPriority;
-    type AdminOrigin = EnsureSignedBy<One, u64>;
+    type BridgeOrigin = pallet_chainbridge::EnsureBridge<MockRuntime>;
     type Currency = Balances;
-    type MinimalPayoutAmount = MinimalPayoutAmount;
+    type HashId = HashId;
+    type NativeTokenId = NativeTokenId;
     type WeightInfo = ();
 }
 

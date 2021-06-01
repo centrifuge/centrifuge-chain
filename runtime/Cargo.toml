@@ -19,7 +19,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 pallet-fees = { path = "../pallets/fees", default-features = false }
 pallet-anchors = { path = "../pallets/anchors", default-features = false }
 pallet-rad-claims = { path = "../pallets/rad-claims", default-features = false }
-#pallet-bridge = { path = "../pallets/bridge", default-features = false }
+pallet-bridge = { path = "../pallets/bridge", default-features = false }
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
@@ -29,7 +29,8 @@ smallvec = "1.4.0"
 static_assertions = "1.1.0"
 hex-literal = "0.2.1"
 rustc-hex = { version = "2.0", optional = true }
-serde = { version = "1.0.102", optional = true }
+serde = { version = "1.0.123", optional = true }
+serde_derive = { version = "1.0.117", optional = true }
 
 # parachain
 parachain-info = { git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
@@ -104,6 +105,8 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
+max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+
 [build-dependencies]
 #wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
 substrate-wasm-builder = "3.0.0"
@@ -116,7 +119,7 @@ std = [
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-rad-claims/std",
-#    "pallet-bridge/std",
+    "pallet-bridge/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",

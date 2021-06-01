@@ -13,6 +13,7 @@ use frame_support::{
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
         U128CurrencyToVote, Currency,
+        MaxEncodedLen,
         LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
@@ -457,13 +458,19 @@ parameter_types! {
 }
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, MaxEncodedLen, Decode, RuntimeDebug)]
 pub enum ProxyType {
     Any,
     NonTransfer,
     Governance
 }
-impl Default for ProxyType { fn default() -> Self { Self::Any } }
+
+impl Default for ProxyType { 
+    fn default() -> Self { 
+        Self::Any 
+    } 
+}
+
 impl InstanceFilter<Call> for ProxyType {
     fn filter(&self, c: &Call) -> bool {
         match self {
@@ -476,6 +483,7 @@ impl InstanceFilter<Call> for ProxyType {
 			)
         }
     }
+
     fn is_superset(&self, o: &Self) -> bool {
         match (self, o) {
             (x, y) if x == y => true,
@@ -495,11 +503,11 @@ impl pallet_proxy::Config for Runtime {
     type ProxyDepositBase = ProxyDepositBase;
     type ProxyDepositFactor = ProxyDepositFactor;
     type MaxProxies = MaxProxies;
-    type WeightInfo = ();
     type MaxPending = MaxPending;
     type CallHasher = BlakeTwo256;
     type AnnouncementDepositBase = AnnouncementDepositBase;
     type AnnouncementDepositFactor = AnnouncementDepositFactor;
+    type WeightInfo = ();
 }
 
 impl pallet_utility::Config for Runtime {
