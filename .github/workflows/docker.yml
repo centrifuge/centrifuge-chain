@@ -33,7 +33,7 @@ jobs:
       - name: Build docker
         run: docker build --build-arg RUST_TOOLCHAIN=${{ env.RUST_TOOLCHAIN }} -t centrifugeio/centrifuge-chain:${{ env.BRANCH }}-latest .
       - name: Login to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@31f1bb4610792058145ecedb9770b0145e118a96
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}

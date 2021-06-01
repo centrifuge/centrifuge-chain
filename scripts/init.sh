@@ -3,6 +3,9 @@
 set -e
 
 cmd=$1
+parachain="${PARA_CHAIN_SPEC:-charcoal-chachacha-local}"
+para_id="${PARA_ID:-2000}"
+
 case $cmd in
 install-toolchain)
   ./scripts/install_toolchain.sh
@@ -22,10 +25,10 @@ start-parachain)
   echo "Building parachain..."
   cargo build --release
   rm -rf /tmp/centrifuge-chain
-  chain="${PARA_CHAIN_SPEC:-charcoal-chachacha-local}"
+
   ./scripts/run_collator.sh \
-    --chain=$chain --alice \
-    --parachain-id=2000 \
+    --chain="${parachain}" --alice \
+    --parachain-id="${para_id}" \
     --base-path=/tmp/centrifuge-chain/data \
     --port 30355 \
     --rpc-port 9936 \
@@ -39,9 +42,8 @@ start-parachain)
 
 onboard-parachain)
   yarn global add @polkadot/api-cli@0.32.1
-  chain="${CHAIN:-charcoal-chachacha-local}"
-  genesis=$(./target/release/centrifuge-chain export-genesis-state --chain=$chain)
-  wasm=$(./target/release/centrifuge-chain export-genesis-wasm --chain=$chain)
+  genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
+  wasm=$(./target/release/centrifuge-chain export-genesis-wasm --chain="${parachain}")
   echo "Genesis state:" $genesis
   echo "WASM:" "./target/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm"
 

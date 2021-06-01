@@ -256,8 +256,6 @@ pub fn run() -> Result<()> {
 				// TODO
 				let key = sp_core::Pair::generate().0;
 
-				let para_id = cli.run.parachain_id;
-
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name().to_string()]
@@ -265,7 +263,7 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(100));
+				let id = ParaId::from(cli.run.parachain_id.unwrap_or(100));
 
 				let parachain_account =
 					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
