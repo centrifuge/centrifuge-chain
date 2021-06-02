@@ -96,6 +96,6 @@ Summary:
 ## Generate new Spec and Parachain files
 This script will take a valid chain-spec chain_id, a parachain_id and a flag to build new spec or not, and will output genesis spec (raw and plain), wasm and state files.
 ```shell
-./scripts/export_parachain_files.sh charcoal-rococo-staging 10001 true
+./scripts/export_parachain_files.sh charcoal-staging 10001 true
 ```
 Adapt parameters accordingly.
