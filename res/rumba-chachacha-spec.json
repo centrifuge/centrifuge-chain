@@ -1,6 +1,6 @@
 {
-  "name": "Charcoal Rococo Testnet",
-  "id": "charcoal_rococo_testnet",
+  "name": "Rumba Chachacha Testnet",
+  "id": "rumba_chachacha_testnet",
   "chainType": "Live",
   "bootNodes": [],
   "telemetryEndpoints": [
@@ -9,10 +9,10 @@
       0
     ]
   ],
-  "protocolId": "charcoal",
+  "protocolId": "rumba",
   "properties": {
     "tokenDecimals": 18,
-    "tokenSymbol": "CCFG"
+    "tokenSymbol": "RCFG"
   },
   "consensusEngine": null,
   "lightSyncState": null,

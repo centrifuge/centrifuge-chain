@@ -39,11 +39,13 @@ fn load_spec(
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
+		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
+		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
 		"charcoal-rococo" => Ok(Box::new(chain_spec::charcoal_rococo_config())),
 		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network(para_id))),
-		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
-		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network(para_id))),
-		"charcoal-chachacha" => Ok(Box::new(chain_spec::charcoal_chachacha_config())),
+		"rumba-chachacha-staging" => Ok(Box::new(chain_spec::rumba_chachacha_staging_network(para_id))),
+		"rumba-chachacha" => Ok(Box::new(chain_spec::rumba_chachacha_config())),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
 		)?)),
@@ -52,7 +54,7 @@ fn load_spec(
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Centrifuge Charcoal Parachain Collator".into()
+		"Centrifuge Parachain Collator".into()
 	}
 
 	fn impl_version() -> String {
