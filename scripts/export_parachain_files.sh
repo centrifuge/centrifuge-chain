@@ -12,8 +12,8 @@ if [[ $chain_name == "" || $parachain_id == "" ]]; then
 fi
 
 FILE=./target/release/centrifuge-chain
-if [ ! -f "$FILE" ]; then
-    echo "$FILE does not exist, rebuild binary to continue"
+if [ ! -x "$FILE" ]; then
+    echo "FATAL: $FILE does not exist, or not executable, rebuild binary to continue"
     exit 1
 fi
 

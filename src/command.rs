@@ -41,11 +41,11 @@ fn load_spec(
 	match id {
 		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
 		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
-		"charcoal-rococo" => Ok(Box::new(chain_spec::charcoal_rococo_config())),
-		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network(para_id))),
-		"rumba-chachacha-staging" => Ok(Box::new(chain_spec::rumba_chachacha_staging_network(para_id))),
-		"rumba-chachacha" => Ok(Box::new(chain_spec::rumba_chachacha_config())),
+		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
+		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
+		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
 		)?)),

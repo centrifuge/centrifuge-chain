@@ -1,6 +1,6 @@
 {
-  "name": "Rumba Chachacha Testnet",
-  "id": "rumba_chachacha_testnet",
+  "name": "Rumba Testnet",
+  "id": "rumba_testnet",
   "chainType": "Live",
   "bootNodes": [],
   "telemetryEndpoints": [

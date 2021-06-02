@@ -84,14 +84,14 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 	)
 }
 
-pub fn charcoal_rococo_staging_network(para_id: ParaId) -> ChainSpec {
+pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CCFG".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	ChainSpec::from_genesis(
-		"Charcoal Rococo Testnet",
-		"charcoal_rococo_testnet",
+		"Charcoal Testnet",
+		"charcoal_testnet",
 		ChainType::Live,
 		move || {
 			testnet_genesis(
@@ -128,14 +128,14 @@ pub fn charcoal_rococo_staging_network(para_id: ParaId) -> ChainSpec {
 	)
 }
 
-pub fn rumba_chachacha_staging_network(para_id: ParaId) -> ChainSpec {
+pub fn rumba_staging_network(para_id: ParaId) -> ChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "RCFG".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	ChainSpec::from_genesis(
-		"Rumba Chachacha Testnet",
-		"rumba_chachacha_testnet",
+		"Rumba Testnet",
+		"rumba_testnet",
 		ChainType::Live,
 		move || {
 			testnet_genesis(
@@ -174,20 +174,20 @@ pub fn rumba_chachacha_staging_network(para_id: ParaId) -> ChainSpec {
 
 // TODO: Replace with Cyclone spec
 pub fn cyclone_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-rococo-spec-raw.json")[..]).unwrap()
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
 // TODO: Replace with Altair spec
 pub fn altair_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-rococo-spec-raw.json")[..]).unwrap()
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
-pub fn rumba_chachacha_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/rumba-chachacha-spec-raw.json")[..]).unwrap()
+pub fn rumba_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/rumba-spec-raw.json")[..]).unwrap()
 }
 
-pub fn charcoal_rococo_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-rococo-spec-raw.json")[..]).unwrap()
+pub fn charcoal_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
 fn testnet_genesis(

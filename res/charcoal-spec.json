@@ -1,6 +1,6 @@
 {
-  "name": "Charcoal Rococo Testnet",
-  "id": "charcoal_rococo_testnet",
+  "name": "Charcoal Testnet",
+  "id": "charcoal_testnet",
   "chainType": "Live",
   "bootNodes": [],
   "telemetryEndpoints": [
