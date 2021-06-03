@@ -105,8 +105,8 @@ pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
         AssetInfo,
         RegistryInfo)
     where T: frame_system::Config
-           + va_registry::Trait
-           + nft::Trait<AssetInfo = AssetInfo>,
+           + pallet_va_registry::Config
+           + pallet_nft::Config<AssetInfo = AssetInfo>,
 {
     let metadata  = vec![];
 
@@ -123,7 +123,7 @@ pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
     };
 
     // Create registry, get registry id. Shouldn't fail.
-    let registry_id = match <va_registry::Module<T> as VerifierRegistry>::create_registry(owner, registry_info.clone()) {
+    let registry_id = match <VaRegistry as VerifierRegistry>::create_registry(owner, registry_info.clone()) {
         Ok(r_id) => r_id,
         Err(e) => panic!("{:#?}", e),
     };
@@ -163,15 +163,15 @@ fn mint_with_valid_proofs() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = setup_mint::<Test>(owner, token_id);
+             _) = setup_mint::<MockRuntime>(owner, token_id);
 
         // Place document anchor into storage for verification
-        assert_ok!( <anchor::Module<Test>>::commit(
+        assert_ok!( <pallet_anchors::Pallet<MockRuntime>>::commit(
             origin.clone(),
             pre_image,
             doc_root,
             // Proof does not matter here
-            <Test as frame_system::Config>::Hashing::hash_of(&0),
+            <MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, token_id) = asset_id.destruct();
@@ -191,7 +191,7 @@ fn mint_with_valid_proofs() {
 
         // Nft registered to owner
         assert_eq!(
-            <nft::Module<Test>>::account_for_asset::<H160,U256>(registry_id, token_id),
+            Nft::account_for_asset::<H160,U256>(registry_id, token_id),
             Some(owner)
         );
     });
@@ -208,16 +208,16 @@ fn mint_fails_when_dont_match_doc_root() {
              anchor_id,
              (proofs, static_hashes, _),
              nft_data,
-             _) = setup_mint::<Test>(owner, token_id);
+             _) = setup_mint::<MockRuntime>(owner, token_id);
 
         // Place document anchor into storage for verification
-        let wrong_doc_root = <Test as frame_system::Config>::Hashing::hash_of(&pre_image);
-        assert_ok!( <anchor::Module<Test>>::commit(
+        let wrong_doc_root = <MockRuntime as frame_system::Config>::Hashing::hash_of(&pre_image);
+        assert_ok!( <pallet_anchors::Pallet<MockRuntime>>::commit(
             origin.clone(),
             pre_image.clone(),
             wrong_doc_root,
             // Proof does not matter here
-            <Test as frame_system::Config>::Hashing::hash_of(&0),
+            <MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, token_id) = asset_id.destruct();
@@ -234,7 +234,7 @@ fn mint_fails_when_dont_match_doc_root() {
                           proofs: proofs,
                           static_hashes: static_hashes,
                       }),
-            Error::<Test>::InvalidProofs);
+            Error::<MockRuntime>::InvalidProofs);
     });
 }
 
@@ -249,22 +249,22 @@ fn duplicate_mint_fails() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = setup_mint::<Test>(owner, token_id);
+             _) = setup_mint::<MockRuntime>(owner, token_id);
 
         // Place document anchor into storage for verification
-        assert_ok!( <anchor::Module<Test>>::commit(
+        assert_ok!( <pallet_anchors::Pallet<MockRuntime>>::commit(
             origin.clone(),
             pre_image,
             doc_root,
             // Proof does not matter here
-            <Test as frame_system::Config>::Hashing::hash_of(&0),
+            <MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, token_id) = asset_id.destruct();
 
         // Mint token with document proof
         assert_ok!(
-            SUT::mint(origin.clone(),
+            VaRegistry::mint(origin.clone(),
                       owner,
                       registry_id,
                       token_id,
@@ -287,7 +287,7 @@ fn duplicate_mint_fails() {
                           proofs: proofs,
                           static_hashes: static_hashes,
                       }),
-            NftError::<Test>::AssetExists);
+            NftError::<MockRuntime>::AssetExists);
     });
 }
 
@@ -302,15 +302,15 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
              anchor_id,
              (proofs, static_hashes, doc_root),
              nft_data,
-             _) = setup_mint::<Test>(owner, token_id);
+             _) = setup_mint::<MockRuntime>(owner, token_id);
 
         // Place document anchor into storage for verification
-        assert_ok!( <anchor::Module<Test>>::commit(
+        assert_ok!( Anchors::commit(
             origin.clone(),
             pre_image,
             doc_root,
             // Proof does not matter here
-            <Test as frame_system::Config>::Hashing::hash_of(&0),
+            <MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
             crate::common::MS_PER_DAY + 1) );
 
         let (registry_id, _) = asset_id.destruct();
@@ -318,7 +318,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 
         // Mint token with document proof
         assert_err!(
-            SUT::mint(origin,
+            VaRegistry::mint(origin,
                       owner,
                       registry_id,
                       token_id,
@@ -328,7 +328,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
                           proofs: proofs,
                           static_hashes: static_hashes,
                       }),
-            Error::<Test>::InvalidProofs);
+            Error::<MockRuntime>::InvalidProofs);
     });
 }
 
@@ -338,9 +338,9 @@ fn create_multiple_registries() {
         let owner1 = 1;
         let owner2 = 1;
         let token_id = U256::one();
-        let (asset_id1,_,_,_,_,_) = setup_mint::<Test>(owner1, token_id);
-        let (asset_id2,_,_,_,_,_) = setup_mint::<Test>(owner2, token_id);
-        let (asset_id3,_,_,_,_,_) = setup_mint::<Test>(owner2, token_id);
+        let (asset_id1,_,_,_,_,_) = setup_mint::<MockRuntime>(owner1, token_id);
+        let (asset_id2,_,_,_,_,_) = setup_mint::<MockRuntime>(owner2, token_id);
+        let (asset_id3,_,_,_,_,_) = setup_mint::<MockRuntime>(owner2, token_id);
         let (reg_id1,_) = asset_id1.destruct();
         let (reg_id2,_) = asset_id2.destruct();
         let (reg_id3,_) = asset_id3.destruct();
@@ -350,8 +350,8 @@ fn create_multiple_registries() {
         assert!(reg_id2 != reg_id3);
 
         // Owners own their registries
-        assert_eq!(<va_registry::Module<Test>>::owner_of(reg_id1), owner1);
-        assert_eq!(<va_registry::Module<Test>>::owner_of(reg_id2), owner2);
-        assert_eq!(<va_registry::Module<Test>>::owner_of(reg_id3), owner2);
+        assert_eq!(VaRegistry::owner_of(reg_id1), owner1);
+        assert_eq!(VaRegistry::owner_of(reg_id2), owner2);
+        assert_eq!(VaRegistry::owner_of(reg_id3), owner2);
     });
 }

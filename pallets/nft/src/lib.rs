@@ -399,7 +399,7 @@ impl<T: Config> Unique for Pallet<T> {
 }
 
 // Implement mintable trait for pallet
-impl<T: Trait> Mintable for Pallet<T>
+impl<T: Config> Mintable for Pallet<T>
 {
     type Asset = Asset<AssetId, <T as Config>::AssetInfo>;
     type AccountId = <T as frame_system::Config>::AccountId;

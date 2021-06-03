@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! Rad claims pallet's unit test cases
+//! Nft claims pallet's unit test cases
 
 
 // ----------------------------------------------------------------------------

@@ -51,7 +51,7 @@ fn transfer_native() {
 
         // Using account with not enough balance for fee should fail when requesting transfer
         assert_err!(
-            PalletBridge::transfer_native(
+            Bridge::transfer_native(
                 Origin::signed(RELAYER_C),
                 amount.clone(),
                 recipient.clone(),
@@ -60,12 +60,12 @@ fn transfer_native() {
             "Insufficient Balance"
         );
 
-        let mut account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
+        let mut account_current_balance = <pallet_balances::Module<MockRuntime>>::free_balance(RELAYER_B);
         assert_eq!(account_current_balance, 100);
 
         // Using account with enough balance for fee but not for transfer amount
         assert_err!(
-            PalletBridge::transfer_native(
+            Bridge::transfer_native(
                 Origin::signed(RELAYER_B),
                 amount.clone(),
                 recipient.clone(),
@@ -75,7 +75,7 @@ fn transfer_native() {
         );
 
         // Account balance should be reverted to original balance
-        account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
+        account_current_balance = Balances::free_balance(RELAYER_B);
         assert_eq!(account_current_balance, 100);
 
         // Success
@@ -95,7 +95,7 @@ fn transfer_native() {
         ));
 
         // Account balance should be reduced amount + fee
-        account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
+        account_current_balance = Balances::free_balance(RELAYER_A);
         assert_eq!(account_current_balance, 60 * currency::RAD);
     })
 }
@@ -110,20 +110,20 @@ fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> RegistryId 
             anchor_id,
             (proofs, static_hashes, doc_root),
             nft_data,
-            _) = registry::tests::setup_mint::<Test>(owner, token_id);
+            _) = registry::tests::setup_mint::<MockRuntime>(owner, token_id);
 
     // Commit document root
-    assert_ok!( <crate::anchor::Module<Test>>::commit(
+    assert_ok!( <crate::anchor::Module<MockRuntime>>::commit(
         origin.clone(),
         pre_image,
         doc_root,
-        <Test as frame_system::Config>::Hashing::hash_of(&0),
+        <MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
         crate::common::MS_PER_DAY + 1));
 
     // Mint token with document proof
     let (registry_id, token_id) = asset_id.clone().destruct();
     assert_ok!(
-        <registry::Module<Test>>::mint(origin,
+        VaRegistry::mint(origin,
                     owner,
                     registry_id,
                     token_id,
@@ -135,9 +135,9 @@ fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> RegistryId 
                     }));
 
     // Register resource with chainbridge
-    assert_ok!(<chainbridge::Module<Test>>::register_resource(resource_id.clone(), vec![]));
+    assert_ok!(<chainbridge::Module<MockRuntime>>::register_resource(resource_id.clone(), vec![]));
     // Register resource in local resource mapping
-    <bridge_mapping::Module<Test>>::set_resource(resource_id.clone(),
+    <bridge_mapping::Module<MockRuntime>>::set_resource(resource_id.clone(),
                                                 registry_id.clone().into());
 
     registry_id
@@ -149,7 +149,7 @@ fn receive_nonfungible() {
         let dest_chain = 0;
         let resource_id = NativeTokenId::get();
         let recipient = RELAYER_A;
-        let owner     = <chainbridge::Module<Test>>::account_id();
+        let owner     = <chainbridge::Module<MockRuntime>>::account_id();
         let origin    = Origin::signed(owner);
         let token_id  = U256::one();
 
@@ -160,14 +160,14 @@ fn receive_nonfungible() {
         assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
 
         // Send nft from bridge account to user
-        assert_ok!(<Module<Test>>::receive_nonfungible(origin,
+        assert_ok!(<Module<MockRuntime>>::receive_nonfungible(origin,
                                                         recipient,
                                                         token_id,
                                                         vec![],
                                                         resource_id));
 
         // Recipient owns the nft now
-        assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+        assert_eq!(<crate::nft::Module<MockRuntime>>::account_for_asset(registry_id, token_id),
                     Some(recipient));
     })
 }
@@ -188,7 +188,7 @@ fn transfer_nonfungible_asset() {
         assert_ok!(ChainBridge::whitelist_chain(Origin::root(), dest_chain.clone()));
 
         // Owner owns nft
-        assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
+        assert_eq!(<crate::nft::Module<MockRuntime>>::account_for_asset(registry_id, token_id),
                     Some(owner));
 
         // Using account without enough balance for fee should fail when requesting transfer
@@ -216,8 +216,8 @@ fn transfer_nonfungible_asset() {
                 dest_chain));
 
         // Now bridge module owns the nft
-        assert_eq!(<crate::nft::Module<Test>>::account_for_asset(registry_id, token_id),
-                    Some(<chainbridge::Module<Test>>::account_id()));
+        assert_eq!(<crate::nft::Module<MockRuntime>>::account_for_asset(registry_id, token_id),
+                    Some(<chainbridge::Module<MockRuntime>>::account_id()));
 
         // Check that transfer event was emitted
         let tid: &mut [u8] = &mut[0; 32];

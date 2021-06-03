@@ -109,7 +109,7 @@ frame_support::construct_runtime!(
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         ChainBridge: pallet_chainbridge::{Pallet, Call, Storage, Event<T>},
-        PalletBridge: pallet_bridge::{Pallet, Call, Event<T>},
+        Bridge: pallet_bridge::{Pallet, Call, Event<T>},
         Fees: pallet_fees::{Pallet, Call, Event<T>},
         Nft: pallet_nft::{Pallet, Event<T>},
         Registry: pallet_registry::{Pallet, Call, Event<T>},

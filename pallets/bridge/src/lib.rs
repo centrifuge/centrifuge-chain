@@ -141,6 +141,7 @@ use pallet_va_registry::types::{
 
 use pallet_fees;
 
+// TODO: circular reference to be tweaked
 use centrifuge_runtime::{
     constants::currency,
 };

@@ -31,22 +31,24 @@ use crate::{
 };
 
 use frame_support::{
-    PalletId, 
     parameter_types, 
     traits::SortedMembers, 
     weights::Weight
 };
 
+use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use frame_support::{impl_outer_origin, impl_outer_event, parameter_types};
+use sp_io::TestExternalities;
 use sp_runtime::{
     traits::{
         BlakeTwo256, 
         IdentityLookup
     }, 
     testing::Header, 
-    Perbill,
 };
+
+use crate::traits::WeightInfo;
 
 impl_outer_origin! {
     pub enum Origin for MockRuntime {}
@@ -100,7 +102,7 @@ frame_support::construct_runtime!(
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
         Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
-        Registry: pallet_va_registry::{Pallet, Call, Config, Storage, Event<T>},
+        VaRegistry: pallet_va_registry::{Pallet, Call, Config, Storage, Event<T>},
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
     }
@@ -190,7 +192,7 @@ impl SortedMembers<u64> for One{
 }
 
 // Implement Centrifuge Chain fees pallet for the mock runtime
-impl pallet_fees::Config for Test {
+impl pallet_fees::Config for MockRuntime {
     type Currency = Balances;
     type Event = ();
     type FeeChangeOrigin = EnsureSignedBy<One, u64>;
