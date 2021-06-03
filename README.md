@@ -92,3 +92,10 @@ Summary:
 4. Then for each repo in the order `grandpa-bridge-gadget, polkadot, and cumulus`, 
    move our fork's `master` branch to the commit derived above and rebase those on `centrifuge` branch
 5. Then on centrifuge, deleting Cargo.lock file and running `cargo check`  will pull the latest commits from respective forks 
+
+## Generate new Spec and Parachain files
+This script will take a valid chain-spec chain_id, a parachain_id and a flag to build new spec or not, and will output genesis spec (raw and plain), wasm and state files.
+```shell
+./scripts/export_parachain_files.sh charcoal-staging 10001 true
+```
+Adapt parameters accordingly.

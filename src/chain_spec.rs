@@ -17,7 +17,7 @@
 use cumulus_primitives_core::ParaId;
 use node_runtime::AuraId;
 use node_primitives::{AccountId, Hash, Signature};
-use sc_service::ChainType;
+use sc_service::{ChainType, Properties};
 use sp_core::{sr25519, Pair, Public};
 use sp_runtime::{traits::{IdentifyAccount, Verify}};
 use sc_telemetry::TelemetryEndpoints;
@@ -45,6 +45,10 @@ where
 }
 
 pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "CCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
 	ChainSpec::from_genesis(
 		"Charcoal Local Testnet",
 		"charcoal_local_testnet",
@@ -75,21 +79,26 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 		vec![],
 		None,
 		None,
-		None,
+		Some(properties),
 		Default::default()
 	)
 }
 
-pub fn charcoal_rococo_staging_network(para_id: ParaId) -> ChainSpec {
+pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "CCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
 	ChainSpec::from_genesis(
-		"Charcoal Rococo Testnet",
-		"charcoal_rococo_testnet",
+		"Charcoal Testnet",
+		"charcoal_testnet",
 		ChainType::Live,
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -114,21 +123,26 @@ pub fn charcoal_rococo_staging_network(para_id: ParaId) -> ChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("charcoal"),
-		None,
+		Some(properties),
 		Default::default()
 	)
 }
 
-pub fn charcoal_chachacha_staging_network(para_id: ParaId) -> ChainSpec {
+pub fn rumba_staging_network(para_id: ParaId) -> ChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "RCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
 	ChainSpec::from_genesis(
-		"Charcoal Chachacha Testnet",
-		"charcoal_chachacha_testnet",
+		"Rumba Testnet",
+		"rumba_testnet",
 		ChainType::Live,
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -152,18 +166,28 @@ pub fn charcoal_chachacha_staging_network(para_id: ParaId) -> ChainSpec {
 			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
-		Some("charcoal"),
-		None,
+		Some("rumba"),
+		Some(properties),
 		Default::default()
 	)
 }
 
-pub fn charcoal_chachacha_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-chachacha.json")[..]).unwrap()
+// TODO: Replace with Cyclone spec
+pub fn cyclone_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
-pub fn charcoal_rococo_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-rococo-raw-spec.json")[..]).unwrap()
+// TODO: Replace with Altair spec
+pub fn altair_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
+}
+
+pub fn rumba_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/rumba-spec-raw.json")[..]).unwrap()
+}
+
+pub fn charcoal_config() -> ChainSpec {
+	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
 fn testnet_genesis(

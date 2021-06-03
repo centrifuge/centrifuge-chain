@@ -1,6 +1,6 @@
 {
-  "name": "Charcoal Testnet",
-  "id": "charcoal_testnet",
+  "name": "Rumba Testnet",
+  "id": "rumba_testnet",
   "chainType": "Live",
   "bootNodes": [],
   "telemetryEndpoints": [
@@ -9,10 +9,10 @@
       0
     ]
   ],
-  "protocolId": "charcoal",
+  "protocolId": "rumba",
   "properties": {
     "tokenDecimals": 18,
-    "tokenSymbol": "CCFG"
+    "tokenSymbol": "RCFG"
   },
   "consensusEngine": null,
   "lightSyncState": null,
