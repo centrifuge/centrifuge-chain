@@ -42,19 +42,7 @@ use sp_runtime::{
     },
 };
 
-use centrifuge_runtime::constants::currency;
 use pallet_balances::Error as BalancesError;
-
-
-// ----------------------------------------------------------------------------
-// Types and constants declaration
-// ----------------------------------------------------------------------------
-
-pub const ADMIN: u64 = 0x1;
-pub const USER_A: u64 = 0x2;
-// USER_B does not have existential balance
-pub const USER_B: u64 = 0x3;
-pub const ENDOWED_BALANCE: u128 = 10000 * currency::RAD;
 
 
 // ----------------------------------------------------------------------------
@@ -72,7 +60,7 @@ fn can_upload_account() {
 #[test]
 fn verify_proofs() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        let amount: u128 = 100 * currency::RAD;
+        let amount: u128 = 100 * RAD;
         let sorted_hashes_long: [H256; 31] = [
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
@@ -173,7 +161,7 @@ fn pre_calculate_single_root(
 #[test]
 fn claim() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        let amount: u128 = 100 * currency::RAD;
+        let amount: u128 = 100 * RAD;
         // Random sorted hashes
         let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
 
@@ -193,22 +181,22 @@ fn claim() {
         assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
 
         let short_root_hash = pre_calculate_single_root(
-            &USER_B, &(4 * currency::RAD), &one_sorted_hashes[0]);
+            &USER_B, &(4 * RAD), &one_sorted_hashes[0]);
         assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), short_root_hash));
 
         // Minimum payout not met
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, 4 * currency::RAD, one_sorted_hashes.to_vec()),
+            RadClaims::claim(Origin::none(), USER_B, 4 * RAD, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::UnderMinPayout
         );
 
         let long_root_hash = pre_calculate_single_root(
-            &USER_B, &(10001 * currency::RAD), &one_sorted_hashes[0]);
+            &USER_B, &(10001 * RAD), &one_sorted_hashes[0]);
         assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), long_root_hash));
 
         // Claims Module Account does not have enough balance
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, 10001 * currency::RAD, one_sorted_hashes.to_vec()),
+            RadClaims::claim(Origin::none(), USER_B, 10001 * RAD, one_sorted_hashes.to_vec()),
             BalancesError::<MockRuntime, _>::InsufficientBalance
         );
 
@@ -219,17 +207,17 @@ fn claim() {
 
         let account_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
         assert_ok!(RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()));
-        assert_eq!(RadClaims::get_account_balance(USER_B), amount);
+        assert_eq!(RadClaims::get_claimed_amount(USER_B), amount);
         let account_new_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
         assert_eq!(account_new_balance, account_balance + amount);
 
         // Knowing that account has a balance of 100, trying to claim 50 will fail
         // Since balance logic is accumulative
         let past_root_hash = pre_calculate_single_root(
-            &USER_B, &(50 * currency::RAD), &one_sorted_hashes[0]);
+            &USER_B, &(50 * RAD), &one_sorted_hashes[0]);
         assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), past_root_hash));
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, 50 * currency::RAD, one_sorted_hashes.to_vec()),
+            RadClaims::claim(Origin::none(), USER_B, 50 * RAD, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::InsufficientBalance
         );
 
@@ -239,7 +227,7 @@ fn claim() {
 #[test]
 fn validate_unsigned_check() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        let amount: u128 = 100 * currency::RAD;
+        let amount: u128 = 100 * RAD;
         let sorted_hashes_long: [H256; 31] = [
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
