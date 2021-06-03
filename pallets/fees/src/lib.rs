@@ -8,17 +8,18 @@ use frame_system::ensure_root;
 use frame_support::{
     traits::{EnsureOrigin, Currency, ExistenceRequirement, WithdrawReasons},
     dispatch::DispatchResult,
+    weights::Weight,
 };
 
 pub use pallet::*;
-pub mod weights;
-pub use weights::*;
+pub mod default_weights;
 
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+mod benchmarking;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -28,6 +29,12 @@ pub struct Fee<Hash, Balance> {
 }
 
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+/// Weight functions needed for Fees.
+pub trait WeightInfo {
+    fn set_fee() -> Weight;
+}
+
 
 #[frame_support::pallet]
 pub mod pallet {
