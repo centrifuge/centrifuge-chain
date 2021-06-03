@@ -1,6 +1,6 @@
 [package]
-name = 'pallet-bridge'
-description = 'Bridge pallet'
+name = 'pallet-va-registry'
+description = 'Verifiable Attributes (VA) registry for minting and managing non-fungible tokens (NFTs)'
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
@@ -13,19 +13,22 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-chainbridge = { branch = "refactor/bridge_pallet_frame_v2", git = "https://github.com/centrifuge/chainbridge-substrate", default-features = false}
 frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-benchmarking = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true }
 node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
 pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 
 # Local dependencies
 pallet-fees = { path = "../fees", default-features = false }
-pallet-va-registry = { path = "../va-registry", default-features = false }
+#pallet-nft = { path = "../nft", default-features = false }
+pallet-anchors = { path = "../anchors", default-features = false }
+unique_assets = { path = "../../../unique-assets", default-features = false }
+#unique_assets = { branch = "master", git = "https://github.com/centrifuge/unique-assets", default-features = false }
 
 [dev-dependencies]
 node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
@@ -35,11 +38,9 @@ sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", de
 [features]
 default = ['std']
 std = [
-    'codec/std',
-    'frame-support/std',
-    'frame-system/std',
-    'pallet-balances/std',
-    'pallet-fees/std',
-    'pallet-va-registry/std',
-    'sp-std/std',
+  'codec/std',
+  'frame-support/std',
+  'frame-system/std',
+  'pallet-balances/std',
+  'sp-std/std',
 ]

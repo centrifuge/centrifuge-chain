@@ -5298,6 +5298,7 @@ dependencies = [
  "node-primitives",
  "pallet-balances",
  "pallet-fees",
+ "pallet-va-registry",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
@@ -5579,6 +5580,25 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-nft"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-balances",
+ "pallet-fees",
+ "pallet-va-registry",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
 ]
 
 [[package]]
@@ -5872,6 +5892,25 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-va-registry"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-anchors",
+ "pallet-balances",
+ "pallet-fees",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
 ]
 
 [[package]]
@@ -11290,7 +11329,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 
@@ -11377,6 +11416,14 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unique_assets"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "sp-std",
+]
 
 [[package]]
 name = "universal-hash"

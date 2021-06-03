@@ -121,6 +121,8 @@ use frame_system::{
   ensure_root,
 };
 
+use sp_core::Encode;
+
 use sp_runtime::{
     sp_std::{
         convert::TryInto,
@@ -140,10 +142,6 @@ use sp_runtime::{
         ValidTransaction, 
     },
 };
-
-use sp_core::{Encode};
-
-//use sp_std::convert::TryInto;
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;

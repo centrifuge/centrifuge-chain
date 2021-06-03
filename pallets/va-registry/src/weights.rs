@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! NFT pallet's extrinsics weight information
+//! Verifiable attributes registry pallet's extrinsics weight information
 //! 
 //! Note that the following weights are used only for development.
 //! In fact, weights shoudl be calculated using runtime benchmarking.
@@ -31,7 +31,18 @@ use crate::traits::WeightInfo;
 
 
 impl WeightInfo for () {
-    fn transfer() -> Weight {
-        (195_000_000 as Weight).saturating_add(RocksDbWeight::get().reads_writes(1,1))
+
+    fn create_registry() -> Weight {
+        (195_000_000 as Weight).saturating_add(
+            RocksDbWeight::get().reads_writes(1,2)
+        )
+
+    }
+
+    fn mint(proofs_length: usize) -> Weight {
+        (195_000_000 as Weight).saturating_add(
+            proofs_length.saturating_mul(1_000_000) as Weight +
+            RocksDbWeight::get().reads_writes(3,2)
+        )
     }
 }

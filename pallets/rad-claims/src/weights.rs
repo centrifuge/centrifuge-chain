@@ -32,7 +32,7 @@ use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 
-    fn claim( hashes_length: usize ) -> Weight {
+    fn claim(hashes_length: usize) -> Weight {
         (195_000_000 as Weight).saturating_add(
             hashes_length.saturating_mul(1_000_000) as Weight +
             RocksDbWeight::get().reads_writes(2,2)

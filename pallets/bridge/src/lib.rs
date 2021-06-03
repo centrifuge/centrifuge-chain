@@ -127,24 +127,13 @@ use sp_runtime::{
     },
     traits::{
         AccountIdConversion,
-        CheckedSub,
-        Hash,
         SaturatedConversion,
-    },
-    transaction_validity::{
-        InvalidTransaction, 
-        TransactionPriority,
-        TransactionSource,
-        TransactionValidity, 
-        ValidTransaction, 
     },
 };
 
-use sp_core::{Encode};
+use sp_core::Encode;
 
-//use sp_std::convert::TryInto;
-
-use centrifuge_runtime::va_registry::types::{
+use pallet_va_registry::types::{
     AssetId,
     RegistryId, 
     TokenId
@@ -154,11 +143,6 @@ use pallet_fees;
 
 use centrifuge_runtime::{
     constants::currency,
-    va_registry::types::{
-        AssetId,
-        RegistryId, 
-        TokenId
-    },
 };
 
 // Extrinsics weight information
