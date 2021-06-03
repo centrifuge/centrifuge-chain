@@ -30,7 +30,7 @@ to your parachain's main `Cargo.toml` file:
 
 [dependencies]
 
-pallet-rad-claims = { branch = 'master', git = 'https://github.com/centrifuge-chain/pallet-rad-claims.git' }
+pallet-rad-claims = { branch = 'master', git = 'https://github.com/centrifuge/centrifuge-chain.git', default-features = false }
 
 # -- snip --
 
@@ -49,15 +49,20 @@ for your runtime (in `[runtime_path]/lib.rs` file):
 ```rust
 
 node_primitives::Balance
-use centrifuge_runtime::constants::currency;
+
+// Radial token definition
+pub(crate) const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
+pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
+pub(crate) const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
+pub(crate) const RAD: Balance = 100 * CENTI_RAD;
 
 // Parameterize Rad claims pallet
 parameter_types! {
-    pub const RadClaimsPalletId: ModuleId = PalletId(*b"rd/claim");
+    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub cosnt MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
 }
 
 // Implement Rad claims pallet configuration trait for the mock runtime
@@ -68,12 +73,13 @@ impl pallet_rad_claims::Config for MyRuntime {
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type Currency = Balances;
+    type WeightInfo = ();
 }
 
 construct_runtime! {
     …
 
-    RadClaims: pallet_rad_claims::{Module, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+    RadClaims: pallet_rad_claims::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
 }
 ```
 
