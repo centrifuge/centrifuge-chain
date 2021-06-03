@@ -18,7 +18,8 @@
 //! Rad claim pallet's extrinsics weight information
 //! 
 //! Note that the following weights are used only for development.
-//! In fact, weights are calculated using runtime benchmarking.
+//! In fact, weights should be calculated using Substrate runtime 
+//! benchmarking feature.
 
 use frame_support::{
     weights::{
@@ -32,7 +33,7 @@ use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
 
-    fn claim( hashes_length: usize ) -> Weight {
+    fn claim(hashes_length: usize) -> Weight {
         (195_000_000 as Weight).saturating_add(
             hashes_length.saturating_mul(1_000_000) as Weight +
             RocksDbWeight::get().reads_writes(2,2)

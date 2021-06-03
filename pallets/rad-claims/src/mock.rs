@@ -17,8 +17,8 @@
 
 //! Rad claims pallet testing environment and utilities
 //!
-//! The main components implemented in this mock module is a mock runtime
-//! and some helper functions.
+//! The main components implemented in this mock module is a mock runtime,
+//! some helper functions and the definition of some constants.
 
 
 // ----------------------------------------------------------------------------
@@ -29,6 +29,8 @@ use crate::{
     self as pallet_rad_claims,
     Config
 };
+
+use node_primitives::Balance;
 
 use frame_support::{
     PalletId, 
@@ -54,7 +56,6 @@ use sp_runtime::{
 use crate::traits::WeightInfo;
 
 pub use pallet_balances as balances;
-use centrifuge_runtime::constants::currency;
 
 
 // ----------------------------------------------------------------------------
@@ -63,7 +64,6 @@ use centrifuge_runtime::constants::currency;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
-type Balance = u128;
 
 // Implement testint extrinsic weights for the pallet
 pub struct MockWeightInfo;
@@ -82,13 +82,23 @@ impl WeightInfo for MockWeightInfo {
     }
 }
 
-pub const ADMIN: u64 = 0x1;
-pub const USER_A: u64 = 0x2;
+// Radial token definition
+//
+// This avoids circular dependency on the runtime crate. Though for testing
+// we do not care about real RAD "value", it helps understanding and reading
+// the testing code.
+pub(crate) const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
+pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
+pub(crate) const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
+pub(crate) const RAD: Balance = 100 * CENTI_RAD;
+
+pub(crate) const ADMIN: u64 = 0x1;
+pub(crate) const USER_A: u64 = 0x2;
 
 // USER_B does not have existential balance
-pub const USER_B: u64 = 0x3;
+pub(crate) const USER_B: u64 = 0x3;
 
-pub const ENDOWED_BALANCE: u128 = 10000 * currency::RAD;
+pub(crate) const ENDOWED_BALANCE: u128 = 10000 * RAD;
 
 
 // ----------------------------------------------------------------------------
@@ -162,7 +172,7 @@ parameter_types! {
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * RAD;
 }
 
 
