@@ -817,7 +817,7 @@ impl pallet_claims::Config for Runtime {
     type Event = Event;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
-    type AdminOgit rigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
     type Currency = Balances;
 }
 
