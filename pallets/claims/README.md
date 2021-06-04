@@ -1,8 +1,8 @@
-# RAD Token Claims Pallet
+# Claims Pallet
 
 <!-- TOC -->
 
-- [RAD Token Claims Pallet](#rad-token-claims-pallet)
+- [Claims Pallet](#claims-pallet)
     - [Overview](#overview)
     - [Pallet Usage](#pallet-usage)
         - [Add the Pallet to your Runtime](#add-the-pallet-to-your-runtime)
@@ -15,7 +15,7 @@
 
 ## Overview
 
-This Centrifuge Chain pallet provides functionalities for processing claims of RAD token acquired 
+This Centrifuge Chain pallet provides functionalities for processing claims of token acquired 
 through [Tinlake](https://tinlake.centrifuge.io/) investments.
 
 This pallet is built on Substrate [FRAME v2](https://substrate.dev/docs/en/knowledgebase/runtime/frame) 
@@ -59,7 +59,7 @@ pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
 pub(crate) const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
 pub(crate) const RAD: Balance = 100 * CENTI_RAD;
 
-// Parameterize Rad claims pallet
+// Parameterize claims pallet
 parameter_types! {
     pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
     pub const One: u64 = 1;
@@ -68,7 +68,7 @@ parameter_types! {
     pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
 }
 
-// Implement Rad claims pallet configuration trait for the mock runtime
+// Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for MyRuntime {
     type Event = ();
     type PalletId = ClaimsPalletId;
