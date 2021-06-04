@@ -102,6 +102,8 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
+max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master", features = [ "derive" ] }
+
 [build-dependencies]
 #wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
 substrate-wasm-builder = "3.0.0"
@@ -175,6 +177,7 @@ std = [
     "cumulus-pallet-aura-ext/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
+    "max-encoded-len/std",
 ]
 #runtime-benchmarks = ["frame-benchmarking"]
 

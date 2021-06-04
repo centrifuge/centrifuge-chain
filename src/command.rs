@@ -39,11 +39,13 @@ fn load_spec(
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"charcoal-rococo" => Ok(Box::new(chain_spec::charcoal_rococo_config())),
-		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network(para_id))),
-		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
-		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network(para_id))),
-		"charcoal-chachacha" => Ok(Box::new(chain_spec::charcoal_chachacha_config())),
+		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
+		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
+		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
+		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
+		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
 		)?)),
@@ -52,7 +54,7 @@ fn load_spec(
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Centrifuge Charcoal Parachain Collator".into()
+		"Centrifuge Parachain Collator".into()
 	}
 
 	fn impl_version() -> String {
@@ -256,8 +258,6 @@ pub fn run() -> Result<()> {
 				// TODO
 				let key = sp_core::Pair::generate().0;
 
-				let para_id = cli.run.parachain_id;
-
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name().to_string()]
@@ -265,7 +265,7 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(100));
+				let id = ParaId::from(cli.run.parachain_id.unwrap_or(100));
 
 				let parachain_account =
 					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
