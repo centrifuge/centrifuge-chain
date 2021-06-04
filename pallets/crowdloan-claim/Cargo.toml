@@ -40,7 +40,8 @@ std = [
   'frame-system/std',
   'log/std',
   'pallet-balances/std',
-#  'pallet-crowdloan-reward/std',
+  'pallet-vesting/std',
+  'pallet-crowdloan-reward/std',
   'sp-std/std',
 ]
 

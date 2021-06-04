@@ -297,7 +297,6 @@ pub mod pallet {
         /// Contributor's account identifier on the relay chain.
         type RelayChainAccountId: Debug
             + Default
-            + Into<AccountId32>
             + MaybeSerialize
             + MaybeSerializeDeserialize
             + Member
@@ -666,6 +665,10 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    fn as_accountId32(account_id: &T::RelayChainAccountId) -> AccountId32 {
+        todo!()
+    }
+
     // Bind contributor's relaychain account with one on the parachain.
     //
     // This function aims at proving that the contributor's identity on
@@ -681,7 +684,7 @@ impl<T: Config> Pallet<T> {
         // Now check if the contributor's native identity on the relaychain is valid
         let payload = parachain_account_id.encode();
         ensure!(
-            signature.verify(payload.as_slice(), &relaychain_account_id.clone().into()),
+            signature.verify(payload.as_slice(), &Self::as_accountId32(&relaychain_account_id)),
             Error::<T>::InvalidContributorSignature
         );
 
