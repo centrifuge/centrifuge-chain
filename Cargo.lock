@@ -5259,6 +5259,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-claims"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-collective"
 version = "3.0.0"
 source = "git+https://github.com/centrifuge/substrate?branch=master#be1b8ef0eefd6e8fbc7abb3d33262d139277da13"
