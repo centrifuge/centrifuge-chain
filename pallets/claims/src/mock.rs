@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! RAD claims pallet testing environment and utilities
+//! Claims pallet testing environment and utilities
 //!
 //! The main components implemented in this mock module is a mock runtime,
 //! some helper functions and the definition of some constants.
@@ -85,7 +85,7 @@ impl WeightInfo for MockWeightInfo {
 // Radial token definition
 //
 // This avoids circular dependency on the runtime crate. Though for testing
-// we do not care about real RAD "value", it helps understanding and reading
+// we do not care about real RAD token "value", it helps understanding and reading
 // the testing code.
 pub(crate) const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
 pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
@@ -166,7 +166,7 @@ impl pallet_balances::Config for MockRuntime {
     type MaxLocks = ();
 }
 
-// Parameterize RAD claims pallet
+// Parameterize claims pallet
 parameter_types! {
     pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
     pub const One: u64 = 1;
@@ -182,7 +182,7 @@ impl SortedMembers<u64> for One {
     }
 }
 
-// Implement RAD claims pallet configuration trait for the mock runtime
+// Implement claims pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
     type Event = Event;
     type PalletId = ClaimsPalletId;
