@@ -168,7 +168,7 @@ impl pallet_balances::Config for MockRuntime {
 
 // Parameterize claims pallet
 parameter_types! {
-    pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
