@@ -1087,6 +1087,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-claims",
  "pallet-collective",
  "pallet-democracy",
  "pallet-elections-phragmen",

@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # Cclaims processing pallet
+//! # Claims processing pallet
 //!
 //! This pallet implement a reward claim mechanism with vesting, for
-//! rewarding tokens awarded through [Tinlake](https://tinlake.centrifuge.io)
+//! rewarding tokens (RAD or others) awarded through [Tinlake](https://tinlake.centrifuge.io)
 //! investments.
 //!
 //! ## Overview

@@ -76,21 +76,20 @@ use impls::DealWithFees;
 
 /// proofs utilities
 mod proofs;
-
 /// nft module
-// mod nfts;
+mod nfts;
 
-/// radial reward claims module
-mod rad_claims;
+/// Reward claims module
+use pallet_claims::*;
 
 /// bridge module
-// mod bridge;
+mod bridge;
 
 /// verifiable attributes registry module
-// mod va_registry;
+mod va_registry;
 
 /// nft module
-// mod nft;
+mod nft;
 
 /// Constant values used within the runtime.
 pub mod constants;
@@ -913,7 +912,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+        Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// Registry: va_registry::{Pallet, Call, Storage, Event<T>},
 		// Nft: nft::{Pallet, Call, Storage, Event<T>},
