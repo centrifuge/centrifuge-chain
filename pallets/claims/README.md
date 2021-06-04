@@ -1,11 +1,11 @@
-# Rad Claims Pallet
+# RAD Token Claims Pallet
 
 <!-- TOC -->
 
-- [Rad Claims Pallet](#rad-claims-pallet)
+- [RAD Token Claims Pallet](#rad-token-claims-pallet)
     - [Overview](#overview)
     - [Pallet Usage](#pallet-usage)
-        - [Add the Pallet to your Parachain Runtime](#add-the-pallet-to-your-parachain-runtime)
+        - [Add the Pallet to your Runtime](#add-the-pallet-to-your-runtime)
         - [Configure the Pallet](#configure-the-pallet)
     - [Pallet Documentation](#pallet-documentation)
     - [References](#references)
@@ -15,12 +15,15 @@
 
 ## Overview
 
-This [FRAME](https://substrate.dev/docs/en/knowledgebase/runtime/frame) pallet 
-provides functionalities for processing RAD token rewarding claims.
+This Centrifuge Chain pallet provides functionalities for processing claims of RAD token acquired 
+through [Tinlake](https://tinlake.centrifuge.io/) investments.
+
+This pallet is built on Substrate [FRAME v2](https://substrate.dev/docs/en/knowledgebase/runtime/frame) 
+library.
 
 ## Pallet Usage
 
-### Add the Pallet to your Parachain Runtime
+### Add the Pallet to your Runtime
 
 In order to add this pallet to your runtime, you should add the following lines
 to your parachain's main `Cargo.toml` file:
@@ -30,14 +33,14 @@ to your parachain's main `Cargo.toml` file:
 
 [dependencies]
 
-pallet-rad-claims = { branch = 'master', git = 'https://github.com/centrifuge/centrifuge-chain.git', default-features = false }
+pallet-claims = { branch = 'master', git = 'https://github.com/centrifuge/centrifuge-chain.git', default-features = false }
 
 # -- snip --
 
 [features]
 std = [
     # -- snip --
-    'pallet-rad-claims/std',                # <-- Add this line
+    'pallet-claims/std',                # <-- Add this line
 ]
 ```
 
@@ -58,7 +61,7 @@ pub(crate) const RAD: Balance = 100 * CENTI_RAD;
 
 // Parameterize Rad claims pallet
 parameter_types! {
-    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -66,9 +69,9 @@ parameter_types! {
 }
 
 // Implement Rad claims pallet configuration trait for the mock runtime
-impl pallet_rad_claims::Config for MyRuntime {
+impl pallet_claims::Config for MyRuntime {
     type Event = ();
-    type PalletId = RadClaimsPalletId;
+    type PalletId = ClaimsPalletId;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = EnsureSignedBy<One, u64>;
@@ -79,7 +82,7 @@ impl pallet_rad_claims::Config for MyRuntime {
 construct_runtime! {
     …
 
-    RadClaims: pallet_rad_claims::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+    Claims: pallet_claims::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
 }
 ```
 
@@ -88,7 +91,7 @@ construct_runtime! {
 You can see this pallet's reference documentation with the following command:
 
 ```sh
-$ cargo doc --package pallet-rad-claims --open
+$ cargo doc --package pallet-claims --open
 ```
 
 The table of contents for this markdown file is automatically generated using the [`auto-markdown-toc`](https://marketplace.visualstudio.com/items?itemName=huntertran.auto-markdown-toc) extension for Visual StudioCode.

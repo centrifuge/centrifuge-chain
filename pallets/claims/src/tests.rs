@@ -52,8 +52,8 @@ use pallet_balances::Error as BalancesError;
 #[test]
 fn can_upload_account() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        assert_noop!(RadClaims::can_update_upload_account(Origin::signed(USER_A)), BadOrigin);
-        assert_ok!(RadClaims::can_update_upload_account(Origin::signed(ADMIN)));
+        assert_noop!(Claims::can_update_upload_account(Origin::signed(USER_A)), BadOrigin);
+        assert_ok!(Claims::can_update_upload_account(Origin::signed(ADMIN)));
     });
 }
 
@@ -71,25 +71,25 @@ fn verify_proofs() {
         ];
 
         // Abuse DDoS attach check
-        assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &sorted_hashes_long.to_vec()), false);
+        assert_eq!(Claims::verify_proofs(&USER_B, &amount, &sorted_hashes_long.to_vec()), false);
 
         // Wrong sorted hashes for merkle tree
         let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
-        assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), false);
+        assert_eq!(Claims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), false);
 
         let mut v: Vec<u8> = USER_B.encode();
         v.extend(amount.encode());
 
         // Single-leaf tree
-        assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+        assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
         let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
-        assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), leaf_hash));
+        assert_eq!(Claims::verify_proofs(&USER_B, &amount, &[].to_vec()), true);
 
         // Two-leaf tree
-        let root_hash = RadClaims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
-        assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), true);
+        let root_hash = Claims::sorted_hash_of(&leaf_hash, &one_sorted_hashes[0]);
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
+        assert_eq!(Claims::verify_proofs(&USER_B, &amount, &one_sorted_hashes.to_vec()), true);
 
         // 10-leaf tree
         let leaf_hash_0: H256 = [0; 32].into();
@@ -102,47 +102,47 @@ fn verify_proofs() {
         let leaf_hash_7: H256 = [7; 32].into();
         let leaf_hash_8: H256 = [8; 32].into();
         let leaf_hash_9: H256 = [9; 32].into();
-        let node_0 = RadClaims::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
-        let node_1 = RadClaims::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
-        let node_2 = RadClaims::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
-        let node_3 = RadClaims::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
-        let node_4 = RadClaims::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
-        let node_00 = RadClaims::sorted_hash_of(&node_0, &node_1);
-        let node_01 = RadClaims::sorted_hash_of(&node_2, &node_3);
-        let node_000 = RadClaims::sorted_hash_of(&node_00, &node_01);
-        let node_root = RadClaims::sorted_hash_of(&node_000, &node_4);
+        let node_0 = Claims::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
+        let node_1 = Claims::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
+        let node_2 = Claims::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
+        let node_3 = Claims::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
+        let node_4 = Claims::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
+        let node_00 = Claims::sorted_hash_of(&node_0, &node_1);
+        let node_01 = Claims::sorted_hash_of(&node_2, &node_3);
+        let node_000 = Claims::sorted_hash_of(&node_00, &node_01);
+        let node_root = Claims::sorted_hash_of(&node_000, &node_4);
 
         let four_sorted_hashes: [H256; 4] = [leaf_hash_3.into(), node_0.into(), node_01.into(), node_4.into()];
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), node_root));
-        assert_eq!(RadClaims::verify_proofs(&USER_B, &amount, &four_sorted_hashes.to_vec()), true);
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), node_root));
+        assert_eq!(Claims::verify_proofs(&USER_B, &amount, &four_sorted_hashes.to_vec()), true);
     });
 }
 
 #[test]
 fn set_upload_account() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        assert_eq!(RadClaims::get_upload_account(), 0x0);
-        assert_noop!(RadClaims::set_upload_account(Origin::signed(USER_A), USER_A), BadOrigin);
-        assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), USER_A));
-        assert_eq!(RadClaims::get_upload_account(), USER_A);
+        assert_eq!(Claims::get_upload_account(), 0x0);
+        assert_noop!(Claims::set_upload_account(Origin::signed(USER_A), USER_A), BadOrigin);
+        assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), USER_A));
+        assert_eq!(Claims::get_upload_account(), USER_A);
     });
 }
 
 #[test]
 fn store_root_hash() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        assert_eq!(RadClaims::get_upload_account(), 0x0);
+        assert_eq!(Claims::get_upload_account(), 0x0);
         // USER_A not allowed to upload hash
         let root_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&[0; 32]);
         assert_noop!(
-            RadClaims::store_root_hash(Origin::signed(USER_A), root_hash),
+            Claims::store_root_hash(Origin::signed(USER_A), root_hash),
             Error::<MockRuntime>::MustBeAdmin
         );
         // Adding ADMIN as allowed upload account
-        assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-        assert_eq!(RadClaims::get_upload_account(), ADMIN);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
-        assert_eq!(RadClaims::get_root_hash(root_hash), true);
+        assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+        assert_eq!(Claims::get_upload_account(), ADMIN);
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
+        assert_eq!(Claims::get_root_hash(root_hash), true);
     });
 }
 
@@ -155,7 +155,7 @@ fn pre_calculate_single_root(
     v.extend(amount.encode());
     let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
 
-    RadClaims::sorted_hash_of(&leaf_hash, other_hash)
+    Claims::sorted_hash_of(&leaf_hash, other_hash)
 }
 
 #[test]
@@ -167,47 +167,47 @@ fn claim() {
 
         // Bad origin, signed vs unsigned
         assert_noop!(
-            RadClaims::claim(Origin::signed(USER_B), USER_B, amount, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::signed(USER_B), USER_B, amount, one_sorted_hashes.to_vec()),
             BadOrigin
         );
 
         // proof validation error - roothash not stored
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::InvalidProofs
         );
 
         // Set valid proofs
-        assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+        assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
 
         let short_root_hash = pre_calculate_single_root(
             &USER_B, &(4 * RAD), &one_sorted_hashes[0]);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), short_root_hash));
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), short_root_hash));
 
         // Minimum payout not met
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, 4 * RAD, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, 4 * RAD, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::UnderMinPayout
         );
 
         let long_root_hash = pre_calculate_single_root(
             &USER_B, &(10001 * RAD), &one_sorted_hashes[0]);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), long_root_hash));
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), long_root_hash));
 
         // Claims Module Account does not have enough balance
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, 10001 * RAD, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, 10001 * RAD, one_sorted_hashes.to_vec()),
             BalancesError::<MockRuntime, _>::InsufficientBalance
         );
 
         // Ok
         let ok_root_hash = pre_calculate_single_root(
             &USER_B, &amount, &one_sorted_hashes[0]);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), ok_root_hash));
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), ok_root_hash));
 
         let account_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
-        assert_ok!(RadClaims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()));
-        assert_eq!(RadClaims::get_claimed_amount(USER_B), amount);
+        assert_ok!(Claims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()));
+        assert_eq!(Claims::get_claimed_amount(USER_B), amount);
         let account_new_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
         assert_eq!(account_new_balance, account_balance + amount);
 
@@ -215,9 +215,9 @@ fn claim() {
         // Since balance logic is accumulative
         let past_root_hash = pre_calculate_single_root(
             &USER_B, &(50 * RAD), &one_sorted_hashes[0]);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), past_root_hash));
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), past_root_hash));
         assert_noop!(
-            RadClaims::claim(Origin::none(), USER_B, 50 * RAD, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, 50 * RAD, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::InsufficientBalance
         );
 
@@ -240,16 +240,16 @@ fn validate_unsigned_check() {
         // Abuse DDoS attach check
         let inner_long = pallet_rad_claims::Call::claim(USER_B, amount, sorted_hashes_long.to_vec());
         assert_noop!(
-            <RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_long),
+            <Claims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_long),
             InvalidTransaction::BadProof
         );
 
         // Two-leaf tree success
-        assert_ok!(RadClaims::set_upload_account(Origin::signed(ADMIN), ADMIN));
+        assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
         let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
         let root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
-        assert_ok!(RadClaims::store_root_hash(Origin::signed(ADMIN), root_hash));
+        assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
         let inner = pallet_rad_claims::Call::claim(USER_B, amount, one_sorted_hashes.to_vec());
-        assert_ok!(<RadClaims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
+        assert_ok!(<Claims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
     });
 }

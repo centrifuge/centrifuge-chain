@@ -197,7 +197,7 @@ pub mod pallet {
     // Pallet configuration
     // ------------------------------------------------------------------------
 
-    /// Rad claim pallet's configuration trait.
+    /// RAD claims pallet's configuration trait.
     ///
     /// Associated types and constants are declared in this trait. If the pallet
     /// depends on other super-traits, the latter must be added to this trait, 

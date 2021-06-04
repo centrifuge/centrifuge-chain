@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! Rad claims pallet testing environment and utilities
+//! RAD claims pallet testing environment and utilities
 //!
 //! The main components implemented in this mock module is a mock runtime,
 //! some helper functions and the definition of some constants.
@@ -26,7 +26,7 @@
 // ----------------------------------------------------------------------------
 
 use crate::{
-    self as pallet_rad_claims,
+    self as pallet_claims,
     Config
 };
 
@@ -114,7 +114,7 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RadClaims: pallet_rad_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
+        Claims: pallet_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
     }
 );
 
@@ -168,7 +168,7 @@ impl pallet_balances::Config for MockRuntime {
 
 // Parameterize RAD claims pallet
 parameter_types! {
-    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -185,7 +185,7 @@ impl SortedMembers<u64> for One {
 // Implement RAD claims pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
     type Event = Event;
-    type PalletId = RadClaimsPalletId;
+    type PalletId = ClaimsPalletId;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = EnsureSignedBy<One, u64>;
@@ -225,7 +225,7 @@ impl TestExternalitiesBuilder {
             balances: vec![
                 (ADMIN, ENDOWED_BALANCE), 
                 (USER_A, 1), 
-                (RadClaims::account_id(), ENDOWED_BALANCE)
+                (Claims::account_id(), ENDOWED_BALANCE)
             ],
         }.assimilate_storage(&mut storage).unwrap();
         
