@@ -813,11 +813,11 @@ parameter_types! {
     pub const Longevity: u32 = 64;
 }
 
-impl rad_claims::Trait for Runtime {
+impl pallet_claims::Config for Runtime {
     type Event = Event;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
-    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type AdminOgit rigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
     type Currency = Balances;
 }
 
