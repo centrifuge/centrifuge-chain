@@ -12,19 +12,21 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
-
+sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master", optional = true }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [features]
 default = ['std']
+runtime-benchmarks = ["frame-benchmarking"]
 std = [
     'codec/std',
     'frame-support/std',

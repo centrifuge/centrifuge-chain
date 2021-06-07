@@ -125,6 +125,9 @@ polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centri
 node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
 node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
+# benchmarking
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate", branch = "master" }
+
 [build-dependencies]
 vergen = "3.0.4"
 substrate-build-script-utils  = { optional = true, git = "https://github.com/centrifuge/substrate", branch = "master" }
@@ -144,4 +147,7 @@ std = [
 	"structopt",
 	"substrate-build-script-utils",
 	"sp-consensus-babe/std"
+]
+runtime-benchmarks = [
+	"node-runtime/runtime-benchmarks",
 ]

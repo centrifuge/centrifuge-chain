@@ -11,14 +11,15 @@ use frame_support::{
 };
 
 pub use pallet::*;
-pub mod weights;
-pub use weights::*;
-
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
+mod benchmarking;
+
+pub mod weights;
+pub use weights::*;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]

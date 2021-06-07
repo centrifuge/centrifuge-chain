@@ -3,7 +3,7 @@
 set -e
 
 cmd=$1
-parachain="${PARA_CHAIN_SPEC:-charcoal-chachacha-local}"
+parachain="${PARA_CHAIN_SPEC:-charcoal-local}"
 para_id="${PARA_ID:-2000}"
 
 case $cmd in
@@ -55,4 +55,7 @@ onboard-parachain)
           2000 \
           "{ \"genesisHead\":\"${genesis?}\", \"validationCode\": \"${wasm}\", \"parachain\": true }"
   ;;
+
+benchmark)
+  ./scripts/run_benchmark.sh "${parachain}" "$2" "$3"
 esac
