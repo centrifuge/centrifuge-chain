@@ -40,7 +40,7 @@ use sp_runtime::{
     AccountId32, ModuleId, Perbill,
 };
 
-use crate::traits::{Reward, WeightInfo};
+use crate::traits::WeightInfo;
 
 // ----------------------------------------------------------------------------
 // Type alias, constants
@@ -181,12 +181,12 @@ impl Config for MockRuntime {
     type RelayChainAccountId = AccountId32;
     type ClaimTransactionPriority = ClaimTransactionPriority;
     type ClaimTransactionLongevity = ClaimTransactionLongevity;
-    type RewardMechanism = Dummy;
+    type RewardMechanism = CrowdloanReward;
 }
 
 pub struct Dummy;
 
-impl Reward for Dummy {
+impl pallet_crowdloan_claim_reward::Reward for Dummy {
     type ParachainAccountId = u64;
     type ContributionAmount = u64;
     type BlockNumber = u64;

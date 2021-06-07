@@ -4650,6 +4650,7 @@ dependencies = [
  "lazy_static",
  "log 0.4.14",
  "pallet-balances",
+ "pallet-crowdloan-claim-reward",
  "pallet-crowdloan-reward",
  "pallet-vesting",
  "parity-scale-codec",
@@ -4665,6 +4666,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-crowdloan-claim-reward"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-crowdloan-reward"
 version = "2.0.0"
 dependencies = [
@@ -4673,7 +4684,7 @@ dependencies = [
  "frame-system",
  "log 0.4.14",
  "pallet-balances",
- "pallet-crowdloan-claim",
+ "pallet-crowdloan-claim-reward",
  "pallet-indices",
  "pallet-vesting",
  "parity-scale-codec",

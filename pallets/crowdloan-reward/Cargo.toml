@@ -22,7 +22,7 @@ pallet-indices = { branch = "rococo-v1", git = "https://github.com/paritytech/su
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 serde = { version = "1.0.119" }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
-pallet-crowdloan-claim = { path='../crowdloan-claim', default_features = false }
+pallet-crowdloan-claim-reward = { path='../crowdloan-claim/crowdloan-claim-reward', default_features = false }
 
 
 [dev-dependencies]

@@ -1,0 +1,17 @@
+[package]
+name = "pallet-crowdloan-claim-reward"
+authors = ['The Centrifugians Tribe']
+edition = '2018'
+homepage = 'https://centrifuge.io'
+license = "LGPL-3.0"
+repository = 'https://github.com/centrifuge/centrifuge-chain'
+version = '2.0.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
+frame-support = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-std = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }

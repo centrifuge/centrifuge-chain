@@ -27,7 +27,7 @@ use frame_support::{assert_noop, assert_ok};
 use sc_rpc_api::state::ReadProof;
 use sp_core::H256;
 use sp_runtime::generic::BlockId;
-//use sp_core::{sr25519::{Pair, Public, Signature}};
+use sp_std::str::FromStr;
 
 lazy_static! {
     static ref AT: BlockId<mock::Block> = BlockId::hash(H256([
@@ -224,7 +224,7 @@ fn test_valid_claim() {
     TestExternalitiesBuilder::default()
         .build(Some(init_module))
         .execute_with(|| {
-            //TODO: Proof verification does not work currently
+            //TODO:
         })
 }
 
