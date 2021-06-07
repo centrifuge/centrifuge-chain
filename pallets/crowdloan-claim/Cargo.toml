@@ -24,13 +24,17 @@ sp-std = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.
 sc-rpc-api = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-state-machine = {branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-trie = {branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+lazy_static = "1.4.0"
 
 [dev-dependencies]
 serde = { version = "1.0.119" }
 sp-io = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 sp-trie = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
+sp-keyring = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = false }
+hex = { version="0.4.3", default_features = false }
+
 
 [features]
 default = ['std']

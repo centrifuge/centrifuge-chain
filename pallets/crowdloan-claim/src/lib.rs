@@ -89,6 +89,8 @@
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
+#[macro_use]
+extern crate lazy_static;
 
 use codec::{Decode, Encode};
 // Runtime, system and frame primitives
@@ -301,7 +303,8 @@ pub mod pallet {
             + MaybeSerializeDeserialize
             + Member
             + Ord
-            + Parameter;
+            + Parameter
+            + Into<AccountId32>;
 
         /// The balance type of the relay chain
         type RelayChainBalance: Parameter
@@ -356,10 +359,6 @@ pub mod pallet {
     // Additional argument to specify the metadata to use for given type
     #[pallet::metadata(T::AccountId = "AccountId")]
     pub enum Event<T: Config> {
-        /// Event triggered when a reward has already been processed.
-        /// \[who, amount\]
-        ClaimAlreadyProcessed(T::RelayChainAccountId, ContributionAmountOf<T>),
-
         /// Event emitted when the crowdloan claim pallet is properly configured.
         PalletInitialized(),
 
@@ -391,12 +390,12 @@ pub mod pallet {
     ///
     /// This is needed in order to build the correct keys for proof check.
     #[pallet::storage]
-    #[pallet::getter(fn trie_index)]
+    #[pallet::getter(fn crowdloan_trie_index)]
     pub type CrowdloanTrieIndex<T: Config> = StorageValue<_, TrieIndex>;
 
     /// A map containing the list of claims for reward payouts that were successfuly processed
     #[pallet::storage]
-    #[pallet::getter(fn claims_processed)]
+    #[pallet::getter(fn processed_claims)]
     pub(super) type ProcessedClaims<T: Config> =
         StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, T::BlockNumber>;
 
@@ -549,14 +548,14 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             // Ensure that only administrator entity can perform this administrative transaction
             ensure!(
-                Self::ensure_administrator(origin) == Ok(()),
+                Self::ensure_administrator(origin).is_ok(),
                 Error::<T>::MustBeAdministrator
             );
 
             // Ensure that the pallet has not already been initialized
             // TODO: Should we change this? This would basically allow the pallet to be used exactly once, without an RuntimeUpgrade.
             ensure!(
-                <Contributions<T>>::get() == None,
+                <Contributions<T>>::get().is_none(),
                 Error::<T>::PalletAlreadyInitialized
             );
 
@@ -684,7 +683,7 @@ impl<T: Config> Pallet<T> {
         // Now check if the contributor's native identity on the relaychain is valid
         let payload = parachain_account_id.encode();
         ensure!(
-            signature.verify(payload.as_slice(), &Self::as_accountId32(&relaychain_account_id)),
+            signature.verify(payload.as_slice(), &relaychain_account_id.clone().into()),
             Error::<T>::InvalidContributorSignature
         );
 
@@ -708,14 +707,14 @@ impl<T: Config> Pallet<T> {
         // rebuild child info
         let mut buf = Vec::new();
         buf.extend_from_slice(b"crowdloan");
-        buf.extend_from_slice(&Self::trie_index().encode()[..]);
+        buf.extend_from_slice(&Self::crowdloan_trie_index().ok_or(Error::<T>::PalletNotInitialized)?.encode()[..]);
         let child_info = ChildInfo::new_default(T::Hashing::hash(&buf[..]).as_ref());
 
         // We could unwrap here, as we check in the calling function if module is initialized (i.e. if contributions is set)
         // but better be safe than sorry...
         let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
 
-        read_child_proof_check::<T::Hashing, Vec<Vec<u8>>>(root, proof, &child_info, keys).map_or(
+        read_child_proof_check::<T::Hashing, _>(root, proof, &child_info, keys).map_or(
             Err(Error::<T>::InvalidProofOfContribution.into()),
             |mut key_value_map| {
                 key_value_map
