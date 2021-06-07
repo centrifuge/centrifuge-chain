@@ -224,7 +224,51 @@ fn test_valid_claim() {
     TestExternalitiesBuilder::default()
         .build(Some(init_module))
         .execute_with(|| {
-            //TODO:
+            let alice = get_alice();
+            let at = alice.at;
+            let bob = get_bob();
+            let charlie = get_charlie();
+            let temp = hex::decode("48616c6c6f206963682062696e20436861726c696521").unwrap();
+            let bytes = std::str::from_utf8(temp.as_slice()).unwrap();
+            println!("{}", bytes);
+            let contribution_scale = hex::decode(
+                "00008d49fd1a070000000000000000005848616c6c6f206963682062696e20436861726c696521",
+            )
+            .unwrap();
+            //let contribution_scale = hex::decode("00001a93fa350e00000000000000000000").unwrap();
+            let (value, _memo): (ContributionAmountOf<MockRuntime>, Vec<u8>) =
+                Decode::decode::<&[u8]>(&mut contribution_scale.as_ref())
+                    .unwrap_or((Zero::zero(), Vec::new()));
+
+            // 0x3a6368696c645f73746f726167653a64656661756c743ac40cac02c4ed0673d410e5a6fc91234cd1287902634e34ee2b379c4e8a7131ca
+            // 0xc40cac02c4ed0673d410e5a6fc91234cd1287902634e34ee2b379c4e8a7131ca
+            let mut buf = Vec::new();
+            buf.extend_from_slice(b"crowdloan");
+            buf.extend_from_slice(&CrowdloanClaim::crowdloan_trie_index().unwrap().encode()[..]);
+            let hex_buf = hex::encode(<MockRuntime as frame_system::Config>::Hashing::hash(
+                buf.as_slice(),
+            ));
+
+            let original_proof = alice.proof.proof.clone();
+            let proof: Vec<Vec<u8>> = alice.proof.proof.into_iter().map(|byte| byte.0).collect();
+
+            for (count, node) in proof.iter().enumerate() {
+                println!("{}", hex::encode(node.as_slice()));
+
+                let inner_original = original_proof.get(count).unwrap();
+                for (count_2, inner) in node.iter().enumerate() {
+                    assert_eq!(&(inner_original.0)[count_2], inner)
+                }
+            }
+
+            assert_ok!(CrowdloanClaim::claim_reward(
+                Origin::none(),
+                alice.relaychain_account,
+                alice.parachain_account,
+                alice.contribution,
+                alice.signature,
+                proof
+            ));
         })
 }
 
