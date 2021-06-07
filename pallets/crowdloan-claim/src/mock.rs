@@ -14,15 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-
 //! Crowdloan claim pallet testing environment and utilities
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
-
-
-#![cfg(test)]
-
 
 // ----------------------------------------------------------------------------
 // Imports and dependencies
@@ -30,11 +25,7 @@
 
 use crate::{self as pallet_crowdloan_claim, Config};
 
-use frame_support::{
-  parameter_types, 
-  traits::Contains, 
-  weights::Weight
-};
+use frame_support::{dispatch::DispatchResult, parameter_types, traits::Contains, weights::Weight};
 
 use frame_system::EnsureSignedBy;
 
@@ -42,25 +33,14 @@ use sp_core::H256;
 
 use sp_io::TestExternalities;
 
-use sp_runtime::{ModuleId, testing::Header, traits::{
-    BlakeTwo256,
-    IdentityLookup,
-}, transaction_validity::{
-    InvalidTransaction,
-    TransactionPriority,
-    TransactionSource,
-    TransactionValidity,
-    ValidTransaction,
-}, AccountId32};
+use sp_runtime::{
+    testing::Header,
+    traits::{BlakeTwo256, IdentityLookup},
+    transaction_validity::TransactionPriority,
+    AccountId32, ModuleId, Perbill,
+};
 
-// Trie data structure manipulation features
-use sp_trie::*;
-
-use crate::traits::{WeightInfo, RewardMechanism};
-use std::str::FromStr;
-use std::hash::Hash;
-use std::fmt::Debug;
-
+use crate::traits::{Reward, WeightInfo};
 
 // ----------------------------------------------------------------------------
 // Type alias, constants
@@ -69,12 +49,6 @@ use std::fmt::Debug;
 type AccountId = u64;
 type Balance = u64;
 
-// Fake testing users
-pub const ADMIN_USER: u64 = 0x1;
-pub const NORMAL_USER: u64 = 0x2;
-
-
-
 // ----------------------------------------------------------------------------
 // Mock runtime
 // ----------------------------------------------------------------------------
@@ -82,30 +56,21 @@ pub const NORMAL_USER: u64 = 0x2;
 // Extrinsics weight information used for testing
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
-
-    fn initialize() -> Weight { 
-        0 as Weight 
+    fn initialize() -> Weight {
+        0 as Weight
     }
 
-    fn register_contributor() -> Weight { 
-        0 as Weight 
-    }
-
-    fn evaluate_reward() -> Weight { 
-        0 as Weight 
-    }
-
-    fn claim_reward() -> Weight { 
-        0 as Weight 
+    fn claim_reward() -> Weight {
+        0 as Weight
     }
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Block = frame_system::mocking::MockBlock<MockRuntime>;
+pub type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-    pub enum MockRuntime where 
+    pub enum MockRuntime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
@@ -126,28 +91,28 @@ parameter_types! {
 
 // Implement frame system configuration for the mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
-	type BlockWeights = BlockWeights;
-	type BlockLength = ();
-	type Origin = Origin;
-	type Index = u64;
-	type Call = Call;
-	type BlockNumber = u64;
-	type Hash = H256;
-	type Hashing = BlakeTwo256;
-	type AccountId = u64;
-	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<Balance>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
+    type BaseCallFilter = ();
+    type BlockWeights = BlockWeights;
+    type BlockLength = ();
+    type Origin = Origin;
+    type Index = u64;
+    type Call = Call;
+    type BlockNumber = u64;
+    type Hash = H256;
+    type Hashing = BlakeTwo256;
+    type AccountId = u64;
+    type Lookup = IdentityLookup<Self::AccountId>;
+    type Header = Header;
+    type Event = Event;
+    type BlockHashCount = BlockHashCount;
+    type DbWeight = ();
+    type Version = ();
+    type PalletInfo = PalletInfo;
+    type AccountData = pallet_balances::AccountData<Balance>;
+    type OnNewAccount = ();
+    type OnKilledAccount = ();
+    type SystemWeightInfo = ();
+    type SS58Prefix = ();
 }
 
 // Parameterize balances pallet
@@ -193,6 +158,7 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
     type ModuleId = CrowdloanRewardModuleId;
     type RelayChainBalance = Balance;
     type RelayChainAccountId = AccountId;
+    type Conversion = u64;
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type WeightInfo = ();
 }
@@ -212,7 +178,7 @@ impl Config for MockRuntime {
     type WeightInfo = MockWeightInfo;
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type RelayChainBalance = Balance;
-    type RelayChainAccountId = AccountId;
+    type RelayChainAccountId = AccountId32;
     type ClaimTransactionPriority = ClaimTransactionPriority;
     type ClaimTransactionLongevity = ClaimTransactionLongevity;
     type RewardMechanism = Dummy;
@@ -220,16 +186,25 @@ impl Config for MockRuntime {
 
 pub struct Dummy;
 
-impl RewardMechanism for Dummy {
+impl Reward for Dummy {
     type ParachainAccountId = u64;
     type ContributionAmount = u64;
     type BlockNumber = u64;
+    type NativeBalance = Balance;
 
-    fn reward(who: Self::ParachainAccountId, contribution: Self::ContributionAmount) -> frame_support::dispatch::DispatchResult {
+    fn reward(
+        _who: Self::ParachainAccountId,
+        _contribution: Self::ContributionAmount,
+    ) -> DispatchResult {
         Ok(())
     }
 
-    fn initialize(conversion_rate: u32, direct_payout_ratio: u32, vesting_period: Self::BlockNumber, vesting_start: Self::BlockNumber) -> frame_support::dispatch::DispatchResult {
+    fn initialize(
+        _conversion_rate: Self::NativeBalance,
+        _direct_payout_ratio: Perbill,
+        _vesting_period: Self::BlockNumber,
+        _vesting_start: Self::BlockNumber,
+    ) -> DispatchResult {
         Ok(())
     }
 }
@@ -240,28 +215,65 @@ impl Contains<u64> for One {
     }
 }
 
-
 // ----------------------------------------------------------------------------
 // Test externalities
 // ----------------------------------------------------------------------------
 
 // Test externalities builder type declaraction.
 //
-// This type is mainly used for mocking storage in tests. It is the type alias 
+// This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
-pub struct TestExternalitiesBuilder;
+pub struct TestExternalitiesBuilder {
+    existential_deposit: u64,
+}
+
+// Implement default trait for test externalities builder
+impl Default for TestExternalitiesBuilder {
+    fn default() -> Self {
+        Self {
+            existential_deposit: 1,
+        }
+    }
+}
 
 impl TestExternalitiesBuilder {
+    // Build a genesis storage key/value store
+    pub fn build(self, optional: Option<impl FnOnce()>) -> TestExternalities {
+        let mut storage = frame_system::GenesisConfig::default()
+            .build_storage::<MockRuntime>()
+            .unwrap();
 
-  // Build a genesis storage key/value store
-	pub(crate) fn build() -> TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
-      .build_storage::<MockRuntime>()
-      .unwrap();
-		
-    let mut ext = TestExternalities::from(storage);
+        pallet_balances::GenesisConfig::<MockRuntime> {
+            balances: vec![
+                (1, 10 * self.existential_deposit),
+                (2, 20 * self.existential_deposit),
+                (3, 30 * self.existential_deposit),
+                (4, 40 * self.existential_deposit),
+                (12, 10 * self.existential_deposit),
+                (
+                    CrowdloanReward::account_id(),
+                    1000 * self.existential_deposit,
+                ),
+            ],
+        }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
+        pallet_vesting::GenesisConfig::<MockRuntime> {
+            vesting: vec![
+                (1, 0, 10, 5 * self.existential_deposit),
+                (2, 10, 20, 0),
+                (12, 10, 20, 5 * self.existential_deposit),
+            ],
+        }
+        .assimilate_storage(&mut storage)
+        .unwrap();
+
+        let mut ext = TestExternalities::from(storage);
+
+        if let Some(execute) = optional {
+            ext.execute_with(execute);
+        }
+        ext
+    }
 }

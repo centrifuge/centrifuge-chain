@@ -216,6 +216,7 @@ pub mod pallet {
             + Debug
             + Into<BalanceOf<Self>>;
 
+        // The conversion type, that allows to create a balance-object from a u64
         type Conversion: Parameter
             + Member
             + AtLeast32BitUnsigned
