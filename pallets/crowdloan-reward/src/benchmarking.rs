@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-
 // # Crowdloan reward pallet's transactions benchmarking
 //
 // ## Overview
@@ -24,7 +23,7 @@
 // used to figure out how many extrinsics a block can support.
 //
 // This benchmarking module uses the Substrate Runtime Benchmaking (SRB) tool
-// to automate the computation of the weight of each extrinsics implemented in 
+// to automate the computation of the weight of each extrinsics implemented in
 // this pallet. The result is an output Rust file which contains a handy function
 // for getting weights of extrinsics and that can be easily integrated to the
 // chain's runtime framework.
@@ -36,7 +35,7 @@
 // ```sh
 // $ cargo build --release --features runtime-benchmarks
 // ```
-// 
+//
 // The resulting auto-generated weight estimate for the extrinsics implemented in the
 // pallet is stored in the `weights.rs` file. The latter must not be modified manually.
 // The exact command of how the estimate was generated, is printed at the top of this file.
@@ -48,17 +47,11 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-
-use frame_benchmarking::{
-    account,
-    benchmarks,
-    impl_benchmark_test_suite,
-};
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 
 use crate::*;
@@ -77,7 +70,6 @@ git sample_benchmark_name {
     }
 }
 
-
 // ----------------------------------------------------------------------------
 // Benchmark tests
 // ----------------------------------------------------------------------------
@@ -86,19 +78,15 @@ git sample_benchmark_name {
 //
 // This macro generates the test cases for benchmarking. It can be executed using
 // the following command:
-// 
+//
 // ```sh
 // $ cargo test -p pallet-crowdloan-claim --all-features
 // ```
 //
 // At the end of the execution, the following message is printed in the result:
-// 
+//
 // `test benchmarking::benchmark_tests::test_benchmarks ... ok`.
 //
 // The line generates three steps per benchmark, with repeat=1 and the three steps are
 //   [low, mid, high] of the range.
-impl_benchmark_test_suite!(
-    Pallet,
-    crate::tests::new_test_ext(),
-    crate::tests::Test,
-);
+impl_benchmark_test_suite!(Pallet, crate::tests::new_test_ext(), crate::tests::Test,);

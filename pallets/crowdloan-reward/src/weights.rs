@@ -14,15 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-
 //! Crowdloan reward pallet's extrinsics weight information
-//! 
+//!
 //! Note that the following weights are used only for development.
 //! In fact, weights are calculated using runtime benchmarking.
 
-use frame_support::{
-    weights::Weight
-};
+use frame_support::weights::Weight;
 
 use crate::traits::WeightInfo;
 
