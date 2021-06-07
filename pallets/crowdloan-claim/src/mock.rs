@@ -42,26 +42,24 @@ use sp_core::H256;
 
 use sp_io::TestExternalities;
 
-use sp_runtime::{
-  ModuleId,
-  testing::Header,
-  traits::{ 
+use sp_runtime::{ModuleId, testing::Header, traits::{
     BlakeTwo256,
     IdentityLookup,
-  },
-  transaction_validity::{
-    InvalidTransaction, 
+}, transaction_validity::{
+    InvalidTransaction,
     TransactionPriority,
     TransactionSource,
-    TransactionValidity, 
-    ValidTransaction, 
-  }
-};
+    TransactionValidity,
+    ValidTransaction,
+}, AccountId32};
 
 // Trie data structure manipulation features
 use sp_trie::*;
 
-use crate::traits::WeightInfo;
+use crate::traits::{WeightInfo, RewardMechanism};
+use std::str::FromStr;
+use std::hash::Hash;
+use std::fmt::Debug;
 
 
 // ----------------------------------------------------------------------------
@@ -114,6 +112,7 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Module, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Module, Call, Config<T>, Storage, Event<T>},
+        Vesting: pallet_vesting::{Module, Call, Config<T>, Storage, Event<T>},
         CrowdloanReward: pallet_crowdloan_reward::{Module, Call, Storage, Event<T>},
         CrowdloanClaim: pallet_crowdloan_claim::{Module, Call, Storage, Event<T>, ValidateUnsigned},
     }
@@ -214,10 +213,25 @@ impl Config for MockRuntime {
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type RelayChainBalance = Balance;
     type RelayChainAccountId = AccountId;
-    type ClaimTransactionInterval = ClaimTransactionInterval;
     type ClaimTransactionPriority = ClaimTransactionPriority;
     type ClaimTransactionLongevity = ClaimTransactionLongevity;
-    type RewardMechanism = CrowdloanReward;
+    type RewardMechanism = Dummy;
+}
+
+pub struct Dummy;
+
+impl RewardMechanism for Dummy {
+    type ParachainAccountId = u64;
+    type ContributionAmount = u64;
+    type BlockNumber = u64;
+
+    fn reward(who: Self::ParachainAccountId, contribution: Self::ContributionAmount) -> frame_support::dispatch::DispatchResult {
+        Ok(())
+    }
+
+    fn initialize(conversion_rate: u32, direct_payout_ratio: u32, vesting_period: Self::BlockNumber, vesting_start: Self::BlockNumber) -> frame_support::dispatch::DispatchResult {
+        Ok(())
+    }
 }
 
 impl Contains<u64> for One {
