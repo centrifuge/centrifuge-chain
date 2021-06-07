@@ -99,3 +99,19 @@ This script will take a valid chain-spec chain_id, a parachain_id and a flag to 
 ./scripts/export_parachain_files.sh charcoal-staging 10001 true
 ```
 Adapt parameters accordingly.
+
+## Benchmarking pallets
+Pallets are to be benchmarked to find the correct weight for extrinsics. Follow substrate's benchmarking boiler-plate code
+and add pallet benchmark to the runtime. Then run the following script to generate a benchamarked `weights.rs` file for the pallet
+```shell
+./scripts/init.sh benchmark <your_pallet> <output generated weight file>(optional)
+```
+
+Example command to generate `pallet_fees` with default `output`
+```shell
+./scripts/init.sh benchmark pallet_fees
+```
+
+default output will be `./pallets/fees/src/weight.rs`
+You can override this by passing output path as last argument
+
