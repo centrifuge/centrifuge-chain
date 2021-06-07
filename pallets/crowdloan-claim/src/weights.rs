@@ -14,33 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-
 //! Crowdloan claim pallet's extrinsics weight information
-//! 
+//!
 //! Note that the following weights are used only for development.
 //! In fact, weights are calculated using runtime benchmarking.
 
-use frame_support::{
-  weights::Weight,
-};
+use frame_support::weights::Weight;
 
 use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
-
     fn initialize() -> Weight {
         10_000 as Weight
     }
 
-    fn register_contributor() -> Weight { 
-        10_000 as Weight 
-    }
-
-    fn evaluate_reward() -> Weight { 
-        10_000 as Weight 
-    }
-
-    fn claim_reward() -> Weight { 
-        10_000 as Weight 
+    fn claim_reward() -> Weight {
+        10_000 as Weight
     }
 }

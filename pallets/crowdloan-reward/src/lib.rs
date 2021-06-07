@@ -540,7 +540,7 @@ where
 
     // Configure reward pallet
     fn initialize(
-        conversion_rate: BalanceOf<T>,
+        conversion_rate: Self::NativeBalance,
         direct_payout_ratio: Perbill,
         vesting_period: Self::BlockNumber,
         vesting_start: Self::BlockNumber,

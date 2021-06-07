@@ -107,7 +107,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::storage::ChildInfo;
 use sp_core::Hasher;
 use sp_runtime::{
-    sp_std::{hash::Hash, str::FromStr},
+    sp_std::{hash::Hash, str::FromStr, vec, vec::Vec},
     traits::{AccountIdConversion, Bounded, MaybeDisplay, MaybeMallocSizeOf, Verify, Zero},
     ModuleId, MultiSignature,
 };
@@ -138,6 +138,7 @@ pub mod traits {
     use sp_runtime::traits::Zero;
 
     use super::*;
+    use frame_support::sp_runtime::Perbill;
 
     /// Weight information for pallet extrinsics
     ///
@@ -145,8 +146,6 @@ pub mod traits {
     /// See [`benchmarking`] module for more information.
     pub trait WeightInfo {
         fn initialize() -> Weight;
-        fn register_contributor() -> Weight;
-        fn evaluate_reward() -> Weight;
         fn claim_reward() -> Weight;
     }
 
@@ -165,7 +164,7 @@ pub mod traits {
     /// ```rust
     ///
     /// ```
-    pub trait RewardMechanism {
+    pub trait Reward {
         /// The account from the parachain, that the claimer provided in her/his transaction.
         type ParachainAccountId: Debug
             + Default
@@ -200,6 +199,15 @@ pub mod traits {
             + Member
             + Parameter;
 
+        type NativeBalance: Parameter
+            + Member
+            + AtLeast32BitUnsigned
+            + Codec
+            + Default
+            + Copy
+            + MaybeSerializeDeserialize
+            + Debug;
+
         /// Rewarding function that is invoked from the claim pallet.
         ///
         /// If this function returns successfully, any subsequent claim of the same claimer will be
@@ -214,8 +222,8 @@ pub mod traits {
         /// The main purpose of this function is to allow a dynamic configuration of the crowdloan reward
         /// pallet.
         fn initialize(
-            conversion_rate: u32,
-            direct_payout_ratio: u32,
+            conversion_rate: Self::NativeBalance,
+            direct_payout_ratio: Perbill,
             vesting_period: Self::BlockNumber,
             vesting_start: Self::BlockNumber,
         ) -> DispatchResult;
@@ -238,11 +246,11 @@ type ChildTrieRootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
 type ParachainAccountIdOf<T> =
-    <<T as Config>::RewardMechanism as traits::RewardMechanism>::ParachainAccountId;
+    <<T as Config>::RewardMechanism as traits::Reward>::ParachainAccountId;
 
 /// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
 type ContributionAmountOf<T> =
-    <<T as Config>::RewardMechanism as traits::RewardMechanism>::ContributionAmount;
+    <<T as Config>::RewardMechanism as traits::Reward>::ContributionAmount;
 
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
@@ -263,7 +271,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
-    use crate::traits::RewardMechanism;
+    use crate::traits::Reward;
 
     use super::*;
 
@@ -339,7 +347,7 @@ pub mod pallet {
         ///
         /// This associated type allows to implement a loosely-coupled regime between
         /// claiming and rewarding pallets.
-        type RewardMechanism: RewardMechanism;
+        type RewardMechanism: Reward;
 
         /// Entity which is allowed to perform administrative transactions
         type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -662,10 +670,6 @@ impl<T: Config> Pallet<T> {
             .or_else(ensure_root)?;
 
         Ok(())
-    }
-
-    fn as_accountId32(account_id: &T::RelayChainAccountId) -> AccountId32 {
-        todo!()
     }
 
     // Bind contributor's relaychain account with one on the parachain.
