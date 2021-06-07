@@ -116,6 +116,7 @@ default = ["std"]
 std = [
 #    "bridge-mapping/std",
 #    "unique_assets/std",
+    "pallet-claims/std",
     "pallet-fees/std",
     "pallet-anchors/std",
     "sp-authority-discovery/std",
