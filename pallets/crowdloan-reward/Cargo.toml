@@ -22,13 +22,10 @@ pallet-indices = { branch = "rococo-v1", git = "https://github.com/paritytech/su
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 serde = { version = "1.0.119" }
 sp-runtime = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
-
-# local dependencies
 pallet-crowdloan-claim = { path='../crowdloan-claim', default_features = false }
 
 
 [dev-dependencies]
-pallet-crowdloan-claim = { path='../crowdloan-claim', default_features = false }
 pallet-vesting = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
 serde = { version = "1.0.119" }
 sp-core = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false }
@@ -42,7 +39,6 @@ std = [
   'frame-system/std',
   'log/std',
   'pallet-balances/std',
-  'pallet-crowdloan-claim/std',
   'pallet-vesting/std',
 ]
 
