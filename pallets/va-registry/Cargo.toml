@@ -1,12 +1,12 @@
 [package]
-name = 'pallet-claims'
-description = 'Pallet for processing token claims for Tinlake investments.'
+name = 'pallet-va-registry'
+description = 'Verifiable Attributes (VA) registry for minting and managing non-fungible tokens (NFTs)'
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
 repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '3.0.0'
+version = '2.0.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -16,16 +16,24 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-benchmarking = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true }
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
+node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
 pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
+
+# Local dependencies
+pallet-fees = { path = "../fees", default-features = false }
+#pallet-nft = { path = "../nft", default-features = false }
+pallet-anchors = { path = "../anchors", default-features = false }
+unique_assets = { path = "../../../unique-assets", default-features = false }
+#unique_assets = { branch = "master", git = "https://github.com/centrifuge/unique-assets", default-features = false }
 
 [dev-dependencies]
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
-sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false  }
-sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
+sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false  }
+sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 
 [features]
 default = ['std']

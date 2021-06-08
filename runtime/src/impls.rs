@@ -2,7 +2,7 @@
 
 use node_primitives::Balance;
 use sp_runtime::traits::Convert;
-use frame_support::traits::{Imbalance, Currency, OnUnbalanced};
+use frame_support::traits::{Currency, OnUnbalanced};
 use crate::{Balances, Authorship, NegativeImbalance};
 use frame_support::weights::{WeightToFeeCoefficient, WeightToFeePolynomial, WeightToFeeCoefficients};
 use smallvec::smallvec;

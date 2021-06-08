@@ -1,38 +1,45 @@
 [package]
-name = 'pallet-claims'
-description = 'Pallet for processing token claims for Tinlake investments.'
+name = 'pallet-bridge'
+description = 'Bridge pallet'
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
 repository = 'https://github.com/centrifuge/centrifuge-chain'
-version = '3.0.0'
+version = '2.0.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
+chainbridge = { branch = "refactor/bridge_pallet_frame_v2", git = "https://github.com/centrifuge/chainbridge-substrate", default-features = false}
 frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-benchmarking = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true }
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
+node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
 pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
+
+# Local dependencies
+pallet-fees = { path = "../fees", default-features = false }
+pallet-va-registry = { path = "../va-registry", default-features = false }
 
 [dev-dependencies]
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
-sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false  }
-sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
+sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false  }
+sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 
 [features]
 default = ['std']
 std = [
-  'codec/std',
-  'frame-support/std',
-  'frame-system/std',
-  'pallet-balances/std',
-  'sp-std/std',
+    'codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'pallet-balances/std',
+    'pallet-fees/std',
+    'pallet-va-registry/std',
+    'sp-std/std',
 ]

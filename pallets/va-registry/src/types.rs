@@ -1,6 +1,26 @@
+// Copyright 2021 Parity Technologies (UK) Ltd.
+// This file is part of Centrifuge (centrifuge.io) parachain.
+
+// Cumulus is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// Cumulus is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with Cumulus. If not, see <http://www.gnu.org/licenses/>.
+
 use sp_core::{U256, H160};
-use crate::{proofs}, bridge};
-use frame_support::dispatch;
+use crate::proofs;
+use frame_support::{
+    dispatch::{
+        DispatchError,
+    },
+};
 use codec::{Decode, Encode};
 use sp_std::{vec::Vec, fmt::Debug};
 
@@ -132,20 +152,25 @@ pub trait HasId {
 pub trait VerifierRegistry {
     /// This should typically match the implementing substrate Module trait's AccountId type.
     type AccountId;
+
     /// The id type of a registry.
     type RegistryId;
+
     /// Metadata for an instance of a registry.
     type RegistryInfo;
+    
     /// The id type of an NFT.
     type AssetId;
+    
     /// The data that defines the NFT held by a registry. Asset info must contain its
     /// associated registry id.
     type AssetInfo;
+    
     /// All data necessary to determine if a requested mint is valid or not.
     type MintInfo;
 
     /// Create a new instance of a registry with the associated registry info.
-    fn create_registry(caller: Self::AccountId, info: Self::RegistryInfo) -> Result<Self::RegistryId, dispatch::DispatchError>;
+    fn create_registry(caller: Self::AccountId, info: Self::RegistryInfo) -> Result<Self::RegistryId, DispatchError>;
 
     /// Use the mint info to verify whether the mint is a valid action.
     /// If so, use the asset info to mint an asset.
@@ -154,5 +179,5 @@ pub trait VerifierRegistry {
             asset_id: &Self::AssetId,
             asset_info: Self::AssetInfo,
             mint_info: Self::MintInfo,
-    ) -> Result<(), dispatch::DispatchError>;
+    ) -> Result<(), DispatchError>;
 }

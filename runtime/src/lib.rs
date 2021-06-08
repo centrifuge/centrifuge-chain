@@ -459,7 +459,13 @@ pub enum ProxyType {
     NonTransfer,
     Governance
 }
-impl Default for ProxyType { fn default() -> Self { Self::Any } }
+
+impl Default for ProxyType { 
+    fn default() -> Self { 
+        Self::Any 
+    } 
+}
+
 impl InstanceFilter<Call> for ProxyType {
     fn filter(&self, c: &Call) -> bool {
         match self {
@@ -472,6 +478,7 @@ impl InstanceFilter<Call> for ProxyType {
 			)
         }
     }
+
     fn is_superset(&self, o: &Self) -> bool {
         match (self, o) {
             (x, y) if x == y => true,
@@ -491,11 +498,11 @@ impl pallet_proxy::Config for Runtime {
     type ProxyDepositBase = ProxyDepositBase;
     type ProxyDepositFactor = ProxyDepositFactor;
     type MaxProxies = MaxProxies;
-    type WeightInfo = ();
     type MaxPending = MaxPending;
     type CallHasher = BlakeTwo256;
     type AnnouncementDepositBase = AnnouncementDepositBase;
     type AnnouncementDepositFactor = AnnouncementDepositFactor;
+    type WeightInfo = ();
 }
 
 impl pallet_utility::Config for Runtime {

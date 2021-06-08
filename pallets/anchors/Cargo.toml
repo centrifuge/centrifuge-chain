@@ -1,9 +1,9 @@
 [package]
+name = 'pallet-anchors'
 authors = ["Centrifuge <admin@centrifuge.io>"]
 description = 'Anchors pallet for runtime'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'pallet-anchors'
 repository = "https://github.com/centrifuge/centrifuge-chain/pallets/anchors"
 version = '2.0.0'
 
