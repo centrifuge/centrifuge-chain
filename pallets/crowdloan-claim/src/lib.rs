@@ -119,6 +119,7 @@ pub use pallet::*;
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;
+use frame_support::dispatch::DispatchError;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -188,6 +189,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     use super::*;
+    use frame_support::sp_runtime::Perbill;
     use pallet_crowdloan_claim_reward::Reward;
 
     // Crowdloan claim pallet type declaration.
@@ -240,6 +242,12 @@ pub mod pallet {
             + Debug
             + Into<BalanceOf<Self>>;
 
+        /// The reward payout mechanism this claim pallet uses.
+        ///
+        /// This associated type allows to implement a loosely-coupled regime between
+        /// claiming and rewarding pallets.
+        type RewardMechanism: Reward;
+
         /// Priority of the unsigned claim transaction.
         ///
         /// Since the claim transaction is unsigned, a mechanism must ensure that
@@ -257,12 +265,6 @@ pub mod pallet {
         /// This property is used to prevent the unsigned claim transaction
         /// from being used as a vector for a denial of service attack.
         type ClaimTransactionLongevity: Get<Self::BlockNumber>;
-
-        /// The reward payout mechanism this claim pallet uses.
-        ///
-        /// This associated type allows to implement a loosely-coupled regime between
-        /// claiming and rewarding pallets.
-        type RewardMechanism: Reward;
 
         /// Entity which is allowed to perform administrative transactions
         type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -394,9 +396,8 @@ pub mod pallet {
             origin: OriginFor<T>,
             relaychain_account_id: T::RelayChainAccountId,
             parachain_account_id: ParachainAccountIdOf<T>,
-            claimed_amount: ContributionAmountOf<T>,
             identity_proof: MultiSignature,
-            contribution_proof: Vec<Vec<u8>>,
+            contribution_proof: StorageProof,
         ) -> DispatchResultWithPostInfo {
             // Ensures that this function can only be called via an unsigned transaction
             ensure_none(origin)?;
@@ -413,12 +414,6 @@ pub mod pallet {
                 Error::<T>::ClaimAlreadyProcessed
             );
 
-            // Claimed amount must be positive value
-            ensure!(
-                !claimed_amount.is_zero(),
-                Error::<T>::ClaimedAmountIsOutOfBoundaries
-            );
-
             // Check (trustless) contributor identity
             Self::verify_contributor_identity_proof(
                 relaychain_account_id.clone(),
@@ -427,14 +422,17 @@ pub mod pallet {
             )?;
 
             // Check the contributor's proof of contribution
-            Self::verify_contribution_proof(
-                relaychain_account_id.clone(),
-                claimed_amount,
-                contribution_proof,
-            )?;
+            let contribution =
+                Self::verify_contribution_proof(relaychain_account_id.clone(), contribution_proof)?;
+
+            // Claimed amount must be positive value
+            ensure!(
+                !contribution.is_zero(),
+                Error::<T>::ClaimedAmountIsOutOfBoundaries
+            );
 
             // Invoke the reward payout mechanism
-            T::RewardMechanism::reward(parachain_account_id.clone(), claimed_amount)?;
+            T::RewardMechanism::reward(parachain_account_id.clone(), contribution)?;
 
             // Store this claim in the list of processed claims (so that to process it only once)
             // TODO [TankOfZion]: `Module` must be replaced by `Pallet` when all code base will be ported to FRAME v2
@@ -446,7 +444,7 @@ pub mod pallet {
             Self::deposit_event(Event::RewardClaimed(
                 relaychain_account_id,
                 parachain_account_id,
-                claimed_amount,
+                contribution,
             ));
 
             Ok(().into())
@@ -468,6 +466,10 @@ pub mod pallet {
             origin: OriginFor<T>,
             contributions: ChildTrieRootHashOf<T>,
             index: TrieIndex,
+            conversion_rate: <T::RewardMechanism as Reward>::NativeBalance,
+            direct_payout_ratio: Perbill,
+            vesting_period: <T::RewardMechanism as Reward>::BlockNumber,
+            vestig_start: <T::RewardMechanism as Reward>::BlockNumber,
         ) -> DispatchResultWithPostInfo {
             // Ensure that only administrator entity can perform this administrative transaction
             ensure!(
@@ -481,6 +483,13 @@ pub mod pallet {
                 <Contributions<T>>::get().is_none(),
                 Error::<T>::PalletAlreadyInitialized
             );
+
+            T::RewardMechanism::initialize(
+                conversion_rate,
+                direct_payout_ratio,
+                vesting_period,
+                vestig_start,
+            )?;
 
             // Store relay chain's child trie root hash (containing the list of contributors and their contributions)
             <Contributions<T>>::put(contributions);
@@ -514,7 +523,6 @@ pub mod pallet {
             if let Call::claim_reward(
                 relaychain_account_id,
                 parachain_account_id,
-                claimed_amount,
                 identity_proof,
                 contribution_proof,
             ) = call
@@ -532,15 +540,19 @@ pub mod pallet {
                     .is_ok()
                     && Self::verify_contribution_proof(
                         relaychain_account_id.clone(),
-                        claimed_amount.clone(),
-                        contribution_proof.to_vec(),
+                        contribution_proof.clone(),
                     )
                     .is_ok()
                 {
                     // Only the claim reward transaction can be invoked via an unsigned regime
                     return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
                         .priority(T::ClaimTransactionPriority::get())
-                        .and_provides((relaychain_account_id, parachain_account_id, claimed_amount))
+                        .and_provides((
+                            relaychain_account_id,
+                            parachain_account_id,
+                            identity_proof,
+                            contribution_proof,
+                        ))
                         .longevity(
                             TryInto::<u64>::try_into(T::ClaimTransactionLongevity::get())
                                 .unwrap_or(64_u64),
@@ -617,10 +629,8 @@ impl<T: Config> Pallet<T> {
     // contributor's claim is valid.
     fn verify_contribution_proof(
         relay_account: T::RelayChainAccountId,
-        contribution: ContributionAmountOf<T>,
-        proof: Vec<Vec<u8>>,
-    ) -> DispatchResult {
-        let proof = StorageProof::new(proof);
+        proof: StorageProof,
+    ) -> Result<ContributionAmountOf<T>, DispatchError> {
         let keys = vec![relay_account.encode()];
 
         // rebuild child info
@@ -650,12 +660,8 @@ impl<T: Config> Pallet<T> {
                             let (value, _memo): (ContributionAmountOf<T>, Vec<u8>) =
                                 Decode::decode::<&[u8]>(&mut storage_val.as_ref())
                                     .unwrap_or((Zero::zero(), Vec::new()));
-                            ensure!(
-                                value == contribution,
-                                Error::<T>::InvalidProofOfContribution
-                            );
 
-                            Ok(())
+                            Ok(value)
                         },
                     )
             },

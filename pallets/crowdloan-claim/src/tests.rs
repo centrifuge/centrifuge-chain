@@ -23,10 +23,11 @@
 use crate::{mock::*, Error as CrowdloanClaimError, *};
 use hex;
 
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_noop, assert_ok, traits::VestingSchedule};
 use sc_rpc_api::state::ReadProof;
 use sp_core::H256;
 use sp_runtime::generic::BlockId;
+use sp_runtime::Perbill;
 use sp_std::str::FromStr;
 
 lazy_static! {
@@ -34,10 +35,12 @@ lazy_static! {
         179, 248, 101, 170, 172, 118, 184, 49, 49, 203, 205, 254, 58, 65, 241, 174, 74, 194, 9, 84,
         71, 138, 206, 149, 253, 151, 220, 96, 20, 87, 241, 132
     ]));
-    static ref ROOT: H256 = H256([
-        119, 115, 207, 116, 164, 194, 108, 32, 227, 26, 51, 110, 7, 66, 13, 75, 136, 126, 168, 72,
-        148, 56, 92, 157, 48, 33, 95, 89, 159, 0, 47, 29
-    ]);
+    static ref ROOT: H256 = H256(
+        hex::decode("ec5efffa54fe5bdcc6920dfddaa3810ed3bcf4af1b9ec7311ed1e1ab493ae926")
+            .unwrap()
+            .try_into()
+            .unwrap(),
+    );
 }
 
 fn to_hash(block_id: BlockId<mock::Block>) -> H256 {
@@ -48,17 +51,17 @@ fn to_hash(block_id: BlockId<mock::Block>) -> H256 {
 }
 
 struct Contributor {
-    at: BlockId<mock::Block>,
+    _at: BlockId<mock::Block>,
     proof: ReadProof<H256>,
     signature: MultiSignature,
     parachain_account: u64,
     relaychain_account: AccountId32,
-    contribution: u64,
+    _contribution: u64,
 }
 
 fn get_alice() -> Contributor {
     Contributor {
-        at: *AT,
+        _at: *AT,
         proof: ReadProof {
             at: to_hash(*AT),
             proof: vec! [
@@ -76,14 +79,14 @@ fn get_alice() -> Contributor {
         )),
         parachain_account: 1,
         relaychain_account: AccountId32::from_str("0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d").unwrap(),
-        contribution: 4000,
+        _contribution: 4000000000000000,
 
     }
 }
 
 fn get_bob() -> Contributor {
     Contributor {
-        at: *AT,
+        _at: *AT,
         proof: ReadProof {
             at: to_hash(*AT),
             proof: vec![
@@ -101,14 +104,14 @@ fn get_bob() -> Contributor {
         )),
         parachain_account: 2,
         relaychain_account: AccountId32::from_str("0x8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48").unwrap(),
-        contribution: 4000,
+        _contribution: 4000000000000000,
 
     }
 }
 
 fn get_charlie() -> Contributor {
     Contributor {
-        at: *AT,
+        _at: *AT,
         proof: ReadProof {
             at: to_hash(*AT),
             proof: vec![
@@ -126,7 +129,7 @@ fn get_charlie() -> Contributor {
         )),
         parachain_account: 3,
         relaychain_account: AccountId32::from_str("0x90b5ab205c6974c9ea841be688864633dc9ca8a357843eeacf2314649965fe22").unwrap(),
-        contribution: 2000,
+        _contribution: 2000000000000000,
     }
 }
 
@@ -152,13 +155,16 @@ fn get_false_proof() -> ReadProof<H256> {
 }
 
 fn init_module() {
-    let test = H256(
-        hex::decode("ec5efffa54fe5bdcc6920dfddaa3810ed3bcf4af1b9ec7311ed1e1ab493ae926")
-            .unwrap()
-            .try_into()
-            .unwrap(),
-    );
-    CrowdloanClaim::initialize(Origin::signed(1), test, 0u32).unwrap();
+    CrowdloanClaim::initialize(
+        Origin::signed(1),
+        *ROOT,
+        0u32,
+        100,
+        Perbill::from_percent(20),
+        500,
+        100,
+    )
+    .unwrap();
 }
 
 // ----------------------------------------------------------------------------
@@ -180,7 +186,15 @@ fn test_init_double() {
         .build(Some(init_module))
         .execute_with(|| {
             assert_noop!(
-                CrowdloanClaim::initialize(Origin::signed(1), *ROOT, 0u32),
+                CrowdloanClaim::initialize(
+                    Origin::signed(1),
+                    *ROOT,
+                    0u32,
+                    100,
+                    Perbill::from_percent(20),
+                    500,
+                    100,
+                ),
                 CrowdloanClaimError::<MockRuntime>::PalletAlreadyInitialized
             );
         })
@@ -192,7 +206,15 @@ fn test_init_non_admin() {
         .build(Some(init_module))
         .execute_with(|| {
             assert_noop!(
-                CrowdloanClaim::initialize(Origin::signed(2), *ROOT, 0u32),
+                CrowdloanClaim::initialize(
+                    Origin::signed(2),
+                    *ROOT,
+                    0u32,
+                    100,
+                    Perbill::from_percent(20),
+                    500,
+                    100,
+                ),
                 CrowdloanClaimError::<MockRuntime>::MustBeAdministrator
             );
         })
@@ -210,9 +232,8 @@ fn test_invalid_signed_claim_transaction() {
                     Origin::none(),
                     alice.relaychain_account,
                     alice.parachain_account,
-                    alice.contribution,
                     get_false_signature(),
-                    alice.proof.proof.into_iter().map(|byte| byte.0).collect(),
+                    StorageProof::new(alice.proof.proof.into_iter().map(|byte| byte.0).collect()),
                 ),
                 CrowdloanClaimError::<MockRuntime>::InvalidContributorSignature
             );
@@ -225,56 +246,99 @@ fn test_valid_claim() {
         .build(Some(init_module))
         .execute_with(|| {
             let alice = get_alice();
-            let at = alice.at;
-            let bob = get_bob();
-            let charlie = get_charlie();
-            let temp = hex::decode("48616c6c6f206963682062696e20436861726c696521").unwrap();
-            let bytes = std::str::from_utf8(temp.as_slice()).unwrap();
-            println!("{}", bytes);
-            let contribution_scale = hex::decode(
-                "00008d49fd1a070000000000000000005848616c6c6f206963682062696e20436861726c696521",
-            )
-            .unwrap();
-            //let contribution_scale = hex::decode("00001a93fa350e00000000000000000000").unwrap();
-            let (value, _memo): (ContributionAmountOf<MockRuntime>, Vec<u8>) =
-                Decode::decode::<&[u8]>(&mut contribution_scale.as_ref())
-                    .unwrap_or((Zero::zero(), Vec::new()));
-
-            // 0x3a6368696c645f73746f726167653a64656661756c743ac40cac02c4ed0673d410e5a6fc91234cd1287902634e34ee2b379c4e8a7131ca
-            // 0xc40cac02c4ed0673d410e5a6fc91234cd1287902634e34ee2b379c4e8a7131ca
-            let mut buf = Vec::new();
-            buf.extend_from_slice(b"crowdloan");
-            buf.extend_from_slice(&CrowdloanClaim::crowdloan_trie_index().unwrap().encode()[..]);
-            let hex_buf = hex::encode(<MockRuntime as frame_system::Config>::Hashing::hash(
-                buf.as_slice(),
+            assert_noop!(
+                CrowdloanClaim::claim_reward(
+                    Origin::none(),
+                    alice.relaychain_account.clone(),
+                    alice.parachain_account,
+                    alice.signature,
+                    StorageProof::new(alice.proof.proof.into_iter().map(|byte| byte.0).collect())
+                ),
+                // This is more an inter-pallet test, as we check if the
+                pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
+            );
+            assert!(!ProcessedClaims::<MockRuntime>::contains_key(
+                &alice.relaychain_account
             ));
 
-            let original_proof = alice.proof.proof.clone();
-            let proof: Vec<Vec<u8>> = alice.proof.proof.into_iter().map(|byte| byte.0).collect();
-
-            for (count, node) in proof.iter().enumerate() {
-                println!("{}", hex::encode(node.as_slice()));
-
-                let inner_original = original_proof.get(count).unwrap();
-                for (count_2, inner) in node.iter().enumerate() {
-                    assert_eq!(&(inner_original.0)[count_2], inner)
-                }
-            }
-
+            let bob = get_bob();
+            let bob_balance = Balances::free_balance(&bob.parachain_account);
             assert_ok!(CrowdloanClaim::claim_reward(
                 Origin::none(),
-                alice.relaychain_account,
-                alice.parachain_account,
-                alice.contribution,
-                alice.signature,
-                proof
+                bob.relaychain_account.clone(),
+                bob.parachain_account,
+                bob.signature,
+                StorageProof::new(bob.proof.proof.into_iter().map(|byte| byte.0).collect())
             ));
+            assert!(ProcessedClaims::<MockRuntime>::contains_key(
+                &bob.relaychain_account
+            ));
+
+            assert_eq!(
+                Vesting::vesting_balance(&bob.parachain_account),
+                Some(320000000000000000)
+            );
+            assert_eq!(
+                Balances::usable_balance(&bob.parachain_account),
+                bob_balance + 80000000000000000
+            );
+
+            let charlie = get_charlie();
+            let charlie_balance = Balances::free_balance(&charlie.parachain_account);
+            assert_ok!(CrowdloanClaim::claim_reward(
+                Origin::none(),
+                charlie.relaychain_account.clone(),
+                charlie.parachain_account,
+                charlie.signature,
+                StorageProof::new(charlie.proof.proof.into_iter().map(|byte| byte.0).collect())
+            ));
+            assert!(ProcessedClaims::<MockRuntime>::contains_key(
+                &charlie.relaychain_account
+            ));
+            assert_eq!(
+                Vesting::vesting_balance(&charlie.parachain_account),
+                Some(160000000000000000)
+            );
+            assert_eq!(
+                Balances::usable_balance(&charlie.parachain_account),
+                charlie_balance + 40000000000000000
+            );
+        })
+}
+
+#[test]
+fn test_valid_claim_claimed_twice() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            let bob = get_bob();
+            assert_ok!(CrowdloanClaim::claim_reward(
+                Origin::none(),
+                bob.relaychain_account.clone(),
+                bob.parachain_account,
+                bob.signature,
+                StorageProof::new(bob.proof.proof.into_iter().map(|byte| byte.0).collect())
+            ));
+            assert!(ProcessedClaims::<MockRuntime>::contains_key(
+                &bob.relaychain_account
+            ));
+
+            let bob = get_bob();
+            assert_noop!(
+                CrowdloanClaim::claim_reward(
+                    Origin::none(),
+                    bob.relaychain_account.clone(),
+                    bob.parachain_account,
+                    bob.signature,
+                    StorageProof::new(bob.proof.proof.into_iter().map(|byte| byte.0).collect())
+                ),
+                CrowdloanClaimError::<MockRuntime>::ClaimAlreadyProcessed
+            );
         })
 }
 
 #[test]
 fn test_invalid_claim_invalid_proof() {
-    let alice = get_alice();
     TestExternalitiesBuilder::default()
         .build(Some(init_module))
         .execute_with(|| {
@@ -285,13 +349,14 @@ fn test_invalid_claim_invalid_proof() {
                     Origin::none(),
                     alice.relaychain_account,
                     alice.parachain_account,
-                    alice.contribution,
                     alice.signature,
-                    get_false_proof()
-                        .proof
-                        .into_iter()
-                        .map(|byte| byte.0)
-                        .collect(),
+                    StorageProof::new(
+                        get_false_proof()
+                            .proof
+                            .into_iter()
+                            .map(|byte| byte.0)
+                            .collect(),
+                    )
                 ),
                 CrowdloanClaimError::<MockRuntime>::InvalidProofOfContribution
             );
@@ -299,7 +364,7 @@ fn test_invalid_claim_invalid_proof() {
 }
 
 #[test]
-fn test_invalid_claim_mod_not_initalized() {
+fn test_invalid_claim_mod_not_initialized() {
     TestExternalitiesBuilder::default()
         .build(Some(|| {}))
         .execute_with(|| {
@@ -310,9 +375,8 @@ fn test_invalid_claim_mod_not_initalized() {
                     Origin::none(),
                     alice.relaychain_account,
                     alice.parachain_account,
-                    alice.contribution,
                     alice.signature,
-                    alice.proof.proof.into_iter().map(|byte| byte.0).collect(),
+                    StorageProof::new(alice.proof.proof.into_iter().map(|byte| byte.0).collect()),
                 ),
                 CrowdloanClaimError::<MockRuntime>::PalletNotInitialized
             );

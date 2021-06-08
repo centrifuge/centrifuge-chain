@@ -25,7 +25,7 @@
 
 use crate::{self as pallet_crowdloan_claim, Config};
 
-use frame_support::{dispatch::DispatchResult, parameter_types, traits::Contains, weights::Weight};
+use frame_support::{parameter_types, traits::Contains, weights::Weight};
 
 use frame_system::EnsureSignedBy;
 
@@ -37,7 +37,7 @@ use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     transaction_validity::TransactionPriority,
-    AccountId32, ModuleId, Perbill,
+    AccountId32, ModuleId,
 };
 
 use crate::traits::WeightInfo;
@@ -184,31 +184,6 @@ impl Config for MockRuntime {
     type RewardMechanism = CrowdloanReward;
 }
 
-pub struct Dummy;
-
-impl pallet_crowdloan_claim_reward::Reward for Dummy {
-    type ParachainAccountId = u64;
-    type ContributionAmount = u64;
-    type BlockNumber = u64;
-    type NativeBalance = Balance;
-
-    fn reward(
-        _who: Self::ParachainAccountId,
-        _contribution: Self::ContributionAmount,
-    ) -> DispatchResult {
-        Ok(())
-    }
-
-    fn initialize(
-        _conversion_rate: Self::NativeBalance,
-        _direct_payout_ratio: Perbill,
-        _vesting_period: Self::BlockNumber,
-        _vesting_start: Self::BlockNumber,
-    ) -> DispatchResult {
-        Ok(())
-    }
-}
-
 impl Contains<u64> for One {
     fn sorted_members() -> Vec<u64> {
         vec![1]
@@ -252,7 +227,7 @@ impl TestExternalitiesBuilder {
                 (12, 10 * self.existential_deposit),
                 (
                     CrowdloanReward::account_id(),
-                    1000 * self.existential_deposit,
+                    10000000000000000000 * self.existential_deposit,
                 ),
             ],
         }
@@ -262,7 +237,6 @@ impl TestExternalitiesBuilder {
         pallet_vesting::GenesisConfig::<MockRuntime> {
             vesting: vec![
                 (1, 0, 10, 5 * self.existential_deposit),
-                (2, 10, 20, 0),
                 (12, 10, 20, 5 * self.existential_deposit),
             ],
         }
