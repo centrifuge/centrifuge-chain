@@ -988,6 +988,7 @@ dependencies = [
  "cumulus-client-service",
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
+ "frame-benchmarking",
  "frame-benchmarking-cli",
  "frame-system",
  "futures 0.3.15",
@@ -1073,6 +1074,7 @@ dependencies = [
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
+ "frame-benchmarking",
  "frame-executive",
  "frame-support",
  "frame-system",
@@ -1087,6 +1089,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-claims",
  "pallet-collective",
  "pallet-democracy",
  "pallet-elections-phragmen",
@@ -1102,6 +1105,7 @@ dependencies = [
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-society",
  "pallet-staking",
  "pallet-staking-reward-curve",
  "pallet-sudo",
@@ -5259,10 +5263,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-claims"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-collective"
 version = "3.0.0"
 source = "git+https://github.com/centrifuge/substrate?branch=master#be1b8ef0eefd6e8fbc7abb3d33262d139277da13"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log 0.4.14",
@@ -5327,6 +5348,7 @@ dependencies = [
 name = "pallet-fees"
 version = "2.0.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-authorship",
@@ -5335,6 +5357,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

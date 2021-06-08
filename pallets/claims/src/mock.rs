@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 
-//! Rad claims pallet testing environment and utilities
+//! Claims pallet testing environment and utilities
 //!
 //! The main components implemented in this mock module is a mock runtime,
 //! some helper functions and the definition of some constants.
@@ -26,7 +26,7 @@
 // ----------------------------------------------------------------------------
 
 use crate::{
-    self as pallet_rad_claims,
+    self as pallet_claims,
     Config
 };
 
@@ -85,12 +85,12 @@ impl WeightInfo for MockWeightInfo {
 // Radial token definition
 //
 // This avoids circular dependency on the runtime crate. Though for testing
-// we do not care about real RAD "value", it helps understanding and reading
+// we do not care about real CFG token "value", it helps understanding and reading
 // the testing code.
-pub(crate) const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
-pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
-pub(crate) const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
-pub(crate) const RAD: Balance = 100 * CENTI_RAD;
+pub(crate) const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
+pub(crate) const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
+pub(crate) const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
+pub(crate) const CFG: Balance = 100 * CENTI_CFG;
 
 pub(crate) const ADMIN: u64 = 0x1;
 pub(crate) const USER_A: u64 = 0x2;
@@ -98,7 +98,7 @@ pub(crate) const USER_A: u64 = 0x2;
 // USER_B does not have existential balance
 pub(crate) const USER_B: u64 = 0x3;
 
-pub(crate) const ENDOWED_BALANCE: u128 = 10000 * RAD;
+pub(crate) const ENDOWED_BALANCE: u128 = 10000 * CFG;
 
 
 // ----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        RadClaims: pallet_rad_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
+        Claims: pallet_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
     }
 );
 
@@ -166,13 +166,13 @@ impl pallet_balances::Config for MockRuntime {
     type MaxLocks = ();
 }
 
-// Parameterize RAD claims pallet
+// Parameterize claims pallet
 parameter_types! {
-    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
 }
 
 
@@ -182,10 +182,10 @@ impl SortedMembers<u64> for One {
     }
 }
 
-// Implement RAD claims pallet configuration trait for the mock runtime
+// Implement claims pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
     type Event = Event;
-    type PalletId = RadClaimsPalletId;
+    type PalletId = ClaimsPalletId;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = EnsureSignedBy<One, u64>;
@@ -225,7 +225,7 @@ impl TestExternalitiesBuilder {
             balances: vec![
                 (ADMIN, ENDOWED_BALANCE), 
                 (USER_A, 1), 
-                (RadClaims::account_id(), ENDOWED_BALANCE)
+                (Claims::account_id(), ENDOWED_BALANCE)
             ],
         }.assimilate_storage(&mut storage).unwrap();
         

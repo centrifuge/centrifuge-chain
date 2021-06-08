@@ -7,12 +7,12 @@
 use sp_std::{prelude::*, convert::TryFrom};
 use frame_support::{
     construct_runtime, parameter_types, RuntimeDebug,
+    PalletId,
     weights::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
-        U128CurrencyToVote, Currency, MaxEncodedLen,
-        Randomness, LockIdentifier, InstanceFilter, All, Get},
+        U128CurrencyToVote, Currency, MaxEncodedLen, LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
 use sp_core::u32_trait::{_1, _2, _3, _4};
@@ -53,18 +53,18 @@ pub use pallet_balances::Call as BalancesCall;
 //pub use pallet_staking::StakerStatus;
 
 // XCM imports
-use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance, DmpMessageHandler};
+use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance};
 use polkadot_parachain::primitives::Sibling;
-use xcm::v0::{MultiAsset, MultiLocation, MultiLocation::*, Junction::*, BodyId, NetworkId};
+use xcm::v0::{MultiAsset, MultiLocation, MultiLocation::*, Junction::*, NetworkId};
 use xcm_builder::{
-	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, ParentAsSuperuser,
+	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, 
+    SiblingParachainConvertsVia, SignedAccountId32AsNative, ParentAsSuperuser,
 	SovereignSignedViaLocation, IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom,
-	AllowUnpaidExecutionFrom, FixedWeightBounds, FixedRateOfConcreteFungible, EnsureXcmOrigin,
-    UsingComponents, SignedToAccountId32
+	AllowUnpaidExecutionFrom, FixedWeightBounds, EnsureXcmOrigin,
+    UsingComponents,
 };
 use xcm_executor::{Config, XcmExecutor};
-use pallet_xcm::{XcmPassthrough, EnsureXcm, IsMajorityOfBody};
+use pallet_xcm::XcmPassthrough;
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
 use impls::DealWithFees;
@@ -80,9 +80,6 @@ mod proofs;
 /// nft module
 // mod nfts;
 
-/// radial reward claims module
-mod rad_claims;
-
 /// bridge module
 // mod bridge;
 
@@ -96,9 +93,6 @@ mod rad_claims;
 pub mod constants;
 use constants::{time::*, currency::*};
 use crate::impls::WeightToFee;
-use xcm::opaque::v0::{Xcm, ExecuteXcm};
-use xcm_executor::traits::WeightBounds;
-use pallet_anchors::WeightInfo;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -593,12 +587,12 @@ impl pallet_authorship::Config for Runtime {
 // details and https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=e6490da3bfb28f69c7f6e6393ec6bb0c
 // for the calculation
 // TODO: set back to Perbill::from_percent(3) as soon as the bug above is fixed.
-const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
+//const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
 
-const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
-	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
-	maximum: THREE_PERCENT_INFLATION,
-};
+//const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
+//	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
+//	maximum: THREE_PERCENT_INFLATION,
+//};
 
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
@@ -777,6 +771,26 @@ impl pallet_fees::Config for Runtime {
     type WeightInfo = ();
 }
 
+// Parameterize claims pallet
+parameter_types! {
+    pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
+    pub const Longevity: u32 = 64;
+    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * RAD;
+}
+
+// Implement claims pallet configuration trait for the mock runtime
+impl pallet_claims::Config for Runtime {
+    type Event = Event;
+    type PalletId = ClaimsPalletId;
+    type Longevity = Longevity;
+    type UnsignedPriority = UnsignedPriority;
+    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type Currency = Balances;
+    type MinimalPayoutAmount = MinimalPayoutAmount;
+    type WeightInfo = ();
+}
+
 // impl nfts::Trait for Runtime {
 //     type Event = Event;
 // }
@@ -809,18 +823,6 @@ impl pallet_fees::Config for Runtime {
 //     type ProposalLifetime = ProposalLifetime;
 // }
 
-parameter_types! {
-    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const Longevity: u32 = 64;
-}
-
-impl rad_claims::Trait for Runtime {
-    type Event = Event;
-    type Longevity = Longevity;
-    type UnsignedPriority = UnsignedPriority;
-    type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-    type Currency = Balances;
-}
 
 parameter_types! {
 	pub const MinVestedTransfer: Balance = 1000 * RAD;
@@ -873,6 +875,7 @@ impl pallet_aura::Config for Runtime {
     type AuthorityId = AuraId;
 }
 
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -913,7 +916,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
-        RadClaims: rad_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+        Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// Registry: va_registry::{Pallet, Call, Storage, Event<T>},
 		// Nft: nft::{Pallet, Call, Storage, Event<T>},
@@ -1075,6 +1078,38 @@ impl_runtime_apis! {
 			ParachainSystem::collect_collation_info()
 		}
 	}
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+                config: frame_benchmarking::BenchmarkConfig
+        ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
+
+            // you can whitelist any storage keys you do not want to track here
+            let whitelist: Vec<TrackedStorageKey> = vec![
+                // Block Number
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
+				// Total Issuance
+				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
+				// Execution Phase
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
+				// Event Count
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
+				// System Events
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
+            ];
+
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            let params = (&config, &whitelist);
+
+            // Pallet fees benchmarks
+            add_benchmark!(params, batches, pallet_fees, Fees);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+            Ok(batches)
+        }
+    }
 }
 
 // Add parachain runtime features

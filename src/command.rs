@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	chain_spec,
-	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, Executor}
-};
+use crate::{chain_spec, cli::{Cli, RelayChainCli, Subcommand}, service::{new_partial, Executor}};
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
@@ -39,6 +35,7 @@ fn load_spec(
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
+		// TODO(dev): add dev chain spec
 		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
@@ -251,6 +248,16 @@ pub fn run() -> Result<()> {
 
 			Ok(())
 		}
+		Some(Subcommand::Benchmark(cmd)) => {
+			if cfg!(feature = "runtime-benchmarks") {
+				let runner = cli.create_runner(cmd)?;
+
+				runner.sync_run(|config| cmd.run::<Block, Executor>(config))
+			} else {
+				Err("Benchmarking wasn't enabled when building the node. \
+				You can enable it with `--features runtime-benchmarks`.".into())
+			}
+		},
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 

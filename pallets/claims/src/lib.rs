@@ -15,10 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # RAD token claims processing pallet
+//! # Claims processing pallet
 //!
 //! This pallet implement a reward claim mechanism with vesting, for
-//! rewarding RAD tokens awarded through [Tinlake](https://tinlake.centrifuge.io)
+//! rewarding tokens (CFG or others) awarded through [Tinlake](https://tinlake.centrifuge.io)
 //! investments.
 //!
 //! ## Overview
@@ -26,7 +26,7 @@
 //! invested in [Tinlake](https://tinlake.centrifuge.io) pools.
 //!
 //! ## Terminology
-//! RAD is the native token of Centrifuge chain.
+//! CFG is the native token of Centrifuge chain.
 //! 
 //! ## Usage
 //!
@@ -60,7 +60,7 @@
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
 //! pallet contract. Here's the callable functions implemented in this module:
 //!
-//! - `claim` - Claims RAD tokens awarded through tinlake investments.
+//! - `claim` - Claims tokens awarded through tinlake investments.
 //! - `set_upload_account` - Admin function that sets the allowed upload account to add root hashes.
 //! - `store_root_hash` - Stores root hash for correspondent claim merkle tree run.
 //! 
@@ -197,7 +197,7 @@ pub mod pallet {
     // Pallet configuration
     // ------------------------------------------------------------------------
 
-    /// Rad claim pallet's configuration trait.
+    /// Claims pallet's configuration trait.
     ///
     /// Associated types and constants are declared in this trait. If the pallet
     /// depends on other super-traits, the latter must be added to this trait, 
@@ -275,7 +275,7 @@ pub mod pallet {
 	#[pallet::getter(fn get_claimed_amount)]
     pub(super) type ClaimedAmounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
-    /// Map of root hashes that correspond to lists of RAD reward claim amounts per account.
+    /// Map of root hashes that correspond to lists of reward claim amounts per account.
     #[pallet::storage]
 	#[pallet::getter(fn get_root_hash)]
     pub(super) type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, bool, ValueQuery>;
@@ -357,7 +357,7 @@ pub mod pallet {
     #[pallet::call]
 	impl<T:Config> Pallet<T> {
 
-        /// Claims RAD tokens awarded through Tinlake investments.
+        /// Claims tokens awarded through Tinlake investments.
         ///
         /// The extrinsic is validated by the custom \[`validate_unsigned`\] function below.
         /// An unsigned transaction is free of fees. We need such an unsigned transaction
@@ -493,7 +493,7 @@ pub mod pallet {
 // Pallet implementation block
 // ----------------------------------------------------------------------------
 
-// Pallet implementation block.
+// Claims pallet implementation block.
 //
 // This main implementation block contains two categories of functions, namely:
 // - Public functions: These are functions that are `pub` and generally fall into 
@@ -502,7 +502,7 @@ pub mod pallet {
 //   from other pallets.
 impl<T: Config> Pallet<T> {
    
-    /// Return the account identifier of the RAD claims pallet.
+    /// Return the account identifier of the claims pallet.
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
