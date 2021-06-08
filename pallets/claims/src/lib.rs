@@ -18,7 +18,7 @@
 //! # Claims processing pallet
 //!
 //! This pallet implement a reward claim mechanism with vesting, for
-//! rewarding tokens (RAD or others) awarded through [Tinlake](https://tinlake.centrifuge.io)
+//! rewarding tokens (CFG or others) awarded through [Tinlake](https://tinlake.centrifuge.io)
 //! investments.
 //!
 //! ## Overview
@@ -26,7 +26,7 @@
 //! invested in [Tinlake](https://tinlake.centrifuge.io) pools.
 //!
 //! ## Terminology
-//! RAD is the native token of Centrifuge chain.
+//! CFG is the native token of Centrifuge chain.
 //! 
 //! ## Usage
 //!

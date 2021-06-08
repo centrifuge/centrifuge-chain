@@ -60,7 +60,7 @@ fn can_upload_account() {
 #[test]
 fn verify_proofs() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        let amount: u128 = 100 * RAD;
+        let amount: u128 = 100 * CFG;
         let sorted_hashes_long: [H256; 31] = [
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
@@ -161,7 +161,7 @@ fn pre_calculate_single_root(
 #[test]
 fn claim() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        let amount: u128 = 100 * RAD;
+        let amount: u128 = 100 * CFG;
         // Random sorted hashes
         let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
 
@@ -181,22 +181,22 @@ fn claim() {
         assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
 
         let short_root_hash = pre_calculate_single_root(
-            &USER_B, &(4 * RAD), &one_sorted_hashes[0]);
+            &USER_B, &(4 * CFG), &one_sorted_hashes[0]);
         assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), short_root_hash));
 
         // Minimum payout not met
         assert_noop!(
-            Claims::claim(Origin::none(), USER_B, 4 * RAD, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, 4 * CFG, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::UnderMinPayout
         );
 
         let long_root_hash = pre_calculate_single_root(
-            &USER_B, &(10001 * RAD), &one_sorted_hashes[0]);
+            &USER_B, &(10001 * CFG), &one_sorted_hashes[0]);
         assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), long_root_hash));
 
         // Claims Module Account does not have enough balance
         assert_noop!(
-            Claims::claim(Origin::none(), USER_B, 10001 * RAD, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, 10001 * CFG, one_sorted_hashes.to_vec()),
             BalancesError::<MockRuntime, _>::InsufficientBalance
         );
 
@@ -214,10 +214,10 @@ fn claim() {
         // Knowing that account has a balance of 100, trying to claim 50 will fail
         // Since balance logic is accumulative
         let past_root_hash = pre_calculate_single_root(
-            &USER_B, &(50 * RAD), &one_sorted_hashes[0]);
+            &USER_B, &(50 * CFG), &one_sorted_hashes[0]);
         assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), past_root_hash));
         assert_noop!(
-            Claims::claim(Origin::none(), USER_B, 50 * RAD, one_sorted_hashes.to_vec()),
+            Claims::claim(Origin::none(), USER_B, 50 * CFG, one_sorted_hashes.to_vec()),
             Error::<MockRuntime>::InsufficientBalance
         );
 
@@ -227,7 +227,7 @@ fn claim() {
 #[test]
 fn validate_unsigned_check() {
     TestExternalitiesBuilder::default().build().execute_with( || {
-        let amount: u128 = 100 * RAD;
+        let amount: u128 = 100 * CFG;
         let sorted_hashes_long: [H256; 31] = [
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),
             [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(), [0; 32].into(),

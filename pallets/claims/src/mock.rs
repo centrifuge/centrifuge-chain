@@ -85,12 +85,12 @@ impl WeightInfo for MockWeightInfo {
 // Radial token definition
 //
 // This avoids circular dependency on the runtime crate. Though for testing
-// we do not care about real RAD token "value", it helps understanding and reading
+// we do not care about real CFG token "value", it helps understanding and reading
 // the testing code.
-pub(crate) const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
-pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
-pub(crate) const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
-pub(crate) const RAD: Balance = 100 * CENTI_RAD;
+pub(crate) const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
+pub(crate) const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
+pub(crate) const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
+pub(crate) const CFG: Balance = 100 * CENTI_CFG;
 
 pub(crate) const ADMIN: u64 = 0x1;
 pub(crate) const USER_A: u64 = 0x2;
@@ -98,7 +98,7 @@ pub(crate) const USER_A: u64 = 0x2;
 // USER_B does not have existential balance
 pub(crate) const USER_B: u64 = 0x3;
 
-pub(crate) const ENDOWED_BALANCE: u128 = 10000 * RAD;
+pub(crate) const ENDOWED_BALANCE: u128 = 10000 * CFG;
 
 
 // ----------------------------------------------------------------------------
@@ -172,7 +172,7 @@ parameter_types! {
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
 }
 
 

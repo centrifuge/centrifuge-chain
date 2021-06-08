@@ -8,14 +8,12 @@
         - [Add the Pallet to your Runtime](#add-the-pallet-to-your-runtime)
         - [Configure the Pallet](#configure-the-pallet)
     - [Pallet Documentation](#pallet-documentation)
-    - [References](#references)
-    - [License](#license)
 
 <!-- /TOC -->
 
 ## Overview
 
-This Centrifuge Chain pallet provides functionalities for processing claims of token acquired 
+This Centrifuge Chain pallet provides functionalities for processing claims of tokens acquired 
 through [Tinlake](https://tinlake.centrifuge.io/) investments.
 
 This pallet is built on Substrate [FRAME v2](https://substrate.dev/docs/en/knowledgebase/runtime/frame) 
@@ -33,7 +31,7 @@ to your parachain's main `Cargo.toml` file:
 
 [dependencies]
 
-pallet-claims = { branch = 'master', git = 'https://github.com/centrifuge/centrifuge-chain.git', default-features = false }
+pallet-claims = { branch = "master", git = "https://github.com/centrifuge/centrifuge-chain.git", default-features = false }
 
 # -- snip --
 
@@ -53,11 +51,11 @@ for your runtime (in `[runtime_path]/lib.rs` file):
 
 node_primitives::Balance
 
-// Radial token definition
-pub(crate) const MICRO_RAD: Balance = 1_000_000_000_000; // 10−6 	0.000001
-pub(crate) const MILLI_RAD: Balance = 1_000 * MICRO_RAD; // 10−3 	0.001
-pub(crate) const CENTI_RAD: Balance = 10 * MILLI_RAD; // 10−2 	0.01
-pub(crate) const RAD: Balance = 100 * CENTI_RAD;
+// Centrifuge chain token definition
+pub(crate) const MICRO_CFG: Balance = 1_000_000_000_000;    // 10−6 	0.000001
+pub(crate) const MILLI_CFG: Balance = 1_000 * MICRO_CFG;    // 10−3 	0.001
+pub(crate) const CENTI_CFG: Balance = 10 * MILLI_CFG;       // 10−2 	0.01
+pub(crate) const CFG: Balance = 100 * CENTI_CFG;
 
 // Parameterize claims pallet
 parameter_types! {
@@ -65,7 +63,7 @@ parameter_types! {
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
 }
 
 // Implement claims pallet configuration trait for the mock runtime
@@ -95,7 +93,3 @@ $ cargo doc --package pallet-claims --open
 ```
 
 The table of contents for this markdown file is automatically generated using the [`auto-markdown-toc`](https://marketplace.visualstudio.com/items?itemName=huntertran.auto-markdown-toc) extension for Visual StudioCode.
-
-## References
-
-## License
