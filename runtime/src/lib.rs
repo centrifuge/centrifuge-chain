@@ -12,9 +12,7 @@ use frame_support::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND}},
     traits::{
-        U128CurrencyToVote, Currency,
-        MaxEncodedLen,
-        LockIdentifier, InstanceFilter, All, Get},
+        U128CurrencyToVote, Currency, MaxEncodedLen, LockIdentifier, InstanceFilter, All, Get},
 };
 use codec::{Encode, Decode};
 use sp_core::u32_trait::{_1, _2, _3, _4};
@@ -59,8 +57,8 @@ use cumulus_primitives_core::{ParaId, relay_chain::Balance as RelayChainBalance}
 use polkadot_parachain::primitives::Sibling;
 use xcm::v0::{MultiAsset, MultiLocation, MultiLocation::*, Junction::*, NetworkId};
 use xcm_builder::{
-	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative,
-	SiblingParachainConvertsVia, SignedAccountId32AsNative, ParentAsSuperuser,
+	AccountId32Aliases, LocationInverter, ParentIsDefault, RelayChainAsNative, 
+    SiblingParachainConvertsVia, SignedAccountId32AsNative, ParentAsSuperuser,
 	SovereignSignedViaLocation, IsConcrete, NativeAsset, TakeWeightCredit, AllowTopLevelPaidExecutionFrom,
 	AllowUnpaidExecutionFrom, FixedWeightBounds, EnsureXcmOrigin,
     UsingComponents,
@@ -81,9 +79,6 @@ mod proofs;
 
 /// nft module
 // mod nfts;
-
-/// radial reward claims module
-//mod rad_claims;
 
 /// bridge module
 // mod bridge;
@@ -458,7 +453,7 @@ parameter_types! {
 }
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, MaxEncodedLen, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
 pub enum ProxyType {
     Any,
     NonTransfer,
@@ -599,12 +594,12 @@ impl pallet_authorship::Config for Runtime {
 // details and https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=e6490da3bfb28f69c7f6e6393ec6bb0c
 // for the calculation
 // TODO: set back to Perbill::from_percent(3) as soon as the bug above is fixed.
-const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
+//const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
 
-const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
-	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
-	maximum: THREE_PERCENT_INFLATION,
-};
+//const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
+//	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
+//	maximum: THREE_PERCENT_INFLATION,
+//};
 
 parameter_types! {
 	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
@@ -783,18 +778,18 @@ impl pallet_fees::Config for Runtime {
     type WeightInfo = ();
 }
 
-// Parameterize RAD claims pallet
+// Parameterize claims pallet
 parameter_types! {
-    pub const RadClaimsPalletId: PalletId = PalletId(*b"rd/claim");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * constants::currency::RAD;
+    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * RAD;
 }
 
-// Implement RAD claims pallet configuration trait for the runtime
-impl pallet_rad_claims::Config for Runtime {
+// Implement claims pallet configuration trait for the mock runtime
+impl pallet_claims::Config for Runtime {
     type Event = Event;
-    type PalletId = RadClaimsPalletId;
+    type PalletId = ClaimsPalletId;
     type Longevity = Longevity;
     type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
@@ -887,6 +882,7 @@ impl pallet_aura::Config for Runtime {
     type AuthorityId = AuraId;
 }
 
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -927,7 +923,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
         Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
-        RadClaims: pallet_rad_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+        Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
         Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>},
 		// Registry: va_registry::{Pallet, Call, Storage, Event<T>},
 		// Nft: nft::{Pallet, Call, Storage, Event<T>},
@@ -1084,31 +1080,43 @@ impl_runtime_apis! {
 		}
 	}
 
-    // #[cfg(feature = "runtime-benchmarks")]
-    // impl frame_benchmarking::Benchmark<Block> for Runtime {
-    //     fn dispatch_benchmark(
-	// 		//config: frame_benchmarking::BenchmarkConfig
-    //         pallet: Vec<u8>,
-    //         benchmark: Vec<u8>,
-    //         lowest_range_values: Vec<u32>,
-    //         highest_range_values: Vec<u32>,
-    //         steps: Vec<u32>,
-    //         repeat: u32,
-    //         extra: bool
-	//     ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-    //         use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
-    //
-    //         let whitelist: Vec<TrackedStorageKey> = vec![];
-    //         let mut batches = Vec::<BenchmarkBatch>::new();
-    //         //let params = (&config, &whitelist);
-    //         let params = (&pallet, &benchmark, &lowest_range_values, &highest_range_values, &steps, repeat, &whitelist);
-    //
-    //         add_benchmark!(params, batches, va_registry, Registry);
-    //
-    //         if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
-	// 	    Ok(batches)
-    //     }
-    // }
+    impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
+		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
+			ParachainSystem::collect_collation_info()
+		}
+	}
+
+    #[cfg(feature = "runtime-benchmarks")]
+    impl frame_benchmarking::Benchmark<Block> for Runtime {
+        fn dispatch_benchmark(
+                config: frame_benchmarking::BenchmarkConfig
+        ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
+            use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
+
+            // you can whitelist any storage keys you do not want to track here
+            let whitelist: Vec<TrackedStorageKey> = vec![
+                // Block Number
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac").to_vec().into(),
+				// Total Issuance
+				hex_literal::hex!("c2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80").to_vec().into(),
+				// Execution Phase
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a").to_vec().into(),
+				// Event Count
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef70a98fdbe9ce6c55837576c60c7af3850").to_vec().into(),
+				// System Events
+				hex_literal::hex!("26aa394eea5630e07c48ae0c9558cef780d41e5e16056765bc8461851072c9d7").to_vec().into(),
+            ];
+
+            let mut batches = Vec::<BenchmarkBatch>::new();
+            let params = (&config, &whitelist);
+
+            // Pallet fees benchmarks
+            add_benchmark!(params, batches, pallet_fees, Fees);
+
+            if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
+            Ok(batches)
+        }
+    }
 }
 
 // Add parachain runtime features
@@ -1116,18 +1124,3 @@ cumulus_pallet_parachain_system::register_validate_block!(
 	Runtime,
 	cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 );
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use frame_system::offchain::CreateSignedTransaction;
-
-    #[test]
-    fn validate_transaction_submitter_bounds() {
-        fn is_submit_signed_transaction<T>() where
-            T: CreateSignedTransaction<Call>,
-        {}
-
-        is_submit_signed_transaction::<Runtime>();
-    }
-}

@@ -14,11 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	chain_spec,
-	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, Executor}
-};
+use crate::{chain_spec, cli::{Cli, RelayChainCli, Subcommand}, service::{new_partial, Executor}};
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
@@ -39,11 +35,14 @@ fn load_spec(
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"charcoal-rococo" => Ok(Box::new(chain_spec::charcoal_rococo_config())),
-		"charcoal-rococo-staging" => Ok(Box::new(chain_spec::charcoal_rococo_staging_network(para_id))),
-		"charcoal-chachacha-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
-		"charcoal-chachacha-staging" => Ok(Box::new(chain_spec::charcoal_chachacha_staging_network(para_id))),
-		"charcoal-chachacha" => Ok(Box::new(chain_spec::charcoal_chachacha_config())),
+		// TODO(dev): add dev chain spec
+		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
+		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
+		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
+		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
+		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
 			path.into(),
 		)?)),
@@ -52,7 +51,7 @@ fn load_spec(
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Centrifuge Charcoal Parachain Collator".into()
+		"Centrifuge Parachain Collator".into()
 	}
 
 	fn impl_version() -> String {
@@ -249,14 +248,22 @@ pub fn run() -> Result<()> {
 
 			Ok(())
 		}
+		Some(Subcommand::Benchmark(cmd)) => {
+			if cfg!(feature = "runtime-benchmarks") {
+				let runner = cli.create_runner(cmd)?;
+
+				runner.sync_run(|config| cmd.run::<Block, Executor>(config))
+			} else {
+				Err("Benchmarking wasn't enabled when building the node. \
+				You can enable it with `--features runtime-benchmarks`.".into())
+			}
+		},
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 
 			runner.run_node_until_exit(|config| async move {
 				// TODO
 				let key = sp_core::Pair::generate().0;
-
-				let para_id = cli.run.parachain_id;
 
 				let polkadot_cli = RelayChainCli::new(
 					&config,
@@ -265,7 +272,7 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.or(para_id).unwrap_or(100));
+				let id = ParaId::from(cli.run.parachain_id.unwrap_or(100));
 
 				let parachain_account =
 					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);

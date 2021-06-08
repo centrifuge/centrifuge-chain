@@ -16,11 +16,11 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 #unique_assets = { version = "0.1.0", git = "https://github.com/centrifuge/unique-assets", rev = "d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0", default-features = false }
 #unique_assets = { version = "0.1.0", git = "https://github.com/jaybutera/unique-assets", default-features = false }
 #bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
+
+# Local dependencies
 pallet-anchors = { path = "../pallets/anchors", default-features = false }
+pallet-claims = { path = "../pallets/claims", default-features = false }
 pallet-fees = { path = "../pallets/fees", default-features = false }
-pallet-bridge = { path = "../pallets/bridge", default-features = false }
-#pallet-nft = { path = "../pallets/nft", default-features = false }
-pallet-rad-claims = { path = "../pallets/rad-claims", default-features = false }
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
@@ -28,7 +28,7 @@ integer-sqrt = { version = "0.1.2" }
 safe-mix = { version = "1.0", default-features = false }
 smallvec = "1.4.0"
 static_assertions = "1.1.0"
-hex-literal = "0.2.1"
+hex-literal = { version = "0.2.1", optional = true }
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.123", optional = true }
 serde_derive = { version = "1.0.117", optional = true }
@@ -76,6 +76,7 @@ sp-consensus-aura = { git = "https://github.com/centrifuge/substrate", default-f
 frame-executive = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 frame-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master", optional = true }
 frame-system-rpc-runtime-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-authority-discovery = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
@@ -105,6 +106,9 @@ pallet-scheduler = { git = "https://github.com/centrifuge/substrate",  default-f
 pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+
+max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master", features = [ "derive" ] }
 
 max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
@@ -117,6 +121,7 @@ default = ["std"]
 std = [
 #    "bridge-mapping/std",
 #    "unique_assets/std",
+    "pallet-claims/std",
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-rad-claims/std",
@@ -183,8 +188,19 @@ std = [
     "cumulus-pallet-aura-ext/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
+    "max-encoded-len/std",
 ]
-#runtime-benchmarks = ["frame-benchmarking"]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "hex-literal",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "pallet-fees/runtime-benchmarks",
+    "pallet-xcm/runtime-benchmarks",
+    "xcm-builder/runtime-benchmarks",
+    "pallet-collective/runtime-benchmarks",
+    "pallet-society/runtime-benchmarks",
+]
 
 # A feature that should be enabled when the runtime should be build for on-chain
 # deployment. This will disable stuff that shouldn't be part of the on-chain wasm

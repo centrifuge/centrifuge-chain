@@ -25,11 +25,11 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
       - name: Run tests
         run: ./ci/script.sh
         env:
