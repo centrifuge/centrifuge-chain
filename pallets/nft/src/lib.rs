@@ -16,13 +16,8 @@
 
 //! # NFT pallet
 //!
-//! This creates an NFT-like pallet by implementing the
-//! Unique, Mintable, and Burnable traits of the unique_assets
-//! module.
-//!
-//! - \[`Config`]
-//! - \[`Call`]
-//! - \[`Pallet`]
+//! This creates an NFT-like pallet by implementing the `Unique`, `Mintable`,
+//! and `Burnable` traits of the `unique_assets` module.
 //!
 //! ## Overview
 //! This creates an NFT-like pallet by implementing the
@@ -89,6 +84,7 @@
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
+
 // Mock runtime
 #[cfg(test)]
 mod mock;
@@ -99,14 +95,14 @@ mod tests;
 
 // Extrinsics weight information
 mod weights;
-
+ 
 use codec::{
     Decode, 
     Encode, 
     FullCodec
 };
 
-// Runtime, system and frame primitives
+// Frame, system and frame primitives
 use frame_support::{
     dispatch::{
         DispatchError,
@@ -128,13 +124,14 @@ use sp_std::{
     fmt::Debug
 };
 
+// Unique asset traits
 use unique_assets::traits::{
     Mintable,
     Nft,
     Unique, 
 };
 
-use crate::pallet_va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
+//use crate::pallet_va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;
@@ -246,7 +243,7 @@ pub mod pallet {
     // Pallet storage items
     // ------------------------------------------------------------------------
 
-    /// A mapping from a asset ID to the account that owns it.
+    /// A double mapping of registry ID and asset ID to the account that owns it.
     #[pallet::storage]
 	#[pallet::getter(fn account_for_asset)]
     pub type AccountForAsset<T: Config> = StorageDoubleMap<
@@ -257,7 +254,7 @@ pub mod pallet {
         TokenId,
         T::AccountId>;
 
-    /// A double mapping of registry id and asset id to an asset's info.
+    /// A double mapping of registry ID and asset ID to an asset's info.
     #[pallet::storage]
 	#[pallet::getter(fn asset)]
     pub type Assets<T: Config> = StorageDoubleMap<
@@ -282,7 +279,9 @@ pub mod pallet {
 	// The default value for the genesis config type.
 	#[cfg(feature = "std")]
 	impl Default for GenesisConfig {
+
 		fn default() -> Self {
+
 			Self {
                 // nothing to do folks!!!!
             }
@@ -292,6 +291,7 @@ pub mod pallet {
 	// The build of genesis for the pallet.
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
+
 		fn build(&self) {
             // nothing to do folks!!!!
 		}
@@ -312,6 +312,7 @@ pub mod pallet {
 
     #[pallet::error]
 	pub enum Error<T> {
+
         // Thrown when there is an attempt to mint a duplicate asset.
         AssetExists,
 
@@ -322,7 +323,8 @@ pub mod pallet {
         NotAssetOwner,
     }
 
-        // ------------------------------------------------------------------------
+
+    // ------------------------------------------------------------------------
     // Pallet dispatchable functions
     // ------------------------------------------------------------------------
 
@@ -335,7 +337,7 @@ pub mod pallet {
     #[pallet::call]
 	impl<T:Config> Pallet<T> {
 
-        /// Transfer a asset to a new owner.
+        /// Transfer an asset to a new owner.
         ///
         /// The dispatch origin for this call must be the asset owner.
         ///
