@@ -15,22 +15,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # RAD token claims processing pallet
+//! # Claims processing pallet
 //!
 //! This pallet implement a reward claim mechanism with vesting, for
-//! rewarding RAD tokens awarded through [Tinlake](https://tinlake.centrifuge.io)
+//! rewarding tokens (CFG or others) awarded through [Tinlake](https://tinlake.centrifuge.io)
 //! investments.
-//!
-//! - \[`Config`]
-//! - \[`Call`]
-//! - \[`Pallet`]
 //!
 //! ## Overview
 //! This pallet is used for processing reward payout claims from investors who
 //! invested in [Tinlake](https://tinlake.centrifuge.io) pools.
 //!
 //! ## Terminology
-//! RAD is the native token of Centrifuge chain.
+//! CFG is the native token of Centrifuge chain.
 //! 
 //! ## Usage
 //!
@@ -40,38 +36,40 @@
 //! Valid origin is an administrator or root.
 //!
 //! ### Types
-//! <code>\`AdminOrigin\`</code> Ensure that origin of a transaction is an administrator.
-//! <code>\`Currency\`</code> Expected currency of the reward claim.
-//! <code>\`Event\`</code> Overarching type for pallet events.
-//! <code>\`MinimalPayoutAmount\`</code> Minimal reward payout amount that can be claimed.
-//! <code>\`Longevity\`</code> Expected longevity of a validated unsigned extrinsic.
-//! <code>\`PalletId\`</code> Constant configuration parameter to store the module identifier for the pallet.
-//! <code>\`UnsignedPriority\`</code> A configuration for base priority of unsigned transactions.
-//! <code>\`WeightInfo\`</code> Pallet's transaction weights, calculated using runtime benchmarking.
+//! - `AdminOrigin` - Ensure that origin of a transaction is an administrator.
+//! - `Currency` -  Expected currency of the reward claim.
+//! - `Event` -  Overarching type for pallet events.
+//! - `MinimalPayoutAmount` -  Minimal reward payout amount that can be claimed.
+//! - `Longevity` -  Expected longevity of a validated unsigned extrinsic.
+//! - `PalletId` -  Constant configuration parameter to store the module identifier for the pallet.
+//! - `UnsignedPriority` -  A configuration for base priority of unsigned transactions.
+//! - `WeightInfo` -  Pallet's transaction weights, calculated using runtime benchmarking.
 //!
 //! ### Events
+//! - `Claimed(T::AccountId, <T as pallet_balances::Config>::Balance)` - Event triggered after a reward claim is successfully processed.
+//! - `RootHashStored(<T as frame_system::Config>::Hash)` - Event triggered when the root hash is stored.
 //!
 //! ### Errors
-//! <code>\`InsufficientBalance\`</code> Amount being claimed is less than the available amount in [`ClaimedAmounts`].
-//! <code>\`InvalidProofs\`</code> The combination of account id, amount, and proofs vector in a claim was invalid.
-//! <code>\`MustBeAdmin\`</code> Protected operation, must be performed by admin.
-//! <code>\`UnderMinPayout\`</code> The payout amount attempting to be claimed is less than the minimum allowed by [`MinimalPayoutAmount`].
+//! - `InsufficientBalance` - Amount being claimed is less than the available amount in [`ClaimedAmounts`].
+//! - `InvalidProofs` - The combination of account id, amount, and proofs vector in a claim was invalid.
+//! - `MustBeAdmin` - Protected operation, must be performed by admin.
+//! - `UnderMinPayout` - The payout amount attempting to be claimed is less than the minimum allowed by [`MinimalPayoutAmount`].
 //!
 //! ### Dispatchable Functions
 //!
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
 //! pallet contract. Here's the callable functions implemented in this module:
 //!
-//! [`claim`]
-//! [`set_upload_account`]
-//! [`store_root_hash`]
+//! - `claim` - Claims tokens awarded through tinlake investments.
+//! - `set_upload_account` - Admin function that sets the allowed upload account to add root hashes.
+//! - `store_root_hash` - Stores root hash for correspondent claim merkle tree run.
 //! 
 //! ### Public Functions
-//! [`sorted_hash_of`]
+//! - `sorted_hash_of` - Build a sorted hash of two given hash values.
 //!
 //! ## Genesis Configuration
-//! The pallet is parameterized and configured via [parameter_types] macro, at the time the runtime is built
-//! by means of the [`construct_runtime`] macro.
+//! The pallet is parameterized and configured via [`parameter_types`](https://docs.rs/frame-support/2.0.0-rc1/frame_support/macro.parameter_types.html) macro, at the time the runtime is built
+//! by means of the [`construct_runtime`](https://substrate.dev/rustdocs/v3.0.0/frame_support/macro.construct_runtime.html) macro.
 //!
 //! ## Dependencies
 //! This pallet is tightly coupled to:
@@ -121,6 +119,8 @@ use frame_system::{
   ensure_root,
 };
 
+use sp_core::Encode;
+
 use sp_runtime::{
     sp_std::{
         convert::TryInto,
@@ -141,11 +141,7 @@ use sp_runtime::{
     },
 };
 
-use sp_core::{Encode};
-
-//use sp_std::convert::TryInto;
-
-// Extrinsics weight information
+// Re-export weight information in crate namespace
 pub use crate::traits::WeightInfo as PalletWeightInfo;
 
 // Re-export in crate namespace (for runtime construction)
@@ -201,7 +197,7 @@ pub mod pallet {
     // Pallet configuration
     // ------------------------------------------------------------------------
 
-    /// Rad claim pallet's configuration trait.
+    /// Claims pallet's configuration trait.
     ///
     /// Associated types and constants are declared in this trait. If the pallet
     /// depends on other super-traits, the latter must be added to this trait, 
@@ -277,17 +273,17 @@ pub mod pallet {
     /// Total claimed amounts for all accounts.
     #[pallet::storage]
 	#[pallet::getter(fn get_claimed_amount)]
-    pub type ClaimedAmounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+    pub(super) type ClaimedAmounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
-    /// Map of root hashes that correspond to lists of RAD reward claim amounts per account.
+    /// Map of root hashes that correspond to lists of reward claim amounts per account.
     #[pallet::storage]
 	#[pallet::getter(fn get_root_hash)]
-    pub type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, bool, ValueQuery>;
+    pub(super) type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, T::Hash, bool, ValueQuery>;
     
     /// Account that is allowed to upload new root hashes.
     #[pallet::storage]
 	#[pallet::getter(fn get_upload_account)]
-    pub type UploadAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+    pub(super) type UploadAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
 
 
     // ------------------------------------------------------------------------
@@ -361,9 +357,9 @@ pub mod pallet {
     #[pallet::call]
 	impl<T:Config> Pallet<T> {
 
-        /// Claims RAD tokens awarded through tinlake investments
+        /// Claims tokens awarded through Tinlake investments.
         ///
-        /// The extrinsic is validated by the custom `validate_unsigned` function below.
+        /// The extrinsic is validated by the custom \[`validate_unsigned`\] function below.
         /// An unsigned transaction is free of fees. We need such an unsigned transaction
         /// as some contributors may not have enought parachain tokens for claiming their 
         /// reward payout. The [`validate_unsigned`] function first checks the validity of
@@ -429,7 +425,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Stores root hash for correspondent claim merkle tree run
+        /// Stores root hash for correspondent claim Merkle tree run
         ///
         /// # <weight>
         /// - Based on origin check and write op
@@ -465,8 +461,7 @@ pub mod pallet {
         ///
         /// Unsigned transactions are generally disallowed. However, since a contributor
         /// claiming a reward payout may not have the necessary tokens on the parachain to
-        /// pay the fees of the claim, the [`claim_reward`] transactions must be 
-        /// unsigned.
+        /// pay the fees of the claim, this `claim` transactions must be unsigned.
         /// Here, we make sure such unsigned, and remember, feeless unsigned transactions
         /// can be used for malicious spams or Deny of Service (DoS) attacks.
         fn validate_unsigned(
@@ -498,7 +493,7 @@ pub mod pallet {
 // Pallet implementation block
 // ----------------------------------------------------------------------------
 
-// Pallet implementation block.
+// Claims pallet implementation block.
 //
 // This main implementation block contains two categories of functions, namely:
 // - Public functions: These are functions that are `pub` and generally fall into 
@@ -507,7 +502,7 @@ pub mod pallet {
 //   from other pallets.
 impl<T: Config> Pallet<T> {
    
-    /// Return the account identifier of the RAD claims pallet.
+    /// Return the account identifier of the claims pallet.
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
@@ -515,7 +510,8 @@ impl<T: Config> Pallet<T> {
 	  T::PalletId::get().into_account()
 	}
 
-    /// TODO: need function documentation
+    /// Build a sorted hash of two given hash values.
+    ///
     /// Hash a:b if a < b, else b:a. Uses the runtime module's hasher.
     pub fn sorted_hash_of(a: &T::Hash, b: &T::Hash) -> T::Hash {
         let mut h: Vec<u8> = Vec::with_capacity(64);
