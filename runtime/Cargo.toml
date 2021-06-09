@@ -9,19 +9,6 @@ homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
-# external pallet
-#substrate-pallet-multi-account = { branch = "rococo-v1", git = "https://github.com/centrifuge/substrate-pallet-multi-account", rev = "ef988aba4f73b57328110592b75d90fd0510d718", default-features = false }
-# chainbridge = { version = "0.0.1", git = "https://github.com/centrifuge/chainbridge-substrate.git", rev = "6ef2738d8179299bf94159ae9e79d3f27be5271c" , default-features = false}
-#chainbridge = { git = "https://github.com/jaybutera/chainbridge-substrate", default-features = false}
-#unique_assets = { version = "0.1.0", git = "https://github.com/centrifuge/unique-assets", rev = "d4ff80eb8ef6a192012fd0e2f0d99f7dc65ac9f0", default-features = false }
-#unique_assets = { version = "0.1.0", git = "https://github.com/jaybutera/unique-assets", default-features = false }
-#bridge-mapping = { path = "../pallets/bridge-mapping", default-features = false }
-
-# Local dependencies
-pallet-anchors = { path = "../pallets/anchors", default-features = false }
-pallet-claims = { path = "../pallets/claims", default-features = false }
-pallet-fees = { path = "../pallets/fees", default-features = false }
-
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 integer-sqrt = { version = "0.1.2" }
@@ -34,11 +21,9 @@ serde = { version = "1.0.102", optional = true }
 
 # parachain
 parachain-info = { git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
-#cumulus-parachain-upgrade = { git = "https://github.com/centrifuge/cumulus.git", default-features = false, branch = "rococo-v1" }
 cumulus-pallet-parachain-system = { git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-primitives-core = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-primitives-utility = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
-#cumulus-message-broker = {git = 'https://github.com/centrifuge/cumulus', default-features = false, branch = 'rococo-v1'}
 cumulus-pallet-xcm = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-pallet-xcmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-pallet-dmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
@@ -47,6 +32,7 @@ cumulus-pallet-aura-ext = {git = "https://github.com/centrifuge/cumulus", defaul
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
+polkadot-runtime-common = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
 xcm = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
 pallet-xcm = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
 xcm-executor = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
@@ -106,21 +92,14 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
-
 max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master", features = [ "derive" ] }
 
 [build-dependencies]
-#wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
 substrate-wasm-builder = "3.0.0"
 
 [features]
 default = ["std"]
 std = [
-#    "bridge-mapping/std",
-#    "unique_assets/std",
-    "pallet-claims/std",
-    "pallet-fees/std",
-    "pallet-anchors/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",
@@ -133,7 +112,6 @@ std = [
     "pallet-democracy/std",
     "pallet-elections-phragmen/std",
     "frame-executive/std",
-    #"pallet-finality-tracker/std",
     "pallet-grandpa/std",
     "pallet-im-online/std",
     "pallet-indices/std",
@@ -167,8 +145,6 @@ std = [
     "pallet-utility/std",
     "sp-version/std",
     "sp-arithmetic/std",
-#    "chainbridge/std",
-    #"substrate-pallet-multi-account/std",
     "sp-io/std",
     "rustc-hex",
     "safe-mix/std",
@@ -179,7 +155,6 @@ std = [
     "xcm-executor/std",
     "xcm-builder/std",
     "cumulus-pallet-xcm/std",
-    #"cumulus-message-broker/std",
     "cumulus-pallet-aura-ext/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
@@ -190,7 +165,6 @@ runtime-benchmarks = [
     "hex-literal",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
-    "pallet-fees/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",

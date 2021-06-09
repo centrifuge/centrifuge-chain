@@ -1,12 +1,10 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
-use node_primitives::Balance;
-use sp_runtime::traits::Convert;
-use frame_support::traits::{Imbalance, Currency, OnUnbalanced};
-use crate::{Balances, Authorship, NegativeImbalance};
+use super::*;
 use frame_support::weights::{WeightToFeeCoefficient, WeightToFeePolynomial, WeightToFeeCoefficients};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
+use frame_support::traits::{Currency, OnUnbalanced};
 
 pub struct DealWithFees;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
@@ -15,21 +13,21 @@ impl OnUnbalanced<NegativeImbalance> for DealWithFees {
     }
 }
 
-/// Struct that handles the conversion of Balance -> `u64`. This is used for staking's election
-/// calculation.
-pub struct CurrencyToVoteHandler;
-
-impl CurrencyToVoteHandler {
-	fn factor() -> Balance { (Balances::total_issuance() / u64::max_value() as Balance).max(1) }
-}
-
-impl Convert<Balance, u64> for CurrencyToVoteHandler {
-	fn convert(x: Balance) -> u64 { (x / Self::factor()) as u64 }
-}
-
-impl Convert<u128, Balance> for CurrencyToVoteHandler {
-	fn convert(x: u128) -> Balance { x * Self::factor() }
-}
+// /// Struct that handles the conversion of Balance -> `u64`. This is used for staking's election
+// /// calculation.
+// pub struct CurrencyToVoteHandler;
+//
+// impl CurrencyToVoteHandler {
+// 	fn factor() -> Balance { (Balances::total_issuance() / u64::max_value() as Balance).max(1) }
+// }
+//
+// impl Convert<Balance, u64> for CurrencyToVoteHandler {
+// 	fn convert(x: Balance) -> u64 { (x / Self::factor()) as u64 }
+// }
+//
+// impl Convert<u128, Balance> for CurrencyToVoteHandler {
+// 	fn convert(x: u128) -> Balance { x * Self::factor() }
+// }
 
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
 /// node's balance type.
@@ -57,7 +55,7 @@ impl Convert<u128, Balance> for CurrencyToVoteHandler {
 /// 	let length_fee: Balance = extrinsic_bytes * transaction_byte_fee; // 920000000000
 /// 	let weight_fee: Balance = weight * weight_coefficient; // 61425000000000
 /// 	let fee: Balance = base_fee + length_fee + weight_fee;
-/// 	assert_eq!(fee, 10172 * (centrifuge_chain_runtime::constants::currency::MICRO_RAD / 100));
+/// 	assert_eq!(fee, 10172 * (centrifuge_chain_runtime::constants::currency::MICRO_AIR / 100));
 /// ```
 pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
