@@ -21,9 +21,8 @@
 //! - [`Pallet`]
 //!
 //! ## Overview
-//! This creates an NFT-like pallet by implementing the
-//! Unique, Mintable, and Burnable traits of the unique_assets
-//! module.
+//! This creates an NFT-like pallet by implementing the 'Unique', 'Mintable', 
+//! and 'Burnable' traits of the 'unique_assets' module.
 //! The depended-on unique_assets library provides general
 //! types for constructing unique assets.
 //! Other modules in this runtime can access the interface provided 
@@ -169,8 +168,8 @@ pub mod traits {
     }
 } // end of 'traits' module
 
-// A generic definition of an NFT that will be used by this pallet.
-#[derive(Encode, Decode, Clone, RuntimeDebug)]
+// Generic definition of a non-fungible token (NFT)
+#[derive(Encode, Decode, Default, Clone, RuntimeDebug)]
 pub struct Asset<Hash, AssetInfo> {
     pub id: Hash,
     pub asset: AssetInfo,
@@ -220,11 +219,6 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_balances::Config {
 
-        // type AssetId;
-        // type AssetIdRef;
-        // type RegistryId;
-        // type TokenId;
-
         /// The data type that is used to describe this type of asset.
         type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
 
@@ -245,7 +239,7 @@ pub mod pallet {
     // The macro generates a function on Pallet to deposit an event
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     // Additional argument to specify the metadata to use for given type
-    #[pallet::metadata(T::AccountId = "AccountId", <T as Config>::RegistryId = "RegistryId")]
+    #[pallet::metadata(T::AccountId = "AccountId", RegistryId = "RegistryId")]
     pub enum Event<T: Config> {
 
         /// Ownership of the asset has been transferred to the account.

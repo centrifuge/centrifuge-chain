@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-nft'
-description = 'NFT pallet'
+description = 'Pallet for non-fungible token (NFT) processing'
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'

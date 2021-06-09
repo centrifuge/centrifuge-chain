@@ -28,6 +28,7 @@ use crate::traits::WeightInfo;
 
 
 impl WeightInfo for () {
+    
     fn transfer() -> Weight {
         (195_000_000 as Weight).saturating_add(RocksDbWeight::get().reads_writes(1,1))
     }

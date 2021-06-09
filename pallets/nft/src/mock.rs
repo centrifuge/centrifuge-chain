@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 
-//! Non-fungible token (NFT) processing pallet's testing environment
+//! Testing environment for non-fungible token (NFT) processing pallet
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
@@ -24,22 +24,30 @@
 
 use crate::{
     self as pallet_nft,
-    Config
+    Config,
 };
 
 use frame_support::{
-    impl_outer_origin, 
     parameter_types, 
     weights::Weight
 };
 
-use frame_system as system;
+use node_primitives::Balance;
+
 use sp_core::H256;
+
+use sp_io::TestExternalities;
+
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
+    traits::{
+        BlakeTwo256, 
+        IdentityLookup,
+    },
 };
+
+use crate::traits::WeightInfo;
+
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -47,24 +55,16 @@ use sp_runtime::{
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
-type Balance = u128;
 
 // Implement testint extrinsic weights for the pallet
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 
-    fn claim(_hashes_length: usize) -> Weight { 
-        0 as Weight 
-    }
-
-    fn set_upload_account() -> Weight { 
-        0 as Weight 
-    }
-
-    fn store_root_hash() -> Weight { 
+    fn transfer() -> Weight {
         0 as Weight 
     }
 }
+
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -80,20 +80,13 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Nft: pallet_nft::{Pallet, Call, Config<T>, Storage, Event<T>},
+        NonFungibleToken: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
     }
 );
-
-impl_outer_origin! {
-    pub enum Origin for MockRuntime {}
-}
 
 // Parameterize FRAME system pallet
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
 // Implement FRAME system pallet configuration trait for the mock runtime
@@ -109,15 +102,12 @@ impl frame_system::Config for MockRuntime {
     type Event = Event;
     type Origin = Origin;
     type BlockHashCount = BlockHashCount;
-    type AvailableBlockRatio = AvailableBlockRatio;
-    type MaximumBlockWeight = MaximumBlockWeight;
-    type MaximumBlockLength = MaximumBlockLength;
     type BlockWeights = ();
     type BlockLength = ();
     type Version = ();
     type PalletInfo = PalletInfo;
     type DbWeight = ();
-    type AccountData = balances::AccountData<Balance>;
+    type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type BaseCallFilter = ();
@@ -142,14 +132,14 @@ impl pallet_balances::Config for MockRuntime {
     type MaxLocks = ();
 }
 
-// Parameterize Centrifuge chain's Nft pallet
+// Parameterize this pallet
 parameter_types! {
-    pub const AssetInfo: Vec<u8> = ();
+    pub const AssetInfo: Vec<u8> = vec![];
 }
 
-// Implement Centrifuge chain's Nft pallet
+// Implement this pallet's configuration trait for the mock runtime
 impl Config for MockRuntime {
-    type AssetInfo = AssetInfo;
+    type AssetInfo = Vec<u8>;
     type Event = Event;
     type WeightInfo = ();
 }

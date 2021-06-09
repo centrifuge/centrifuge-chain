@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 
-//! Non-fungible token (NFT) processing pallet's unit test cases
+//! Unit test cases for non-fungible token (NFT) processing pallet
 
 
 // ----------------------------------------------------------------------------
@@ -20,17 +20,19 @@
 // ----------------------------------------------------------------------------
 
 use crate::{
-    self as pallet_nft,
     mock::*,
     *
 };
 
 use frame_support::{
-    assert_err, assert_ok};
+    assert_err, 
+    assert_ok,
+};
 
-use sp_core::{H160, U256};
-
-use pallet_va_registry::types::AssetId;
+use sp_core::{
+    H160, 
+    U256,
+};
 
 
 // ----------------------------------------------------------------------------
@@ -42,7 +44,7 @@ fn mint() {
     TestExternalitiesBuilder::default().build().execute_with( || {
         let asset_id = AssetId(H160::zero(), U256::zero());
         let asset_info = vec![];
-        assert_ok!(<Nft as Mintable>::mint(&0, &1, &asset_id, asset_info));
+        assert_ok!(NonFungibleToken::mint(&0, &1, &asset_id, asset_info));
     });
 }
 
@@ -50,9 +52,9 @@ fn mint() {
 fn mint_err_duplicate_id() {
     TestExternalitiesBuilder::default().build().execute_with( || {      
         let asset_id = AssetId(H160::zero(), U256::zero());
-        assert_ok!(<Nft as Mintable>::mint(&0, &1, &asset_id, vec![]));
-        assert_err!(<Nft as Mintable>::mint(&0, &1, &asset_id, vec![]),
-                    Error::<Test>::AssetExists);
+        assert_ok!(NonFungibleToken::mint(&0, &1, &asset_id, vec![]));
+        assert_err!(NonFungibleToken::mint(&0, &1, &asset_id, vec![]),
+                    Error::<MockRuntime>::AssetExists);
     });
 }
 
@@ -61,11 +63,11 @@ fn transfer() {
     TestExternalitiesBuilder::default().build().execute_with( || {
         let asset_id = AssetId(H160::zero(), U256::zero());
         // First mint to account 1
-        assert_ok!(<Nft as Mintable>::mint(&1, &1, &asset_id, vec![]));
+        assert_ok!(NonFungibleToken::mint(&1, &1, &asset_id, vec![]));
         // Transfer to 2
-        assert_ok!(<Nft as Unique>::transfer(&1, &2, &asset_id));
+        assert_ok!(<NonFungibleToken as Unique>::transfer(&1, &2, &asset_id));
         // 2 owns asset now
-        assert_eq!(<Nft as Unique>::owner_of(&asset_id), Some(2));
+        assert_eq!(<NonFungibleToken as Unique>::owner_of(&asset_id), Some(2));
     });
 }
 
@@ -74,9 +76,9 @@ fn transfer_err_when_not_owner() {
     TestExternalitiesBuilder::default().build().execute_with( || {
         let asset_id = AssetId(H160::zero(), U256::zero());
         // Mint to account 2
-        assert_ok!(<Nft as Mintable>::mint(&2, &2, &asset_id, vec![]));
+        assert_ok!(NonFungibleToken::mint(&2, &2, &asset_id, vec![]));
         // 1 transfers to 2
-        assert_err!(<Nft as Unique>::transfer(&1, &2, &asset_id),
-                    Error::<Test>::NotAssetOwner);
+        assert_err!(<NonFungibleToken as Unique>::transfer(&1, &2, &asset_id),
+                    Error::<MockRuntime>::NotAssetOwner);
     });
 }
