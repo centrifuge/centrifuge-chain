@@ -31,6 +31,7 @@ members = [
 	"pallets/fees",
 	"pallets/anchors",
     "pallets/claims",
+	"libs/proofs",
 	"runtime",
 ]
 

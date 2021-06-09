@@ -7272,6 +7272,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "proofs"
+version = "2.0.0"
+dependencies = [
+ "parity-scale-codec",
+ "sp-core",
+ "sp-std",
+]
+
+[[package]]
 name = "prost"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
