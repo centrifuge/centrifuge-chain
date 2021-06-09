@@ -8,6 +8,7 @@
         - [Add the Pallet to your Runtime](#add-the-pallet-to-your-runtime)
         - [Configure the Pallet](#configure-the-pallet)
     - [Pallet Documentation](#pallet-documentation)
+    - [License](#license)
 
 <!-- /TOC -->
 
@@ -49,7 +50,7 @@ for your runtime (in `[runtime_path]/lib.rs` file):
 
 ```rust
 
-node_primitives::Balance
+use node_primitives::Balance;
 
 // Centrifuge chain token definition
 pub(crate) const MICRO_CFG: Balance = 1_000_000_000_000;    // 10−6 	0.000001
@@ -59,7 +60,7 @@ pub(crate) const CFG: Balance = 100 * CENTI_CFG;
 
 // Parameterize claims pallet
 parameter_types! {
-    pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
+    pub const ClaimsPalletId: PalletId = PalletId(*b"c/claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
     pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
@@ -93,3 +94,7 @@ $ cargo doc --package pallet-claims --open
 ```
 
 The table of contents for this markdown file is automatically generated using the [`auto-markdown-toc`](https://marketplace.visualstudio.com/items?itemName=huntertran.auto-markdown-toc) extension for Visual StudioCode.
+
+## License
+
+GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>

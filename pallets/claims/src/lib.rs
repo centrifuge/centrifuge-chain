@@ -1,19 +1,16 @@
 
-// Copyright 2021 Parity Technologies (UK) Ltd.
-// This file is part of Centrifuge (centrifuge.io) parachain.
+// Copyright 2021 Centrifuge GmbH (centrifuge.io).
+// This file is part of Centrifuge chain project.
 
-// Cumulus is free software: you can redistribute it and/or modify
+// Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// (at your option) any later version (see http://www.gnu.org/licenses).
 
-// Cumulus is distributed in the hope that it will be useful,
+// Centrifuge is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
-// You should have received a copy of the GNU General Public License
-// along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 //! # Claims processing pallet
 //!
@@ -80,6 +77,10 @@
 //!
 //! ## Credits
 //! The Centrifugians Tribe <tribe@centrifuge.io>
+//!
+//! ## License
+//! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
+
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
