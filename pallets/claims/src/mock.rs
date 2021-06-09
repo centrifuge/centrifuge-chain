@@ -26,8 +26,6 @@ use crate::{
     Config
 };
 
-use node_primitives::Balance;
-
 use frame_support::{
     PalletId, 
     parameter_types, 
@@ -36,6 +34,8 @@ use frame_support::{
 };
 
 use frame_system::EnsureSignedBy;
+
+use node_primitives::Balance;
 
 use sp_core::H256;
 use sp_io::TestExternalities;
