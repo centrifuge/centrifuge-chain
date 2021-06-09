@@ -51,8 +51,6 @@ use sp_runtime::{
 
 use crate::traits::WeightInfo;
 
-pub use pallet_balances as balances;
-
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -137,7 +135,7 @@ impl frame_system::Config for MockRuntime {
     type Version = ();
     type PalletInfo = PalletInfo;
     type DbWeight = ();
-    type AccountData = balances::AccountData<Balance>;
+    type AccountData = pallet_balances::AccountData<Balance>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type BaseCallFilter = ();
