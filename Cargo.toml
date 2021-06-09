@@ -27,11 +27,13 @@ path = "src/main.rs"
 
 [workspace]
 members = [
+	"pallets/anchors",
     "pallets/bridge",
 	"pallets/bridge-mapping",
-	"pallets/fees",
-	"pallets/anchors",
     "pallets/claims",
+	"pallets/fees",
+    "pallets/nft",
+    "primitives",
 	"runtime",
 ]
 

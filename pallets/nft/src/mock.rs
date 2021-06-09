@@ -1,21 +1,18 @@
-// Copyright 2021 Parity Technologies (UK) Ltd.
-// This file is part of Centrifuge (centrifuge.io) parachain.
+// Copyright 2021 Centrifuge GmbH (centrifuge.io).
+// This file is part of Centrifuge chain project.
 
-// Cumulus is free software: you can redistribute it and/or modify
+// Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// (at your option) any later version (see http://www.gnu.org/licenses).
 
-// Cumulus is distributed in the hope that it will be useful,
+// Centrifuge is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-
-//! Nft pallet testing environment and utilities
+//! Non-fungible token (NFT) processing pallet's testing environment
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
@@ -75,12 +72,14 @@ impl WeightInfo for MockWeightInfo {
 
 // Build mock runtime
 frame_support::construct_runtime!(
+    
     pub enum MockRuntime where 
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Nft: pallet_nft::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
@@ -89,16 +88,12 @@ impl_outer_origin! {
     pub enum Origin for MockRuntime {}
 }
 
+// Parameterize FRAME system pallet
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = 1024;
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
-}
-
-// Parameterize FRAME system pallet
-parameter_types! {
-    pub const BlockHashCount: u64 = 250;
 }
 
 // Implement FRAME system pallet configuration trait for the mock runtime
@@ -114,6 +109,9 @@ impl frame_system::Config for MockRuntime {
     type Event = Event;
     type Origin = Origin;
     type BlockHashCount = BlockHashCount;
+    type AvailableBlockRatio = AvailableBlockRatio;
+    type MaximumBlockWeight = MaximumBlockWeight;
+    type MaximumBlockLength = MaximumBlockLength;
     type BlockWeights = ();
     type BlockLength = ();
     type Version = ();
@@ -126,6 +124,34 @@ impl frame_system::Config for MockRuntime {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
+}
+
+// Parameterize FRAME balances pallet
+parameter_types! {
+    pub const ExistentialDeposit: u64 = 1;
+}
+
+// Implement FRAME balances pallet configuration trait for the mock runtime
+impl pallet_balances::Config for MockRuntime {
+    type Balance = Balance;
+    type DustRemoval = ();
+    type Event = Event;
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = ();
+}
+
+// Parameterize Centrifuge chain's Nft pallet
+parameter_types! {
+    pub const AssetInfo: Vec<u8> = ();
+}
+
+// Implement Centrifuge chain's Nft pallet
+impl Config for MockRuntime {
+    type AssetInfo = AssetInfo;
+    type Event = Event;
+    type WeightInfo = ();
 }
 
 
@@ -141,6 +167,7 @@ pub struct TestExternalitiesBuilder {}
 
 // Default trait implementation for test externalities builder
 impl Default for TestExternalitiesBuilder {
+
 	fn default() -> Self {
 		Self {}
 	}
@@ -150,6 +177,7 @@ impl TestExternalitiesBuilder {
         
     // Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
+
 		frame_system::GenesisConfig::default()
             .build_storage::<MockRuntime>()
             .unwrap()

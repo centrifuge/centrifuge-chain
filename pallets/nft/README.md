@@ -30,7 +30,7 @@ to your parachain's main `Cargo.toml` file:
 
 [dependencies]
 
-pallet-nft = { branch = 'master', git = 'https://github.com/centrifuge-chain/pallet-nft.git' }
+pallet-nft = { branch = 'master', git = 'https://github.com/centrifuge/centrifuge-chain.git', default-features = false }
 
 # -- snip --
 
@@ -48,26 +48,21 @@ for your runtime (in `[runtime_path]/lib.rs` file):
 
 ```rust
 
-
-// Parameterize bridge pallet
+// Parameterize Nft pallet
 parameter_types! {
-    pub const MinimalPayoutAmount: node_primitives::Balance = 5 * currency::RAD;
+    pub const NftPalletId: PalletId = PalletId(*b"ccpa/nft");
 }
 
 // Implement bridge pallet configuration trait for the mock runtime
 impl pallet_nft::Config for MyRuntime {
     type Event = ();
-    type PalletId = RadClaimsPalletId;
-    type Longevity = Longevity;
-    type UnsignedPriority = UnsignedPriority;
-    type AdminOrigin = EnsureSignedBy<One, u64>;
-    type Currency = Balances;
+    type PalletId = NftPalletId;
 }
 
 construct_runtime! {
     …
 
-    Bridge: pallet_bridge::{Pallet, Call, Config<T>, Storage, Event<T>},
+    Nft: pallet_nft::{Pallet, Call, Config<T>, Storage, Event<T>},
 }
 ```
 
@@ -76,7 +71,7 @@ construct_runtime! {
 You can see this pallet's reference documentation with the following command:
 
 ```sh
-$ cargo doc --package pallet-bridge --open
+$ cargo doc --package pallet-nft --open
 ```
 
 The table of contents for this markdown file is automatically generated using the [`auto-markdown-toc`](https://marketplace.visualstudio.com/items?itemName=huntertran.auto-markdown-toc) extension for Visual StudioCode.
@@ -84,3 +79,5 @@ The table of contents for this markdown file is automatically generated using th
 ## References
 
 ## License
+
+GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>

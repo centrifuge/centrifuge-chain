@@ -1000,7 +1000,6 @@ dependencies = [
  "log 0.4.14",
  "node-inspect",
  "node-primitives",
- "pallet-anchors",
  "pallet-im-online",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
@@ -1100,6 +1099,7 @@ dependencies = [
  "pallet-indices",
  "pallet-membership",
  "pallet-multisig",
+ "pallet-nft",
  "pallet-offences",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -1121,6 +1121,7 @@ dependencies = [
  "rustc-hex",
  "safe-mix",
  "serde",
+ "serde_derive",
  "smallvec 1.6.1",
  "sp-api",
  "sp-arithmetic",
@@ -1143,6 +1144,18 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-executor",
+]
+
+[[package]]
+name = "centrifuge-primitives"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -1193,6 +1206,22 @@ dependencies = [
  "poly1305",
  "stream-cipher",
  "zeroize",
+]
+
+[[package]]
+name = "chainbridge"
+version = "0.0.2"
+source = "git+https://github.com/centrifuge/chainbridge-substrate?branch=refactor/bridge_pallet_frame_v2#8eb612f4f85cdb4257906e396d6cf1afb446467b"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "substrate-wasm-builder-runner",
 ]
 
 [[package]]
@@ -5230,6 +5259,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-bridge"
+version = "2.0.0"
+dependencies = [
+ "chainbridge",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-balances",
+ "pallet-fees",
+ "pallet-va-registry",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-bridge-grandpa"
 version = "0.1.0"
 source = "git+https://github.com/centrifuge/polkadot?branch=centrifuge#a756291f71c1e80351b8099fda8b0e42362a09f6"
@@ -5264,7 +5312,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-claims"
-version = "2.0.0"
+version = "3.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -5522,6 +5570,25 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-nft"
+version = "2.0.0"
+dependencies = [
+ "centrifuge-primitives",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-balances",
+ "pallet-fees",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
 ]
 
 [[package]]
@@ -5799,6 +5866,25 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-va-registry"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-anchors",
+ "pallet-balances",
+ "pallet-fees",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
 ]
 
 [[package]]
@@ -10517,6 +10603,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-wasm-builder-runner"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "316626afcac0219c95116e6a2518e622484c2814182bd225fbf4da4f67e27e8f"
+
+[[package]]
 name = "subtle"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11273,6 +11365,14 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unique_assets"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "sp-std",
+]
 
 [[package]]
 name = "universal-hash"

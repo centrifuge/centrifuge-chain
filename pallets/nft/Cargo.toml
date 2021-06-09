@@ -12,9 +12,8 @@ version = '2.0.0'
 targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
+# Substrate dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-unique_assets = { path = "../../../unique-assets", default-features = false }
-#unique_assets = { branch = "master", git = "https://github.com/centrifuge/unique-assets", default-features = false }
 frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-benchmarking = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true }
@@ -25,22 +24,25 @@ sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate
 sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 
 # Local dependencies
+unique_assets = { path = "../../../unique-assets", default-features = false }
+#unique_assets = { branch = "master", git = "https://github.com/centrifuge/unique-assets", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
+centrifuge-primitives = { path = "../../primitives", default-features = false }
 
 [dev-dependencies]
 node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
 sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false  }
 sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
-pallet-va-registry = { path = "../va-registry", default-features = false }
 
 [features]
 default = ['std']
 std = [
+    'centrifuge-primitives/std',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
     'pallet-balances/std',
     'pallet-fees/std',
-    'pallet-va-registry/std',
     'sp-std/std',
+    'unique_assets/std',
 ]

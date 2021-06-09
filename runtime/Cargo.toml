@@ -21,6 +21,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 pallet-anchors = { path = "../pallets/anchors", default-features = false }
 pallet-claims = { path = "../pallets/claims", default-features = false }
 pallet-fees = { path = "../pallets/fees", default-features = false }
+pallet-nft = { path = "../pallets/nft", default-features = false }
 
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
@@ -110,7 +111,7 @@ pallet-society = { git = "https://github.com/centrifuge/substrate", default-feat
 
 max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master", features = [ "derive" ] }
 
-max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+#max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 [build-dependencies]
 #wasm-builder-runner = { version = "1.0.5", package = "substrate-wasm-builder-runner", git = "https://github.com/centrifuge/substrate.git", rev = "e271ae7fda72a7ad55ff3c216b8b2abae0ae31fd" }
@@ -121,11 +122,10 @@ default = ["std"]
 std = [
 #    "bridge-mapping/std",
 #    "unique_assets/std",
+    "pallet-anchors/std",
     "pallet-claims/std",
     "pallet-fees/std",
-    "pallet-anchors/std",
-    "pallet-rad-claims/std",
-    "pallet-bridge/std",
+    "pallet-nft/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",

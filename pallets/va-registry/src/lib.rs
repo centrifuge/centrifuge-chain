@@ -19,10 +19,6 @@
 //! This Substrate FRAME pallet defines a **Verifiable Attributes Registry**
 //! for minting and managing non-fungible tokens (NFTs).
 //!
-//! - \[`Config`]
-//! - \[`Call`]
-//! - \[`Pallet`]
-//!
 //! ## Overview
 //! This Substrate FRAME pallet defines a Verifiable Attributes Registry
 //! for minting and managing non-fungible tokens (NFTs).
@@ -258,6 +254,7 @@ pub mod pallet {
         Tmp(T::Hash),
     }
 
+    
     // ------------------------------------------------------------------------
     // Pallet storage items
     // ------------------------------------------------------------------------

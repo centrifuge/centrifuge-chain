@@ -1,23 +1,24 @@
-// Copyright 2021 Parity Technologies (UK) Ltd.
-// This file is part of Centrifuge (centrifuge.io) parachain.
+// Copyright 2021 Centrifuge GmbH (centrifuge.io).
+// This file is part of Centrifuge chain project.
 
-// Cumulus is free software: you can redistribute it and/or modify
+// Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// (at your option) any later version (see http://www.gnu.org/licenses).
 
-// Cumulus is distributed in the hope that it will be useful,
+// Centrifuge is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
-
-//! # NFT pallet
+//! # Non-fungible tokens (NFT) processing pallet
 //!
 //! This creates an NFT-like pallet by implementing the `Unique`, `Mintable`,
 //! and `Burnable` traits of the `unique_assets` module.
+//!
+//! - [`Config`]
+//! - [`Call`]
+//! - [`Pallet`]
 //!
 //! ## Overview
 //! This creates an NFT-like pallet by implementing the
@@ -77,9 +78,14 @@
 //! 
 //! ## Credits
 //! The Centrifugians Tribe <tribe@centrifuge.io>
+//!
+//! ## License
+//! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
+
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
+
 
 // ----------------------------------------------------------------------------
 // Imports and dependencies
@@ -111,7 +117,7 @@ use frame_support::{
         result::Result,
     },
     ensure,
-    traits::Currency,
+    Hashable,
     weights::Weight,
 };
 
@@ -132,6 +138,12 @@ use unique_assets::traits::{
 };
 
 //use crate::pallet_va_registry::types::{AssetId, AssetIdRef, TokenId, RegistryId};
+use centrifuge_primitives::{
+    AssetId, 
+    AssetIdRef, 
+    TokenId, 
+    RegistryId
+};
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo as PalletWeightInfo;
@@ -183,10 +195,7 @@ impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
 pub mod pallet {
 
     use super::*;
-    use frame_support::{
-        pallet_prelude::*,
-        Hashable,
-    };
+    use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
 
     // NFT pallet type declaration.
@@ -211,6 +220,11 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_balances::Config {
 
+        // type AssetId;
+        // type AssetIdRef;
+        // type RegistryId;
+        // type TokenId;
+
         /// The data type that is used to describe this type of asset.
         type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
 
@@ -231,11 +245,11 @@ pub mod pallet {
     // The macro generates a function on Pallet to deposit an event
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     // Additional argument to specify the metadata to use for given type
-    #[pallet::metadata(T::AccountId = "AccountId")]
+    #[pallet::metadata(T::AccountId = "AccountId", <T as Config>::RegistryId = "RegistryId")]
     pub enum Event<T: Config> {
 
         /// Ownership of the asset has been transferred to the account.
-        Transferred(RegistryId, AssetId, AccountId),
+        Transferred(RegistryId, AssetId, T::AccountId),
     }
 
 
@@ -351,6 +365,7 @@ pub mod pallet {
             registry_id: RegistryId,
             token_id: TokenId)
         -> DispatchResultWithPostInfo {
+
             let who = ensure_signed(origin)?;
 
             let asset_id = AssetId(registry_id, token_id);
@@ -372,7 +387,7 @@ pub mod pallet {
 // Implement unique trait for pallet
 impl<T: Config> Unique for Pallet<T> {
 
-    type Asset = Asset<AssetId, <T as Config>::AssetInfo>;
+    type Asset = Asset<AssetId, T::AssetInfo>;
     type AccountId = <T as frame_system::Config>::AccountId;
 
     fn owner_of(asset_id: &AssetId) -> Option<T::AccountId> {
@@ -403,8 +418,8 @@ impl<T: Config> Unique for Pallet<T> {
 // Implement mintable trait for pallet
 impl<T: Config> Mintable for Pallet<T>
 {
-    type Asset = Asset<AssetId, <T as Config>::AssetInfo>;
-    type AccountId = <T as frame_system::Config>::AccountId;
+    type Asset = Asset<AssetId, T::AssetInfo>;
+    type AccountId = T::AccountId;
 
     /// Inserts an owner with a registry/token id.
     /// Does not do any checks on the caller.
@@ -412,7 +427,7 @@ impl<T: Config> Mintable for Pallet<T>
         _caller: &Self::AccountId,
         owner_account: &Self::AccountId,
         asset_id: &AssetId,
-        asset_info: <T as Config>::AssetInfo,
+        asset_info: T::AssetInfo,
     ) -> Result<(), DispatchError> {
         let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
 
