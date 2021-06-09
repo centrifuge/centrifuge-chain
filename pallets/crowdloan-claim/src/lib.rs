@@ -97,7 +97,7 @@ use codec::{Decode, Encode};
 use frame_support::{
     dispatch::{fmt::Debug, Codec, DispatchResult},
     ensure,
-    sp_runtime::traits::{AtLeast32BitUnsigned, MaybeSerialize},
+    sp_runtime::traits::{AtLeast32BitUnsigned, MaybeSerialize, Saturating},
     traits::{EnsureOrigin, Get},
     weights::Weight,
 };
@@ -144,6 +144,11 @@ pub mod traits {
     pub trait WeightInfo {
         fn initialize() -> Weight;
         fn claim_reward() -> Weight;
+        fn set_lease_start() -> Weight;
+        fn set_lease_period() -> Weight;
+        fn set_locked_at() -> Weight;
+        fn set_contributions_root() -> Weight;
+        fn set_crowdloan_trie_index() -> Weight;
     }
 } // end of 'traits' module
 
@@ -159,7 +164,7 @@ type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
 /// The [`Contributions`] root hash is used to check if a contributor is
 /// eligible for a reward payout and to get the amount of her/his contribution
 /// (in relay chain's native token) to a crowdloan campaign.
-type ChildTrieRootHashOf<T> = <T as frame_system::Config>::Hash;
+type RootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
 type ParachainAccountIdOf<T> =
@@ -173,6 +178,10 @@ type ContributionAmountOf<T> =
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
 /// on polkadot.
 type TrieIndex = u32;
+
+/// A type that works as an index for which crowdloan the module is currently in.
+/// Can also be seen as some kind of counter.
+type Index = u32;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -189,7 +198,6 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     use super::*;
-    use frame_support::sp_runtime::Perbill;
     use pallet_crowdloan_claim_reward::Reward;
 
     // Crowdloan claim pallet type declaration.
@@ -285,7 +293,7 @@ pub mod pallet {
     #[pallet::metadata(T::AccountId = "AccountId")]
     pub enum Event<T: Config> {
         /// Event emitted when the crowdloan claim pallet is properly configured.
-        PalletInitialized(),
+        ClaimPalletInitialized,
 
         /// Event emitted when a reward has been claimed successfully.
         RewardClaimed(
@@ -293,23 +301,37 @@ pub mod pallet {
             ParachainAccountIdOf<T>,
             ContributionAmountOf<T>,
         ),
+
+        /// The block number, where we lock the contributions has been updated
+        LockedAtUpdated(T::BlockNumber),
+
+        /// Relay-chain Root hash which allows to verify contributions
+        ContributionsRootUpdated(RootHashOf<T>),
+
+        /// Trie index of the crowdloan inside the relay-chains crowdloan child storage
+        CrowdloanTrieIndexUpdated(TrieIndex),
+
+        /// The lease start of the parachain slot. Used to define when we can initialize the
+        /// next time
+        LeaseStartUpdated(T::BlockNumber),
+
+        /// The lease period of the parachain slot. Used to define when we can initialize the
+        /// next time
+        LeasePeriodUpdated(T::BlockNumber),
     }
 
     // ------------------------------------------------------------------------
     // Pallet storage items
     // ------------------------------------------------------------------------
 
-    /// List of contributors and their respective contributions.
-    ///
-    /// This child trie root hash contains the list of contributors and their respective
-    /// contributions. Polkadot provides an efficient base-16 modified Merkle Patricia tree
-    /// for implementing [`trie`](https://github.com/paritytech/trie) data structure.
-    /// This root hash is copied from the relaychain's [`crowdloan`](https://github.com/paritytech/polkadot/blob/rococo-v1/runtime/common/src/crowdloan.rs)
-    /// module via the signed [`initialize`] transaction (or extrinsics). It is used to
-    /// check if a contributor is elligible for a reward payout.
+    /// Root of hash of the relay chain at the time of initialization.
     #[pallet::storage]
     #[pallet::getter(fn contributions)]
-    pub(super) type Contributions<T: Config> = StorageValue<_, ChildTrieRootHashOf<T>, OptionQuery>;
+    pub(super) type Contributions<T: Config> = StorageValue<_, RootHashOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn locked_at)]
+    pub(super) type LockedAt<T: Config> = StorageValue<_, T::BlockNumber, OptionQuery>;
 
     /// TrieIndex of the crowdloan campaign inside the relay-chain crowdloan module.
     ///
@@ -322,14 +344,48 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn processed_claims)]
     pub(super) type ProcessedClaims<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::RelayChainAccountId, T::BlockNumber>;
+        StorageMap<_, Blake2_128Concat, (T::RelayChainAccountId, Index), bool>;
+
+    #[pallet::type_value]
+    pub fn OnIndexEmpty() -> Index {
+        0
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn curr_index)]
+    pub type CurrIndex<T: Config> = StorageValue<_, Index, ValueQuery, OnIndexEmpty>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn prev_index)]
+    pub type PrevIndex<T: Config> = StorageValue<_, Index, ValueQuery, OnIndexEmpty>;
+
+    #[pallet::type_value]
+    pub fn OnLeaseEmpty<T: Config>() -> T::BlockNumber {
+        Zero::zero()
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn lease_start)]
+    pub type LeaseStart<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery, OnLeaseEmpty<T>>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn lease_period)]
+    pub type LeasePeriod<T: Config> = StorageValue<_, T::BlockNumber, ValueQuery, OnLeaseEmpty<T>>;
 
     // ----------------------------------------------------------------------------
     // Pallet lifecycle hooks
     // ----------------------------------------------------------------------------
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        fn on_finalize(n: <T as frame_system::Config>::BlockNumber) {
+            // On the first block after the lease is over, we allow a new initialization of the
+            // module and forbid further claims for this lease.
+            if n > Self::lease_start().saturating_add(Self::lease_period()) {
+                <PrevIndex<T>>::put(Self::curr_index())
+            }
+        }
+    }
 
     // ------------------------------------------------------------------------
     // Pallet errors
@@ -363,6 +419,12 @@ pub mod pallet {
         /// The consequence is that the relaychain and parachain accounts being not
         /// associated, the contributor is not elligible for a reward payout.
         InvalidContributorSignature,
+
+        /// A lease is ongoging and the module can henced not be initialized again
+        OngoingLease,
+
+        /// Claiming rewards is only possible during a lease
+        LeaseElapsed,
     }
 
     // ------------------------------------------------------------------------
@@ -402,15 +464,22 @@ pub mod pallet {
             // Ensures that this function can only be called via an unsigned transaction
             ensure_none(origin)?;
 
+            let curr_index = Self::curr_index();
+
             // Ensure that the module has been initialized before calling this
+            // This will only be triggered before the module has been initialized once.
+            // After this, the error will always be `LeaseElapsed`
+            ensure!(curr_index > 0, Error::<T>::PalletNotInitialized);
+
             ensure!(
-                <Contributions<T>>::get() != None,
-                Error::<T>::PalletNotInitialized
+                <frame_system::Module<T>>::block_number()
+                    < Self::lease_start().saturating_add(Self::lease_period()),
+                Error::<T>::LeaseElapsed
             );
 
             // Be sure user has not already claimed her/his reward payout
             ensure!(
-                !ProcessedClaims::<T>::contains_key(&relaychain_account_id),
+                !ProcessedClaims::<T>::contains_key((&relaychain_account_id, curr_index)),
                 Error::<T>::ClaimAlreadyProcessed
             );
 
@@ -436,10 +505,7 @@ pub mod pallet {
 
             // Store this claim in the list of processed claims (so that to process it only once)
             // TODO [TankOfZion]: `Module` must be replaced by `Pallet` when all code base will be ported to FRAME v2
-            <ProcessedClaims<T>>::insert(
-                &relaychain_account_id,
-                <frame_system::Module<T>>::block_number(),
-            );
+            <ProcessedClaims<T>>::insert((&relaychain_account_id, curr_index), true);
 
             Self::deposit_event(Event::RewardClaimed(
                 relaychain_account_id,
@@ -464,40 +530,138 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::initialize())]
         pub(crate) fn initialize(
             origin: OriginFor<T>,
-            contributions: ChildTrieRootHashOf<T>,
+            contributions: RootHashOf<T>,
+            locked_at: T::BlockNumber,
             index: TrieIndex,
-            conversion_rate: <T::RewardMechanism as Reward>::NativeBalance,
-            direct_payout_ratio: Perbill,
-            vesting_period: <T::RewardMechanism as Reward>::BlockNumber,
-            vestig_start: <T::RewardMechanism as Reward>::BlockNumber,
+            lease_start: T::BlockNumber,
+            lease_period: T::BlockNumber,
         ) -> DispatchResultWithPostInfo {
             // Ensure that only administrator entity can perform this administrative transaction
+            let curr_index = Self::curr_index();
+
             ensure!(
                 Self::ensure_administrator(origin).is_ok(),
                 Error::<T>::MustBeAdministrator
             );
 
-            // Ensure that the pallet has not already been initialized
-            // TODO: Should we change this? This would basically allow the pallet to be used exactly once, without an RuntimeUpgrade.
             ensure!(
-                <Contributions<T>>::get().is_none(),
+                <frame_system::Module<T>>::block_number()
+                    > Self::lease_start().saturating_add(Self::lease_period())
+                    || <frame_system::Module<T>>::block_number() == Zero::zero(),
+                Error::<T>::OngoingLease,
+            );
+
+            // Ensure that the pallet has not already been initialized. This is more
+            // a sanity check, as the previous one already ensures this implicitly
+            ensure!(
+                Self::prev_index() == curr_index,
                 Error::<T>::PalletAlreadyInitialized
             );
 
-            T::RewardMechanism::initialize(
-                conversion_rate,
-                direct_payout_ratio,
-                vesting_period,
-                vestig_start,
-            )?;
-
             // Store relay chain's child trie root hash (containing the list of contributors and their contributions)
             <Contributions<T>>::put(contributions);
-
             <CrowdloanTrieIndex<T>>::put(index);
+            <LockedAt<T>>::put(locked_at);
+            <LeaseStart<T>>::put(lease_start);
+            <LeasePeriod<T>>::put(lease_period);
+
+            <CurrIndex<T>>::put(curr_index.saturating_add(1));
 
             // Trigger an event so that to inform that the pallet was successfully initialized
-            Self::deposit_event(Event::PalletInitialized());
+            Self::deposit_event(Event::ClaimPalletInitialized);
+
+            Ok(().into())
+        }
+
+        /// Set the start of the lease period.
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_start())]
+        pub(crate) fn set_lease_start(
+            origin: OriginFor<T>,
+            start: T::BlockNumber,
+        ) -> DispatchResultWithPostInfo {
+            // Ensure that only an administrator or root entity triggered the transaction
+            ensure!(
+                Self::ensure_administrator(origin).is_ok(),
+                Error::<T>::MustBeAdministrator
+            );
+
+            <LeaseStart<T>>::put(start);
+
+            Self::deposit_event(Event::LeaseStartUpdated(start));
+
+            Ok(().into())
+        }
+
+        /// Set the start of the lease period.
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_period())]
+        pub(crate) fn set_lease_period(
+            origin: OriginFor<T>,
+            period: T::BlockNumber,
+        ) -> DispatchResultWithPostInfo {
+            // Ensure that only an administrator or root entity triggered the transaction
+            ensure!(
+                Self::ensure_administrator(origin).is_ok(),
+                Error::<T>::MustBeAdministrator
+            );
+
+            <LeasePeriod<T>>::put(period);
+
+            Self::deposit_event(Event::LeasePeriodUpdated(period));
+
+            Ok(().into())
+        }
+
+        /// Set the start of the vesting period.
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_contributions_root())]
+        pub(crate) fn set_contributions_root(
+            origin: OriginFor<T>,
+            root: RootHashOf<T>,
+        ) -> DispatchResultWithPostInfo {
+            // Ensure that only an administrator or root entity triggered the transaction
+            ensure!(
+                Self::ensure_administrator(origin).is_ok(),
+                Error::<T>::MustBeAdministrator
+            );
+
+            <Contributions<T>>::put(root);
+
+            Self::deposit_event(Event::ContributionsRootUpdated(root));
+
+            Ok(().into())
+        }
+
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_locked_at())]
+        pub(crate) fn set_locked_at(
+            origin: OriginFor<T>,
+            locked_at: T::BlockNumber,
+        ) -> DispatchResultWithPostInfo {
+            // Ensure that only an administrator or root entity triggered the transaction
+            ensure!(
+                Self::ensure_administrator(origin).is_ok(),
+                Error::<T>::MustBeAdministrator
+            );
+
+            <LockedAt<T>>::put(locked_at);
+
+            Self::deposit_event(Event::LockedAtUpdated(locked_at));
+
+            Ok(().into())
+        }
+
+        #[pallet::weight(< T as pallet::Config >::WeightInfo::set_crowdloan_trie_index())]
+        pub(crate) fn set_crowdloan_trie_index(
+            origin: OriginFor<T>,
+            trie_index: TrieIndex,
+        ) -> DispatchResultWithPostInfo {
+            // Ensure that only an administrator or root entity triggered the transaction
+            ensure!(
+                Self::ensure_administrator(origin).is_ok(),
+                Error::<T>::MustBeAdministrator
+            );
+
+            <CrowdloanTrieIndex<T>>::put(trie_index);
+
+            Self::deposit_event(Event::CrowdloanTrieIndexUpdated(trie_index));
 
             Ok(().into())
         }
@@ -531,39 +695,46 @@ pub mod pallet {
                 // make it into a block (in case of a trusted node, not even into the pool)
                 // unless being valid. This is a trade-off between protecting the network from spam
                 // and paying validators for the work they are doing.
-                if !ProcessedClaims::<T>::contains_key(&relaychain_account_id)
-                    && Self::verify_contributor_identity_proof(
+                if <frame_system::Module<T>>::block_number()
+                    < Self::lease_start().saturating_add(Self::lease_period())
+                {
+                    if !ProcessedClaims::<T>::contains_key((
+                        &relaychain_account_id,
+                        Self::curr_index(),
+                    )) && Self::verify_contributor_identity_proof(
                         relaychain_account_id.clone(),
                         parachain_account_id.clone(),
                         identity_proof.clone(),
                     )
                     .is_ok()
-                    && Self::verify_contribution_proof(
-                        relaychain_account_id.clone(),
-                        contribution_proof.clone(),
-                    )
-                    .is_ok()
-                {
-                    // Only the claim reward transaction can be invoked via an unsigned regime
-                    return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
-                        .priority(T::ClaimTransactionPriority::get())
-                        .and_provides((
-                            relaychain_account_id,
-                            parachain_account_id,
-                            identity_proof,
-                            contribution_proof,
-                        ))
-                        .longevity(
-                            TryInto::<u64>::try_into(T::ClaimTransactionLongevity::get())
-                                .unwrap_or(64_u64),
+                        && Self::verify_contribution_proof(
+                            relaychain_account_id.clone(),
+                            contribution_proof.clone(),
                         )
-                        .propagate(true)
-                        .build();
+                        .is_ok()
+                    {
+                        // Only the claim reward transaction can be invoked via an unsigned regime
+                        return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
+                            .priority(T::ClaimTransactionPriority::get())
+                            .and_provides((
+                                relaychain_account_id,
+                                parachain_account_id,
+                                identity_proof,
+                                contribution_proof,
+                            ))
+                            .longevity(
+                                TryInto::<u64>::try_into(T::ClaimTransactionLongevity::get())
+                                    .unwrap_or(64_u64),
+                            )
+                            .propagate(true)
+                            .build();
+                    } else {
+                        return InvalidTransaction::BadProof.into();
+                    }
                 } else {
-                    return InvalidTransaction::BadProof.into();
+                    return InvalidTransaction::Call.into();
                 }
             }
-
             // Dissallow other unsigned transactions
             InvalidTransaction::Call.into()
         }
@@ -614,7 +785,7 @@ impl<T: Config> Pallet<T> {
         // Now check if the contributor's native identity on the relaychain is valid
         let payload = parachain_account_id.encode();
         ensure!(
-            signature.verify(payload.as_slice(), &relaychain_account_id.clone().into()),
+            signature.verify(payload.as_slice(), &relaychain_account_id.into()),
             Error::<T>::InvalidContributorSignature
         );
 

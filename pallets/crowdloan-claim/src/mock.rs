@@ -63,6 +63,26 @@ impl WeightInfo for MockWeightInfo {
     fn claim_reward() -> Weight {
         0 as Weight
     }
+
+    fn set_lease_start() -> u64 {
+        0 as Weight
+    }
+
+    fn set_lease_period() -> u64 {
+        0 as Weight
+    }
+
+    fn set_locked_at() -> u64 {
+        0 as Weight
+    }
+
+    fn set_contributions_root() -> u64 {
+        0 as Weight
+    }
+
+    fn set_crowdloan_trie_index() -> u64 {
+        0 as Weight
+    }
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;

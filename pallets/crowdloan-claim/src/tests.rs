@@ -155,10 +155,9 @@ fn get_false_proof() -> ReadProof<H256> {
 }
 
 fn init_module() {
-    CrowdloanClaim::initialize(
+    CrowdloanClaim::initialize(Origin::signed(1), *ROOT, 100, 0, 200, 400).unwrap();
+    pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
         Origin::signed(1),
-        *ROOT,
-        0u32,
         100,
         Perbill::from_percent(20),
         500,
@@ -186,15 +185,7 @@ fn test_init_double() {
         .build(Some(init_module))
         .execute_with(|| {
             assert_noop!(
-                CrowdloanClaim::initialize(
-                    Origin::signed(1),
-                    *ROOT,
-                    0u32,
-                    100,
-                    Perbill::from_percent(20),
-                    500,
-                    100,
-                ),
+                CrowdloanClaim::initialize(Origin::signed(1), *ROOT, 100, 0, 200, 400),
                 CrowdloanClaimError::<MockRuntime>::PalletAlreadyInitialized
             );
         })
@@ -206,17 +197,63 @@ fn test_init_non_admin() {
         .build(Some(init_module))
         .execute_with(|| {
             assert_noop!(
-                CrowdloanClaim::initialize(
-                    Origin::signed(2),
-                    *ROOT,
-                    0u32,
-                    100,
-                    Perbill::from_percent(20),
-                    500,
-                    100,
-                ),
+                CrowdloanClaim::initialize(Origin::signed(2), *ROOT, 100, 0, 200, 400),
                 CrowdloanClaimError::<MockRuntime>::MustBeAdministrator
             );
+        })
+}
+
+#[test]
+fn test_set_contribution_root() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            assert_ok!(CrowdloanClaim::set_lease_start(Origin::signed(1), 999));
+            assert_eq!(CrowdloanClaim::lease_start(), 999);
+        })
+}
+
+#[test]
+fn test_set_locked_at() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            assert_ok!(CrowdloanClaim::set_locked_at(Origin::signed(1), 999));
+            assert_eq!(CrowdloanClaim::locked_at(), Some(999));
+        })
+}
+
+#[test]
+fn test_set_contributions_trie_index() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            let root = H256::zero();
+            assert_ok!(CrowdloanClaim::set_contributions_root(
+                Origin::signed(1),
+                root
+            ));
+            assert_eq!(CrowdloanClaim::contributions(), Some(root));
+        })
+}
+
+#[test]
+fn test_set_lease_start() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            assert_ok!(CrowdloanClaim::set_lease_start(Origin::signed(1), 999));
+            assert_eq!(CrowdloanClaim::lease_start(), 999);
+        })
+}
+
+#[test]
+fn test_set_lease_period() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            assert_ok!(CrowdloanClaim::set_lease_period(Origin::signed(1), 999));
+            assert_eq!(CrowdloanClaim::lease_period(), 999);
         })
 }
 
@@ -257,9 +294,10 @@ fn test_valid_claim() {
                 // This is more an inter-pallet test, as we check if the
                 pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
             );
-            assert!(!ProcessedClaims::<MockRuntime>::contains_key(
-                &alice.relaychain_account
-            ));
+            assert!(!ProcessedClaims::<MockRuntime>::contains_key((
+                &alice.relaychain_account,
+                1
+            )));
 
             let bob = get_bob();
             let bob_balance = Balances::free_balance(&bob.parachain_account);
@@ -270,9 +308,10 @@ fn test_valid_claim() {
                 bob.signature,
                 StorageProof::new(bob.proof.proof.into_iter().map(|byte| byte.0).collect())
             ));
-            assert!(ProcessedClaims::<MockRuntime>::contains_key(
-                &bob.relaychain_account
-            ));
+            assert!(ProcessedClaims::<MockRuntime>::contains_key((
+                &bob.relaychain_account,
+                1
+            )));
 
             assert_eq!(
                 Vesting::vesting_balance(&bob.parachain_account),
@@ -292,9 +331,10 @@ fn test_valid_claim() {
                 charlie.signature,
                 StorageProof::new(charlie.proof.proof.into_iter().map(|byte| byte.0).collect())
             ));
-            assert!(ProcessedClaims::<MockRuntime>::contains_key(
-                &charlie.relaychain_account
-            ));
+            assert!(ProcessedClaims::<MockRuntime>::contains_key((
+                &charlie.relaychain_account,
+                1
+            )));
             assert_eq!(
                 Vesting::vesting_balance(&charlie.parachain_account),
                 Some(160000000000000000)
@@ -304,6 +344,27 @@ fn test_valid_claim() {
                 charlie_balance + 40000000000000000
             );
         })
+}
+
+#[test]
+fn test_valid_claim_but_lease_elapsed() {
+    TestExternalitiesBuilder::default()
+        .build(Some(init_module))
+        .execute_with(|| {
+            System::set_block_number(601);
+
+            let bob = get_bob();
+            assert_noop!(
+                CrowdloanClaim::claim_reward(
+                    Origin::none(),
+                    bob.relaychain_account.clone(),
+                    bob.parachain_account,
+                    bob.signature,
+                    StorageProof::new(bob.proof.proof.into_iter().map(|byte| byte.0).collect())
+                ),
+                Error::<MockRuntime>::LeaseElapsed
+            );
+        });
 }
 
 #[test]
@@ -319,9 +380,10 @@ fn test_valid_claim_claimed_twice() {
                 bob.signature,
                 StorageProof::new(bob.proof.proof.into_iter().map(|byte| byte.0).collect())
             ));
-            assert!(ProcessedClaims::<MockRuntime>::contains_key(
-                &bob.relaychain_account
-            ));
+            assert!(ProcessedClaims::<MockRuntime>::contains_key((
+                &bob.relaychain_account,
+                1
+            )));
 
             let bob = get_bob();
             assert_noop!(

@@ -31,4 +31,24 @@ impl WeightInfo for () {
     fn claim_reward() -> Weight {
         10_000 as Weight
     }
+
+    fn set_lease_start() -> u64 {
+        10_000 as Weight
+    }
+
+    fn set_lease_period() -> u64 {
+        10_000 as Weight
+    }
+
+    fn set_locked_at() -> u64 {
+        10_000 as Weight
+    }
+
+    fn set_contributions_root() -> u64 {
+        10_000 as Weight
+    }
+
+    fn set_crowdloan_trie_index() -> u64 {
+        10_000 as Weight
+    }
 }

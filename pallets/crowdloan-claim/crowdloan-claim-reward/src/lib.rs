@@ -1,14 +1,12 @@
-use frame_support::dispatch::Codec;
+use frame_support::dispatch::{Codec, DispatchResultWithPostInfo};
 use frame_support::Parameter;
 use sp_runtime::traits::{
     AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
     MaybeSerializeDeserialize, Member, Zero,
 };
-use sp_runtime::{DispatchResult, Perbill};
 use sp_std::hash::Hash;
 use std::fmt::Debug;
 use std::str::FromStr;
-
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
@@ -59,15 +57,6 @@ pub trait Reward {
         + Member
         + Parameter;
 
-    type NativeBalance: Parameter
-        + Member
-        + AtLeast32BitUnsigned
-        + Codec
-        + Default
-        + Copy
-        + MaybeSerializeDeserialize
-        + Debug;
-
     /// Rewarding function that is invoked from the claim pallet.
     ///
     /// If this function returns successfully, any subsequent claim of the same claimer will be
@@ -75,16 +64,5 @@ pub trait Reward {
     fn reward(
         who: Self::ParachainAccountId,
         contribution: Self::ContributionAmount,
-    ) -> DispatchResult;
-
-    /// Initialize function that will be called during the initialization of the crowdloan claim pallet.
-    ///
-    /// The main purpose of this function is to allow a dynamic configuration of the crowdloan reward
-    /// pallet.
-    fn initialize(
-        conversion_rate: Self::NativeBalance,
-        direct_payout_ratio: Perbill,
-        vesting_period: Self::BlockNumber,
-        vesting_start: Self::BlockNumber,
-    ) -> DispatchResult;
+    ) -> DispatchResultWithPostInfo;
 }
