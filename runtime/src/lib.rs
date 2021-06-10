@@ -43,7 +43,7 @@ pub mod constants;
 mod common;
 mod impls;
 
-use common::*;
+pub use common::*;
 
 /// Constant values used within the runtime.
 use constants::{currency::*};
@@ -111,7 +111,7 @@ parameter_types! {
     pub const SS58Prefix: u8 = 42;
 }
 
-
+// system support impls
 impl frame_system::Config for Runtime {
     type BaseCallFilter = ();
     type BlockWeights = RuntimeBlockWeights;
@@ -156,24 +156,6 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
-	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const DepositBase: Balance = 30 * CENTI_AIR;
-	// Additional storage item size of 32 bytes.
-	pub const DepositFactor: Balance = 5 * CENTI_AIR;
-	pub const MaxSignatories: u16 = 100;
-}
-
-impl pallet_multisig::Config for Runtime {
-    type Event = Event;
-    type Call = Call;
-    type Currency = Balances;
-    type DepositBase = DepositBase;
-    type DepositFactor = DepositFactor;
-    type MaxSignatories = MaxSignatories;
-    type WeightInfo = ();
-}
-
-parameter_types! {
     pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
 }
 
@@ -190,14 +172,79 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 
 impl parachain_info::Config for Runtime {}
 
-impl cumulus_pallet_aura_ext::Config for Runtime {}
-
-impl cumulus_pallet_dmp_queue::Config for Runtime {
-    type Event = Event;
-    type XcmExecutor = XcmExecutor<XcmConfig>;
-    type ExecuteOverweightOrigin = frame_system::EnsureRoot<AccountId>;
+parameter_types! {
+    pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
+}
+impl pallet_timestamp::Config for Runtime {
+    /// A timestamp: milliseconds since the unix epoch.
+    type Moment = Moment;
+    type OnTimestampSet = Aura;
+    type MinimumPeriod = MinimumPeriod;
+    type WeightInfo = ();
 }
 
+// money stuff
+parameter_types! {
+    /// TransactionByteFee is set to 0.01 MicroRAD
+    pub const TransactionByteFee: Balance = 1 * (MICRO_AIR / 100);
+	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
+	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
+	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
+	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
+}
+
+impl pallet_transaction_payment::Config for Runtime {
+    type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
+    type TransactionByteFee = TransactionByteFee;
+    type WeightToFee = WeightToFee;
+    type FeeMultiplierUpdate =
+    TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
+}
+
+parameter_types! {
+    // the minimum fee for an anchor is 500,000ths of a RAD.
+    // This is set to a value so you can still get some return without getting your account removed.
+    pub const ExistentialDeposit: Balance = 1 * MICRO_AIR;
+    // For weight estimation, we assume that the most locks on an individual account will be 50.
+    pub const MaxLocks: u32 = 50;
+}
+
+impl pallet_balances::Config for Runtime {
+    /// The type for recording an account's balance.
+    type Balance = Balance;
+    /// Handler for the unbalanced reduction when removing a dust account.
+    type DustRemoval = ();
+    /// The overarching event type.
+    type Event = Event;
+    /// The minimum amount required to keep an account open.
+    type ExistentialDeposit = ExistentialDeposit;
+    /// The means of storing the balances of an account.
+    type AccountStore = System;
+    type WeightInfo = ();
+    type MaxLocks = MaxLocks;
+}
+
+parameter_types! {
+	pub const UncleGenerations: BlockNumber = 5;
+}
+
+// We only use find_author to pay in anchor pallet
+impl pallet_authorship::Config for Runtime {
+    // todo(dev): either we use session pallet or figure out a way to convert
+    // AuraID to  AccountID through a wrapper. then we don't need session pallet until staking coming in
+    type FindAuthor = ();
+    type UncleGenerations = UncleGenerations;
+    type FilterUncle = ();
+    type EventHandler = ();
+}
+
+impl pallet_aura::Config for Runtime {
+    type AuthorityId = AuraId;
+}
+
+impl cumulus_pallet_aura_ext::Config for Runtime {}
+
+// xcm helpers
 parameter_types! {
 	pub const KsmLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
@@ -240,79 +287,18 @@ impl Config for XcmConfig {
     type ResponseHandler = ();	// Don't handle responses for now.
 }
 
-parameter_types! {
-    // the minimum fee for an anchor is 500,000ths of a RAD.
-    // This is set to a value so you can still get some return without getting your account removed.
-    pub const ExistentialDeposit: Balance = 1 * MICRO_AIR;
-    // For weight estimation, we assume that the most locks on an individual account will be 50.
-    pub const MaxLocks: u32 = 50;
-}
-
-impl pallet_balances::Config for Runtime {
-    /// The type for recording an account's balance.
-    type Balance = Balance;
-    /// Handler for the unbalanced reduction when removing a dust account.
-    type DustRemoval = ();
-    /// The overarching event type.
+impl cumulus_pallet_dmp_queue::Config for Runtime {
     type Event = Event;
-    /// The minimum amount required to keep an account open.
-    type ExistentialDeposit = ExistentialDeposit;
-    /// The means of storing the balances of an account.
-    type AccountStore = System;
-    type WeightInfo = ();
-    type MaxLocks = MaxLocks;
+    type XcmExecutor = XcmExecutor<XcmConfig>;
+    type ExecuteOverweightOrigin = frame_system::EnsureRoot<AccountId>;
 }
 
-parameter_types! {
-    /// TransactionByteFee is set to 0.01 MicroRAD
-    pub const TransactionByteFee: Balance = 1 * (MICRO_AIR / 100);
-	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
-	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
-	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
-}
 
-impl pallet_transaction_payment::Config for Runtime {
-    type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
-	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = WeightToFee;
-	type FeeMultiplierUpdate =
-        TargetedFeeAdjustment<Self, TargetBlockFullness, AdjustmentVariable, MinimumMultiplier>;
-}
-
-parameter_types! {
-    pub const MinimumPeriod: Moment = SLOT_DURATION / 2;
-}
-impl pallet_timestamp::Config for Runtime {
-    /// A timestamp: milliseconds since the unix epoch.
-    type Moment = Moment;
-    type OnTimestampSet = Aura;
-    type MinimumPeriod = MinimumPeriod;
-    type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const UncleGenerations: BlockNumber = 5;
-}
-
-// We only use find_author to pay in anchor pallet
-impl pallet_authorship::Config for Runtime {
-    // TODO(dev)
-	type FindAuthor = ();
-	type UncleGenerations = UncleGenerations;
-	type FilterUncle = ();
-	type EventHandler = ();
-}
-
+// admin stuff
 impl pallet_sudo::Config for Runtime {
     type Call = Call;
     type Event = Event;
 }
-
-impl pallet_aura::Config for Runtime {
-    type AuthorityId = AuraId;
-}
-
 
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
@@ -325,34 +311,28 @@ construct_runtime!(
 	{
         // basic system stuff
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
-        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 2,
-        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 3,
+        ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>, ValidateUnsigned} = 1,
+        ParachainInfo: parachain_info::{Pallet, Storage, Config} = 2,
+        RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Call, Storage} = 3,
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 4,
 
-        // parachain support stuff
-        ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>, ValidateUnsigned} = 20,
-        ParachainInfo: parachain_info::{Pallet, Storage, Config} = 21,
+        // money stuff
+        TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 20,
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 21,
 
         // authoring stuff
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent} = 30,
         Aura: pallet_aura::{Pallet, Config<T>} = 31,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Config} = 32,
 
-        // helpers
-        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
+        // XCM helpers
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 41,
-
-        // utilities
-        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 50,
 
         // admin stuff
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 100,
 	}
 );
 
-
-/// Block header type as expected by this runtime.
-pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 /// A Block signed with a Justification
