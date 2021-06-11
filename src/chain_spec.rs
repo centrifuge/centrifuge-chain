@@ -16,6 +16,7 @@
 
 use cumulus_primitives_core::ParaId;
 use node_runtime::AuraId;
+use node_runtime::constants::currency::*;
 use node_primitives::{AccountId, Hash, Signature};
 use sc_service::{ChainType, Properties};
 use sp_core::{sr25519, Pair, Public};
@@ -58,7 +59,7 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
+					// get_from_seed::<AuraId>("Bob"),
 				],
 				vec![
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -213,7 +214,7 @@ fn testnet_genesis(
 				.map(|k| (k, 1 << 60))
 				.collect(),
 		},
-		pallet_democracy: node_runtime::DemocracyConfig::default(),
+		// pallet_democracy: node_runtime::DemocracyConfig::default(),
 		pallet_elections_phragmen: node_runtime::ElectionsConfig {
 			members: vec![],
 		},
@@ -224,22 +225,6 @@ fn testnet_genesis(
 						.collect(),
 			phantom: Default::default(),
 		},
-		// pallet_bridge: Some(node_runtime::PalletBridgeConfig{
-		// 	// Whitelist chains Ethereum - 0
-		// 	chains: vec![0],
-		// 	// Register resourceIDs
-		// 	resources: vec![
-		// 		// xRAD ResourceID to PalletBridge.transfer method (for incoming txs)
-		// 		(hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"], hex!["50616c6c65744272696467652e7472616e73666572"].iter().cloned().collect())
-		// 	],
-		// 	// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
-		// 	// Fulvous Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
-		// 	relayers: vec![
-		// 		hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
-		// 		hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
-		// 	],
-		// 	threshold: 1,
-		// }),
         pallet_fees: node_runtime::FeesConfig {
             initial_fees: vec![(
                 // Anchoring state rent fee per day
@@ -256,7 +241,7 @@ fn testnet_genesis(
                 2_365_296_803_653,
             )],
         },
-		pallet_vesting: Default::default(),
+		// pallet_vesting: Default::default(),
 		pallet_sudo: node_runtime::SudoConfig { key: root_key },
 		parachain_info: node_runtime::ParachainInfoConfig { parachain_id: id },
 		cumulus_pallet_aura_ext: Default::default(),

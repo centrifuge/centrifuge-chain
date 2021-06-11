@@ -6,20 +6,25 @@
 
 use sp_std::prelude::*;
 use frame_support::{
-    construct_runtime, parameter_types, match_type,
+    construct_runtime, parameter_types, match_type, RuntimeDebug,
     weights::{
         Weight, DispatchClass,
         constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight}},
-    traits::Currency,
+    traits::{Currency, U128CurrencyToVote, MaxEncodedLen, LockIdentifier, InstanceFilter, All, Get},
 };
-use sp_api::impl_runtime_apis;
+use sp_api::{decl_runtime_apis, impl_runtime_apis};
+use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_runtime::{
-	Perquintill, ApplyExtrinsicResult,
+    Perbill, Perquintill, ApplyExtrinsicResult,
 	impl_opaque_keys, generic, create_runtime_str, FixedPointNumber,
 };
+use codec::{Encode, Decode};
 use sp_runtime::transaction_validity::{TransactionValidity, TransactionSource};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT};
-use frame_system::limits::{BlockWeights, BlockLength};
+use frame_system::{
+    EnsureRoot,
+    limits::{BlockWeights, BlockLength}
+};
 use sp_version::RuntimeVersion;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -31,6 +36,8 @@ use sp_inherents::{InherentData, CheckInherentsResult};
 pub use sp_runtime::BuildStorage;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_balances::Call as BalancesCall;
+use static_assertions::const_assert;
+use pallet_anchors::AnchorData;
 
 use xcm::v0::{Junction, MultiLocation, Junction::*, NetworkId};
 use xcm_builder::{
@@ -40,22 +47,20 @@ use xcm_builder::{
 use xcm_executor::{Config, XcmExecutor};
 
 pub mod constants;
-mod common;
-mod impls;
-
-pub use common::*;
-
 /// Constant values used within the runtime.
 use constants::{currency::*};
-use crate::impls::{WeightToFee, DealWithFees};
+
+mod common;
+/// common types for the runtime..
+pub use common::*;
+
+pub mod impls;
+use impls::*;
 
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
-
-type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-pub type SessionHandlers = ();
 
 impl_opaque_keys! {
 	pub struct SessionKeys {
@@ -107,8 +112,7 @@ parameter_types! {
         })
         .avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
         .build_or_panic();
-    // TODO(dev): update this
-    pub const SS58Prefix: u8 = 42;
+    pub const SS58Prefix: u8 = 136;
 }
 
 // system support impls
@@ -231,7 +235,7 @@ parameter_types! {
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
     // todo(dev): either we use session pallet or figure out a way to convert
-    // AuraID to  AccountID through a wrapper. then we don't need session pallet until staking coming in
+    // AuraID to AccountID through a wrapper. then we don't need session pallet until staking coming in
     type FindAuthor = ();
     type UncleGenerations = UncleGenerations;
     type FilterUncle = ();
@@ -293,11 +297,205 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
     type ExecuteOverweightOrigin = frame_system::EnsureRoot<AccountId>;
 }
 
+// substrate pallets
+parameter_types! {
+	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const DepositBase: Balance = 30 * CENTI_AIR;
+	// Additional storage item size of 32 bytes.
+	pub const DepositFactor: Balance = 5 * CENTI_AIR;
+	pub const MaxSignatories: u16 = 100;
+}
+
+impl pallet_multisig::Config for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type DepositBase = DepositBase;
+    type DepositFactor = DepositFactor;
+    type MaxSignatories = MaxSignatories;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
+	pub const ProxyDepositBase: Balance = 30 * CENTI_AIR;
+	// Additional storage item size of 32 bytes.
+	pub const ProxyDepositFactor: Balance = 5 * CENTI_AIR;
+	pub const MaxProxies: u16 = 32;
+	pub const AnnouncementDepositBase: Balance = deposit(1, 8);
+	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
+	pub const MaxPending: u16 = 32;
+}
+
+/// The type used to represent the kinds of proxying allowed.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, MaxEncodedLen)]
+pub enum ProxyType {
+    Any,
+    NonTransfer,
+    Governance,
+    // Staking,
+    // Vesting,
+}
+impl Default for ProxyType { fn default() -> Self { Self::Any } }
+impl InstanceFilter<Call> for ProxyType {
+    fn filter(&self, c: &Call) -> bool {
+        match self {
+            ProxyType::Any => true,
+            ProxyType::NonTransfer => !matches!(c,
+				Call::Balances(..)
+			),
+            ProxyType::Governance => matches!(c,
+				// Call::Democracy(..) |
+				Call::Council(..) |
+				Call::Elections(..) |
+				Call::Utility(..)
+			),
+            // ProxyType::Staking => matches!(c,
+            //     Call::Staking(..) |
+            //     Call::Session(..) |
+			// 	Call::Utility(..)
+            // ),
+            // ProxyType::Vesting => matches!(c,
+            //     Call::Staking(..) |
+            //     Call::Session(..) |
+            //     Call::Democracy(..) |
+			// 	Call::Council(..) |
+			// 	Call::Elections(..) |
+			// 	Call::Vesting(pallet_vesting::Call::vest(..)) |
+			// 	Call::Vesting(pallet_vesting::Call::vest_other(..))
+            // ),
+        }
+    }
+    fn is_superset(&self, o: &Self) -> bool {
+        match (self, o) {
+            (x, y) if x == y => true,
+            (ProxyType::Any, _) => true,
+            (_, ProxyType::Any) => false,
+            (ProxyType::NonTransfer, _) => true,
+            _ => false,
+        }
+    }
+}
+
+impl pallet_proxy::Config for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type Currency = Balances;
+    type ProxyType = ProxyType;
+    type ProxyDepositBase = ProxyDepositBase;
+    type ProxyDepositFactor = ProxyDepositFactor;
+    type MaxProxies = MaxProxies;
+    type WeightInfo = ();
+    type MaxPending = MaxPending;
+    type CallHasher = BlakeTwo256;
+    type AnnouncementDepositBase = AnnouncementDepositBase;
+    type AnnouncementDepositFactor = AnnouncementDepositFactor;
+}
+
+impl pallet_utility::Config for Runtime {
+    type Event = Event;
+    type Call = Call;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+    pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
+    pub const MaxScheduledPerBlock: u32 = 50;
+}
+
+impl pallet_scheduler::Config for Runtime {
+    type Event = Event;
+    type Origin = Origin;
+    type PalletsOrigin = OriginCaller;
+    type Call = Call;
+    type MaximumWeight = MaximumSchedulerWeight;
+    type ScheduleOrigin = EnsureRoot<AccountId>;
+    type MaxScheduledPerBlock = MaxScheduledPerBlock;
+    type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
+}
+
+parameter_types! {
+	pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
+	pub const CouncilMaxProposals: u32 = 100;
+    pub const CouncilMaxMembers: u32 = 100;
+}
+
+type CouncilCollective = pallet_collective::Instance1;
+impl pallet_collective::Config<CouncilCollective> for Runtime {
+    type Origin = Origin;
+    type Proposal = Call;
+    type Event = Event;
+    type MotionDuration = CouncilMotionDuration;
+    type MaxProposals = CouncilMaxProposals;
+    type MaxMembers = CouncilMaxMembers;
+    type DefaultVote = pallet_collective::PrimeDefaultVote;
+    type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const CandidacyBond: Balance = 1000 * AIR;
+	pub const VotingBond: Balance = 50 * CENTI_AIR;
+	pub const VotingBondBase: Balance = 50 * CENTI_AIR;
+	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub const DesiredMembers: u32 = 7;
+	pub const DesiredRunnersUp: u32 = 3;
+	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
+}
+
+// Make sure that there are no more than `MAX_MEMBERS` members elected via elections-phragmen.
+const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
+
+impl pallet_elections_phragmen::Config for Runtime {
+    type Event = Event;
+    type PalletId = ElectionsPhragmenModuleId;
+    type Currency = Balances;
+    type ChangeMembers = Council;
+    type InitializeMembers = Council;
+    type CurrencyToVote = U128CurrencyToVote;
+
+    /// How much should be locked up in order to submit one's candidacy.
+    type CandidacyBond = CandidacyBond;
+
+    /// Base deposit associated with voting
+    type VotingBondBase = VotingBondBase;
+
+    /// How much should be locked up in order to be able to submit votes.
+    type VotingBondFactor = VotingBond;
+
+    type LoserCandidate = ();
+    type KickedMember = ();
+
+    /// Number of members to elect.
+    type DesiredMembers = DesiredMembers;
+
+    /// Number of runners_up to keep.
+    type DesiredRunnersUp = DesiredRunnersUp;
+
+    /// How long each seat is kept. This defines the next block number at which an election
+    /// round will happen. If set to zero, no elections are ever triggered and the module will
+    /// be in passive mode.
+    type TermDuration = TermDuration;
+    type WeightInfo = ();
+}
+
+
+// our pallets
+impl pallet_fees::Config for Runtime {
+    type Currency = Balances;
+    type Event = Event;
+    /// A straight majority of the council can change the fees.
+    type FeeChangeOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+    type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+}
+
+impl pallet_anchors::Config for Runtime {
+    type WeightInfo = ();
+}
 
 // admin stuff
 impl pallet_sudo::Config for Runtime {
-    type Call = Call;
     type Event = Event;
+    type Call = Call;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -325,8 +523,20 @@ construct_runtime!(
         Aura: pallet_aura::{Pallet, Config<T>} = 31,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Config} = 32,
 
-        // XCM helpers
-		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 41,
+        // XCM stuff
+		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 40,
+
+        // substrate pallets
+        Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 60,
+        Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 61,
+        Utility: pallet_utility::{Pallet, Call, Event} = 62,
+        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 63,
+        Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 64,
+        Elections: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 65,
+
+        // our pallets
+        Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
+        Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 
         // admin stuff
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>} = 100,
@@ -362,6 +572,13 @@ pub type Executive = frame_executive::Executive<
     Runtime,
     AllPallets
 >;
+
+decl_runtime_apis! {
+    /// The API to query anchoring info.
+    pub trait AnchorApi {
+        fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
+    }
+}
 
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
@@ -460,6 +677,12 @@ impl_runtime_apis! {
     impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
 		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
 			ParachainSystem::collect_collation_info()
+		}
+	}
+
+    impl self::AnchorApi<Block> for Runtime {
+		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
+			Anchor::get_anchor_by_id(id)
 		}
 	}
 

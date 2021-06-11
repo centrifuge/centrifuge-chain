@@ -70,7 +70,6 @@ pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-fe
 pallet-collective = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-democracy = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-elections-phragmen = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-#pallet-finality-tracker = { branch = "rococo-v1", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
 pallet-grandpa = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-im-online = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-indices = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
@@ -93,6 +92,9 @@ pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-featur
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master", features = [ "derive" ] }
+
+pallet-anchors = { path = "../pallets/anchors", default-features = false }
+pallet-fees = { path = "../pallets/fees", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -159,10 +161,13 @@ std = [
     "pallet-aura/std",
     "sp-consensus-aura/std",
     "max-encoded-len/std",
+    "pallet-fees/std",
+    "pallet-anchors/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
     "hex-literal",
+    "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
