@@ -23,10 +23,11 @@ sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate", de
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", default-features = false }
 
-# Local dependencies
-pallet-fees = { path = "../fees", default-features = false }
-#pallet-nft = { path = "../nft", default-features = false }
+# Centrifuge chain dependencies
+centrifuge-primitives = { path = "../../primitives", default-features = false }
 pallet-anchors = { path = "../anchors", default-features = false }
+pallet-fees = { path = "../fees", default-features = false }
+pallet-nft = { path = "../nft", default-features = false }
 unique_assets = { path = "../../../unique-assets", default-features = false }
 #unique_assets = { branch = "master", git = "https://github.com/centrifuge/unique-assets", default-features = false }
 

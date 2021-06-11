@@ -1,18 +1,16 @@
-// Copyright 2021 Parity Technologies (UK) Ltd.
-// This file is part of Centrifuge (centrifuge.io) parachain.
+// Copyright 2021 Centrifuge GmbH (centrifuge.io).
+// This file is part of Centrifuge chain project.
 
-// Cumulus is free software: you can redistribute it and/or modify
+// Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// (at your option) any later version (see http://www.gnu.org/licenses).
 
-// Cumulus is distributed in the hope that it will be useful,
+// Centrifuge is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// You should have received a copy of the GNU General Public License
-// along with Cumulus. If not, see <http://www.gnu.org/licenses/>.
 
 //! # Verifiable attributes (VA) registry pallet
 //!
@@ -87,6 +85,9 @@
 //!
 //! ## Credits
 //! The Centrifugians Tribe <tribe@centrifuge.io>
+//!
+//! ## License
+//! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -116,18 +117,12 @@ mod weights;
 // TODO: Note that proofs will be soon moved to a separate lib.
 mod proofs;
 
-// Pallet types definition
-mod types;
-
 // Runtime, system and frame primitives
 use frame_support::{
     ensure,
     dispatch::{
         DispatchError,
     },
-    traits::{
-        Get, 
-    }, 
     weights::{
         Weight,
     },
@@ -153,11 +148,14 @@ use unique_assets::traits::Mintable;
 // Functions for document proofs verification
 pub use crate::proofs::*;
 
-// Pallet types declaration
-pub use crate::types::{
-    *, 
+pub use centrifuge_primitives::{
+    AssetId,
+    MintInfo,
+    RegistryId,
+    RegistryInfo,
+    TokenId,
     VerifierRegistry, 
-    NFTS_PREFIX
+    NFTS_PREFIX,
 };
 
 // Extrinsics weight information
@@ -432,7 +430,7 @@ impl<T: Config> Pallet<T> {
 
     /// Get document's root hash
     fn get_document_root(anchor_id: T::Hash) -> Result<H256, DispatchError> {
-        let root = match <anchor::Module<T>>::get_anchor_by_id(anchor_id) {
+        let root = match <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id) {
             Some(anchor_data) => Ok(anchor_data.doc_root),
             None => Err(Error::<T>::DocumentNotAnchored),
         }?;
@@ -534,10 +532,12 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
             .collect();
 
         // Verify the proof against document root
-        ensure!(proofs::validate_proofs(doc_root,
-                                        &proofs,
-                                        mint_info.static_hashes),
-                Error::<T>::InvalidProofs);
+        ensure!(
+            proofs::validate_proofs(doc_root,
+                &proofs,
+                mint_info.static_hashes),
+            Error::<T>::InvalidProofs
+        );
 
         // -------
         // Minting

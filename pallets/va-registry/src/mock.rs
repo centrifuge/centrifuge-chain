@@ -38,7 +38,7 @@ use frame_support::{
 
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
-use frame_support::{impl_outer_origin, impl_outer_event, parameter_types};
+use frame_support::{parameter_types};
 use sp_io::TestExternalities;
 use sp_runtime::{
     traits::{
@@ -50,6 +50,7 @@ use sp_runtime::{
 
 use crate::traits::WeightInfo;
 
+/*
 impl_outer_origin! {
     pub enum Origin for MockRuntime {}
 }
@@ -63,6 +64,7 @@ impl_outer_event! {
         fees<T>,
     }
 }
+*/
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -80,7 +82,7 @@ impl WeightInfo for MockWeightInfo {
         0 as Weight 
     }
 
-    fn mint() -> Weight { 
+    fn mint(proofs_length: usize) -> Weight { 
         0 as Weight 
     }
 }
