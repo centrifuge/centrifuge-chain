@@ -31,6 +31,9 @@ members = [
 	"pallets/fees",
 	"pallets/anchors",
     "pallets/claims",
+	"pallets/crowdloan-claim",
+	"pallets/crowdloan-reward",
+	"pallets/crowdloan-claim/crowdloan-claim-reward",
 	"libs/proofs",
 	"runtime",
 ]
