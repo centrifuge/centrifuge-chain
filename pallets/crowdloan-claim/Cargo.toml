@@ -31,7 +31,7 @@ sp-state-machine = { branch = "master", git = "https://github.com/centrifuge/sub
 sp-trie = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 
 # Local dependencies
-pallet-crowdloan-claim-reward = { path='./crowdloan-claim-reward', default_features = false }
+trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
 
 [dev-dependencies]
 sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
@@ -51,7 +51,6 @@ std = [
   'log/std',
   'pallet-balances/std',
   'pallet-vesting/std',
-  'pallet-crowdloan-reward/std',
   'sp-std/std',
 ]
 

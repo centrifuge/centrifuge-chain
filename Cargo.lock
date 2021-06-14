@@ -5392,7 +5392,6 @@ dependencies = [
  "lazy_static",
  "log 0.4.14",
  "pallet-balances",
- "pallet-crowdloan-claim-reward",
  "pallet-crowdloan-reward",
  "pallet-vesting",
  "parity-scale-codec",
@@ -5405,16 +5404,7 @@ dependencies = [
  "sp-state-machine 0.9.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "sp-std 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "sp-trie 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
-]
-
-[[package]]
-name = "pallet-crowdloan-claim-reward"
-version = "2.0.0"
-dependencies = [
- "frame-support 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
- "parity-scale-codec",
- "sp-runtime 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
- "sp-std 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
+ "trait-crowdloan-reward",
 ]
 
 [[package]]
@@ -5426,7 +5416,6 @@ dependencies = [
  "frame-system 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "log 0.4.14",
  "pallet-balances",
- "pallet-crowdloan-claim-reward",
  "pallet-indices",
  "pallet-vesting",
  "parity-scale-codec",
@@ -5434,6 +5423,7 @@ dependencies = [
  "sp-core 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "sp-io 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "sp-runtime 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
+ "trait-crowdloan-reward",
 ]
 
 [[package]]
@@ -11575,6 +11565,16 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "trait-crowdloan-reward"
+version = "0.1.0"
+dependencies = [
+ "frame-support 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
+ "parity-scale-codec",
+ "sp-runtime 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
+ "sp-std 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
 ]
 
 [[package]]

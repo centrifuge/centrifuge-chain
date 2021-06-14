@@ -27,7 +27,7 @@ pallet-vesting = { branch = "master", git = "https://github.com/centrifuge/subst
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 
 # Local dependencies
-pallet-crowdloan-claim-reward = { path='../crowdloan-claim/crowdloan-claim-reward', default_features = false }
+trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
 
 
 [dev-dependencies]
@@ -38,6 +38,7 @@ serde = { version = "1.0.119" }
 
 [features]
 default = ['std']
+runtime-benchmarks = ["frame-benchmarking"]
 std = [
   'codec/std',
   'frame-support/std',
@@ -46,5 +47,3 @@ std = [
   'pallet-balances/std',
   'pallet-vesting/std',
 ]
-
-runtime-benchmarks = ["frame-benchmarking"]

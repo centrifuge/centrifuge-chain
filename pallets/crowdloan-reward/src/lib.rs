@@ -109,7 +109,7 @@ use sp_runtime::{
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 // Claim reward trait to be implemented
-use pallet_crowdloan_claim_reward::Reward;
+use trait_crowdloan_reward::Reward;
 
 // Extrinsics weight information
 pub use crate::traits::WeightInfo;

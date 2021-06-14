@@ -169,11 +169,11 @@ type RootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
 type ParachainAccountIdOf<T> =
-    <<T as Config>::RewardMechanism as pallet_crowdloan_claim_reward::Reward>::ParachainAccountId;
+    <<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ParachainAccountId;
 
 /// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
 type ContributionAmountOf<T> =
-    <<T as Config>::RewardMechanism as pallet_crowdloan_claim_reward::Reward>::ContributionAmount;
+    <<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ContributionAmount;
 
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
@@ -199,7 +199,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     use super::*;
-    use pallet_crowdloan_claim_reward::Reward;
+    use trait_crowdloan_reward::Reward;
 
     // Crowdloan claim pallet type declaration.
     //
@@ -558,7 +558,7 @@ pub mod pallet {
                 Error::<T>::PalletAlreadyInitialized
             );
 
-            // Store relay chain's child trie root hash (containing the list of contributors and their contributions)
+            // Store relay chain's root hash (containing the list of contributors and their contributions)
             <Contributions<T>>::put(contributions);
             <CrowdloanTrieIndex<T>>::put(index);
             <LockedAt<T>>::put(locked_at);
@@ -592,7 +592,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Set the start of the lease period.
+        /// Set the lease period.
         #[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_period())]
         pub(crate) fn set_lease_period(
             origin: OriginFor<T>,
@@ -611,7 +611,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Set the start of the vesting period.
+        /// Set the root-hash of the relay-chain, we locked the relay-chain contributions at.
+        ///
+        /// This root-hash MUST be the root-hash of the relay-chain at the block
+        /// we locked at. This root-hash will be used to verify proofs of contribution.
         #[pallet::weight(< T as pallet::Config >::WeightInfo::set_contributions_root())]
         pub(crate) fn set_contributions_root(
             origin: OriginFor<T>,
@@ -630,6 +633,12 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Set the block of the relay at which we lock the contributions.
+        ///
+        /// This means, that all generated proofs MUST generate the proof of their
+        /// contribution at this block, as otherwise the root-hash we store here
+        /// will not be found in the generated proof of the contributor, which will
+        /// lead to a rejection of the proof.
         #[pallet::weight(< T as pallet::Config >::WeightInfo::set_locked_at())]
         pub(crate) fn set_locked_at(
             origin: OriginFor<T>,
