@@ -26,36 +26,36 @@ use frame_support::weights::Weight;
 /// Weights are calculated using runtime benchmarking features.
 /// See [`benchmarking`] module for more information.
 pub trait WeightInfo {
-    fn initialize() -> Weight;
-    fn reward() -> Weight;
-    fn set_vesting_start() -> Weight;
-    fn set_vesting_period() -> Weight;
-    fn set_conversion_rate() -> Weight;
-    fn set_direct_payout_ratio() -> Weight;
+	fn initialize() -> Weight;
+	fn reward() -> Weight;
+	fn set_vesting_start() -> Weight;
+	fn set_vesting_period() -> Weight;
+	fn set_conversion_rate() -> Weight;
+	fn set_direct_payout_ratio() -> Weight;
 }
 
 impl WeightInfo for () {
-    fn initialize() -> Weight {
-        10_000 as Weight
-    }
+	fn initialize() -> Weight {
+		10_000 as Weight
+	}
 
-    fn reward() -> Weight {
-        10_000 as Weight
-    }
+	fn reward() -> Weight {
+		10_000 as Weight
+	}
 
-    fn set_vesting_start() -> Weight {
-        10_000 as Weight
-    }
+	fn set_vesting_start() -> Weight {
+		10_000 as Weight
+	}
 
-    fn set_vesting_period() -> Weight {
-        10_000 as Weight
-    }
+	fn set_vesting_period() -> Weight {
+		10_000 as Weight
+	}
 
-    fn set_conversion_rate() -> Weight {
-        10_000 as Weight
-    }
+	fn set_conversion_rate() -> Weight {
+		10_000 as Weight
+	}
 
-    fn set_direct_payout_ratio() -> Weight {
-        10_000 as Weight
-    }
+	fn set_direct_payout_ratio() -> Weight {
+		10_000 as Weight
+	}
 }

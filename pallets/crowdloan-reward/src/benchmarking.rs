@@ -62,12 +62,12 @@ use crate::*;
 
 benchmarks! {
 git sample_benchmark_name {
-        // setup initial state
-    }: {
-        // benchmark code
-    } verify {
-        // verifying final state
-    }
+		// setup initial state
+	}: {
+		// benchmark code
+	} verify {
+		// verifying final state
+	}
 }
 
 // ----------------------------------------------------------------------------

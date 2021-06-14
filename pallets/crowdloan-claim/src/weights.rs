@@ -22,41 +22,41 @@
 use frame_support::weights::Weight;
 
 pub trait WeightInfo {
-    fn initialize() -> Weight;
-    fn claim_reward() -> Weight;
-    fn set_lease_start() -> Weight;
-    fn set_lease_period() -> Weight;
-    fn set_locked_at() -> Weight;
-    fn set_contributions_root() -> Weight;
-    fn set_crowdloan_trie_index() -> Weight;
+	fn initialize() -> Weight;
+	fn claim_reward() -> Weight;
+	fn set_lease_start() -> Weight;
+	fn set_lease_period() -> Weight;
+	fn set_locked_at() -> Weight;
+	fn set_contributions_root() -> Weight;
+	fn set_crowdloan_trie_index() -> Weight;
 }
 
 impl WeightInfo for () {
-    fn initialize() -> Weight {
-        10_000 as Weight
-    }
+	fn initialize() -> Weight {
+		10_000 as Weight
+	}
 
-    fn claim_reward() -> Weight {
-        10_000 as Weight
-    }
+	fn claim_reward() -> Weight {
+		10_000 as Weight
+	}
 
-    fn set_lease_start() -> u64 {
-        10_000 as Weight
-    }
+	fn set_lease_start() -> u64 {
+		10_000 as Weight
+	}
 
-    fn set_lease_period() -> u64 {
-        10_000 as Weight
-    }
+	fn set_lease_period() -> u64 {
+		10_000 as Weight
+	}
 
-    fn set_locked_at() -> u64 {
-        10_000 as Weight
-    }
+	fn set_locked_at() -> u64 {
+		10_000 as Weight
+	}
 
-    fn set_contributions_root() -> u64 {
-        10_000 as Weight
-    }
+	fn set_contributions_root() -> u64 {
+		10_000 as Weight
+	}
 
-    fn set_crowdloan_trie_index() -> u64 {
-        10_000 as Weight
-    }
+	fn set_crowdloan_trie_index() -> u64 {
+		10_000 as Weight
+	}
 }

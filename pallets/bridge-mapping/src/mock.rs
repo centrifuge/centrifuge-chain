@@ -1,12 +1,10 @@
-use sp_core::H256;
-use frame_support::{parameter_types};
-use sp_runtime::{
-    traits::{BlakeTwo256, IdentityLookup}, testing::Header,
-};
+use crate::{self as pallet_bridge_mapping, *};
+use frame_support::parameter_types;
 use frame_system as system;
-use crate::{
-    self as pallet_bridge_mapping,
-    *
+use sp_core::H256;
+use sp_runtime::{
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -20,48 +18,51 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
+		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 	}
 );
 
 parameter_types! {
-    pub const BlockHashCount: u64 = 250;
+	pub const BlockHashCount: u64 = 250;
 }
 
 impl system::Config for Test {
-    type BaseCallFilter = ();
-    type BlockWeights = ();
-    type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
-    type Index = u64;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = ();
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
+	type BaseCallFilter = ();
+	type BlockWeights = ();
+	type BlockLength = ();
+	type Origin = Origin;
+	type Call = Call;
+	type Index = u64;
+	type BlockNumber = u64;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type AccountId = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = Header;
+	type Event = Event;
+	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
+	type Version = ();
+	type PalletInfo = PalletInfo;
+	type AccountData = ();
+	type OnNewAccount = ();
+	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
+	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 impl Config for Test {
-    type ResourceId = [u8; 32];
-    type Address = [u8; 32];
-    type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
-    type WeightInfo = ();
+	type ResourceId = [u8; 32];
+	type Address = [u8; 32];
+	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	system::GenesisConfig::default()
+		.build_storage::<Test>()
+		.unwrap()
+		.into()
 }
