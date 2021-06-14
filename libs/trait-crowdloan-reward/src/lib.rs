@@ -1,3 +1,23 @@
+// Copyright 2021 Centrifuge GmbH (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+//! # A Reward Trait for Crowdloans
+//!
+//! This crate provides a trait which can be by a pallet
+//! that takes care of rewarding participants of a crowdloan.
+//! The trait does assume, that any call of reward has been
+//! checked for validity. I.e. there are not validation checks
+//! provided by the trait.
 use frame_support::dispatch::{Codec, DispatchResultWithPostInfo};
 use frame_support::Parameter;
 use sp_runtime::traits::{
@@ -7,6 +27,7 @@ use sp_runtime::traits::{
 use sp_std::hash::Hash;
 use std::fmt::Debug;
 use std::str::FromStr;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
@@ -17,11 +38,6 @@ use std::str::FromStr;
 /// contributor, exceeding reward amount, ...).
 /// See the [`crowdloan-reward`] pallet, that implements a reward mechanism with vesting, for
 /// instance.
-///
-/// ## Example
-/// ```rust
-///
-/// ```
 pub trait Reward {
     /// The account from the parachain, that the claimer provided in her/his transaction.
     type ParachainAccountId: Debug
