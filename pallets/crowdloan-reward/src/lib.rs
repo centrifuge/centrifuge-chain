@@ -93,7 +93,6 @@ use frame_support::{
         ExistenceRequirement::{AllowDeath, KeepAlive},
         Get,
     },
-    weights::Weight,
     PalletId,
 };
 
@@ -109,7 +108,7 @@ pub use pallet::*;
 use trait_crowdloan_reward::Reward;
 
 // Extrinsics weight information
-pub use crate::traits::WeightInfo;
+pub use crate::weights::WeightInfo;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -123,27 +122,6 @@ mod benchmarking;
 
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
-
-// ----------------------------------------------------------------------------
-// Traits and types declaration
-// ----------------------------------------------------------------------------
-
-pub mod traits {
-    use super::*;
-
-    /// A trait for extrinsincs weight information
-    ///
-    /// Weights are calculated using runtime benchmarking features.
-    /// See [`benchmarking`] module for more information.
-    pub trait WeightInfo {
-        fn initialize() -> Weight;
-        fn reward() -> Weight;
-        fn set_vesting_start() -> Weight;
-        fn set_vesting_period() -> Weight;
-        fn set_conversion_rate() -> Weight;
-        fn set_direct_payout_ratio() -> Weight;
-    }
-} // end of 'traits' module
 
 /// A type alias for the balance type from this pallet's point of view.
 type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<

@@ -22,6 +22,7 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
+use crate as pallet_crowdloan_reward;
 use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -30,42 +31,6 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
-
-use crate as pallet_crowdloan_reward;
-use crate::traits::WeightInfo;
-
-// ----------------------------------------------------------------------------
-// Mock runtime
-// ----------------------------------------------------------------------------
-
-// Extrinsics weight information used for testing
-pub struct MockWeightInfo;
-
-impl WeightInfo for MockWeightInfo {
-    fn initialize() -> Weight {
-        0 as Weight
-    }
-
-    fn reward() -> Weight {
-        0 as Weight
-    }
-
-    fn set_vesting_start() -> Weight {
-        0 as Weight
-    }
-
-    fn set_vesting_period() -> Weight {
-        0 as Weight
-    }
-
-    fn set_conversion_rate() -> Weight {
-        0 as Weight
-    }
-
-    fn set_direct_payout_ratio() -> Weight {
-        0 as Weight
-    }
-}
 
 type AccountId = u64;
 type Balance = u64;
@@ -132,7 +97,7 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
     type RelayChainAccountId = AccountId;
     type Conversion = Balance;
     type AdminOrigin = EnsureSignedBy<One, u64>;
-    type WeightInfo = MockWeightInfo;
+    type WeightInfo = ();
 }
 
 impl SortedMembers<u64> for One {

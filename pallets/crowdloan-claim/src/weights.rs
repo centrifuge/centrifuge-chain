@@ -21,7 +21,15 @@
 
 use frame_support::weights::Weight;
 
-use crate::traits::WeightInfo;
+pub trait WeightInfo {
+    fn initialize() -> Weight;
+    fn claim_reward() -> Weight;
+    fn set_lease_start() -> Weight;
+    fn set_lease_period() -> Weight;
+    fn set_locked_at() -> Weight;
+    fn set_contributions_root() -> Weight;
+    fn set_crowdloan_trie_index() -> Weight;
+}
 
 impl WeightInfo for () {
     fn initialize() -> Weight {

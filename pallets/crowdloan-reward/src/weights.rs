@@ -21,7 +21,18 @@
 
 use frame_support::weights::Weight;
 
-use crate::traits::WeightInfo;
+/// A trait for extrinsincs weight information
+///
+/// Weights are calculated using runtime benchmarking features.
+/// See [`benchmarking`] module for more information.
+pub trait WeightInfo {
+    fn initialize() -> Weight;
+    fn reward() -> Weight;
+    fn set_vesting_start() -> Weight;
+    fn set_vesting_period() -> Weight;
+    fn set_conversion_rate() -> Weight;
+    fn set_direct_payout_ratio() -> Weight;
+}
 
 impl WeightInfo for () {
     fn initialize() -> Weight {

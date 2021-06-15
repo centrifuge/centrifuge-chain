@@ -99,7 +99,6 @@ use frame_support::{
     ensure,
     sp_runtime::traits::{AtLeast32BitUnsigned, MaybeSerialize, Saturating},
     traits::{EnsureOrigin, Get},
-    weights::Weight,
     PalletId,
 };
 use frame_system::ensure_root;
@@ -119,7 +118,7 @@ use sp_trie::StorageProof;
 pub use pallet::*;
 
 // Extrinsics weight information
-pub use crate::traits::WeightInfo as PalletWeightInfo;
+pub use crate::weights::WeightInfo;
 use frame_support::dispatch::DispatchError;
 
 // Mock runtime and unit test cases
@@ -130,28 +129,6 @@ mod tests;
 
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
-
-// ----------------------------------------------------------------------------
-// Traits and types declaration
-// ----------------------------------------------------------------------------
-
-pub mod traits {
-    use super::*;
-
-    /// Weight information for pallet extrinsics
-    ///
-    /// Weights are calculated using runtime benchmarking features.
-    /// See [`benchmarking`] module for more information.
-    pub trait WeightInfo {
-        fn initialize() -> Weight;
-        fn claim_reward() -> Weight;
-        fn set_lease_start() -> Weight;
-        fn set_lease_period() -> Weight;
-        fn set_locked_at() -> Weight;
-        fn set_contributions_root() -> Weight;
-        fn set_crowdloan_trie_index() -> Weight;
-    }
-} // end of 'traits' module
 
 /// A type alias for the balance type from this pallet's point of view.
 type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
@@ -279,7 +256,7 @@ pub mod pallet {
         type AdminOrigin: EnsureOrigin<Self::Origin>;
 
         /// Weight information for extrinsics in this pallet
-        type WeightInfo: PalletWeightInfo;
+        type WeightInfo: WeightInfo;
     }
 
     // ------------------------------------------------------------------------

@@ -57,6 +57,14 @@ fn initalize_module() {
                 4,
             )
             .is_ok());
+
+            assert_eq!(CrowdloanReward::conversion_rate(), 3);
+            assert_eq!(
+                CrowdloanReward::direct_payout_ratio(),
+                Perbill::from_percent(12)
+            );
+            assert_eq!(CrowdloanReward::vesting_period(), Some(4));
+            assert_eq!(CrowdloanReward::vesting_start(), Some(4));
         });
 }
 

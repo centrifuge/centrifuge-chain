@@ -25,7 +25,7 @@
 
 use crate::{self as pallet_crowdloan_claim, Config};
 
-use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
+use frame_support::{parameter_types, traits::SortedMembers, PalletId};
 use frame_system::EnsureSignedBy;
 
 use sp_core::H256;
@@ -39,8 +39,6 @@ use sp_runtime::{
     AccountId32,
 };
 
-use crate::traits::WeightInfo;
-
 // ----------------------------------------------------------------------------
 // Type alias, constants
 // ----------------------------------------------------------------------------
@@ -51,39 +49,6 @@ type Balance = u64;
 // ----------------------------------------------------------------------------
 // Mock runtime
 // ----------------------------------------------------------------------------
-
-// Extrinsics weight information used for testing
-pub struct MockWeightInfo;
-impl WeightInfo for MockWeightInfo {
-    fn initialize() -> Weight {
-        0 as Weight
-    }
-
-    fn claim_reward() -> Weight {
-        0 as Weight
-    }
-
-    fn set_lease_start() -> u64 {
-        0 as Weight
-    }
-
-    fn set_lease_period() -> u64 {
-        0 as Weight
-    }
-
-    fn set_locked_at() -> u64 {
-        0 as Weight
-    }
-
-    fn set_contributions_root() -> u64 {
-        0 as Weight
-    }
-
-    fn set_crowdloan_trie_index() -> u64 {
-        0 as Weight
-    }
-}
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 pub type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
@@ -195,7 +160,7 @@ parameter_types! {
 impl Config for MockRuntime {
     type Event = Event;
     type PalletId = CrowdloanClaimPalletId;
-    type WeightInfo = MockWeightInfo;
+    type WeightInfo = ();
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type RelayChainBalance = Balance;
     type RelayChainAccountId = AccountId32;
