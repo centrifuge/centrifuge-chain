@@ -37,6 +37,7 @@ members = [
 	"libs/proofs",
         "runtime/altair",
 	"runtime/charcoal",
+        "runtime/common",
 ]
 
 [dependencies]
@@ -130,6 +131,7 @@ polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centri
 # node-specific dependencies
 altair-runtime = { path = "runtime/altair" }
 charcoal-runtime = { path = "runtime/charcoal" }
+runtime-common = { path = "runtime/common" }
 node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # benchmarking

@@ -985,13 +985,6 @@ pub type Executive = frame_executive::Executive<
 	AllPallets,
 >;
 
-decl_runtime_apis! {
-	/// The API to query anchoring info.
-	pub trait AnchorApi {
-		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
-	}
-}
-
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -1086,7 +1079,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl self::AnchorApi<Block> for Runtime {
+	impl runtime_common::AnchorApi<Block> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
 			Anchor::get_anchor_by_id(id)
 		}

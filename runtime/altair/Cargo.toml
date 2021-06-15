@@ -22,6 +22,9 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 
+# Runtime common
+runtime-common = { path = "../common", default-features = false }
+
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 integer-sqrt = { version = "0.1.2" }
@@ -121,6 +124,7 @@ std = [
     "pallet-claims/std",
     "pallet-fees/std",
     "pallet-anchors/std",
+    "runtime-common/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",

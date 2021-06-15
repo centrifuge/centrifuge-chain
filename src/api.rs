@@ -1,8 +1,8 @@
-pub use charcoal_runtime::AnchorApi as AnchorRuntimeApi;
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 use node_primitives::{BlockNumber, Hash};
 use pallet_anchors::AnchorData;
+pub use runtime_common::AnchorApi as AnchorRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};

@@ -162,6 +162,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
+ "runtime-common",
  "rustc-hex",
  "safe-mix",
  "serde",
@@ -1083,6 +1084,7 @@ dependencies = [
  "polkadot-parachain",
  "polkadot-primitives",
  "polkadot-service",
+ "runtime-common",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
@@ -1242,6 +1244,7 @@ dependencies = [
  "parachain-info",
  "parity-scale-codec",
  "polkadot-parachain",
+ "runtime-common",
  "rustc-hex",
  "safe-mix",
  "serde",
@@ -8140,6 +8143,15 @@ checksum = "ffc936cf8a7ea60c58f030fd36a612a48f440610214dc54bc36431f9ea0c3efb"
 dependencies = [
  "libc",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "runtime-common"
+version = "1.0.0"
+dependencies = [
+ "node-primitives",
+ "pallet-anchors",
+ "sp-api 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
 ]
 
 [[package]]

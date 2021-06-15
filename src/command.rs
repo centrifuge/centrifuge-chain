@@ -17,13 +17,13 @@
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, CharcoalExecutor},
+	service::{new_partial, AltairExecutor, CharcoalExecutor},
 };
-use charcoal_runtime::Block;
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use log::info;
+use node_primitives::Block;
 use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
@@ -33,6 +33,22 @@ use sc_service::config::{BasePath, PrometheusConfig};
 use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
+
+trait IdentifyChain {
+	fn is_altair(&self) -> bool;
+}
+
+impl IdentifyChain for dyn sc_service::ChainSpec {
+	fn is_altair(&self) -> bool {
+		self.id().starts_with("altair") || self.id().starts_with("rumba")
+	}
+}
+
+impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
+	fn is_altair(&self) -> bool {
+		<dyn sc_service::ChainSpec>::is_altair(self)
+	}
+}
 
 fn load_spec(
 	id: &str,
@@ -96,8 +112,12 @@ impl SubstrateCli for Cli {
 		load_spec(id, self.run.parachain_id.unwrap_or(10001).into())
 	}
 
-	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		&charcoal_runtime::VERSION
+	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
+		if spec.is_altair() {
+			&altair_runtime::VERSION
+		} else {
+			&charcoal_runtime::VERSION
+		}
 	}
 }
 
@@ -151,15 +171,26 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
-		let runner = $cli.create_runner($cmd)?;
+	    let runner = $cli.create_runner($cmd)?;
+            if runner.config().chain_spec.is_altair() {
 		runner.async_run(|$config| {
-				let $components = new_partial::<charcoal_runtime::RuntimeApi, CharcoalExecutor, _>(
+				let $components = new_partial::<altair_runtime::RuntimeApi, AltairExecutor, _>(
 					&$config,
-					crate::service::build_import_queue,
+					crate::service::build_altair_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
 		})
+            } else {
+		runner.async_run(|$config| {
+				let $components = new_partial::<charcoal_runtime::RuntimeApi, CharcoalExecutor, _>(
+					&$config,
+					crate::service::build_charcoal_import_queue,
+				)?;
+				let task_manager = $components.task_manager;
+				{ $( $code )* }.map(|v| (v, task_manager))
+		})
+            }
 	}}
 }
 
@@ -265,7 +296,14 @@ pub fn run() -> Result<()> {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
 
-				runner.sync_run(|config| cmd.run::<Block, CharcoalExecutor>(config))
+				if runner.config().chain_spec.is_altair() {
+					runner
+						.sync_run(|config| cmd.run::<altair_runtime::Block, AltairExecutor>(config))
+				} else {
+					runner.sync_run(|config| {
+						cmd.run::<charcoal_runtime::Block, CharcoalExecutor>(config)
+					})
+				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
 				You can enable it with `--features runtime-benchmarks`."
@@ -319,10 +357,17 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				crate::service::start_node(config, key, polkadot_config, id)
-					.await
-					.map(|r| r.0)
-					.map_err(Into::into)
+				if config.chain_spec.is_altair() {
+					crate::service::start_altair_node(config, key, polkadot_config, id)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				} else {
+					crate::service::start_charcoal_node(config, key, polkadot_config, id)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+				}
 			})
 		}
 	}
