@@ -47,9 +47,17 @@ fn load_spec(
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
 		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
 		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
-		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
-			path.into(),
-		)?)),
+		path => {
+			if path.contains("altair") || path.contains("rumba") {
+				Ok(Box::new(chain_spec::AltairChainSpec::from_json_file(
+					path.into(),
+				)?))
+			} else {
+				Ok(Box::new(chain_spec::CharcoalChainSpec::from_json_file(
+					path.into(),
+				)?))
+			}
+		}
 	}
 }
 
