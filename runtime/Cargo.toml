@@ -95,6 +95,7 @@ max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-fea
 
 pallet-anchors = { path = "../pallets/anchors", default-features = false }
 pallet-fees = { path = "../pallets/fees", default-features = false }
+pallet-claims = { path = "../pallets/claims", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -163,6 +164,7 @@ std = [
     "max-encoded-len/std",
     "pallet-fees/std",
     "pallet-anchors/std",
+    "pallet-claims/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
