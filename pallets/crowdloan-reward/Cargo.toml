@@ -18,22 +18,22 @@ log = { version = "0.4.14", default-features = false }
 serde = { version = "1.0.119" }
 
 # Substrae dependencies
-frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-frame-benchmarking = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git", default-features = false, optional = true }
-pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-pallet-indices = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-pallet-vesting = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false, optional = true , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-indices = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-vesting = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 # Local dependencies
 trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
 
 
 [dev-dependencies]
-pallet-vesting = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+pallet-vesting = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 serde = { version = "1.0.119" }
 
 [features]
