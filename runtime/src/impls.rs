@@ -1,17 +1,19 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
 use super::*;
-use frame_support::weights::{WeightToFeeCoefficient, WeightToFeePolynomial, WeightToFeeCoefficients};
+use frame_support::traits::{Currency, OnUnbalanced};
+use frame_support::weights::{
+	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
-use frame_support::traits::{Currency, OnUnbalanced};
 
 pub struct DealWithFees;
 type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
 impl OnUnbalanced<NegativeImbalance> for DealWithFees {
-    fn on_nonzero_unbalanced(amount: NegativeImbalance) {
-        Balances::resolve_creating(&Authorship::author(), amount);
-    }
+	fn on_nonzero_unbalanced(amount: NegativeImbalance) {
+		Balances::resolve_creating(&Authorship::author(), amount);
+	}
 }
 
 /// Handles converting a weight scalar to a fee value, based on the scale and granularity of the

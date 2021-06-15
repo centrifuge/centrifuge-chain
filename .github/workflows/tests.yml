@@ -9,6 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+        target: [tests, lint]
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN: "nightly-2021-03-15"
@@ -33,5 +34,5 @@ jobs:
       - name: Run tests
         run: ./ci/script.sh
         env:
-          TARGET: tests
+          TARGET: ${{ matrix.target }}
 

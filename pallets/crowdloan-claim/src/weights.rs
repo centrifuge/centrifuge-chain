@@ -14,29 +14,49 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Rad claim pallet's extrinsics weight information
+//! Crowdloan claim pallet's extrinsics weight information
 //!
 //! Note that the following weights are used only for development.
-//! In fact, weights should be calculated using Substrate runtime
-//! benchmarking feature.
+//! In fact, weights are calculated using runtime benchmarking.
 
-use frame_support::weights::{constants::RocksDbWeight, Weight};
+use frame_support::weights::Weight;
 
-use crate::traits::WeightInfo;
+pub trait WeightInfo {
+	fn initialize() -> Weight;
+	fn claim_reward() -> Weight;
+	fn set_lease_start() -> Weight;
+	fn set_lease_period() -> Weight;
+	fn set_locked_at() -> Weight;
+	fn set_contributions_root() -> Weight;
+	fn set_crowdloan_trie_index() -> Weight;
+}
 
 impl WeightInfo for () {
-	fn claim(hashes_length: usize) -> Weight {
-		(195_000_000 as Weight).saturating_add(
-			hashes_length.saturating_mul(1_000_000) as Weight
-				+ RocksDbWeight::get().reads_writes(2, 2),
-		)
+	fn initialize() -> Weight {
+		10_000 as Weight
 	}
 
-	fn set_upload_account() -> Weight {
-		190_000_000 as Weight
+	fn claim_reward() -> Weight {
+		10_000 as Weight
 	}
 
-	fn store_root_hash() -> Weight {
-		185_000_000 as Weight
+	fn set_lease_start() -> u64 {
+		10_000 as Weight
+	}
+
+	fn set_lease_period() -> u64 {
+		10_000 as Weight
+	}
+
+	fn set_locked_at() -> u64 {
+		10_000 as Weight
+	}
+
+	fn set_contributions_root() -> u64 {
+		10_000 as Weight
+	}
+
+	fn set_crowdloan_trie_index() -> u64 {
+		10_000 as Weight
 	}
 }
