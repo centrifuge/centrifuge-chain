@@ -634,6 +634,11 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Set the index of the crowdloan.
+        ///
+        /// This index comes from the relay-chain crowdloan pallet. More specifically, this index
+        /// is used to derive the internal patricia key inside the child trie. The index is
+        /// stored in the `FundInfo` of the relay chain crowdloan pallet.
         #[pallet::weight(< T as pallet::Config >::WeightInfo::set_crowdloan_trie_index())]
         pub(crate) fn set_crowdloan_trie_index(
             origin: OriginFor<T>,
