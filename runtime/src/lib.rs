@@ -582,6 +582,7 @@ construct_runtime!(
 		NodeBlock = node_primitives::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
+<<<<<<< HEAD
         // basic system stuff
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>} = 0,
         ParachainSystem: cumulus_pallet_parachain_system::{Pallet, Call, Storage, Inherent, Event<T>, ValidateUnsigned} = 1,
