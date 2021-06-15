@@ -248,6 +248,7 @@ fn testnet_genesis(
 		pallet_aura: node_runtime::AuraConfig {
 			authorities: initial_authorities,
 		},
-		pallet_anchors: Default::default()
+		pallet_anchors: Default::default(),
+		pallet_democracy: Default::default(),
 	}
 }

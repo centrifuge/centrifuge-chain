@@ -478,6 +478,81 @@ impl pallet_elections_phragmen::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
+	pub const VotingPeriod: BlockNumber = 7 * DAYS;
+	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
+    pub const InstantAllowed: bool = false;
+	pub const MinimumDeposit: Balance = 10 * AIR;
+	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
+	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
+	pub const PreimageByteDeposit: Balance = 100 * MICRO_AIR;
+    pub const MaxProposals: u32 = 100;
+	pub const MaxVotes: u32 = 100;
+}
+
+impl pallet_democracy::Config for Runtime {
+    type Proposal = Call;
+    type Event = Event;
+    type Currency = Balances;
+    /// The minimum period of locking and the period between a proposal being approved and enacted.
+    ///
+    /// It should generally be a little more than the unstake period to ensure that
+    /// voting stakers have an opportunity to remove themselves from the system in the case where
+    /// they are on the losing side of a vote.
+    type EnactmentPeriod = EnactmentPeriod;
+    /// How often (in blocks) new public referenda are launched.
+    type LaunchPeriod = LaunchPeriod;
+
+    /// How often (in blocks) to check for new votes.
+    type VotingPeriod = VotingPeriod;
+
+    /// The minimum amount to be used as a deposit for a public referendum proposal.
+    type MinimumDeposit = MinimumDeposit;
+
+    /// A straight majority of the council can decide what their next motion is.
+    type ExternalOrigin = pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+
+    /// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
+    type ExternalMajorityOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+
+    /// A unanimous council can have the next scheduled referendum be a straight default-carries
+    /// (NTB) vote.
+    type ExternalDefaultOrigin = pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+
+    /// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
+    /// be tabled immediately and with a shorter voting/enactment period.
+    type FastTrackOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+
+    type InstantOrigin = pallet_collective::EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+
+    type InstantAllowed = InstantAllowed;
+
+    type FastTrackVotingPeriod = FastTrackVotingPeriod;
+
+    // To cancel a proposal which has been passed, 2/3 of the council must agree to it.
+    type CancellationOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+
+    type BlacklistOrigin = EnsureRoot<AccountId>;
+
+    // To cancel a proposal before it has been passed, must be root.
+    type CancelProposalOrigin = EnsureRoot<AccountId>;
+    // Any single council member may veto a coming council proposal, however they can
+    // only do it once and it lasts only for the cooloff period.
+    type VetoOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
+    /// Period in blocks where an external proposal may not be re-submitted after being vetoed.
+    type CooloffPeriod = CooloffPeriod;
+    /// The amount of balance that must be deposited per byte of preimage stored.
+    type PreimageByteDeposit = PreimageByteDeposit;
+    type OperationalPreimageOrigin = pallet_collective::EnsureMember<AccountId, CouncilCollective>;
+    /// Handler for the unbalanced reduction when slashing a preimage deposit.
+    type Slash = ();
+    type Scheduler = Scheduler;
+    type PalletsOrigin = OriginCaller;
+    type MaxVotes = MaxVotes;
+    type WeightInfo = ();
+    type MaxProposals = MaxProposals;
+}
 
 // our pallets
 impl pallet_fees::Config for Runtime {
@@ -533,6 +608,7 @@ construct_runtime!(
         Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>} = 63,
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 64,
         Elections: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 65,
+        Democracy: pallet_democracy::{Pallet, Call, Storage, Config, Event<T>} = 66,
 
         // our pallets
         Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
