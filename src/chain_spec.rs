@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
+use charcoal_runtime::AuraId;
 use cumulus_primitives_core::ParaId;
 use node_primitives::{AccountId, Hash, Signature};
-use node_runtime::AuraId;
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
 use sp_core::{sr25519, Pair, Public};
@@ -25,7 +25,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec` for the normal parachain runtime.
-pub type ChainSpec = sc_service::GenericChainSpec<node_runtime::GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<charcoal_runtime::GenesisConfig>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -54,7 +54,7 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 		"charcoal_local_testnet",
 		ChainType::Local,
 		move || {
-			testnet_genesis(
+			charcoal_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
@@ -95,7 +95,7 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 		"charcoal_testnet",
 		ChainType::Live,
 		move || {
-			testnet_genesis(
+			charcoal_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
@@ -139,7 +139,7 @@ pub fn rumba_staging_network(para_id: ParaId) -> ChainSpec {
 		"rumba_testnet",
 		ChainType::Live,
 		move || {
-			testnet_genesis(
+			charcoal_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					get_from_seed::<AuraId>("Alice"),
@@ -191,31 +191,31 @@ pub fn charcoal_config() -> ChainSpec {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
-fn testnet_genesis(
+fn charcoal_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<AuraId>,
 	endowed_accounts: Vec<AccountId>,
 	id: ParaId,
-) -> node_runtime::GenesisConfig {
+) -> charcoal_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
 
-	node_runtime::GenesisConfig {
-		frame_system: node_runtime::SystemConfig {
-			code: node_runtime::WASM_BINARY
+	charcoal_runtime::GenesisConfig {
+		frame_system: charcoal_runtime::SystemConfig {
+			code: charcoal_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_balances: node_runtime::BalancesConfig {
+		pallet_balances: charcoal_runtime::BalancesConfig {
 			balances: endowed_accounts
 				.iter()
 				.cloned()
 				.map(|k| (k, 1 << 60))
 				.collect(),
 		},
-		pallet_democracy: node_runtime::DemocracyConfig::default(),
-		pallet_elections_phragmen: node_runtime::ElectionsConfig { members: vec![] },
-		pallet_collective_Instance1: node_runtime::CouncilConfig {
+		pallet_democracy: charcoal_runtime::DemocracyConfig::default(),
+		pallet_elections_phragmen: charcoal_runtime::ElectionsConfig { members: vec![] },
+		pallet_collective_Instance1: charcoal_runtime::CouncilConfig {
 			members: endowed_accounts
 				.iter()
 				.take((num_endowed_accounts + 1) / 2)
@@ -223,7 +223,7 @@ fn testnet_genesis(
 				.collect(),
 			phantom: Default::default(),
 		},
-		// pallet_bridge: Some(node_runtime::PalletBridgeConfig{
+		// pallet_bridge: Some(charcoal_runtime::PalletBridgeConfig{
 		// 	// Whitelist chains Ethereum - 0
 		// 	chains: vec![0],
 		// 	// Register resourceIDs
@@ -239,7 +239,7 @@ fn testnet_genesis(
 		// 	],
 		// 	threshold: 1,
 		// }),
-		pallet_fees: node_runtime::FeesConfig {
+		pallet_fees: charcoal_runtime::FeesConfig {
 			initial_fees: vec![(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
@@ -256,10 +256,10 @@ fn testnet_genesis(
 			)],
 		},
 		pallet_vesting: Default::default(),
-		pallet_sudo: node_runtime::SudoConfig { key: root_key },
-		parachain_info: node_runtime::ParachainInfoConfig { parachain_id: id },
+		pallet_sudo: charcoal_runtime::SudoConfig { key: root_key },
+		parachain_info: charcoal_runtime::ParachainInfoConfig { parachain_id: id },
 		cumulus_pallet_aura_ext: Default::default(),
-		pallet_aura: node_runtime::AuraConfig {
+		pallet_aura: charcoal_runtime::AuraConfig {
 			authorities: initial_authorities,
 		},
 		pallet_anchors: Default::default(),

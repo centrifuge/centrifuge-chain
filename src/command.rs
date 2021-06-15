@@ -23,7 +23,7 @@ use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use log::info;
-use node_runtime::Block;
+use charcoal_runtime::Block;
 use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
@@ -89,7 +89,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		&node_runtime::VERSION
+		&charcoal_runtime::VERSION
 	}
 }
 
@@ -145,7 +145,7 @@ macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 		let runner = $cli.create_runner($cmd)?;
 		runner.async_run(|$config| {
-				let $components = new_partial::<node_runtime::RuntimeApi, Executor, _>(
+				let $components = new_partial::<charcoal_runtime::RuntimeApi, Executor, _>(
 					&$config,
 					crate::service::build_import_queue,
 				)?;

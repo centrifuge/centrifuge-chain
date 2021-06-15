@@ -35,7 +35,7 @@ members = [
 	"pallets/crowdloan-reward",
 	"libs/trait-crowdloan-reward",
 	"libs/proofs",
-	"runtime",
+	"runtime/charcoal",
 ]
 
 [dependencies]
@@ -127,7 +127,7 @@ polkadot-service = {git = "https://github.com/centrifuge/polkadot", branch = "ce
 polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centrifuge" }
 
 # node-specific dependencies
-node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
+charcoal-runtime = { path = "runtime/charcoal" }
 node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # benchmarking
@@ -154,5 +154,5 @@ std = [
 	"sp-consensus-babe/std"
 ]
 runtime-benchmarks = [
-	"node-runtime/runtime-benchmarks",
+	"charcoal-runtime/runtime-benchmarks",
 ]

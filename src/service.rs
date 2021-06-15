@@ -42,8 +42,8 @@ use substrate_prometheus_endpoint::Registry;
 // Native executor instance.
 native_executor_instance!(
 	pub Executor,
-	node_runtime::api::dispatch,
-	node_runtime::native_version,
+	charcoal_runtime::api::dispatch,
+	charcoal_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
 );
 
@@ -315,12 +315,12 @@ where
 
 /// Build the import queue for the "default" runtime.
 pub fn build_import_queue(
-	client: Arc<TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+	client: Arc<TFullClient<Block, charcoal_runtime::RuntimeApi, Executor>>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sp_consensus::DefaultImportQueue<Block, TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+	sp_consensus::DefaultImportQueue<Block, TFullClient<Block, charcoal_runtime::RuntimeApi, Executor>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -363,9 +363,9 @@ pub async fn start_node(
 	id: ParaId,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+	Arc<TFullClient<Block, charcoal_runtime::RuntimeApi, Executor>>,
 )> {
-	start_node_impl::<node_runtime::RuntimeApi, Executor, _, _, _>(
+	start_node_impl::<charcoal_runtime::RuntimeApi, Executor, _, _, _>(
 		parachain_config,
 		collator_key,
 		polkadot_config,
