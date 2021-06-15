@@ -25,4 +25,8 @@ case $TARGET in
 
   tests)
     cargo test -p pallet-bridge-mapping -p pallet-fees -p pallet-anchors -p pallet-claims -p proofs --release
+    ;;
+
+  lint)
+    cargo fmt -- --check
 esac

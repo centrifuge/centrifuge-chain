@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::api::{Anchor, AnchorApi};
 use cumulus_client_consensus_aura::{
 	build_aura_consensus, BuildAuraConsensusParams, SlotProportion,
 };
@@ -23,10 +24,11 @@ use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
-use polkadot_primitives::v1::CollatorPair;
 use node_primitives::{Block, Hash};
+use polkadot_primitives::v1::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_executor::native_executor_instance;
+pub use sc_executor::NativeExecutor;
 use sc_network::NetworkService;
 use sc_service::{Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
@@ -36,8 +38,6 @@ use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use std::sync::Arc;
 use substrate_prometheus_endpoint::Registry;
-use crate::api::{AnchorApi, Anchor};
-pub use sc_executor::NativeExecutor;
 
 // Native executor instance.
 native_executor_instance!(
@@ -65,12 +65,12 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 	>,
 	sc_service::Error,
 >
-	where
-		RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, Executor>>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, Executor>>
 		+ Send
 		+ Sync
 		+ 'static,
-		RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
 		+ sp_api::ApiExt<
@@ -78,17 +78,17 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 			StateBackend = sc_client_api::StateBackendFor<TFullBackend<Block>, Block>,
 		> + sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>,
-		sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
-		Executor: sc_executor::NativeExecutionDispatch + 'static,
-		BIQ: FnOnce(
-			Arc<TFullClient<Block, RuntimeApi, Executor>>,
-			&Configuration,
-			Option<TelemetryHandle>,
-			&TaskManager,
-		) -> Result<
-			sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
-			sc_service::Error,
-		>,
+	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	BIQ: FnOnce(
+		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		&Configuration,
+		Option<TelemetryHandle>,
+		&TaskManager,
+	) -> Result<
+		sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_service::Error,
+	>,
 {
 	let telemetry = config
 		.telemetry_endpoints
@@ -157,12 +157,12 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	build_import_queue: BIQ,
 	build_consensus: BIC,
 ) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)>
-	where
-		RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, Executor>>
+where
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, Executor>>
 		+ Send
 		+ Sync
 		+ 'static,
-		RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+	RuntimeApi::RuntimeApi: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
 		+ sp_api::Metadata<Block>
 		+ sp_session::SessionKeys<Block>
 		+ sp_api::ApiExt<
@@ -171,33 +171,33 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 		> + sp_offchain::OffchainWorkerApi<Block>
 		+ sp_block_builder::BlockBuilder<Block>
 		+ cumulus_primitives_core::CollectCollationInfo<Block>,
-		sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
-		Executor: sc_executor::NativeExecutionDispatch + 'static,
-		RB: Fn(
+	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
+	Executor: sc_executor::NativeExecutionDispatch + 'static,
+	RB: Fn(
 			Arc<TFullClient<Block, RuntimeApi, Executor>>,
 		) -> jsonrpc_core::IoHandler<sc_rpc::Metadata>
 		+ Send
 		+ 'static,
-		BIQ: FnOnce(
-			Arc<TFullClient<Block, RuntimeApi, Executor>>,
-			&Configuration,
-			Option<TelemetryHandle>,
-			&TaskManager,
-		) -> Result<
-			sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
-			sc_service::Error,
-		>,
-		BIC: FnOnce(
-			Arc<TFullClient<Block, RuntimeApi, Executor>>,
-			Option<&Registry>,
-			Option<TelemetryHandle>,
-			&TaskManager,
-			&polkadot_service::NewFull<polkadot_service::Client>,
-			Arc<sc_transaction_pool::FullPool<Block, TFullClient<Block, RuntimeApi, Executor>>>,
-			Arc<NetworkService<Block, Hash>>,
-			SyncCryptoStorePtr,
-			bool,
-		) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
+	BIQ: FnOnce(
+		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		&Configuration,
+		Option<TelemetryHandle>,
+		&TaskManager,
+	) -> Result<
+		sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_service::Error,
+	>,
+	BIC: FnOnce(
+		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		Option<&Registry>,
+		Option<TelemetryHandle>,
+		&TaskManager,
+		&polkadot_service::NewFull<polkadot_service::Client>,
+		Arc<sc_transaction_pool::FullPool<Block, TFullClient<Block, RuntimeApi, Executor>>>,
+		Arc<NetworkService<Block, Hash>>,
+		SyncCryptoStorePtr,
+		bool,
+	) -> Result<Box<dyn ParachainConsensus<Block>>, sc_service::Error>,
 {
 	if matches!(parachain_config.role, Role::Light) {
 		return Err("Light client not supported!".into());
@@ -213,10 +213,10 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 		collator_key.clone(),
 		telemetry_worker_handle,
 	)
-		.map_err(|e| match e {
-			polkadot_service::Error::Sub(x) => x,
-			s => format!("{}", s).into(),
-		})?;
+	.map_err(|e| match e {
+		polkadot_service::Error::Sub(x) => x,
+		s => format!("{}", s).into(),
+	})?;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -292,7 +292,7 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 			relay_chain_full_node,
 			spawner,
 			parachain_consensus,
-			import_queue
+			import_queue,
 		};
 
 		start_collator(params).await?;
@@ -302,7 +302,7 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 			announce_block,
 			task_manager: &mut task_manager,
 			para_id: id,
-			relay_chain_full_node
+			relay_chain_full_node,
 		};
 
 		start_full_node(params)?;
@@ -320,10 +320,7 @@ pub fn build_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sp_consensus::DefaultImportQueue<
-		Block,
-		TFullClient<Block, node_runtime::RuntimeApi, Executor>,
-	>,
+	sp_consensus::DefaultImportQueue<Block, TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -355,7 +352,7 @@ pub fn build_import_queue(
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
 	})
-		.map_err(Into::into)
+	.map_err(Into::into)
 }
 
 /// Start a parachain node.
@@ -364,9 +361,10 @@ pub async fn start_node(
 	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
-) -> sc_service::error::Result<
-	(TaskManager, Arc<TFullClient<Block, node_runtime::RuntimeApi, Executor>>)
-> {
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+)> {
 	start_node_impl::<node_runtime::RuntimeApi, Executor, _, _, _>(
 		parachain_config,
 		collator_key,
@@ -374,9 +372,7 @@ pub async fn start_node(
 		id,
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(
-				AnchorApi::to_delegate(Anchor::new(client.clone()))
-			);
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
 			io
 		},
 		build_import_queue,
@@ -455,5 +451,5 @@ pub async fn start_node(
 			}))
 		},
 	)
-		.await
+	.await
 }

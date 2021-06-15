@@ -27,9 +27,9 @@ use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, Pal
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
-    Perbill,
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
+	Perbill,
 };
 
 type AccountId = u64;
@@ -40,105 +40,105 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-    pub enum MockRuntime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Vesting: pallet_vesting::{Pallet, Call, Config<T>, Storage, Event<T>},
-        CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Config, Storage, Event<T>},
-    }
+	pub enum MockRuntime where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
+		Vesting: pallet_vesting::{Pallet, Call, Config<T>, Storage, Event<T>},
+		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Config, Storage, Event<T>},
+	}
 );
 
 // Parameterize balances pallet
 parameter_types! {
-    pub const MaxLocks: u32 = 10;
-    pub const ExistentialDeposit: u64 = 1;
+	pub const MaxLocks: u32 = 10;
+	pub const ExistentialDeposit: u64 = 1;
 }
 
 // Implement balances pallet configuration for mock runtime
 impl pallet_balances::Config for MockRuntime {
-    type MaxLocks = ();
-    type Balance = Balance;
-    type Event = Event;
-    type DustRemoval = ();
-    type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
-    type WeightInfo = ();
+	type MaxLocks = ();
+	type Balance = Balance;
+	type Event = Event;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
 }
 
 // Parameterize vesting pallet
 parameter_types! {
-    pub const MinVestedTransfer: u64 = 16;
+	pub const MinVestedTransfer: u64 = 16;
 }
 
 // Implement vesting pallet configuration for mock runtime
 impl pallet_vesting::Config for MockRuntime {
-    type Event = Event;
-    type Currency = Balances;
-    type BlockNumberToBalance = sp_runtime::traits::Identity;
-    type MinVestedTransfer = MinVestedTransfer;
-    type WeightInfo = ();
+	type Event = Event;
+	type Currency = Balances;
+	type BlockNumberToBalance = sp_runtime::traits::Identity;
+	type MinVestedTransfer = MinVestedTransfer;
+	type WeightInfo = ();
 }
 
 // Parameterize crowdloan reward pallet configuration
 parameter_types! {
-    pub const One: u64 = 1;
-    pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+	pub const One: u64 = 1;
+	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
 }
 
 // Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
-    type Event = Event;
-    type PalletId = CrowdloanRewardPalletId;
-    type RelayChainBalance = Balance;
-    type RelayChainAccountId = AccountId;
-    type Conversion = Balance;
-    type AdminOrigin = EnsureSignedBy<One, u64>;
-    type WeightInfo = ();
+	type Event = Event;
+	type PalletId = CrowdloanRewardPalletId;
+	type RelayChainBalance = Balance;
+	type RelayChainAccountId = AccountId;
+	type Conversion = Balance;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type WeightInfo = ();
 }
 
 impl SortedMembers<u64> for One {
-    fn sorted_members() -> Vec<u64> {
-        vec![1]
-    }
+	fn sorted_members() -> Vec<u64> {
+		vec![1]
+	}
 }
 
 // Parameterize frame system pallet
 parameter_types! {
-    pub const BlockHashCount: u64 = 250;
-    pub const MaximumBlockWeight: Weight = 1024;
-    pub const MaximumBlockLength: u32 = 2 * 1024;
-    pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	pub const BlockHashCount: u64 = 250;
+	pub const MaximumBlockWeight: Weight = 1024;
+	pub const MaximumBlockLength: u32 = 2 * 1024;
+	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
 }
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
-    type BaseCallFilter = ();
-    type BlockWeights = ();
-    type BlockLength = ();
-    type Origin = Origin;
-    type Index = u64;
-    type Call = Call;
-    type BlockNumber = u64;
-    type Hash = H256;
-    type Hashing = BlakeTwo256;
-    type AccountId = u64;
-    type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type Event = Event;
-    type BlockHashCount = BlockHashCount;
-    type DbWeight = ();
-    type Version = ();
-    type PalletInfo = PalletInfo;
-    type AccountData = pallet_balances::AccountData<Balance>;
-    type OnNewAccount = ();
-    type OnKilledAccount = ();
-    type SystemWeightInfo = ();
-    type SS58Prefix = ();
-    type OnSetCode = ();
+	type BaseCallFilter = ();
+	type BlockWeights = ();
+	type BlockLength = ();
+	type Origin = Origin;
+	type Index = u64;
+	type Call = Call;
+	type BlockNumber = u64;
+	type Hash = H256;
+	type Hashing = BlakeTwo256;
+	type AccountId = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
+	type Header = Header;
+	type Event = Event;
+	type BlockHashCount = BlockHashCount;
+	type DbWeight = ();
+	type Version = ();
+	type PalletInfo = PalletInfo;
+	type AccountData = pallet_balances::AccountData<Balance>;
+	type OnNewAccount = ();
+	type OnKilledAccount = ();
+	type SystemWeightInfo = ();
+	type SS58Prefix = ();
+	type OnSetCode = ();
 }
 
 // ----------------------------------------------------------------------------
@@ -150,79 +150,79 @@ impl frame_system::Config for MockRuntime {
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.
 pub struct TestExternalitiesBuilder {
-    existential_deposit: u64,
+	existential_deposit: u64,
 }
 
 // Implement default trait for test externalities builder
 impl Default for TestExternalitiesBuilder {
-    fn default() -> Self {
-        Self {
-            existential_deposit: 1,
-        }
-    }
+	fn default() -> Self {
+		Self {
+			existential_deposit: 1,
+		}
+	}
 }
 
 // Implement test externalities builder
 impl TestExternalitiesBuilder {
-    pub fn existential_deposit(mut self, existential_deposit: u64) -> Self {
-        self.existential_deposit = existential_deposit;
-        self
-    }
+	pub fn existential_deposit(mut self, existential_deposit: u64) -> Self {
+		self.existential_deposit = existential_deposit;
+		self
+	}
 
-    // Build a genesis storage key/value store
-    pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
-        let mut storage = frame_system::GenesisConfig::default()
-            .build_storage::<MockRuntime>()
-            .unwrap();
+	// Build a genesis storage key/value store
+	pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
+		let mut storage = frame_system::GenesisConfig::default()
+			.build_storage::<MockRuntime>()
+			.unwrap();
 
-        pallet_balances::GenesisConfig::<MockRuntime> {
-            balances: vec![
-                (1, 10 * self.existential_deposit),
-                (2, 20 * self.existential_deposit),
-                (3, 30 * self.existential_deposit),
-                (4, 40 * self.existential_deposit),
-                (12, 10 * self.existential_deposit),
-                (
-                    CrowdloanReward::account_id(),
-                    1000 * self.existential_deposit,
-                ),
-            ],
-        }
-        .assimilate_storage(&mut storage)
-        .unwrap();
+		pallet_balances::GenesisConfig::<MockRuntime> {
+			balances: vec![
+				(1, 10 * self.existential_deposit),
+				(2, 20 * self.existential_deposit),
+				(3, 30 * self.existential_deposit),
+				(4, 40 * self.existential_deposit),
+				(12, 10 * self.existential_deposit),
+				(
+					CrowdloanReward::account_id(),
+					1000 * self.existential_deposit,
+				),
+			],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
-        use frame_support::traits::GenesisBuild;
-        pallet_vesting::GenesisConfig::<MockRuntime> {
-            vesting: vec![
-                (1, 0, 10, 5 * self.existential_deposit),
-                (2, 10, 20, 0),
-                (12, 10, 20, 5 * self.existential_deposit),
-            ],
-        }
-        .assimilate_storage(&mut storage)
-        .unwrap();
+		use frame_support::traits::GenesisBuild;
+		pallet_vesting::GenesisConfig::<MockRuntime> {
+			vesting: vec![
+				(1, 0, 10, 5 * self.existential_deposit),
+				(2, 10, 20, 0),
+				(12, 10, 20, 5 * self.existential_deposit),
+			],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
-        //pallet_crowdloan_reward::GenesisConfig::default().assimilate_storage(&mut storage).unwrap();
+		//pallet_crowdloan_reward::GenesisConfig::default().assimilate_storage(&mut storage).unwrap();
 
-        let mut ext = sp_io::TestExternalities::new(storage);
-        ext.execute_with(|| {
-            System::set_block_number(1);
-        });
-        ext.execute_with(execute);
-        ext
-    }
+		let mut ext = sp_io::TestExternalities::new(storage);
+		ext.execute_with(|| {
+			System::set_block_number(1);
+		});
+		ext.execute_with(execute);
+		ext
+	}
 } // end of 'TestExternalitiesBuilder' implementation
 
 pub(crate) fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
-    System::events()
-        .into_iter()
-        .map(|r| r.event)
-        .filter_map(|e| {
-            if let Event::pallet_crowdloan_reward(inner) = e {
-                Some(inner)
-            } else {
-                None
-            }
-        })
-        .collect()
+	System::events()
+		.into_iter()
+		.map(|r| r.event)
+		.filter_map(|e| {
+			if let Event::pallet_crowdloan_reward(inner) = e {
+				Some(inner)
+			} else {
+				None
+			}
+		})
+		.collect()
 }
