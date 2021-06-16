@@ -30,6 +30,7 @@ start-parachain)
     --chain="${parachain}" --alice \
     --parachain-id="${para_id}" \
     --base-path=/tmp/centrifuge-chain/data \
+    --execution=wasm \
     --port 30355 \
     --rpc-port 9936 \
     --ws-port 9946 \
@@ -37,7 +38,7 @@ start-parachain)
     --rpc-cors all \
     --ws-external \
     --rpc-methods=Unsafe \
-    --log="main,info" \
+    --log="main,debug" \
   ;;
 
 onboard-parachain)

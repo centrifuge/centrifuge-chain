@@ -25,7 +25,6 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use node_primitives::{Block, Hash};
-use polkadot_primitives::v1::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_executor::native_executor_instance;
 pub use sc_executor::NativeExecutor;
@@ -150,7 +149,6 @@ where
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 	rpc_ext_builder: RB,
@@ -210,7 +208,6 @@ where
 
 	let relay_chain_full_node = cumulus_client_service::build_polkadot_full_node(
 		polkadot_config,
-		collator_key.clone(),
 		telemetry_worker_handle,
 	)
 	.map_err(|e| match e {
@@ -288,7 +285,6 @@ where
 			announce_block,
 			client: client.clone(),
 			task_manager: &mut task_manager,
-			collator_key,
 			relay_chain_full_node,
 			spawner,
 			parachain_consensus,
@@ -358,7 +354,6 @@ pub fn build_import_queue(
 /// Start a parachain node.
 pub async fn start_node(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 ) -> sc_service::error::Result<(
@@ -367,7 +362,6 @@ pub async fn start_node(
 )> {
 	start_node_impl::<node_runtime::RuntimeApi, Executor, _, _, _>(
 		parachain_config,
-		collator_key,
 		polkadot_config,
 		id,
 		|client| {

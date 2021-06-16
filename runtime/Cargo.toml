@@ -28,6 +28,7 @@ cumulus-pallet-xcm = {git = "https://github.com/centrifuge/cumulus", default-fea
 cumulus-pallet-xcmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-pallet-dmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-pallet-aura-ext = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
+cumulus-primitives-timestamp = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 
 
 # polkadot dependencies
@@ -152,6 +153,7 @@ std = [
     "rustc-hex",
     "safe-mix/std",
     "cumulus-pallet-parachain-system/std",
+    "cumulus-primitives-timestamp/std",
     "cumulus-pallet-xcmp-queue/std",
     "parachain-info/std",
     "xcm/std",
@@ -164,7 +166,9 @@ std = [
     "max-encoded-len/std",
     "pallet-fees/std",
     "pallet-anchors/std",
-    "pallet-claims/std"
+    "pallet-claims/std",
+    "pallet-sudo/std",
+    "pallet-society/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

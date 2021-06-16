@@ -204,21 +204,21 @@ fn testnet_genesis(
 	let num_endowed_accounts = endowed_accounts.len();
 
 	node_runtime::GenesisConfig {
-		frame_system: node_runtime::SystemConfig {
+		system: node_runtime::SystemConfig {
 			code: node_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		pallet_balances: node_runtime::BalancesConfig {
+		balances: node_runtime::BalancesConfig {
 			balances: endowed_accounts
 				.iter()
 				.cloned()
 				.map(|k| (k, 1 << 60))
 				.collect(),
 		},
-		pallet_elections_phragmen: node_runtime::ElectionsConfig { members: vec![] },
-		pallet_collective_Instance1: node_runtime::CouncilConfig {
+		elections: node_runtime::ElectionsConfig { members: vec![] },
+		council: node_runtime::CouncilConfig {
 			members: endowed_accounts
 				.iter()
 				.take((num_endowed_accounts + 1) / 2)
@@ -226,7 +226,7 @@ fn testnet_genesis(
 				.collect(),
 			phantom: Default::default(),
 		},
-		pallet_fees: node_runtime::FeesConfig {
+		fees: node_runtime::FeesConfig {
 			initial_fees: vec![(
 				// Anchoring state rent fee per day
 				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
@@ -242,14 +242,15 @@ fn testnet_genesis(
 				2_365_296_803_653,
 			)],
 		},
-		pallet_vesting: Default::default(),
-		pallet_sudo: node_runtime::SudoConfig { key: root_key },
+		vesting: Default::default(),
+		sudo: node_runtime::SudoConfig { key: root_key },
 		parachain_info: node_runtime::ParachainInfoConfig { parachain_id: id },
-		cumulus_pallet_aura_ext: Default::default(),
-		pallet_aura: node_runtime::AuraConfig {
+		aura_ext: Default::default(),
+		aura: node_runtime::AuraConfig {
 			authorities: initial_authorities,
 		},
-		pallet_anchors: Default::default(),
-		pallet_democracy: Default::default(),
+		anchor: Default::default(),
+		democracy: Default::default(),
+		parachain_system: Default::default(),
 	}
 }

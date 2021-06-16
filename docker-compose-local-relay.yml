@@ -14,6 +14,7 @@ services:
         read_only: true
     command: >
       --chain=/chainspec.json
+      --execution=wasm
       --base-path=/data
       --port 30333
       --rpc-port 9933
@@ -22,9 +23,8 @@ services:
       --rpc-cors all
       --ws-external
       --rpc-methods=Unsafe
-      --no-beefy
       --alice
-      --log="main,info"
+      --log="main,debug"
 
   node_bob:
     container_name: bob
@@ -41,6 +41,7 @@ services:
     command: >
       --chain=/chainspec.json
       --base-path=/data
+      --execution=wasm
       --port 30333
       --rpc-port 9933
       --ws-port 9944
@@ -48,6 +49,5 @@ services:
       --ws-external
       --rpc-cors all
       --rpc-methods=Unsafe
-      --no-beefy
       --bob
       --log="main,info"
