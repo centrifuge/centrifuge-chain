@@ -23,6 +23,9 @@
 // ----------------------------------------------------------------------------
 
 use crate as pallet_crowdloan_reward;
+use frame_benchmarking::frame_support::max_encoded_len::MaxEncodedLen;
+use frame_benchmarking::frame_support::pallet_prelude::{Get, Member};
+use frame_benchmarking::frame_support::Parameter;
 use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -67,6 +70,8 @@ impl pallet_balances::Config for MockRuntime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 // Parameterize vesting pallet

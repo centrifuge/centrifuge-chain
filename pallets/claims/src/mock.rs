@@ -42,6 +42,9 @@ use sp_runtime::{
 
 use crate::traits::WeightInfo;
 
+use frame_benchmarking::frame_support::max_encoded_len::MaxEncodedLen;
+use frame_benchmarking::frame_support::pallet_prelude::{Get, Member};
+use frame_benchmarking::frame_support::Parameter;
 pub use pallet_balances as balances;
 
 // ----------------------------------------------------------------------------
@@ -148,6 +151,8 @@ impl pallet_balances::Config for MockRuntime {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 // Parameterize claims pallet
