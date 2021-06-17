@@ -24,9 +24,6 @@
 // ----------------------------------------------------------------------------
 
 use crate::{self as pallet_crowdloan_claim, Config};
-use frame_support::max_encoded_len::MaxEncodedLen;
-use frame_support::pallet_prelude::{Get, Member};
-use frame_support::Parameter;
 use frame_support::{parameter_types, traits::SortedMembers, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;

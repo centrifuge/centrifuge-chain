@@ -1,8 +1,6 @@
 use crate::{self as anchors, *};
-use frame_support::max_encoded_len::MaxEncodedLen;
-use frame_support::pallet_prelude::{Get, Member};
+use frame_support::parameter_types;
 use frame_support::traits::SortedMembers;
-use frame_support::{parameter_types, Parameter};
 use frame_support::{traits::FindAuthor, ConsensusEngineId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
