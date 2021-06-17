@@ -24,17 +24,13 @@
 // ----------------------------------------------------------------------------
 
 use crate::{self as pallet_crowdloan_claim, Config};
-
+use frame_support::max_encoded_len::MaxEncodedLen;
+use frame_support::pallet_prelude::{Get, Member};
+use frame_support::Parameter;
 use frame_support::{parameter_types, traits::SortedMembers, PalletId};
 use frame_system::EnsureSignedBy;
-
 use sp_core::H256;
-
 use sp_io::TestExternalities;
-
-use frame_benchmarking::frame_support::max_encoded_len::MaxEncodedLen;
-use frame_benchmarking::frame_support::pallet_prelude::{Get, Member};
-use frame_benchmarking::frame_support::Parameter;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},

@@ -30,6 +30,7 @@ start-parachain)
     --chain="${parachain}" --alice \
     --parachain-id="${para_id}" \
     --base-path=/tmp/centrifuge-chain/data \
+    --wasm-execution=compiled \
     --execution=wasm \
     --port 30355 \
     --rpc-port 9936 \
