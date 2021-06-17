@@ -6,7 +6,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	construct_runtime, match_type, parameter_types,
+	construct_runtime, parameter_types,
 	traits::{InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
@@ -45,13 +45,6 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-use xcm::v0::{Junction, Junction::*, MultiLocation, NetworkId};
-use xcm_builder::{
-	AllowUnpaidExecutionFrom, FixedWeightBounds, LocationInverter, ParentAsSuperuser,
-	ParentIsDefault, SovereignSignedViaLocation,
-};
-use xcm_executor::{Config, XcmExecutor};
-
 pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
@@ -61,6 +54,7 @@ mod common;
 pub use common::*;
 
 pub mod impls;
+use frame_support::traits::Filter;
 use impls::*;
 
 // Make the WASM binary available.
@@ -119,10 +113,33 @@ parameter_types! {
 		.build_or_panic();
 	pub const SS58Prefix: u8 = 136;
 }
+// our base filter
+// allow base system calls needed for block production and runtime upgrade
+// other calls will be disallowed
+pub struct BaseFilter;
+
+impl Filter<Call> for BaseFilter {
+	fn filter(c: &Call) -> bool {
+		matches!(
+			c,
+			// Calls from Sudo
+			Call::Sudo(..)
+
+				// Calls for runtime upgrade
+				| Call::System(frame_system::Call::set_code(..))
+				| Call::System(frame_system::Call::set_code_without_checks(..))
+
+				// Calls that are present in each block
+				| Call::ParachainSystem(
+					cumulus_pallet_parachain_system::Call::set_validation_data(..)
+				) | Call::Timestamp(pallet_timestamp::Call::set(..))
+		)
+	}
+}
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = BaseFilter;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -254,55 +271,6 @@ impl pallet_aura::Config for Runtime {
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
-
-// // xcm helpers
-// parameter_types! {
-// 	pub const KsmLocation: MultiLocation = MultiLocation::X1(Junction::Parent);
-// 	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
-// 	pub Ancestry: MultiLocation = Junction::Parachain(ParachainInfo::parachain_id().into()).into();
-// }
-//
-// /// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
-// /// ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind` which can
-// /// bias the kind of local `Origin` it will become.
-// pub type XcmOriginToTransactDispatchOrigin = (
-// 	// Sovereign account converter; this attempts to derive an `AccountId` from the origin location
-// 	// using `LocationToAccountId` and then turn that into the usual `Signed` origin. Useful for
-// 	// foreign chains who want to have a local sovereign account on this chain which they control.
-// 	SovereignSignedViaLocation<ParentIsDefault<AccountId>, Origin>,
-// 	// Superuser converter for the Relay-chain (Parent) location. This will allow it to issue a
-// 	// transaction from the Root origin.
-// 	ParentAsSuperuser<Origin>,
-// );
-//
-// match_type! {
-// 	pub type JustTheParent: impl Contains<MultiLocation> = { MultiLocation::X1(Parent) };
-// }
-//
-// parameter_types! {
-// 	pub UnitWeightCost: Weight = 1_000_000;
-// }
-//
-// pub struct XcmConfig;
-// impl Config for XcmConfig {
-// 	type Call = Call;
-// 	type XcmSender = (); // sending XCM not supported
-// 	type AssetTransactor = (); // balances not supported
-// 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-// 	type IsReserve = (); // balances not supported
-// 	type IsTeleporter = (); // balances not supported
-// 	type LocationInverter = LocationInverter<Ancestry>;
-// 	type Barrier = AllowUnpaidExecutionFrom<JustTheParent>;
-// 	type Weigher = FixedWeightBounds<UnitWeightCost, Call>; // balances not supported
-// 	type Trader = (); // balances not supported
-// 	type ResponseHandler = (); // Don't handle responses for now.
-// }
-//
-// impl cumulus_pallet_dmp_queue::Config for Runtime {
-// 	type Event = Event;
-// 	type XcmExecutor = XcmExecutor<XcmConfig>;
-// 	type ExecuteOverweightOrigin = frame_system::EnsureRoot<AccountId>;
-// }
 
 // substrate pallets
 parameter_types! {
@@ -664,9 +632,6 @@ construct_runtime!(
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 31,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 32,
 
-		// XCM stuff
-		//DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 40,
-
 		// substrate pallets
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 60,
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>} = 61,
@@ -702,7 +667,8 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	// disable paying for the fees for now.
+	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;

@@ -17,7 +17,7 @@
 use cumulus_primitives_core::ParaId;
 use node_primitives::{AccountId, Hash, Signature};
 use node_runtime::constants::currency::*;
-use node_runtime::AuraId;
+use node_runtime::{AuraId, Balance};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
 use sp_core::{sr25519, Pair, Public};
@@ -62,6 +62,7 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 					get_from_seed::<AuraId>("Bob"),
 				],
 				endowed_accounts(),
+				Some(1000 * AIR),
 				para_id,
 			)
 		},
@@ -90,6 +91,7 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 					get_from_seed::<AuraId>("Bob"),
 				],
 				endowed_accounts(),
+				Some(1000 * AIR),
 				para_id,
 			)
 		},
@@ -121,6 +123,7 @@ pub fn rumba_staging_network(para_id: ParaId) -> ChainSpec {
 					get_from_seed::<AuraId>("Bob"),
 				],
 				endowed_accounts(),
+				Some(1000 * AIR),
 				para_id,
 			)
 		},
@@ -167,6 +170,7 @@ pub fn altair_dev(para_id: ParaId) -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![get_from_seed::<AuraId>("Alice")],
 				endowed_accounts(),
+				None,
 				para_id,
 			)
 		},
@@ -199,9 +203,23 @@ fn testnet_genesis(
 	root_key: AccountId,
 	initial_authorities: Vec<AuraId>,
 	endowed_accounts: Vec<AccountId>,
+	total_issuance: Option<Balance>,
 	id: ParaId,
 ) -> node_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
+	let balances = match total_issuance {
+		Some(total_issuance) => {
+			let balance_per_endowed = total_issuance
+				.checked_div(num_endowed_accounts as Balance)
+				.unwrap_or(0 as Balance);
+			endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, balance_per_endowed))
+				.collect()
+		}
+		None => vec![],
+	};
 
 	node_runtime::GenesisConfig {
 		system: node_runtime::SystemConfig {
@@ -210,20 +228,10 @@ fn testnet_genesis(
 				.to_vec(),
 			changes_trie_config: Default::default(),
 		},
-		balances: node_runtime::BalancesConfig {
-			balances: endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, 1 << 60))
-				.collect(),
-		},
+		balances: node_runtime::BalancesConfig { balances },
 		elections: node_runtime::ElectionsConfig { members: vec![] },
 		council: node_runtime::CouncilConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
+			members: Default::default(),
 			phantom: Default::default(),
 		},
 		fees: node_runtime::FeesConfig {
