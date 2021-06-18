@@ -175,10 +175,10 @@ pub fn altair_dev(para_id: ParaId) -> ChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					// get_from_seed::<AuraId>("Alice"),
+					get_from_seed::<AuraId>("Alice"),
 					//hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833").into(),
-					hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833")
-						.unchecked_into(),
+					// hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833")
+					// 	.unchecked_into(),
 				)],
 				endowed_accounts(),
 				None,
