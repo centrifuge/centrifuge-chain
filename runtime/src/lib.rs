@@ -258,12 +258,38 @@ parameter_types! {
 
 // We only use find_author to pay in anchor pallet
 impl pallet_authorship::Config for Runtime {
-	// todo(dev): either we use session pallet or figure out a way to convert
-	// AuraID to AccountID through a wrapper. then we don't need session pallet until staking coming in
-	type FindAuthor = ();
+	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
 	type EventHandler = ();
+}
+
+parameter_types! {
+	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(33);
+	pub const Period: u32 = 6 * HOURS;
+	pub const Offset: u32 = 0;
+}
+
+pub struct ValidatorOf;
+impl<T> sp_runtime::traits::Convert<T, Option<T>> for ValidatorOf {
+	fn convert(t: T) -> Option<T> {
+		Some(t)
+	}
+}
+
+impl pallet_session::Config for Runtime {
+	type Event = Event;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	// we don't have stash and controller, thus we don't need the convert as well.
+	type ValidatorIdOf = ValidatorOf;
+	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
+	type SessionManager = ();
+	// Essentially just Aura, but lets be pedantic.
+	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = SessionKeys;
+	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type WeightInfo = pallet_session::weights::SubstrateWeight<Self>;
 }
 
 impl pallet_aura::Config for Runtime {
@@ -629,8 +655,9 @@ construct_runtime!(
 
 		// authoring stuff
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,
-		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 31,
-		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 32,
+		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
+		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
+		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 33,
 
 		// substrate pallets
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 60,
@@ -667,7 +694,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	// disable paying for the fees for now.
+	// disable paying the fees for now.
 	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
