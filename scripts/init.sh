@@ -3,7 +3,7 @@
 set -e
 
 cmd=$1
-parachain="${PARA_CHAIN_SPEC:-charcoal-local}"
+parachain="${PARA_CHAIN_SPEC:-altair-dev}"
 para_id="${PARA_ID:-2000}"
 
 case $cmd in
@@ -30,6 +30,8 @@ start-parachain)
     --chain="${parachain}" --alice \
     --parachain-id="${para_id}" \
     --base-path=/tmp/centrifuge-chain/data \
+    --wasm-execution=compiled \
+    --execution=wasm \
     --port 30355 \
     --rpc-port 9936 \
     --ws-port 9946 \
@@ -37,7 +39,7 @@ start-parachain)
     --rpc-cors all \
     --ws-external \
     --rpc-methods=Unsafe \
-    --log="main,info" \
+    --log="main,debug" \
   ;;
 
 onboard-parachain)

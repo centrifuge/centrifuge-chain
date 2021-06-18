@@ -17,7 +17,7 @@ frame-support = { git = "https://github.com/centrifuge/substrate", default-featu
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master", optional = true }
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true , branch = "master" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }

@@ -67,6 +67,8 @@ impl pallet_balances::Config for MockRuntime {
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
 	type WeightInfo = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 // Parameterize vesting pallet

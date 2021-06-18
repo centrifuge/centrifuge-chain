@@ -148,6 +148,8 @@ impl pallet_balances::Config for MockRuntime {
 	type AccountStore = System;
 	type WeightInfo = ();
 	type MaxLocks = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 // Parameterize claims pallet
