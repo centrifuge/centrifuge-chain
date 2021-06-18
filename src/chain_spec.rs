@@ -15,12 +15,13 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
+use hex_literal::hex;
 use node_primitives::{AccountId, Hash, Signature};
 use node_runtime::constants::currency::*;
 use node_runtime::{AuraId, Balance};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
-use sp_core::{sr25519, Pair, Public};
+use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -33,6 +34,10 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
 		.expect("static values are valid; qed")
 		.public()
+}
+
+pub fn get_session_keys(keys: AuraId) -> node_runtime::SessionKeys {
+	node_runtime::SessionKeys { aura: keys }
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -57,10 +62,10 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
-				],
+				)],
 				endowed_accounts(),
 				Some(1000 * AIR),
 				para_id,
@@ -86,10 +91,10 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
-				],
+				)],
 				endowed_accounts(),
 				Some(1000 * AIR),
 				para_id,
@@ -118,10 +123,10 @@ pub fn rumba_staging_network(para_id: ParaId) -> ChainSpec {
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<AuraId>("Alice"),
-					get_from_seed::<AuraId>("Bob"),
-				],
+				)],
 				endowed_accounts(),
 				Some(1000 * AIR),
 				para_id,
@@ -168,7 +173,13 @@ pub fn altair_dev(para_id: ParaId) -> ChainSpec {
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![get_from_seed::<AuraId>("Alice")],
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					// get_from_seed::<AuraId>("Alice"),
+					//hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833").into(),
+					hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833")
+						.unchecked_into(),
+				)],
 				endowed_accounts(),
 				None,
 				para_id,
@@ -201,7 +212,7 @@ fn endowed_accounts() -> Vec<AccountId> {
 
 fn testnet_genesis(
 	root_key: AccountId,
-	initial_authorities: Vec<AuraId>,
+	initial_authorities: Vec<(AccountId, AuraId)>,
 	endowed_accounts: Vec<AccountId>,
 	total_issuance: Option<Balance>,
 	id: ParaId,
@@ -253,10 +264,21 @@ fn testnet_genesis(
 		vesting: Default::default(),
 		sudo: node_runtime::SudoConfig { key: root_key },
 		parachain_info: node_runtime::ParachainInfoConfig { parachain_id: id },
-		aura_ext: Default::default(),
-		aura: node_runtime::AuraConfig {
-			authorities: initial_authorities,
+		session: node_runtime::SessionConfig {
+			keys: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, aura)| {
+					(
+						acc.clone(),            // account id
+						acc.clone(),            // validator id
+						get_session_keys(aura), // session keys
+					)
+				})
+				.collect(),
 		},
+		aura_ext: Default::default(),
+		aura: Default::default(),
 		anchor: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
