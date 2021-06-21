@@ -50,10 +50,12 @@ pub mod constants;
 use constants::currency::*;
 
 mod common;
+mod migrations;
 /// common types for the runtime..
 pub use common::*;
 
 pub mod impls;
+use frame_support::sp_runtime::traits::Convert;
 use frame_support::traits::Filter;
 use impls::*;
 
@@ -629,6 +631,30 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// Implement the migration manager pallet
+// The actual associated type, which executes the migration can be found in the migration folder
+impl pallet_migration_manager::Config for Runtime {
+	type Upgrades = migrations::v0_1_0::Migrator;
+	type WeightToBlockNumber = WeightToBlockNumber;
+	type Event = Event;
+}
+
+pub struct WeightToBlockNumber;
+
+impl Convert<Weight, BlockNumber> for WeightToBlockNumber {
+	fn convert(w: Weight) -> BlockNumber {
+		// The weight might overfloww the BlockNumber here. But as we use this in order
+		// to compute the number of blocks, we assume, that a reasonable amount of weight is coming
+		// into this call.
+		// I.e. (weight_of_upgrade / max_weight_per_block) << U32::max !
+		if u32::MAX as u64 > w {
+			u32::MAX
+		} else {
+			w as u32
+		}
+	}
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -677,6 +703,8 @@ construct_runtime!(
 		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
+		// migration pallet
+		Migration: pallet_migration_manager::{Pallet, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
