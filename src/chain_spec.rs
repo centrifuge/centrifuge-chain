@@ -97,9 +97,9 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 						get_from_seed::<AuraId>("Alice"),
 					),
 					(
-				 		get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
 						get_from_seed::<AuraId>("Bob"),
-					)
+					),
 				],
 				endowed_accounts(),
 				Some(10000000 * AIR),
