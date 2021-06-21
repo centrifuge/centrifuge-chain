@@ -14,7 +14,7 @@ rustup --version
 cargo --version
 
 case $TARGET in
-	build-client)
+	build-node)
 		cargo build --release "$@"
 		;;
 

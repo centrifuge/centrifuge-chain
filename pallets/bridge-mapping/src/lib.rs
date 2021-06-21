@@ -106,7 +106,7 @@ pub mod pallet {
 		/// Set a resource mapping in the [Names]. Existing keys will be overwritten.
 		/// The caller must be the owner of the `rid` ResourceId.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set())]
-		pub(super) fn set(
+		pub fn set(
 			origin: OriginFor<T>,
 			rid: T::ResourceId,
 			local_addr: T::Address,
@@ -119,7 +119,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove())]
-		pub(super) fn remove(origin: OriginFor<T>, rid: T::ResourceId) -> DispatchResult {
+		pub fn remove(origin: OriginFor<T>, rid: T::ResourceId) -> DispatchResult {
 			Self::ensure_admin_or_root(origin)?;
 
 			// Call internal

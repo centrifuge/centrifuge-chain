@@ -26,6 +26,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Anchors: anchors::{Pallet, Call, Config, Storage},
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
 	}
 );
 
@@ -58,6 +59,8 @@ impl frame_system::Config for Test {
 	type SS58Prefix = ();
 	type OnSetCode = ();
 }
+
+impl pallet_randomness_collective_flip::Config for Test {}
 
 parameter_types! {
 	pub const ExistentialDeposit: u64 = 1;

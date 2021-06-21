@@ -24,7 +24,10 @@ stop-relay-chain)
 start-parachain)
   echo "Building parachain..."
   cargo build --release
-  rm -rf /tmp/centrifuge-chain
+  if [ "$2" == "purge" ]; then
+    echo "purging parachain..."
+    rm -rf /tmp/centrifuge-chain
+  fi
 
   ./scripts/run_collator.sh \
     --chain="${parachain}" --alice \
