@@ -2,13 +2,12 @@
   {
     "os": "ubuntu-latest",
     "target": "build-node",
-    "always_run": "true"
+    "run_on_event": "any"
   },
 
   {
     "os": "ubuntu-latest",
     "target": "build-runtime",
-    "always_run": "false",
     "run_on_event": "push"
   }
 ]
