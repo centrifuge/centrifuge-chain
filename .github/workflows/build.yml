@@ -5,11 +5,8 @@ on:
 name: Build
 jobs:
   matrix_prep:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
     name: matrix-prep
-    runs-on: ${{ matrix.os }}
+    runs-on: 'ubuntu-latest'
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -19,7 +16,7 @@ jobs:
         uses: JoshuaTheMiller/conditional-build-matrix@77cdf28e0eb41dd691280520b0bddddbc4654318
         with:
           inputFile: '.github/workflows/build-matrix.json'
-          # we run build-node on everytime but build-runtime only on pushes to branches
+          # we run build-node on every workflow but build-runtime only on pushes to branches
           filter: '[?run_on_event==`any` || run_on_event==`${{ github.event_name }}`]'
   build:
     needs: matrix_prep
