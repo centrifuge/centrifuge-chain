@@ -39,12 +39,12 @@ fn load_spec(
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
 		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
-		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
 		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
 		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
 		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(

@@ -52,7 +52,7 @@ where
 
 pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "CCFG".into());
+	properties.insert("tokenSymbol".into(), "CAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	ChainSpec::from_genesis(
@@ -67,7 +67,7 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(1000 * AIR),
+				Some(10000000 * AIR),
 				para_id,
 			)
 		},
@@ -81,7 +81,7 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 
 pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "CCFG".into());
+	properties.insert("tokenSymbol".into(), "CAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	ChainSpec::from_genesis(
@@ -91,12 +91,18 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 		move || {
 			testnet_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<AuraId>("Alice"),
-				)],
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<AuraId>("Bob"),
+					),
+				],
 				endowed_accounts(),
-				Some(1000 * AIR),
+				Some(10000000 * AIR),
 				para_id,
 			)
 		},
@@ -128,7 +134,7 @@ pub fn rumba_staging_network(para_id: ParaId) -> ChainSpec {
 					get_from_seed::<AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(1000 * AIR),
+				Some(10000000 * AIR),
 				para_id,
 			)
 		},
