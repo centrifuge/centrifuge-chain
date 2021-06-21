@@ -832,9 +832,6 @@ impl_runtime_apis! {
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 
-			impl frame_system_benchmarking::Config for Runtime {}
-			impl pallet_session_benchmarking::Config for Runtime {}
-
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
 				// Block Number
