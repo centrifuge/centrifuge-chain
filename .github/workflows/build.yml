@@ -20,8 +20,6 @@ jobs:
           inputFile: '.github/workflows/build-matrix.json'
           # we run build-node on everytime but build-runtime only on pushes to branches
           filter: '[?run_on_event==`any` || run_on_event==`${{ github.event_name }}`]'
-      - run: |
-          echo ${{ steps.set-matrix.outputs.matrix }}
   build:
     needs: matrix_prep
     strategy:
