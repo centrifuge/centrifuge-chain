@@ -1,0 +1,14 @@
+[
+  {
+    "os": "ubuntu-latest",
+    "target": "build-node",
+    "always_run": "true"
+  },
+
+  {
+    "os": "ubuntu-latest",
+    "target": "build-runtime",
+    "always_run": "false",
+    "run_on_event": "push"
+  }
+]

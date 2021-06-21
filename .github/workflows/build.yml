@@ -4,12 +4,27 @@ on:
   pull_request:
 name: Build
 jobs:
-  build:
-    name: ${{ matrix.target }}
+  matrix_prep:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target: [build-client]
+    runs-on: ${{ matrix.os }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      # Required as the JSON input file needs to be read
+      - uses: actions/checkout@v2
+      - id: set-matrix
+        uses: JoshuaTheMiller/conditional-build-matrix@77cdf28e0eb41dd691280520b0bddddbc4654318
+        with:
+          inputFile: '.github/workflows/build-matrix.json'
+          # we run build-node on everytime but build-runtime only on pushes to branches
+          filter: '[ always_run == `true` || run_on_event == `${{ github.event_name }}`]'
+  build:
+    needs: matrix_prep
+    strategy:
+      matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
+    name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN: "nightly-2021-03-15"
@@ -30,7 +45,13 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
+      - if: matrix.target == 'build-runtime'
+        uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
+        with: # cache the runtime target instead of root target for build-runtime
+          working-directory: './runtime'
+          target-dir: './target/srtool'
+      - if: matrix.target == 'build-node'
+        uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
       - name: ${{ matrix.target }}
         run: ./ci/script.sh
         env:
