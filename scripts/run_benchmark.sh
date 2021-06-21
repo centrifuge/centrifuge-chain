@@ -22,3 +22,5 @@ cargo run --release --features runtime-benchmarks -- benchmark \
   --heap-pages=4096 \
   --output="${output}" \
   --template=./scripts/frame-weight-template.hbs
+
+cargo fmt
