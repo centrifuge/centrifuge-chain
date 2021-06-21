@@ -8,6 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+    name: matrix-prep
     runs-on: ${{ matrix.os }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
