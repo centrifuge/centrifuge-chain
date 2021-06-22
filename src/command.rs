@@ -34,19 +34,24 @@ use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
+enum ChainIdentity {
+	Altair,
+	Charcoal,
+}
+
 trait IdentifyChain {
-	fn is_altair(&self) -> bool;
+	fn identity(&self) -> ChainIdentity;
 }
 
 impl IdentifyChain for dyn sc_service::ChainSpec {
-	fn is_altair(&self) -> bool {
-		true
+	fn identity(&self) -> ChainIdentity {
+		ChainIdentity::Altair
 	}
 }
 
 impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
-	fn is_altair(&self) -> bool {
-		<dyn sc_service::ChainSpec>::is_altair(self)
+	fn identity(&self) -> ChainIdentity {
+		<dyn sc_service::ChainSpec>::identity(self)
 	}
 }
 
@@ -113,10 +118,9 @@ impl SubstrateCli for Cli {
 	}
 
 	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		if spec.is_altair() {
-			&altair_runtime::VERSION
-		} else {
-			&charcoal_runtime::VERSION
+		match spec.identity() {
+			ChainIdentity::Altair => &altair_runtime::VERSION,
+			ChainIdentity::Charcoal => &charcoal_runtime::VERSION,
 		}
 	}
 }
@@ -172,24 +176,27 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 	    let runner = $cli.create_runner($cmd)?;
-            if runner.config().chain_spec.is_altair() {
-		runner.async_run(|$config| {
+            match runner.config().chain_spec.identity() {
+                ChainIdentity::Altair => {
+		    runner.async_run(|$config| {
 				let $components = new_partial::<altair_runtime::RuntimeApi, AltairExecutor, _>(
 					&$config,
 					crate::service::build_altair_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
-		})
-            } else {
-		runner.async_run(|$config| {
+		    })
+                }
+                ChainIdentity::Charcoal => {
+		    runner.async_run(|$config| {
 				let $components = new_partial::<charcoal_runtime::RuntimeApi, CharcoalExecutor, _>(
 					&$config,
 					crate::service::build_charcoal_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
-		})
+		    })
+                }
             }
 	}}
 }
@@ -296,13 +303,13 @@ pub fn run() -> Result<()> {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
 
-				if runner.config().chain_spec.is_altair() {
-					runner
-						.sync_run(|config| cmd.run::<altair_runtime::Block, AltairExecutor>(config))
-				} else {
-					runner.sync_run(|config| {
+				match runner.config().chain_spec.identity() {
+					ChainIdentity::Altair => runner.sync_run(|config| {
+						cmd.run::<altair_runtime::Block, AltairExecutor>(config)
+					}),
+					ChainIdentity::Charcoal => runner.sync_run(|config| {
 						cmd.run::<charcoal_runtime::Block, CharcoalExecutor>(config)
-					})
+					}),
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
@@ -354,16 +361,19 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				if config.chain_spec.is_altair() {
-					crate::service::start_altair_node(config, polkadot_config, id)
-						.await
-						.map(|r| r.0)
-						.map_err(Into::into)
-				} else {
-					crate::service::start_charcoal_node(config, polkadot_config, id)
-						.await
-						.map(|r| r.0)
-						.map_err(Into::into)
+				match config.chain_spec.identity() {
+					ChainIdentity::Altair => {
+						crate::service::start_altair_node(config, polkadot_config, id)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
+					ChainIdentity::Charcoal => {
+						crate::service::start_charcoal_node(config, polkadot_config, id)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
 				}
 			})
 		}
