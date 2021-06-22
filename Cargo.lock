@@ -7776,9 +7776,13 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "frame-support",
  "node-primitives",
  "pallet-anchors",
  "sp-api",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-runtime",
 ]
 
 [[package]]

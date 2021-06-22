@@ -9,8 +9,12 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # Substrate dependencies
+frame-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 sp-api = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-consensus-aura = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
 # Local Dependencies
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
@@ -19,9 +23,13 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 [features]
 default = ["std"]
 std = [
+    "frame-support/std",
     "node-primitives/std",
     "pallet-anchors/std",
+    "sp-core/std",
     "sp-api/std",
+    "sp-consensus-aura/std",
+    "sp-runtime/std",
 ]
 on-chain-release-build = [
     "sp-api/disable-logging",

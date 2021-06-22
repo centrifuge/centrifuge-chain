@@ -49,9 +49,8 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
-mod common;
-/// common types for the runtime..
-pub use common::*;
+/// common types for the runtime.
+pub use runtime_common::*;
 
 pub mod impls;
 use frame_support::traits::Filter;
