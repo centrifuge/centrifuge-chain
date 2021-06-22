@@ -13,19 +13,19 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-frame-benchmarking = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true }
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
-pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
-sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false, optional = true , branch = "master" }
+node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [dev-dependencies]
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate.git",  default-features = false }
-sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false  }
-sp-io = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
+node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false  , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 [features]
 default = ['std']

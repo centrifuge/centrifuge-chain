@@ -46,7 +46,7 @@ cumulus-pallet-xcm = {git = "https://github.com/centrifuge/cumulus", default-fea
 cumulus-pallet-xcmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-pallet-dmp-queue = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 cumulus-pallet-aura-ext = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
-
+cumulus-primitives-timestamp = {git = "https://github.com/centrifuge/cumulus", default-features = false, branch = "centrifuge" }
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/centrifuge/polkadot", default-features = false , branch = "centrifuge" }
@@ -178,6 +178,7 @@ std = [
     "safe-mix/std",
     "cumulus-pallet-parachain-system/std",
     "cumulus-pallet-xcmp-queue/std",
+    "cumulus-primitives-timestamp/std",
     "parachain-info/std",
     "xcm/std",
     "xcm-executor/std",

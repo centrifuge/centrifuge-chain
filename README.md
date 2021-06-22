@@ -115,3 +115,8 @@ Example command to generate `pallet_fees` with default `output`
 default output will be `./pallets/fees/src/weight.rs`
 You can override this by passing output path as last argument
 
+## Upgrading to latest cumulus(until they have tags for releases)
+1. First collect commits of Substrate, Grandpa-Bridge, Polkadot from the latest cumulus
+2. Bring our fork of all the above repos to the above commits
+3. Use diener in Grandpa brigde, polkadot, and cumulus to use our forks in `centrifuge` branch
+4. Then update deps on centrifuge chain

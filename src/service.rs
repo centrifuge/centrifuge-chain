@@ -25,7 +25,6 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use node_primitives::{Block, Hash};
-use polkadot_primitives::v1::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_executor::native_executor_instance;
 pub use sc_executor::NativeExecutor;
@@ -125,7 +124,7 @@ where
 		config.transaction_pool.clone(),
 		config.role.is_authority().into(),
 		config.prometheus_registry(),
-		task_manager.spawn_handle(),
+		task_manager.spawn_essential_handle(),
 		client.clone(),
 	);
 
@@ -156,7 +155,6 @@ where
 #[sc_tracing::logging::prefix_logs_with("Parachain")]
 async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 	rpc_ext_builder: RB,
@@ -214,15 +212,12 @@ where
 	let params = new_partial::<RuntimeApi, Executor, BIQ>(&parachain_config, build_import_queue)?;
 	let (mut telemetry, telemetry_worker_handle) = params.other;
 
-	let relay_chain_full_node = cumulus_client_service::build_polkadot_full_node(
-		polkadot_config,
-		collator_key.clone(),
-		telemetry_worker_handle,
-	)
-	.map_err(|e| match e {
-		polkadot_service::Error::Sub(x) => x,
-		s => format!("{}", s).into(),
-	})?;
+	let relay_chain_full_node =
+		cumulus_client_service::build_polkadot_full_node(polkadot_config, telemetry_worker_handle)
+			.map_err(|e| match e {
+				polkadot_service::Error::Sub(x) => x,
+				s => format!("{}", s).into(),
+			})?;
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -294,7 +289,6 @@ where
 			announce_block,
 			client: client.clone(),
 			task_manager: &mut task_manager,
-			collator_key,
 			relay_chain_full_node,
 			spawner,
 			parachain_consensus,
@@ -367,7 +361,6 @@ pub fn build_charcoal_import_queue(
 /// Start a parachain node.
 pub async fn start_charcoal_node(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 ) -> sc_service::error::Result<(
@@ -376,7 +369,6 @@ pub async fn start_charcoal_node(
 )> {
 	start_node_impl::<charcoal_runtime::RuntimeApi, CharcoalExecutor, _, _, _>(
 		parachain_config,
-		collator_key,
 		polkadot_config,
 		id,
 		|client| {
@@ -456,6 +448,8 @@ pub async fn start_charcoal_node(
 				slot_duration,
 				// We got around 500ms for proposing
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry,
 			}))
 		},
@@ -511,7 +505,6 @@ pub fn build_altair_import_queue(
 /// Start a parachain node.
 pub async fn start_altair_node(
 	parachain_config: Configuration,
-	collator_key: CollatorPair,
 	polkadot_config: Configuration,
 	id: ParaId,
 ) -> sc_service::error::Result<(
@@ -520,7 +513,6 @@ pub async fn start_altair_node(
 )> {
 	start_node_impl::<altair_runtime::RuntimeApi, AltairExecutor, _, _, _>(
 		parachain_config,
-		collator_key,
 		polkadot_config,
 		id,
 		|client| {
@@ -600,6 +592,8 @@ pub async fn start_altair_node(
 				slot_duration,
 				// We got around 500ms for proposing
 				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
 				telemetry,
 			}))
 		},

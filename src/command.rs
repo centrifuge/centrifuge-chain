@@ -40,7 +40,7 @@ trait IdentifyChain {
 
 impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn is_altair(&self) -> bool {
-		self.id().starts_with("altair") || self.id().starts_with("rumba")
+		true
 	}
 }
 
@@ -55,12 +55,12 @@ fn load_spec(
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
 	match id {
-		// TODO(dev): add dev chain spec
 		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
-		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
 		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
 		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
 		path => {
@@ -314,9 +314,6 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 
 			runner.run_node_until_exit(|config| async move {
-				// TODO
-				let key = sp_core::Pair::generate().0;
-
 				let polkadot_cli = RelayChainCli::new(
 					&config,
 					[RelayChainCli::executable_name().to_string()]
@@ -358,12 +355,12 @@ pub fn run() -> Result<()> {
 				);
 
 				if config.chain_spec.is_altair() {
-					crate::service::start_altair_node(config, key, polkadot_config, id)
+					crate::service::start_altair_node(config, polkadot_config, id)
 						.await
 						.map(|r| r.0)
 						.map_err(Into::into)
 				} else {
-					crate::service::start_charcoal_node(config, key, polkadot_config, id)
+					crate::service::start_charcoal_node(config, polkadot_config, id)
 						.await
 						.map(|r| r.0)
 						.map_err(Into::into)
