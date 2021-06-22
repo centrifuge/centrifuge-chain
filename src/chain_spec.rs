@@ -90,15 +90,28 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 		ChainType::Live,
 		move || {
 			testnet_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				hex!["38e779a7cc9cc462e19ae0c8e76d6135caba7fee745645dbf9b4a1b9f53dbd6e"].into(),
 				vec![
 					(
-						get_account_id_from_seed::<sr25519::Public>("Alice"),
-						get_from_seed::<AuraId>("Alice"),
+						//
+						hex!["a269a32274ddc7cb7f3a42ffb305c17011a67fbb97c9667a9f8ceb3141b6cb24"]
+							.into(),
+						hex!["f09f14e7b7bf0538793b1ff512fbe88c6f1d0ee08015dba416d27e6950803b21"]
+							.unchecked_into(),
 					),
 					(
-						get_account_id_from_seed::<sr25519::Public>("Bob"),
-						get_from_seed::<AuraId>("Bob"),
+						//
+						hex!["2276c356c435f6bcbf7793b6419d1e12f8f270a6a53c28ce02737a9b5c65554d"]
+							.into(),
+						hex!["2211f2a23e278e9f9b8eba37033797c103b6453201369c3a951cf32d6a6e6b59"]
+							.unchecked_into(),
+					),
+					(
+						//
+						hex!["5c98c66394608ea47747ce7a935fd94a70b508047383e8a6e9bbf3c620531c22"]
+							.into(),
+						hex!["4e5e5a7d116fe3528b9f015ff2f36af8460da4b38eb14a3f1659f278ff888709"]
+							.unchecked_into(),
 					),
 				],
 				endowed_accounts(),
