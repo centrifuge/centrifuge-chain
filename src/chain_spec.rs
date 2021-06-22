@@ -27,8 +27,9 @@ use altair_runtime::constants::currency::AIR;
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
 /// Specialized `ChainSpec` instances for our runtimes.
-pub type CharcoalChainSpec = sc_service::GenericChainSpec<charcoal_runtime::GenesisConfig>;
 pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig>;
+pub type CentrifugeChainSpec = sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig>;
+pub type CharcoalChainSpec = sc_service::GenericChainSpec<charcoal_runtime::GenesisConfig>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -163,12 +164,11 @@ pub fn rumba_staging_network(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-// Todo: Replace with Cyclone spec
-pub fn cyclone_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
+pub fn cyclone_config() -> CentrifugeChainSpec {
+	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..])
+		.unwrap()
 }
 
-// TODO: Replace with Altair spec
 pub fn altair_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }

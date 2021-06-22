@@ -17,7 +17,7 @@
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, AltairExecutor, CharcoalExecutor},
+	service::{new_partial, AltairExecutor, CentrifugeExecutor, CharcoalExecutor},
 };
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
@@ -36,6 +36,7 @@ use std::{io::Write, net::SocketAddr};
 
 enum ChainIdentity {
 	Altair,
+	Centrifuge,
 	Charcoal,
 }
 
@@ -45,7 +46,16 @@ trait IdentifyChain {
 
 impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn identity(&self) -> ChainIdentity {
-		ChainIdentity::Altair
+		if self.id().starts_with("centrifuge") || self.id().starts_with("cyclone") {
+			ChainIdentity::Centrifuge
+		} else if self.id().starts_with("altair")
+			|| self.id().starts_with("charcoal")
+			|| self.id().starts_with("rumba")
+		{
+			ChainIdentity::Altair
+		} else {
+			ChainIdentity::Charcoal
+		}
 	}
 }
 
@@ -59,27 +69,30 @@ fn load_spec(
 	id: &str,
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-	match id {
-		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
-		"altair" => Ok(Box::new(chain_spec::altair_config())),
-		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
-		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
-		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
-		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
-		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
-		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
+	Ok(match id {
+		"cyclone" | "" => Box::new(chain_spec::cyclone_config()),
+		"altair" => Box::new(chain_spec::altair_config()),
+		"altair-dev" => Box::new(chain_spec::altair_dev(para_id)),
+		"charcoal" => Box::new(chain_spec::charcoal_config()),
+		"charcoal-staging" => Box::new(chain_spec::charcoal_staging_network(para_id)),
+		"charcoal-local" => Box::new(chain_spec::charcoal_local_network(para_id)),
+		"rumba" => Box::new(chain_spec::rumba_config()),
+		"rumba-staging" => Box::new(chain_spec::rumba_staging_network(para_id)),
 		path => {
-			if path.contains("altair") || path.contains("rumba") {
-				Ok(Box::new(chain_spec::AltairChainSpec::from_json_file(
-					path.into(),
-				)?))
-			} else {
-				Ok(Box::new(chain_spec::CharcoalChainSpec::from_json_file(
-					path.into(),
-				)?))
+			let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
+			match chain_spec.identity() {
+				ChainIdentity::Altair => {
+					Box::new(chain_spec::AltairChainSpec::from_json_file(path.into())?)
+				}
+				ChainIdentity::Centrifuge => Box::new(
+					chain_spec::CentrifugeChainSpec::from_json_file(path.into())?,
+				),
+				ChainIdentity::Charcoal => {
+					Box::new(chain_spec::CharcoalChainSpec::from_json_file(path.into())?)
+				}
 			}
 		}
-	}
+	})
 }
 
 impl SubstrateCli for Cli {
@@ -120,6 +133,7 @@ impl SubstrateCli for Cli {
 	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
 		match spec.identity() {
 			ChainIdentity::Altair => &altair_runtime::VERSION,
+			ChainIdentity::Centrifuge => &centrifuge_runtime::VERSION,
 			ChainIdentity::Charcoal => &charcoal_runtime::VERSION,
 		}
 	}
@@ -182,6 +196,16 @@ macro_rules! construct_async_run {
 				let $components = new_partial::<altair_runtime::RuntimeApi, AltairExecutor, _>(
 					&$config,
 					crate::service::build_altair_import_queue,
+				)?;
+				let task_manager = $components.task_manager;
+				{ $( $code )* }.map(|v| (v, task_manager))
+		    })
+                }
+                ChainIdentity::Centrifuge => {
+		    runner.async_run(|$config| {
+				let $components = new_partial::<centrifuge_runtime::RuntimeApi, CentrifugeExecutor, _>(
+					&$config,
+					crate::service::build_centrifuge_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
@@ -307,6 +331,9 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Altair => runner.sync_run(|config| {
 						cmd.run::<altair_runtime::Block, AltairExecutor>(config)
 					}),
+					ChainIdentity::Centrifuge => runner.sync_run(|config| {
+						cmd.run::<centrifuge_runtime::Block, CentrifugeExecutor>(config)
+					}),
 					ChainIdentity::Charcoal => runner.sync_run(|config| {
 						cmd.run::<charcoal_runtime::Block, CharcoalExecutor>(config)
 					}),
@@ -364,6 +391,12 @@ pub fn run() -> Result<()> {
 				match config.chain_spec.identity() {
 					ChainIdentity::Altair => {
 						crate::service::start_altair_node(config, polkadot_config, id)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
+					ChainIdentity::Centrifuge => {
+						crate::service::start_centrifuge_node(config, polkadot_config, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
