@@ -94,7 +94,7 @@ pub mod pallet {
 			// TODO: Insert some mechanism to prevent the accidential execution of the same
 			// 	upgreade twice. Probably best, to let the runtime version be the key for the
 			// 	map of old upgrades and if it already exists, do not do the upgrade!
-			let max_per_block = T::BlockWeights::get().max_block;
+			let max_per_block = T::BlockWeights::get().max_block / 2;
 
 			// In order to safely unwrap below, we do this check. Although, one might argue
 			// a chain with a maximum weight of zero, might be useless.
@@ -136,7 +136,7 @@ pub mod pallet {
 			{
 				let period = Self::upgrade_period();
 				let start = Self::upgrade_start();
-				let max_per_block = T::BlockWeights::get().max_block;
+				let max_per_block = T::BlockWeights::get().max_block / 2;
 
 				Self::upgrade(max_per_block);
 
