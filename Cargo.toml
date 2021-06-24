@@ -30,14 +30,12 @@ members = [
 	"pallets/bridge-mapping",
 	"pallets/fees",
 	"pallets/anchors",
-	"pallets/claims",
+    "pallets/claims",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
 	"libs/trait-crowdloan-reward",
 	"libs/proofs",
-	"runtime/altair",
-	"runtime/centrifuge",
-	"runtime/common",
+	"runtime",
 ]
 
 [dependencies]
@@ -129,10 +127,7 @@ polkadot-service = {git = "https://github.com/centrifuge/polkadot", branch = "ce
 polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centrifuge" }
 
 # node-specific dependencies
-altair-runtime = { path = "runtime/altair" }
-centrifuge-runtime = { path = "runtime/centrifuge" }
-development-runtime = { path = "runtime/development" }
-runtime-common = { path = "runtime/common" }
+node-runtime = { package = "centrifuge-chain-runtime", path = "runtime" }
 node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 # benchmarking
@@ -159,7 +154,5 @@ std = [
 	"sp-consensus-babe/std"
 ]
 runtime-benchmarks = [
-	"altair-runtime/runtime-benchmarks",
-	"centrifuge-runtime/runtime-benchmarks",
-	"development-runtime/runtime-benchmarks",
+	"node-runtime/runtime-benchmarks",
 ]

@@ -1,26 +1,18 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
 use super::*;
-use core::marker::PhantomData;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::{
 	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
-use frame_system::pallet::Config as SystemConfig;
-use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
-use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 
-pub struct DealWithFees<Config>(PhantomData<Config>);
-pub type NegativeImbalance<Config> =
-	<Balances<Config> as Currency<<Config as SystemConfig>::AccountId>>::NegativeImbalance;
-impl<Config> OnUnbalanced<NegativeImbalance<Config>> for DealWithFees<Config>
-where
-	Config: AuthorshipConfig + BalancesConfig + SystemConfig,
-{
-	fn on_nonzero_unbalanced(amount: NegativeImbalance<Config>) {
-		Balances::<Config>::resolve_creating(&Authorship::<Config>::author(), amount);
+pub struct DealWithFees;
+type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
+impl OnUnbalanced<NegativeImbalance> for DealWithFees {
+	fn on_nonzero_unbalanced(amount: NegativeImbalance) {
+		Balances::resolve_creating(&Authorship::author(), amount);
 	}
 }
 

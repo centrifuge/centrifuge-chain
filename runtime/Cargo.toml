@@ -1,5 +1,5 @@
 [package]
-name = "altair-runtime"
+name = "centrifuge-chain-runtime"
 version = "2.0.0"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
@@ -94,11 +94,9 @@ pallet-aura = { git = "https://github.com/centrifuge/substrate", default-feature
 pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, features = [ "derive" ] , branch = "master" }
 
-runtime-common = { path = "../common", default-features = false }
-
-pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-fees = { path = "../../pallets/fees", default-features = false }
-pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-anchors = { path = "../pallets/anchors", default-features = false }
+pallet-fees = { path = "../pallets/fees", default-features = false }
+pallet-claims = { path = "../pallets/claims", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -171,7 +169,6 @@ std = [
     "pallet-claims/std",
     "pallet-sudo/std",
     "pallet-society/std",
-    "runtime-common/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

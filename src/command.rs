@@ -17,13 +17,13 @@
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, AltairExecutor, CentrifugeExecutor, DevelopmentExecutor},
+	service::{new_partial, Executor},
 };
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
 use log::info;
-use node_primitives::Block;
+use node_runtime::Block;
 use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
@@ -34,67 +34,23 @@ use sp_core::hexdisplay::HexDisplay;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
-enum ChainIdentity {
-	Altair,
-	Centrifuge,
-	Development,
-}
-
-trait IdentifyChain {
-	fn identify(&self) -> ChainIdentity;
-}
-
-impl IdentifyChain for dyn sc_service::ChainSpec {
-	fn identify(&self) -> ChainIdentity {
-		if self.id().starts_with("centrifuge") || self.id().starts_with("cyclone") {
-			ChainIdentity::Centrifuge
-		} else if self.id().starts_with("altair")
-			|| self.id().starts_with("charcoal")
-			|| self.id().starts_with("rumba")
-		{
-			ChainIdentity::Altair
-		} else {
-			ChainIdentity::Development
-		}
-	}
-}
-
-impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
-	fn identify(&self) -> ChainIdentity {
-		<dyn sc_service::ChainSpec>::identify(self)
-	}
-}
-
 fn load_spec(
 	id: &str,
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-	Ok(match id {
-		"cyclone" | "" => Box::new(chain_spec::cyclone_config()),
-		"altair" => Box::new(chain_spec::altair_config()),
-		"altair-dev" => Box::new(chain_spec::altair_dev(para_id)),
-		"devel-local" => Box::new(chain_spec::devel_local(para_id)),
-		"charcoal" => Box::new(chain_spec::charcoal_config()),
-		"charcoal-staging" => Box::new(chain_spec::charcoal_staging_network(para_id)),
-		"charcoal-local" => Box::new(chain_spec::charcoal_local_network(para_id)),
-		"rumba" => Box::new(chain_spec::rumba_config()),
-		"rumba-staging" => Box::new(chain_spec::rumba_staging_network(para_id)),
-
-		path => {
-			let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
-			match chain_spec.identify() {
-				ChainIdentity::Altair => {
-					Box::new(chain_spec::AltairChainSpec::from_json_file(path.into())?)
-				}
-				ChainIdentity::Centrifuge => Box::new(
-					chain_spec::CentrifugeChainSpec::from_json_file(path.into())?,
-				),
-				ChainIdentity::Development => Box::new(
-					chain_spec::DevelopmentChainSpec::from_json_file(path.into())?,
-				),
-			}
-		}
-	})
+	match id {
+		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
+		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
+		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
+		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
+		"rumba" => Ok(Box::new(chain_spec::rumba_config())),
+		"rumba-staging" => Ok(Box::new(chain_spec::rumba_staging_network(para_id))),
+		path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(
+			path.into(),
+		)?)),
+	}
 }
 
 impl SubstrateCli for Cli {
@@ -132,12 +88,8 @@ impl SubstrateCli for Cli {
 		load_spec(id, self.run.parachain_id.unwrap_or(10001).into())
 	}
 
-	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		match spec.identify() {
-			ChainIdentity::Altair => &altair_runtime::VERSION,
-			ChainIdentity::Centrifuge => &centrifuge_runtime::VERSION,
-			ChainIdentity::Development => &development_runtime::VERSION,
-		}
+	fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
+		&node_runtime::VERSION
 	}
 }
 
@@ -191,39 +143,15 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
-	    let runner = $cli.create_runner($cmd)?;
-            match runner.config().chain_spec.identify() {
-                ChainIdentity::Altair => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<altair_runtime::RuntimeApi, AltairExecutor, _>(
+		let runner = $cli.create_runner($cmd)?;
+		runner.async_run(|$config| {
+				let $components = new_partial::<node_runtime::RuntimeApi, Executor, _>(
 					&$config,
-					crate::service::build_altair_import_queue,
+					crate::service::build_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Centrifuge => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<centrifuge_runtime::RuntimeApi, CentrifugeExecutor, _>(
-					&$config,
-					crate::service::build_centrifuge_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Development => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<development_runtime::RuntimeApi, DevelopmentExecutor, _>(
-					&$config,
-					crate::service::build_development_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-            }
+		})
 	}}
 }
 
@@ -329,17 +257,7 @@ pub fn run() -> Result<()> {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
 
-				match runner.config().chain_spec.identify() {
-					ChainIdentity::Altair => runner.sync_run(|config| {
-						cmd.run::<altair_runtime::Block, AltairExecutor>(config)
-					}),
-					ChainIdentity::Centrifuge => runner.sync_run(|config| {
-						cmd.run::<centrifuge_runtime::Block, CentrifugeExecutor>(config)
-					}),
-					ChainIdentity::Development => runner.sync_run(|config| {
-						cmd.run::<development_runtime::Block, DevelopmentExecutor>(config)
-					}),
-				}
+				runner.sync_run(|config| cmd.run::<Block, Executor>(config))
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
 				You can enable it with `--features runtime-benchmarks`."
@@ -390,26 +308,10 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				match config.chain_spec.identify() {
-					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
-					ChainIdentity::Centrifuge => {
-						crate::service::start_centrifuge_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
-					ChainIdentity::Development => {
-						crate::service::start_development_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
-				}
+				crate::service::start_node(config, polkadot_config, id)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into)
 			})
 		}
 	}
