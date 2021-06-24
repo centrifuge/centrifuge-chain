@@ -29,5 +29,17 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_fees.
 pub trait WeightInfo {
-	fn upgrade_system_account() -> Weight;
+	fn migrate_system_account(num_accounts: u64) -> Weight;
+	fn migrate_balances_issuance() -> Weight;
+}
+
+// For backwards compatibility and tests
+impl WeightInfo for () {
+	fn migrate_system_account(num_accounts: u64) -> Weight {
+		0
+	}
+
+	fn migrate_balances_issuance() -> Weight {
+		0
+	}
 }
