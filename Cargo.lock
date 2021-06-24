@@ -7864,9 +7864,14 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "frame-support",
+ "frame-system",
  "node-primitives",
  "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+ "smallvec 1.6.1",
  "sp-api",
+ "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
  "sp-runtime",

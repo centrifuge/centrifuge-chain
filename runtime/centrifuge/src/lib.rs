@@ -52,9 +52,7 @@ use constants::currency::*;
 /// common types for the runtime.
 pub use runtime_common::*;
 
-pub mod impls;
 use frame_support::traits::Filter;
-use impls::*;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -221,7 +219,7 @@ parameter_types! {
 }
 
 impl pallet_transaction_payment::Config for Runtime {
-	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees>;
+	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees<Runtime>>;
 	type TransactionByteFee = TransactionByteFee;
 	type WeightToFee = WeightToFee;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
