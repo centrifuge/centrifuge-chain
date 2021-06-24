@@ -38,14 +38,25 @@ use sp_runtime::traits::BlakeTwo256;
 use std::sync::Arc;
 use substrate_prometheus_endpoint::Registry;
 
-// Native executor instance.
+// Native executor instances.
 native_executor_instance!(
-	pub Executor,
-	node_runtime::api::dispatch,
-	node_runtime::native_version,
+	pub AltairExecutor,
+	altair_runtime::api::dispatch,
+	altair_runtime::native_version,
 	frame_benchmarking::benchmarking::HostFunctions,
 );
-
+native_executor_instance!(
+	pub CentrifugeExecutor,
+	centrifuge_runtime::api::dispatch,
+	centrifuge_runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
+native_executor_instance!(
+	pub DevelopmentExecutor,
+	development_runtime::api::dispatch,
+	development_runtime::native_version,
+	frame_benchmarking::benchmarking::HostFunctions,
+);
 /// Starts a `ServiceBuilder` for a full service.
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
@@ -307,14 +318,17 @@ where
 	Ok((task_manager, client))
 }
 
-/// Build the import queue for the "default" runtime.
-pub fn build_import_queue(
-	client: Arc<TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+/// Build the import queue for the "altair" runtime.
+pub fn build_altair_import_queue(
+	client: Arc<TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sp_consensus::DefaultImportQueue<Block, TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+	sp_consensus::DefaultImportQueue<
+		Block,
+		TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>,
+	>,
 	sc_service::Error,
 > {
 	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
@@ -349,16 +363,16 @@ pub fn build_import_queue(
 	.map_err(Into::into)
 }
 
-/// Start a parachain node.
-pub async fn start_node(
+/// Start an altair parachain node.
+pub async fn start_altair_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<TFullClient<Block, node_runtime::RuntimeApi, Executor>>,
+	Arc<TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>>,
 )> {
-	start_node_impl::<node_runtime::RuntimeApi, Executor, _, _, _>(
+	start_node_impl::<altair_runtime::RuntimeApi, AltairExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		id,
@@ -367,7 +381,295 @@ pub async fn start_node(
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
 			io
 		},
-		build_import_queue,
+		build_altair_import_queue,
+		|client,
+		 prometheus_registry,
+		 telemetry,
+		 task_manager,
+		 relay_chain_node,
+		 transaction_pool,
+		 sync_oracle,
+		 keystore,
+		 force_authoring| {
+			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool,
+				prometheus_registry.clone(),
+				telemetry.clone(),
+			);
+
+			let relay_chain_backend = relay_chain_node.backend.clone();
+			let relay_chain_client = relay_chain_node.client.clone();
+			Ok(build_aura_consensus::<
+				sp_consensus_aura::sr25519::AuthorityPair,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+			>(BuildAuraConsensusParams {
+				proposer_factory,
+				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+					let parachain_inherent =
+						cumulus_primitives_parachain_inherent::ParachainInherentData::create_at_with_client(
+							relay_parent,
+							&relay_chain_client,
+							&*relay_chain_backend,
+							&validation_data,
+							id,
+						);
+					async move {
+						let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+						let slot =
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+								*time,
+								slot_duration.slot_duration(),
+							);
+
+						let parachain_inherent = parachain_inherent.ok_or_else(|| {
+							Box::<dyn std::error::Error + Send + Sync>::from(
+								"Failed to create parachain inherent",
+							)
+						})?;
+						Ok((time, slot, parachain_inherent))
+					}
+				},
+				block_import: client.clone(),
+				relay_chain_client: relay_chain_node.client.clone(),
+				relay_chain_backend: relay_chain_node.backend.clone(),
+				para_client: client.clone(),
+				backoff_authoring_blocks: Option::<()>::None,
+				sync_oracle,
+				keystore,
+				force_authoring,
+				slot_duration,
+				// We got around 500ms for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
+				telemetry,
+			}))
+		},
+	)
+	.await
+}
+
+/// Build the import queue for the "centrifuge" runtime.
+pub fn build_centrifuge_import_queue(
+	client: Arc<TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>>,
+	config: &Configuration,
+	telemetry: Option<TelemetryHandle>,
+	task_manager: &TaskManager,
+) -> Result<
+	sp_consensus::DefaultImportQueue<
+		Block,
+		TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>,
+	>,
+	sc_service::Error,
+> {
+	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+	cumulus_client_consensus_aura::import_queue::<
+		sp_consensus_aura::sr25519::AuthorityPair,
+		_,
+		_,
+		_,
+		_,
+		_,
+		_,
+	>(cumulus_client_consensus_aura::ImportQueueParams {
+		block_import: client.clone(),
+		client: client.clone(),
+		create_inherent_data_providers: move |_, _| async move {
+			let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+			let slot =
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+					*time,
+					slot_duration.slot_duration(),
+				);
+
+			Ok((time, slot))
+		},
+		registry: config.prometheus_registry().clone(),
+		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+		spawner: &task_manager.spawn_essential_handle(),
+		telemetry,
+	})
+	.map_err(Into::into)
+}
+
+/// Start a centrifuge parachain node.
+pub async fn start_centrifuge_node(
+	parachain_config: Configuration,
+	polkadot_config: Configuration,
+	id: ParaId,
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>>,
+)> {
+	start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeExecutor, _, _, _>(
+		parachain_config,
+		polkadot_config,
+		id,
+		|client| {
+			let mut io = jsonrpc_core::IoHandler::default();
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io
+		},
+		build_centrifuge_import_queue,
+		|client,
+		 prometheus_registry,
+		 telemetry,
+		 task_manager,
+		 relay_chain_node,
+		 transaction_pool,
+		 sync_oracle,
+		 keystore,
+		 force_authoring| {
+			let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+			let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
+				task_manager.spawn_handle(),
+				client.clone(),
+				transaction_pool,
+				prometheus_registry.clone(),
+				telemetry.clone(),
+			);
+
+			let relay_chain_backend = relay_chain_node.backend.clone();
+			let relay_chain_client = relay_chain_node.client.clone();
+			Ok(build_aura_consensus::<
+				sp_consensus_aura::sr25519::AuthorityPair,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+				_,
+			>(BuildAuraConsensusParams {
+				proposer_factory,
+				create_inherent_data_providers: move |_, (relay_parent, validation_data)| {
+					let parachain_inherent =
+						cumulus_primitives_parachain_inherent::ParachainInherentData::create_at_with_client(
+							relay_parent,
+							&relay_chain_client,
+							&*relay_chain_backend,
+							&validation_data,
+							id,
+						);
+					async move {
+						let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+						let slot =
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+								*time,
+								slot_duration.slot_duration(),
+							);
+
+						let parachain_inherent = parachain_inherent.ok_or_else(|| {
+							Box::<dyn std::error::Error + Send + Sync>::from(
+								"Failed to create parachain inherent",
+							)
+						})?;
+						Ok((time, slot, parachain_inherent))
+					}
+				},
+				block_import: client.clone(),
+				relay_chain_client: relay_chain_node.client.clone(),
+				relay_chain_backend: relay_chain_node.backend.clone(),
+				para_client: client.clone(),
+				backoff_authoring_blocks: Option::<()>::None,
+				sync_oracle,
+				keystore,
+				force_authoring,
+				slot_duration,
+				// We got around 500ms for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
+				// And a maximum of 750ms if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
+				telemetry,
+			}))
+		},
+	)
+	.await
+}
+
+/// Build the import queue for the "development" runtime.
+pub fn build_development_import_queue(
+	client: Arc<TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>>,
+	config: &Configuration,
+	telemetry: Option<TelemetryHandle>,
+	task_manager: &TaskManager,
+) -> Result<
+	sp_consensus::DefaultImportQueue<
+		Block,
+		TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>,
+	>,
+	sc_service::Error,
+> {
+	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
+
+	cumulus_client_consensus_aura::import_queue::<
+		sp_consensus_aura::sr25519::AuthorityPair,
+		_,
+		_,
+		_,
+		_,
+		_,
+		_,
+	>(cumulus_client_consensus_aura::ImportQueueParams {
+		block_import: client.clone(),
+		client: client.clone(),
+		create_inherent_data_providers: move |_, _| async move {
+			let time = sp_timestamp::InherentDataProvider::from_system_time();
+
+			let slot =
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+					*time,
+					slot_duration.slot_duration(),
+				);
+
+			Ok((time, slot))
+		},
+		registry: config.prometheus_registry().clone(),
+		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
+		spawner: &task_manager.spawn_essential_handle(),
+		telemetry,
+	})
+	.map_err(Into::into)
+}
+
+/// Start a development parachain node.
+pub async fn start_development_node(
+	parachain_config: Configuration,
+	polkadot_config: Configuration,
+	id: ParaId,
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>>,
+)> {
+	start_node_impl::<development_runtime::RuntimeApi, DevelopmentExecutor, _, _, _>(
+		parachain_config,
+		polkadot_config,
+		id,
+		|client| {
+			let mut io = jsonrpc_core::IoHandler::default();
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io
+		},
+		build_development_import_queue,
 		|client,
 		 prometheus_registry,
 		 telemetry,
