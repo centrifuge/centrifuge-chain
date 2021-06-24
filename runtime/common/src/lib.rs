@@ -67,7 +67,9 @@ mod types {
 mod constants {
 	use super::types::BlockNumber;
 	use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
+	use node_primitives::Balance;
 	use sp_runtime::Perbill;
+
 	/// This determines the average expected block time that we are targeting. Blocks will be
 	/// produced at a minimum duration defined by `SLOT_DURATION`. `SLOT_DURATION` is picked up by
 	/// `pallet_timestamp` which is in turn picked up by `pallet_aura` to implement `fn
@@ -91,4 +93,13 @@ mod constants {
 
 	/// We allow for 0.5 seconds of compute with a 6 second average block time.
 	pub const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND / 2;
+
+	pub const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
+	pub const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
+	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
+	pub const CFG: Balance = 100 * CENTI_CFG;
+
+	pub const fn deposit(items: u32, bytes: u32) -> Balance {
+		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
+	}
 }

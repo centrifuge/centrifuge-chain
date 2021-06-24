@@ -45,10 +45,6 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-pub mod constants;
-/// Constant values used within the runtime.
-use constants::currency::*;
-
 /// common types for the runtime.
 pub use runtime_common::*;
 

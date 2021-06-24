@@ -45,10 +45,6 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-pub mod constants;
-/// Constant values used within the runtime.
-use constants::currency::*;
-
 /// common types for the runtime.
 pub use runtime_common::*;
 
@@ -211,7 +207,7 @@ impl pallet_timestamp::Config for Runtime {
 // money stuff
 parameter_types! {
 	/// TransactionByteFee is set to 0.01 MicroRAD
-	pub const TransactionByteFee: Balance = 1 * (MICRO_AIR / 100);
+	pub const TransactionByteFee: Balance = 1 * (MICRO_CFG / 100);
 	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
 	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
@@ -226,9 +222,9 @@ impl pallet_transaction_payment::Config for Runtime {
 }
 
 parameter_types! {
-	// the minimum fee for an anchor is 500,000ths of a RAD.
+	// the minimum fee for an anchor is 500,000ths of a CFG.
 	// This is set to a value so you can still get some return without getting your account removed.
-	pub const ExistentialDeposit: Balance = 1 * MICRO_AIR;
+	pub const ExistentialDeposit: Balance = 1 * MICRO_CFG;
 	// For weight estimation, we assume that the most locks on an individual account will be 50.
 	pub const MaxLocks: u32 = 50;
 	pub const MaxReserves: u32 = 50;
@@ -300,9 +296,9 @@ impl cumulus_pallet_aura_ext::Config for Runtime {}
 // substrate pallets
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const DepositBase: Balance = 30 * CENTI_AIR;
+	pub const DepositBase: Balance = 30 * CENTI_CFG;
 	// Additional storage item size of 32 bytes.
-	pub const DepositFactor: Balance = 5 * CENTI_AIR;
+	pub const DepositFactor: Balance = 5 * CENTI_CFG;
 	pub const MaxSignatories: u16 = 100;
 }
 
@@ -318,9 +314,9 @@ impl pallet_multisig::Config for Runtime {
 
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const ProxyDepositBase: Balance = 30 * CENTI_AIR;
+	pub const ProxyDepositBase: Balance = 30 * CENTI_CFG;
 	// Additional storage item size of 32 bytes.
-	pub const ProxyDepositFactor: Balance = 5 * CENTI_AIR;
+	pub const ProxyDepositFactor: Balance = 5 * CENTI_CFG;
 	pub const MaxProxies: u16 = 32;
 	pub const AnnouncementDepositBase: Balance = deposit(1, 8);
 	pub const AnnouncementDepositFactor: Balance = deposit(0, 66);
@@ -436,9 +432,9 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 1000 * AIR;
-	pub const VotingBond: Balance = 50 * CENTI_AIR;
-	pub const VotingBondBase: Balance = 50 * CENTI_AIR;
+	pub const CandidacyBond: Balance = 1000 * CFG;
+	pub const VotingBond: Balance = 50 * CENTI_CFG;
+	pub const VotingBondBase: Balance = 50 * CENTI_CFG;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
 	pub const DesiredRunnersUp: u32 = 3;
@@ -486,10 +482,10 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 10 * AIR;
+	pub const MinimumDeposit: Balance = 10 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
-	pub const PreimageByteDeposit: Balance = 100 * MICRO_AIR;
+	pub const PreimageByteDeposit: Balance = 100 * MICRO_CFG;
 	pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }
@@ -560,9 +556,9 @@ impl pallet_democracy::Config for Runtime {
 parameter_types! {
 	pub const MaxSubAccounts: u32 = 100;
 	pub const MaxAdditionalFields: u32 = 100;
-	pub const BasicDeposit: Balance = 100 * AIR;
-	pub const FieldDeposit: Balance = 25 * AIR;
-	pub const SubAccountDeposit: Balance = 20 * AIR;
+	pub const BasicDeposit: Balance = 100 * CFG;
+	pub const FieldDeposit: Balance = 25 * CFG;
+	pub const SubAccountDeposit: Balance = 20 * CFG;
 	pub const MaxRegistrars: u32 = 20;
 }
 
@@ -582,7 +578,7 @@ impl pallet_identity::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1000 * AIR;
+	pub const MinVestedTransfer: Balance = 1000 * CFG;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -611,7 +607,7 @@ parameter_types! {
 	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
 	pub const Longevity: u32 = 64;
 	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const MinimalPayoutAmount: Balance = 5 * AIR;
+	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
 // Implement claims pallet configuration trait for the mock runtime

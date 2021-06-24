@@ -23,6 +23,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use altair_runtime::constants::currency::AIR;
+use runtime_common::CFG;
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
@@ -236,7 +237,7 @@ pub fn devel_local(para_id: ParaId) -> DevelopmentChainSpec {
 					get_from_seed::<development_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(10000000 * AIR),
+				Some(10000000 * CFG),
 				para_id,
 			)
 		},
