@@ -5,6 +5,8 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode};
+use frame_support::sp_runtime::traits::Convert;
+use frame_support::traits::Filter;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
@@ -18,7 +20,6 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 pub use pallet_timestamp::Call as TimestampCall;
@@ -45,18 +46,16 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-pub mod constants;
-/// Constant values used within the runtime.
-use constants::currency::*;
-
-mod common;
 /// common types for the runtime..
 pub use common::*;
-
-pub mod impls;
-use frame_support::traits::Filter;
+/// Constant values used within the runtime.
+use constants::currency::*;
 use impls::*;
+use pallet_anchors::AnchorData;
 
+mod common;
+pub mod constants;
+pub mod impls;
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -73,7 +72,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1000,
+	spec_version: 1001,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -629,6 +628,35 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxAccounts: u64 = 100;
+}
+
+// Implement the migration manager pallet
+// The actual associated type, which executes the migration can be found in the migration folder
+impl pallet_migration_manager::Config for Runtime {
+	type MaxAccounts = MaxAccounts;
+	type Balance = Balance;
+	type Event = Event;
+	type WeightInfo = ();
+}
+
+pub struct WeightToBlockNumber;
+
+impl Convert<Weight, BlockNumber> for WeightToBlockNumber {
+	fn convert(w: Weight) -> BlockNumber {
+		// The weight might overfloww the BlockNumber here. But as we use this in order
+		// to compute the number of blocks, we assume, that a reasonable amount of weight is coming
+		// into this call.
+		// I.e. (weight_of_upgrade / max_weight_per_block) << U32::max !
+		if (u32::MAX as u64) <= w {
+			u32::MAX
+		} else {
+			w as u32
+		}
+	}
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -677,6 +705,8 @@ construct_runtime!(
 		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
+		// migration pallet
+		Migration: pallet_migration_manager::{Pallet, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}

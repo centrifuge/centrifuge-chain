@@ -15,13 +15,12 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
-use hex_literal::hex;
 use node_primitives::{AccountId, Hash, Signature};
 use node_runtime::constants::currency::*;
 use node_runtime::{AuraId, Balance};
 use sc_service::{ChainType, Properties};
 use sc_telemetry::TelemetryEndpoints;
-use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
+use sp_core::{sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
