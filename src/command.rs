@@ -17,7 +17,9 @@
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, AltairExecutor, CentrifugeExecutor, CharcoalExecutor},
+	service::{
+		new_partial, AltairExecutor, CentrifugeExecutor, CharcoalExecutor, DevelopmentExecutor,
+	},
 };
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
@@ -37,6 +39,7 @@ use std::{io::Write, net::SocketAddr};
 enum ChainIdentity {
 	Altair,
 	Centrifuge,
+	Development,
 	Charcoal,
 }
 
@@ -54,7 +57,7 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 		{
 			ChainIdentity::Altair
 		} else {
-			ChainIdentity::Charcoal
+			ChainIdentity::Development
 		}
 	}
 }
@@ -73,11 +76,13 @@ fn load_spec(
 		"cyclone" | "" => Box::new(chain_spec::cyclone_config()),
 		"altair" => Box::new(chain_spec::altair_config()),
 		"altair-dev" => Box::new(chain_spec::altair_dev(para_id)),
+		"devel-local" => Box::new(chain_spec::devel_local(para_id)),
 		"charcoal" => Box::new(chain_spec::charcoal_config()),
 		"charcoal-staging" => Box::new(chain_spec::charcoal_staging_network(para_id)),
 		"charcoal-local" => Box::new(chain_spec::charcoal_local_network(para_id)),
 		"rumba" => Box::new(chain_spec::rumba_config()),
 		"rumba-staging" => Box::new(chain_spec::rumba_staging_network(para_id)),
+
 		path => {
 			let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
 			match chain_spec.identity() {
@@ -86,6 +91,9 @@ fn load_spec(
 				}
 				ChainIdentity::Centrifuge => Box::new(
 					chain_spec::CentrifugeChainSpec::from_json_file(path.into())?,
+				),
+				ChainIdentity::Development => Box::new(
+					chain_spec::DevelopmentChainSpec::from_json_file(path.into())?,
 				),
 				ChainIdentity::Charcoal => {
 					Box::new(chain_spec::CharcoalChainSpec::from_json_file(path.into())?)
@@ -134,6 +142,7 @@ impl SubstrateCli for Cli {
 		match spec.identity() {
 			ChainIdentity::Altair => &altair_runtime::VERSION,
 			ChainIdentity::Centrifuge => &centrifuge_runtime::VERSION,
+			ChainIdentity::Development => &development_runtime::VERSION,
 			ChainIdentity::Charcoal => &charcoal_runtime::VERSION,
 		}
 	}
@@ -206,6 +215,16 @@ macro_rules! construct_async_run {
 				let $components = new_partial::<centrifuge_runtime::RuntimeApi, CentrifugeExecutor, _>(
 					&$config,
 					crate::service::build_centrifuge_import_queue,
+				)?;
+				let task_manager = $components.task_manager;
+				{ $( $code )* }.map(|v| (v, task_manager))
+		    })
+                }
+                ChainIdentity::Development => {
+		    runner.async_run(|$config| {
+				let $components = new_partial::<development_runtime::RuntimeApi, DevelopmentExecutor, _>(
+					&$config,
+					crate::service::build_development_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
@@ -334,6 +353,9 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Centrifuge => runner.sync_run(|config| {
 						cmd.run::<centrifuge_runtime::Block, CentrifugeExecutor>(config)
 					}),
+					ChainIdentity::Development => runner.sync_run(|config| {
+						cmd.run::<development_runtime::Block, DevelopmentExecutor>(config)
+					}),
 					ChainIdentity::Charcoal => runner.sync_run(|config| {
 						cmd.run::<charcoal_runtime::Block, CharcoalExecutor>(config)
 					}),
@@ -397,6 +419,12 @@ pub fn run() -> Result<()> {
 					}
 					ChainIdentity::Centrifuge => {
 						crate::service::start_centrifuge_node(config, polkadot_config, id)
+							.await
+							.map(|r| r.0)
+							.map_err(Into::into)
+					}
+					ChainIdentity::Development => {
+						crate::service::start_development_node(config, polkadot_config, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)

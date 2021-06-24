@@ -29,6 +29,7 @@ const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 /// Specialized `ChainSpec` instances for our runtimes.
 pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig>;
 pub type CentrifugeChainSpec = sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig>;
+pub type DevelopmentChainSpec = sc_service::GenericChainSpec<development_runtime::GenesisConfig>;
 pub type CharcoalChainSpec = sc_service::GenericChainSpec<charcoal_runtime::GenesisConfig>;
 
 /// Helper function to generate a crypto pair from seed
@@ -40,6 +41,12 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 
 pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
 	altair_runtime::SessionKeys { aura: keys }
+}
+
+pub fn get_development_session_keys(
+	keys: development_runtime::AuraId,
+) -> development_runtime::SessionKeys {
+	development_runtime::SessionKeys { aura: keys }
 }
 
 type AccountPublic = <Signature as Verify>::Signer;
@@ -213,6 +220,35 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
+pub fn devel_local(para_id: ParaId) -> DevelopmentChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	DevelopmentChainSpec::from_genesis(
+		"Dev Local",
+		"devel_local",
+		ChainType::Local,
+		move || {
+			development_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_from_seed::<altair_runtime::AuraId>("Alice"),
+				)],
+				endowed_accounts(),
+				Some(10000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
 fn endowed_accounts() -> Vec<AccountId> {
 	vec![
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -293,6 +329,81 @@ fn altair_genesis(
 						acc.clone(),                   // account id
 						acc.clone(),                   // validator id
 						get_altair_session_keys(aura), // session keys
+					)
+				})
+				.collect(),
+		},
+		aura_ext: Default::default(),
+		aura: Default::default(),
+		anchor: Default::default(),
+		democracy: Default::default(),
+		parachain_system: Default::default(),
+	}
+}
+
+fn development_genesis(
+	root_key: AccountId,
+	initial_authorities: Vec<(development_runtime::AccountId, development_runtime::AuraId)>,
+	endowed_accounts: Vec<development_runtime::AccountId>,
+	total_issuance: Option<development_runtime::Balance>,
+	id: ParaId,
+) -> development_runtime::GenesisConfig {
+	let num_endowed_accounts = endowed_accounts.len();
+	let balances = match total_issuance {
+		Some(total_issuance) => {
+			let balance_per_endowed = total_issuance
+				.checked_div(num_endowed_accounts as development_runtime::Balance)
+				.unwrap_or(0 as development_runtime::Balance);
+			endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, balance_per_endowed))
+				.collect()
+		}
+		None => vec![],
+	};
+
+	development_runtime::GenesisConfig {
+		system: development_runtime::SystemConfig {
+			code: development_runtime::WASM_BINARY
+				.expect("WASM binary was not build, please build it!")
+				.to_vec(),
+			changes_trie_config: Default::default(),
+		},
+		balances: development_runtime::BalancesConfig { balances },
+		elections: development_runtime::ElectionsConfig { members: vec![] },
+		council: development_runtime::CouncilConfig {
+			members: Default::default(),
+			phantom: Default::default(),
+		},
+		fees: development_runtime::FeesConfig {
+			initial_fees: vec![(
+				// Anchoring state rent fee per day
+				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+				Hash::from(&[
+					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
+					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
+				]),
+				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
+				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
+				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+				// 0.003.. RAD
+				2_365_296_803_653,
+			)],
+		},
+		vesting: Default::default(),
+		sudo: development_runtime::SudoConfig { key: root_key },
+		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
+		session: development_runtime::SessionConfig {
+			keys: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, aura)| {
+					(
+						acc.clone(),                        // account id
+						acc.clone(),                        // validator id
+						get_development_session_keys(aura), // session keys
 					)
 				})
 				.collect(),

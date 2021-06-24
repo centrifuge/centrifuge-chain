@@ -132,6 +132,7 @@ polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centri
 # node-specific dependencies
 altair-runtime = { path = "runtime/altair" }
 centrifuge-runtime = { path = "runtime/centrifuge" }
+development-runtime = { path = "runtime/development" }
 charcoal-runtime = { path = "runtime/charcoal" }
 runtime-common = { path = "runtime/common" }
 node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
