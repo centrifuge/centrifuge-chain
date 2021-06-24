@@ -41,11 +41,11 @@ enum ChainIdentity {
 }
 
 trait IdentifyChain {
-	fn identity(&self) -> ChainIdentity;
+	fn identify(&self) -> ChainIdentity;
 }
 
 impl IdentifyChain for dyn sc_service::ChainSpec {
-	fn identity(&self) -> ChainIdentity {
+	fn identify(&self) -> ChainIdentity {
 		if self.id().starts_with("centrifuge") || self.id().starts_with("cyclone") {
 			ChainIdentity::Centrifuge
 		} else if self.id().starts_with("altair")
@@ -60,8 +60,8 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 }
 
 impl<T: sc_service::ChainSpec + 'static> IdentifyChain for T {
-	fn identity(&self) -> ChainIdentity {
-		<dyn sc_service::ChainSpec>::identity(self)
+	fn identify(&self) -> ChainIdentity {
+		<dyn sc_service::ChainSpec>::identify(self)
 	}
 }
 
@@ -82,7 +82,7 @@ fn load_spec(
 
 		path => {
 			let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
-			match chain_spec.identity() {
+			match chain_spec.identify() {
 				ChainIdentity::Altair => {
 					Box::new(chain_spec::AltairChainSpec::from_json_file(path.into())?)
 				}
@@ -133,7 +133,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-		match spec.identity() {
+		match spec.identify() {
 			ChainIdentity::Altair => &altair_runtime::VERSION,
 			ChainIdentity::Centrifuge => &centrifuge_runtime::VERSION,
 			ChainIdentity::Development => &development_runtime::VERSION,
@@ -192,7 +192,7 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 	    let runner = $cli.create_runner($cmd)?;
-            match runner.config().chain_spec.identity() {
+            match runner.config().chain_spec.identify() {
                 ChainIdentity::Altair => {
 		    runner.async_run(|$config| {
 				let $components = new_partial::<altair_runtime::RuntimeApi, AltairExecutor, _>(
@@ -329,7 +329,7 @@ pub fn run() -> Result<()> {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
 
-				match runner.config().chain_spec.identity() {
+				match runner.config().chain_spec.identify() {
 					ChainIdentity::Altair => runner.sync_run(|config| {
 						cmd.run::<altair_runtime::Block, AltairExecutor>(config)
 					}),
@@ -390,7 +390,7 @@ pub fn run() -> Result<()> {
 					}
 				);
 
-				match config.chain_spec.identity() {
+				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
 						crate::service::start_altair_node(config, polkadot_config, id)
 							.await
