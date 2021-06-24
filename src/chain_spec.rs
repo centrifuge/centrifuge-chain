@@ -30,7 +30,6 @@ const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 pub type AltairChainSpec = sc_service::GenericChainSpec<altair_runtime::GenesisConfig>;
 pub type CentrifugeChainSpec = sc_service::GenericChainSpec<centrifuge_runtime::GenesisConfig>;
 pub type DevelopmentChainSpec = sc_service::GenericChainSpec<development_runtime::GenesisConfig>;
-pub type CharcoalChainSpec = sc_service::GenericChainSpec<charcoal_runtime::GenesisConfig>;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
@@ -73,7 +72,7 @@ pub fn charcoal_local_network(para_id: ParaId) -> AltairChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<charcoal_runtime::AuraId>("Alice"),
+					get_from_seed::<altair_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				Some(10000000 * AIR),
@@ -234,7 +233,7 @@ pub fn devel_local(para_id: ParaId) -> DevelopmentChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<development_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				Some(10000000 * AIR),

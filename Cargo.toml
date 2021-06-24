@@ -37,7 +37,6 @@ members = [
 	"libs/proofs",
         "runtime/altair",
         "runtime/centrifuge",
-	"runtime/charcoal",
         "runtime/common",
 ]
 
@@ -133,7 +132,6 @@ polkadot-cli = {git = "https://github.com/centrifuge/polkadot", branch = "centri
 altair-runtime = { path = "runtime/altair" }
 centrifuge-runtime = { path = "runtime/centrifuge" }
 development-runtime = { path = "runtime/development" }
-charcoal-runtime = { path = "runtime/charcoal" }
 runtime-common = { path = "runtime/common" }
 node-primitives = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 
@@ -161,5 +159,7 @@ std = [
 	"sp-consensus-babe/std"
 ]
 runtime-benchmarks = [
-	"charcoal-runtime/runtime-benchmarks",
+	"altair-runtime/runtime-benchmarks",
+	"centrifuge-runtime/runtime-benchmarks",
+	"development-runtime/runtime-benchmarks",
 ]

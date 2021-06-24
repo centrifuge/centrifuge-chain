@@ -17,9 +17,7 @@
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{
-		new_partial, AltairExecutor, CentrifugeExecutor, CharcoalExecutor, DevelopmentExecutor,
-	},
+	service::{new_partial, AltairExecutor, CentrifugeExecutor, DevelopmentExecutor},
 };
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
@@ -40,7 +38,6 @@ enum ChainIdentity {
 	Altair,
 	Centrifuge,
 	Development,
-	Charcoal,
 }
 
 trait IdentifyChain {
@@ -95,9 +92,6 @@ fn load_spec(
 				ChainIdentity::Development => Box::new(
 					chain_spec::DevelopmentChainSpec::from_json_file(path.into())?,
 				),
-				ChainIdentity::Charcoal => {
-					Box::new(chain_spec::CharcoalChainSpec::from_json_file(path.into())?)
-				}
 			}
 		}
 	})
@@ -143,7 +137,6 @@ impl SubstrateCli for Cli {
 			ChainIdentity::Altair => &altair_runtime::VERSION,
 			ChainIdentity::Centrifuge => &centrifuge_runtime::VERSION,
 			ChainIdentity::Development => &development_runtime::VERSION,
-			ChainIdentity::Charcoal => &charcoal_runtime::VERSION,
 		}
 	}
 }
@@ -225,16 +218,6 @@ macro_rules! construct_async_run {
 				let $components = new_partial::<development_runtime::RuntimeApi, DevelopmentExecutor, _>(
 					&$config,
 					crate::service::build_development_import_queue,
-				)?;
-				let task_manager = $components.task_manager;
-				{ $( $code )* }.map(|v| (v, task_manager))
-		    })
-                }
-                ChainIdentity::Charcoal => {
-		    runner.async_run(|$config| {
-				let $components = new_partial::<charcoal_runtime::RuntimeApi, CharcoalExecutor, _>(
-					&$config,
-					crate::service::build_charcoal_import_queue,
 				)?;
 				let task_manager = $components.task_manager;
 				{ $( $code )* }.map(|v| (v, task_manager))
@@ -356,9 +339,6 @@ pub fn run() -> Result<()> {
 					ChainIdentity::Development => runner.sync_run(|config| {
 						cmd.run::<development_runtime::Block, DevelopmentExecutor>(config)
 					}),
-					ChainIdentity::Charcoal => runner.sync_run(|config| {
-						cmd.run::<charcoal_runtime::Block, CharcoalExecutor>(config)
-					}),
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
@@ -425,12 +405,6 @@ pub fn run() -> Result<()> {
 					}
 					ChainIdentity::Development => {
 						crate::service::start_development_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
-					ChainIdentity::Charcoal => {
-						crate::service::start_charcoal_node(config, polkadot_config, id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
