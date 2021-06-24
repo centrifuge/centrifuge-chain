@@ -35,9 +35,9 @@ members = [
 	"pallets/crowdloan-reward",
 	"libs/trait-crowdloan-reward",
 	"libs/proofs",
-        "runtime/altair",
-        "runtime/centrifuge",
-        "runtime/common",
+	"runtime/altair",
+	"runtime/centrifuge",
+	"runtime/common",
 ]
 
 [dependencies]
