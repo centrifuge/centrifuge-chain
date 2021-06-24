@@ -5458,6 +5458,27 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
+=======
+name = "pallet-migration-manager"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.14",
+ "pallet-balances",
+ "pallet-vesting",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-version",
+]
+
+[[package]]
+>>>>>>> 816c992... Updated procedure completly
 name = "pallet-mmr"
 version = "3.0.0"
 source = "git+https://github.com/centrifuge/substrate?branch=master#1b758b2a8d151d97d2242260c465b6df9cb8a7a4"
