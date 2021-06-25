@@ -79,6 +79,57 @@ pub fn charcoal_local_network(para_id: ParaId) -> ChainSpec {
 	)
 }
 
+pub fn altair_staging_network(para_id: ParaId) -> ChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "AIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	ChainSpec::from_genesis(
+		"Altair",
+		"altair",
+		ChainType::Live,
+		move || {
+			testnet_genesis(
+				hex!["66d97d3816f5906c8a9821fac25afbb76291b12eb51c5a559e44aaafe4e42206"].into(),
+				vec![
+					(
+						//
+						hex!["b24fb587438bbe05034606dac98162d80be1d21ac6dd6edc989887fa53a8d503"]
+							.into(),
+						hex!["c475e1ba26aa503601f26568ce6989502fc316b41c6d788b58e4cba4ec967a73"]
+							.unchecked_into(),
+					),
+					(
+						//
+						hex!["d46783c911c4d8fb42f8239eb8925857e27ee3bdd121feb43e450241891a5f1e"]
+							.into(),
+						hex!["4ab9526ff43c29426a6288621d85e3cbd45bcb279eab1cf250079b02d2a40e2f"]
+							.unchecked_into(),
+					),
+					(
+						//
+						hex!["f02099f295f6ccd935646f50c6280f4054b7d1f9b126471668f4ac6175677c26"]
+							.into(),
+						hex!["2652d9800f7dcca7592c83857ecc674f34a51f7661d6dc06281565557e5ee217"]
+							.unchecked_into(),
+					),
+				],
+				vec![],
+				None,
+				para_id,
+			)
+		},
+		vec![],
+		Some(
+			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot telemetry url is valid; qed"),
+		),
+		Some("altair"),
+		Some(properties),
+		Default::default(),
+	)
+}
+
 pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
@@ -90,24 +141,25 @@ pub fn charcoal_staging_network(para_id: ParaId) -> ChainSpec {
 		ChainType::Live,
 		move || {
 			testnet_genesis(
+				// kAJSPJQGb1w5Cn4ZTFPokiStQ6sNkYHApjzPBeNPdVwbyLGjs
 				hex!["38e779a7cc9cc462e19ae0c8e76d6135caba7fee745645dbf9b4a1b9f53dbd6e"].into(),
 				vec![
 					(
-						//
+						// kALpizfCQweMJjhMpDhfozAtLXrLfbkE7iMFWVt92xXrdcoZg
 						hex!["a269a32274ddc7cb7f3a42ffb305c17011a67fbb97c9667a9f8ceb3141b6cb24"]
 							.into(),
 						hex!["f09f14e7b7bf0538793b1ff512fbe88c6f1d0ee08015dba416d27e6950803b21"]
 							.unchecked_into(),
 					),
 					(
-						//
+						// kAHvxmKFqevc6uJ3o7VoMZU78HTLZtoh9A4nrWrf3WLhwy76e
 						hex!["2276c356c435f6bcbf7793b6419d1e12f8f270a6a53c28ce02737a9b5c65554d"]
 							.into(),
 						hex!["2211f2a23e278e9f9b8eba37033797c103b6453201369c3a951cf32d6a6e6b59"]
 							.unchecked_into(),
 					),
 					(
-						//
+						// kAKFBeQp4fZyYumtDNDu2xapHjoBFr6pzcVpXkEAoohC9JF7k
 						hex!["5c98c66394608ea47747ce7a935fd94a70b508047383e8a6e9bbf3c620531c22"]
 							.into(),
 						hex!["4e5e5a7d116fe3528b9f015ff2f36af8460da4b38eb14a3f1659f278ff888709"]
@@ -167,9 +219,8 @@ pub fn cyclone_config() -> ChainSpec {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }
 
-// TODO: Replace with Altair spec
 pub fn altair_config() -> ChainSpec {
-	ChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
+	ChainSpec::from_json_bytes(&include_bytes!("../res/altair-spec-raw.json")[..]).unwrap()
 }
 
 pub fn rumba_config() -> ChainSpec {

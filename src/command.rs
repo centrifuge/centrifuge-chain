@@ -42,6 +42,7 @@ fn load_spec(
 		"cyclone" | "" => Ok(Box::new(chain_spec::cyclone_config())),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
 		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
+		"altair-staging" => Ok(Box::new(chain_spec::altair_staging_network(para_id))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging_network(para_id))),
 		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local_network(para_id))),
