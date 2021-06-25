@@ -53,17 +53,11 @@ use constants::currency::*;
 use impls::*;
 use pallet_anchors::AnchorData;
 
-<<<<<<< HEAD:runtime/altair/src/lib.rs
 /// common types for the runtime.
 pub use runtime_common::*;
 
 use frame_support::traits::Filter;
 
-=======
-mod common;
-pub mod constants;
-pub mod impls;
->>>>>>> 816c992... Updated procedure completly:runtime/src/lib.rs
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -636,8 +630,6 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-<<<<<<< HEAD:runtime/altair/src/lib.rs
-=======
 parameter_types! {
 	pub const MaxAccounts: u64 = 100;
 }
@@ -667,7 +659,6 @@ impl Convert<Weight, BlockNumber> for WeightToBlockNumber {
 	}
 }
 
->>>>>>> 816c992... Updated procedure completly:runtime/src/lib.rs
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -716,6 +707,8 @@ construct_runtime!(
 		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
+		// migration pallet
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
