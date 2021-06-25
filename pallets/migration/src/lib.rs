@@ -19,6 +19,9 @@ pub mod weights;
 #[cfg(test)]
 pub mod tests;
 
+#[cfg(test)]
+pub mod mock;
+
 pub mod benchmarking;
 
 #[frame_support::pallet]

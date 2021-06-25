@@ -706,7 +706,7 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
 		// migration pallet
-		Migration: pallet_migration_manager::{Pallet, Storage, Event<T>} = 199,
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
