@@ -30,6 +30,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::sp_runtime::traits::{Convert, Saturating};
 	use frame_support::sp_runtime::traits::{One, Zero};
+	use frame_support::transactional;
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
 	use sp_version::RuntimeVersion;
@@ -110,6 +111,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_system_account(T::MaxAccounts::get()))]
+		#[transactional]
 		pub fn migrate_system_account(
 			origin: OriginFor<T>,
 			accounts: Vec<(Vec<u8>, Vec<u8>)>,
@@ -134,6 +136,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_balances_issuance())]
+		#[transactional]
 		pub fn migrate_balances_issuance(
 			origin: OriginFor<T>,
 			total_issuance: T::Balance,

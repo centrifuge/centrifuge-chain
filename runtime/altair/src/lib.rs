@@ -74,7 +74,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1001,
+	spec_version: 1002,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -631,7 +631,7 @@ impl pallet_claims::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxAccounts: u64 = 100;
+	pub const MaxAccounts: u64 = 1000;
 }
 
 // Implement the migration manager pallet
