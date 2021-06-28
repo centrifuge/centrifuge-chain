@@ -597,6 +597,13 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// Test stuff
+impl pallet_tinlake_investor_pool::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type PoolId = u32;
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -639,6 +646,8 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 66,
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
+
+		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 70,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,

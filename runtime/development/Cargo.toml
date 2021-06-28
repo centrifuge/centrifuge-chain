@@ -99,6 +99,7 @@ runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
