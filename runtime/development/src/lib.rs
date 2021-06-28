@@ -48,8 +48,6 @@ use static_assertions::const_assert;
 /// common types for the runtime.
 pub use runtime_common::*;
 
-use frame_support::traits::Filter;
-
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -106,33 +104,10 @@ parameter_types! {
 		.build_or_panic();
 	pub const SS58Prefix: u8 = 136;
 }
-// our base filter
-// allow base system calls needed for block production and runtime upgrade
-// other calls will be disallowed
-pub struct BaseFilter;
-
-impl Filter<Call> for BaseFilter {
-	fn filter(c: &Call) -> bool {
-		matches!(
-			c,
-			// Calls from Sudo
-			Call::Sudo(..)
-
-				// Calls for runtime upgrade
-				| Call::System(frame_system::Call::set_code(..))
-				| Call::System(frame_system::Call::set_code_without_checks(..))
-
-				// Calls that are present in each block
-				| Call::ParachainSystem(
-					cumulus_pallet_parachain_system::Call::set_validation_data(..)
-				) | Call::Timestamp(pallet_timestamp::Call::set(..))
-		)
-	}
-}
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = BaseFilter;
+	type BaseCallFilter = ();
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -689,8 +664,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	// disable paying the fees for now.
-	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
