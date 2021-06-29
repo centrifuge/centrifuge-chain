@@ -17,15 +17,18 @@ mod benchmarking;
 use codec::HasCompact;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
-use sp_runtime::traits::{
-	AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, Saturating, StaticLookup,
-	StoredMapError, Zero,
+use sp_runtime::{
+	traits::{
+		AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, Saturating, StaticLookup,
+		StoredMapError, Zero,
+	},
+	Perquintill,
 };
 use sp_std::vec::Vec;
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
 pub struct Tranche {
-	pub interest_per_sec: u128,
+	pub interest_per_sec: Perquintill,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
@@ -79,6 +82,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// A pool with this ID is already in use
 		InUse,
+		/// A parameter is invalid
+		Invalid,
 	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
@@ -90,10 +95,21 @@ pub mod pallet {
 		pub fn create_pool(
 			origin: OriginFor<T>,
 			id: T::PoolId,
-			interests_per_sec: Vec<u128>,
+			interests_per_sec: Vec<Perquintill>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
+
+			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(id), Error::<T>::InUse);
+
+			// At least one tranch must exist, and the last
+			// tranche must have an interest rate of 0,
+			// indicating that it recieves all remaining
+			// equity
+			ensure!(
+				interests_per_sec.last() == Some(&Perquintill::zero()),
+				Error::<T>::Invalid
+			);
 			Pool::<T>::insert(
 				id,
 				PoolDetails {
