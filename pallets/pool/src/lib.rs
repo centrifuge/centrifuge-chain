@@ -3,11 +3,9 @@
 //! This pallet provides functionality for managing a tinlake pool
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::DispatchResult,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
-};
-use frame_system::ensure_root;
+use frame_support::dispatch::DispatchResult;
+use frame_support::sp_runtime::traits::{AtLeast32Bit, One};
+use std::fmt::Debug;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -33,7 +31,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use std::fmt::Debug;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
 	// method.
@@ -46,8 +43,14 @@ pub mod pallet {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		// The overarching poolID type
-		// type PoolID: Parameter + Member + MaybeSerializeDeserialize + Debug + Default + Copy;
+		/// The overarching poolID type
+		type PoolID: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Debug
+			+ Default
+			+ Copy
+			+ AtLeast32Bit;
 	}
 
 	#[pallet::hooks]
@@ -57,25 +60,22 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn pool_info)]
 	pub(super) type PoolInfo<T: Config> =
-		StorageMap<_, Blake2_128Concat, u64, PoolData<T::AccountId>>;
+		StorageMap<_, Blake2_128Concat, T::PoolID, PoolData<T::AccountId>>;
 
 	/// Stores the PoolInfo against a poolID
 	#[pallet::storage]
 	#[pallet::getter(fn pool_idx)]
-	pub(super) type PoolIndex<T: Config> = StorageValue<_, u64, OptionQuery>;
+	pub(super) type PoolIndex<T: Config> = StorageValue<_, T::PoolID, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// PoolCreated is emitted when a new pool is created
-		PoolCreated(u64),
+		PoolCreated(T::PoolID),
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
-		/// PoolIndexOverflow
-		PoolIndexOverflow,
-	}
+	pub enum Error<T> {}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -86,9 +86,7 @@ pub mod pallet {
 			let pd = PoolData { creator, name };
 			let pool_id = PoolIndex::<T>::get().unwrap_or_default();
 			PoolInfo::<T>::insert(pool_id, pd);
-			let new_pool_idx = pool_id
-				.checked_add(1)
-				.ok_or(Error::<T>::PoolIndexOverflow)?;
+			let new_pool_idx = pool_id + T::PoolID::one();
 			PoolIndex::<T>::set(Some(new_pool_idx));
 			Self::deposit_event(Event::PoolCreated(pool_id));
 			Ok(())
