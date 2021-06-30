@@ -5388,6 +5388,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-pool"
+version = "2.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-randomness-collective-flip",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-proxy"
 version = "3.0.0"
 source = "git+https://github.com/centrifuge/substrate?branch=master#4d9f03d3d6d0ceec0708b1a23978feee12f5b0bb"
