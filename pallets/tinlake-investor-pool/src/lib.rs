@@ -40,10 +40,7 @@ pub struct PoolDetails<AccountId, CurrencyId> {
 }
 
 pub trait TrancheToken<T: Config> {
-	fn tranche_token(
-		pool: T::PoolId,
-		tranche: T::TrancheId,
-	) -> <T::Tokens as MultiCurrency<T::AccountId>>::CurrencyId;
+	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
 }
 
 #[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
@@ -82,7 +79,12 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ Into<usize>;
 		type EpochId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
-		type Tokens: MultiCurrency<Self::AccountId, Balance = Self::Balance>;
+		type CurrencyId: Parameter;
+		type Tokens: MultiCurrency<
+			Self::AccountId,
+			Balance = Self::Balance,
+			CurrencyId = Self::CurrencyId,
+		>;
 		type TrancheToken: TrancheToken<Self>;
 	}
 
@@ -92,12 +94,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn pool)]
-	pub type Pool<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		PoolDetails<T::AccountId, <T::Tokens as MultiCurrency<T::AccountId>>::CurrencyId>,
-	>;
+	pub type Pool<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetails<T::AccountId, T::CurrencyId>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order)]
@@ -137,7 +135,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: T::PoolId,
 			interests: Vec<u8>,
-			currency: <T::Tokens as MultiCurrency<T::AccountId>>::CurrencyId,
+			currency: T::CurrencyId,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 

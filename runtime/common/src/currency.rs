@@ -1,5 +1,4 @@
 use codec::{Decode, Encode};
-use orml_traits::MultiCurrency;
 use pallet_tinlake_investor_pool::Config;
 
 #[cfg(feature = "std")]
@@ -13,17 +12,18 @@ pub enum CurrencyId {
 }
 
 pub struct TrancheToken<T>(core::marker::PhantomData<T>);
+
 impl<T> pallet_tinlake_investor_pool::TrancheToken<T> for TrancheToken<T>
 where
 	T: Config,
 	<T as Config>::PoolId: Into<u32>,
 	<T as Config>::TrancheId: Into<u8>,
-	<<T as Config>::Tokens as MultiCurrency<T::AccountId>>::CurrencyId: From<CurrencyId>,
+	<T as Config>::CurrencyId: From<CurrencyId>,
 {
 	fn tranche_token(
 		pool: <T as Config>::PoolId,
 		tranche: <T as Config>::TrancheId,
-	) -> <<T as Config>::Tokens as MultiCurrency<T::AccountId>>::CurrencyId {
+	) -> <T as Config>::CurrencyId {
 		CurrencyId::Tranche(pool.into(), tranche.into()).into()
 	}
 }
