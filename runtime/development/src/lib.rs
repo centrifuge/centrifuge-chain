@@ -18,6 +18,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
@@ -220,6 +221,23 @@ impl pallet_balances::Config for Runtime {
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		ExistentialDeposit::get()
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = MaxLocks;
 }
 
 parameter_types! {
@@ -602,6 +620,10 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type PoolId = u32;
+	type TrancheId = u8;
+	type EpochId = u32;
+	type Tokens = Tokens;
+	type TrancheToken = TrancheToken<Runtime>;
 }
 
 // admin stuff
@@ -629,6 +651,7 @@ construct_runtime!(
 		// money stuff
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
+		Tokens: orml_tokens::{Pallet, Storage, Config<T>, Event<T>} = 22,
 
 		// authoring stuff
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,

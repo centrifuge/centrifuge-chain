@@ -17,12 +17,13 @@ mod benchmarking;
 use codec::HasCompact;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
+use orml_traits::MultiCurrency;
 use sp_runtime::{
 	traits::{
-		AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, Saturating, StaticLookup,
-		StoredMapError, Zero,
+		AccountIdConversion, AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, Saturating,
+		StaticLookup, StoredMapError, Zero,
 	},
-	Perquintill,
+	Perquintill, TypeId,
 };
 use sp_std::vec::Vec;
 
@@ -32,9 +33,34 @@ pub struct Tranche {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
-pub struct PoolDetails<AccountId> {
+pub struct PoolDetails<AccountId, CurrencyId> {
 	pub owner: AccountId,
+	pub currency: CurrencyId,
 	pub tranches: Vec<Tranche>,
+}
+
+pub trait TrancheToken<T: Config> {
+	fn tranche_token(
+		pool: T::PoolId,
+		tranche: T::TrancheId,
+	) -> <T::Tokens as MultiCurrency<T::AccountId>>::CurrencyId;
+}
+
+#[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+pub struct UserOrder<Balance, EpochId> {
+	pub supply: Balance,
+	pub redeem: Balance,
+	pub epoch: EpochId,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct TrancheLocator<PoolId, TrancheId> {
+	pub pool: PoolId,
+	pub tranche: TrancheId,
+}
+
+impl<PoolId, TrancheId> TypeId for TrancheLocator<PoolId, TrancheId> {
+	const TYPE_ID: [u8; 4] = *b"trnc";
 }
 
 #[frame_support::pallet]
@@ -48,24 +74,42 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		type TrancheId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ Into<usize>;
+		type EpochId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		type Tokens: MultiCurrency<Self::AccountId, Balance = Self::Balance>;
+		type TrancheToken: TrancheToken<Self>;
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
-	// The pallet's runtime storage items.
-	// https://substrate.dev/docs/en/knowledgebase/runtime/storage
-	#[pallet::storage]
-	#[pallet::getter(fn something)]
-	// Learn more about declaring storage items:
-	// https://substrate.dev/docs/en/knowledgebase/runtime/storage#declaring-storage-items
-	pub type Something<T> = StorageValue<_, u32>;
-
 	#[pallet::storage]
 	#[pallet::getter(fn pool)]
-	pub type Pool<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetails<T::AccountId>>;
+	pub type Pool<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		PoolDetails<T::AccountId, <T::Tokens as MultiCurrency<T::AccountId>>::CurrencyId>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn order)]
+	pub type Order<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		TrancheLocator<T::PoolId, T::TrancheId>,
+		Blake2_128Concat,
+		T::AccountId,
+		UserOrder<T::Balance, T::EpochId>,
+		ValueQuery,
+	>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
@@ -86,18 +130,18 @@ pub mod pallet {
 		Invalid,
 	}
 
-	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	// These functions materialize as "extrinsics", which are often compared to transactions.
-	// Dispatchable functions must be annotated with a weight and must return a DispatchResult.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(100)]
 		pub fn create_pool(
 			origin: OriginFor<T>,
 			id: T::PoolId,
-			interests_per_sec: Vec<Perquintill>,
+			interests: Vec<u8>,
+			currency: <T::Tokens as MultiCurrency<T::AccountId>>::CurrencyId,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
+
+			// TODO: Ensure owner is authorized to create a pool
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(id), Error::<T>::InUse);
@@ -106,22 +150,81 @@ pub mod pallet {
 			// tranche must have an interest rate of 0,
 			// indicating that it recieves all remaining
 			// equity
-			ensure!(
-				interests_per_sec.last() == Some(&Perquintill::zero()),
-				Error::<T>::Invalid
-			);
+			ensure!(interests.last() == Some(&0), Error::<T>::Invalid);
+
+			let tranches = interests
+				.into_iter()
+				.map(|interest| {
+					const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+					let interest_per_sec =
+						Perquintill::from_percent(interest.into()) / SECS_PER_YEAR;
+					Tranche { interest_per_sec }
+				})
+				.collect();
 			Pool::<T>::insert(
 				id,
 				PoolDetails {
 					owner: owner.clone(),
-					tranches: interests_per_sec
-						.into_iter()
-						.map(|interest_per_sec| Tranche { interest_per_sec })
-						.collect(),
+					currency,
+					tranches,
 				},
 			);
 			Self::deposit_event(Event::PoolCreated(id, owner));
 			Ok(())
+		}
+
+		#[pallet::weight(100)]
+		pub fn order_supply(
+			origin: OriginFor<T>,
+			pool: T::PoolId,
+			tranche: T::TrancheId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			// TODO: Ensure this account is authorized for this tranche
+			let currency = Pool::<T>::try_get(pool)
+				.map_err(|_| Error::<T>::Invalid)?
+				.currency;
+			let tranche = TrancheLocator { pool, tranche };
+
+			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
+				if amount > order.supply {
+					// Transfer tokens to the tranche account
+					let transfer_amount = amount - order.supply;
+					T::Tokens::transfer(currency, &who, &tranche.into_account(), transfer_amount)?;
+				} else if amount < order.supply {
+					let transfer_amount = order.supply - amount;
+					T::Tokens::transfer(currency, &tranche.into_account(), &who, transfer_amount)?;
+				}
+				order.supply = amount;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn order_redeem(
+			origin: OriginFor<T>,
+			pool: T::PoolId,
+			tranche: T::TrancheId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			// TODO: Ensure this account is authorized for this tranche
+			let currency = T::TrancheToken::tranche_token(pool, tranche);
+			let tranche = TrancheLocator { pool, tranche };
+
+			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
+				if amount > order.redeem {
+					// Transfer tokens to the tranche account
+					let transfer_amount = amount - order.supply;
+					T::Tokens::transfer(currency, &who, &tranche.into_account(), transfer_amount)?;
+				} else if amount < order.redeem {
+					let transfer_amount = order.supply - amount;
+					T::Tokens::transfer(currency, &tranche.into_account(), &who, transfer_amount)?;
+				}
+				order.redeem = amount;
+				Ok(())
+			})
 		}
 	}
 }

@@ -2013,6 +2013,8 @@ dependencies = [
  "integer-sqrt",
  "max-encoded-len",
  "node-primitives",
+ "orml-tokens",
+ "orml-traits",
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
@@ -5089,6 +5091,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-tokens"
+version = "0.4.1-dev"
+source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#cff84260ea57fa44b29dcc4361bcad73e9d3389d"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "max-encoded-len",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-traits"
+version = "0.4.1-dev"
+source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#cff84260ea57fa44b29dcc4361bcad73e9d3389d"
+dependencies = [
+ "frame-support",
+ "impl-trait-for-tuples",
+ "num-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "orml-utilities"
+version = "0.4.1-dev"
+source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#cff84260ea57fa44b29dcc4361bcad73e9d3389d"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "owning_ref"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5709,6 +5756,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "max-encoded-len",
+ "orml-traits",
  "parity-scale-codec",
  "serde",
  "sp-core",
@@ -7883,9 +7931,13 @@ dependencies = [
  "frame-support",
  "frame-system",
  "node-primitives",
+ "orml-traits",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-tinlake-investor-pool",
+ "parity-scale-codec",
+ "serde",
  "smallvec 1.6.1",
  "sp-api",
  "sp-arithmetic",
