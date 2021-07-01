@@ -11,6 +11,7 @@ use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
 pub use pallet::*;
+
 #[cfg(test)]
 mod mock;
 
@@ -51,16 +52,30 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ AtLeast32Bit;
-	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+		type LoanID: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Debug
+			+ Default
+			+ Copy
+			+ AsRef<[u8]>
+			+ From<[u8; 32]>;
+
+		type RiskGroup: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Debug
+			+ Default
+			+ Copy
+			+ AtLeast32Bit;
+	}
 
 	/// Stores the PoolInfo against a poolID
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_info)]
 	pub(super) type PoolInfo<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolID, PoolData<T::AccountId>>;
+		StorageMap<_, Blake2_128Concat, T::PoolID, PoolData<T::AccountId>, OptionQuery>;
 
 	/// Stores the next pool_id that will be created.
 	#[pallet::storage]
@@ -75,7 +90,10 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {}
+	pub enum Error<T> {
+		/// Emits when the pool associated with a pool_id is missing
+		ErrMissingPool,
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -91,5 +109,13 @@ pub mod pallet {
 			Self::deposit_event(Event::PoolCreated(pool_id));
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> Pallet<T> {
+	// checks if the pool associated with pool_id exists
+	pub fn check_pool(pool_id: T::PoolID) -> DispatchResult {
+		PoolInfo::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
+		Ok(())
 	}
 }

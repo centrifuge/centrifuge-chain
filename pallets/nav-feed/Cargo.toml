@@ -1,10 +1,10 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Pool pallet for runtime'
+description = 'Nav Feed pallet for runtime'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'pallet-pool'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/pool"
+name = 'pallet-nav-feed'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/nav-feed"
 version = '2.0.0'
 
 [package.metadata.docs.rs]
@@ -21,6 +21,9 @@ sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = 
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
+# our pallets
+pallet-pool = { path = "../pool", default-features = false}
+
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -35,4 +38,5 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'pallet-timestamp/std',
+    'pallet-pool/std'
 ]
