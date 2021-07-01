@@ -58,14 +58,14 @@ pub mod pallet {
 
 	/// Stores the PoolInfo against a poolID
 	#[pallet::storage]
-	#[pallet::getter(fn pool_info)]
+	#[pallet::getter(fn get_pool_info)]
 	pub(super) type PoolInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolID, PoolData<T::AccountId>>;
 
-	/// Stores the PoolInfo against a poolID
+	/// Stores the next pool_id that will be created.
 	#[pallet::storage]
-	#[pallet::getter(fn pool_idx)]
-	pub(super) type PoolIndex<T: Config> = StorageValue<_, T::PoolID, OptionQuery>;
+	#[pallet::getter(fn get_pool_nonce)]
+	pub(super) type PoolNonce<T: Config> = StorageValue<_, T::PoolID, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -84,10 +84,10 @@ pub mod pallet {
 		pub fn create_pool(origin: OriginFor<T>, name: String) -> DispatchResult {
 			let creator = ensure_signed(origin)?;
 			let pd = PoolData { creator, name };
-			let pool_id = PoolIndex::<T>::get().unwrap_or_default();
+			let pool_id = PoolNonce::<T>::get();
 			PoolInfo::<T>::insert(pool_id, pd);
-			let new_pool_idx = pool_id + T::PoolID::one();
-			PoolIndex::<T>::set(Some(new_pool_idx));
+			let next_pool_id = pool_id + T::PoolID::one();
+			PoolNonce::<T>::set(next_pool_id);
 			Self::deposit_event(Event::PoolCreated(pool_id));
 			Ok(())
 		}
