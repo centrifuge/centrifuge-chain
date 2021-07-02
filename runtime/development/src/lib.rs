@@ -619,6 +619,7 @@ impl pallet_claims::Config for Runtime {
 impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
+	type BalanceRatio = sp_runtime::FixedU128;
 	type PoolId = u32;
 	type TrancheId = u8;
 	type EpochId = u32;

@@ -5757,6 +5757,7 @@ dependencies = [
  "frame-system",
  "max-encoded-len",
  "orml-traits",
+ "pallet-timestamp",
  "parity-scale-codec",
  "serde",
  "sp-core",

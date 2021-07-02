@@ -15,32 +15,44 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
+use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
+use pallet_timestamp::Pallet as Timestamp;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, Saturating,
-		StaticLookup, StoredMapError, Zero,
+		AccountIdConversion, AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, One,
+		Saturating, StaticLookup, StoredMapError, Zero,
 	},
-	Perquintill, TypeId,
+	FixedPointNumber, Perquintill, TypeId,
 };
 use sp_std::vec::Vec;
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
-pub struct Tranche {
-	pub interest_per_sec: Perquintill,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
-pub struct PoolDetails<AccountId, CurrencyId> {
-	pub owner: AccountId,
-	pub currency: CurrencyId,
-	pub tranches: Vec<Tranche>,
-}
-
 pub trait TrancheToken<T: Config> {
 	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+pub struct Tranche<Balance> {
+	pub interest_per_sec: Perquintill,
+	pub min_subordination_ratio: Perquintill,
+	pub epoch_supply: Balance,
+	pub epoch_redeem: Balance,
+	pub is_closing: bool,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Timestamp> {
+	pub owner: AccountId,
+	pub currency: CurrencyId,
+	pub tranches: Vec<Tranche<Balance>>,
+	pub current_epoch: EpochId,
+	pub last_epoch_closed: Timestamp,
+	pub last_epoch_executed: EpochId,
+	pub closing_epoch: Option<EpochId>,
+	pub max_reserve: Balance,
+	pub available_reserve: Balance,
 }
 
 #[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
@@ -60,16 +72,33 @@ impl<PoolId, TrancheId> TypeId for TrancheLocator<PoolId, TrancheId> {
 	const TYPE_ID: [u8; 4] = *b"trnc";
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+pub struct PoolLocator<PoolId> {
+	pub pool: PoolId,
+}
+
+impl<PoolId> TypeId for PoolLocator<PoolId> {
+	const TYPE_ID: [u8; 4] = *b"pool";
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
+pub struct EpochDetails<Balance> {
+	pub supply_fulfillment: Balance,
+	pub redeem_fulfillment: Balance,
+	pub token_price: Balance,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_timestamp::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
+		type BalanceRatio: Member + Parameter + Default + Copy + FixedPointNumber;
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 		type TrancheId: Member
 			+ Parameter
@@ -77,9 +106,18 @@ pub mod pallet {
 			+ Copy
 			+ HasCompact
 			+ MaxEncodedLen
-			+ Into<usize>;
-		type EpochId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
-		type CurrencyId: Parameter;
+			+ Into<usize>
+			+ TryFrom<usize>;
+		type EpochId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ Zero
+			+ One
+			+ AddAssign;
+		type CurrencyId: Parameter + Copy;
 		type Tokens: MultiCurrency<
 			Self::AccountId,
 			Balance = Self::Balance,
@@ -94,8 +132,12 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn pool)]
-	pub type Pool<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetails<T::AccountId, T::CurrencyId>>;
+	pub type Pool<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::Moment>,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order)]
@@ -107,6 +149,17 @@ pub mod pallet {
 		T::AccountId,
 		UserOrder<T::Balance, T::EpochId>,
 		ValueQuery,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn epoch)]
+	pub type Epoch<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		TrancheLocator<T::PoolId, T::TrancheId>,
+		Blake2_128Concat,
+		T::EpochId,
+		EpochDetails<T::Balance>,
 	>;
 
 	// Pallets use events to inform users when important changes are made.
@@ -134,8 +187,9 @@ pub mod pallet {
 		pub fn create_pool(
 			origin: OriginFor<T>,
 			id: T::PoolId,
-			interests: Vec<u8>,
+			tranches: Vec<(u8, u8)>,
 			currency: T::CurrencyId,
+			max_reserve: T::Balance,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
@@ -148,15 +202,21 @@ pub mod pallet {
 			// tranche must have an interest rate of 0,
 			// indicating that it recieves all remaining
 			// equity
-			ensure!(interests.last() == Some(&0), Error::<T>::Invalid);
+			ensure!(tranches.last() == Some(&(0, 0)), Error::<T>::Invalid);
 
-			let tranches = interests
+			let tranches = tranches
 				.into_iter()
-				.map(|interest| {
+				.map(|(interest, sub_percent)| {
 					const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 					let interest_per_sec =
 						Perquintill::from_percent(interest.into()) / SECS_PER_YEAR;
-					Tranche { interest_per_sec }
+					Tranche {
+						interest_per_sec,
+						min_subordination_ratio: Perquintill::from_percent(sub_percent.into()),
+						epoch_supply: Zero::zero(),
+						epoch_redeem: Zero::zero(),
+						is_closing: false,
+					}
 				})
 				.collect();
 			Pool::<T>::insert(
@@ -165,6 +225,12 @@ pub mod pallet {
 					owner: owner.clone(),
 					currency,
 					tranches,
+					current_epoch: One::one(),
+					last_epoch_closed: Default::default(),
+					last_epoch_executed: Zero::zero(),
+					closing_epoch: None,
+					max_reserve,
+					available_reserve: Zero::zero(),
 				},
 			);
 			Self::deposit_event(Event::PoolCreated(id, owner));
@@ -180,9 +246,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			// TODO: Ensure this account is authorized for this tranche
-			let currency = Pool::<T>::try_get(pool)
-				.map_err(|_| Error::<T>::Invalid)?
-				.currency;
+			let (currency, epoch) = {
+				let pool = Pool::<T>::try_get(pool).map_err(|_| Error::<T>::Invalid)?;
+				(pool.currency, pool.current_epoch)
+			};
 			let tranche = TrancheLocator { pool, tranche };
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
@@ -190,11 +257,28 @@ pub mod pallet {
 					// Transfer tokens to the tranche account
 					let transfer_amount = amount - order.supply;
 					T::Tokens::transfer(currency, &who, &tranche.into_account(), transfer_amount)?;
+					Pool::<T>::try_mutate(tranche.pool, |pool| {
+						if let Some(pool) = pool {
+							pool.tranches[tranche.tranche.into()].epoch_supply += transfer_amount;
+							Ok(())
+						} else {
+							Err(Error::<T>::Invalid)
+						}
+					})?;
 				} else if amount < order.supply {
 					let transfer_amount = order.supply - amount;
 					T::Tokens::transfer(currency, &tranche.into_account(), &who, transfer_amount)?;
+					Pool::<T>::try_mutate(tranche.pool, |pool| {
+						if let Some(pool) = pool {
+							pool.tranches[tranche.tranche.into()].epoch_supply += transfer_amount;
+							Ok(())
+						} else {
+							Err(Error::<T>::Invalid)
+						}
+					})?;
 				}
 				order.supply = amount;
+				order.epoch = epoch;
 				Ok(())
 			})
 		}
@@ -209,6 +293,9 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			// TODO: Ensure this account is authorized for this tranche
 			let currency = T::TrancheToken::tranche_token(pool, tranche);
+			let epoch = Pool::<T>::try_get(pool)
+				.map_err(|_| Error::<T>::Invalid)?
+				.current_epoch;
 			let tranche = TrancheLocator { pool, tranche };
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
@@ -216,11 +303,76 @@ pub mod pallet {
 					// Transfer tokens to the tranche account
 					let transfer_amount = amount - order.supply;
 					T::Tokens::transfer(currency, &who, &tranche.into_account(), transfer_amount)?;
+					Pool::<T>::try_mutate(tranche.pool, |pool| {
+						if let Some(pool) = pool {
+							pool.tranches[tranche.tranche.into()].epoch_redeem += transfer_amount;
+							Ok(())
+						} else {
+							Err(Error::<T>::Invalid)
+						}
+					})?;
 				} else if amount < order.redeem {
 					let transfer_amount = order.supply - amount;
 					T::Tokens::transfer(currency, &tranche.into_account(), &who, transfer_amount)?;
+					Pool::<T>::try_mutate(tranche.pool, |pool| {
+						if let Some(pool) = pool {
+							pool.tranches[tranche.tranche.into()].epoch_redeem -= transfer_amount;
+							Ok(())
+						} else {
+							Err(Error::<T>::Invalid)
+						}
+					})?;
 				}
 				order.redeem = amount;
+				order.epoch = epoch;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			ensure_signed(origin)?;
+			let pool_account = PoolLocator { pool: pool_id }.into_account();
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::Invalid)?;
+				ensure!(!pool.closing_epoch.is_some(), Error::<T>::Invalid);
+				let closing_epoch = pool.current_epoch;
+				pool.current_epoch += One::one();
+				pool.last_epoch_closed = Timestamp::<T>::get();
+				pool.available_reserve = Zero::zero();
+
+				if pool
+					.tranches
+					.iter()
+					.all(|tranche| tranche.epoch_supply.is_zero() && tranche.epoch_redeem.is_zero())
+				{
+					// This epoch is a no-op. Finish executing it.
+					for tranche in 0..pool.tranches.len() {
+						let tranche = TrancheLocator {
+							pool: pool_id,
+							tranche: T::TrancheId::try_from(tranche)
+								.map_err(|_| Error::<T>::Invalid)?,
+						};
+						let epoch: EpochDetails<T::Balance> = Default::default();
+						Epoch::<T>::insert(tranche, closing_epoch, epoch)
+					}
+					pool.available_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
+					pool.last_epoch_executed += One::one();
+					return Ok(());
+				}
+
+				// Not a no-op - go through a proper closing.
+				pool.closing_epoch = Some(closing_epoch);
+				for tranche in &mut pool.tranches {
+					tranche.is_closing = true;
+				}
+
+				// TODO: get NAV
+				// TODO: get reserve balance
+				// TODO: calculate token prices
+				// TODO: handle junior tranches being wiped out?
+				// TODO: convert redeem orders
+				// TODO: Execute epoch if possible
 				Ok(())
 			})
 		}
