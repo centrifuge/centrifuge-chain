@@ -55,6 +55,12 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Timestamp> {
 	pub available_reserve: Balance,
 }
 
+impl<AccountId, CurrencyId, EpochId, Balance, Timestamp> TypeId
+	for PoolDetails<AccountId, CurrencyId, EpochId, Balance, Timestamp>
+{
+	const TYPE_ID: [u8; 4] = *b"pdts";
+}
+
 #[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
 pub struct UserOrder<Balance, EpochId> {
 	pub supply: Balance,
@@ -66,6 +72,12 @@ pub struct UserOrder<Balance, EpochId> {
 pub struct TrancheLocator<PoolId, TrancheId> {
 	pub pool: PoolId,
 	pub tranche: TrancheId,
+}
+
+#[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+pub struct ReserveDetails<Balance> {
+	pub currency_available: Balance,
+	pub total_balance: Balance,
 }
 
 impl<PoolId, TrancheId> TypeId for TrancheLocator<PoolId, TrancheId> {
@@ -129,6 +141,11 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+
+	#[pallet::storage]
+	#[pallet::getter(fn reserve)]
+	pub type Reserve<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, ReserveDetails<T::Balance>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn pool)]
@@ -373,6 +390,75 @@ pub mod pallet {
 				// TODO: handle junior tranches being wiped out?
 				// TODO: convert redeem orders
 				// TODO: Execute epoch if possible
+				Ok(())
+			})
+		}
+
+		// Reserve Operations
+
+		#[pallet::weight(100)]
+		pub fn deposit(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
+			let who = ensure_signed(origin)?;
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::Invalid)?;
+
+			if !Reserve::<T>::contains_key(pool_id) {
+				let reserve_aux = ReserveDetails {
+					currency_available: Zero::zero(),
+					total_balance: amount,
+				};
+				// Transfer tokens to reserve's pool account
+				T::Tokens::transfer(pool.currency, &who, &pool.into_account(), amount)?;
+				Reserve::<T>::insert(pool_id, reserve_aux);
+				return Ok(());
+			}
+
+			Reserve::<T>::try_mutate(&pool_id, |reserve| -> DispatchResult {
+				if let Some(reserve) = reserve {
+					// Transfer tokens to reserve's pool account
+					T::Tokens::transfer(pool.currency, &who, &pool.into_account(), amount)?;
+					reserve.total_balance = reserve.total_balance.saturating_add(amount);
+					reserve.currency_available = reserve.currency_available;
+				}
+
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn payout(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
+			let who = ensure_signed(origin)?;
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::Invalid)?;
+
+			if !Reserve::<T>::contains_key(pool_id) {
+				let reserve_aux = ReserveDetails {
+					currency_available: Zero::zero(),
+					total_balance: amount,
+				};
+				// Transfer tokens from reserve's pool account
+				T::Tokens::transfer(pool.currency, &pool.into_account(), &who, amount)?;
+				Reserve::<T>::insert(pool_id, reserve_aux);
+				return Ok(());
+			}
+
+			Reserve::<T>::try_mutate(&pool_id, |reserve| -> DispatchResult {
+				if let Some(reserve) = reserve {
+					// Transfer tokens from reserve's pool account
+					T::Tokens::transfer(pool.currency, &pool.into_account(), &who, amount)?;
+					reserve.total_balance = reserve.total_balance.saturating_sub(amount);
+					reserve.currency_available = reserve.currency_available;
+				}
 				Ok(())
 			})
 		}
