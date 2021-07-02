@@ -94,10 +94,10 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
-pub struct EpochDetails<Balance> {
-	pub supply_fulfillment: Balance,
-	pub redeem_fulfillment: Balance,
-	pub token_price: Balance,
+pub struct EpochDetails<BalanceRatio> {
+	pub supply_fulfillment: Perquintill,
+	pub redeem_fulfillment: Perquintill,
+	pub token_price: BalanceRatio,
 }
 
 #[frame_support::pallet]
@@ -176,7 +176,7 @@ pub mod pallet {
 		TrancheLocator<T::PoolId, T::TrancheId>,
 		Blake2_128Concat,
 		T::EpochId,
-		EpochDetails<T::Balance>,
+		EpochDetails<T::BalanceRatio>,
 	>;
 
 	// Pallets use events to inform users when important changes are made.
@@ -370,7 +370,7 @@ pub mod pallet {
 							tranche: T::TrancheId::try_from(tranche)
 								.map_err(|_| Error::<T>::Invalid)?,
 						};
-						let epoch: EpochDetails<T::Balance> = Default::default();
+						let epoch: EpochDetails<T::BalanceRatio> = Default::default();
 						Epoch::<T>::insert(tranche, closing_epoch, epoch)
 					}
 					pool.available_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
