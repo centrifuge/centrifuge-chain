@@ -631,14 +631,15 @@ impl pallet_claims::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxAccounts: u64 = 1000;
+	pub const MaxAccounts: u64 = 100;
+	pub const MaxVestings: u64 = 10;
 }
 
 // Implement the migration manager pallet
 // The actual associated type, which executes the migration can be found in the migration folder
 impl pallet_migration_manager::Config for Runtime {
 	type MaxAccounts = MaxAccounts;
-	type Balance = Balance;
+	type MaxVestings = MaxVestings;
 	type Event = Event;
 	type WeightInfo = ();
 }
