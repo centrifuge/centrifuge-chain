@@ -31,15 +31,20 @@ use sp_std::marker::PhantomData;
 pub trait WeightInfo {
 	fn migrate_system_account(num_accounts: u64) -> Weight;
 	fn migrate_balances_issuance() -> Weight;
+	fn migrate_vesting_vesting(num_vestings: u64) -> Weight;
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn migrate_system_account(num_accounts: u64) -> Weight {
-		0
+		10_0000
 	}
 
 	fn migrate_balances_issuance() -> Weight {
-		0
+		10_0000
+	}
+
+	fn migrate_vesting_vesting(num_vestings: u64) -> Weight {
+		10_000
 	}
 }

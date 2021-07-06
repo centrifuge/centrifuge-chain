@@ -5,8 +5,7 @@
 //! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.  
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::sp_runtime::traits::Zero;
-use frame_support::weights::Weight;
+use frame_support::traits::Currency;
 
 pub use pallet::*;
 pub use weights::*;
@@ -24,21 +23,22 @@ pub mod mock;
 
 pub mod benchmarking;
 
+type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
-	use frame_support::sp_runtime::traits::{Convert, Saturating};
-	use frame_support::sp_runtime::traits::{One, Zero};
 	use frame_support::transactional;
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
-	use sp_version::RuntimeVersion;
 
 	// Import various types used to declare pallet in scope.
 	use super::*;
-	use frame_support::sp_runtime::traits::AtLeast32BitUnsigned;
-	use frame_support::sp_std::fmt::Debug;
+	use frame_support::traits::VestingSchedule;
+	use pallet_vesting::VestingInfo;
 
 	pub type NumAccounts = u64;
 
@@ -49,20 +49,16 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		type Balance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ codec::Codec
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaxEncodedLen;
-
+	pub trait Config:
+		frame_system::Config + pallet_vesting::Config + pallet_balances::Config
+	{
 		/// Maximum number of accounts that can be migrated at once
 		#[pallet::constant]
 		type MaxAccounts: Get<u64>;
+
+		/// Maximum number of vestings that can be migrated at once
+		#[pallet::constant]
+		type MaxVestings: Get<u64>;
 
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -97,6 +93,16 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Number of accounts that have been migrated
 		MigratedSystemAccounts(u64),
+
+		/// Number of vesting that have been migrated
+		MigratedVestingAccounts(u64),
+
+		/// Number of vesting that have been migrated
+		MigratedTotalIssuance(T::Balance),
+
+		/// This is an error that must be dispatched as an Event, as we do not want to fail the whole batch
+		/// when one account fails. Should also not happen, as we take them from mainnet. But...
+		FailedToMigrateVestingFor(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -133,17 +139,53 @@ pub mod pallet {
 			// TODO: TryInto
 			Self::deposit_event(Event::<T>::MigratedSystemAccounts(num_accounts as u64));
 
+			// TODO: Calculate the actual weight here with the length of the vector being submitted
 			Ok(().into())
 		}
+
+		/// Calley better be sure, that the total issuance matches the actual total issuance in the system...
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_balances_issuance())]
 		#[transactional]
 		pub fn migrate_balances_issuance(
 			origin: OriginFor<T>,
 			total_issuance: T::Balance,
 		) -> DispatchResultWithPostInfo {
-			// TODO: Hard code key or get key for total issuance and inject
-			// storage::unhashed::put_raw(key, total_issuance.encode())
+			ensure_root(origin)?;
 
+			let key = <pallet_balances::pallet::TotalIssuance<T> as frame_support::storage::generator::StorageValue<T::Balance>>::storage_value_final_key();
+
+			storage::unhashed::put_raw(&key[..], total_issuance.encode().as_slice());
+
+			Self::deposit_event(Event::<T>::MigratedTotalIssuance(total_issuance));
+
+			Ok(().into())
+		}
+
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_vesting_vesting(T::MaxVestings::get()))]
+		#[transactional]
+		pub fn migrate_vesting_vesting(
+			origin: OriginFor<T>,
+			vestings: Vec<(T::AccountId, VestingInfo<BalanceOf<T>, T::BlockNumber>)>,
+		) -> DispatchResultWithPostInfo {
+			ensure_root(origin)?;
+
+			let mut trying = vestings.len() as u64;
+
+			for (who, schedule) in vestings {
+				pallet_vesting::Pallet::<T>::add_vesting_schedule(
+					&who,
+					schedule.locked,
+					schedule.per_block,
+					schedule.starting_block,
+				)
+				.map_err(|_| {
+					Self::deposit_event(Event::<T>::FailedToMigrateVestingFor(who));
+					trying -= 1;
+				});
+			}
+
+			Self::deposit_event(Event::<T>::MigratedVestingAccounts(trying));
+			// TODO: Calculate the actual weight here with the length of the vector being submitted
 			Ok(().into())
 		}
 	}
