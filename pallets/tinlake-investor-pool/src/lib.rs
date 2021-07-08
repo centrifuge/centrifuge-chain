@@ -25,7 +25,7 @@ use sp_runtime::{
 		AccountIdConversion, AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, One,
 		Saturating, StaticLookup, StoredMapError, Zero,
 	},
-	FixedPointNumber, Perquintill, TypeId,
+	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
 use sp_std::vec::Vec;
 
@@ -39,7 +39,6 @@ pub struct Tranche<Balance> {
 	pub min_subordination_ratio: Perquintill,
 	pub epoch_supply: Balance,
 	pub epoch_redeem: Balance,
-	pub is_closing: bool,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
@@ -97,8 +96,18 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_timestamp::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
-		type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
-		type BalanceRatio: Member + Parameter + Default + Copy + FixedPointNumber;
+		type Balance: Member
+			+ Parameter
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ MaxEncodedLen
+			+ FixedPointOperand;
+		type BalanceRatio: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ FixedPointNumber<Inner = Self::Balance>;
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 		type TrancheId: Member
 			+ Parameter
@@ -215,7 +224,6 @@ pub mod pallet {
 						min_subordination_ratio: Perquintill::from_percent(sub_percent.into()),
 						epoch_supply: Zero::zero(),
 						epoch_redeem: Zero::zero(),
-						is_closing: false,
 					}
 				})
 				.collect();
@@ -248,6 +256,7 @@ pub mod pallet {
 			// TODO: Ensure this account is authorized for this tranche
 			let (currency, epoch) = {
 				let pool = Pool::<T>::try_get(pool).map_err(|_| Error::<T>::Invalid)?;
+				ensure!(pool.closing_epoch.is_none(), Error::<T>::Invalid);
 				(pool.currency, pool.current_epoch)
 			};
 			let tranche = TrancheLocator { pool, tranche };
@@ -293,6 +302,13 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			// TODO: Ensure this account is authorized for this tranche
 			let currency = T::TrancheToken::tranche_token(pool, tranche);
+			ensure!(
+				Pool::<T>::try_get(pool)
+					.map_err(|_| Error::<T>::Invalid)?
+					.closing_epoch
+					.is_none(),
+				Error::<T>::Invalid
+			);
 			let epoch = Pool::<T>::try_get(pool)
 				.map_err(|_| Error::<T>::Invalid)?
 				.current_epoch;
@@ -335,11 +351,12 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool: pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::Invalid)?;
-				ensure!(!pool.closing_epoch.is_some(), Error::<T>::Invalid);
+				ensure!(pool.closing_epoch.is_none(), Error::<T>::Invalid);
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
 				pool.last_epoch_closed = Timestamp::<T>::get();
 				pool.available_reserve = Zero::zero();
+				let epoch_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
 
 				if pool
 					.tranches
@@ -356,22 +373,19 @@ pub mod pallet {
 						let epoch: EpochDetails<T::BalanceRatio> = Default::default();
 						Epoch::<T>::insert(tranche, closing_epoch, epoch)
 					}
-					pool.available_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
+					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
 					return Ok(());
 				}
 
 				// Not a no-op - go through a proper closing.
 				pool.closing_epoch = Some(closing_epoch);
-				for tranche in &mut pool.tranches {
-					tranche.is_closing = true;
-				}
 
 				// TODO: get NAV
 				// TODO: get reserve balance
 				// TODO: calculate token prices
 				// TODO: handle junior tranches being wiped out?
-				// TODO: convert redeem orders
+				// TODO: convert redeem orders to currency amounts
 				// TODO: Execute epoch if possible
 				Ok(())
 			})
