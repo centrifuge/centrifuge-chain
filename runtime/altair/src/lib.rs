@@ -74,7 +74,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1002,
+	spec_version: 1003,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -339,8 +339,8 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	// Staking,
-	// Vesting,
+	_Staking,
+	NonProxy,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -357,22 +357,22 @@ impl InstanceFilter<Call> for ProxyType {
 				// Call::Democracy(..) |
 				Call::Council(..) | Call::Elections(..) | Call::Utility(..)
 			),
-			// ProxyType::Staking => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			// 	Call::Utility(..)
-			// ),
-			// ProxyType::Vesting => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			//     Call::Democracy(..) |
-			// 	Call::Council(..) |
-			// 	Call::Elections(..) |
-			// 	Call::Vesting(pallet_vesting::Call::vest(..)) |
-			// 	Call::Vesting(pallet_vesting::Call::vest_other(..))
-			// ),
+			ProxyType::_Staking => false,
+			ProxyType::NonProxy => !matches!(
+				c,
+				Call::Proxy(pallet_proxy::Call::add_proxy(..))
+					| Call::Proxy(pallet_proxy::Call::remove_proxy(..))
+					| Call::Proxy(pallet_proxy::Call::remove_proxies(..))
+					| Call::Proxy(pallet_proxy::Call::anonymous(..))
+					| Call::Proxy(pallet_proxy::Call::kill_anonymous(..))
+					| Call::Proxy(pallet_proxy::Call::announce(..))
+					| Call::Proxy(pallet_proxy::Call::remove_announcement(..))
+					| Call::Proxy(pallet_proxy::Call::reject_announcement(..))
+					| Call::Proxy(pallet_proxy::Call::proxy_announced(..))
+			),
 		}
 	}
+
 	fn is_superset(&self, o: &Self) -> bool {
 		match (self, o) {
 			(x, y) if x == y => true,
@@ -631,15 +631,17 @@ impl pallet_claims::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxAccounts: u64 = 100;
-	pub const MaxVestings: u64 = 10;
+	pub const MigrationMaxAccounts: u64 = 100;
+	pub const MigrationMaxVestings: u64 = 10;
+	pub const MigrationMaxProxies: u64 = 10;
 }
 
 // Implement the migration manager pallet
 // The actual associated type, which executes the migration can be found in the migration folder
 impl pallet_migration_manager::Config for Runtime {
-	type MaxAccounts = MaxAccounts;
-	type MaxVestings = MaxVestings;
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxVestings = MigrationMaxVestings;
+	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = ();
 }
