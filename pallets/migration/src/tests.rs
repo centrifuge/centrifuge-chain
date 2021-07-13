@@ -79,3 +79,33 @@ fn migrate_system_account_to_many_accounts() {
 			);
 		});
 }
+
+fn migrate_total_issuance() {
+	TestExternalitiesBuilder::default()
+		.existential_deposit(1)
+		.build(|| {});
+}
+
+fn migrate_vesting_vesting() {
+	TestExternalitiesBuilder::default()
+		.existential_deposit(1)
+		.build(|| {});
+}
+
+fn migrate_vesting_vesting_to_many_vestings() {
+	TestExternalitiesBuilder::default()
+		.existential_deposit(1)
+		.build(|| {});
+}
+
+fn migrate_proxy_proxies() {
+	TestExternalitiesBuilder::default()
+		.existential_deposit(1)
+		.build(|| {});
+}
+
+fn migrate_proxy_proxies_to_many_proxies() {
+	TestExternalitiesBuilder::default()
+		.existential_deposit(1)
+		.build(|| {});
+}

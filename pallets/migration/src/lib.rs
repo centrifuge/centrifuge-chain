@@ -71,8 +71,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MigrationMaxProxies: Get<u64>;
 
-		/// Conversion between
-
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -109,6 +107,9 @@ pub mod pallet {
 
 		/// Number of vesting that have been migrated
 		MigratedVestingAccounts(u64),
+
+		/// Number of proxies that have been migrated
+		MigratedProxyProxies(u64),
 
 		/// Number of vesting that have been migrated
 		/// [`OldIssuance`, `NewIssuance`]
@@ -150,16 +151,22 @@ pub mod pallet {
 		/// Too many accounts in the vector for the call of `migrate_system_account`.
 		TooManyAccounts,
 
-		/// Too many accounts in the vector for the call of `migrate_system_account`.
+		/// Too many vestingInfos in the vector for the call of `migrate_veting_vesting`.
 		TooManyVestings,
 
-		/// Too many accounts in the vector for the call of `migrate_system_account`.
+		/// Too many proxies in the vector for the call of `migrate_proxy_proxies`.
 		TooManyProxies,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Set the given fee for the key
+		/// Migrating the Account informations from frame_system.
+		///
+		/// This call takes the raw scale encoded key (= patricia-key for each account in the `Account` storage and inserts
+		/// the provided scale encoded value (= `AccountInfo`) into the underlying DB.
+		///
+		/// Note: As we are converting from substrate-v2 to substrate-v3 we must do type-conversions. Those conversions are done
+		/// off-chain.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_system_account(T::MigrationMaxAccounts::get()))]
 		#[transactional]
 		pub fn migrate_system_account(
@@ -181,14 +188,22 @@ pub mod pallet {
 				storage::unhashed::put_raw(key.as_slice(), value.as_slice());
 			}
 
-			// TODO: TryInto
+			// This is safe as MigrationMaxAccounts is a u64
 			Self::deposit_event(Event::<T>::MigratedSystemAccounts(num_accounts as u64));
 
-			// TODO: Calculate the actual weight here with the length of the vector being submitted
-			Ok(().into())
+			Ok(
+				Some(<T as pallet::Config>::WeightInfo::migrate_system_account(
+					num_accounts as u64,
+				))
+				.into(),
+			)
 		}
 
-		/// Calley better be sure, that the total issuance matches the actual total issuance in the system...
+		/// Migrates a the `TotalIssuance`.
+		///
+		/// The provide balance here, will be ADDED to the existing `TotalIssuance` of the system.
+		/// Calley better be sure, that the total issuance matches the actual total issuance in the system,
+		/// which means, that the `AccountInfo` from the frame_system is migrated afterwards.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_balances_issuance())]
 		#[transactional]
 		pub fn migrate_balances_issuance(
@@ -212,6 +227,10 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		/// Migrates vesting information to this system.
+		///
+		/// The `VestingInfo` is adapted off-chain, so that it represents the correct vesting information
+		/// on this chain.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_vesting_vesting(T::MigrationMaxVestings::get()))]
 		#[transactional]
 		pub fn migrate_vesting_vesting(
@@ -228,7 +247,9 @@ pub mod pallet {
 				Error::<T>::TooManyVestings
 			);
 
+			// This is safe as MigrationMaxVestings is a u64
 			let mut trying = vestings.len() as u64;
+			let num_vestings = trying;
 
 			for (who, schedule) in vestings {
 				let _not_care_here = pallet_vesting::Pallet::<T>::add_vesting_schedule(
@@ -252,16 +273,29 @@ pub mod pallet {
 			}
 
 			Self::deposit_event(Event::<T>::MigratedVestingAccounts(trying));
-			// TODO: Calculate the actual weight here with the length of the vector being submitted
-			Ok(().into())
+
+			Ok(
+				Some(<T as pallet::Config>::WeightInfo::migrate_vesting_vesting(
+					num_vestings,
+				))
+				.into(),
+			)
 		}
 
+		/// Migrates to `Proxies` storage from another chain.
+		///
+		/// As the `Proxies` storage changed between v2 and v3, a transformation for the v2 data is done off-chain.
+		/// The input defines an array of of tuples, where each tuple defines, the proxied account, the reserve that
+		/// must be done on this account and the proxies for this account.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::migrate_proxy_proxies(T::MigrationMaxProxies::get()))]
 		#[transactional]
 		pub fn migrate_proxy_proxies(
 			origin: OriginFor<T>,
 			proxies: Vec<(
 				T::AccountId,
+				<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
+					<T as frame_system::Config>::AccountId,
+				>>::Balance,
 				(
 					BoundedVec<
 						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
@@ -283,39 +317,39 @@ pub mod pallet {
 				Error::<T>::TooManyProxies
 			);
 
+			// This is safe as MigrationMaxProxies is a u64
 			let mut trying = proxies.len() as u64;
+			let num_proxies = trying;
 
-			for (account_id, (data, deposit)) in proxies {
-				let key = <pallet_proxy::pallet::Proxies<T> as frame_support::storage::generator::StorageMap<
-					T::AccountId,
-					(BoundedVec<
-						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
-						<T as pallet_proxy::Config>::MaxProxies,
-					>,
-					 <<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<<T as frame_system::Config>::AccountId>>::Balance
-				)>>::storage_map_final_key(&account_id);
-
+			for (account_id, reserve, (data, deposit)) in proxies {
 				let _not_care_result = <<T as pallet_proxy::Config>::Currency
-					as frame_support::traits::ReservableCurrency<T::AccountId>>::reserve(&account_id, deposit)
+					as frame_support::traits::ReservableCurrency<T::AccountId>>::reserve(&account_id, reserve)
 						.map_err(|_| {
 							Self::deposit_event(Event::<T>::FailedToMigrateProxyDataFor(account_id.clone()));
 							trying -= 1;
 						})
 						.map(|_| {
+							let len = data.len() as u64;
+							let val = (data, deposit);
+							pallet_proxy::Proxies::<T>::insert(&account_id, val);
+
 							Self::deposit_event(Event::<T>::MigratedProxyDataFor(
 								account_id,
 								deposit,
-								data.len() as u64
+								len
 							));
 							()
 						});
-
-				storage::unhashed::put_raw(&key[..], (data, deposit).encode().as_slice());
 			}
 
-			Ok(().into())
+			Self::deposit_event(Event::<T>::MigratedProxyProxies(trying));
+
+			Ok(
+				Some(<T as pallet::Config>::WeightInfo::migrate_proxy_proxies(
+					num_proxies,
+				))
+				.into(),
+			)
 		}
 	}
 }
-
-impl<T: Config> Pallet<T> {}
