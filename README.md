@@ -120,8 +120,15 @@ To run a validator go to our [docs](https://docs.centrifuge.io/chain/get-started
 
 #### 3. Amber
 
-See our [docs](https://docs.centrifuge.io/chain/get-started/validate/)
+To run a node:
 
+```bash
+./target/release/centrifuge-chain \
+  --chain=amber \
+  --name "My node name" \
+  --bootnodes=/ip4/34.107.94.59/tcp/30333/p2p/12D3KooWQ3YL8sP2M1S9PVNj8JjmACUjawwRPckzL8fJmXZ7YRPY \
+  --bootnodes=/ip4/35.242.247.213/tcp/30333/p2p/12D3KooWECFKJirQiVHeidSkwrEocPr7wkUw3ijbJKNyvCVd3xcu
+```
 ### Single node development chain
 
 Purge any existing developer chain state:
