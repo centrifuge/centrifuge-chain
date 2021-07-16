@@ -37,6 +37,7 @@ echo "Unshallowing git"
 FETCH_OUTPUT=$(git fetch --unshallow)
 GIT_STATUS=$?
 if (( $GIT_STATUS != 0 ))
+then
 	echo -e "${red}${bold}GIT ERROR${nc}: $FETCH_OUTPUT"
 	exit 1
 fi
