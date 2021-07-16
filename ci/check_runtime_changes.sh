@@ -33,13 +33,20 @@ OK="${green}${block}OK${nc}"
 ERROR="${red}${block}ERROR${nc}"
 FATAL="${red}${block}FATAL${nc}"
 
+echo "Unshallowing git"
+FETCH_OUTPUT=$(git fetch --unshallow)
+GIT_STATUS=$?
+if (( $GIT_STATUS != 0 ))
+	echo -e "${red}${bold}GIT ERROR${nc}: $FETCH_OUTPUT"
+	exit 1
+fi
+
 # Testing - show available branches and removes in log
 echo "GIT BRANCHES:"
 git branch -a
 
 echo "GIT REMOTES:"
 git remote -v
-
 
 # show the diff of origin/master and this PR sha
 CHANGED_FILES=$(git diff --name-only ${BASE_COMMIT} ${PR_COMMIT} 2>&1 )
