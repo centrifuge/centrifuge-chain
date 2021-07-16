@@ -33,13 +33,6 @@ OK="${green}${block}OK${nc}"
 ERROR="${red}${block}ERROR${nc}"
 FATAL="${red}${block}FATAL${nc}"
 
-# Testing - show available branches and removes in log
-echo "GIT BRANCHES:"
-git branch -a
-
-echo "GIT REMOTES:"
-git remote -v
-
 
 # show the diff of origin/master and this PR sha
 CHANGED_FILES=$(git diff --name-only ${BASE_COMMIT} ${PR_COMMIT} 2>&1 )
