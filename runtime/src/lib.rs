@@ -812,7 +812,7 @@ impl bridge::Trait for Runtime {
 
 parameter_types! {
     pub const ChainId: u8 = 1;
-    pub const ProposalLifetime: u32 = 100;
+    pub const ProposalLifetime: u32 = 1000;
 }
 
 impl chainbridge::Trait for Runtime {
