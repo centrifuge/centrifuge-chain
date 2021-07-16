@@ -457,7 +457,7 @@ parameter_types! {
 	pub const BondingDuration: pallet_staking::EraIndex = 7; // 7 days
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 6; // 6 days, less than bonding duration
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-	pub const MaxNominatorRewardedPerValidator: u32 = 64;
+	pub const MaxNominatorRewardedPerValidator: u32 = 128;
 	pub const ElectionLookahead: BlockNumber = 0;
 	pub const MaxIterations: u32 = 10;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
