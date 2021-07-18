@@ -117,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 242,
+    spec_version: 243,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -457,7 +457,7 @@ parameter_types! {
 	pub const BondingDuration: pallet_staking::EraIndex = 7; // 7 days
 	pub const SlashDeferDuration: pallet_staking::EraIndex = 6; // 6 days, less than bonding duration
 	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
-	pub const MaxNominatorRewardedPerValidator: u32 = 64;
+	pub const MaxNominatorRewardedPerValidator: u32 = 128;
 	pub const ElectionLookahead: BlockNumber = 0;
 	pub const MaxIterations: u32 = 10;
 	// 0.05%. The higher the value, the more strict solution acceptance becomes.
@@ -812,7 +812,7 @@ impl bridge::Trait for Runtime {
 
 parameter_types! {
     pub const ChainId: u8 = 1;
-    pub const ProposalLifetime: u32 = 100;
+    pub const ProposalLifetime: u32 = 1000;
 }
 
 impl chainbridge::Trait for Runtime {
