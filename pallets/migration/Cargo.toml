@@ -27,6 +27,8 @@ pallet-proxy = { git = "https://github.com/centrifuge/substrate", default-featur
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+hex = "0.4.3"
+rand = "0.8.4"
 
 [features]
 default = ['std']
