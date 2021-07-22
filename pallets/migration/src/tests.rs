@@ -130,13 +130,18 @@ fn migrate_total_issuance() {
 			let additional_issuance: Balance =
 				codec::Decode::decode(&mut TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
 
+			let old_issuance = Balances::total_issuance();
+
 			pallet_migration_manager::Pallet::<MockRuntime>::migrate_balances_issuance(
 				Origin::root(),
 				additional_issuance,
 			)
 			.unwrap();
 
-			assert_eq!(additional_issuance, Balances::total_issuance());
+			assert_eq!(
+				additional_issuance + old_issuance,
+				Balances::total_issuance()
+			);
 		});
 }
 

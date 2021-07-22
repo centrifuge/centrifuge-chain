@@ -111,7 +111,7 @@ pub mod pallet {
 		/// Number of proxies that have been migrated
 		MigratedProxyProxies(u64),
 
-		/// Number of vesting that have been migrated
+		/// The new and the old issuance after the migration of issuance.
 		/// [`OldIssuance`, `NewIssuance`]
 		MigratedTotalIssuance(T::Balance, T::Balance),
 
