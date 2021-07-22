@@ -6,10 +6,9 @@
 
 use codec::{Decode, Encode};
 use frame_support::sp_runtime::traits::Convert;
-use frame_support::traits::Filter;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
+	traits::{Filter, InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -20,6 +19,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 pub use pallet_timestamp::Call as TimestampCall;
@@ -46,17 +46,12 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-/// common types for the runtime..
-pub use common::*;
+pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
-use impls::*;
-use pallet_anchors::AnchorData;
 
 /// common types for the runtime.
 pub use runtime_common::*;
-
-use frame_support::traits::Filter;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]

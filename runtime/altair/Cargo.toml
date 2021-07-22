@@ -99,6 +99,7 @@ runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -106,6 +107,7 @@ substrate-wasm-builder = "3.0.0"
 [features]
 default = ["std"]
 std = [
+    "pallet-migration-manager/std",
     "sp-authority-discovery/std",
     "pallet-authority-discovery/std",
     "pallet-authorship/std",
