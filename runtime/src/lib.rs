@@ -253,17 +253,7 @@ impl InstanceFilter<Call> for ProxyType {
                 Call::Session(..) |
 				Call::Utility(..)
             ),
-            ProxyType::NonProxy => !matches!(c,
-                Call::Proxy(pallet_proxy::Call::add_proxy(..)) |
-                Call::Proxy(pallet_proxy::Call::remove_proxy(..)) |
-                Call::Proxy(pallet_proxy::Call::remove_proxies(..)) |
-                Call::Proxy(pallet_proxy::Call::anonymous(..)) |
-                Call::Proxy(pallet_proxy::Call::kill_anonymous(..)) |
-                Call::Proxy(pallet_proxy::Call::announce(..)) |
-                Call::Proxy(pallet_proxy::Call::remove_announcement(..)) |
-                Call::Proxy(pallet_proxy::Call::reject_announcement(..)) |
-                Call::Proxy(pallet_proxy::Call::proxy_announced(..)) |
-            )
+            ProxyType::NonProxy => matches!(c, Call::Proxy(pallet_proxy::Call::proxy(..))) || !matches!(c, Call::Proxy(..))
         }
     }
     fn is_superset(&self, o: &Self) -> bool {
