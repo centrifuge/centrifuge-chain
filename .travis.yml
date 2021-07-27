@@ -13,6 +13,9 @@ branches:
   only:
   - master
 
+git:
+  depth: false
+
 env:
   global:
     - RUST_BACKTRACE=1
