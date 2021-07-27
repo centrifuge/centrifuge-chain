@@ -261,6 +261,7 @@ impl InstanceFilter<Call> for ProxyType {
             (x, y) if x == y => true,
             (ProxyType::Any, _) => true,
             (_, ProxyType::Any) => false,
+            (_, ProxyType::NonProxy) => false,
             (ProxyType::NonTransfer, _) => true,
             _ => false,
         }
