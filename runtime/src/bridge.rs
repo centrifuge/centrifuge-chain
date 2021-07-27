@@ -5,14 +5,14 @@ use codec::{Decode, Encode};
 use unique_assets::traits::Unique;
 use crate::va_registry::types::{RegistryId, AssetId, TokenId};
 use crate::{fees, constants::currency};
-use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get};
+use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get, WithdrawReasons};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
     traits::EnsureOrigin,
 };
 use frame_system::{self as system, ensure_signed, ensure_root};
 use sp_core::U256;
-use sp_runtime::traits::SaturatedConversion;
+use sp_runtime::traits::{CheckedAdd, CheckedSub, SaturatedConversion};
 use sp_std::prelude::*;
 
 /// Abstract identifer of an asset, for a common vocabulary across chains.
@@ -121,12 +121,14 @@ decl_module! {
             let source = ensure_signed(origin)?;
 
             let token_fee: T::Balance = TokenTransferFee::<T>::get();
-			let total_amount = U256::from(amount.saturated_into()).saturating_add(U256::from(token_fee.saturated_into()));
+            let currency_token_fee = TryInto::<u128>::try_into(token_fee).map_err(|_| "Token fee not convertible to currency")?
+                                                     .try_into().map_err(|_| "Token fee not convertible to currency")?;
+            let total_amount = amount.checked_add(&currency_token_fee).ok_or("Fee plus transfer amount not convertible to currency")?;
 
             // Ensure account has enough balance for both fee and transfer
             // Check to avoid balance errors down the line that leave balance storage in an inconsistent state
-            let current_balance = T::Currency::free_balance(&source);
-            ensure!(U256::from(current_balance.saturated_into()) >= total_amount, "Insufficient Balance");
+            let remaining_balance = T::Currency::free_balance(&source).checked_sub(&total_amount).ok_or("Insufficient Balance")?;
+            T::Currency::ensure_can_withdraw(&source, total_amount, WithdrawReasons::all(), remaining_balance).map_err(|_| "Insufficient Balance")?;
 
             ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
 
@@ -264,6 +266,7 @@ mod tests{
 	use super::*;
 	use frame_support::dispatch::DispatchError;
 	use frame_support::{assert_err, assert_noop, assert_ok};
+	use frame_support::traits::LockableCurrency;
 	use codec::Encode;
 	use sp_core::{blake2_256, H256};
 	use frame_support::{ord_parameter_types, parameter_types, weights::Weight};
@@ -545,6 +548,22 @@ mod tests{
 			// Account balance should be reverted to original balance
 			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_B);
 			assert_eq!(account_current_balance, 2000);
+
+                        // Using account with enough balance for fee, but transfer blocked by a lock
+			let lock_amount = 7990 * currency::CFG;
+			<pallet_balances::Module<Test>>::set_lock(*b"testlock", &RELAYER_A, lock_amount, WithdrawReasons::all());
+			assert_err!(
+				PalletBridge::transfer_native(
+					Origin::signed(RELAYER_A),
+					amount.clone(),
+					recipient.clone(),
+					dest_chain,
+				),
+				"Insufficient Balance"
+			);
+			<pallet_balances::Module<Test>>::remove_lock(*b"testlock", &RELAYER_A);
+			account_current_balance = <pallet_balances::Module<Test>>::free_balance(RELAYER_A);
+			assert_eq!(account_current_balance, 10000 * currency::CFG);
 
 			// Success
 			assert_ok!(PalletBridge::transfer_native(
