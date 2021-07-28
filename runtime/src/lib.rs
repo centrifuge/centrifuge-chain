@@ -117,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 243,
+    spec_version: 244,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -231,7 +231,7 @@ pub enum ProxyType {
     NonTransfer,
     Governance,
     Staking,
-    Vesting,
+    NonProxy,
 }
 impl Default for ProxyType { fn default() -> Self { Self::Any } }
 impl InstanceFilter<Call> for ProxyType {
@@ -253,15 +253,7 @@ impl InstanceFilter<Call> for ProxyType {
                 Call::Session(..) |
 				Call::Utility(..)
             ),
-            ProxyType::Vesting => matches!(c,
-                Call::Staking(..) |
-                Call::Session(..) |
-                Call::Democracy(..) |
-				Call::Council(..) |
-				Call::Elections(..) |
-				Call::Vesting(pallet_vesting::Call::vest(..)) |
-				Call::Vesting(pallet_vesting::Call::vest_other(..))
-            ),
+            ProxyType::NonProxy => matches!(c, Call::Proxy(pallet_proxy::Call::proxy(..))) || !matches!(c, Call::Proxy(..))
         }
     }
     fn is_superset(&self, o: &Self) -> bool {
@@ -269,6 +261,7 @@ impl InstanceFilter<Call> for ProxyType {
             (x, y) if x == y => true,
             (ProxyType::Any, _) => true,
             (_, ProxyType::Any) => false,
+            (_, ProxyType::NonProxy) => false,
             (ProxyType::NonTransfer, _) => true,
             _ => false,
         }
