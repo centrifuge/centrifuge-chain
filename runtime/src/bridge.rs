@@ -8,7 +8,7 @@ use crate::{fees, constants::currency};
 use frame_support::traits::{Currency, ExistenceRequirement::AllowDeath, Get, WithdrawReasons};
 use frame_support::{
     decl_error, decl_event, decl_module, decl_storage, dispatch::DispatchResult, ensure,
-    traits::EnsureOrigin,
+    traits::EnsureOrigin, transactional
 };
 use frame_system::{self as system, ensure_signed, ensure_root};
 use sp_core::U256;
@@ -117,68 +117,22 @@ decl_module! {
 
         /// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
         #[weight = 195_000_000]
+        #[transactional]
         pub fn transfer_native(origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
-            let source = ensure_signed(origin)?;
-
-            let token_fee: T::Balance = TokenTransferFee::<T>::get();
-            let currency_token_fee = TryInto::<u128>::try_into(token_fee).map_err(|_| "Token fee not convertible to currency")?
-                                                     .try_into().map_err(|_| "Token fee not convertible to currency")?;
-            let total_amount = amount.checked_add(&currency_token_fee).ok_or("Fee plus transfer amount not convertible to currency")?;
-
-            // Ensure account has enough balance for both fee and transfer
-            // Check to avoid balance errors down the line that leave balance storage in an inconsistent state
-            let remaining_balance = T::Currency::free_balance(&source).checked_sub(&total_amount).ok_or("Insufficient Balance")?;
-            T::Currency::ensure_can_withdraw(&source, total_amount, WithdrawReasons::all(), remaining_balance).map_err(|_| "Insufficient Balance")?;
-
-            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
-
-            // Burn additional fees
-            <fees::Module<T>>::burn_fee(&source, token_fee)?;
-
-            let bridge_id = <chainbridge::Module<T>>::account_id();
-            T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
-
-            let resource_id = T::NativeTokenId::get();
-            <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))?;
-            Ok(())
+            Self::do_transfer_native(origin, amount, recipient, dest_id)
         }
 
         /// Transfer an nft to a whitelisted destination chain. Source nft is locked in bridge account
         /// rather than being burned.
         #[weight = 195_000_000]
+        #[transactional]
         pub fn transfer_asset(origin,
                               recipient: Vec<u8>,
                               from_registry: RegistryId,
                               token_id: TokenId,
                               dest_id: chainbridge::ChainId,
         ) -> DispatchResult {
-            let source = ensure_signed(origin)?;
-
-            // Get resource id from registry
-            let reg: Address = from_registry.into();
-            let reg: Bytes32 = reg.into();
-            let reg: <T as bridge_mapping::Trait>::Address = reg.into();
-            let resource_id = <bridge_mapping::Module<T>>::name_of(reg)
-                .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
-
-            // Burn additional fees
-            let nft_fee: T::Balance = NFT_TOKEN_FEE.saturated_into();
-            <fees::Module<T>>::burn_fee(&source, nft_fee)?;
-
-            // Lock asset by transferring to bridge account
-            let bridge_id = <chainbridge::Module<T>>::account_id();
-            let asset_id = AssetId(from_registry, token_id);
-            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &asset_id)?;
-
-            // Transfer instructions for relayer
-            let tid: &mut [u8] = &mut[0; 32];
-            // Ethereum is big-endian
-            token_id.to_big_endian(tid);
-            <chainbridge::Module<T>>::transfer_nonfungible(dest_id,
-                                                           resource_id.into(),
-                                                           tid.to_vec(),
-                                                           recipient,
-                                                           vec![]/*assetinfo.metadata*/)
+            Self::do_transfer_asset(origin, recipient, from_registry, token_id, dest_id)
         }
 
         //
@@ -259,6 +213,67 @@ impl<T: Trait> Module<T> {
 			.or_else(ensure_root)?;
 		Ok(())
 	}
+
+        fn do_transfer_native(origin: T::Origin, amount: BalanceOf<T>, recipient: Vec<u8>, dest_id: chainbridge::ChainId) -> DispatchResult {
+            let source = ensure_signed(origin)?;
+
+            let token_fee: T::Balance = TokenTransferFee::<T>::get();
+            let currency_token_fee = TryInto::<u128>::try_into(token_fee).map_err(|_| "Token fee not convertible to currency")?
+                                                     .try_into().map_err(|_| "Token fee not convertible to currency")?;
+            let total_amount = amount.checked_add(&currency_token_fee).ok_or("Fee plus transfer amount not convertible to currency")?;
+
+            // Ensure account has enough balance for both fee and transfer
+            // Check to avoid balance errors down the line that leave balance storage in an inconsistent state
+            let remaining_balance = T::Currency::free_balance(&source).checked_sub(&total_amount).ok_or("Insufficient Balance")?;
+            T::Currency::ensure_can_withdraw(&source, total_amount, WithdrawReasons::all(), remaining_balance).map_err(|_| "Insufficient Balance")?;
+
+            ensure!(<chainbridge::Module<T>>::chain_whitelisted(dest_id), Error::<T>::InvalidTransfer);
+
+            // Burn additional fees
+            <fees::Module<T>>::burn_fee(&source, token_fee)?;
+
+            let bridge_id = <chainbridge::Module<T>>::account_id();
+            T::Currency::transfer(&source, &bridge_id, amount.into(), AllowDeath)?;
+
+            let resource_id = T::NativeTokenId::get();
+            <chainbridge::Module<T>>::transfer_fungible(dest_id, resource_id, recipient, U256::from(amount.saturated_into()))?;
+            Ok(())
+        }
+
+        fn do_transfer_asset(origin: T::Origin,
+                              recipient: Vec<u8>,
+                              from_registry: RegistryId,
+                              token_id: TokenId,
+                              dest_id: chainbridge::ChainId,
+        ) -> DispatchResult {
+            let source = ensure_signed(origin)?;
+
+            // Get resource id from registry
+            let reg: Address = from_registry.into();
+            let reg: Bytes32 = reg.into();
+            let reg: <T as bridge_mapping::Trait>::Address = reg.into();
+            let resource_id = <bridge_mapping::Module<T>>::name_of(reg)
+                .ok_or(Error::<T>::ResourceIdDoesNotExist)?;
+
+            // Burn additional fees
+            let nft_fee: T::Balance = NFT_TOKEN_FEE.saturated_into();
+            <fees::Module<T>>::burn_fee(&source, nft_fee)?;
+
+            // Lock asset by transferring to bridge account
+            let bridge_id = <chainbridge::Module<T>>::account_id();
+            let asset_id = AssetId(from_registry, token_id);
+            <nft::Module<T> as Unique>::transfer(&source, &bridge_id, &asset_id)?;
+
+            // Transfer instructions for relayer
+            let tid: &mut [u8] = &mut[0; 32];
+            // Ethereum is big-endian
+            token_id.to_big_endian(tid);
+            <chainbridge::Module<T>>::transfer_nonfungible(dest_id,
+                                                           resource_id.into(),
+                                                           tid.to_vec(),
+                                                           recipient,
+                                                           vec![]/*assetinfo.metadata*/)
+        }
 }
 
 #[cfg(test)]
