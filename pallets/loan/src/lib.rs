@@ -7,7 +7,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::traits::Zero;
 use sp_arithmetic::traits::CheckedAdd;
-use sp_arithmetic::FixedU128;
 use std::fmt::Debug;
 
 #[cfg(feature = "std")]

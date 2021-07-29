@@ -1,5 +1,5 @@
 use crate::math::Adjustment::{Dec, Inc};
-use sp_arithmetic::traits::{checked_pow, SaturatedConversion};
+use sp_arithmetic::traits::checked_pow;
 use sp_arithmetic::FixedPointNumber;
 
 /// calculates the latest cumulative rate since the last
@@ -66,6 +66,7 @@ pub fn rate_per_sec<Rate: FixedPointNumber>(nominal_interest_rate: Rate) -> Opti
 		.and_then(|res| res.checked_add(&Rate::one()))
 }
 
+#[cfg(test)]
 mod tests {
 	use super::*;
 	use frame_support::sp_runtime::traits::CheckedMul;
@@ -83,7 +84,7 @@ mod tests {
 			"conversion should fail"
 		);
 
-		// signed to unsigned should fail
+		// signed to unsigned should fails
 		let b = FixedI128::checked_from_rational(1, 23).unwrap();
 		assert!(
 			convert::<FixedI128, FixedU128>(b).is_none(),
