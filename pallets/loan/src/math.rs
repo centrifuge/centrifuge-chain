@@ -55,7 +55,7 @@ pub fn calculate_normalised_debt<Amount: FixedPointNumber, Rate: FixedPointNumbe
 /// returns the seconds in a given normal year(365 days)
 /// https://docs.centrifuge.io/use/tinlake-financial-concepts/#interest-rate-methodology
 fn seconds_per_year<T: FixedPointNumber>() -> T {
-	T::saturating_from_integer(3600 * 24 * 365 as u128)
+	T::saturating_from_integer(3600 * 24 * 365_u128)
 }
 
 /// calculates rate per second from the given nominal interest rate
@@ -71,7 +71,6 @@ mod tests {
 	use super::*;
 	use frame_support::sp_runtime::traits::CheckedMul;
 	use sp_arithmetic::fixed_point::FixedU128P27;
-	use sp_arithmetic::traits::Zero;
 	use sp_arithmetic::FixedI128;
 	use sp_arithmetic::{FixedU128, Percent};
 
@@ -118,7 +117,7 @@ mod tests {
 	fn test_calculate_cumulative_rate() {
 		// 5% interest rate
 		let rate = FixedU128P27::from(Percent::from_percent(5));
-		let rate_per_sec = rate_per_sec(rate).unwrap_or(FixedU128P27::zero());
+		let rate_per_sec = rate_per_sec(rate).unwrap_or_default();
 		assert!(rate_per_sec.is_positive(), "should not be zero");
 
 		// initial cumulative_rate
