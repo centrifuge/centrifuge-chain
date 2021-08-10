@@ -1,3 +1,8 @@
+#[cfg(feature = "runtime-benchmarks")]
+use sp_std::vec;
+#[cfg(feature = "runtime-benchmarks")]
+use sp_std::vec::Vec;
+
 #[allow(non_snake_case)]
 pub fn PROXY_PROXIES() -> Vec<ProxiesKeyValue> {
 	vec![

@@ -5,7 +5,6 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode};
-use frame_support::sp_runtime::traits::Convert;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{Filter, InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
@@ -641,22 +640,6 @@ impl pallet_migration_manager::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub struct WeightToBlockNumber;
-
-impl Convert<Weight, BlockNumber> for WeightToBlockNumber {
-	fn convert(w: Weight) -> BlockNumber {
-		// The weight might overfloww the BlockNumber here. But as we use this in order
-		// to compute the number of blocks, we assume, that a reasonable amount of weight is coming
-		// into this call.
-		// I.e. (weight_of_upgrade / max_weight_per_block) << U32::max !
-		if (u32::MAX as u64) <= w {
-			u32::MAX
-		} else {
-			w as u32
-		}
-	}
-}
-
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -877,6 +860,9 @@ impl_runtime_apis! {
 
 			// Pallet fees benchmarks
 			add_benchmark!(params, batches, pallet_fees, Fees);
+
+			// Pallet migration benchmarks
+			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

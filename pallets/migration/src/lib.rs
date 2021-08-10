@@ -11,17 +11,16 @@ pub use pallet::*;
 pub use weights::*;
 
 #[cfg(test)]
+mod mock;
+#[cfg(test)]
 mod test_data;
-
-pub mod weights;
-
+#[cfg(feature = "runtime-benchmarks")]
+mod test_data;
 #[cfg(test)]
-pub mod tests;
+mod tests;
 
-#[cfg(test)]
-pub mod mock;
-
-pub mod benchmarking;
+mod benchmarking;
+mod weights;
 
 type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,

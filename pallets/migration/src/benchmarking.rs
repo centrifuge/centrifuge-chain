@@ -1,27 +1,184 @@
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
-use crate::test_data::system_account::AccountKeyValue;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_support::sp_std::vec::Vec;
 use frame_system::RawOrigin;
-use sp_runtime::traits::Hash;
+
+use frame_support::traits::Currency;
+use frame_support::{storage, BoundedVec};
+use pallet_proxy::ProxyDefinition;
+use pallet_vesting::VestingInfo;
+use sp_runtime::{traits::Zero, AccountId32};
 
 benchmarks! {
-  migrate_system_accounts{
-		let mut data: Vec<(Vec<u8>, Vec<u8>)> = Vec::new();
-		for account in crate::test_data::system_account::SYSTEM_ACCOUNT {
-				let key = account.key.to_vec();
-				let value = account.value.to_vec();
+  migrate_system_account{
+		inject_total_issuance();
+
+		let max_accounts = 100;
+		let mut data: Vec<(Vec<u8>, Vec<u8>)> = Vec::with_capacity(100);
+
+		let mut i = 0;
+		for account in &test_data::system_account::SYSTEM_ACCOUNT {
+			i += 1;
+			let key = account.key.iter().cloned().collect();
+			let value = account.value.iter().cloned().collect();
 
 			data.push((key, value));
+
+			if i == max_accounts {
+				break;
+			}
 		}
-  }: _(RawOrigin::Root, data)
+  }: migrate_system_account(RawOrigin::Root, data.clone())
   verify {
-		// TODO: Verify state here...
+		for (key, _) in data {
+			let start_byte = key.len() - 32;
+			let mut bytes_id = [0u8; 32];
+			bytes_id.copy_from_slice(key[start_byte..].as_ref());
+			let id = AccountId32::from(bytes_id);
+			let id: <T as frame_system::Config>::AccountId = codec::Decode::decode(&mut codec::Encode::encode(&id).as_slice()).unwrap();
+
+			assert!(frame_system::Pallet::<T>::account_exists(&id));
+		}
+  }
+  migrate_balances_issuance{
+		let additional_issuance: <T as pallet_balances::Config>::Balance =
+			codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
+
+		let old_issuance: <T as pallet_balances::Config>::Balance = pallet_balances::Pallet::<T>::total_issuance().into();
+
+  }: _(RawOrigin::Root, additional_issuance.clone())
+  verify {
+		assert_eq!(
+				additional_issuance + old_issuance,
+				pallet_balances::Pallet::<T>::total_issuance().into()
+		);
+  }
+  migrate_vesting_vesting{
+		inject_total_issuance();
+		inject_system_accounts();
+
+		let max_vesting = 10;
+		let mut data =
+		Vec::with_capacity(10);
+
+		let mut i = 0;
+		for vesting in &test_data::vesting_vesting::VESTING_VESTING {
+			i += 1;
+			let key: Vec<u8> = vesting.key.iter().cloned().collect();
+			let vesting: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
+			T::BlockNumber> =
+				codec::Decode::decode(&mut vesting.value[..].as_ref()).unwrap();
+
+			let start_byte = key.len() - 32;
+			let mut bytes_id = [0u8; 32];
+			bytes_id.copy_from_slice(&key[start_byte..]);
+			let account_id: T::AccountId = codec::Decode::decode(
+				&mut codec::Encode::encode(
+					&AccountId32::from(bytes_id)
+				).as_slice()
+			).unwrap();
+
+			data.push((account_id.into(), vesting));
+
+			if i == max_vesting {
+				break;
+			}
+		}
+
+  }: _(RawOrigin::Root, data.clone())
+  verify {
+		for ( id, vesting_info) in data {
+			let storage_vesting_info: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
+			T::BlockNumber> =
+				pallet_vesting::Vesting::<T>::try_get(id).unwrap();
+
+			assert_eq!(vesting_info, storage_vesting_info);
+		}
+  }
+  migrate_proxy_proxies{
+		inject_total_issuance();
+		inject_system_accounts();
+
+		let max_proxies = 10;
+		let mut data: Vec<(
+				T::AccountId,
+				<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
+					<T as frame_system::Config>::AccountId,
+				>>::Balance,
+				(
+					BoundedVec<
+						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
+						<T as pallet_proxy::Config>::MaxProxies,
+					>,
+					<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
+						<T as frame_system::Config>::AccountId,
+					>>::Balance,
+				),
+			)> = Vec::with_capacity(10);
+
+		let proxies = test_data::proxy_proxies::PROXY_PROXIES();
+
+		let mut i = 0;
+		for proxy in proxies {
+			i += 1;
+			let key: Vec<u8> = proxy.key.iter().cloned().collect();
+			let proxy_info: (
+					BoundedVec<
+						ProxyDefinition<T::AccountId, T::ProxyType, T::BlockNumber>,
+						<T as pallet_proxy::Config>::MaxProxies,
+					>,
+					<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
+						<T as frame_system::Config>::AccountId,
+					>>::Balance,
+				) = codec::Decode::decode(&mut proxy.value[..].as_ref()).unwrap();
+
+			let start_byte = key.len() - 32;
+			let mut bytes_id = [0u8; 32];
+			bytes_id.copy_from_slice(&key[start_byte..]);
+			let account_id: T::AccountId = codec::Decode::decode(
+				&mut codec::Encode::encode(
+					&AccountId32::from(bytes_id)
+				).as_slice()
+			).unwrap();
+
+			data.push((account_id, Zero::zero(), proxy_info));
+
+			if i == max_proxies {
+				break;
+			}
+		}
+
+  }: _(RawOrigin::Root, data.clone())
+  verify {
+		for ( id, _, proxy_info ) in data {
+			let (info, reserve) = proxy_info;
+			let (info_storage, reserve_storage) = pallet_proxy::Pallet::<T>::proxies(id);
+
+			// We are dirty-asserting here, as the tests cover this migration in detail
+			assert_eq!(info.len(), info_storage.len());
+			assert_eq!(reserve, reserve_storage)
+		}
   }
 }
 
 impl_benchmark_test_suite!(
 	Pallet,
-	crate::mock::new_test_ext(),
+	crate::mock::TestExternalitiesBuilder::default().build(),
 	crate::mock::MockRuntime,
 );
+
+fn inject_total_issuance() {
+	storage::unhashed::put_raw(
+		&test_data::balances_total_issuance::TOTAL_ISSUANCE.key[..],
+		codec::Encode::encode(&test_data::balances_total_issuance::TOTAL_ISSUANCE.value).as_slice(),
+	);
+}
+
+fn inject_system_accounts() {
+	let accounts = test_data::system_account::SYSTEM_ACCOUNT;
+
+	for account in accounts {
+		storage::unhashed::put_raw(&account.key[..], &account.value[..]);
+	}
+}
