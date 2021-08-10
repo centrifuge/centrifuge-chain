@@ -176,14 +176,14 @@ impl frame_system::Config for MockRuntime {
 	type SS58Prefix = ();
 	type OnSetCode = ();
 }
-pub const ACCOUNTS: u64 = 100;
-pub const VESTINGS: u64 = 10;
-pub const PROXIES: u64 = 10;
+pub const ACCOUNTS: u32 = 100;
+pub const VESTINGS: u32 = 10;
+pub const PROXIES: u32 = 10;
 
 parameter_types! {
-	pub const MigrationMaxAccounts: u64 = ACCOUNTS;
-	pub const MigrationMaxVestings: u64 = VESTINGS;
-	pub const MigrationMaxProxies: u64 = PROXIES;
+	pub const MigrationMaxAccounts: u32 = ACCOUNTS;
+	pub const MigrationMaxVestings: u32 = VESTINGS;
+	pub const MigrationMaxProxies: u32 = PROXIES;
 }
 
 // Implement the migration manager pallet
@@ -199,42 +199,6 @@ impl pallet_migration_manager::Config for MockRuntime {
 // ----------------------------------------------------------------------------
 // Test externalities
 // ----------------------------------------------------------------------------
-
-pub fn get_test_account_one() -> (Vec<u8>, Vec<u8>) {
-	let key: [u8; 80] = [
-		38, 170, 57, 78, 234, 86, 48, 224, 124, 72, 174, 12, 149, 88, 206, 247, 185, 157, 136, 14,
-		198, 129, 121, 156, 12, 243, 14, 136, 134, 55, 29, 169, 0, 16, 127, 162, 131, 58, 130, 79,
-		133, 13, 114, 26, 227, 47, 96, 49, 240, 147, 42, 183, 214, 6, 46, 107, 98, 233, 70, 25, 35,
-		45, 103, 16, 73, 83, 205, 222, 41, 37, 61, 27, 96, 153, 146, 103, 165, 62, 205, 46,
-	];
-	let key: Vec<u8> = key.iter().cloned().collect();
-	let value: [u8; 80] = [
-		0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 76, 115, 59, 154, 201, 101, 4, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	];
-	let value: Vec<u8> = value.iter().cloned().collect();
-
-	(key, value)
-}
-
-pub fn get_test_account_two() -> (Vec<u8>, Vec<u8>) {
-	let key: [u8; 80] = [
-		38, 170, 57, 78, 234, 86, 48, 224, 124, 72, 174, 12, 149, 88, 206, 247, 185, 157, 136, 14,
-		198, 129, 121, 156, 12, 243, 14, 136, 134, 55, 29, 169, 0, 17, 1, 21, 88, 185, 78, 148, 82,
-		206, 45, 245, 216, 48, 198, 106, 2, 204, 8, 205, 35, 58, 40, 206, 222, 103, 45, 236, 236,
-		191, 197, 38, 167, 199, 191, 24, 117, 120, 28, 227, 13, 184, 223, 7, 81, 39, 11, 99,
-	];
-	let key = key.iter().cloned().collect();
-	let value: [u8; 80] = [
-		0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 112, 165, 154, 127, 7, 87, 177, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	];
-	let value = value.iter().cloned().collect();
-
-	(key, value)
-}
 
 // Test externalities builder type declaraction.
 //

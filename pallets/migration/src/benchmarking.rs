@@ -4,18 +4,19 @@ use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::sp_std::vec::Vec;
 use frame_system::RawOrigin;
 
-use frame_support::traits::Currency;
+use frame_support::traits::{Currency, Get};
 use frame_support::{storage, BoundedVec};
 use pallet_proxy::ProxyDefinition;
 use pallet_vesting::VestingInfo;
 use sp_runtime::{traits::Zero, AccountId32};
+use sp_std::convert::TryInto;
 
 benchmarks! {
   migrate_system_account{
+		let n in 1 .. <T as Config>::MigrationMaxAccounts::get();
 		inject_total_issuance();
 
-		let max_accounts = 100;
-		let mut data: Vec<(Vec<u8>, Vec<u8>)> = Vec::with_capacity(100);
+		let mut data: Vec<(Vec<u8>, Vec<u8>)> = Vec::with_capacity(n.try_into().unwrap());
 
 		let mut i = 0;
 		for account in &test_data::system_account::SYSTEM_ACCOUNT {
@@ -25,7 +26,7 @@ benchmarks! {
 
 			data.push((key, value));
 
-			if i == max_accounts {
+			if i == n {
 				break;
 			}
 		}
@@ -55,12 +56,12 @@ benchmarks! {
 		);
   }
   migrate_vesting_vesting{
+		let n in 1 .. <T as Config>::MigrationMaxVestings::get();
+
 		inject_total_issuance();
 		inject_system_accounts();
 
-		let max_vesting = 10;
-		let mut data =
-		Vec::with_capacity(10);
+		let mut data = Vec::with_capacity(n.try_into().unwrap());
 
 		let mut i = 0;
 		for vesting in &test_data::vesting_vesting::VESTING_VESTING {
@@ -81,7 +82,7 @@ benchmarks! {
 
 			data.push((account_id.into(), vesting));
 
-			if i == max_vesting {
+			if i == n {
 				break;
 			}
 		}
@@ -97,10 +98,11 @@ benchmarks! {
 		}
   }
   migrate_proxy_proxies{
+		let n in 1 .. <T as Config>::MigrationMaxProxies::get();
+
 		inject_total_issuance();
 		inject_system_accounts();
 
-		let max_proxies = 10;
 		let mut data: Vec<(
 				T::AccountId,
 				<<T as pallet_proxy::Config>::Currency as frame_support::traits::Currency<
@@ -115,7 +117,7 @@ benchmarks! {
 						<T as frame_system::Config>::AccountId,
 					>>::Balance,
 				),
-			)> = Vec::with_capacity(10);
+			)> = Vec::with_capacity(n.try_into().unwrap());
 
 		let proxies = test_data::proxy_proxies::PROXY_PROXIES();
 
@@ -144,7 +146,7 @@ benchmarks! {
 
 			data.push((account_id, Zero::zero(), proxy_info));
 
-			if i == max_proxies {
+			if i == n {
 				break;
 			}
 		}

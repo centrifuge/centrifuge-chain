@@ -60,15 +60,15 @@ pub mod pallet {
 	{
 		/// Maximum number of accounts that can be migrated at once
 		#[pallet::constant]
-		type MigrationMaxAccounts: Get<u64>;
+		type MigrationMaxAccounts: Get<u32>;
 
 		/// Maximum number of vestings that can be migrated at once
 		#[pallet::constant]
-		type MigrationMaxVestings: Get<u64>;
+		type MigrationMaxVestings: Get<u32>;
 
 		/// Maximum number of vestings that can be migrated at once
 		#[pallet::constant]
-		type MigrationMaxProxies: Get<u64>;
+		type MigrationMaxProxies: Get<u32>;
 
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -102,13 +102,13 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Number of accounts that have been migrated
-		MigratedSystemAccounts(u64),
+		MigratedSystemAccounts(u32),
 
 		/// Number of vesting that have been migrated
-		MigratedVestingAccounts(u64),
+		MigratedVestingAccounts(u32),
 
 		/// Number of proxies that have been migrated
-		MigratedProxyProxies(u64),
+		MigratedProxyProxies(u32),
 
 		/// The new and the old issuance after the migration of issuance.
 		/// [`OldIssuance`, `NewIssuance`]
@@ -187,12 +187,12 @@ pub mod pallet {
 				storage::unhashed::put_raw(key.as_slice(), value.as_slice());
 			}
 
-			// This is safe as MigrationMaxAccounts is a u64
-			Self::deposit_event(Event::<T>::MigratedSystemAccounts(num_accounts as u64));
+			// This is safe as MigrationMaxAccounts is a u32
+			Self::deposit_event(Event::<T>::MigratedSystemAccounts(num_accounts as u32));
 
 			Ok(
 				Some(<T as pallet::Config>::WeightInfo::migrate_system_account(
-					num_accounts as u64,
+					num_accounts as u32,
 				))
 				.into(),
 			)
@@ -246,8 +246,8 @@ pub mod pallet {
 				Error::<T>::TooManyVestings
 			);
 
-			// This is safe as MigrationMaxVestings is a u64
-			let mut trying = vestings.len() as u64;
+			// This is safe as MigrationMaxVestings is a u32
+			let mut trying = vestings.len() as u32;
 			let num_vestings = trying;
 
 			for (who, schedule) in vestings {
@@ -316,8 +316,8 @@ pub mod pallet {
 				Error::<T>::TooManyProxies
 			);
 
-			// This is safe as MigrationMaxProxies is a u64
-			let mut trying = proxies.len() as u64;
+			// This is safe as MigrationMaxProxies is a u32
+			let mut trying = proxies.len() as u32;
 			let num_proxies = trying;
 
 			for (account_id, reserve, (data, deposit)) in proxies {

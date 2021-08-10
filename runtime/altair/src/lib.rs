@@ -333,7 +333,7 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	_Staking,
+	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
 }
 impl Default for ProxyType {
@@ -341,6 +341,7 @@ impl Default for ProxyType {
 		Self::Any
 	}
 }
+
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
@@ -348,22 +349,13 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
 			ProxyType::Governance => matches!(
 				c,
-				// Call::Democracy(..) |
-				Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
 			),
 			ProxyType::_Staking => false,
-			ProxyType::NonProxy => !matches!(
-				c,
-				Call::Proxy(pallet_proxy::Call::add_proxy(..))
-					| Call::Proxy(pallet_proxy::Call::remove_proxy(..))
-					| Call::Proxy(pallet_proxy::Call::remove_proxies(..))
-					| Call::Proxy(pallet_proxy::Call::anonymous(..))
-					| Call::Proxy(pallet_proxy::Call::kill_anonymous(..))
-					| Call::Proxy(pallet_proxy::Call::announce(..))
-					| Call::Proxy(pallet_proxy::Call::remove_announcement(..))
-					| Call::Proxy(pallet_proxy::Call::reject_announcement(..))
-					| Call::Proxy(pallet_proxy::Call::proxy_announced(..))
-			),
+			ProxyType::NonProxy => {
+				matches!(c, Call::Proxy(pallet_proxy::Call::proxy(..)))
+					|| !matches!(c, Call::Proxy(..))
+			}
 		}
 	}
 
@@ -372,6 +364,7 @@ impl InstanceFilter<Call> for ProxyType {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
+			(_, ProxyType::NonProxy) => false,
 			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
@@ -625,9 +618,9 @@ impl pallet_claims::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MigrationMaxAccounts: u64 = 100;
-	pub const MigrationMaxVestings: u64 = 10;
-	pub const MigrationMaxProxies: u64 = 10;
+	pub const MigrationMaxAccounts: u32 = 100;
+	pub const MigrationMaxVestings: u32 = 10;
+	pub const MigrationMaxProxies: u32 = 10;
 }
 
 // Implement the migration manager pallet
