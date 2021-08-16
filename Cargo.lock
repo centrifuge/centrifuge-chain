@@ -144,6 +144,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-indices",
  "pallet-membership",
+ "pallet-migration-manager",
  "pallet-multisig",
  "pallet-offences",
  "pallet-proxy",
@@ -5455,6 +5456,27 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-migration-manager"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "log 0.4.14",
+ "pallet-balances",
+ "pallet-proxy",
+ "pallet-vesting",
+ "parity-scale-codec",
+ "rand 0.8.4",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-version",
 ]
 
 [[package]]
