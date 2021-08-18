@@ -89,10 +89,7 @@
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
-#[macro_use]
-extern crate lazy_static;
-
-use codec::{Decode, Encode};
+use codec::Encode;
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::{fmt::Debug, Codec, DispatchResult},
@@ -103,23 +100,19 @@ use frame_support::{
 };
 use frame_system::ensure_root;
 use sp_core::crypto::AccountId32;
-use sp_core::storage::ChildInfo;
 use sp_core::Hasher;
 use sp_runtime::{
-	sp_std::{vec, vec::Vec},
+	sp_std::vec::Vec,
 	traits::{AccountIdConversion, Verify, Zero},
 	MultiSignature,
 };
-use sp_state_machine::read_child_proof_check;
 use sp_std::convert::TryInto;
-use sp_trie::StorageProof;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
-use frame_support::dispatch::DispatchError;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -227,6 +220,11 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ Debug
 			+ Into<BalanceOf<Self>>;
+
+		/// The maximum length (i.e. depth of the tree) we allow a proof to have.
+		/// This mitigates DDoS attacks solely. We choose 30, which by a base 2 merkle-tree
+		/// should be more than enough.
+		type MaxProofLength: Get<u32>;
 
 		/// The reward payout mechanism this claim pallet uses.
 		///
@@ -432,12 +430,13 @@ pub mod pallet {
 		/// parachain account id with the claimer key.
 		/// See [`validate_unsigned`]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_reward())]
-		pub(crate) fn claim_reward(
+		pub fn claim_reward(
 			origin: OriginFor<T>,
 			relaychain_account_id: T::RelayChainAccountId,
 			parachain_account_id: ParachainAccountIdOf<T>,
 			identity_proof: MultiSignature,
-			contribution_proof: StorageProof,
+			contribution_proof: Vec<T::Hash>,
+			contribution: ContributionAmountOf<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensures that this function can only be called via an unsigned transaction
 			ensure_none(origin)?;
@@ -469,8 +468,11 @@ pub mod pallet {
 			)?;
 
 			// Check the contributor's proof of contribution
-			let contribution =
-				Self::verify_contribution_proof(relaychain_account_id.clone(), contribution_proof)?;
+			Self::verify_contribution_proof(
+				relaychain_account_id.clone(),
+				contribution_proof,
+				contribution,
+			)?;
 
 			// Claimed amount must be positive value
 			ensure!(
@@ -505,7 +507,7 @@ pub mod pallet {
 		/// to the crowdloan campaign, and that the amount of the contribution is correct as
 		/// well.
 		#[pallet::weight(<T as Config>::WeightInfo::initialize())]
-		pub(crate) fn initialize(
+		pub fn initialize(
 			origin: OriginFor<T>,
 			contributions: RootHashOf<T>,
 			locked_at: T::BlockNumber,
@@ -552,7 +554,7 @@ pub mod pallet {
 
 		/// Set the start of the lease period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_start())]
-		pub(crate) fn set_lease_start(
+		pub fn set_lease_start(
 			origin: OriginFor<T>,
 			start: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
@@ -571,7 +573,7 @@ pub mod pallet {
 
 		/// Set the lease period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_period())]
-		pub(crate) fn set_lease_period(
+		pub fn set_lease_period(
 			origin: OriginFor<T>,
 			period: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
@@ -593,7 +595,7 @@ pub mod pallet {
 		/// This root-hash MUST be the root-hash of the relay-chain at the block
 		/// we locked at. This root-hash will be used to verify proofs of contribution.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_contributions_root())]
-		pub(crate) fn set_contributions_root(
+		pub fn set_contributions_root(
 			origin: OriginFor<T>,
 			root: RootHashOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -617,7 +619,7 @@ pub mod pallet {
 		/// will not be found in the generated proof of the contributor, which will
 		/// lead to a rejection of the proof.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_locked_at())]
-		pub(crate) fn set_locked_at(
+		pub fn set_locked_at(
 			origin: OriginFor<T>,
 			locked_at: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
@@ -640,7 +642,7 @@ pub mod pallet {
 		/// is used to derive the internal patricia key inside the child trie. The index is
 		/// stored in the `FundInfo` of the relay chain crowdloan pallet.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_crowdloan_trie_index())]
-		pub(crate) fn set_crowdloan_trie_index(
+		pub fn set_crowdloan_trie_index(
 			origin: OriginFor<T>,
 			trie_index: TrieIndex,
 		) -> DispatchResultWithPostInfo {
@@ -680,6 +682,7 @@ pub mod pallet {
 				parachain_account_id,
 				identity_proof,
 				contribution_proof,
+				contribution,
 			) = call
 			{
 				// By checking the validity of the claim here, we ensure the extrinsic will not
@@ -700,6 +703,7 @@ pub mod pallet {
 					.is_ok() && Self::verify_contribution_proof(
 						relaychain_account_id.clone(),
 						contribution_proof.clone(),
+						contribution.clone(),
 					)
 					.is_ok()
 					{
@@ -711,6 +715,7 @@ pub mod pallet {
 								parachain_account_id,
 								identity_proof,
 								contribution_proof,
+								contribution,
 							))
 							.longevity(
 								TryInto::<u64>::try_into(T::ClaimTransactionLongevity::get())
@@ -749,6 +754,22 @@ impl<T: Config> Pallet<T> {
 	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
 		T::PalletId::get().into_account()
+	}
+
+	/// Build a sorted hash of two given hash values.
+	///
+	/// Hash a:b if a < b, else b:a. Uses the runtime module's hasher.
+	pub fn sorted_hash_of(a: &T::Hash, b: &T::Hash) -> T::Hash {
+		let mut h: Vec<u8> = Vec::with_capacity(64);
+		if a < b {
+			h.extend_from_slice(a.as_ref());
+			h.extend_from_slice(b.as_ref());
+		} else {
+			h.extend_from_slice(b.as_ref());
+			h.extend_from_slice(a.as_ref());
+		}
+
+		T::Hashing::hash(&h).into()
 	}
 
 	// Check if the origin is an administrator or represents the root.
@@ -790,42 +811,38 @@ impl<T: Config> Pallet<T> {
 	// contributor's claim is valid.
 	fn verify_contribution_proof(
 		relay_account: T::RelayChainAccountId,
-		proof: StorageProof,
-	) -> Result<ContributionAmountOf<T>, DispatchError> {
-		let keys = vec![relay_account.encode()];
-
-		// rebuild child info
-		let mut buf = Vec::new();
-		buf.extend_from_slice(b"crowdloan");
-		buf.extend_from_slice(
-			&Self::crowdloan_trie_index()
-				.ok_or(Error::<T>::PalletNotInitialized)?
-				.encode()[..],
-		);
-		let child_info = ChildInfo::new_default(T::Hashing::hash(&buf[..]).as_ref());
-
+		proof: Vec<T::Hash>,
+		contribution: ContributionAmountOf<T>,
+	) -> DispatchResult {
 		// We could unwrap here, as we check in the calling function if pallet is initialized (i.e. if contributions is set)
 		// but better be safe than sorry...
 		let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
 
-		read_child_proof_check::<T::Hashing, _>(root, proof, &child_info, keys).map_or(
-			Err(Error::<T>::InvalidProofOfContribution.into()),
-			|mut key_value_map| {
-				key_value_map
-					.get_mut(&relay_account.encode())
-					.map_or(&None, |map_val| map_val)
-					.as_ref()
-					.map_or(
-						Err(Error::<T>::InvalidProofOfContribution.into()),
-						|storage_val| {
-							let (value, _memo): (ContributionAmountOf<T>, Vec<u8>) =
-								Decode::decode::<&[u8]>(&mut storage_val.as_ref())
-									.unwrap_or((Zero::zero(), Vec::new()));
+		// Number of proofs should practically never be > 30. Checking this
+		// blocks abuse.
+		ensure!(
+			proof.len() < T::MaxProofLength::get() as usize,
+			Error::<T>::InvalidProofOfContribution
+		);
 
-							Ok(value)
-						},
-					)
-			},
-		)
+		// Concat account id : amount
+		let mut v: Vec<u8> = relay_account.encode();
+		v.extend(contribution.encode());
+
+		// Generate root hash
+		let leaf_hash = T::Hashing::hash(&v);
+		let mut root_hash = proof
+			.iter()
+			.fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
+
+		// Initial runs might only have trees of single leaves,
+		// in this case leaf_hash is as well root_hash
+		if proof.len() == 0 {
+			root_hash = leaf_hash;
+		}
+
+		ensure!(root == root_hash, Error::<T>::InvalidProofOfContribution);
+
+		Ok(())
 	}
 }

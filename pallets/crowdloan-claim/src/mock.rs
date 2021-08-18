@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
 use crate::{self as pallet_crowdloan_claim, Config};
+use frame_support::traits::GenesisBuild;
 use frame_support::{parameter_types, traits::SortedMembers, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -149,9 +150,9 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionInterval: u64 = 128;
 	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
 	pub const ClaimTransactionLongevity: u32 = 64;
+	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
@@ -162,6 +163,7 @@ impl Config for MockRuntime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type RelayChainBalance = Balance;
 	type RelayChainAccountId = AccountId32;
+	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;
 	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
@@ -217,12 +219,8 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		use frame_support::traits::GenesisBuild;
 		pallet_vesting::GenesisConfig::<MockRuntime> {
-			vesting: vec![
-				(1, 0, 10, 5 * self.existential_deposit),
-				(12, 10, 20, 5 * self.existential_deposit),
-			],
+			vesting: vec![(12, 10, 20, 5 * self.existential_deposit)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
