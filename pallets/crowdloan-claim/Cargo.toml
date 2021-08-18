@@ -44,6 +44,7 @@ default = ['std']
 std = [
   'codec/std',
   'frame-support/std',
+  'trait-crowdloan-reward/std',
   'frame-system/std',
   'log/std',
   'pallet-balances/std',
