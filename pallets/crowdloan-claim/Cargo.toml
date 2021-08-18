@@ -26,10 +26,6 @@ pallet-balances = { git = "https://github.com/centrifuge/substrate", default-fea
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-#sc-rpc-api = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-#sp-state-machine = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-#sp-trie = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-pallet-vesting = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 # Local dependencies
 trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
@@ -38,6 +34,7 @@ trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_fe
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-trie = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-keyring = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-vesting = { git = "https://github.com/centrifuge/substrate", default-features = true, branch = "master" }
 pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = false }
 hex = { version="0.4.3", default_features = false }
 
@@ -50,7 +47,6 @@ std = [
   'frame-system/std',
   'log/std',
   'pallet-balances/std',
-  'pallet-vesting/std',
   'sp-std/std',
 ]
 
