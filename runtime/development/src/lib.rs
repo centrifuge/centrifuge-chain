@@ -306,14 +306,15 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	// Staking,
-	// Vesting,
+	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
+	NonProxy,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
 	}
 }
+
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
@@ -321,30 +322,22 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
 			ProxyType::Governance => matches!(
 				c,
-				// Call::Democracy(..) |
-				Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
 			),
-			// ProxyType::Staking => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			// 	Call::Utility(..)
-			// ),
-			// ProxyType::Vesting => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			//     Call::Democracy(..) |
-			// 	Call::Council(..) |
-			// 	Call::Elections(..) |
-			// 	Call::Vesting(pallet_vesting::Call::vest(..)) |
-			// 	Call::Vesting(pallet_vesting::Call::vest_other(..))
-			// ),
+			ProxyType::_Staking => false,
+			ProxyType::NonProxy => {
+				matches!(c, Call::Proxy(pallet_proxy::Call::proxy(..)))
+					|| !matches!(c, Call::Proxy(..))
+			}
 		}
 	}
+
 	fn is_superset(&self, o: &Self) -> bool {
 		match (self, o) {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
+			(_, ProxyType::NonProxy) => false,
 			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
@@ -597,6 +590,22 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MigrationMaxAccounts: u32 = 100;
+	pub const MigrationMaxVestings: u32 = 10;
+	pub const MigrationMaxProxies: u32 = 10;
+}
+
+// Implement the migration manager pallet
+// The actual associated type, which executes the migration can be found in the migration folder
+impl pallet_migration_manager::Config for Runtime {
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxVestings = MigrationMaxVestings;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type Event = Event;
+	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -645,6 +654,8 @@ construct_runtime!(
 		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
+		// migration pallet
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
@@ -814,6 +825,9 @@ impl_runtime_apis! {
 
 			// Pallet fees benchmarks
 			add_benchmark!(params, batches, pallet_fees, Fees);
+
+			// Pallet migration benchmarks
+			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

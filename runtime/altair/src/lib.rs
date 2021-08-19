@@ -630,7 +630,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxVestings = MigrationMaxVestings;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
-	type WeightInfo = ();
+	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
 }
 
 // admin stuff
