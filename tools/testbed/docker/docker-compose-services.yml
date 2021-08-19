@@ -1,0 +1,29 @@
+version: '3'
+services:
+  # Parity Substrate API sidecar service
+  sidecar:
+      container_name: testbed-sidecar
+      image: "parity/substrate-api-sidecar:v8.0.3"
+      ports:
+        - 8080:8080
+      environment: 
+        SAS_SUBSTRATE_WS_URL: "ws://chain:9944"
+      networks:
+        - testbed-network
+      links:
+        - chain
+      depends_on:
+        - chain
+
+  # Centrifuge chain service
+  chain:
+    container_name: testbed-chain
+    image: "centrifuge/testbed-chain:v2.0.0-rc6-241-1"
+    ports:
+      - "30333:30333"
+      - "9933:9933"
+      - "9944:9944"
+    networks:
+      - testbed-network
+    command: >
+      centrifuge-chain --dev --ws-external --rpc-external
