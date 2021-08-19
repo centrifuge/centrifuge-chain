@@ -1,0 +1,5 @@
+version: '3'
+networks:
+  testbed-network:
+    name: testbed-network
+    driver: bridge
