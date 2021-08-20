@@ -617,7 +617,6 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type RelayChainBalance = Balance;
-	type RelayChainAccountId = AccountId;
 	type Conversion = u64;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	type WeightInfo = ();
@@ -869,6 +868,12 @@ impl_runtime_apis! {
 
 			// Pallet migration benchmarks
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
+
+			// Pallet crowdloan-claim benchmarks
+			// add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
+
+			// Pallet crowdloan-reward benchmarks
+			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

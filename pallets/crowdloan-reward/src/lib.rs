@@ -98,7 +98,7 @@ use frame_support::{
 
 use frame_system::{ensure_root, RawOrigin};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedDiv, Convert, MaybeSerialize, StaticLookup, Zero},
+	traits::{AccountIdConversion, CheckedDiv, Convert, StaticLookup, Zero},
 	Perbill,
 };
 
@@ -117,7 +117,7 @@ mod mock;
 mod tests;
 
 // Runtime benchmarking features
-#[cfg(test)]
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 // Extrinsics weight information (computed through runtime benchmarking)
@@ -204,15 +204,6 @@ pub mod pallet {
 			+ Debug
 			+ Into<BalanceOf<Self>>
 			+ From<u64>;
-
-		/// AccountId of the relay chain
-		type RelayChainAccountId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaybeSerialize
-			+ Ord
-			+ Default;
 
 		/// Admin or the module. I.e. this is necessary in cases, where the vesting parameters need
 		/// to be changed without an additional initialization.

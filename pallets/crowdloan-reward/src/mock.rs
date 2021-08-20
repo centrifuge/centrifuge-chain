@@ -32,7 +32,6 @@ use sp_runtime::{
 	Perbill,
 };
 
-type AccountId = u64;
 type Balance = u64;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
@@ -96,7 +95,6 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type RelayChainBalance = Balance;
-	type RelayChainAccountId = AccountId;
 	type Conversion = Balance;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
@@ -220,7 +218,7 @@ pub(crate) fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>
 		.into_iter()
 		.map(|r| r.event)
 		.filter_map(|e| {
-			if let Event::pallet_crowdloan_reward(inner) = e {
+			if let Event::CrowdloanReward(inner) = e {
 				Some(inner)
 			} else {
 				None
