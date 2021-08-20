@@ -40,7 +40,6 @@ use sp_runtime::{
 // Type alias, constants
 // ----------------------------------------------------------------------------
 
-type AccountId = u64;
 type Balance = u64;
 
 // ----------------------------------------------------------------------------
@@ -141,7 +140,6 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type RelayChainBalance = Balance;
-	type RelayChainAccountId = AccountId;
 	type Conversion = u64;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
@@ -210,10 +208,7 @@ impl TestExternalitiesBuilder {
 				(3, 30 * self.existential_deposit),
 				(4, 40 * self.existential_deposit),
 				(12, 10 * self.existential_deposit),
-				(
-					CrowdloanReward::account_id(),
-					10000000000000000000 * self.existential_deposit,
-				),
+				(CrowdloanReward::account_id(), 9999999999999999999),
 			],
 		}
 		.assimilate_storage(&mut storage)

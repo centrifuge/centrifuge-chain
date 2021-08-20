@@ -194,6 +194,24 @@ fn test_valid_initialize_transaction() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
+			use sp_io::hashing::blake2_256;
+			/// Grab an account, seeded by a name and index.
+			pub fn account<AccountId: codec::Decode + Default>(
+				name: &'static str,
+				index: u64,
+				seed: u32,
+			) -> AccountId {
+				let entropy = (name, index, seed).using_encoded(blake2_256);
+				let mut entropy: [u8; 32] = [0u8; 32];
+				entropy[0] = 99;
+				let mut entropy = index.encode();
+				let zeros: [u8; 24] = [0u8; 24];
+				entropy.extend_from_slice(&zeros[..]);
+				AccountId::decode(&mut &entropy[..]).unwrap()
+			}
+
+			let account: <MockRuntime as frame_system::Config>::AccountId = account("user", 99, 10);
+
 			assert!(CrowdloanClaim::contributions().is_some());
 			assert!(CrowdloanClaim::crowdloan_trie_index().is_some());
 		})

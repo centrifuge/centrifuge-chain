@@ -14,8 +14,7 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 # General dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-log = { version = "0.4.14", default-features = false }
-lazy_static = "1.4.0"
+log = { version = "0.4.14", default-features = false , optional = true }
 serde = { version = "1.0.119" }
 
 # Substrate depenedencies
@@ -26,29 +25,30 @@ pallet-balances = { git = "https://github.com/centrifuge/substrate", default-fea
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , optional = true, branch = "master" }
 
 # Local dependencies
 trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-trie = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-keyring = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 pallet-vesting = { git = "https://github.com/centrifuge/substrate", default-features = true, branch = "master" }
 pallet-crowdloan-reward = { path='../crowdloan-reward', default_features = false }
-hex = { version="0.4.3", default_features = false }
-
+hex = { version="0.4.3", default_features = true}
 
 [features]
 default = ['std']
+runtime-benchmarks = ['frame-benchmarking', 'sp-core/std', 'sp-io/std']
 std = [
   'codec/std',
   'frame-support/std',
   'trait-crowdloan-reward/std',
   'frame-system/std',
-  'log/std',
+  'log',
   'pallet-balances/std',
+  'sp-io/std',
   'sp-std/std',
+  'sp-core/std',
+  'frame-benchmarking',
 ]
-
-runtime-benchmarks = ["frame-benchmarking"]
