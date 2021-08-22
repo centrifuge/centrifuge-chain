@@ -460,6 +460,12 @@ fn development_genesis(
 				})
 				.collect(),
 		},
+		staking: development_runtime::StakingConfig {
+			history_depth: 128,
+			validator_count: 2,
+			minimum_validator_count: 1,
+			..Default::default()
+		},
 		aura_ext: Default::default(),
 		aura: Default::default(),
 		anchor: Default::default(),

@@ -29,6 +29,7 @@ use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
+use sp_runtime::curve::PiecewiseLinear;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
@@ -254,8 +255,7 @@ impl pallet_session::Config for Runtime {
 	type ValidatorIdOf = ValidatorOf;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type SessionManager = ();
-	// Essentially just Aura, but lets be pedantic.
+	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
 	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
@@ -269,6 +269,76 @@ impl pallet_aura::Config for Runtime {
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
+impl pallet_session::historical::Config for Runtime {
+	type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
+	type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+}
+
+impl frame_election_provider_support::onchain::Config for Runtime {
+	type BlockWeights = ();
+	type AccountId = AccountId;
+	type BlockNumber = BlockNumber;
+	type Accuracy = Perbill;
+	type DataProvider = Staking;
+}
+
+impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+where
+	Call: From<C>,
+{
+	type Extrinsic = UncheckedExtrinsic;
+	type OverarchingCall = Call;
+}
+
+// set to almost three percent to correct for a bug, see https://github.com/paritytech/substrate/issues/4964 for
+// details and https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=e6490da3bfb28f69c7f6e6393ec6bb0c
+// for the calculation
+// TODO: set back to Perbill::from_percent(3) as soon as the bug above is fixed.
+const THREE_PERCENT_INFLATION: Perbill = Perbill::from_parts(29_559_999);
+
+const REWARD_CURVE: PiecewiseLinear<'static> = PiecewiseLinear {
+	points: &[(Perbill::from_percent(0), THREE_PERCENT_INFLATION)],
+	maximum: THREE_PERCENT_INFLATION,
+};
+
+parameter_types! {
+	pub const SessionsPerEra: sp_staking::SessionIndex = 4;
+	pub const BondingDuration: pallet_staking::EraIndex = 7;
+	pub const SlashDeferDuration: pallet_staking::EraIndex = 6;
+	pub const MaxNominatorRewardedPerValidator: u32 = 128;
+	pub const RewardCurve: &'static PiecewiseLinear<'static> = &REWARD_CURVE;
+}
+
+type SlashCancelOrigin = frame_system::EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>,
+>;
+
+impl pallet_staking::Config for Runtime {
+	const MAX_NOMINATIONS: u32 = 16;
+	type Currency = Balances;
+	type UnixTime = Timestamp;
+	type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+	type ElectionProvider =
+		frame_election_provider_support::onchain::OnChainSequentialPhragmen<Runtime>;
+	type GenesisElectionProvider =
+		frame_election_provider_support::onchain::OnChainSequentialPhragmen<Runtime>;
+	type RewardRemainder = ();
+	type Event = Event;
+	type Slash = ();
+	type Reward = ();
+	type SessionsPerEra = SessionsPerEra;
+	type BondingDuration = BondingDuration;
+	type SlashDeferDuration = SlashDeferDuration;
+	// A majority of the council or root can cancel the slash.
+	type SlashCancelOrigin = SlashCancelOrigin;
+	type SessionInterface = Self;
+	type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
+	type NextNewSession = Session;
+	type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+	type WeightInfo = ();
+}
 // substrate pallets
 parameter_types! {
 	// One storage item; value is size 4+4+16+32 bytes = 56 bytes.
@@ -638,6 +708,8 @@ construct_runtime!(
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
 		AuraExt: cumulus_pallet_aura_ext::{Pallet, Storage, Config} = 33,
+		Historical: pallet_session::historical::{Pallet} = 34,
+		Staking: pallet_staking::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
 
 		// substrate pallets
 		Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 60,

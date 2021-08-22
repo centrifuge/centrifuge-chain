@@ -59,6 +59,7 @@ sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-feat
 sp-consensus-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # frame dependencies
+frame-election-provider-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 frame-executive = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 frame-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
