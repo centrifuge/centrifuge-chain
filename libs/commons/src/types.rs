@@ -13,21 +13,13 @@
 
 //! Common types definition.
 
-
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use codec::{
-    Decode, 
-    Encode
-};
+use codec::{Decode, Encode};
 
-use sp_core::{
-    H160,
-    U256,
-};
-
+use sp_core::{H160, U256};
 
 // ----------------------------------------------------------------------------
 // Types definition
@@ -54,25 +46,25 @@ pub struct AssetId(pub RegistryId, pub TokenId);
 pub struct AssetIdRef<'a>(pub &'a RegistryId, pub &'a TokenId);
 
 impl AssetId {
-    pub fn destruct(self) -> (RegistryId, TokenId) {
-        (self.0, self.1)
-    }
+	pub fn destruct(self) -> (RegistryId, TokenId) {
+		(self.0, self.1)
+	}
 }
 
 impl<'a> From<&'a AssetId> for AssetIdRef<'a> {
-    fn from(id: &'a AssetId) -> Self {
-        AssetIdRef(&id.0, &id.1)
-    }
+	fn from(id: &'a AssetId) -> Self {
+		AssetIdRef(&id.0, &id.1)
+	}
 }
 
 impl<'a> AssetIdRef<'a> {
-    pub fn destruct(self) -> (&'a RegistryId, &'a TokenId) {
-        (self.0, self.1)
-    }
+	pub fn destruct(self) -> (&'a RegistryId, &'a TokenId) {
+		(self.0, self.1)
+	}
 }
 
 /// All data for an instance of an NFT.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetInfo {
-    pub metadata: Bytes,
+	pub metadata: Bytes,
 }

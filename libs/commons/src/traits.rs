@@ -1,4 +1,3 @@
-
 // Copyright 2021 Centrifuge Foundation (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
@@ -14,13 +13,11 @@
 
 //! Common traits definition module.
 
-
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
 use crate::types::AssetId;
-
 
 // ----------------------------------------------------------------------------
 // Traits declaration
@@ -30,16 +27,16 @@ use crate::types::AssetId;
 /// The registry id that an asset is a member of can be determined
 /// when this trait is implemented.
 pub trait InRegistry {
-    type RegistryId;
+	type RegistryId;
 
-    /// Returns the registry id that the self is a member of.
-    fn registry_id(&self) -> Self::RegistryId;
+	/// Returns the registry id that the self is a member of.
+	fn registry_id(&self) -> Self::RegistryId;
 }
 
 /// An implementor has an associated asset id that will be used as a
 /// unique id within a registry for an asset. Asset ids *MUST* be unique
 /// within a registry. Corresponds to a token id in a Centrifuge document.
 pub trait HasId {
-    /// Returns unique asset id.
-    fn id(&self) -> &AssetId;
+	/// Returns unique asset id.
+	fn id(&self) -> &AssetId;
 }

@@ -22,23 +22,21 @@
 //! ## License
 //! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
 
-
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
 // Common types and traits definition
-pub mod types;
 pub mod traits;
-
+pub mod types;
 
 // ----------------------------------------------------------------------------
 // Constants definition
 // ----------------------------------------------------------------------------
 
 pub mod constants {
-    /// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
-    /// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
-    pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
-    pub const MS_PER_DAY: u64 = 86400000;
+	/// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
+	/// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
+	pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
+	pub const MS_PER_DAY: u64 = 86400000;
 }
