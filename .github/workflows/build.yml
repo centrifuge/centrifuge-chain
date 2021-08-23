@@ -54,4 +54,5 @@ jobs:
         run: ./ci/script.sh
         env:
           TARGET: ${{ matrix.target }}
+          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
 
