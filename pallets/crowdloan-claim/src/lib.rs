@@ -99,11 +99,12 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::ensure_root;
+use proofs::{Hasher, Proof, Verifier};
 use sp_core::crypto::AccountId32;
-use sp_core::Hasher;
 use sp_runtime::{
+	sp_std::vec,
 	sp_std::vec::Vec,
-	traits::{AccountIdConversion, Verify, Zero},
+	traits::{AccountIdConversion, Hash, Verify, Zero},
 	MultiSignature,
 };
 use sp_std::convert::TryInto;
@@ -119,9 +120,6 @@ pub use crate::weights::WeightInfo;
 mod mock;
 #[cfg(test)]
 mod tests;
-// Runtime benchmarking features
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
@@ -156,6 +154,33 @@ type TrieIndex = u32;
 /// A type that works as an index for which crowdloan the pallet is currently in.
 /// Can also be seen as some kind of counter.
 type Index = u32;
+
+/// Verifier struct, that implements our own traits to verify our proofs
+struct ProofVerifier<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> ProofVerifier<T> {
+	pub fn new() -> Self {
+		ProofVerifier(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
+	type Hash = T::Hash;
+
+	fn hash(data: &[u8]) -> Self::Hash {
+		<T::Hashing as Hash>::hash(data)
+	}
+}
+
+impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
+	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
+		proofs::hashing::sort_hash_of::<Self>(a, b)
+	}
+
+	fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>> {
+		Some(vec![doc_root])
+	}
+}
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -438,7 +463,7 @@ pub mod pallet {
 			relaychain_account_id: T::RelayChainAccountId,
 			parachain_account_id: ParachainAccountIdOf<T>,
 			identity_proof: MultiSignature,
-			contribution_proof: Vec<T::Hash>,
+			contribution_proof: Proof<T::Hash>,
 			contribution: ContributionAmountOf<T>,
 		) -> DispatchResultWithPostInfo {
 			// Ensures that this function can only be called via an unsigned transaction
@@ -471,11 +496,7 @@ pub mod pallet {
 			)?;
 
 			// Check the contributor's proof of contribution
-			Self::verify_contribution_proof(
-				relaychain_account_id.clone(),
-				contribution_proof,
-				contribution,
-			)?;
+			Self::verify_contribution_proof(contribution_proof)?;
 
 			// Claimed amount must be positive value
 			ensure!(
@@ -703,12 +724,8 @@ pub mod pallet {
 						parachain_account_id.clone(),
 						identity_proof.clone(),
 					)
-					.is_ok() && Self::verify_contribution_proof(
-						relaychain_account_id.clone(),
-						contribution_proof.clone(),
-						contribution.clone(),
-					)
-					.is_ok()
+					.is_ok() && Self::verify_contribution_proof(contribution_proof.clone())
+						.is_ok()
 					{
 						// Only the claim reward transaction can be invoked via an unsigned regime
 						return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
@@ -759,22 +776,6 @@ impl<T: Config> Pallet<T> {
 		T::PalletId::get().into_account()
 	}
 
-	/// Build a sorted hash of two given hash values.
-	///
-	/// Hash a:b if a < b, else b:a. Uses the runtime module's hasher.
-	pub fn sorted_hash_of(a: &T::Hash, b: &T::Hash) -> T::Hash {
-		let mut h: Vec<u8> = Vec::with_capacity(64);
-		if a < b {
-			h.extend_from_slice(a.as_ref());
-			h.extend_from_slice(b.as_ref());
-		} else {
-			h.extend_from_slice(b.as_ref());
-			h.extend_from_slice(a.as_ref());
-		}
-
-		T::Hashing::hash(&h).into()
-	}
-
 	// Check if the origin is an administrator or represents the root.
 	fn ensure_administrator(origin: T::Origin) -> DispatchResult {
 		T::AdminOrigin::try_origin(origin)
@@ -812,11 +813,7 @@ impl<T: Config> Pallet<T> {
 	// contributors. Given the contributor's relay chain account identifier, the claimed amount
 	// (in relay chain tokens) and the parachain account identifier, this function proves that the
 	// contributor's claim is valid.
-	fn verify_contribution_proof(
-		relay_account: T::RelayChainAccountId,
-		proof: Vec<T::Hash>,
-		contribution: ContributionAmountOf<T>,
-	) -> DispatchResult {
+	fn verify_contribution_proof(proof: Proof<T::Hash>) -> DispatchResult {
 		// We could unwrap here, as we check in the calling function if pallet is initialized (i.e. if contributions is set)
 		// but better be safe than sorry...
 		let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
@@ -828,23 +825,12 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidProofOfContribution
 		);
 
-		// Concat account id : amount
-		let mut v: Vec<u8> = relay_account.encode();
-		v.extend(contribution.encode());
+		let pv = ProofVerifier::<T>::new();
 
-		// Generate root hash
-		let leaf_hash = T::Hashing::hash(&v);
-		let mut root_hash = proof
-			.iter()
-			.fold(leaf_hash, |acc, hash| Self::sorted_hash_of(&acc, hash));
-
-		// Initial runs might only have trees of single leaves,
-		// in this case leaf_hash is as well root_hash
-		if proof.len() == 0 {
-			root_hash = leaf_hash;
-		}
-
-		ensure!(root == root_hash, Error::<T>::InvalidProofOfContribution);
+		ensure!(
+			pv.verify_proof(root, &proof),
+			Error::<T>::InvalidProofOfContribution
+		);
 
 		Ok(())
 	}

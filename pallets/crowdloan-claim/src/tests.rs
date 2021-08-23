@@ -30,7 +30,7 @@ use sp_runtime::Perbill;
 use sp_std::str::FromStr;
 
 struct Contributor {
-	proof: Vec<H256>,
+	proof: proofs::Proof<H256>,
 	signature: MultiSignature,
 	parachain_account: u64,
 	relaychain_account: AccountId32,
@@ -58,22 +58,39 @@ fn get_root() -> H256 {
 	let leaf_hash_7: H256 = [7; 32].into();
 	let leaf_hash_8: H256 = [8; 32].into();
 	let leaf_hash_9: H256 = [9; 32].into();
-	let node_0 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
-	let node_1 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
-	let node_2 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
-	let node_3 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
-	let node_4 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
-	let node_00 = pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_0, &node_1);
-	let node_01 = pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_2, &node_3);
-	let node_000 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_00, &node_01);
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_0,
+		leaf_hash_1,
+	);
+	let node_1 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_2,
+		leaf_hash_3,
+	);
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_4,
+		leaf_hash_5,
+	);
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_6,
+		leaf_hash_7,
+	);
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_8,
+		leaf_hash_9,
+	);
+	let node_00 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_0, node_1,
+	);
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_2, node_3,
+	);
+	let node_000 = proofs::hashing::sort_hash_of::<
+		pallet_crowdloan_claim::ProofVerifier<MockRuntime>,
+	>(node_00, node_01);
 
-	pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_000, &node_4)
+	proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_000, node_4,
+	)
 }
 
 fn get_contributor() -> Contributor {
@@ -87,9 +104,10 @@ fn get_contributor() -> Contributor {
 	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
 
 	// 10-leaf tree
+	let mut sorted_hashed: Vec<H256> = Vec::new();
+
 	let leaf_hash_0: H256 = [0; 32].into();
 	let leaf_hash_1: H256 = [1; 32].into();
-	let leaf_hash_2: H256 = leaf_hash;
 	let leaf_hash_3: H256 = [3; 32].into();
 	let leaf_hash_4: H256 = [4; 32].into();
 	let leaf_hash_5: H256 = [5; 32].into();
@@ -97,32 +115,33 @@ fn get_contributor() -> Contributor {
 	let leaf_hash_7: H256 = [7; 32].into();
 	let leaf_hash_8: H256 = [8; 32].into();
 	let leaf_hash_9: H256 = [9; 32].into();
-	let node_0 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
-	let node_1 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
-	let node_2 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
-	let node_3 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
-	let node_4 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
-	let node_00 = pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_0, &node_1);
-	let node_01 = pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_2, &node_3);
-	let node_000 =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_00, &node_01);
-	let _node_root =
-		pallet_crowdloan_claim::Pallet::<MockRuntime>::sorted_hash_of(&node_000, &node_4);
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_0,
+		leaf_hash_1,
+	);
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_4,
+		leaf_hash_5,
+	);
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_6,
+		leaf_hash_7,
+	);
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_8,
+		leaf_hash_9,
+	);
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_2, node_3,
+	);
 
-	let proof: [H256; 4] = [
-		leaf_hash_3.into(),
-		node_0.into(),
-		node_01.into(),
-		node_4.into(),
-	];
+	sorted_hashed.push(leaf_hash_3);
+	sorted_hashed.push(node_0);
+	sorted_hashed.push(node_01);
+	sorted_hashed.push(node_4);
 
 	Contributor {
-        proof: proof.to_vec(),
+        proof: proofs::Proof::new(leaf_hash, sorted_hashed),
         signature: MultiSignature::Sr25519(sp_core::sr25519::Signature(
             hex::decode("a0db0cf026ffe5f0bc859681c9a1816e8a15991947753d6d7ecd1ac69c6e204c4ecf8f534d52ec9e76505e770dfa2b5d9614eca5e4d1de556dfa0de40dc7328f").unwrap().try_into().unwrap()
         )),
@@ -139,39 +158,22 @@ fn get_false_signature() -> MultiSignature {
     ))
 }
 
-fn get_false_proof() -> Vec<H256> {
-	vec![
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-		[0; 32].into(),
-	]
+fn get_false_proof() -> proofs::Proof<H256> {
+	// 10-leaf tree
+	let mut sorted_hashed: Vec<H256> = Vec::new();
+
+	sorted_hashed.push([0; 32].into());
+	sorted_hashed.push([1; 32].into());
+	sorted_hashed.push([2; 32].into());
+	sorted_hashed.push([3; 32].into());
+	sorted_hashed.push([4; 32].into());
+	sorted_hashed.push([5; 32].into());
+	sorted_hashed.push([6; 32].into());
+	sorted_hashed.push([7; 32].into());
+	sorted_hashed.push([8; 32].into());
+	sorted_hashed.push([9; 32].into());
+
+	proofs::Proof::new([10; 32].into(), sorted_hashed)
 }
 
 fn init_module() {
@@ -194,24 +196,6 @@ fn test_valid_initialize_transaction() {
 	TestExternalitiesBuilder::default()
 		.build(Some(init_module))
 		.execute_with(|| {
-			use sp_io::hashing::blake2_256;
-			/// Grab an account, seeded by a name and index.
-			pub fn account<AccountId: codec::Decode + Default>(
-				name: &'static str,
-				index: u64,
-				seed: u32,
-			) -> AccountId {
-				let entropy = (name, index, seed).using_encoded(blake2_256);
-				let mut entropy: [u8; 32] = [0u8; 32];
-				entropy[0] = 99;
-				let mut entropy = index.encode();
-				let zeros: [u8; 24] = [0u8; 24];
-				entropy.extend_from_slice(&zeros[..]);
-				AccountId::decode(&mut &entropy[..]).unwrap()
-			}
-
-			let account: <MockRuntime as frame_system::Config>::AccountId = account("user", 99, 10);
-
 			assert!(CrowdloanClaim::contributions().is_some());
 			assert!(CrowdloanClaim::crowdloan_trie_index().is_some());
 		})
