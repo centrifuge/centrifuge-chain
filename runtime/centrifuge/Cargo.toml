@@ -92,7 +92,6 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
-max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false, features = [ "derive" ] , branch = "master" }
 
 runtime-common = { path = "../common", default-features = false }
 
@@ -165,7 +164,6 @@ std = [
     "cumulus-pallet-aura-ext/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
-    "max-encoded-len/std",
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-claims/std",

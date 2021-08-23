@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-03-15}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-07-28}"
 
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
