@@ -35,6 +35,7 @@ members = [
 	"pallets/crowdloan-reward",
 	"pallets/migration",
 	"libs/trait-crowdloan-reward",
+    "libs/commons",
 	"libs/proofs",
 	"runtime/altair",
 	"runtime/centrifuge",
