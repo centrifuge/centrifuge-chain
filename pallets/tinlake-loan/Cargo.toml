@@ -1,0 +1,28 @@
+[package]
+name = "tinlake-loan"
+authors = ["Centrifuge <admin@centrifuge.io>"]
+edition = '2018'
+homepage = 'https://centrifuge.io'
+license = "LGPL-3.0"
+repository = 'https://github.com/centrifuge/centrifuge-chain'
+version = '0.1.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+orml-traits = { version = "0.4.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
+
+# local depdencies
+tinlake = { path = "../../libs/tinlake", default-features = false }
+
+[features]
+default = ['std']
+
+std = [
+    'codec/std',
+    'tinlake/std',
+    'frame-support/std',
+]
