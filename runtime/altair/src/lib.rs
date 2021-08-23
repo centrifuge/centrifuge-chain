@@ -618,22 +618,6 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub const MigrationMaxAccounts: u32 = 100;
-	pub const MigrationMaxVestings: u32 = 10;
-	pub const MigrationMaxProxies: u32 = 10;
-}
-
-// Implement the migration manager pallet
-// The actual associated type, which executes the migration can be found in the migration folder
-impl pallet_migration_manager::Config for Runtime {
-	type MigrationMaxAccounts = MigrationMaxAccounts;
-	type MigrationMaxVestings = MigrationMaxVestings;
-	type MigrationMaxProxies = MigrationMaxProxies;
-	type Event = Event;
-	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
-}
-
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -682,8 +666,6 @@ construct_runtime!(
 		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
-		// migration pallet
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
@@ -854,9 +836,6 @@ impl_runtime_apis! {
 
 			// Pallet fees benchmarks
 			add_benchmark!(params, batches, pallet_fees, Fees);
-
-			// Pallet migration benchmarks
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
