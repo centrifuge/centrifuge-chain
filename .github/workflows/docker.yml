@@ -3,7 +3,7 @@ on:
   push:
     branches: [master, parachain]
 env:
-  RUST_TOOLCHAIN: "1.53.0"
+  RUST_TOOLCHAIN: "nightly-2021-07-28"
 jobs:
   docker:
     runs-on: ubuntu-latest
