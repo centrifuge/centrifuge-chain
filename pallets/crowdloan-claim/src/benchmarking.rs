@@ -7,11 +7,9 @@ use frame_support::Twox128;
 use frame_system::AccountInfo;
 use frame_system::RawOrigin;
 use pallet_balances::AccountData;
-use sp_core::Pair;
-use sp_io::hashing::blake2_256;
 use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::Perbill;
-use sp_std::vec;
+use substrate_bip39::mini_secret_from_entropy;
 
 benchmarks! {
   claim_reward {
@@ -45,7 +43,7 @@ benchmarks! {
 			para_account.clone(),
 		));
 		let contribution: ContributionAmountOf<T> = get_contribution::<T>(400);
-		let contribution_proof: Vec<T::Hash> = get_proof::<T>(
+		let contribution_proof: proofs::Proof<T::Hash> = get_proof::<T>(
 			relay_account.clone(),
 			contribution
 		);
@@ -117,7 +115,7 @@ benchmarks! {
 impl_benchmark_test_suite!(
 	Pallet,
 	crate::mock::TestExternalitiesBuilder::default().build(None),
-	crate::mock::MockRuntime,
+	crate::mock::T,
 );
 
 // Helper functions from here on
@@ -141,19 +139,25 @@ fn get_account_para<T: Config>(
 	index: u32,
 	seed: u32,
 ) -> ParachainAccountIdOf<T> {
-	let entropy = (name, index, seed).using_encoded(blake2_256);
-	let (keypair, _) = sp_core::sr25519::Pair::from_entropy(&entropy[..], None);
+	let entropy = (name, index, seed).using_encoded(<T as frame_system::Config>::Hashing::hash);
+	let mini_key = mini_secret_from_entropy(entropy.as_ref(), "")
+		.expect("32 bytes can always build a key; qed");
+	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
 
-	codec::Decode::decode(&mut &keypair.public().0[..]).unwrap()
+	codec::Decode::decode(&mut &kp.public.to_bytes()[..]).unwrap()
 }
 
 fn get_signature<T: Config>(
-	relay: (&'static str, u32, u32),
+	variance: (&'static str, u32, u32),
 	para: ParachainAccountIdOf<T>,
 ) -> sp_core::sr25519::Signature {
-	let entropy = (relay.0, relay.1, relay.2).using_encoded(blake2_256);
-	let (keypair, _) = sp_core::sr25519::Pair::from_entropy(&entropy[..], None);
-	let msg = keypair.sign(para.encode().as_slice());
+	let entropy = (variance.0, variance.1, variance.2)
+		.using_encoded(<T as frame_system::Config>::Hashing::hash);
+	let mini_key = mini_secret_from_entropy(entropy.as_ref(), "")
+		.expect("32 bytes can always build a key; qed");
+	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
+	let context = schnorrkel::signing_context(b"substrate");
+	let msg: sp_core::sr25519::Signature = kp.sign(context.bytes(para.encode().as_slice())).into();
 
 	sp_core::sr25519::Signature(msg.0)
 }
@@ -163,26 +167,29 @@ fn get_account_relay<T: Config>(
 	index: u32,
 	seed: u32,
 ) -> T::RelayChainAccountId {
-	let entropy = (name, index, seed).using_encoded(blake2_256);
-	let (keypair, _) = sp_core::sr25519::Pair::from_entropy(&entropy[..], None);
+	let entropy = (name, index, seed).using_encoded(<T as frame_system::Config>::Hashing::hash);
+	let mini_key = mini_secret_from_entropy(entropy.as_ref(), "")
+		.expect("32 bytes can always build a key; qed");
+	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
 
-	codec::Decode::decode(&mut &keypair.public().0[..]).unwrap()
+	codec::Decode::decode(&mut &kp.public.to_bytes()[..]).unwrap()
 }
 
 fn get_proof<T: Config>(
 	relay: T::RelayChainAccountId,
 	contribution: ContributionAmountOf<T>,
-) -> Vec<T::Hash> {
+) -> proofs::Proof<T::Hash> {
 	let mut v: Vec<u8> = relay.encode();
 	v.extend(contribution.encode());
 	let leaf_hash: T::Hash = <T as frame_system::Config>::Hashing::hash(&v);
+
+	let mut sorted_hashed: Vec<T::Hash> = Vec::new();
 
 	// 10-leaf tree
 	let leaf_hash_0: T::Hash =
 		codec::Decode::decode(&mut codec::Encode::encode(&[0u32; 32]).as_slice()).unwrap();
 	let leaf_hash_1: T::Hash =
 		codec::Decode::decode(&mut codec::Encode::encode(&[1u32; 32]).as_slice()).unwrap();
-	let leaf_hash_2: T::Hash = leaf_hash;
 	let leaf_hash_3: T::Hash =
 		codec::Decode::decode(&mut codec::Encode::encode(&[2u32; 32]).as_slice()).unwrap();
 	let leaf_hash_4: T::Hash =
@@ -197,24 +204,18 @@ fn get_proof<T: Config>(
 		codec::Decode::decode(&mut codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
 	let leaf_hash_9: T::Hash =
 		codec::Decode::decode(&mut codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
-	let node_0 = Pallet::<T>::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
-	let node_1 = Pallet::<T>::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
-	let node_2 = Pallet::<T>::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
-	let node_3 = Pallet::<T>::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
-	let node_4 = Pallet::<T>::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
-	let node_00 = Pallet::<T>::sorted_hash_of(&node_0, &node_1);
-	let node_01 = Pallet::<T>::sorted_hash_of(&node_2, &node_3);
-	let node_000 = Pallet::<T>::sorted_hash_of(&node_00, &node_01);
-	let _node_root = Pallet::<T>::sorted_hash_of(&node_000, &node_4);
+	let node_0 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_0, leaf_hash_1);
+	let node_2 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_4, leaf_hash_5);
+	let node_3 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_6, leaf_hash_7);
+	let node_4 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_8, leaf_hash_9);
+	let node_01 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_2, node_3);
 
-	let proof: Vec<T::Hash> = vec![
-		leaf_hash_3.into(),
-		node_0.into(),
-		node_01.into(),
-		node_4.into(),
-	];
+	sorted_hashed.push(leaf_hash_3);
+	sorted_hashed.push(node_0);
+	sorted_hashed.push(node_01);
+	sorted_hashed.push(node_4);
 
-	proof.into()
+	proofs::Proof::new(leaf_hash, sorted_hashed)
 }
 
 fn get_root<T: Config>(
@@ -245,16 +246,16 @@ fn get_root<T: Config>(
 		codec::Decode::decode(&mut codec::Encode::encode(&[7u32; 32]).as_slice()).unwrap();
 	let leaf_hash_9: T::Hash =
 		codec::Decode::decode(&mut codec::Encode::encode(&[8u32; 32]).as_slice()).unwrap();
-	let node_0 = Pallet::<T>::sorted_hash_of(&leaf_hash_0, &leaf_hash_1);
-	let node_1 = Pallet::<T>::sorted_hash_of(&leaf_hash_2, &leaf_hash_3);
-	let node_2 = Pallet::<T>::sorted_hash_of(&leaf_hash_4, &leaf_hash_5);
-	let node_3 = Pallet::<T>::sorted_hash_of(&leaf_hash_6, &leaf_hash_7);
-	let node_4 = Pallet::<T>::sorted_hash_of(&leaf_hash_8, &leaf_hash_9);
-	let node_00 = Pallet::<T>::sorted_hash_of(&node_0, &node_1);
-	let node_01 = Pallet::<T>::sorted_hash_of(&node_2, &node_3);
-	let node_000 = Pallet::<T>::sorted_hash_of(&node_00, &node_01);
+	let node_0 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_0, leaf_hash_1);
+	let node_1 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_2, leaf_hash_3);
+	let node_2 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_4, leaf_hash_5);
+	let node_3 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_6, leaf_hash_7);
+	let node_4 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(leaf_hash_8, leaf_hash_9);
+	let node_00 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_0, node_1);
+	let node_01 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_2, node_3);
+	let node_000 = proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_00, node_01);
 
-	Pallet::<T>::sorted_hash_of(&node_000, &node_4).into()
+	proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_000, node_4).into()
 }
 
 fn init_pallets<T: Config>() {

@@ -324,6 +324,8 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				// Call::Democracy(..) |
+				Call::Council(..) | Elections(..) | Call::Utility(..)
 			),
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {
@@ -870,7 +872,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			// Pallet crowdloan-claim benchmarks
-			// add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
+			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 
 			// Pallet crowdloan-reward benchmarks
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);

@@ -121,6 +121,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
 
