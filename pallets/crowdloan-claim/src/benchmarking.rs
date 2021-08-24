@@ -9,7 +9,6 @@ use frame_system::RawOrigin;
 use pallet_balances::AccountData;
 use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::Perbill;
-use substrate_bip39::mini_secret_from_entropy;
 
 benchmarks! {
   claim_reward {
@@ -38,10 +37,10 @@ benchmarks! {
 
 		let relay_account: T::RelayChainAccountId = get_account_relay::<T>("contributor", 1, 1);
 		let para_account: ParachainAccountIdOf<T> = get_account_para::<T>("rewardy", 1, 1);
-		let identity_proof: MultiSignature = MultiSignature::Sr25519(get_signature::<T>(
+		let identity_proof: sp_runtime::MultiSignature = get_signature::<T>(
 			("contributor", 1, 1),
 			para_account.clone(),
-		));
+		);
 		let contribution: ContributionAmountOf<T> = get_contribution::<T>(400);
 		let contribution_proof: proofs::Proof<T::Hash> = get_proof::<T>(
 			relay_account.clone(),
@@ -134,15 +133,30 @@ fn get_balance<T: Config>(amount: u64) -> T::Balance {
 	}
 }
 
+// In order to detangle from sp-core/fullCrypto which seems to be missing some trait implementations
+#[derive(codec::Encode, codec::Decode)]
+struct Signature(pub [u8; 64]);
+
+#[derive(codec::Encode, codec::Decode)]
+enum MultiSignature {
+	/// An Ed25519 signature.
+	Ed25519(Signature),
+	/// An Sr25519 signature.
+	Sr25519(Signature),
+	/// An ECDSA/SECP256k1 signature.
+	Ecdsa(Signature),
+}
+
 fn get_account_para<T: Config>(
 	name: &'static str,
 	index: u32,
 	seed: u32,
 ) -> ParachainAccountIdOf<T> {
 	let entropy = (name, index, seed).using_encoded(<T as frame_system::Config>::Hashing::hash);
-	let mini_key = mini_secret_from_entropy(entropy.as_ref(), "")
-		.expect("32 bytes can always build a key; qed");
-	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
+	let entropy: [u8; 32] =
+		codec::Decode::decode(&mut codec::Encode::encode(&entropy).as_slice()).unwrap();
+	let mini_key = schnorrkel::MiniSecretKey::from_bytes(&entropy[..]).unwrap();
+	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Uniform);
 
 	codec::Decode::decode(&mut &kp.public.to_bytes()[..]).unwrap()
 }
@@ -150,16 +164,20 @@ fn get_account_para<T: Config>(
 fn get_signature<T: Config>(
 	variance: (&'static str, u32, u32),
 	para: ParachainAccountIdOf<T>,
-) -> sp_core::sr25519::Signature {
+) -> sp_runtime::MultiSignature {
 	let entropy = (variance.0, variance.1, variance.2)
 		.using_encoded(<T as frame_system::Config>::Hashing::hash);
-	let mini_key = mini_secret_from_entropy(entropy.as_ref(), "")
-		.expect("32 bytes can always build a key; qed");
-	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
+	let entropy: [u8; 32] =
+		codec::Decode::decode(&mut codec::Encode::encode(&entropy).as_slice()).unwrap();
+	let mini_key = schnorrkel::MiniSecretKey::from_bytes(&entropy[..]).unwrap();
+	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Uniform);
 	let context = schnorrkel::signing_context(b"substrate");
-	let msg: sp_core::sr25519::Signature = kp.sign(context.bytes(para.encode().as_slice())).into();
+	//let msg: schnorrkel::Signature = kp.sign(context.bytes(para.encode().as_slice())).into();
+	//let local_sig = Signature(msg.to_bytes());
+	let local_sig = Signature([0u8; 64]);
+	let local_multisig = MultiSignature::Sr25519(local_sig);
 
-	sp_core::sr25519::Signature(msg.0)
+	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
 }
 
 fn get_account_relay<T: Config>(
@@ -168,9 +186,10 @@ fn get_account_relay<T: Config>(
 	seed: u32,
 ) -> T::RelayChainAccountId {
 	let entropy = (name, index, seed).using_encoded(<T as frame_system::Config>::Hashing::hash);
-	let mini_key = mini_secret_from_entropy(entropy.as_ref(), "")
-		.expect("32 bytes can always build a key; qed");
-	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Ed25519);
+	let entropy: [u8; 32] =
+		codec::Decode::decode(&mut codec::Encode::encode(&entropy).as_slice()).unwrap();
+	let mini_key = schnorrkel::MiniSecretKey::from_bytes(&entropy[..]).unwrap();
+	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Uniform);
 
 	codec::Decode::decode(&mut &kp.public.to_bytes()[..]).unwrap()
 }

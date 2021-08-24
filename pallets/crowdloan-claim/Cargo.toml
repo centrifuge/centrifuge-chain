@@ -18,7 +18,7 @@ log = { version = "0.4.14", default-features = false }
 lazy_static = "1.4.0"
 serde = { version = "1.0.119" }
 
-# Substrate depenedencies
+# Substrate dependencies
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false , optional = true , branch = "master" }
@@ -26,10 +26,11 @@ pallet-balances = { git = "https://github.com/centrifuge/substrate", default-fea
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-substrate-bip39 = { version = "0.4.2", optional = true, default-features = false }
-schnorrkel = { version = "0.9.1", features = ["preaudit_deprecated", "u64_backend"], default-features = false, optional = true }
-#sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-getrandom = { version = "0.2.3", default-features = false , optional = true }
+
+# Benchmarking dependencies
+schnorrkel = { version = "0.10.1", features = ["u64_backend"], default-features = false, optional = true }
+getrandom = { version = "0.2", default-features = false, optional = true }
+rand_core = { version = "0.6.2", default-features = false, optional = true}
 
 # Local dependencies
 trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
@@ -46,7 +47,7 @@ hex = { version="0.4.3", default_features = false }
 
 [features]
 default = ['std']
-runtime-benchmarks = ["frame-benchmarking", "sp-core/full_crypto", "substrate-bip39", "schnorrkel", "getrandom/js"]
+runtime-benchmarks = ["frame-benchmarking", "schnorrkel"]
 std = [
   'proofs/std',
   'trait-crowdloan-reward/std',

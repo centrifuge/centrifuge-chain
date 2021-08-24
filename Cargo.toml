@@ -42,6 +42,7 @@ members = [
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
+	"tests/ensure_no_std"
 ]
 
 [dependencies]
