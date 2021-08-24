@@ -2,9 +2,7 @@
   "name": "Altair",
   "id": "altair",
   "chainType": "Live",
-  "bootNodes": [
-    "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWK9hsSJRDLgg9yyGRo75aUzmH4v9ebysn8BB3USvypK4K"
-  ],
+  "bootNodes": [],
   "telemetryEndpoints": [
     [
       "/dns/telemetry.polkadot.io/tcp/443/x-parity-wss/%2Fsubmit%2F",
