@@ -1,6 +1,10 @@
 //! # Optimized Merkle proof verifier and bundle hasher
 //!
 //! This pallet provides functionality of verifying optimized merkle proofs and bundle hasher.
+
+// Ensure we're `no_std` when compiling for WebAssembly.
+#![cfg_attr(not(feature = "std"), no_std)]
+
 use codec::{Decode, Encode};
 use sp_std::{fmt::Debug, vec::Vec};
 
@@ -10,28 +14,35 @@ mod tests;
 #[cfg(test)]
 mod mock;
 
+/// Deposit address
+pub type DepositAddress = [u8; 20];
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof<Hash> {
-	leaf_hash: Hash,
+	pub leaf_hash: Hash,
 	sorted_hashes: Vec<Hash>,
 }
 
 impl<Hash> Proof<Hash> {
+
 	pub fn new(hash: Hash, sorted_hashes: Vec<Hash>) -> Self {
 		Self {
 			leaf_hash: hash,
 			sorted_hashes,
 		}
 	}
+
+    pub fn len(&self) -> usize {
+		self.sorted_hashes.len()
+	}
 }
 
 pub trait Hasher: Sized {
 	/// Hash type we deal with
-	type Hash: Default + AsRef<[u8]> + From<[u8; 32]> + Copy + PartialEq + PartialOrd + Debug;
+	type Hash: Default + AsRef<[u8]> + Copy + PartialEq + PartialOrd + Debug;
 
 	/// Hashes given data to 32 byte u8. Ex: blake256, Keccak
-	fn hash(data: &[u8]) -> [u8; 32];
+	fn hash(data: &[u8]) -> Self::Hash;
 }
 
 pub trait Verifier: Hasher {
@@ -110,7 +121,8 @@ mod inner {
 }
 
 pub mod hashing {
-	use crate::Hasher;
+
+	use crate::{DepositAddress, Hasher, Proof};
 
 	/// computes sorted hash of the a and b
 	/// if a < b: hash(a+b)
@@ -129,8 +141,11 @@ pub mod hashing {
 		H::hash(&data).into()
 	}
 
-	/// Appends deposit_address and all the hashes from the proofs and returns the result hash
-	pub fn bundled_hash<H: Hasher>(hashes: Vec<H::Hash>, deposit_address: [u8; 20]) -> H::Hash {
+	/// Return a bundled hash from a list of hashes.
+    /// 
+    /// This function appends [deposit_address] and all the given [hashes] from the proofs and 
+    /// returns the result hash
+	pub fn bundled_hash<H: Hasher>(hashes: Vec<H::Hash>, deposit_address: DepositAddress) -> H::Hash {
 		let data = hashes
 			.into_iter()
 			.fold(deposit_address.to_vec(), |acc, hash| {
@@ -138,4 +153,16 @@ pub mod hashing {
 			});
 		H::hash(data.as_slice()).into()
 	}
+
+    /// Return a bundled hash from a list of proofs.
+    ///
+    /// Same as [bundled_hash] function, but here a list of proofs is given. This function the appends [deposit_address]
+    /// and all leaf hashes from given [proofs] and a return a bundled hash.
+    pub fn bundled_hash_from_proofs<H: Hasher>(proofs: Vec<Proof<H::Hash>>, deposit_address: DepositAddress) -> H::Hash {
+        // extract (leaf) hashes from proofs
+        let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
+
+        // compute the resulting bundled hash
+        bundled_hash::<H>(hashes, deposit_address)
+    }
 }
