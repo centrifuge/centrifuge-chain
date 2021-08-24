@@ -324,8 +324,6 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
-				// Call::Democracy(..) |
-				Call::Council(..) | Elections(..) | Call::Utility(..)
 			),
 			ProxyType::_Staking => false,
 			ProxyType::NonProxy => {

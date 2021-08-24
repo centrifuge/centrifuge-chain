@@ -28,8 +28,8 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 substrate-bip39 = { version = "0.4.2", optional = true, default-features = false }
 schnorrkel = { version = "0.9.1", features = ["preaudit_deprecated", "u64_backend"], default-features = false, optional = true }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-getrandom = { version = "0.2.3", default-features = false }
+#sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+getrandom = { version = "0.2.3", default-features = false , optional = true }
 
 # Local dependencies
 trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
@@ -46,7 +46,7 @@ hex = { version="0.4.3", default_features = false }
 
 [features]
 default = ['std']
-runtime-benchmarks = ["frame-benchmarking", "sp-core/full_crypto", "substrate-bip39", "schnorrkel", "sp-io/std", "getrandom/js"]
+runtime-benchmarks = ["frame-benchmarking", "sp-core/full_crypto", "substrate-bip39", "schnorrkel", "getrandom/js"]
 std = [
   'proofs/std',
   'trait-crowdloan-reward/std',
