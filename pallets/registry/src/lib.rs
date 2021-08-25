@@ -134,11 +134,7 @@ use frame_support::{
     ensure,
 };
 
-use frame_system::{
-  ensure_signed
-};
-
-use sp_core::H256;
+use frame_system::ensure_signed;
 
 use sp_runtime::traits::Hash;
 
@@ -353,8 +349,8 @@ pub mod pallet {
             registry_id: RegistryId,
             token_id: TokenId,
             asset_info: <T as pallet_nft::Config>::AssetInfo,
-            mint_info: MintInfo<<T as frame_system::Config>::Hash, H256>,
-        ) -> DispatchResultWithPostInfo {
+            mint_info: MintInfo<T::Hash, T::Hash>,
+) -> DispatchResultWithPostInfo {
 
             let who = ensure_signed(origin)?;
 
@@ -405,14 +401,14 @@ impl<T: Config> Pallet<T> {
         Ok(id)
     }
 
-    /// Get document's root hash
-    fn get_document_root(anchor_id: T::Hash) -> Result<H256, DispatchError> {
+    /// Get document's root hash given an anchor id
+    fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, DispatchError> {
         let root = match <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id) {
             Some(anchor_data) => Ok(anchor_data.doc_root),
             None => Err(Error::<T>::DocumentNotAnchored),
         }?;
 
-        Ok( H256::from_slice(root.as_ref()) )
+        Ok( <T::Hashing as Hash>::hash(root.as_ref()))
     }
 }
 
@@ -423,7 +419,7 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
     type AccountId    = <T as frame_system::Config>::AccountId;
     type AssetId      = AssetId;
     type AssetInfo    = <T as pallet_nft::Config>::AssetInfo;
-    type MintInfo     = MintInfo<<T as frame_system::Config>::Hash, H256>;
+    type MintInfo     = MintInfo<T::Hash, T::Hash>;
     type RegistryId   = RegistryId;
     type RegistryInfo = RegistryInfo;
 
@@ -489,22 +485,27 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
         // -------------
         // Verify proofs
 
-        // Get the doc root
+        // Get the document root hash
         let doc_root = Self::get_document_root(mint_info.anchor_id)?;
 
-        // Generate leaf hashes, turn into 'proofs::Proof' type for validation call
+        // Generate leaf hashes and turn them into 'proofs::Proof' type for validation call
         let proofs = mint_info.proofs.into_iter()
-            .map(|p| p.into())
+            .map(|mut proof | {
+                // Generate leaf hash from property ++ value ++ salt
+                proof.property.extend(proof.value);
+                proof.property.extend(&proof.salt);
+                let leaf_hash = <T::Hashing as Hash>::hash(&proof.property).into();
+
+                proofs::Proof::new(leaf_hash, proof.hashes)
+            })
             .collect();
 
-        let verifier = ProofVerifier::new(mint_info.static_hashes);
+        // Create proof verifier given static hashes
+        let proof_verifier = ProofVerifier::<T>::new(mint_info.static_hashes.into());
 
         // Verify the proof against document root
         ensure!(
-            verifier.verify_proofs(
-                doc_root,
-                &proofs,
-            ),
+            proof_verifier.verify_proofs(doc_root, &proofs),
             Error::<T>::InvalidProofs
         );
 

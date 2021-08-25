@@ -31,12 +31,14 @@ use codec::{
 };
 
 use sp_core::{
-    H256, 
-    blake2_256,
+    H256
 };
 
-use sp_std::vec;
-use sp_std::vec::Vec;
+use sp_runtime::{
+    sp_std::vec,
+    sp_std::vec::Vec,
+    traits::Hash,
+};
 
 // Library for building and validating proofs
 use proofs::{
@@ -65,7 +67,7 @@ pub struct RegistryInfo {
 /// Proven by hashing hash(value + property + salt) into a leaf hash of the document
 /// merkle tree, then hashing with the given hashes to generate the Merkle root.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
-pub struct Proof<Hash> {
+pub struct CompleteProof<Hash> {
     /// The value of the associated property of a document. Corrseponds to a leaf in
     /// the document merkle tree.
     pub value: Bytes,
@@ -78,30 +80,30 @@ pub struct Proof<Hash> {
 }
 
 /// Generates the leaf hash from underlying data, other hashes remain the same.
-impl From<Proof<H256>> for proofs::Proof<H256> {
+impl From<CompleteProof<H256>> for proofs::Proof<H256> {
 
-    fn from(mut p: Proof<H256>) -> Self {
+    fn from(mut proof: CompleteProof<H256>) -> Self {
         // Generate leaf hash from property ++ value ++ salt
-        p.property.extend(p.value);
-        p.property.extend(&p.salt);
-        let leaf_hash = sp_io::hashing::keccak_256(&p.property).into();
+        proof.property.extend(proof.value);
+        proof.property.extend(&proof.salt);
+        let leaf_hash = sp_io::hashing::keccak_256(&proof.property).into();
 
-        proofs::Proof::new(leaf_hash, p.hashes)
+        proofs::Proof::new(leaf_hash, proof.hashes)
     }
 }
 
-/// Proof verifier for verifier registry.
-pub struct ProofVerifier {
+/// Proof verifier for registry.
+pub(crate) struct ProofVerifier<T: frame_system::Config> {
 
     /// Array containing static root hashes passed when minting a non-fungible token
     ///
     /// See [ProofVerifier::new] for information on how to pass these hashes. Those
     /// root hashes are passed when invoking [mint] transaction (or extrinsic).
-    static_hashes: [H256; 3],
+    static_hashes: [T::Hash; 3],
 }
 
 // Proof verifier implementation block
-impl ProofVerifier {
+impl<T: frame_system::Config> ProofVerifier<T> {
 
     const BASIC_DATA_ROOT_HASH: usize = 0;
     const ZK_DATA_ROOT_HASH: usize = 1;
@@ -113,24 +115,25 @@ impl ProofVerifier {
     ///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
     ///   2. The ZK root hash (see index ['ZK_DATA_ROOT_HASH'])
     ///   3. The signature root hash (see index ['SIGNATURE_DATA_ROOT_HASH'])
-    pub fn new(static_hashes: [H256; 3]) -> Self {
+    pub fn new(static_hashes: [T::Hash; 3]) -> Self {
         ProofVerifier {
             static_hashes,
         }
     }
 }
 
-// Implement hasher trait for the registry's proof verifier
-impl Hasher for ProofVerifier {
-    type Hash = H256;
+// Implement hasher trait for the proof verifier
+impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
+    type Hash = T::Hash;
 
-    fn hash(data: &[u8]) -> [u8; 32] {
-        blake2_256(data)
+    // Hash the input data
+    fn hash(data: &[u8]) -> Self::Hash {
+        <T::Hashing as Hash>::hash(data)
     }
 }
 
 // Implement verifier trait for registry's proof verifier
-impl Verifier for ProofVerifier {
+impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
 
     fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
         sort_hash_of::<Self>(a, b)
@@ -198,5 +201,5 @@ pub struct MintInfo<Anchor, Hash> {
 
     /// Each element of the list is a proof that a certain property of a
     /// document has the specified value.
-    pub proofs: Vec<Proof<Hash>>,
+    pub proofs: Vec<CompleteProof<Hash>>,
 }
