@@ -12,37 +12,32 @@
 // GNU General Public License for more details.
 
 //! Bridge pallet's extrinsics weight information
-//! 
+//!
 //! Note that the following weights are used only for development.
 //! In fact, weights shoudl be calculated using runtime benchmarking.
 
-use frame_support::{
-    weights::{
-        Weight,
-    }
-};
+use frame_support::weights::Weight;
 
 use crate::traits::WeightInfo;
 
-
 impl WeightInfo for () {
-    fn receive_nonfungible() -> Weight {
-        195_000_000 as Weight
-    }
+	fn receive_nonfungible() -> Weight {
+		195_000_000 as Weight
+	}
 
-    fn remark() -> Weight {
-        195_000_000 as Weight
-    }
-    
-    fn transfer() -> Weight {
-        195_000_000 as Weight
-    }
+	fn remark() -> Weight {
+		195_000_000 as Weight
+	}
 
-    fn transfer_asset() -> Weight {
-        195_000_000 as Weight    
-    }
+	fn transfer() -> Weight {
+		195_000_000 as Weight
+	}
 
-    fn transfer_native() -> Weight {
-        195_000_000 as Weight
-    }
+	fn transfer_asset() -> Weight {
+		195_000_000 as Weight
+	}
+
+	fn transfer_native() -> Weight {
+		195_000_000 as Weight
+	}
 }

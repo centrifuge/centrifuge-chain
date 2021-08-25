@@ -16,10 +16,9 @@
 // ----------------------------------------------------------------------------
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
-    
+
 // Substrate primitives
 use frame_support::weights::Weight;
-
 
 // ----------------------------------------------------------------------------
 // Traits declaration
@@ -28,9 +27,9 @@ use frame_support::weights::Weight;
 /// Weight information for pallet extrinsics
 ///
 /// Weights are calculated using runtime benchmarking features.
-/// See [`benchmarking`] module for more information. 
+/// See [`benchmarking`] module for more information.
 pub trait WeightInfo {
-    fn transfer() -> Weight;
+	fn transfer() -> Weight;
 
-    fn validate_mint() -> Weight;
+	fn validate_mint() -> Weight;
 }

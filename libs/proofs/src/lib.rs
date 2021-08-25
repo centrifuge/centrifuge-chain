@@ -24,7 +24,6 @@ pub struct Proof<Hash> {
 }
 
 impl<Hash> Proof<Hash> {
-
 	pub fn new(hash: Hash, sorted_hashes: Vec<Hash>) -> Self {
 		Self {
 			leaf_hash: hash,
@@ -32,7 +31,7 @@ impl<Hash> Proof<Hash> {
 		}
 	}
 
-    pub fn len(&self) -> usize {
+	pub fn len(&self) -> usize {
 		self.sorted_hashes.len()
 	}
 }
@@ -141,10 +140,13 @@ pub mod hashing {
 	}
 
 	/// Return a bundled hash from a list of hashes.
-    /// 
-    /// This function appends [deposit_address] and all the given [hashes] from the proofs and 
-    /// returns the result hash
-	pub fn bundled_hash<H: Hasher>(hashes: Vec<H::Hash>, deposit_address: DepositAddress) -> H::Hash {
+	///
+	/// This function appends [deposit_address] and all the given [hashes] from the proofs and
+	/// returns the result hash
+	pub fn bundled_hash<H: Hasher>(
+		hashes: Vec<H::Hash>,
+		deposit_address: DepositAddress,
+	) -> H::Hash {
 		let data = hashes
 			.into_iter()
 			.fold(deposit_address.to_vec(), |acc, hash| {
@@ -153,15 +155,18 @@ pub mod hashing {
 		H::hash(data.as_slice()).into()
 	}
 
-    /// Return a bundled hash from a list of proofs.
-    ///
-    /// Same as [bundled_hash] function, but here a list of proofs is given. This function the appends [deposit_address]
-    /// and all leaf hashes from given [proofs] and a return a bundled hash.
-    pub fn bundled_hash_from_proofs<H: Hasher>(proofs: Vec<Proof<H::Hash>>, deposit_address: DepositAddress) -> H::Hash {
-        // extract (leaf) hashes from proofs
-        let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
+	/// Return a bundled hash from a list of proofs.
+	///
+	/// Same as [bundled_hash] function, but here a list of proofs is given. This function the appends [deposit_address]
+	/// and all leaf hashes from given [proofs] and a return a bundled hash.
+	pub fn bundled_hash_from_proofs<H: Hasher>(
+		proofs: Vec<Proof<H::Hash>>,
+		deposit_address: DepositAddress,
+	) -> H::Hash {
+		// extract (leaf) hashes from proofs
+		let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
 
-        // compute the resulting bundled hash
-        bundled_hash::<H>(hashes, deposit_address)
-    }
+		// compute the resulting bundled hash
+		bundled_hash::<H>(hashes, deposit_address)
+	}
 }

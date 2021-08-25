@@ -13,14 +13,12 @@
 
 //! Traits used by bridge pallet
 
-
 // ----------------------------------------------------------------------------
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
 // Frame, system and frame primitives
 use frame_support::weights::Weight;
-
 
 // ----------------------------------------------------------------------------
 // Traits declaration
@@ -29,11 +27,11 @@ use frame_support::weights::Weight;
 /// Weight information for pallet extrinsics
 ///
 /// Weights are calculated using runtime benchmarking features.
-/// See [`benchmarking`] module for more information. 
+/// See [`benchmarking`] module for more information.
 pub trait WeightInfo {
-    fn receive_nonfungible() -> Weight;
-    fn remark() -> Weight;
-    fn transfer() -> Weight;
-    fn transfer_asset() -> Weight;
-    fn transfer_native() -> Weight;
+	fn receive_nonfungible() -> Weight;
+	fn remark() -> Weight;
+	fn transfer() -> Weight;
+	fn transfer_asset() -> Weight;
+	fn transfer_native() -> Weight;
 }
