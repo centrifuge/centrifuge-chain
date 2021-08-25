@@ -49,6 +49,7 @@
 //! `AssetExists\` - Thrown when there is an attempt to mint a duplicate asset.
 //! `NonexistentAsset\` - Thrown when there is an attempt to transfer a nonexistent asset.
 //! `NotAssetOwner\` - Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
+//! `DocumentNotAnchored` - A given document id does not match a corresponding document in the anchor storage.
 //!
 //! ### Dispatchable Functions
 //!
@@ -88,8 +89,8 @@
 // ----------------------------------------------------------------------------
 
 // Pallet types and traits definition
-pub mod types;
 pub mod traits;
+pub mod types;
 
 // Pallet mock runtime
 #[cfg(test)]
@@ -112,10 +113,7 @@ use centrifuge_commons::{
     }
 };
 
-use proofs::{
-    Proof, 
-    Verifier,
-};
+use proofs::{DepositAddress, Proof, Verifier, hashing::bundled_hash_from_proofs};
 
 use unique_assets::traits::{
     Mintable,
@@ -126,7 +124,6 @@ use unique_assets::traits::{
 use codec::FullCodec;
 
 use frame_support::{
-    traits::Currency,
     dispatch::{
         DispatchError,
         DispatchResult,
@@ -137,8 +134,6 @@ use frame_support::{
     Hashable,
 };
 
-use sp_core::H256;
-
 use sp_runtime::traits::Member;
 
 use sp_std::fmt::Debug;
@@ -147,21 +142,12 @@ use crate::{
     traits::WeightInfo,
     types::{
         Asset,
-        BundleHasher,
         ProofVerifier,
     }
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
-
-
-// ----------------------------------------------------------------------------
-// Type aliases
-// ----------------------------------------------------------------------------
-
-type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -176,8 +162,10 @@ type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_sys
 pub mod pallet {
 
     use super::*;
+    use chainbridge::types::ResourceId;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::SaturatedConversion;
 
     // NFT pallet type declaration.
     //
@@ -208,9 +196,6 @@ pub mod pallet {
         /// The data type that is used to describe this type of asset.
         type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
 
-        /// The currency mechanism.
-		type Currency: frame_support::traits::Currency<Self::AccountId>;
-
         /// Associated type for Event enum
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -229,7 +214,7 @@ pub mod pallet {
         
         /// Additional fee charged when minting a NFT.
         #[pallet::constant]
-        type Fee: Get<BalanceOf<Self>>;
+        type Fee: Get<u128>;
         
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -281,7 +266,6 @@ pub mod pallet {
         TokenId,
         T::AssetInfo>;
 
-
     // ------------------------------------------------------------------------
     // Pallet genesis configuration
     // ------------------------------------------------------------------------
@@ -304,14 +288,12 @@ pub mod pallet {
 		fn build(&self) {}
 	}
 
-
     // ------------------------------------------------------------------------
     // Pallet lifecycle hooks
     // ------------------------------------------------------------------------
     
     #[pallet::hooks]
 	impl<T:Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
 
     // ------------------------------------------------------------------------
     // Pallet errors
@@ -332,8 +314,8 @@ pub mod pallet {
         /// Unable to recreate the anchor hash from the proofs and data provided. 
         InvalidProofs,
 
-        /// Anchor does not exist
-        InexistentAnchor,
+        /// A given document id does not match a corresponding document in the anchor storage.
+        DocumentNotAnchored,
     }
 
 
@@ -384,42 +366,45 @@ pub mod pallet {
         /// # <weight>
         /// - depends on the arguments
         /// # </weight>
+        ///
+        /// FIXME (ToZ)
+        /// The [_static_proofs] parameter seems no more used. We did not remove it, as it
+        /// may break the coupling with other (client) components.
         #[pallet::weight(<T as Config>::WeightInfo::validate_mint())]
         pub fn validate_mint(
             origin: OriginFor<T>,
             anchor_id: T::Hash, 
-            deposit_address: [u8; 20], 
-            proofs: Vec<Proof<H256>>,
-            static_proofs: [H256; 3],
+            deposit_address: DepositAddress, 
+            proofs: Vec<Proof<T::Hash>>,
+            _static_proofs: [T::Hash; 3],
             dest_id: <T as Config>::ChainId,
         ) -> DispatchResultWithPostInfo 
         {
             let who = ensure_signed(origin)?;
 
             // Return anchored document root hash
-            let anchor_data = <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id).ok_or(Error::<T>::InexistentAnchor)?;
+            let anchor_data = <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id).ok_or(Error::<T>::DocumentNotAnchored)?;
 
             // Create a proof verifier with static proofs
-            let proof_verifier = ProofVerifier::new(static_proofs);
+            let proof_verifier = ProofVerifier::<T>::new();
 
             // Validates the proofs again the provided document root
-            let doc_root= anchor_data.doc_root;
             ensure!(
-                proof_verifier.verify_proofs(doc_root, &proofs),
+                proof_verifier.verify_proofs(anchor_data.doc_root, &proofs),
                 Error::<T>::InvalidProofs
             );
 
             // Get the bundled hash of all proofs (i.e. from proofs' leaf hashe)
-            let bundled_hash = BundleHasher::get_bundled_hash_from_proofs(proofs.into(), deposit_address);
+            let bundled_hash = bundled_hash_from_proofs::<ProofVerifier<T>>(proofs, deposit_address);
             Self::deposit_event (Event::<T>::DepositAsset(bundled_hash));
 
             let metadata = bundled_hash.as_ref().to_vec();
-            let resource_id = T::HashId::get();
 
 			// Burn additional fees from the calling account
-            <pallet_fees::Pallet<T>>::burn_fee(&who, T::Fee::get().into().into())?;
+            <pallet_fees::Pallet<T>>::burn_fee(&who, T::Fee::get().saturated_into())?;
 
-            <chainbridge::Pallet<T>>::transfer_generic(dest_id.into(), resource_id.into(), metadata)?;
+            let resource_id: ResourceId = T::HashId::get().into();
+            <chainbridge::Pallet<T>>::transfer_generic(dest_id.into(), resource_id, metadata)?;
              
             Ok(().into())
         }

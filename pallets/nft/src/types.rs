@@ -18,25 +18,19 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use codec::{
-    Decode, 
-    Encode,
+use codec::{Decode, Encode};
+
+use sp_runtime::{
+    RuntimeDebug,
+    sp_std::vec::Vec,
+    traits::Hash,
 };
 
-use sp_core::{
-    H256, 
-    keccak_256, 
-    blake2_256
-};
-
-use sp_runtime::RuntimeDebug;
-
-use sp_std::vec::Vec;
+//use sp_std::vec::Vec;
 
 // Library for building and validating proofs
 use proofs::{
     Hasher,
-    Proof,
     Verifier,
     hashing::sort_hash_of
 };
@@ -61,46 +55,27 @@ impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
 }
 
 /// Proof verifier data structure.
-pub struct ProofVerifier {
-
-    /// Array containing static root hashes passed when minting a non-fungible token.
-    ///
-    /// See [ProofVerifier::new] for information on how to pass these hashes. Those
-    /// root hashes are passed when invoking [mint] transaction (or extrinsic).
-    static_hashes: [<Self as Hasher>::Hash; 3],
-}
+pub(crate) struct ProofVerifier<T>(sp_std::marker::PhantomData<T>);
 
 // Proof verifier implementation block
-impl ProofVerifier {
-
-    const BASIC_DATA_ROOT_HASH: usize = 0;
-    const ZK_DATA_ROOT_HASH: usize = 1;
-    const SIGNATURE_ROOT_HASH: usize = 2;
-
-    /// Build a new proof verifier instance, given a list of static root hashes.
-    ///
-    /// The 'root_hashes' must be passed in a specific order, namely:
-    ///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
-    ///   2. The ZK root hash (see index ['ZK_DATA_ROOT_HASH'])
-    ///   3. The signature root hash (see index ['SIGNATURE_DATA_ROOT_HASH'])
-    pub fn new(static_hashes: [<Self as Hasher>::Hash; 3]) -> Self {
-        ProofVerifier {
-            static_hashes,
-        }
-    }
+impl<T: frame_system::Config> ProofVerifier<T> {
+    pub fn new() -> Self {
+		ProofVerifier(sp_std::marker::PhantomData)
+	}
 }
 
-// Implement hasher trait for the registry's proof verifier
-impl Hasher for ProofVerifier{
-    type Hash = H256;
+// Implement hasher trait for the proof verifier
+impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
+    type Hash = T::Hash;
 
-    fn hash(data: &[u8]) -> [u8; 32] {
-        blake2_256(data)
+    // Hash the input data
+    fn hash(data: &[u8]) -> Self::Hash {
+        <T::Hashing as Hash>::hash(data)
     }
 }
 
 // Implement verifier trait for registry's proof verifier
-impl Verifier for ProofVerifier {
+impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
 
     fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
         sort_hash_of::<Self>(a, b)
@@ -110,32 +85,5 @@ impl Verifier for ProofVerifier {
     fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>> {
 // TODO: be sure it is okay what to pass here
         Some(vec![doc_root])    
-    }
-}
-
-/// Bundle hasher structure.
-pub struct BundleHasher;
-
-
-// Implement the proofs hasher trait for this bundle hasher.
-impl Hasher for BundleHasher {
-    
-	type Hash = H256;
-
-	fn hash(data: &[u8]) -> [u8; 32] {
-		keccak_256(data)
-	}
-}
-
-// Implement the NFT pallet's bundle hasher functions.
-impl BundleHasher {
-
-    /// Returns a bundled hash from a list of proofs
-    pub fn get_bundled_hash_from_proofs(proofs: Vec<Proof<<Self as Hasher>::Hash>>, deposit_address: [u8; 20]) -> <Self as Hasher>::Hash {
-        // extract (leaf) hashes from proofs
-        let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
-
-        // compute the resulting bundled hash
-        proofs::hashing::bundled_hash::<Self>(hashes, deposit_address)
     }
 }
