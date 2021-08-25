@@ -80,7 +80,6 @@ pub trait Verifier: Hasher {
 		inner::verify_proof::<Self>(&mut matches, proof)
 	}
 }
-
 mod inner {
 	use crate::{Proof, Verifier};
 
