@@ -14,3 +14,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod traits;
+
+// TODO: This is the order struct. It provides information about wether it is an investement, from
+//       whom, and the size.
+pub struct Order;
+
+// TODO: The struct that defines tranches
+pub struct Tranche;

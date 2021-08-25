@@ -44,6 +44,11 @@ members = [
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
+	"pallets/tinlake-pool",
+	"pallets/tinlake-loan",
+	"pallets/tinlake-issuer",
+	"pallets/tinlake-investor",
+	"pallets/tinlake-asset",
 ]
 
 [dependencies]

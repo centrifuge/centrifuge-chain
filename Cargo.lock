@@ -11142,6 +11142,7 @@ dependencies = [
  "frame-support 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "orml-traits",
  "parity-scale-codec",
+ "sp-arithmetic 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "tinlake",
 ]
 
@@ -11152,6 +11153,7 @@ dependencies = [
  "frame-support 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "orml-traits",
  "parity-scale-codec",
+ "sp-runtime 3.0.0 (git+https://github.com/centrifuge/substrate?branch=master)",
  "tinlake",
 ]
 

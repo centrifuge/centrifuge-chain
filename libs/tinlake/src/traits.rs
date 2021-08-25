@@ -21,19 +21,21 @@ use codec::traits::FullCodec;
 use orml_traits::MultiCurrency;
 
 // TODO:
-trait StaticPool<PoolId, AssetId, TrancheId> {
+pub trait StaticPool<PoolId> {
+    type AssetId;
+    type TrancheId;
     type Tranche;
     type Investor;
 
-    fn assets(pool: PoolId) -> Vec<AssetId>;
-    fn add_asset(pool: PoolId, asset: AssetId) -> DispatchResult;
-    fn remove_asset(pool: PoolId, asset: AssetId) -> DispatchResult;
+    fn assets(pool: PoolId) -> Vec<Self::AssetId>;
+    fn add_asset(pool: PoolId, asset: Self::AssetId) -> DispatchResult;
+    fn remove_asset(pool: PoolId, asset: Self::AssetId) -> DispatchResult;
     fn tranches(pool: PoolId) -> Vec<Self::Tranche>;
-    fn investors(pool: PoolId, Option<TrancheId>) -> Vec<Self::Investor>;
+    fn investors(pool: PoolId, Option<Self::TrancheId>) -> Vec<Self::Investor>;
 }
 
 // TODO:
-trait RevolvingPool<PoolId, BlockNumber, AssetId, TrancheId>: StaticPool<PoolId, AssetId, TrancheId> {
+pub trait RevolvingPool<PoolId, BlockNumber>: StaticPool<PoolId> {
     fn last_epoch(pool: PoolId) -> BlockNumber;
     fn min_epoch(pool: PoolId) -> BlockNumber;
     fn closeable(pool: PoolId) -> bool;
@@ -41,56 +43,56 @@ trait RevolvingPool<PoolId, BlockNumber, AssetId, TrancheId>: StaticPool<PoolId,
 }
 
 // TODO:
-// This trait could also be implemented by a Defi-Pallet that acts as a secondary reserve
+// This pub trait could also be implemented by a Defi-Pallet that acts as a secondary reserve
 // besides the pool that will only be used, if the pool is out of capital.
-trait Reserve<PoolId, AccountId> {
+pub trait Reserve<AccountId> {
     type Balance: AtLeast32BitUnsigned + FullCodec + Copy + MaybeSerializeDeserialize + Debug + Default;
 
-    fn deposit(to: PoolId, amount: Self::Balance) -> DispatchResult;
-    fn payout(from: PoolId, amount:  Self::Balance) -> DispatchResult;
-    fn max_reserve(account: PoolId) ->  Self::Balance;
-    fn avail_reserve(account: PoolId) ->  Self::Balance;
+    fn deposit(from: AccountId, to: AccountId, amount: Self::Balance) -> DispatchResult;
+    fn payout(from: AccountId, to: AccountId, amount:  Self::Balance) -> DispatchResult;
+    fn max_reserve(account: AccountId) ->  Self::Balance;
+    fn avail_reserve(account: AccountId) ->  Self::Balance;
 }
 
 // TODO:
-trait InvestmentPool<PoolId> {
-    type Order;
+pub trait InvestmentPool<PoolId> {
+    type Order; //TODO: We will need some trait here which allows to calculate the in-and-out-flows of this type
 
     fn order(pool: PoolId, orders: Vec<Orders>) -> DispatchResult;
 }
 
 /// TODO:
-trait Owner<AccountId> {
-    type Of;
+pub trait Owner<AccountId> {
+    type Of: Clone;
 
     fn ownership(of: Self::Of, who: AccountId) -> bool;
 }
 
 // TODO:
-trait Loan<LoanId> {
+pub trait Loan<PoolId, LoanId> {
     type Balance: AtLeast32BitUnsigned + FullCodec + Copy + MaybeSerializeDeserialize + Debug + Default;
 
-    fn borrow(id: LoanId, amount: Self::Balance) -> DispatchResult;
-    fn repay(id: LoanId, amount: Self::Balance) -> DispatchResult;
+    fn borrow(pool: PoolId, loan: LoanId, amount: Self::Balance) -> DispatchResult;
+    fn repay(pool: PoolId, loan: LoanId, amount: Self::Balance) -> DispatchResult;
 }
 
 // TODO:
-trait Lockable<Id> {
+pub trait Lockable<Id> {
     type Reason;
 
-    fn lock(id: Id, reason: Reason) -> DispatchResult;
-    fn unlock(id: Id) -> DispatchResult;
+    fn lock(id: Id, reason: Self::Reason) -> DispatchResult;
+    fn unlock(id: Id, reason: Self::Reason) -> DispatchResult;
     fn locks(id: Id) -> Result<Option<Vec<Self::Reasons>>, DispatchError>;
 }
 
 // TODO:
-trait Collaterale<Id, AccountId> {
+pub trait Collaterale<Id, AccountId> {
     fn seize(what: Id, custodian: AccountId);
     fn seized(what: Id) -> bool;
 }
 
 // TODO:
-trait Asset<Id> {
+pub trait Asset<Id> {
     type Balance;
     type Info;
 
@@ -99,6 +101,6 @@ trait Asset<Id> {
 }
 
 // TODO:
-trait Accreditation<PooldId, TrancheId, AccountId> {
+pub trait Accreditation<PoolId, TrancheId, AccountId> {
     fn accredited(pool: PoolId, tranche: TrancheId, who: AccountId) -> bool;
 }

@@ -14,6 +14,9 @@ targets = ['x86_64-unknown-linux-gnu']
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 orml-traits = { version = "0.4.0", default-features = false }
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+
+
 
 # local depdencies
 tinlake = { path = "../../libs/tinlake", default-features = false }
@@ -25,4 +28,5 @@ std = [
     'codec/std',
     'tinlake/std',
     'frame-support/std',
+    'sp-runtime/std'
 ]
