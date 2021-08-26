@@ -92,9 +92,9 @@
 use codec::Encode;
 // Runtime, system and frame primitives
 use frame_support::{
-	dispatch::{fmt::Debug, Codec, DispatchResult},
+	dispatch::{fmt::Debug, DispatchResult},
 	ensure,
-	sp_runtime::traits::{AtLeast32BitUnsigned, MaybeSerialize, Saturating},
+	sp_runtime::traits::{MaybeSerialize, Saturating},
 	traits::{EnsureOrigin, Get},
 	PalletId,
 };
@@ -127,9 +127,6 @@ mod benchmarking;
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
 
-/// A type alias for the balance type from this pallet's point of view.
-type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
-
 /// A type alias for crowdloan's child trie root hash, from this claim pallet's point of view.
 ///
 /// When setting up the pallet via the [`initialize`] transaction, the
@@ -144,10 +141,6 @@ type RootHashOf<T> = <T as frame_system::Config>::Hash;
 /// A type alias for the parachain account identifier from this claim pallet's point of view
 type ParachainAccountIdOf<T> =
 	<<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ParachainAccountId;
-
-/// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
-type ContributionAmountOf<T> =
-	<<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ContributionAmount;
 
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
@@ -241,17 +234,6 @@ pub mod pallet {
 			+ Parameter
 			+ Into<AccountId32>;
 
-		/// The balance type of the relay chain
-		type RelayChainBalance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Codec
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ Into<BalanceOf<Self>>;
-
 		/// The maximum length (i.e. depth of the tree) we allow a proof to have.
 		/// This mitigates DDoS attacks solely. We choose 30, which by a base 2 merkle-tree
 		/// should be more than enough.
@@ -261,7 +243,11 @@ pub mod pallet {
 		///
 		/// This associated type allows to implement a loosely-coupled regime between
 		/// claiming and rewarding pallets.
-		type RewardMechanism: Reward;
+		type RewardMechanism: Reward<
+			ParachainAccountId = Self::AccountId,
+			ContributionAmount = Self::Balance,
+			BlockNumber = Self::BlockNumber,
+		>;
 
 		/// Priority of the unsigned claim transaction.
 		///
@@ -303,11 +289,7 @@ pub mod pallet {
 		ClaimPalletInitialized,
 
 		/// Event emitted when a reward has been claimed successfully.
-		RewardClaimed(
-			T::RelayChainAccountId,
-			ParachainAccountIdOf<T>,
-			ContributionAmountOf<T>,
-		),
+		RewardClaimed(T::RelayChainAccountId, ParachainAccountIdOf<T>, T::Balance),
 
 		/// The block number, where we lock the contributions has been updated
 		LockedAtUpdated(T::BlockNumber),
@@ -467,7 +449,7 @@ pub mod pallet {
 			parachain_account_id: ParachainAccountIdOf<T>,
 			identity_proof: MultiSignature,
 			contribution_proof: Proof<T::Hash>,
-			contribution: ContributionAmountOf<T>,
+			contribution: T::Balance,
 		) -> DispatchResultWithPostInfo {
 			// Ensures that this function can only be called via an unsigned transaction
 			ensure_none(origin)?;

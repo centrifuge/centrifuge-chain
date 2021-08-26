@@ -29,21 +29,6 @@ use crate::{self as pallet_crowdloan_reward, mock::*, Error as CrowdloanRewardEr
 // ----------------------------------------------------------------------------
 
 #[test]
-fn convert_to_native() {
-	TestExternalitiesBuilder::default()
-		.existential_deposit(1)
-		.build(|| {
-			System::set_block_number(1);
-			// This is equal to swithcing from a 12-decimal system to a 18-decimal system with a
-			// factor of 10. I.e. 10 relay-chain tokens will be converted into 100 native tokens
-			CrowdloanReward::set_conversion_rate(Origin::signed(1), 10_000_000).unwrap();
-		})
-		.execute_with(|| {
-			assert_eq!(CrowdloanReward::convert_to_native(10).unwrap(), 100_000_000);
-		});
-}
-
-#[test]
 fn initalize_module() {
 	TestExternalitiesBuilder::default()
 		.existential_deposit(1)
@@ -51,14 +36,12 @@ fn initalize_module() {
 		.execute_with(|| {
 			assert!(CrowdloanReward::initialize(
 				Origin::signed(1),
-				3,
 				Perbill::from_percent(12),
 				4,
 				4,
 			)
 			.is_ok());
 
-			assert_eq!(CrowdloanReward::conversion_rate(), 3);
 			assert_eq!(
 				CrowdloanReward::direct_payout_ratio(),
 				Perbill::from_percent(12)
@@ -74,7 +57,7 @@ fn not_admin_for_setters() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 50, Perbill::from_percent(20), 4, 3)
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3)
 				.unwrap();
 		})
 		.execute_with(|| {
@@ -84,10 +67,6 @@ fn not_admin_for_setters() {
 			);
 			assert_noop!(
 				CrowdloanReward::set_vesting_period(Origin::signed(2), 3),
-				CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
-			);
-			assert_noop!(
-				CrowdloanReward::set_conversion_rate(Origin::signed(2), 100),
 				CrowdloanRewardError::<MockRuntime>::MustBeAdministrator
 			);
 			assert_noop!(
@@ -106,7 +85,7 @@ fn setters_ok() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 50, Perbill::from_percent(20), 4, 3)
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3)
 				.unwrap();
 		})
 		.execute_with(|| {
@@ -117,7 +96,6 @@ fn setters_ok() {
 				Perbill::from_percent(9)
 			)
 			.is_ok());
-			assert!(CrowdloanReward::set_conversion_rate(Origin::signed(1), 80).is_ok());
 			assert!(CrowdloanReward::set_vesting_start(Origin::root(), 1).is_ok());
 			assert!(CrowdloanReward::set_vesting_period(Origin::root(), 55555).is_ok());
 			assert!(CrowdloanReward::set_direct_payout_ratio(
@@ -125,7 +103,6 @@ fn setters_ok() {
 				Perbill::from_percent(9)
 			)
 			.is_ok());
-			assert!(CrowdloanReward::set_conversion_rate(Origin::root(), 80).is_ok());
 		});
 }
 
@@ -135,16 +112,14 @@ fn reward_participant() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 2, Perbill::from_percent(20), 4, 3)
-				.unwrap()
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
 			let mod_balance = Balances::free_balance(&mod_account);
 			let rew_balance = Balances::free_balance(&4);
 
-			assert!(CrowdloanReward::reward(4, 50).is_ok());
-			// Reward in native is contribution * 2. Hence, here 50 * 2 = 100
+			assert!(CrowdloanReward::reward(4, 100).is_ok());
 			assert_eq!(Balances::free_balance(&mod_account), mod_balance - 100);
 
 			assert_eq!(Vesting::vesting_balance(&4), Some(80));
@@ -168,16 +143,14 @@ fn zero_direct_payout_reward() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 2, Perbill::from_percent(0), 4, 3)
-				.unwrap()
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(0), 4, 3).unwrap()
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
 			let mod_balance = Balances::free_balance(&mod_account);
 			let rew_balance = Balances::free_balance(&4);
 
-			assert!(CrowdloanReward::reward(4, 50).is_ok());
-			// Reward in native is contribution * 2. Hence, here 50 * 2 = 100
+			assert!(CrowdloanReward::reward(4, 100).is_ok());
 			assert_eq!(Balances::free_balance(&mod_account), mod_balance - 100);
 
 			assert_eq!(Vesting::vesting_balance(&4), Some(100));
@@ -202,12 +175,11 @@ fn not_enough_funds_to_reward() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 80, Perbill::from_percent(20), 4, 3)
-				.unwrap()
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(
-				CrowdloanReward::reward(4, 200),
+				CrowdloanReward::reward(4, 20000),
 				CrowdloanRewardError::<MockRuntime>::NotEnoughFunds
 			);
 		});
@@ -219,8 +191,7 @@ fn account_already_vesting() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 2, Perbill::from_percent(20), 4, 3)
-				.unwrap()
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(
@@ -236,8 +207,7 @@ fn reward_amount_to_low_for_vesting() {
 		.existential_deposit(1)
 		.build(|| {
 			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), 1, Perbill::from_percent(20), 4, 3)
-				.unwrap()
+			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
 		})
 		.execute_with(|| {
 			assert_noop!(

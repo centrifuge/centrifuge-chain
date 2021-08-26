@@ -94,8 +94,6 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for MockRuntime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type RelayChainBalance = Balance;
-	type Conversion = Balance;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }

@@ -139,8 +139,6 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for MockRuntime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type RelayChainBalance = Balance;
-	type Conversion = u64;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }
@@ -159,7 +157,6 @@ impl Config for MockRuntime {
 	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = ();
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type RelayChainBalance = Balance;
 	type RelayChainAccountId = AccountId32;
 	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;

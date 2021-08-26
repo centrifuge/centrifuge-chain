@@ -5,13 +5,11 @@ use frame_system::RawOrigin;
 
 benchmarks! {
   initialize {
-		let conversion_rate: BalanceOf<T> = 1u32.into();
 		let ratio = Perbill::from_percent(2u32);
 		let vesting_period: T::BlockNumber = 3u32.into();
 		let vesting_start: T::BlockNumber = 4u32.into();
-  }: _(RawOrigin::Root, conversion_rate, ratio, vesting_period, vesting_start )
+  }: _(RawOrigin::Root, ratio, vesting_period, vesting_start )
   verify {
-		assert_eq!(Pallet::<T>::conversion_rate(), 1u32.into());
 		assert_eq!(
 			Pallet::<T>::direct_payout_ratio(),
 			Perbill::from_percent(2u32)
@@ -32,13 +30,6 @@ benchmarks! {
   }: _(RawOrigin::Root, period)
   verify {
 		assert_eq!(Pallet::<T>::vesting_period().unwrap(), 1u32.into());
-  }
-
-  set_conversion_rate {
-	let rate: BalanceOf<T> = 1u32.into();
-  }: _(RawOrigin::Root, rate)
-  verify {
-		assert_eq!(Pallet::<T>::conversion_rate(), 1u32.into());
   }
 
   set_direct_payout_ratio {

@@ -616,10 +616,8 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type RelayChainBalance = Balance;
-	type Conversion = u64;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-	type WeightInfo = ();
+	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -634,9 +632,8 @@ parameter_types! {
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = ();
+	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-	type RelayChainBalance = Balance;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;

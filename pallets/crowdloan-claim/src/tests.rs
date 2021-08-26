@@ -180,7 +180,6 @@ fn init_module() {
 	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 200, 400).unwrap();
 	pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
 		Origin::signed(1),
-		100,
 		Perbill::from_percent(20),
 		500,
 		100,
@@ -323,11 +322,11 @@ fn test_valid_claim() {
 
 			assert_eq!(
 				Vesting::vesting_balance(&bob.parachain_account),
-				Some(320000000000000000)
+				Some(3200000000000000)
 			);
 			assert_eq!(
 				Balances::usable_balance(&bob.parachain_account),
-				bob_balance + 80000000000000000
+				bob_balance + 800000000000000
 			);
 		});
 }

@@ -40,13 +40,10 @@ benchmarks! {
 		<Account<T>>::insert(AccountIdConversion::<T::AccountId>::into_account(&reward_id), info);
 		//frame_support::storage::unhashed::put(&key, &info);
 
-		let relay_account: T::RelayChainAccountId = get_account_relay::<T>("contributor", 1, 1);
-		let para_account: ParachainAccountIdOf<T> = get_account_para::<T>("rewardy", 1, 1);
-		let identity_proof: sp_runtime::MultiSignature = get_signature::<T>(
-			("contributor", 1, 1),
-			para_account.clone(),
-		);
-		let contribution: ContributionAmountOf<T> = get_contribution::<T>(CONTRIBUTION);
+		let relay_account: T::RelayChainAccountId = get_account_relay::<T>();
+		let para_account: ParachainAccountIdOf<T> = get_account_para::<T>();
+		let identity_proof: sp_runtime::MultiSignature = get_signature::<T>();
+		let contribution: T::Balance = get_contribution::<T>(CONTRIBUTION);
 		let contribution_proof: proofs::Proof<T::Hash> = get_proof::<T>(
 			relay_account.clone(),
 			contribution
@@ -61,7 +58,7 @@ benchmarks! {
 
   initialize {
 		let contributions: RootHashOf<T> = get_root::<T>(
-			get_account_relay::<T>("contributor", 1, 1),
+			get_account_relay::<T>(),
 			get_contribution::<T>(CONTRIBUTION)
 		);
 		let locked_at: T::BlockNumber = 1u32.into();
@@ -93,7 +90,7 @@ benchmarks! {
 
   set_contributions_root {
 	let root: RootHashOf<T> = get_root::<T>(
-			get_account_relay::<T>("contributor", 1, 1),
+			get_account_relay::<T>(),
 			get_contribution::<T>(CONTRIBUTION)
 	);
   }: _(RawOrigin::Root, root)
@@ -124,7 +121,7 @@ impl_benchmark_test_suite!(
 
 // Helper functions from here on
 //
-fn get_contribution<T: Config>(amount: u128) -> ContributionAmountOf<T> {
+fn get_contribution<T: Config>(amount: u128) -> T::Balance {
 	match amount.try_into() {
 		Ok(contribution) => contribution,
 		Err(_) => panic!(),
@@ -152,11 +149,7 @@ enum MultiSignature {
 	Ecdsa(Signature),
 }
 
-fn get_account_para<T: Config>(
-	name: &'static str,
-	index: u32,
-	seed: u32,
-) -> ParachainAccountIdOf<T> {
+fn get_account_para<T: Config>() -> ParachainAccountIdOf<T> {
 	// This is bob as hex: 0x80402e69a3fc09da233b5332f5a8c50a0175a3641a690d25d1107467717fff0e
 	// This is bob as bytes: [
 	//   128,  64,  46, 105, 163, 252,   9, 218,
@@ -164,27 +157,16 @@ fn get_account_para<T: Config>(
 	//     1, 117, 163, 100,  26, 105,  13,  37,
 	//   209,  16, 116, 103, 113, 127, 255,  14
 	// ]
-	let entropy = (name, index, seed).using_encoded(<T as frame_system::Config>::Hashing::hash);
-	let entropy: [u8; 32] =
-		codec::Decode::decode(&mut codec::Encode::encode(&entropy).as_slice()).unwrap();
-	let mini_key = schnorrkel::MiniSecretKey::from_bytes(&entropy[..]).unwrap();
-	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Uniform);
-
-	//codec::Decode::decode(&mut &kp.public.to_bytes()[..]).unwrap()
-
-	let pubKey: [u8; 32] = [
+	let pub_key: [u8; 32] = [
 		128, 64, 46, 105, 163, 252, 9, 218, 35, 59, 83, 50, 245, 168, 197, 10, 1, 117, 163, 100,
 		26, 105, 13, 37, 209, 16, 116, 103, 113, 127, 255, 14,
 	];
 
-	codec::Decode::decode(&mut &pubKey[..]).unwrap()
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
-fn get_signature<T: Config>(
-	variance: (&'static str, u32, u32),
-	para: ParachainAccountIdOf<T>,
-) -> sp_runtime::MultiSignature {
-	// This is alice signing bob as bytes
+fn get_signature<T: Config>() -> sp_runtime::MultiSignature {
+	// This is alice signing bob's pub-key in bytes as bytes
 	// [
 	//   126, 160, 187, 236, 114,  88,   0, 178, 137, 109,   3,
 	//    76,  78, 214, 143, 161, 177, 242,  54, 176, 236,  20,
@@ -193,17 +175,6 @@ fn get_signature<T: Config>(
 	//     4, 197,  12, 155,   7, 250, 109, 102, 173,  38,   1,
 	//   127,  72,   4, 205, 211,  13,  85,  72, 128
 	// ]
-	let entropy = (variance.0, variance.1, variance.2)
-		.using_encoded(<T as frame_system::Config>::Hashing::hash);
-	let entropy: [u8; 32] =
-		codec::Decode::decode(&mut codec::Encode::encode(&entropy).as_slice()).unwrap();
-	let mini_key = schnorrkel::MiniSecretKey::from_bytes(&entropy[..]).unwrap();
-	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Uniform);
-	let context = schnorrkel::signing_context(b"substrate");
-	//let msg: schnorrkel::Signature = kp.sign(context.bytes(para.encode().as_slice())).into();
-	//let local_sig = Signature(msg.to_bytes());
-	//let local_multisig = MultiSignature::Sr25519(local_sig);
-
 	let msg: [u8; 64] = [
 		126, 160, 187, 236, 114, 88, 0, 178, 137, 109, 3, 76, 78, 214, 143, 161, 177, 242, 54, 176,
 		236, 20, 66, 232, 99, 250, 136, 40, 246, 219, 138, 66, 40, 202, 236, 83, 218, 136, 35, 200,
@@ -216,11 +187,7 @@ fn get_signature<T: Config>(
 	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
 }
 
-fn get_account_relay<T: Config>(
-	name: &'static str,
-	index: u32,
-	seed: u32,
-) -> T::RelayChainAccountId {
+fn get_account_relay<T: Config>() -> T::RelayChainAccountId {
 	// This is alice as hex 0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
 	// ALice as bytes:[
 	//   212, 53, 147, 199,  21, 253, 211,  28,
@@ -228,25 +195,17 @@ fn get_account_relay<T: Config>(
 	//   130, 44, 133,  88, 133,  76, 205, 227,
 	//   154, 86, 132, 231, 165, 109, 162, 125
 	// ]
-	let entropy = (name, index, seed).using_encoded(<T as frame_system::Config>::Hashing::hash);
-	let entropy: [u8; 32] =
-		codec::Decode::decode(&mut codec::Encode::encode(&entropy).as_slice()).unwrap();
-	let mini_key = schnorrkel::MiniSecretKey::from_bytes(&entropy[..]).unwrap();
-	let kp = mini_key.expand_to_keypair(schnorrkel::ExpansionMode::Uniform);
-
-	//codec::Decode::decode(&mut &kp.public.to_bytes()[..]).unwrap()
-
-	let pubKey: [u8; 32] = [
+	let pub_key: [u8; 32] = [
 		212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88,
 		133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
 	];
 
-	codec::Decode::decode(&mut &pubKey[..]).unwrap()
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 fn get_proof<T: Config>(
 	relay: T::RelayChainAccountId,
-	contribution: ContributionAmountOf<T>,
+	contribution: T::Balance,
 ) -> proofs::Proof<T::Hash> {
 	let mut v: Vec<u8> = relay.encode();
 	v.extend(contribution.encode());
@@ -287,10 +246,7 @@ fn get_proof<T: Config>(
 	proofs::Proof::new(leaf_hash, sorted_hashed)
 }
 
-fn get_root<T: Config>(
-	relay: T::RelayChainAccountId,
-	contribution: ContributionAmountOf<T>,
-) -> RootHashOf<T> {
+fn get_root<T: Config>(relay: T::RelayChainAccountId, contribution: T::Balance) -> RootHashOf<T> {
 	let mut v: Vec<u8> = relay.encode();
 	v.extend(contribution.encode());
 	let leaf_hash: T::Hash = <T as frame_system::Config>::Hashing::hash(&v);
@@ -330,7 +286,7 @@ fn get_root<T: Config>(
 fn init_pallets<T: Config>() {
 	// Inject storage here. Using the
 	<Contributions<T>>::put(get_root::<T>(
-		get_account_relay::<T>("contributor", 1, 1),
+		get_account_relay::<T>(),
 		get_contribution::<T>(CONTRIBUTION),
 	));
 	<CrowdloanTrieIndex<T>>::put(Into::<TrieIndex>::into(100u32));
@@ -350,10 +306,6 @@ fn init_pallets<T: Config>() {
 	let direct_payout_ratio_key = create_final_key_crowdloan_reward(b"DirectPayoutRatio");
 	let direct_payout_ratio: Perbill = Perbill::from_percent(20u32);
 	frame_support::storage::unhashed::put(&direct_payout_ratio_key, &direct_payout_ratio);
-
-	let conversion_rate_key = create_final_key_crowdloan_reward(b"ConversionRate");
-	let conversion_rate: u128 = 1u128;
-	frame_support::storage::unhashed::put(&conversion_rate_key, &conversion_rate);
 }
 
 fn create_final_key_crowdloan_reward(element: &[u8]) -> [u8; 32] {
