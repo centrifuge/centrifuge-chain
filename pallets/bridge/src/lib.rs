@@ -132,7 +132,7 @@ use frame_support::{
 	transactional, PalletId,
 };
 
-use frame_system::ensure_root;
+use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
 use sp_core::U256;
 
@@ -157,8 +157,7 @@ pub use pallet::*;
 // Type aliases
 // ----------------------------------------------------------------------------
 
-type BalanceOf<T> =
-	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -256,7 +255,12 @@ pub mod pallet {
 	// Pallet storage items
 	// ------------------------------------------------------------------------
 
-	// No storage items
+	// Additional fee charged when moving native tokens to target chains.
+    // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
+    //        can be removed.
+    // #[pallet::storage]
+	// #[pallet::getter(fn current_slot)]
+	// pub type TokenTransferFee<T> = StorageValue<_, u128, ValueQuery>;
 
 	// ------------------------------------------------------------------------
 	// Pallet genesis configuration
@@ -300,6 +304,10 @@ pub mod pallet {
 	// ------------------------------------------------------------------------
 	// Pallet lifecycle hooks
 	// ------------------------------------------------------------------------
+
+    // Additional 
+    // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
+    //        can be removed.
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -387,6 +395,7 @@ pub mod pallet {
 
 		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
+        #[transactional]
 		pub fn transfer_native(
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
@@ -441,7 +450,8 @@ pub mod pallet {
 				dest_id,
 				resource_id.into(),
 				recipient,
-				U256::from(amount.saturated_into()),
+                // Note: use u128 to restrict balance greater than 128bits
+            U256::from(amount.saturated_into::<u128>()),
 			)?;
 
 			Ok(().into())
@@ -449,6 +459,7 @@ pub mod pallet {
 
 		/// Executes a simple currency transfer using the chainbridge account as the source
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
+        #[transactional]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -497,7 +508,24 @@ pub mod pallet {
 
 			Ok(().into())
 		}
-	}
+
+
+        // Update token transfer fee
+        // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
+        //        can be removed.
+
+		// #[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
+		// pub fn set_token_transfer_fee(
+        //     origin: OriginFor<T>, 
+        //     fee: T::Balance
+        // ) -> DispatchResultWithPostInfo {
+		// 	Self::ensure_admin(origin)?;
+		// 	TokenTransferFee::<T>::mutate(|transfer_token_fee| {
+		// 		*transfer_token_fee = fee
+		// 	});
+		// 	Ok(().into())
+		// }
+    }
 } // end of 'pallet' module
 
 // ----------------------------------------------------------------------------
@@ -518,14 +546,6 @@ impl<T: Config> Pallet<T> {
 	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
 		T::BridgePalletId::get().into_account()
-	}
-
-	/// Ensure that a transaction is initiated by an admin user
-	fn ensure_admin(origin: T::Origin) -> DispatchResult {
-		<T as Config>::AdminOrigin::try_origin(origin)
-			.map(|_| ())
-			.or_else(ensure_root)?;
-		Ok(())
 	}
 
 	/// Initialize pallet's genesis configuration.
@@ -551,4 +571,15 @@ impl<T: Config> Pallet<T> {
 			<chainbridge::Pallet<T>>::register_resource(*re, m.clone()).unwrap_or_default();
 		}
 	}
+
+    // Ensure that the caller has admin rights
+    //
+    // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
+    //        can be removed.
+    fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
+		<T as Config>::AdminOrigin::try_origin(origin)
+			.map(|_| ())
+			.or_else(ensure_root)?;
+		Ok(())
+    }
 }
