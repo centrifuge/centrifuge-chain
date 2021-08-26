@@ -576,10 +576,10 @@ impl<T: Config> Pallet<T> {
     //
     // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
     //        can be removed.
-    fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
-		<T as Config>::AdminOrigin::try_origin(origin)
-			.map(|_| ())
-			.or_else(ensure_root)?;
-		Ok(())
-    }
+    // fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
+	// 	<T as Config>::AdminOrigin::try_origin(origin)
+	// 		.map(|_| ())
+	// 		.or_else(ensure_root)?;
+	// 	Ok(())
+    // }
 }
