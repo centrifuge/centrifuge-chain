@@ -107,12 +107,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Pallet types and traits
+// Pallet types and traits modules
 pub mod traits;
 pub mod types;
 
 // Pallet extrinsics weight information
 mod weights;
+
+use crate::{
+    traits::WeightInfo,
+    types::{Address, Bytes32},
+};
 
 // Centrifuge chain common types
 use centrifuge_commons::types::{AssetId, RegistryId, TokenId};
@@ -124,13 +129,7 @@ use codec::FullCodec;
 use core::convert::TryInto;
 
 // Runtime, system and frame primitives
-use frame_support::{
-	dispatch::DispatchResult,
-	ensure,
-	inherent::Vec,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
-	transactional, PalletId,
-};
+use frame_support::{PalletId, dispatch::DispatchResult, ensure, inherent::Vec, traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons}, transactional};
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
@@ -144,11 +143,6 @@ use sp_runtime::{
 use sp_std::prelude::*;
 
 use unique_assets::traits::Unique;
-
-use crate::types::{Address, Bytes32};
-
-// Extrinsics weight information
-use crate::traits::WeightInfo;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
@@ -227,10 +221,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type NativeTokenId: Get<<Self as pallet::Config>::ResourceId>;
 
-		/// Additional fee charged when moving native tokens to target chains.
-		#[pallet::constant]
-		type TokenTransferFee: Get<u128>;
-
 		/// Additional fee charged when moving NFTs to target chains.
 		#[pallet::constant]
 		type NftTransferFee: Get<u128>;
@@ -256,11 +246,9 @@ pub mod pallet {
 	// ------------------------------------------------------------------------
 
 	// Additional fee charged when moving native tokens to target chains.
-    // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
-    //        can be removed.
-    // #[pallet::storage]
-	// #[pallet::getter(fn current_slot)]
-	// pub type TokenTransferFee<T> = StorageValue<_, u128, ValueQuery>;
+    #[pallet::storage]
+	#[pallet::getter(fn current_slot)]
+	pub type TokenTransferFee<T> = StorageValue<_, u128, ValueQuery>;
 
 	// ------------------------------------------------------------------------
 	// Pallet genesis configuration
@@ -304,10 +292,6 @@ pub mod pallet {
 	// ------------------------------------------------------------------------
 	// Pallet lifecycle hooks
 	// ------------------------------------------------------------------------
-
-    // Additional 
-    // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
-    //        can be removed.
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -404,7 +388,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let source = ensure_signed(origin)?;
 
-			let token_fee: T::Balance = T::TokenTransferFee::get().saturated_into();
+			let token_fee: T::Balance = TokenTransferFee::<T>::get().saturated_into();
 			let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
 				.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
 				.try_into()
@@ -434,7 +418,7 @@ pub mod pallet {
 			// Burn additional fees
 			<pallet_fees::Pallet<T>>::burn_fee(
 				&source,
-				T::TokenTransferFee::get().saturated_into(),
+				TokenTransferFee::<T>::get().saturated_into(),
 			)?;
 
 			let bridge_id = <chainbridge::Pallet<T>>::account_id();
@@ -509,22 +493,19 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+        /// Update token transfer fee
+		#[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
+		pub fn set_token_transfer_fee(
+            origin: OriginFor<T>, 
+            fee: BalanceOf<T>
+        ) -> DispatchResultWithPostInfo {
+			Self::ensure_admin(origin)?;
+			TokenTransferFee::<T>::mutate(|transfer_token_fee| {
+				*transfer_token_fee = fee.saturated_into()
+			});
 
-        // Update token transfer fee
-        // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
-        //        can be removed.
-
-		// #[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
-		// pub fn set_token_transfer_fee(
-        //     origin: OriginFor<T>, 
-        //     fee: T::Balance
-        // ) -> DispatchResultWithPostInfo {
-		// 	Self::ensure_admin(origin)?;
-		// 	TokenTransferFee::<T>::mutate(|transfer_token_fee| {
-		// 		*transfer_token_fee = fee
-		// 	});
-		// 	Ok(().into())
-		// }
+			Ok(().into())
+		}
     }
 } // end of 'pallet' module
 
@@ -573,13 +554,10 @@ impl<T: Config> Pallet<T> {
 	}
 
     // Ensure that the caller has admin rights
-    //
-    // FIXME: Now token transfer fee is set as a runtime parameter. If we agree with this, this method
-    //        can be removed.
-    // fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
-	// 	<T as Config>::AdminOrigin::try_origin(origin)
-	// 		.map(|_| ())
-	// 		.or_else(ensure_root)?;
-	// 	Ok(())
-    // }
+    fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
+		<T as Config>::AdminOrigin::try_origin(origin)
+			.map(|_| ())
+			.or_else(ensure_root)?;
+		Ok(())
+    }
 }
