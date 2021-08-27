@@ -7,7 +7,7 @@ pub use types::*;
 
 mod impls;
 
-mod apis {
+pub mod apis {
 	use node_primitives::{BlockNumber, Hash};
 	use pallet_anchors::AnchorData;
 	use sp_api::decl_runtime_apis;
@@ -21,7 +21,7 @@ mod apis {
 }
 
 /// Common types for all runtimes
-mod types {
+pub mod types {
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 
 	/// An index to a block.
@@ -64,11 +64,11 @@ mod types {
 }
 
 /// Common constants for all runtimes
-mod constants {
+pub mod constants {
 	use super::types::BlockNumber;
 	use frame_support::weights::{constants::WEIGHT_PER_SECOND, Weight};
 	use node_primitives::Balance;
-	use sp_runtime::Perbill;
+	use sp_runtime::{Perbill};
 
 	/// This determines the average expected block time that we are targeting. Blocks will be
 	/// produced at a minimum duration defined by `SLOT_DURATION`. `SLOT_DURATION` is picked up by
@@ -98,6 +98,15 @@ mod constants {
 	pub const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
 	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
 	pub const CFG: Balance = 100 * CENTI_CFG;
+
+    /// Additional fee charged when moving native tokens to target chains (in CFGs).
+    pub const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
+
+    /// Additional fee charged when moving NFTs to target chains (in CFGs).
+    pub const NFT_TOKEN_TRANSFER_FEE: Balance = 20 * CFG;
+
+    /// Additional fee charged when validating NFT proofs
+    pub const NFT_PROOF_VALIDATION_FEE: u128 = 10 * CFG;
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
