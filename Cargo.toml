@@ -38,7 +38,6 @@ members = [
     "pallets/nft",
     "pallets/registry",
 	"libs/trait-crowdloan-reward",
-    "libs/commons",
 	"libs/proofs",
 	"runtime/altair",
 	"runtime/centrifuge",
