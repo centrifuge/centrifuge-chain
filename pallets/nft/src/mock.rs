@@ -32,9 +32,10 @@ use frame_support::{
 
 use frame_system::EnsureSignedBy;
 
-use node_primitives::Balance;
-
-use runtime_common::constants::{CFG, NFT_PROOF_VALIDATION_FEE};
+use runtime_common::{
+    Balance, 
+    CFG, NFT_PROOF_VALIDATION_FEE
+};
 
 use sp_core::{blake2_128, H256};
 

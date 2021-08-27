@@ -21,7 +21,7 @@ use crate::{mock::*, *};
 
 use frame_support::{assert_err, assert_ok};
 
-use centrifuge_commons::types::{AssetId, RegistryId, TokenId};
+use runtime_common::{AssetId, RegistryId, TokenId};
 
 // ----------------------------------------------------------------------------
 // Test unit cases
