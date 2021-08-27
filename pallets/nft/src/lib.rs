@@ -101,12 +101,17 @@ mod tests;
 // Extrinsics weight information
 mod weights;
 
+// Export crate types and traits
+use crate::{
+	traits::WeightInfo,
+	types::{Asset, ProofVerifier},
+};
+
+// Re-export pallet components in crate namespace (for runtime construction)
+pub use pallet::*;
+
 // Centrifuge chain dependencies
 use centrifuge_commons::types::{AssetId, AssetIdRef, RegistryId, TokenId};
-
-use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
-
-use unique_assets::traits::{Mintable, Unique};
 
 // Substrate dependencies
 use codec::FullCodec;
@@ -116,17 +121,13 @@ use frame_support::{
 	ensure, Hashable,
 };
 
+use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
+
 use sp_runtime::traits::Member;
 
 use sp_std::fmt::Debug;
 
-use crate::{
-	traits::WeightInfo,
-	types::{Asset, ProofVerifier},
-};
-
-// Re-export pallet components in crate namespace (for runtime construction)
-pub use pallet::*;
+use unique_assets::traits::{Mintable, Unique};
 
 // ----------------------------------------------------------------------------
 // Pallet module

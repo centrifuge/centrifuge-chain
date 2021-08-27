@@ -24,7 +24,11 @@ use crate::{self as pallet_nft, traits::WeightInfo};
 
 use chainbridge::types::{ChainId, ResourceId};
 
-use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
+use frame_support::{
+    PalletId, 
+    parameter_types, 
+    traits::{GenesisBuild, SortedMembers}, 
+    weights::Weight};
 
 use frame_system::EnsureSignedBy;
 
@@ -213,7 +217,7 @@ impl pallet_fees::Config for MockRuntime {
 // Parameterize NFT pallet
 parameter_types! {
 	pub const MockFee: Balance = MOCK_NFT_FEE;
-	pub const MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
 // Implement NFT pallet's configuration trait for the mock runtime
