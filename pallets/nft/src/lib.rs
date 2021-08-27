@@ -110,9 +110,6 @@ use crate::{
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
 
-// Centrifuge chain dependencies
-use centrifuge_commons::types::{AssetId, AssetIdRef, RegistryId, TokenId};
-
 // Substrate dependencies
 use codec::FullCodec;
 
@@ -122,6 +119,11 @@ use frame_support::{
 };
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
+
+use runtime_common::{
+    AssetId, AssetIdRef,
+    RegistryId, TokenId,
+};
 
 use sp_runtime::traits::Member;
 

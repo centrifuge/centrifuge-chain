@@ -17,7 +17,7 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 frame-support = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-system = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 frame-benchmarking = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true }
-node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
+#node-primitives = { branch = "master", git = "https://github.com/centrifuge/substrate",  default-features = false }
 pallet-balances = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-core = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
 sp-runtime = { branch = "master", git = "https://github.com/centrifuge/substrate.git", default-features = false }
@@ -25,10 +25,10 @@ sp-std = { branch = "master", git = "https://github.com/centrifuge/substrate", d
 
 # Centrifuge Chain dependencies
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate", default-features = false, branch = "master" }
-centrifuge-commons = { path = "../../libs/commons", default-features = false }
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
+runtime-common = { path = "../../runtime/common", default-features = false }
 unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 
 [dev-dependencies]
@@ -50,15 +50,17 @@ sp-std = { git = "https://github.com/centrifuge/substrate", default-features = f
 [features]
 default = ['std']
 std = [
-    'centrifuge-commons/std',
     'chainbridge/std',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-balances/std',
     'pallet-anchors/std',
+    'pallet-balances/std',
     'pallet-fees/std',
     'proofs/std',
+    'runtime-common/std',
+    'sp-core/std',
+    'sp-runtime/std',
     'sp-std/std',
     'unique_assets/std',
 ]
