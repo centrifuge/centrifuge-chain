@@ -12,6 +12,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 smallvec = "1.4.0"
 
 # Substrate dependencies
+codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
 frame-support = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
@@ -30,6 +31,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 [features]
 default = ["std"]
 std = [
+    "codec/std",
     "frame-support/std",
     "frame-system/std",
     "node-primitives/std",

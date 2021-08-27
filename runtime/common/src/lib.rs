@@ -3,6 +3,7 @@
 pub use apis::*;
 pub use constants::*;
 pub use impls::*;
+pub use traits::*;
 pub use types::*;
 
 mod impls;
@@ -22,7 +23,8 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
-	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
+	use sp_core::{H160, U256};
+    use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 
 	/// An index to a block.
 	pub type BlockNumber = u32;
@@ -61,6 +63,19 @@ pub mod types {
 
 	/// Moment type
 	pub type Moment = u64;
+
+    // A vector of bytes, conveniently named like it is in Solidity.
+    pub type Bytes = Vec<u8>;
+
+    // Registries are identified using a nonce in storage.
+    pub type RegistryId = H160;
+
+    // A cryptographic salt to be combined with a value before hashing.
+    pub type Salt = [u8; 32];
+
+    // The id of an asset as it corresponds to the "token id" of a Centrifuge document.
+    // A registry id is needed as well to uniquely identify an asset on-chain.
+    pub type TokenId = U256;
 }
 
 /// Common constants for all runtimes
@@ -83,8 +98,11 @@ pub mod constants {
 	pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
+	
+    /// Milliseconds per day
+    pub const MILLISECS_PER_DAY: u64 = 86400000;
 
-	/// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
+    /// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
 	/// used to limit the maximal weight of a single extrinsic.
 	pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
 	/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used by
@@ -108,7 +126,36 @@ pub mod constants {
     /// Additional fee charged when validating NFT proofs
     pub const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
 
+    // Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
+	/// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
+	pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];
+
+
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
+}
+
+pub mod traits {
+    
+    use super::impls::AssetId;
+
+    /// An implementor of this trait *MUST* be an asset of a registry.
+    /// The registry id that an asset is a member of can be determined
+    /// when this trait is implemented.
+    pub trait InRegistry {
+        type RegistryId;
+
+        /// Returns the registry id that the self is a member of.
+        fn registry_id(&self) -> Self::RegistryId;
+    }
+
+    /// An implementor has an associated asset id that will be used as a
+    /// unique id within a registry for an asset. Asset ids *MUST* be unique
+    /// within a registry. Corresponds to a token id in a Centrifuge document.
+    pub trait HasId {
+        /// Returns unique asset id.
+        fn id(&self) -> &AssetId;
+    }
+
 }
