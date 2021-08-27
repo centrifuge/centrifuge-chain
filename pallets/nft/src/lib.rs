@@ -191,9 +191,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type HashId: Get<Self::ResourceId>;
 
-		/// Additional fee charged when minting a NFT.
+		/// Additional fee charged for validating NFT proof (when minting a NFT).
 		#[pallet::constant]
-		type Fee: Get<u128>;
+		type NftProofValidationFee: Get<u128>;
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
@@ -358,13 +358,13 @@ pub mod pallet {
 
 			// Get the bundled hash of all proofs (i.e. from proofs' leaf hashe)
 			let bundled_hash =
-				bundled_hash_from_proofs::<ProofVerifier<T>>(proofs, deposit_address);
+			    bundled_hash_from_proofs::<ProofVerifier<T>>(proofs, deposit_address);
 			Self::deposit_event(Event::<T>::DepositAsset(bundled_hash));
 
 			let metadata = bundled_hash.as_ref().to_vec();
 
 			// Burn additional fees from the calling account
-			<pallet_fees::Pallet<T>>::burn_fee(&who, T::Fee::get().saturated_into())?;
+			<pallet_fees::Pallet<T>>::burn_fee(&who, T::NftProofValidationFee::get().saturated_into())?;
 
 			let resource_id: ResourceId = T::HashId::get().into();
 			<chainbridge::Pallet<T>>::transfer_generic(dest_id.into(), resource_id, metadata)?;

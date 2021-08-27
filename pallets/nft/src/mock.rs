@@ -34,14 +34,13 @@ use frame_system::EnsureSignedBy;
 
 use node_primitives::Balance;
 
+use runtime_common::constants::NFT_PROOF_VALIDATION_FEE;
+
 use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_runtime::{testing::Header, traits::{BlakeTwo256, IdentityLookup}};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -74,9 +73,6 @@ pub(crate) const CFG: Balance = 100 * CENTI_CFG;
 
 // Testing user identifier
 pub const USER_A: u64 = 0x1;
-
-// Additional fee charged to validate NFT proofs
-pub const MOCK_NFT_FEE: Balance = 10 * CFG;
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -216,7 +212,7 @@ impl pallet_fees::Config for MockRuntime {
 
 // Parameterize NFT pallet
 parameter_types! {
-	pub const MockFee: Balance = MOCK_NFT_FEE;
+    pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
@@ -224,9 +220,9 @@ parameter_types! {
 impl pallet_nft::Config for MockRuntime {
 	type AssetInfo = Vec<u8>;
 	type Event = Event;
-	type Fee = MockFee;
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;
+    type NftProofValidationFee = NftProofValidationFee;
 	type HashId = MockHashId;
 	type WeightInfo = MockWeightInfo;
 }
