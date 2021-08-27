@@ -106,7 +106,7 @@ pub mod constants {
     pub const NFT_TOKEN_TRANSFER_FEE: Balance = 20 * CFG;
 
     /// Additional fee charged when validating NFT proofs
-    pub const NFT_PROOF_VALIDATION_FEE: u128 = 10 * CFG;
+    pub const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
