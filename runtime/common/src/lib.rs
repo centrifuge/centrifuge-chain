@@ -6,7 +6,7 @@ pub use impls::*;
 pub use traits::*;
 pub use types::*;
 
-mod impls;
+pub mod impls;
 
 pub mod apis {
 	use node_primitives::{BlockNumber, Hash};
