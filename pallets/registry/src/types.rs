@@ -17,21 +17,26 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-// Common Centrifuge chain primitives
-use centrifuge_commons::types::{Bytes, Salt};
-
 use codec::{Decode, Encode};
+
+// Library for building and validating proofs
+use proofs::{
+    Hasher,
+    Proof,
+    Verifier};
+
+use runtime_common::{
+    Bytes, Salt,
+};
 
 use sp_core::H256;
 
 use sp_runtime::{sp_std::vec, sp_std::vec::Vec, traits::Hash};
 
-// Library for building and validating proofs
-use proofs::{hashing::sort_hash_of, Hasher, Verifier};
-
 // ----------------------------------------------------------------------------
 // Types definition
 // ----------------------------------------------------------------------------
+
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
 pub struct RegistryInfo {
@@ -68,15 +73,15 @@ impl From<CompleteProof<H256>> for proofs::Proof<H256> {
 		proof.property.extend(&proof.salt);
 		let leaf_hash = sp_io::hashing::keccak_256(&proof.property).into();
 
-		proofs::Proof::new(leaf_hash, proof.hashes)
+		Proof::new(leaf_hash, proof.hashes)
 	}
 }
 
 /// Proof verifier for registry.
 pub(crate) struct ProofVerifier<T: frame_system::Config> {
-	/// Array containing static root hashes passed when minting a non-fungible token
+	/// Array containing static root hashes passed when minting a non-fungible token.
 	///
-	/// See [ProofVerifier::new] for information on how to pass these hashes. Those
+	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
 	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
 	static_hashes: [T::Hash; 3],
 }
@@ -91,8 +96,8 @@ impl<T: frame_system::Config> ProofVerifier<T> {
 	///
 	/// The 'root_hashes' must be passed in a specific order, namely:
 	///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
-	///   2. The ZK root hash (see index ['ZK_DATA_ROOT_HASH'])
-	///   3. The signature root hash (see index ['SIGNATURE_DATA_ROOT_HASH'])
+	///   2. The ZK root hash (with index ['ZK_DATA_ROOT_HASH'])
+	///   3. The signature root hash (with index ['SIGNATURE_DATA_ROOT_HASH'])
 	pub fn new(static_hashes: [T::Hash; 3]) -> Self {
 		ProofVerifier { static_hashes }
 	}
@@ -110,15 +115,17 @@ impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
 
 // Implement verifier trait for registry's proof verifier
 impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
+
+    // Calculate a final hash from two given hashes
 	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
-		sort_hash_of::<Self>(a, b)
+	    proofs::hashing::hash_of::<Self>(a, b)
 	}
 
-	// Initial matches calculation.
+	// Calculate initial matches.
 	//
 	// This function takes 3 static proofs and calculates a document root. The
 	// calculated document root is then compared with the given document root.
-	// If they match, an Option containing a list of precomputed hashes is
+	// If they match, an `Option` containing a list of precomputed hashes is
 	// returned, or None if anything goes wrong.
 	// The returned precomputed hashes are then used while validating the proofs.
 	//

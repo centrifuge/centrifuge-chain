@@ -56,7 +56,7 @@
 //! `DocumentNotAnchored` - A given document id does not match a corresponding document in the anchor storage.
 //! `RegistryDoesNotExist` - A specified registry is not in the module storage Registries map.
 //! `RegistryOverflow`- The registry id is too large.
-//! `InvalidProofs` - Unable to recreate the anchor hash from the proofs and data provided (i.e. the [validate_proofs] method failed).
+//! `InvalidProofs` - Unable to recreate the anchor hash from the proofs and data provided (i.e. the [verify_proofs] method failed).
 //! `InvalidMintingValues` - The values vector provided to a mint call doesn't match the length of the specified registry's fields vector.
 //!
 //! ### Dispatchable Functions
@@ -112,23 +112,7 @@ mod benchmarking;
 // Extrinsics weight information
 mod weights;
 
-// Common Centrifuge chain primitives
-use centrifuge_commons::{
-	constants::NFTS_PREFIX,
-	types::{AssetId, AssetIdRef, RegistryId, TokenId},
-};
-
-use proofs::Verifier;
-
-use unique_assets::traits::Mintable;
-
-use frame_support::{dispatch::DispatchError, ensure};
-
-use frame_system::ensure_signed;
-
-use sp_runtime::traits::Hash;
-
-// Registry pallet types and traits
+// Re-export crate types and traits
 use crate::{
 	traits::{VerifierRegistry, WeightInfo},
 	types::{MintInfo, ProofVerifier, RegistryInfo},
@@ -136,6 +120,22 @@ use crate::{
 
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
+
+use frame_support::{dispatch::DispatchError, ensure};
+
+use frame_system::ensure_signed;
+
+use proofs::Verifier;
+
+use runtime_common::{
+    AssetId, AssetIdRef, 
+    NFTS_PREFIX,
+    RegistryId, TokenId,
+};
+
+use sp_runtime::traits::Hash;
+
+use unique_assets::traits::Mintable;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -345,18 +345,19 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	/// Create a new identifier for a registry
 	fn create_registry_id() -> Result<RegistryId, DispatchError> {
-		let id_nonce = Self::get_registry_nonce();
+		
+        let id_nonce = Self::get_registry_nonce();
 
 		// First 20 bytes of the runtime hash of the nonce
 		let id = RegistryId::from_slice(&T::Hashing::hash_of(&id_nonce).as_ref()[..20]);
 
-		// Update the nonce
+		// Increment and update (storage of) identifier's nonce
 		<RegistryNonce<T>>::put(id_nonce.saturating_add(1));
 
 		Ok(id)
 	}
 
-	/// Get document's root hash given an anchor id
+	/// Return a document's root hash given an anchor identifier.
 	fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, DispatchError> {
 		let root = match <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id) {
 			Some(anchor_data) => Ok(anchor_data.doc_root),

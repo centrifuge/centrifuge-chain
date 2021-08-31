@@ -17,16 +17,14 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_registry, mock::*, types::*, *};
-
-use centrifuge_commons::{
-	constants::MS_PER_DAY,
-	types::{AssetId, AssetInfo, RegistryId, TokenId},
-};
-
-use codec::Encode;
+use crate::{mock::*, types::*, *};
 
 use frame_support::{assert_err, assert_ok};
+
+use runtime_common::{
+    MILLISECS_PER_DAY, 
+    TokenId,
+};
 
 use sp_core::{H160, U256};
 
@@ -37,7 +35,7 @@ use sp_runtime::traits::Hash;
 // ----------------------------------------------------------------------------
 
 #[test]
-fn mint_with_valid_proofs() {
+fn mint_with_valid_proofs() { 
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -54,7 +52,7 @@ fn mint_with_valid_proofs() {
 				doc_root,
 				// Proof does not matter here
 				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
-				MS_PER_DAY + 1
+				MILLISECS_PER_DAY + 1
 			));
 
 			let (registry_id, token_id) = asset_id.destruct();
@@ -101,7 +99,7 @@ fn mint_fails_when_dont_match_doc_root() {
 				wrong_doc_root,
 				// Proof does not matter here
 				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
-				MS_PER_DAY + 1
+				MILLISECS_PER_DAY + 1
 			));
 
 			let (registry_id, token_id) = asset_id.destruct();
@@ -143,7 +141,7 @@ fn duplicate_mint_fails() {
 				doc_root,
 				// Proof does not matter here
 				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
-				MS_PER_DAY + 1
+				MILLISECS_PER_DAY + 1
 			));
 
 			let (registry_id, token_id) = asset_id.destruct();
@@ -162,7 +160,7 @@ fn duplicate_mint_fails() {
 				}
 			));
 
-			// Mint same token containing same id
+			// Mint same token containing same id (should fail)
 			assert_err!(
 				Registry::mint(
 					origin,
@@ -199,7 +197,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 				doc_root,
 				// Proof does not matter here
 				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
-				MS_PER_DAY + 1
+				MILLISECS_PER_DAY + 1
 			));
 
 			let (registry_id, _) = asset_id.destruct();
