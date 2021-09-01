@@ -67,6 +67,9 @@ pub mod types {
     // A vector of bytes, conveniently named like it is in Solidity.
     pub type Bytes = Vec<u8>;
 
+    // A sized vector of 32 bytes
+    pub type Bytes32 = [u8; 32];
+
     // Registries are identified using a nonce in storage.
     pub type RegistryId = H160;
 
