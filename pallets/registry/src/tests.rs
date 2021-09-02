@@ -21,10 +21,7 @@ use crate::{mock::*, types::*, *};
 
 use frame_support::{assert_err, assert_ok};
 
-use runtime_common::{
-    MILLISECS_PER_DAY, 
-    TokenId,
-};
+use runtime_common::{TokenId, MILLISECS_PER_DAY};
 
 use sp_core::{H160, U256};
 
@@ -35,7 +32,7 @@ use sp_runtime::traits::Hash;
 // ----------------------------------------------------------------------------
 
 #[test]
-fn mint_with_valid_proofs() { 
+fn mint_with_valid_proofs() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {

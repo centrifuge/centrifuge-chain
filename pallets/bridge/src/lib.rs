@@ -115,12 +115,12 @@ pub mod types;
 mod weights;
 
 use crate::{
-    traits::WeightInfo,
-    types::{Address, Bytes32},
+	traits::WeightInfo,
+	types::{Address, Bytes32},
 };
 
 // Centrifuge chain common types
-use centrifuge_commons::types::{AssetId, RegistryId, TokenId};
+use runtime_common::{AssetId, RegistryId, TokenId};
 
 use chainbridge::types::{ChainId, ResourceId};
 
@@ -129,7 +129,13 @@ use codec::FullCodec;
 use core::convert::TryInto;
 
 // Runtime, system and frame primitives
-use frame_support::{PalletId, dispatch::DispatchResult, ensure, inherent::Vec, traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons}, transactional};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	inherent::Vec,
+	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
+	transactional, PalletId,
+};
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
@@ -151,7 +157,8 @@ pub use pallet::*;
 // Type aliases
 // ----------------------------------------------------------------------------
 
-type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> =
+	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -246,7 +253,7 @@ pub mod pallet {
 	// ------------------------------------------------------------------------
 
 	// Additional fee charged when moving native tokens to target chains.
-    #[pallet::storage]
+	#[pallet::storage]
 	#[pallet::getter(fn current_slot)]
 	pub type TokenTransferFee<T> = StorageValue<_, u128, ValueQuery>;
 
@@ -379,7 +386,7 @@ pub mod pallet {
 
 		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
-        #[transactional]
+		#[transactional]
 		pub fn transfer_native(
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
@@ -434,8 +441,8 @@ pub mod pallet {
 				dest_id,
 				resource_id.into(),
 				recipient,
-                // Note: use u128 to restrict balance greater than 128bits
-            U256::from(amount.saturated_into::<u128>()),
+				// Note: use u128 to restrict balance greater than 128bits
+				U256::from(amount.saturated_into::<u128>()),
 			)?;
 
 			Ok(().into())
@@ -443,7 +450,7 @@ pub mod pallet {
 
 		/// Executes a simple currency transfer using the chainbridge account as the source
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
-        #[transactional]
+		#[transactional]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -493,12 +500,12 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-        /// Update token transfer fee
+		/// Update token transfer fee
 		#[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
 		pub fn set_token_transfer_fee(
-            origin: OriginFor<T>, 
-            fee: BalanceOf<T>
-        ) -> DispatchResultWithPostInfo {
+			origin: OriginFor<T>,
+			fee: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
 			Self::ensure_admin(origin)?;
 			TokenTransferFee::<T>::mutate(|transfer_token_fee| {
 				*transfer_token_fee = fee.saturated_into()
@@ -506,7 +513,7 @@ pub mod pallet {
 
 			Ok(().into())
 		}
-    }
+	}
 } // end of 'pallet' module
 
 // ----------------------------------------------------------------------------
@@ -553,11 +560,11 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-    // Ensure that the caller has admin rights
-    fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
+	// Ensure that the caller has admin rights
+	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
 		<T as Config>::AdminOrigin::try_origin(origin)
 			.map(|_| ())
 			.or_else(ensure_root)?;
 		Ok(())
-    }
+	}
 }

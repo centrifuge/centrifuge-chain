@@ -34,5 +34,5 @@ pub trait WeightInfo {
 	fn transfer() -> Weight;
 	fn transfer_asset() -> Weight;
 	fn transfer_native() -> Weight;
-    fn set_token_transfer_fee() -> Weight; 
+	fn set_token_transfer_fee() -> Weight;
 }

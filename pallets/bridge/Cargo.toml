@@ -23,7 +23,7 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-feat
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # Centrifuge Chain dependencies
-centrifuge-commons = { path = "../../libs/commons", default-features = false }
+runtime-common = { path = "../../runtime/common", default-features = false }
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }

@@ -25,23 +25,24 @@ use crate::{self as pallet_nft, traits::WeightInfo};
 use chainbridge::types::{ChainId, ResourceId};
 
 use frame_support::{
-    PalletId, 
-    parameter_types, 
-    traits::{GenesisBuild, SortedMembers}, 
-    weights::Weight};
+	parameter_types,
+	traits::{GenesisBuild, SortedMembers},
+	weights::Weight,
+	PalletId,
+};
 
 use frame_system::EnsureSignedBy;
 
-use runtime_common::{
-    Balance, 
-    CFG, NFT_PROOF_VALIDATION_FEE
-};
+use runtime_common::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
 
 use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
-use sp_runtime::{testing::Header, traits::{BlakeTwo256, IdentityLookup}};
+use sp_runtime::{
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup},
+};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -203,7 +204,7 @@ impl pallet_fees::Config for MockRuntime {
 
 // Parameterize NFT pallet
 parameter_types! {
-    pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
@@ -213,7 +214,7 @@ impl pallet_nft::Config for MockRuntime {
 	type Event = Event;
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;
-    type NftProofValidationFee = NftProofValidationFee;
+	type NftProofValidationFee = NftProofValidationFee;
 	type HashId = MockHashId;
 	type WeightInfo = MockWeightInfo;
 }

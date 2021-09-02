@@ -18,7 +18,7 @@
 // ----------------------------------------------------------------------------
 
 // Common Centrifuge chain primitives
-use centrifuge_commons::types::RegistryId;
+use runtime_common::types::RegistryId;
 
 // Substrate primitives
 use core::convert::TryInto;
