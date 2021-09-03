@@ -41,7 +41,11 @@ impl WeightInfo for () {
 		195_000_000 as Weight
 	}
 
-    // fn set_token_transfer_fee() -> Weight {
-	// 	195_000_000 as Weight
-    // }
+    fn set_token_transfer_fee() -> Weight {
+		195_000_000 as Weight
+    }
+
+    fn set_nft_transfer_fee() -> Weight {
+		195_000_000 as Weight
+    }
 }

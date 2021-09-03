@@ -20,22 +20,22 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use centrifuge_commons::constants::NFTS_PREFIX;
-use centrifuge_commons::types::{AssetId, AssetInfo, TokenId};
-use centrifuge_commons::{constants::MS_PER_DAY, types::RegistryId};
+use crate::{
+    self as pallet_bridge, 
+    traits::WeightInfo,
+};
 
 use chainbridge::types::{ChainId, ResourceId};
 
 use codec::Encode;
 
-use frame_support::{assert_ok, parameter_types, traits::SortedMembers, weights::Weight, PalletId};
+use frame_support::{assert_ok, parameter_types, traits::{GenesisBuild, SortedMembers}, weights::Weight, PalletId};
 
 use frame_system::EnsureSignedBy;
 
-use node_primitives::Balance;
+use pallet_registry::{traits::VerifierRegistry, types::{CompleteProof, RegistryInfo}};
 
-use pallet_registry::traits::VerifierRegistry;
-use pallet_registry::types::{Proof, RegistryInfo};
+use runtime_common::{AssetId, AssetInfo, Balance, Bytes32, CFG, MILLISECS_PER_DAY, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE, RegistryId, TokenId};
 
 use sp_core::{blake2_128, H256, U256};
 
@@ -46,7 +46,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, Hash, IdentityLookup},
 };
 
-use crate::{self as pallet_bridge, traits::WeightInfo};
 
 // ----------------------------------------------------------------------------
 // Types and constants declaration
@@ -77,27 +76,20 @@ impl WeightInfo for MockWeightInfo {
 	fn transfer_native() -> Weight {
 		0 as Weight
 	}
-}
 
-// Centrifuge token definition
-//
-// This avoids circular dependency on the runtime crate. Though for testing
-// we do not care about real CFG token "value", it helps understanding and reading
-// the testing code.
-pub(crate) const MICRO_CFG: Balance = 1_000_000_000_000; // 10−6 	0.000001
-pub(crate) const MILLI_CFG: Balance = 1_000 * MICRO_CFG; // 10−3 	0.001
-pub(crate) const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
-pub(crate) const CFG: Balance = 100 * CENTI_CFG;
+    fn set_token_transfer_fee() -> Weight {
+		0 as Weight
+    }
+
+    fn set_nft_transfer_fee() -> Weight {
+		0 as Weight
+    }
+}
 
 pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
-pub(crate) const ENDOWED_BALANCE: u128 = 100 * CFG;
-pub(crate) const TOKEN_TRANSFER_FEE: Balance = 20 * CFG;
-pub(crate) const NFT_TRANSFER_FEE: Balance = 2000 * CFG;
-
-// Testing fee amount
-pub const NFT_FEE: Balance = 10 * CFG;
+pub(crate) const ENDOWED_BALANCE: Balance = 100 * CFG;
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -226,8 +218,8 @@ impl pallet_fees::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain non-fungible token (NFT) pallet
 parameter_types! {
-	pub const MockFee: u128 = NFT_FEE;
-	pub const MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+    pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
 // Implement Centrifuge Chain non-fungible token (NFT) pallet configuration trait for the mock runtime
@@ -237,14 +229,14 @@ impl pallet_nft::Config for MockRuntime {
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;
 	type HashId = MockHashId;
-	type Fee = MockFee;
+    type NftProofValidationFee = NftProofValidationFee;
 	type WeightInfo = ();
 }
 
 // Implement Centrifuge Chain bridge mapping configuration trait for the mock runtime
 impl pallet_bridge_mapping::Config for MockRuntime {
 	type ResourceId = ResourceId;
-	type Address = [u8; 32];
+	type Address = Bytes32;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type WeightInfo = ();
 }
@@ -263,9 +255,7 @@ impl pallet_anchors::Config for MockRuntime {
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
-	pub const NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
-	pub const TokenTransferFee: Balance = TOKEN_TRANSFER_FEE;
-	pub const NftTransferFee: Balance = NFT_TRANSFER_FEE;
+	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 }
 
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
@@ -276,10 +266,8 @@ impl pallet_bridge::Config for MockRuntime {
 	type Currency = Balances;
 	type ResourceId = ResourceId;
 	type NativeTokenId = NativeTokenId;
-	type TokenTransferFee = TokenTransferFee;
-	type NftTransferFee = NftTransferFee;
-	type WeightInfo = MockWeightInfo;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type WeightInfo = MockWeightInfo;
 }
 
 // ----------------------------------------------------------------------------
@@ -405,7 +393,7 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 
 	// Create registry and generate proofs
 	let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
-		pallet_registry::mock::setup_mint::<MockRuntime>(owner, token_id);
+		setup_mint::<MockRuntime>(owner, token_id);
 
 	// Commit document root
 	assert_ok!(<pallet_anchors::Pallet<MockRuntime>>::commit(
@@ -413,7 +401,7 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 		pre_image,
 		doc_root,
 		<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
-		MS_PER_DAY + 1
+		MILLISECS_PER_DAY + 1
 	));
 
 	// Mint token with document proof
@@ -440,117 +428,118 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 	// Register resource in local resource mapping
 	<pallet_bridge_mapping::Pallet<MockRuntime>>::set_resource(
 		resource_id.clone(),
-		registry_id.clone().into(),
+		registry_id.clone(),
 	);
 
 	registry_id
 }
 
-// // Create a registry and returns all relevant data
-// pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
-//     -> (AssetId,
-//         T::Hash,
-//         T::Hash,
-//         (Vec<Proof<H256>>, [H256; 3], T::Hash),
-//         AssetInfo,
-//         RegistryInfo)
-//     where T: frame_system::Config
-//            + pallet_registry::Config
-//            + pallet_nft::Config<AssetInfo = AssetInfo>,
-// {
-//     let metadata  = vec![];
+// Create a registry and returns all relevant data
+pub fn setup_mint<T>(owner: T::AccountId, token_id: TokenId)
+    -> (AssetId,
+        T::Hash,
+        T::Hash,
+        (Vec<CompleteProof<H256>>, [H256; 3], T::Hash),
+        AssetInfo,
+        RegistryInfo)
+    where
+        T: frame_system::Config<AccountId = u64>
+        + pallet_registry::Config
+        + pallet_nft::Config<AssetInfo = AssetInfo>,
+{
+    let metadata  = vec![];
 
-//     // Anchor data
-//     let pre_image = T::Hashing::hash(&[1,2,3]);
-//     let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
+    // Anchor data
+    let pre_image = T::Hashing::hash(&[1,2,3]);
+    let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
 
-//     // Registry info
-//     let properties = vec![b"AMOUNT".to_vec()];
-//     let registry_info = RegistryInfo {
-//         owner_can_burn: false,
-//         // Don't include the registry id prop which will be generated in the runtime
-//         fields: properties,
-//     };
+    // Registry info
+    let properties = vec![b"AMOUNT".to_vec()];
+    let registry_info = RegistryInfo {
+        owner_can_burn: false,
+        // Don't include the registry id prop which will be generated in the runtime
+        fields: properties,
+    };
 
-//     // Create registry, get registry id. Shouldn't fail.
-//     let registry_id = match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
-//         Ok(r_id) => r_id,
-//         Err(e) => panic!("{:#?}", e),
-//     };
+    // Create registry, get registry id. Shouldn't fail.
+    let registry_id = match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
+        Ok(r_id) => r_id,
+        Err(e) => panic!("{:#?}", e),
+    };
 
-//     // Proofs data
-//     let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
+    // Proofs data
+    let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
 
-//     // Registry data
-//     let nft_data = AssetInfo {
-//         metadata,
-//     };
+    // Registry data
+    let nft_data = AssetInfo {
+        metadata,
+    };
 
-//     // Asset id
-//     let asset_id = AssetId(registry_id, token_id);
+    // Asset id
+    let asset_id = AssetId(registry_id, token_id);
 
-//     (asset_id,
-//      pre_image,
-//      anchor_id,
-//      (proofs, static_hashes, doc_root),
-//      nft_data,
-//      registry_info)
-// }
+    (asset_id,
+     pre_image,
+     anchor_id,
+     (proofs, static_hashes, doc_root),
+     nft_data,
+     registry_info)
+}
 
-// // Return dummy proofs data useful for testing.
-// //
-// // This function returns proofs, static hashes, and document root.
-// pub fn proofs_data<T: frame_system::Config>(registry_id: RegistryId, token_id: TokenId)
-//     -> (Vec<Proof<H256>>, [H256; 3], T::Hash) {
-//     // Encode token into big endian U256
-//     let mut token_enc = Vec::<u8>::with_capacity(32);
-//     unsafe { token_enc.set_len(32); }
-//     token_id.to_big_endian(&mut token_enc);
+// Return dummy proofs data useful for testing.
+//
+// This function returns proofs, static hashes, and document root.
+pub fn proofs_data<T: frame_system::Config>(registry_id: RegistryId, token_id: TokenId)
+    -> (Vec<CompleteProof<H256>>, [H256; 3], T::Hash) {
+    // Encode token into big endian U256
+    let mut token_enc = Vec::<u8>::with_capacity(32);
+    unsafe { token_enc.set_len(32); }
+    token_id.to_big_endian(&mut token_enc);
 
-//     // Pre proof has registry_id: token_id as prop: value
-//     let pre_proof = Proof {
-//         value: token_enc,
-//         salt: [1; 32],
-//         property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
-//         hashes: vec![]};
+    // Pre proof has registry_id: token_id as prop: value
+    let pre_proof = CompleteProof {
+        value: token_enc,
+        salt: [1; 32],
+        property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
+        hashes: vec![]};
 
-//     let proofs = vec![
-//         Proof {
-//             value: vec![1,1],
-//             salt: [1; 32],
-//             property: b"AMOUNT".to_vec(),
-//             hashes: vec![proofs::Proof::from(pre_proof.clone()).leaf_hash],
-//         },
-//         pre_proof.clone()
-//     ];
-//     let mut leaves: Vec<H256> = proofs.iter().map(|p| proofs::Proof::from(p.clone()).leaf_hash).collect();
-//     leaves.sort();
+    let proofs = vec![
+        CompleteProof {
+            value: vec![1,1],
+            salt: [1; 32],
+            property: b"AMOUNT".to_vec(),
+            hashes: vec![proofs::Proof::from(pre_proof.clone()).leaf_hash],
+        },
+        pre_proof.clone()
+    ];
+    let mut leaves: Vec<H256> = proofs.iter().map(|p| proofs::Proof::from(p.clone()).leaf_hash).collect();
+    leaves.sort();
 
-//     let mut h: Vec<u8> = Vec::with_capacity(64);
-//     h.extend_from_slice(&leaves[0][..]);
-//     h.extend_from_slice(&leaves[1][..]);
-//     let data_root     = sp_io::hashing::blake2_256(&h).into();
-//     let zk_data_root  = sp_io::hashing::blake2_256(&[0]).into();
-//     let sig_root      = sp_io::hashing::blake2_256(&[0]).into();
-//     let static_hashes = [data_root, zk_data_root, sig_root];
-//     let doc_root= doc_root::<T>(static_hashes);
+    let mut h: Vec<u8> = Vec::with_capacity(64);
+    h.extend_from_slice(&leaves[0][..]);
+    h.extend_from_slice(&leaves[1][..]);
+    let data_root     = sp_io::hashing::blake2_256(&h).into();
+    let zk_data_root  = sp_io::hashing::blake2_256(&[0]).into();
+    let sig_root      = sp_io::hashing::blake2_256(&[0]).into();
+    let static_hashes = [data_root, zk_data_root, sig_root];
+    let doc_root= doc_root::<T>(static_hashes);
 
-//     (proofs, static_hashes, doc_root)
-// }
+    (proofs, static_hashes, doc_root)
+}
 
-// // Hash two hashes
-// pub fn hash_of<T: frame_system::Config>(a: H256, b: H256) -> T::Hash {
-//     let mut h: Vec<u8> = Vec::with_capacity(64);
-//     h.extend_from_slice(&a[..]);
-//     h.extend_from_slice(&b[..]);
-//     T::Hashing::hash(&h)
-// }
+// Hash two hashes
+pub fn hash_of<T: frame_system::Config>(a: H256, b: H256) -> T::Hash {
+    let mut h: Vec<u8> = Vec::with_capacity(64);
+    h.extend_from_slice(&a[..]);
+    h.extend_from_slice(&b[..]);
+    T::Hashing::hash(&h)
+}
 
-// // Generate a document root from static hashes
-// pub fn doc_root<T: frame_system::Config>(static_hashes: [H256; 3]) -> T::Hash {
-//     let basic_data_root = static_hashes[0];
-//     let zk_data_root    = static_hashes[1];
-//     let signature_root  = static_hashes[2];
-//     let signing_root    = H256::from_slice( hash_of::<T>(basic_data_root, zk_data_root).as_ref() );
-//     hash_of::<T>(signing_root, signature_root)
-// }
+// Generate a document root from static hashes
+pub fn doc_root<T: frame_system::Config>(static_hashes: [H256; 3]) -> T::Hash {
+    let basic_data_root = static_hashes[0];
+    let zk_data_root    = static_hashes[1];
+    let signature_root  = static_hashes[2];
+    let signing_root    = H256::from_slice( hash_of::<T>(basic_data_root, zk_data_root).as_ref() );
+    hash_of::<T>(signing_root, signature_root)
+}

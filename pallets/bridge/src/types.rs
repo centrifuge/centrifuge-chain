@@ -17,13 +17,14 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-// Common Centrifuge chain primitives
-use centrifuge_commons::types::RegistryId;
-
 // Substrate primitives
 use core::convert::TryInto;
+use runtime_common::RegistryId;
 use sp_core::H160;
 use sp_std::vec::Vec;
+
+// Centrifuge chain runtime primitives
+use runtime_common::types::Bytes32;
 
 // ----------------------------------------------------------------------------
 // Types definition
@@ -36,16 +37,12 @@ use sp_std::vec::Vec;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Address(pub Bytes32);
 
-/// Length of an [Address] type
-const ADDR_LEN: usize = 32;
-
-pub type Bytes32 = [u8; ADDR_LEN];
 
 impl From<RegistryId> for Address {
 	fn from(r: RegistryId) -> Self {
 		// Pad 12 bytes to the registry id - total 32 bytes
 		let padded = r.to_fixed_bytes().iter().copied()
-            .chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..ADDR_LEN]
+            .chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..32]
             .try_into().expect("RegistryId is 20 bytes. 12 are padded. Converting to a 32 byte array should never fail");
 
 		Address(padded)
@@ -56,7 +53,7 @@ impl From<RegistryId> for Address {
 impl From<Bytes32> for Address {
 	fn from(v: Bytes32) -> Self {
 		Address(
-			v[..ADDR_LEN]
+			v[..32]
 				.try_into()
 				.expect("Address wraps a 32 byte array"),
 		)

@@ -23,6 +23,8 @@ use codec::Encode;
 
 use frame_support::{assert_err, assert_noop, assert_ok};
 
+use runtime_common::constants::CFG;
+
 use sp_core::{blake2_256, H256};
 
 use sp_runtime::DispatchError;
