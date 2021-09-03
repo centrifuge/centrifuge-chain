@@ -20,14 +20,9 @@
 use codec::{Decode, Encode};
 
 // Library for building and validating proofs
-use proofs::{
-    Hasher,
-    Proof,
-    Verifier};
+use proofs::{Hasher, Proof, Verifier};
 
-use runtime_common::{
-    Bytes, Salt,
-};
+use runtime_common::{Bytes, Salt};
 
 use sp_core::H256;
 
@@ -115,10 +110,9 @@ impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
 
 // Implement verifier trait for registry's proof verifier
 impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
-
-    // Calculate a final hash from two given hashes
+	// Calculate a final hash from two given hashes
 	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
-	    proofs::hashing::hash_of::<Self>(a, b)
+		proofs::hashing::hash_of::<Self>(a, b)
 	}
 
 	// Calculate initial matches.

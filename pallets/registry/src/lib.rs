@@ -127,11 +127,7 @@ use frame_system::ensure_signed;
 
 use proofs::Verifier;
 
-use runtime_common::{
-    AssetId, AssetIdRef, 
-    NFTS_PREFIX,
-    RegistryId, TokenId,
-};
+use runtime_common::{AssetId, AssetIdRef, RegistryId, TokenId, NFTS_PREFIX};
 
 use sp_runtime::traits::Hash;
 
@@ -345,8 +341,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	/// Create a new identifier for a registry
 	fn create_registry_id() -> Result<RegistryId, DispatchError> {
-		
-        let id_nonce = Self::get_registry_nonce();
+		let id_nonce = Self::get_registry_nonce();
 
 		// First 20 bytes of the runtime hash of the nonce
 		let id = RegistryId::from_slice(&T::Hashing::hash_of(&id_nonce).as_ref()[..20]);

@@ -40,13 +40,10 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 
 use runtime_common::{
-    AssetId, AssetInfo,
-    Balance,
-    NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
-    RegistryId, TokenId
+	AssetId, AssetInfo, Balance, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
 };
 
-use sp_core::{H256, blake2_128};
+use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
@@ -94,7 +91,7 @@ frame_support::construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Config, Storage, Event<T>},
-        ChainBridge: chainbridge::{Pallet, Call, Storage, Config, Event<T>},
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Config, Event<T>},
 	}
 );
 
@@ -194,7 +191,7 @@ impl chainbridge::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain non-fungible token (NFT) pallet
 parameter_types! {
-    pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
 	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
 }
 
@@ -205,10 +202,9 @@ impl pallet_nft::Config for MockRuntime {
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;
 	type HashId = MockHashId;
-    type NftProofValidationFee = NftProofValidationFee;
+	type NftProofValidationFee = NftProofValidationFee;
 	type WeightInfo = ();
 }
-
 
 // Implement Centrifuge Chain anchors pallet for the mock runtime
 impl pallet_anchors::Config for MockRuntime {
@@ -284,10 +280,10 @@ impl TestExternalitiesBuilder {
 // Calculate a hash given two input hashes
 pub fn hash_of<T: frame_system::Config>(a: T::Hash, b: T::Hash) -> T::Hash
 where
-    T: frame_system::Config<Hash = H256>,
+	T: frame_system::Config<Hash = H256>,
 {
-    let data = [a.as_ref(), b.as_ref()].concat();
-    <T::Hashing as Hash>::hash(&data)
+	let data = [a.as_ref(), b.as_ref()].concat();
+	<T::Hashing as Hash>::hash(&data)
 }
 
 // Generate a dummy document root hash from static hashes for testing.
@@ -299,16 +295,16 @@ where
 //          Signing Root            Signature Root
 //          /          \
 //   data root 1     data root 2
-pub fn mock_doc_root<T: frame_system::Config>(static_hashes: [T::Hash; 3]) -> T::Hash 
+pub fn mock_doc_root<T: frame_system::Config>(static_hashes: [T::Hash; 3]) -> T::Hash
 where
-    T: frame_system::Config<Hash = H256>,
+	T: frame_system::Config<Hash = H256>,
 {
 	let basic_data_root = static_hashes[0];
 	let zk_data_root = static_hashes[1];
 	let signature_root = static_hashes[2];
 	let signing_root = hash_of::<T>(basic_data_root, zk_data_root);
-    
-    hash_of::<T>(signing_root, signature_root)
+
+	hash_of::<T>(signing_root, signature_root)
 }
 
 // Return dummy proofs data useful for testing.
@@ -317,9 +313,9 @@ where
 pub fn mock_proofs_data<T: frame_system::Config>(
 	registry_id: RegistryId,
 	token_id: TokenId,
-) -> (Vec<CompleteProof<T::Hash>>, [T::Hash; 3], T::Hash) 
+) -> (Vec<CompleteProof<T::Hash>>, [T::Hash; 3], T::Hash)
 where
-    T: frame_system::Config<Hash = H256>,
+	T: frame_system::Config<Hash = H256>,
 {
 	// Encode token into big endian U256
 	let mut token_enc = Vec::<u8>::with_capacity(32);
@@ -352,13 +348,13 @@ where
 		.collect();
 	leaves.sort();
 
-    let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
+	let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
 
-    let data_root = <T::Hashing as Hash>::hash(&hash);
-    let zk_data_root = <T::Hashing as Hash>::hash(&[0]);
-    let signature_root = <T::Hashing as Hash>::hash(&[0]);
-    let static_hashes = [data_root, zk_data_root, signature_root];
-    let doc_root = mock_doc_root::<T>(static_hashes);
+	let data_root = <T::Hashing as Hash>::hash(&hash);
+	let zk_data_root = <T::Hashing as Hash>::hash(&[0]);
+	let signature_root = <T::Hashing as Hash>::hash(&[0]);
+	let static_hashes = [data_root, zk_data_root, signature_root];
+	let doc_root = mock_doc_root::<T>(static_hashes);
 
 	(proofs, static_hashes, doc_root)
 }
@@ -376,9 +372,9 @@ pub fn setup_mint<T>(
 	RegistryInfo,
 )
 where
-	T: frame_system::Config<Hash = H256, AccountId = u64> + 
-    pallet_registry::Config + 
-    pallet_nft::Config<AssetInfo = AssetInfo>,
+	T: frame_system::Config<Hash = H256, AccountId = u64>
+		+ pallet_registry::Config
+		+ pallet_nft::Config<AssetInfo = AssetInfo>,
 {
 	let metadata = vec![];
 
@@ -402,7 +398,8 @@ where
 		};
 
 	// Generate dummy proofs data for testing
-	let (proofs, static_hashes, doc_root) = mock_proofs_data::<T>(registry_id.clone(), token_id.clone());
+	let (proofs, static_hashes, doc_root) =
+		mock_proofs_data::<T>(registry_id.clone(), token_id.clone());
 
 	// Registry data
 	let nft_data = AssetInfo { metadata };

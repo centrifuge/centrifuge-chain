@@ -128,7 +128,14 @@ use codec::FullCodec;
 
 use core::convert::TryInto;
 
-use frame_support::{PalletId, dispatch::DispatchResult, ensure, inherent::Vec, traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons}, transactional};
+// Runtime, system and frame primitives
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	inherent::Vec,
+	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
+	transactional, PalletId,
+};
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
@@ -151,7 +158,8 @@ use unique_assets::traits::Unique;
 // Type aliases
 // ----------------------------------------------------------------------------
 
-type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BalanceOf<T> =
+	<<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -393,7 +401,7 @@ pub mod pallet {
 
 		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
-        #[transactional]
+		#[transactional]
 		pub fn transfer_native(
 			origin: OriginFor<T>,
 			amount: BalanceOf<T>,
@@ -448,8 +456,8 @@ pub mod pallet {
 				dest_id,
 				resource_id.into(),
 				recipient,
-                // Note: use u128 to restrict balance greater than 128bits
-            U256::from(amount.saturated_into::<u128>()),
+				// Note: use u128 to restrict balance greater than 128bits
+				U256::from(amount.saturated_into::<u128>()),
 			)?;
 
 			Ok(().into())
@@ -457,7 +465,7 @@ pub mod pallet {
 
 		/// Executes a simple currency transfer using the chainbridge account as the source
 		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
-        #[transactional]
+		#[transactional]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
@@ -534,7 +542,7 @@ pub mod pallet {
 
 			Ok(().into())
 		}
-    }
+	}
 } // end of 'pallet' module
 
 // ----------------------------------------------------------------------------
@@ -581,11 +589,11 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-    // Ensure that the caller has admin rights
-    fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
+	// Ensure that the caller has admin rights
+	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
 		<T as Config>::AdminOrigin::try_origin(origin)
 			.map(|_| ())
 			.or_else(ensure_root)?;
 		Ok(())
-    }
+	}
 }
