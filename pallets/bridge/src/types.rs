@@ -19,12 +19,11 @@
 
 // Substrate primitives
 use core::convert::TryInto;
-use runtime_common::RegistryId;
 use sp_core::H160;
 use sp_std::vec::Vec;
 
 // Centrifuge chain runtime primitives
-use runtime_common::types::Bytes32;
+use runtime_common::{Bytes32,RegistryId};
 
 // ----------------------------------------------------------------------------
 // Types definition

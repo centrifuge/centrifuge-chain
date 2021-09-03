@@ -23,6 +23,7 @@
 use crate::{
     self as pallet_bridge, 
     traits::WeightInfo,
+    types::Address,
 };
 
 use chainbridge::types::{ChainId, ResourceId};
@@ -33,11 +34,13 @@ use frame_support::{assert_ok, parameter_types, traits::{GenesisBuild, SortedMem
 
 use frame_system::EnsureSignedBy;
 
+use pallet_bridge_mapping;
+
 use pallet_registry::{traits::VerifierRegistry, types::{CompleteProof, RegistryInfo}};
 
 use runtime_common::{AssetId, AssetInfo, Balance, Bytes32, CFG, MILLISECS_PER_DAY, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE, RegistryId, TokenId};
 
-use sp_core::{blake2_128, H256, U256};
+use sp_core::{H256, U256, blake2_128};
 
 use sp_io::TestExternalities;
 
@@ -425,10 +428,13 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 		vec![]
 	));
 
+    let reg: Address = registry_id.clone().into();
+    let reg: Bytes32 = reg.into();
+
 	// Register resource in local resource mapping
 	<pallet_bridge_mapping::Pallet<MockRuntime>>::set_resource(
 		resource_id.clone(),
-		registry_id.clone(),
+		reg,
 	);
 
 	registry_id
