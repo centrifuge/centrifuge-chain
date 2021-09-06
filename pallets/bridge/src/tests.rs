@@ -58,14 +58,13 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				"Insufficient Balance"
+                Error::<MockRuntime>::InsufficientBalance
 			);
 
-			let mut account_current_balance =
-				<pallet_balances::Pallet<MockRuntime>>::free_balance(RELAYER_B);
-			assert_eq!(account_current_balance, 100);
-
 			// Using account with enough balance for fee but not for transfer amount
+			let mut account_current_balance = Balances::free_balance(RELAYER_B);
+			assert_eq!(account_current_balance, RELAYER_B_INITIAL_BALANCE);
+
 			assert_err!(
 				Bridge::transfer_native(
 					Origin::signed(RELAYER_B),
@@ -73,15 +72,39 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-				"Insufficient Balance"
+                Error::<MockRuntime>::InsufficientBalance
 			);
 
-			// Account balance should be reverted to original balance
+			// Account balance of relayer B should be reverted to original balance
 			account_current_balance = Balances::free_balance(RELAYER_B);
-			assert_eq!(account_current_balance, 100);
+			assert_eq!(account_current_balance, RELAYER_B_INITIAL_BALANCE);
 
-			// Success
-			assert_ok!(Bridge::transfer_native(
+// TODO: seems not used anymore (compared with master branch)
+            // // Using account with enough balance for fee, but transfer blocked by a lock
+            // let lock_amount = 7990 * CFG;
+            // Balances::set_lock(*b"testlock", &RELAYER_A, lock_amount, WithdrawReasons::all());
+            // assert_err!(
+            //     Bridge::transfer_native(
+            //         Origin::signed(RELAYER_A),
+            //         amount.clone(),
+            //         recipient.clone(),
+            //         dest_chain,
+            //     ),
+            //     Error::<MockRuntime>::InsufficientBalance
+            // );
+
+            // Balances::remove_lock(*b"testlock", &RELAYER_A);
+            // account_current_balance = Balances::free_balance(RELAYER_A);
+            // assert_eq!(account_current_balance, ENDOWED_BALANCE);
+// TODO : end
+
+            // Account balance of relayer A should be tantamount to the initial endowed value
+            account_current_balance = Balances::free_balance(RELAYER_A);
+			assert_eq!(account_current_balance, ENDOWED_BALANCE);
+
+			// Successful transfer with relayer A account, which has enough funds 
+            // for the requested amount plus transfer fees
+            assert_ok!(Bridge::transfer_native(
 				Origin::signed(RELAYER_A),
 				amount.clone(),
 				recipient.clone(),
@@ -96,10 +119,13 @@ fn transfer_native() {
 				recipient,
 			));
 
-			// Account balance should be reduced amount + fee
+			// Current Relay A account balance is initial value (i.e. ENDOWED_BALANCE) less transfer fees (i.e. NATIVE_TOKEN_TRANSFER_FEE) and amount
+            // (i.e. 20 * CFG), that is (10000 * CFG) - (2000 * CFG) - (20 * CFG) = 7980 * CFG
 			account_current_balance = Balances::free_balance(RELAYER_A);
-			assert_eq!(account_current_balance, 60 * CFG);
-		})
+            let amount_and_fees = amount + NATIVE_TOKEN_TRANSFER_FEE;
+            let account_result_balance = ENDOWED_BALANCE - amount_and_fees;
+			assert_eq!(account_current_balance, account_result_balance);
+        })
 }
 
 #[test]
@@ -165,21 +191,6 @@ fn transfer_nonfungible_asset() {
 				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(registry_id, token_id),
 				Some(owner)
 			);
-
-			// Using account without enough balance for fee should fail when requesting transfer
-			/*
-			assert_err!(
-				Bridge::transfer_asset(
-					Origin::signed(RELAYER_C),
-					recipient.clone(),
-					registry_id,
-					token_id.clone(),
-					dest_chain),
-				DispatchError::Module {
-					index: 0,
-					error: 3,
-					Some("InsufficientBalance")});
-			*/
 
 			// Transfer nonfungible through bridge
 			assert_ok!(Bridge::transfer_asset(

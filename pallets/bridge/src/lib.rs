@@ -53,6 +53,7 @@
 //! `RegistryIdDoesNotExist` - Registry id provided on receiving a transfer is not a key in bridges-names mapping.
 //! `InvalidTransfer` - Invalid transfer.
 //! `InsufficientBalance` - Not enough resources/assets for performing a transfer.
+//! `TotalAmountOverflow` - Total amount to be transfered overflows balance type size.
 //!
 //! ### Dispatchable Functions
 //!
@@ -125,8 +126,6 @@ pub use pallet::*;
 use chainbridge::types::{ChainId, ResourceId};
 
 use codec::FullCodec;
-
-use core::convert::TryInto;
 
 // Runtime, system and frame primitives
 use frame_support::{
@@ -337,10 +336,11 @@ pub mod pallet {
 		InsufficientBalance,
 
 		/// Token transfer fee not convertible to currrency
-		TokenTransferFeeNotConvertibleToCurrency,
+// TODO: no more useful
+//		TokenTransferFeeNotConvertibleToCurrency,
 
-		/// Total amount not convertible to currrency
-		TotalAmountNotConvertibleToCurrency,
+		/// Total amount to be transfered overflows balance type size
+		TotalAmountOverflow,
 	}
 
 	// ------------------------------------------------------------------------
@@ -410,25 +410,31 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let source = ensure_signed(origin)?;
 
-			let token_fee: T::Balance = Self::get_native_token_transfer_fee().saturated_into();
-			
-            let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
-				.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
-				.try_into()
-				.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?;
-			
-            let total_amount = amount
-				.checked_add(&currency_token_fee)
-				.ok_or(Error::<T>::TotalAmountNotConvertibleToCurrency)?;
+            let token_transfer_fee: BalanceOf<T> = Self::get_native_token_transfer_fee().saturated_into();
+// TODO: simplify		
+            // let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
+			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
+			// 	.try_into()
+			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?;
 
-			// Ensure account has enough balance for both fee and transfer
+            // Add fees to initial amount (so that to be sure account has sufficient funds)
+            let total_transfer_amount = amount
+				.checked_add(&token_transfer_fee)
+				.ok_or(Error::<T>::TotalAmountOverflow)?;
+//TODO: simplify		
+            // let total_amount = amount
+			// 	.checked_add(&currency_token_fee)
+			// 	.ok_or(Error::<T>::TotalAmountNotConvertibleToCurrency)?;
+
+            // Ensure account has enough balance for both fee and transfer
 			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
-			let remaining_balance = <T as pallet::Config>::Currency::free_balance(&source)
-				.checked_sub(&total_amount)
+            let remaining_balance = <T as pallet::Config>::Currency::free_balance(&source)
+				.checked_sub(&total_transfer_amount)
 				.ok_or(Error::<T>::InsufficientBalance)?;
+
 			<T as pallet::Config>::Currency::ensure_can_withdraw(
 				&source,
-				total_amount,
+				total_transfer_amount,
 				WithdrawReasons::all(),
 				remaining_balance,
 			)

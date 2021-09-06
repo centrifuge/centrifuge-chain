@@ -44,7 +44,7 @@ use sp_core::{H256, U256, blake2_128};
 
 use sp_io::TestExternalities;
 
-use sp_runtime::{testing::Header, traits::{AccountIdConversion, BlakeTwo256, Hash, IdentityLookup}};
+use sp_runtime::{testing::Header, traits::{BlakeTwo256, Hash, IdentityLookup}};
 
 
 // ----------------------------------------------------------------------------
@@ -90,6 +90,7 @@ pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
 pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
+pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = 2000 * CFG;
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -301,7 +302,7 @@ impl TestExternalitiesBuilder {
 			balances: vec![
 				(bridge_id, ENDOWED_BALANCE),
 				(RELAYER_A, ENDOWED_BALANCE),
-				(RELAYER_B, 2000),
+				(RELAYER_B, RELAYER_B_INITIAL_BALANCE),
 			],
 		}
 		.assimilate_storage(&mut storage)
