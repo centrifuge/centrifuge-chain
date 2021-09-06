@@ -210,9 +210,9 @@ pub mod pallet {
 
 		/// Constant configuration parameter to store the module identifier for the pallet.
 		///
-		/// The module identifier may be of the form ```PalletId(*b"rd/claim")``` and set
-		/// using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
-		// macro in the [`runtime/lib.rs`] file.
+		/// The module identifier may be of the form ```PalletId(*b"r/bridge")``` (a string of eight characters)
+        /// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
+		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
 		type BridgePalletId: Get<PalletId>;
 
@@ -411,11 +411,13 @@ pub mod pallet {
 			let source = ensure_signed(origin)?;
 
 			let token_fee: T::Balance = Self::get_native_token_transfer_fee().saturated_into();
-			let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
+			
+            let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
 				.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
 				.try_into()
 				.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?;
-			let total_amount = amount
+			
+            let total_amount = amount
 				.checked_add(&currency_token_fee)
 				.ok_or(Error::<T>::TotalAmountNotConvertibleToCurrency)?;
 

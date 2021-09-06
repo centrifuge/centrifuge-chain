@@ -44,10 +44,7 @@ use sp_core::{H256, U256, blake2_128};
 
 use sp_io::TestExternalities;
 
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, Hash, IdentityLookup},
-};
+use sp_runtime::{testing::Header, traits::{AccountIdConversion, BlakeTwo256, Hash, IdentityLookup}};
 
 
 // ----------------------------------------------------------------------------
@@ -92,7 +89,7 @@ impl WeightInfo for MockWeightInfo {
 pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
-pub(crate) const ENDOWED_BALANCE: Balance = 100 * CFG;
+pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -196,14 +193,14 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = 5;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainbridgePalletId: PalletId = PalletId(*b"chnbrdge");
 	pub const ProposalLifetime: u64 = 10;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for MockRuntime {
 	type Event = Event;
-	type PalletId = ChainBridgePalletId;
+	type PalletId = ChainbridgePalletId;
 	type Proposal = Call;
 	type ChainId = MockChainId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
@@ -293,7 +290,7 @@ impl Default for TestExternalitiesBuilder {
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
-		let bridge_id = Bridge::account_id();
+		let bridge_id = Chainbridge::account_id();
 
 		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<MockRuntime>()
@@ -304,7 +301,7 @@ impl TestExternalitiesBuilder {
 			balances: vec![
 				(bridge_id, ENDOWED_BALANCE),
 				(RELAYER_A, ENDOWED_BALANCE),
-				(RELAYER_B, 100),
+				(RELAYER_B, 2000),
 			],
 		}
 		.assimilate_storage(&mut storage)
@@ -325,7 +322,9 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		TestExternalities::new(storage)
+		let mut externalities = TestExternalities::new(storage);
+        externalities.execute_with(|| System::set_block_number(1));
+        externalities
 	}
 }
 
@@ -428,13 +427,13 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 		vec![]
 	));
 
-    let reg: Address = registry_id.clone().into();
-    let reg: Bytes32 = reg.into();
+    let registry_id_to_address: Address = registry_id.clone().into();
+    let registry_id_to_address: Bytes32 = registry_id_to_address.into();
 
 	// Register resource in local resource mapping
 	<pallet_bridge_mapping::Pallet<MockRuntime>>::set_resource(
 		resource_id.clone(),
-		reg,
+		registry_id_to_address,
 	);
 
 	registry_id

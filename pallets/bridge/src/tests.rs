@@ -281,7 +281,9 @@ fn transfer() {
 			// Check inital state
 			let bridge_id: u64 = Chainbridge::account_id();
 			let resource_id = NativeTokenId::get();
-			assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE);
+            let current_balance = Balances::free_balance(&bridge_id);
+
+			assert_eq!(current_balance, ENDOWED_BALANCE);
 			// Transfer and check result
 			assert_ok!(Bridge::transfer(
 				Origin::signed(Chainbridge::account_id()),
