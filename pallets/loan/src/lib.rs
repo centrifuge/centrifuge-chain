@@ -129,7 +129,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Sets the loan info for a given loan in a pool
 		/// we update the loan details only if its not active
-		#[pallet::weight(1_00_000)]
+		#[pallet::weight(100_000)]
 		pub fn update_loan_info(
 			origin: OriginFor<T>,
 			pool_id: T::PoolID,
@@ -170,10 +170,7 @@ impl<T: Config> Pallet<T> {
 	/// returns the ceiling of the given loan under a given pool.
 	pub fn ceiling(pool_id: T::PoolID, loan_id: T::LoanID) -> Option<T::Amount> {
 		let maybe_loan_info = Loan::<T>::get(pool_id, loan_id);
-		match maybe_loan_info {
-			Some(loan_info) => Some(loan_info.ceiling),
-			None => None,
-		}
+		maybe_loan_info.map(|loan_info| loan_info.ceiling)
 	}
 
 	pub fn borrow(pool_id: T::PoolID, loan_id: T::LoanID, amount: T::Amount) -> DispatchResult {
