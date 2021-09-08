@@ -19,29 +19,25 @@
 
 use codec::{Decode, Encode};
 
-use sp_runtime::{sp_std::vec::Vec, traits::Hash, RuntimeDebug};
+use sp_runtime::{sp_std::vec::Vec, traits::Hash};
 
 //use sp_std::vec::Vec;
 
 // Library for building and validating proofs
 use proofs::{hashing::sort_hash_of, Hasher, Verifier};
 
-use unique_assets::traits::Nft;
-
 // ----------------------------------------------------------------------------
 // Types definition
 // ----------------------------------------------------------------------------
 
-// Generic definition of a non-fungible token (NFT), as used in this pallet
-#[derive(Encode, Decode, Default, Clone, RuntimeDebug)]
-pub struct Asset<Hash, AssetInfo> {
-	pub id: Hash,
-	pub asset: AssetInfo,
-}
+/// A global identifier for an nft/asset on-chain. Composed of a registry and token id.
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+pub struct AssetId<RegistryId, TokenId>(pub RegistryId, pub TokenId);
 
-impl<AssetId, AssetInfo> Nft for Asset<AssetId, AssetInfo> {
-	type Id = AssetId;
-	type Info = AssetInfo;
+impl<RegistryId, TokenId> AssetId<RegistryId, TokenId> {
+	pub fn destruct(self) -> (RegistryId, TokenId) {
+		(self.0, self.1)
+	}
 }
 
 /// Proof verifier data structure.

@@ -27,8 +27,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate", def
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-runtime-common = { path = "../../runtime/common", default-features = false }
-unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "cleanup" }
 
 [dev-dependencies]
 # Testing and mocking dependencies
@@ -60,5 +59,5 @@ std = [
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
-    'unique_assets/std',
+    'unique-assets/std',
 ]
