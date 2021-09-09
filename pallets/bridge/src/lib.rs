@@ -115,10 +115,7 @@ pub mod types;
 // Pallet extrinsics weight information
 mod weights;
 
-use crate::{
-    traits::WeightInfo,
-    types::Address,
-};
+use crate::{traits::WeightInfo, types::Address};
 
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
@@ -139,9 +136,7 @@ use frame_support::{
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
 use runtime_common::{
-    AssetId,
-    Bytes32, RegistryId, TokenId,
-    NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE,
+	AssetId, Bytes32, RegistryId, TokenId, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE,
 };
 
 use sp_core::U256;
@@ -199,7 +194,7 @@ pub mod pallet {
 		frame_system::Config
 		+ pallet_balances::Config
 		+ pallet_bridge_mapping::Config
-        + chainbridge::Config
+		+ chainbridge::Config
 		+ pallet_fees::Config
 		+ pallet_nft::Config
 	{
@@ -210,7 +205,7 @@ pub mod pallet {
 		/// Constant configuration parameter to store the module identifier for the pallet.
 		///
 		/// The module identifier may be of the form ```PalletId(*b"r/bridge")``` (a string of eight characters)
-        /// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
+		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
 		type BridgePalletId: Get<PalletId>;
@@ -249,25 +244,26 @@ pub mod pallet {
 	// Pallet storage items
 	// ------------------------------------------------------------------------
 
-    // Default value for native tokens transfer fee storage item.  
+	// Default value for native tokens transfer fee storage item.
 	#[pallet::type_value]
 	pub fn DefaultNativeTokenTransferFee() -> u128 {
-        NATIVE_TOKEN_TRANSFER_FEE.saturated_into()
+		NATIVE_TOKEN_TRANSFER_FEE.saturated_into()
 	}
 
 	// Additional fee charged when transfering native tokens to target chains (in CFGs).
-    #[pallet::storage]
+	#[pallet::storage]
 	#[pallet::getter(fn get_native_token_transfer_fee)]
-	pub type NativeTokenTransferFee<T> = StorageValue<_, u128, ValueQuery, DefaultNativeTokenTransferFee>;
+	pub type NativeTokenTransferFee<T> =
+		StorageValue<_, u128, ValueQuery, DefaultNativeTokenTransferFee>;
 
-    // Default value for NFT tokens transfer fee storage item.  
+	// Default value for NFT tokens transfer fee storage item.
 	#[pallet::type_value]
 	pub fn DefaultNftTokenTransferFee() -> u128 {
-        NFT_TOKEN_TRANSFER_FEE.saturated_into()
+		NFT_TOKEN_TRANSFER_FEE.saturated_into()
 	}
 
 	// Additional fee charged when transfering native tokens to target chains (in CFGs).
-    #[pallet::storage]
+	#[pallet::storage]
 	#[pallet::getter(fn get_nft_token_transfer_fee)]
 	pub type NftTokenTransferFee<T> = StorageValue<_, u128, ValueQuery, DefaultNftTokenTransferFee>;
 
@@ -336,8 +332,8 @@ pub mod pallet {
 		InsufficientBalance,
 
 		/// Token transfer fee not convertible to currrency
-// TODO: no more useful
-//		TokenTransferFeeNotConvertibleToCurrency,
+		// TODO: no more useful
+		//		TokenTransferFeeNotConvertibleToCurrency,
 
 		/// Total amount to be transfered overflows balance type size
 		TotalAmountOverflow,
@@ -376,7 +372,10 @@ pub mod pallet {
 				.ok_or(Error::<T>::ResourceIdDoesNotExist)?;
 
 			// Charge additional fees for transfering the NFT token to the target chain
-			<pallet_fees::Pallet<T>>::burn_fee(&source, Self::get_nft_token_transfer_fee().saturated_into())?;
+			<pallet_fees::Pallet<T>>::burn_fee(
+				&source,
+				Self::get_nft_token_transfer_fee().saturated_into(),
+			)?;
 
 			// Lock asset by transfering to bridge account
 			let bridge_id = <chainbridge::Pallet<T>>::account_id();
@@ -410,25 +409,26 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let source = ensure_signed(origin)?;
 
-            let token_transfer_fee: BalanceOf<T> = Self::get_native_token_transfer_fee().saturated_into();
-// TODO: simplify		
-            // let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
+			let token_transfer_fee: BalanceOf<T> =
+				Self::get_native_token_transfer_fee().saturated_into();
+			// TODO: simplify
+			// let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
 			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
 			// 	.try_into()
 			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?;
 
-            // Add fees to initial amount (so that to be sure account has sufficient funds)
-            let total_transfer_amount = amount
+			// Add fees to initial amount (so that to be sure account has sufficient funds)
+			let total_transfer_amount = amount
 				.checked_add(&token_transfer_fee)
 				.ok_or(Error::<T>::TotalAmountOverflow)?;
-//TODO: simplify		
-            // let total_amount = amount
+			//TODO: simplify
+			// let total_amount = amount
 			// 	.checked_add(&currency_token_fee)
 			// 	.ok_or(Error::<T>::TotalAmountNotConvertibleToCurrency)?;
 
-            // Ensure account has enough balance for both fee and transfer
+			// Ensure account has enough balance for both fee and transfer
 			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
-            let remaining_balance = <T as pallet::Config>::Currency::free_balance(&source)
+			let remaining_balance = <T as pallet::Config>::Currency::free_balance(&source)
 				.checked_sub(&total_transfer_amount)
 				.ok_or(Error::<T>::InsufficientBalance)?;
 
@@ -523,30 +523,26 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-        /// Modify native token transfer fee value
+		/// Modify native token transfer fee value
 		#[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
 		pub fn set_token_transfer_fee(
-            origin: OriginFor<T>, 
-            new_fee: BalanceOf<T>
-        ) -> DispatchResultWithPostInfo {
+			origin: OriginFor<T>,
+			new_fee: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
 			Self::ensure_admin(origin)?;
-			NativeTokenTransferFee::<T>::mutate(|fee_value| {
-				*fee_value = new_fee.saturated_into()
-			});
+			NativeTokenTransferFee::<T>::mutate(|fee_value| *fee_value = new_fee.saturated_into());
 
 			Ok(().into())
 		}
 
-        /// Modify NFT token transfer fee value
+		/// Modify NFT token transfer fee value
 		#[pallet::weight(<T as Config>::WeightInfo::set_nft_transfer_fee())]
 		pub fn set_nft_transfer_fee(
-            origin: OriginFor<T>, 
-            new_fee: BalanceOf<T>
-        ) -> DispatchResultWithPostInfo {
+			origin: OriginFor<T>,
+			new_fee: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
 			Self::ensure_admin(origin)?;
-			NftTokenTransferFee::<T>::mutate(|fee_value| {
-				*fee_value = new_fee.saturated_into()
-			});
+			NftTokenTransferFee::<T>::mutate(|fee_value| *fee_value = new_fee.saturated_into());
 
 			Ok(().into())
 		}

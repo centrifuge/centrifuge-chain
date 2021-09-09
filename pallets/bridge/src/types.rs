@@ -23,7 +23,7 @@ use sp_core::H160;
 use sp_std::vec::Vec;
 
 // Centrifuge chain runtime primitives
-use runtime_common::{Bytes32,RegistryId};
+use runtime_common::{Bytes32, RegistryId};
 
 // ----------------------------------------------------------------------------
 // Types definition
@@ -35,7 +35,6 @@ use runtime_common::{Bytes32,RegistryId};
 #[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Address(pub Bytes32);
-
 
 impl From<RegistryId> for Address {
 	fn from(r: RegistryId) -> Self {
@@ -51,11 +50,7 @@ impl From<RegistryId> for Address {
 // In order to be generic into T::Address
 impl From<Bytes32> for Address {
 	fn from(v: Bytes32) -> Self {
-		Address(
-			v[..32]
-				.try_into()
-				.expect("Address wraps a 32 byte array"),
-		)
+		Address(v[..32].try_into().expect("Address wraps a 32 byte array"))
 	}
 }
 

@@ -58,7 +58,7 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-                Error::<MockRuntime>::InsufficientBalance
+				Error::<MockRuntime>::InsufficientBalance
 			);
 
 			// Using account with enough balance for fee but not for transfer amount
@@ -72,39 +72,39 @@ fn transfer_native() {
 					recipient.clone(),
 					dest_chain,
 				),
-                Error::<MockRuntime>::InsufficientBalance
+				Error::<MockRuntime>::InsufficientBalance
 			);
 
 			// Account balance of relayer B should be reverted to original balance
 			account_current_balance = Balances::free_balance(RELAYER_B);
 			assert_eq!(account_current_balance, RELAYER_B_INITIAL_BALANCE);
 
-// TODO: seems not used anymore (compared with master branch)
-            // // Using account with enough balance for fee, but transfer blocked by a lock
-            // let lock_amount = 7990 * CFG;
-            // Balances::set_lock(*b"testlock", &RELAYER_A, lock_amount, WithdrawReasons::all());
-            // assert_err!(
-            //     Bridge::transfer_native(
-            //         Origin::signed(RELAYER_A),
-            //         amount.clone(),
-            //         recipient.clone(),
-            //         dest_chain,
-            //     ),
-            //     Error::<MockRuntime>::InsufficientBalance
-            // );
+			// TODO: seems not used anymore (compared with master branch)
+			// // Using account with enough balance for fee, but transfer blocked by a lock
+			// let lock_amount = 7990 * CFG;
+			// Balances::set_lock(*b"testlock", &RELAYER_A, lock_amount, WithdrawReasons::all());
+			// assert_err!(
+			//     Bridge::transfer_native(
+			//         Origin::signed(RELAYER_A),
+			//         amount.clone(),
+			//         recipient.clone(),
+			//         dest_chain,
+			//     ),
+			//     Error::<MockRuntime>::InsufficientBalance
+			// );
 
-            // Balances::remove_lock(*b"testlock", &RELAYER_A);
-            // account_current_balance = Balances::free_balance(RELAYER_A);
-            // assert_eq!(account_current_balance, ENDOWED_BALANCE);
-// TODO : end
+			// Balances::remove_lock(*b"testlock", &RELAYER_A);
+			// account_current_balance = Balances::free_balance(RELAYER_A);
+			// assert_eq!(account_current_balance, ENDOWED_BALANCE);
+			// TODO : end
 
-            // Account balance of relayer A should be tantamount to the initial endowed value
-            account_current_balance = Balances::free_balance(RELAYER_A);
+			// Account balance of relayer A should be tantamount to the initial endowed value
+			account_current_balance = Balances::free_balance(RELAYER_A);
 			assert_eq!(account_current_balance, ENDOWED_BALANCE);
 
-			// Successful transfer with relayer A account, which has enough funds 
-            // for the requested amount plus transfer fees
-            assert_ok!(Bridge::transfer_native(
+			// Successful transfer with relayer A account, which has enough funds
+			// for the requested amount plus transfer fees
+			assert_ok!(Bridge::transfer_native(
 				Origin::signed(RELAYER_A),
 				amount.clone(),
 				recipient.clone(),
@@ -120,12 +120,12 @@ fn transfer_native() {
 			));
 
 			// Current Relay A account balance is initial value (i.e. ENDOWED_BALANCE) less transfer fees (i.e. NATIVE_TOKEN_TRANSFER_FEE)
-            // and amount (i.e. 20 * CFG), that is, (10000 * CFG) - (2000 * CFG) - (20 * CFG) = 7980 * CFG
+			// and amount (i.e. 20 * CFG), that is, (10000 * CFG) - (2000 * CFG) - (20 * CFG) = 7980 * CFG
 			account_current_balance = Balances::free_balance(RELAYER_A);
-            let amount_and_fees = amount + NATIVE_TOKEN_TRANSFER_FEE;
-            let account_expected_balance = ENDOWED_BALANCE - amount_and_fees;
+			let amount_and_fees = amount + NATIVE_TOKEN_TRANSFER_FEE;
+			let account_expected_balance = ENDOWED_BALANCE - amount_and_fees;
 			assert_eq!(account_current_balance, account_expected_balance);
-        })
+		})
 }
 
 #[test]
@@ -292,7 +292,7 @@ fn transfer() {
 			// Check inital state
 			let bridge_id: u64 = Chainbridge::account_id();
 			let resource_id = NativeTokenId::get();
-            let current_balance = Balances::free_balance(&bridge_id);
+			let current_balance = Balances::free_balance(&bridge_id);
 
 			assert_eq!(current_balance, ENDOWED_BALANCE);
 			// Transfer and check result
