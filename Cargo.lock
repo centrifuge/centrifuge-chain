@@ -1186,7 +1186,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
+source = "git+https://github.com/centrifuge/chainbridge-substrate?branch=master#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5341,7 +5341,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
@@ -5350,6 +5350,7 @@ version = "2.0.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "pallet-nft",
  "parity-scale-codec",
  "sp-core",
  "sp-io",

@@ -47,16 +47,17 @@ sp-std = { git = "https://github.com/centrifuge/substrate", default-features = f
 [features]
 default = ['std']
 std = [
-    'chainbridge/std',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
-    'pallet-anchors/std',
     'pallet-balances/std',
-    'pallet-fees/std',
     'proofs/std',
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
+    'chainbridge/std',
+    'pallet-anchors/std',
+    'pallet-fees/std',
+    'proofs/std',
     'unique-assets/std',
 ]

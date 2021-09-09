@@ -170,10 +170,18 @@ pub mod pallet {
 		+ chainbridge::Config
 	{
 		/// the type used to identify nft registry
-		type RegistryId: Parameter + Member + Debug + Default + Clone + From<Vec<u8>> + AsRef<[u8]>;
+		type RegistryId: Parameter
+			+ Member
+			+ Debug
+			+ Default
+			+ Clone
+			+ From<Vec<u8>>
+			+ AsRef<[u8]>
+			+ From<[u8; 32]>;
 
 		/// type that represents nft token ID
-		type TokenId: Parameter + Member + Clone + From<Vec<u8>>;
+		/// From should always assume big endian
+		type TokenId: Parameter + Member + Default + Clone + From<Vec<u8>> + Into<Vec<u8>>;
 
 		/// The data type that is used to describe this type of asset.
 		type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
@@ -184,8 +192,17 @@ pub mod pallet {
 		/// Chain identifier type
 		type ChainId: Parameter + Member + Debug + Default + FullCodec + Into<u8> + From<u8>;
 
-		/// Resource id type
-		type ResourceId: Member + Default + FullCodec + Into<[u8; 32]> + From<[u8; 32]>;
+		/// In order to provide generality, we need some way to associate some action on a source chain
+		/// to some action on a destination chain. This may express tokenX on chain A is equivalent to
+		/// tokenY on chain B, or to simply associate that some action performed on chain A should
+		/// result in some other action occurring on chain B. ResourceId is defined as a 32 byte array
+		/// by ChainSafe.
+		type ResourceId: Member
+			+ Default
+			+ FullCodec
+			+ Into<[u8; 32]>
+			+ From<[u8; 32]>
+			+ MaybeSerializeDeserialize;
 
 		/// Resource hash id.
 		///

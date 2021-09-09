@@ -16,6 +16,7 @@ codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-nft = { path = "../nft", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -28,5 +29,6 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
-    'sp-runtime/std'
+    'sp-runtime/std',
+    'pallet-nft/std'
 ]
