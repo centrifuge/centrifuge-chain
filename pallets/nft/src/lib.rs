@@ -98,7 +98,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Extrinsics weight information
+// Extrinsic weight information
 mod weights;
 
 // Export crate types and traits
@@ -170,10 +170,10 @@ pub mod pallet {
 		+ chainbridge::Config
 	{
 		/// the type used to identify nft registry
-		type RegistryId: Parameter + Member + Debug + Default + Clone;
+		type RegistryId: Parameter + Member + Debug + Default + Clone + From<Vec<u8>> + AsRef<[u8]>;
 
 		/// type that represents nft token ID
-		type TokenId: Parameter + Member + Clone;
+		type TokenId: Parameter + Member + Clone + From<Vec<u8>>;
 
 		/// The data type that is used to describe this type of asset.
 		type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
@@ -246,35 +246,6 @@ pub mod pallet {
 		T::TokenId,
 		T::AssetInfo,
 	>;
-
-	// ------------------------------------------------------------------------
-	// Pallet genesis configuration
-	// ------------------------------------------------------------------------
-
-	// The genesis configuration type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
-
-	// ------------------------------------------------------------------------
-	// Pallet lifecycle hooks
-	// ------------------------------------------------------------------------
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	// ------------------------------------------------------------------------
 	// Pallet errors

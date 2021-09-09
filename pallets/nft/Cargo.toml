@@ -55,7 +55,6 @@ std = [
     'pallet-balances/std',
     'pallet-fees/std',
     'proofs/std',
-    'runtime-common/std',
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',

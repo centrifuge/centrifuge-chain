@@ -6,15 +6,18 @@ use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::traits::Zero;
-use sp_arithmetic::traits::CheckedAdd;
-use std::fmt::Debug;
+use frame_support::transactional;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_arithmetic::traits::CheckedAdd;
+use std::fmt::Debug;
 
 use frame_support::storage::types::OptionQuery;
 pub use pallet::*;
+use pallet_registry::traits::VerifierRegistry;
 use sp_std::convert::TryInto;
+use unique_assets::traits::{Mintable, Unique};
 
 #[cfg(test)]
 mod mock;
@@ -46,13 +49,18 @@ where
 	}
 }
 
+pub type AssetInfoOf<T> = <<T as pallet::Config>::NftRegistry as Unique>::Asset;
+pub type RegistryIDOf<T> = <<T as pallet::Config>::VaRegistry as VerifierRegistry>::RegistryId;
+
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
 	use super::*;
 	use frame_support::pallet_prelude::*;
+	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
 	use sp_arithmetic::FixedPointNumber;
+	use sp_runtime::traits::AccountIdConversion;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -70,7 +78,22 @@ pub mod pallet {
 
 		/// the amount type
 		type Amount: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber;
+
+		/// The nft registry trait that can mint, transfer and give owner details
+		type NftRegistry: Unique + Mintable;
+
+		/// Verifier registry to create NFT Registry
+		type VaRegistry: VerifierRegistry;
+
+		/// PalletID of this loan module
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
 	}
+
+	/// Stores the loan registry ID
+	#[pallet::storage]
+	#[pallet::getter(fn get_loan_registry)]
+	pub(super) type LoanRegistry<T: Config> = StorageValue<_, RegistryIDOf<T>, OptionQuery>;
 
 	/// Stores the pool value against the poolID.
 	#[pallet::storage]
@@ -106,6 +129,9 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Emits when trying to re-initiate the loan pallet
+		ErrPalletAlreadyInitiated,
+
 		/// Emits when loan doesn't exist.
 		ErrMissingLoan,
 
@@ -127,9 +153,32 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Initiates the oan pallet
+		/// should be called only once in its lifetime
+		/// creates a new registry owned by the pallet
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn initiate(origin: OriginFor<T>) -> DispatchResult {
+			// TODO(dev): get the origin from the config. Admin can initiate
+			ensure_signed(origin)?;
+
+			// check if the loan registry is already created
+			ensure!(
+				!LoanRegistry::<T>::exists(),
+				Error::<T>::ErrPalletAlreadyInitiated
+			);
+
+			let caller = T::PalletId::get().into_account();
+			let registry_id = T::VaRegistry::create_new_registry(caller, Default::default())?;
+
+			LoanRegistry::<T>::put(registry_id);
+			Ok(())
+		}
+
 		/// Sets the loan info for a given loan in a pool
 		/// we update the loan details only if its not active
 		#[pallet::weight(100_000)]
+		#[transactional]
 		pub fn update_loan_info(
 			origin: OriginFor<T>,
 			pool_id: T::PoolID,
@@ -137,7 +186,7 @@ pub mod pallet {
 			rate: T::Rate,
 			principal: T::Amount,
 		) -> DispatchResult {
-			// TODO(dev): get the origin from the config
+			// TODO(dev): get the origin from the config. Admin can set loan information
 			ensure_signed(origin)?;
 
 			// check if the pool exists
@@ -171,6 +220,21 @@ impl<T: Config> Pallet<T> {
 	pub fn ceiling(pool_id: T::PoolID, loan_id: T::LoanID) -> Option<T::Amount> {
 		let maybe_loan_info = Loan::<T>::get(pool_id, loan_id);
 		maybe_loan_info.map(|loan_info| loan_info.ceiling)
+	}
+
+	pub fn issue(
+		pool_id: T::PoolID,
+		owner: T::AccountId,
+		nft_info: AssetInfoOf<T>,
+	) -> DispatchResult {
+		// 1. check if the nft belongs to owner
+
+		// 2. create new loan nft
+
+		// 3. lock the asset nft
+
+		// 4. store loan info
+		Ok(())
 	}
 
 	pub fn borrow(pool_id: T::PoolID, loan_id: T::LoanID, amount: T::Amount) -> DispatchResult {

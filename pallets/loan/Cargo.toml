@@ -13,7 +13,6 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
-# fixed = { package = "substrate-fixed", git = "https://github.com/encointer/substrate-fixed", default-features = false , features = ["serde"], branch = "master" }
 
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -24,6 +23,8 @@ pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-f
 
 # our pallets
 pallet-pool = { path = "../pool", default-features = false}
+unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+pallet-registry = { path = "../registry", default-features = false }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -39,5 +40,6 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'pallet-timestamp/std',
-    'pallet-pool/std'
+    'pallet-pool/std',
+    'pallet-registry/std'
 ]

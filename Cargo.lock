@@ -5579,6 +5579,7 @@ dependencies = [
  "pallet-balances",
  "pallet-pool",
  "pallet-randomness-collective-flip",
+ "pallet-registry",
  "pallet-timestamp",
  "parity-scale-codec",
  "serde",
@@ -5587,6 +5588,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "unique_assets",
 ]
 
 [[package]]
@@ -5713,7 +5715,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
@@ -5812,7 +5814,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
@@ -11722,6 +11724,14 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unique-assets"
+version = "1.0.0"
+source = "git+https://github.com/centrifuge/unique-assets?branch=cleanup#b1cff812dad7e999b179272a22442c768b0916a2"
+dependencies = [
+ "frame-support",
+]
 
 [[package]]
 name = "unique_assets"

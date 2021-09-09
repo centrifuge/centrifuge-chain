@@ -14,7 +14,7 @@ pub fn calculate_cumulative_rate<Rate: FixedPointNumber>(
 }
 
 /// converts a fixed point from A precision to B precision
-/// if the sign are different, then we fail
+/// we don't convert from un-signed to signed or vice-verse
 fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
 	if A::SIGNED != B::SIGNED {
 		return None;
