@@ -577,7 +577,7 @@ impl pallet_identity::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1000 * CFG;
+	pub const MinVestedTransfer: Balance = MIN_VESTING * CFG;
 }
 
 impl pallet_vesting::Config for Runtime {
