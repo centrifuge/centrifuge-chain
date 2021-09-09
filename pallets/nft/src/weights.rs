@@ -11,20 +11,21 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+//! Non-fungible token (NFT) processing pallet's extrinsics weight information
+//!
+//! Note that the following weights are used only for development.
+//! In fact, weights shoudl be calculated using runtime benchmarking.
+
 use frame_support::weights::{constants::RocksDbWeight, Weight};
 
-/// Weight functions needed for bridge mapping.
-pub trait WeightInfo {
-	fn set() -> Weight;
-	fn remove() -> Weight;
-}
+use crate::traits::WeightInfo;
 
 impl WeightInfo for () {
-	fn set() -> Weight {
-		(100_000 as Weight).saturating_add(RocksDbWeight::get().reads_writes(0, 2))
+	fn transfer() -> Weight {
+		(195_000_000 as Weight).saturating_add(RocksDbWeight::get().reads_writes(1, 1))
 	}
 
-	fn remove() -> Weight {
-		(100_000 as Weight).saturating_add(RocksDbWeight::get().reads_writes(1, 2))
+	fn validate_mint() -> Weight {
+		120_000_000 as Weight
 	}
 }

@@ -1183,6 +1183,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "chainbridge"
+version = "0.0.2"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "substrate-wasm-builder-runner",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5301,6 +5318,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-bridge"
+version = "2.0.0"
+dependencies = [
+ "chainbridge",
+ "frame-support",
+ "frame-system",
+ "node-primitives",
+ "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-bridge-mapping",
+ "pallet-fees",
+ "pallet-nft",
+ "pallet-registry",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "proofs",
+ "runtime-common",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
+]
+
+[[package]]
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
@@ -5627,6 +5670,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nft"
+version = "2.0.0"
+dependencies = [
+ "chainbridge",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-bridge",
+ "pallet-bridge-mapping",
+ "pallet-fees",
+ "pallet-registry",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "proofs",
+ "runtime-common",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
+]
+
+[[package]]
 name = "pallet-nicks"
 version = "4.0.0-dev"
 source = "git+https://github.com/centrifuge/substrate?branch=master#32b0fa557426a69226a2111d7ac4a84dcb1800de"
@@ -5680,6 +5749,30 @@ dependencies = [
  "safe-mix",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-registry"
+version = "2.0.0"
+dependencies = [
+ "chainbridge",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-fees",
+ "pallet-nft",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "proofs",
+ "runtime-common",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "unique_assets",
 ]
 
 [[package]]
@@ -8126,12 +8219,14 @@ dependencies = [
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "parity-scale-codec",
  "smallvec 1.6.1",
  "sp-api",
  "sp-arithmetic",
  "sp-consensus-aura",
  "sp-core",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -10769,6 +10864,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-wasm-builder-runner"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "316626afcac0219c95116e6a2518e622484c2814182bd225fbf4da4f67e27e8f"
+
+[[package]]
 name = "subtle"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11581,6 +11682,15 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unique_assets"
+version = "0.1.0"
+source = "git+https://github.com/centrifuge/unique-assets?branch=master#8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae"
+dependencies = [
+ "frame-support",
+ "sp-std",
+]
 
 [[package]]
 name = "universal-hash"
