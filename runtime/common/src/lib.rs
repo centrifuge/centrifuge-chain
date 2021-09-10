@@ -121,6 +121,9 @@ pub mod constants {
 	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
 	pub const CFG: Balance = 100 * CENTI_CFG;
 
+	/// Minimum vesting amount, in CFG/AIR
+	pub const MIN_VESTING: Balance = 10;
+
 	/// Additional fee charged when moving native tokens to target chains (in CFGs).
 	pub const NATIVE_TOKEN_TRANSFER_FEE: Balance = 2000 * CFG;
 
