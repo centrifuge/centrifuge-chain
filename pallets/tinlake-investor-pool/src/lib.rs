@@ -199,17 +199,35 @@ pub mod pallet {
 	#[pallet::metadata(T::AccountId = "AccountId")]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Pool Created. [id, who]
+		/// Pool Created. [pool, who]
 		PoolCreated(T::PoolId, T::AccountId),
+		/// Epoch executed [pool, epoch]
+		EpochExecuted(T::PoolId, T::EpochId),
+		/// Epoch closed [pool, epoch]
+		EpochClosed(T::PoolId, T::EpochId),
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
 		/// A pool with this ID is already in use
-		InUse,
-		/// A parameter is invalid
-		Invalid,
+		PoolInUse,
+		/// Attemppted to create a pool without a juniortranche
+		NoJuniorTranche,
+		/// Attempted an operation on a pool which does not exist
+		NoSuchPool,
+		/// Attempted an operation while a pool is closing
+		PoolClosing,
+		/// An arithmetic overflow occured
+		Overflow,
+		/// A Tranche ID cannot be converted to an address
+		TrancheId,
+		/// Closing the epoch now would wipe out the junior tranche
+		WipedOut,
+		/// The provided solution is not a valid one
+		InvalidSolution,
+		/// Attempted to solve a pool which is not closing,
+		NotClosing,
 	}
 
 	#[pallet::call]
@@ -227,13 +245,16 @@ pub mod pallet {
 			// TODO: Ensure owner is authorized to create a pool
 
 			// A single pool ID can only be used by one owner.
-			ensure!(!Pool::<T>::contains_key(id), Error::<T>::InUse);
+			ensure!(!Pool::<T>::contains_key(id), Error::<T>::PoolInUse);
 
 			// At least one tranch must exist, and the last
 			// tranche must have an interest rate of 0,
 			// indicating that it recieves all remaining
 			// equity
-			ensure!(tranches.last() == Some(&(0, 0)), Error::<T>::Invalid);
+			ensure!(
+				tranches.last() == Some(&(0, 0)),
+				Error::<T>::NoJuniorTranche
+			);
 
 			let tranches = tranches
 				.into_iter()
@@ -277,8 +298,8 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			// TODO: Ensure this account is authorized for this tranche
 			let (currency, epoch) = {
-				let pool = Pool::<T>::try_get(pool).map_err(|_| Error::<T>::Invalid)?;
-				ensure!(pool.closing_epoch.is_none(), Error::<T>::Invalid);
+				let pool = Pool::<T>::try_get(pool).map_err(|_| Error::<T>::NoSuchPool)?;
+				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
 				(pool.currency, pool.current_epoch)
 			};
 			let tranche = TrancheLocator { pool, tranche };
@@ -293,7 +314,7 @@ pub mod pallet {
 							pool.tranches[tranche.tranche.into()].epoch_supply += transfer_amount;
 							Ok(())
 						} else {
-							Err(Error::<T>::Invalid)
+							Err(Error::<T>::NoSuchPool)
 						}
 					})?;
 				} else if amount < order.supply {
@@ -304,7 +325,7 @@ pub mod pallet {
 							pool.tranches[tranche.tranche.into()].epoch_supply += transfer_amount;
 							Ok(())
 						} else {
-							Err(Error::<T>::Invalid)
+							Err(Error::<T>::NoSuchPool)
 						}
 					})?;
 				}
@@ -326,13 +347,13 @@ pub mod pallet {
 			let currency = T::TrancheToken::tranche_token(pool, tranche);
 			ensure!(
 				Pool::<T>::try_get(pool)
-					.map_err(|_| Error::<T>::Invalid)?
+					.map_err(|_| Error::<T>::NoSuchPool)?
 					.closing_epoch
 					.is_none(),
-				Error::<T>::Invalid
+				Error::<T>::PoolClosing
 			);
 			let epoch = Pool::<T>::try_get(pool)
-				.map_err(|_| Error::<T>::Invalid)?
+				.map_err(|_| Error::<T>::NoSuchPool)?
 				.current_epoch;
 			let tranche = TrancheLocator { pool, tranche };
 
@@ -346,7 +367,7 @@ pub mod pallet {
 							pool.tranches[tranche.tranche.into()].epoch_redeem += transfer_amount;
 							Ok(())
 						} else {
-							Err(Error::<T>::Invalid)
+							Err(Error::<T>::NoSuchPool)
 						}
 					})?;
 				} else if amount < order.redeem {
@@ -357,7 +378,7 @@ pub mod pallet {
 							pool.tranches[tranche.tranche.into()].epoch_redeem -= transfer_amount;
 							Ok(())
 						} else {
-							Err(Error::<T>::Invalid)
+							Err(Error::<T>::NoSuchPool)
 						}
 					})?;
 				}
@@ -372,8 +393,8 @@ pub mod pallet {
 			ensure_signed(origin)?;
 			let pool_account = PoolLocator { pool: pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::Invalid)?;
-				ensure!(pool.closing_epoch.is_none(), Error::<T>::Invalid);
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
 				let previous_epoch_end = pool.last_epoch_closed;
@@ -388,7 +409,9 @@ pub mod pallet {
 
 				let epoch_tranche_prices = Self::calculate_tranche_prices(
 					current_epoch_end - previous_epoch_end,
-					epoch_reserve.checked_add(&nav).ok_or(Error::<T>::Invalid)?,
+					epoch_reserve
+						.checked_add(&nav)
+						.ok_or(Error::<T>::Overflow)?,
 					&pool.tranches,
 				);
 
@@ -402,7 +425,7 @@ pub mod pallet {
 						let tranche = TrancheLocator {
 							pool: pool_id,
 							tranche: T::TrancheId::try_from(tranche_id)
-								.map_err(|_| Error::<T>::Invalid)?,
+								.map_err(|_| Error::<T>::TrancheId)?,
 						};
 						let epoch = EpochDetails::<T::BalanceRatio> {
 							supply_fulfillment: Perquintill::one(),
@@ -413,7 +436,7 @@ pub mod pallet {
 					}
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
-					// TODO: Emit an epoch closed event
+					Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 					return Ok(());
 				}
 
@@ -423,14 +446,14 @@ pub mod pallet {
 					!epoch_tranche_prices
 						.iter()
 						.any(|price| *price == Zero::zero()),
-					Error::<T>::Invalid
+					Error::<T>::WipedOut
 				);
 
 				// Redeem orders are denominated in tranche tokens, not in the pool currency.
 				// Convert redeem orders to the pool currency and return a list of (supply, redeem) pairs.
 				let epoch_targets =
 					Self::calculate_epoch_transfers(&epoch_tranche_prices, &pool.tranches)
-						.ok_or(Error::<T>::Invalid)?;
+						.ok_or(Error::<T>::Overflow)?;
 
 				let full_epoch = epoch_targets
 					.iter()
@@ -438,9 +461,11 @@ pub mod pallet {
 					.collect::<Vec<_>>();
 				if Self::is_epoch_valid(epoch_reserve, &epoch_targets, &full_epoch) {
 					Self::do_execute_epoch(pool_id, &epoch_targets, &full_epoch)?;
+					Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				} else {
 					pool.closing_epoch = Some(closing_epoch);
 					EpochTargets::<T>::insert(pool_id, epoch_targets);
+					Self::deposit_event(Event::EpochClosed(pool_id, closing_epoch));
 				}
 				Ok(())
 			})
@@ -454,19 +479,21 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let target = EpochTargets::<T>::try_get(pool_id).map_err(|_| Error::<T>::Invalid)?;
+			let target = EpochTargets::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 			let pool_account = PoolLocator { pool: pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::Invalid)?;
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				let closing_epoch = pool.closing_epoch.ok_or(Error::<T>::NotClosing)?;
 				let epoch_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
 
 				ensure!(
 					Self::is_epoch_valid(epoch_reserve, &target, &solution),
-					Error::<T>::Invalid
+					Error::<T>::InvalidSolution
 				);
 				pool.closing_epoch = None;
 				Self::do_execute_epoch(pool_id, &target, &solution)?;
 				EpochTargets::<T>::remove(pool_id);
+				Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				Ok(())
 			})
 		}
@@ -482,7 +509,7 @@ pub mod pallet {
 			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
 			let who = ensure_signed(origin)?;
 
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::Invalid)?;
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 			if !Reserve::<T>::contains_key(pool_id) {
 				let reserve_aux = ReserveDetails {
@@ -516,7 +543,7 @@ pub mod pallet {
 			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
 			let who = ensure_signed(origin)?;
 
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::Invalid)?;
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 			if !Reserve::<T>::contains_key(pool_id) {
 				let reserve_aux = ReserveDetails {
