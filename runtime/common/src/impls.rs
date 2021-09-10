@@ -12,6 +12,10 @@ use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
+use sp_core::H160;
+use sp_std::convert::TryInto;
+use sp_std::vec;
+use sp_std::vec::Vec;
 
 pub struct DealWithFees<Config>(PhantomData<Config>);
 pub type NegativeImbalance<Config> =
@@ -67,33 +71,58 @@ impl WeightToFeePolynomial for WeightToFee {
 	}
 }
 
-/// A global identifier for an nft/asset on-chain. Composed of a registry and token id.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
-pub struct AssetId(pub RegistryId, pub TokenId);
-
-/// Holds references to its component parts.
-pub struct AssetIdRef<'a>(pub &'a RegistryId, pub &'a TokenId);
-
-impl AssetId {
-	pub fn destruct(self) -> (RegistryId, TokenId) {
-		(self.0, self.1)
-	}
-}
-
-impl<'a> From<&'a AssetId> for AssetIdRef<'a> {
-	fn from(id: &'a AssetId) -> Self {
-		AssetIdRef(&id.0, &id.1)
-	}
-}
-
-impl<'a> AssetIdRef<'a> {
-	pub fn destruct(self) -> (&'a RegistryId, &'a TokenId) {
-		(self.0, self.1)
-	}
-}
-
 /// All data for an instance of an NFT.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetInfo {
 	pub metadata: Bytes,
+}
+
+// In order to be generic into T::Address
+impl From<Bytes32> for EthAddress {
+	fn from(v: Bytes32) -> Self {
+		EthAddress(v[..32].try_into().expect("Address wraps a 32 byte array"))
+	}
+}
+
+impl From<EthAddress> for Bytes32 {
+	fn from(a: EthAddress) -> Self {
+		a.0
+	}
+}
+
+impl From<RegistryId> for EthAddress {
+	fn from(r: RegistryId) -> Self {
+		// Pad 12 bytes to the registry id - total 32 bytes
+		let padded = r.0.to_fixed_bytes().iter().copied()
+			.chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..32]
+			.try_into().expect("RegistryId is 20 bytes. 12 are padded. Converting to a 32 byte array should never fail");
+
+		EthAddress(padded)
+	}
+}
+
+impl From<EthAddress> for RegistryId {
+	fn from(a: EthAddress) -> Self {
+		RegistryId(H160::from_slice(&a.0[..20]))
+	}
+}
+
+impl From<[u8; 20]> for RegistryId {
+	fn from(d: [u8; 20]) -> Self {
+		RegistryId(H160::from(d))
+	}
+}
+
+impl AsRef<[u8]> for RegistryId {
+	fn as_ref(&self) -> &[u8] {
+		self.0.as_ref()
+	}
+}
+
+impl common_traits::BigEndian<Vec<u8>> for TokenId {
+	fn to_big_endian(&self) -> Vec<u8> {
+		let mut data = vec![];
+		self.0.to_big_endian(&mut data);
+		data
+	}
 }

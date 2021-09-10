@@ -27,6 +27,7 @@ use runtime_common::constants::CFG;
 
 use sp_core::{blake2_256, H256};
 
+use runtime_common::{TokenId, NATIVE_TOKEN_TRANSFER_FEE};
 use sp_runtime::DispatchError;
 
 const TEST_THRESHOLD: u32 = 2;
@@ -138,10 +139,10 @@ fn receive_nonfungible() {
 			let recipient = RELAYER_A;
 			let owner = <chainbridge::Pallet<MockRuntime>>::account_id();
 			let origin = Origin::signed(owner);
-			let token_id = U256::one();
+			let token_id = TokenId(U256::one());
 
 			// Create registry, map resource id, and mint nft
-			let registry_id = setup_nft(owner, token_id, resource_id);
+			let registry_id = setup_nft(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
 			assert_ok!(Chainbridge::whitelist_chain(
@@ -153,7 +154,7 @@ fn receive_nonfungible() {
 			assert_ok!(Bridge::receive_nonfungible(
 				origin,
 				recipient,
-				token_id,
+				token_id.clone(),
 				vec![],
 				resource_id
 			));
@@ -175,10 +176,10 @@ fn transfer_nonfungible_asset() {
 			let resource_id = NativeTokenId::get();
 			let recipient = vec![1];
 			let owner = RELAYER_A;
-			let token_id = U256::one();
+			let token_id = TokenId(U256::one());
 
 			// Create registry, map resource id, and mint nft
-			let registry_id = setup_nft(owner, token_id, resource_id);
+			let registry_id = setup_nft(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
 			assert_ok!(Chainbridge::whitelist_chain(
@@ -188,7 +189,10 @@ fn transfer_nonfungible_asset() {
 
 			// Owner owns nft
 			assert_eq!(
-				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(registry_id, token_id),
+				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(
+					registry_id.clone(),
+					token_id.clone()
+				),
 				Some(owner)
 			);
 
@@ -196,25 +200,25 @@ fn transfer_nonfungible_asset() {
 			assert_ok!(Bridge::transfer_asset(
 				Origin::signed(owner),
 				recipient.clone(),
-				registry_id,
+				registry_id.clone(),
 				token_id.clone(),
 				dest_chain
 			));
 
 			// Now bridge module owns the nft
 			assert_eq!(
-				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(registry_id, token_id),
+				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(registry_id, token_id.clone()),
 				Some(<chainbridge::Pallet<MockRuntime>>::account_id())
 			);
 
 			// Check that transfer event was emitted
-			let tid: &mut [u8] = &mut [0; 32];
-			token_id.to_big_endian(tid);
+
+			let tid = token_id.to_big_endian();
 			expect_event(chainbridge::Event::NonFungibleTransfer(
 				dest_chain,
 				1,
 				resource_id,
-				tid.to_vec(),
+				tid,
 				recipient,
 				vec![],
 			));

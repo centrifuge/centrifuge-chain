@@ -11,10 +11,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! # A Reward Trait for Crowdloans
+// Ensure we're `no_std` when compiling for WebAssembly.
+#![cfg_attr(not(feature = "std"), no_std)]
+
+//! # A common trait for centrifuge
 //!
-//! This crate provides a trait which can be by a pallet
-//! that takes care of rewarding participants of a crowdloan.
+//! This crate provides some common traits used by centrifuge.
+//! # Reward trait
 //! The trait does assume, that any call of reward has been
 //! checked for validity. I.e. there are not validation checks
 //! provided by the trait.
@@ -24,9 +27,9 @@ use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
 };
+use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
-use std::fmt::Debug;
-use std::str::FromStr;
+use sp_std::str::FromStr;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -81,4 +84,9 @@ pub trait Reward {
 		who: Self::ParachainAccountId,
 		contribution: Self::ContributionAmount,
 	) -> DispatchResultWithPostInfo;
+}
+
+/// A trait used to convert a type to BigEndian format
+pub trait BigEndian<T> {
+	fn to_big_endian(&self) -> T;
 }

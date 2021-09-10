@@ -98,13 +98,13 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Extrinsics weight information
+// Extrinsic weight information
 mod weights;
 
 // Export crate types and traits
 use crate::{
 	traits::WeightInfo,
-	types::{Asset, ProofVerifier},
+	types::{AssetId, ProofVerifier},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -119,8 +119,6 @@ use frame_support::{
 };
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
-
-use runtime_common::{AssetId, AssetIdRef, RegistryId, TokenId};
 
 use sp_runtime::traits::Member;
 
@@ -142,6 +140,7 @@ pub mod pallet {
 
 	use super::*;
 	use chainbridge::types::ResourceId;
+	use common_traits::BigEndian;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::SaturatedConversion;
@@ -171,6 +170,13 @@ pub mod pallet {
 		+ pallet_anchors::Config
 		+ chainbridge::Config
 	{
+		/// the type used to identify nft registry
+		type RegistryId: Parameter + Member + Debug + Default + Clone + AsRef<[u8]> + From<[u8; 20]>;
+
+		/// type that represents nft token ID
+		/// From should always assume big endian
+		type TokenId: Parameter + Member + Default + Clone + BigEndian<Vec<u8>>;
+
 		/// The data type that is used to describe this type of asset.
 		type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
 
@@ -180,8 +186,17 @@ pub mod pallet {
 		/// Chain identifier type
 		type ChainId: Parameter + Member + Debug + Default + FullCodec + Into<u8> + From<u8>;
 
-		/// Resource id type
-		type ResourceId: Member + Default + FullCodec + Into<[u8; 32]> + From<[u8; 32]>;
+		/// In order to provide generality, we need some way to associate some action on a source chain
+		/// to some action on a destination chain. This may express tokenX on chain A is equivalent to
+		/// tokenY on chain B, or to simply associate that some action performed on chain A should
+		/// result in some other action occurring on chain B. ResourceId is defined as a 32 byte array
+		/// by ChainSafe.
+		type ResourceId: Member
+			+ Default
+			+ FullCodec
+			+ Into<[u8; 32]>
+			+ From<[u8; 32]>
+			+ MaybeSerializeDeserialize;
 
 		/// Resource hash id.
 		///
@@ -210,7 +225,7 @@ pub mod pallet {
 	#[pallet::metadata(T::AccountId = "AccountId", T::Hash = "Hash")]
 	pub enum Event<T: Config> {
 		/// Ownership of the asset has been transferred to the account.
-		Transferred(RegistryId, AssetId, T::AccountId),
+		Transferred(AssetId<T::RegistryId, T::TokenId>, T::AccountId),
 
 		DepositAsset(T::Hash),
 	}
@@ -222,43 +237,26 @@ pub mod pallet {
 	/// A double mapping of registry ID and asset ID to the account that owns it.
 	#[pallet::storage]
 	#[pallet::getter(fn account_for_asset)]
-	pub type AccountForAsset<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, RegistryId, Blake2_128Concat, TokenId, T::AccountId>;
+	pub type AccountForAsset<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::RegistryId,
+		Blake2_128Concat,
+		T::TokenId,
+		T::AccountId,
+	>;
 
 	/// A double mapping of registry ID and asset ID to an asset's info.
 	#[pallet::storage]
 	#[pallet::getter(fn asset)]
-	pub type Assets<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, RegistryId, Blake2_128Concat, TokenId, T::AssetInfo>;
-
-	// ------------------------------------------------------------------------
-	// Pallet genesis configuration
-	// ------------------------------------------------------------------------
-
-	// The genesis configuration type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
-
-	// ------------------------------------------------------------------------
-	// Pallet lifecycle hooks
-	// ------------------------------------------------------------------------
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+	pub type Assets<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::RegistryId,
+		Blake2_128Concat,
+		T::TokenId,
+		T::AssetInfo,
+	>;
 
 	// ------------------------------------------------------------------------
 	// Pallet errors
@@ -305,16 +303,20 @@ pub mod pallet {
 		pub fn transfer(
 			origin: OriginFor<T>,
 			dest_account: T::AccountId,
-			registry_id: RegistryId,
-			token_id: TokenId,
+			registry_id: T::RegistryId,
+			token_id: T::TokenId,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			let asset_id = AssetId(registry_id, token_id);
 
-			<Self as Unique>::transfer(&who, &dest_account, &asset_id)?;
+			<Self as Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId>>::transfer(
+				who,
+				dest_account.clone(),
+				asset_id.clone(),
+			)?;
 
-			Self::deposit_event(Event::Transferred(registry_id, asset_id, dest_account));
+			Self::deposit_event(Event::Transferred(asset_id, dest_account));
 
 			Ok(().into())
 		}
@@ -381,25 +383,22 @@ pub mod pallet {
 // ----------------------------------------------------------------------------
 
 // Implement unique trait for pallet
-impl<T: Config> Unique for Pallet<T> {
-	type Asset = Asset<AssetId, T::AssetInfo>;
-	type AccountId = <T as frame_system::Config>::AccountId;
-
-	fn owner_of(asset_id: &AssetId) -> Option<T::AccountId> {
-		let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
+impl<T: Config> Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId> for Pallet<T> {
+	fn owner_of(asset_id: AssetId<T::RegistryId, T::TokenId>) -> Option<T::AccountId> {
+		let (registry_id, token_id) = asset_id.destruct();
 		Self::account_for_asset(registry_id, token_id)
 	}
 
 	fn transfer(
-		caller: &T::AccountId,
-		dest_account: &T::AccountId,
-		asset_id: &AssetId,
+		caller: T::AccountId,
+		dest_account: T::AccountId,
+		asset_id: AssetId<T::RegistryId, T::TokenId>,
 	) -> DispatchResult {
-		let owner = Self::owner_of(asset_id).ok_or(Error::<T>::NonexistentAsset)?;
-		let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
+		let owner = Self::owner_of(asset_id.clone()).ok_or(Error::<T>::NonexistentAsset)?;
+		let (registry_id, token_id) = asset_id.destruct();
 
 		// Check that the caller is owner of asset
-		ensure!(caller == &owner, Error::<T>::NotAssetOwner);
+		ensure!(caller == owner, Error::<T>::NotAssetOwner);
 
 		// Replace owner with destination account
 		AccountForAsset::<T>::insert(registry_id, token_id, dest_account);
@@ -409,28 +408,27 @@ impl<T: Config> Unique for Pallet<T> {
 }
 
 // Implement mintable trait for pallet
-impl<T: Config> Mintable for Pallet<T> {
-	type Asset = Asset<AssetId, T::AssetInfo>;
-	type AccountId = T::AccountId;
-
+impl<T: Config> Mintable<AssetId<T::RegistryId, T::TokenId>, T::AssetInfo, T::AccountId>
+	for Pallet<T>
+{
 	/// Inserts an owner with a registry/token id.
 	/// Does not do any checks on the caller.
 	fn mint(
-		_caller: &Self::AccountId,
-		owner_account: &Self::AccountId,
-		asset_id: &AssetId,
+		_caller: T::AccountId,
+		owner_account: T::AccountId,
+		asset_id: AssetId<T::RegistryId, T::TokenId>,
 		asset_info: T::AssetInfo,
 	) -> Result<(), DispatchError> {
-		let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
+		let (registry_id, token_id) = asset_id.destruct();
 
 		// Ensure asset with id in registry does not already exist
 		ensure!(
-			!AccountForAsset::<T>::contains_key(registry_id, token_id),
+			!AccountForAsset::<T>::contains_key(registry_id.clone(), token_id.clone()),
 			Error::<T>::AssetExists
 		);
 
 		// Insert into storage
-		AccountForAsset::<T>::insert(registry_id, token_id, owner_account);
+		AccountForAsset::<T>::insert(registry_id.clone(), token_id.clone(), owner_account);
 		Assets::<T>::insert(registry_id, token_id, asset_info);
 
 		Ok(())

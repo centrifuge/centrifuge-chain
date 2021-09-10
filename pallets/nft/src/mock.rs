@@ -33,6 +33,7 @@ use frame_support::{
 
 use frame_system::EnsureSignedBy;
 
+use runtime_common::types::{RegistryId, TokenId};
 use runtime_common::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
 
 use sp_core::{blake2_128, H256};
@@ -51,7 +52,7 @@ use sp_runtime::{
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
-// Implement testint extrinsic weights for the pallet
+// Implement testing extrinsic weights for the pallet
 pub struct MockWeightInfo;
 impl WeightInfo for MockWeightInfo {
 	fn transfer() -> Weight {
@@ -82,7 +83,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
+		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -104,26 +105,26 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
-	type AccountId = u64;
+	type BaseCallFilter = ();
+	type BlockWeights = ();
+	type BlockLength = ();
+	type Origin = Origin;
 	type Call = Call;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
+	type AccountId = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type Origin = Origin;
 	type BlockHashCount = BlockHashCount;
-	type BlockWeights = ();
-	type BlockLength = ();
+	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type DbWeight = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -173,19 +174,11 @@ parameter_types! {
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for MockRuntime {
 	type Event = Event;
-	type PalletId = ChainBridgePalletId;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Proposal = Call;
 	type ChainId = MockChainId;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
-	type WeightInfo = ();
-}
-
-// Implement Centrifuge Chain bridge mapping pallet configuration trait for the mock runtime
-impl pallet_bridge_mapping::Config for MockRuntime {
-	type ResourceId = ResourceId;
-	type Address = [u8; 32];
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type WeightInfo = ();
 }
 
@@ -210,12 +203,14 @@ parameter_types! {
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl pallet_nft::Config for MockRuntime {
+	type RegistryId = RegistryId;
+	type TokenId = TokenId;
 	type AssetInfo = Vec<u8>;
 	type Event = Event;
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;
-	type NftProofValidationFee = NftProofValidationFee;
 	type HashId = MockHashId;
+	type NftProofValidationFee = NftProofValidationFee;
 	type WeightInfo = MockWeightInfo;
 }
 
@@ -223,7 +218,7 @@ impl pallet_nft::Config for MockRuntime {
 // Test externalities
 // ----------------------------------------------------------------------------
 
-// Test externalities builder type declaraction.
+// Test externalities builder type declaration.
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
 // for an in-memory, hashmap-based externalities implementation.

@@ -29,8 +29,8 @@ sp-std = { git = "https://github.com/centrifuge/substrate", default-features = f
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-runtime-common = { path = "../../runtime/common", default-features = false }
-unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 # Testing and mocking dependencies
@@ -39,6 +39,7 @@ pallet-fees = { path = "../fees", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master"  }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+runtime-common = { path = "../../runtime/common", default-features = false }
 
 [features]
 default = ['std']
@@ -47,16 +48,16 @@ std = [
   'codec/std',
   'frame-support/std',
   'frame-system/std',
-  'pallet-anchors/std',
   'pallet-authorship/std',
   'pallet-balances/std',
-  'pallet-nft/std',
   'pallet-timestamp/std',
-  'proofs/std',
-  'runtime-common/std',
   'sp-core/std',
   'sp-io/std',
   'sp-runtime/std',
   'sp-std/std',
-  'unique_assets/std',
+  'pallet-anchors/std',
+  'pallet-nft/std',
+  'proofs/std',
+  'unique-assets/std',
+  'common-traits/std'
 ]

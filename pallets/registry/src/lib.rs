@@ -127,10 +127,11 @@ use frame_system::ensure_signed;
 
 use proofs::Verifier;
 
-use runtime_common::{AssetId, AssetIdRef, RegistryId, TokenId, NFTS_PREFIX};
-
 use sp_runtime::traits::Hash;
 
+use common_traits::BigEndian;
+use frame_support::pallet_prelude::Get;
+use pallet_nft::types::AssetId;
 use unique_assets::traits::Mintable;
 
 // ----------------------------------------------------------------------------
@@ -148,6 +149,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use pallet_nft::types::AssetId;
 
 	// Verifiable attributes registry pallet type declaration.
 	//
@@ -172,8 +174,11 @@ pub mod pallet {
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Weight information for extrinsics in this pallet
+		/// Weight information for extrinsic in this pallet
 		type WeightInfo: WeightInfo;
+
+		#[pallet::constant]
+		type NftPrefix: Get<&'static [u8]>;
 	}
 
 	// ------------------------------------------------------------------------
@@ -186,13 +191,10 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Successful mint of an NFT
-		Mint(RegistryId, TokenId),
+		Mint(T::RegistryId, T::TokenId),
 
 		/// Successful creation of a new registry
-		RegistryCreated(RegistryId),
-
-		// To keep Event parametric
-		Tmp(T::Hash),
+		RegistryCreated(T::RegistryId),
 	}
 
 	// ------------------------------------------------------------------------
@@ -208,42 +210,13 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_registries)]
 	pub type Registries<T: Config> =
-		StorageMap<_, Blake2_128Concat, RegistryId, RegistryInfo, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::RegistryId, RegistryInfo, ValueQuery>;
 
 	/// A mapping of owners
 	#[pallet::storage]
 	#[pallet::getter(fn get_owner)]
 	pub type Owner<T: Config> =
-		StorageMap<_, Blake2_128Concat, RegistryId, T::AccountId, ValueQuery>;
-
-	// ------------------------------------------------------------------------
-	// Pallet genesis configuration
-	// ------------------------------------------------------------------------
-
-	// The genesis configuration type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
-
-	// ------------------------------------------------------------------------
-	// Pallet lifecycle hooks
-	// ------------------------------------------------------------------------
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+		StorageMap<_, Blake2_128Concat, T::RegistryId, T::AccountId, ValueQuery>;
 
 	// ------------------------------------------------------------------------
 	// Pallet errors
@@ -300,24 +273,25 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::mint(mint_info.proofs.len()))]
 		pub fn mint(
 			origin: OriginFor<T>,
-			owner_account: <T as frame_system::Config>::AccountId,
-			registry_id: RegistryId,
-			token_id: TokenId,
-			asset_info: <T as pallet_nft::Config>::AssetInfo,
+			owner_account: T::AccountId,
+			registry_id: T::RegistryId,
+			token_id: T::TokenId,
+			asset_info: T::AssetInfo,
 			mint_info: MintInfo<T::Hash, T::Hash>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			// Internal mint validates proofs and modifies state or returns error
-			let asset_id = AssetId(registry_id, token_id);
+			let asset_id = AssetId(registry_id.clone(), token_id.clone());
 
-			<Self as VerifierRegistry>::mint(
-				&who,
-				&owner_account,
-				&asset_id,
-				asset_info,
-				mint_info,
-			)?;
+			<Self as VerifierRegistry<
+				T::AccountId,
+				T::RegistryId,
+				RegistryInfo,
+				AssetId<T::RegistryId, T::TokenId>,
+				T::AssetInfo,
+				MintInfo<T::Hash, T::Hash>,
+			>>::mint(who, owner_account, asset_id, asset_info, mint_info)?;
 
 			// Mint event
 			Self::deposit_event(Event::Mint(registry_id, token_id));
@@ -340,16 +314,17 @@ pub mod pallet {
 //   from other pallets.
 impl<T: Config> Pallet<T> {
 	/// Create a new identifier for a registry
-	fn create_registry_id() -> Result<RegistryId, DispatchError> {
+	fn create_registry_id() -> Result<T::RegistryId, DispatchError> {
 		let id_nonce = Self::get_registry_nonce();
 
 		// First 20 bytes of the runtime hash of the nonce
-		let id = RegistryId::from_slice(&T::Hashing::hash_of(&id_nonce).as_ref()[..20]);
+		let mut id: [u8; 20] = [0; 20];
+		id.copy_from_slice(&T::Hashing::hash_of(&id_nonce).as_ref()[..20]);
 
 		// Increment and update (storage of) identifier's nonce
 		<RegistryNonce<T>>::put(id_nonce.saturating_add(1));
 
-		Ok(id)
+		Ok(id.into())
 	}
 
 	/// Return a document's root hash given an anchor identifier.
@@ -364,24 +339,26 @@ impl<T: Config> Pallet<T> {
 }
 
 // Implement verifier registry trait for the pallet
-impl<T: Config> VerifierRegistry for Pallet<T> {
-	type AccountId = <T as frame_system::Config>::AccountId;
-	type AssetId = AssetId;
-	type AssetInfo = <T as pallet_nft::Config>::AssetInfo;
-	type MintInfo = MintInfo<T::Hash, T::Hash>;
-	type RegistryId = RegistryId;
-	type RegistryInfo = RegistryInfo;
-
+impl<T: Config>
+	VerifierRegistry<
+		T::AccountId,
+		T::RegistryId,
+		RegistryInfo,
+		AssetId<T::RegistryId, T::TokenId>,
+		T::AssetInfo,
+		MintInfo<T::Hash, T::Hash>,
+	> for Pallet<T>
+{
 	// Registries with identical RegistryInfo may exist
 	fn create_new_registry(
-		caller: Self::AccountId,
-		mut info: Self::RegistryInfo,
-	) -> Result<Self::RegistryId, DispatchError> {
+		caller: T::AccountId,
+		mut info: RegistryInfo,
+	) -> Result<T::RegistryId, DispatchError> {
 		// Generate registry id as nonce
 		let id = Self::create_registry_id()?;
 
 		// Create a field of the registry that is the registry id encoded with a prefix
-		let pre_reg = [NFTS_PREFIX, id.as_bytes()].concat();
+		let pre_reg = [T::NftPrefix::get(), id.as_ref()].concat();
 		info.fields.push(pre_reg);
 
 		// Insert registry in storage
@@ -395,14 +372,14 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
 
 	/// Mint of a non-fungible token
 	fn mint(
-		caller: &Self::AccountId,
-		owner_account: &Self::AccountId,
-		asset_id: &Self::AssetId,
+		caller: T::AccountId,
+		owner_account: T::AccountId,
+		asset_id: AssetId<T::RegistryId, T::TokenId>,
 		asset_info: T::AssetInfo,
-		mint_info: Self::MintInfo,
+		mint_info: MintInfo<T::Hash, T::Hash>,
 	) -> Result<(), DispatchError> {
-		let (registry_id, token_id) = AssetIdRef::from(asset_id).destruct();
-		let registry_info = <Registries<T>>::get(registry_id);
+		let (registry_id, token_id) = asset_id.clone().destruct();
+		let registry_info = <Registries<T>>::get(registry_id.clone());
 
 		// Check that registry exists
 		ensure!(
@@ -418,9 +395,9 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
 		// The token id is the value of the same proof, and must match the id
 		// provided in the call.
 		let idx = registry_info.fields.len() - 1;
-		let token_value = &mint_info.proofs[idx].value;
+		let proof_value = mint_info.proofs[idx].value.clone();
 		ensure!(
-			&TokenId::from_big_endian(&token_value) == token_id,
+			proof_value == token_id.to_big_endian(),
 			Error::<T>::InvalidProofs
 		);
 

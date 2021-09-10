@@ -53,26 +53,15 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		/// In order to provide generality, we need some way to associate some action on a source chain
-		/// to some action on a destination chain. This may express tokenX on chain A is equivalent to
-		/// tokenY on chain B, or to simply associate that some action performed on chain A should
-		/// result in some other action occurring on chain B. ResourceId is defined as a 32 byte array
-		/// by ChainSafe.
-		type ResourceId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Default
-			+ Into<[u8; 32]>
-			+ From<[u8; 32]>;
+	pub trait Config: frame_system::Config + pallet_nft::Config {
 		/// A local mapping of a resource id. Represents anything that a resource id might map to. On
 		/// Ethereum, this may be a contract address for transferring assets.
 		type Address: Parameter
 			+ Member
-			+ MaybeSerializeDeserialize
 			+ Default
-			+ Into<[u8; 32]>
-			+ From<[u8; 32]>;
+			+ From<<Self as pallet_nft::Config>::RegistryId>
+			+ Into<<Self as pallet_nft::Config>::RegistryId>;
+
 		/// Admin is able to set/remove resource mappings.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 		/// Type representing the weight of this pallet
@@ -145,7 +134,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	/// Ensure that the given origin is either the pallet [AdminOrigin] or frame_system root.
 	fn ensure_admin_or_root(origin: T::Origin) -> Result<(), BadOrigin> {
-		T::AdminOrigin::try_origin(origin)
+		<T as pallet::Config>::AdminOrigin::try_origin(origin)
 			.map(|_| ())
 			.or_else(ensure_root)
 	}

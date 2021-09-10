@@ -21,9 +21,9 @@ use crate::{mock::*, types::*, *};
 
 use frame_support::{assert_err, assert_ok};
 
-use runtime_common::{TokenId, MILLISECS_PER_DAY};
+use runtime_common::{RegistryId, TokenId, MILLISECS_PER_DAY};
 
-use sp_core::{H160, U256};
+use sp_core::U256;
 
 use sp_runtime::traits::Hash;
 
@@ -36,7 +36,7 @@ fn mint_with_valid_proofs() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let token_id = TokenId::one();
+			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
 			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
@@ -58,8 +58,8 @@ fn mint_with_valid_proofs() {
 			assert_ok!(Registry::mint(
 				origin,
 				owner,
-				registry_id,
-				token_id,
+				registry_id.clone(),
+				token_id.clone(),
 				nft_data.clone(),
 				MintInfo {
 					anchor_id: anchor_id,
@@ -70,7 +70,7 @@ fn mint_with_valid_proofs() {
 
 			// Nft registered to owner
 			assert_eq!(
-				Nft::account_for_asset::<H160, U256>(registry_id, token_id),
+				Nft::account_for_asset::<RegistryId, TokenId>(registry_id, token_id),
 				Some(owner)
 			);
 		});
@@ -81,7 +81,7 @@ fn mint_fails_when_dont_match_doc_root() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let token_id = TokenId::one();
+			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
 			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, _), nft_data, _) =
@@ -125,7 +125,7 @@ fn duplicate_mint_fails() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let token_id = TokenId::one();
+			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
 			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
@@ -147,8 +147,8 @@ fn duplicate_mint_fails() {
 			assert_ok!(Registry::mint(
 				origin.clone(),
 				owner,
-				registry_id,
-				token_id,
+				registry_id.clone(),
+				token_id.clone(),
 				nft_data.clone(),
 				MintInfo {
 					anchor_id: anchor_id,
@@ -181,7 +181,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let token_id = TokenId::one();
+			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
 			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
@@ -198,7 +198,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 			));
 
 			let (registry_id, _) = asset_id.destruct();
-			let token_id = TokenId::zero();
+			let token_id = TokenId(U256::zero());
 
 			// Mint token with document proof
 			assert_err!(
@@ -226,17 +226,17 @@ fn create_multiple_registries() {
 		.execute_with(|| {
 			let owner1 = 1;
 			let owner2 = 1;
-			let token_id = TokenId::one();
-			let (asset_id1, _, _, _, _, _) = setup_mint::<MockRuntime>(owner1, token_id);
-			let (asset_id2, _, _, _, _, _) = setup_mint::<MockRuntime>(owner2, token_id);
+			let token_id = TokenId(U256::one());
+			let (asset_id1, _, _, _, _, _) = setup_mint::<MockRuntime>(owner1, token_id.clone());
+			let (asset_id2, _, _, _, _, _) = setup_mint::<MockRuntime>(owner2, token_id.clone());
 			let (asset_id3, _, _, _, _, _) = setup_mint::<MockRuntime>(owner2, token_id);
 			let (reg_id1, _) = asset_id1.destruct();
 			let (reg_id2, _) = asset_id2.destruct();
 			let (reg_id3, _) = asset_id3.destruct();
 
-			assert!(reg_id1 != reg_id2);
-			assert!(reg_id1 != reg_id3);
-			assert!(reg_id2 != reg_id3);
+			assert_ne!(reg_id1, reg_id2);
+			assert_ne!(reg_id1, reg_id3);
+			assert_ne!(reg_id2, reg_id3);
 
 			// Owners own their registries
 			assert_eq!(Registry::get_owner(reg_id1), owner1);

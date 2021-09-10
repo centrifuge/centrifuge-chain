@@ -22,8 +22,6 @@ use codec::{Decode, Encode};
 // Library for building and validating proofs
 use proofs::{Hasher, Proof, Verifier};
 
-use runtime_common::{Bytes, Salt};
-
 use sp_core::H256;
 
 use sp_runtime::{sp_std::vec, sp_std::vec::Vec, traits::Hash};
@@ -31,6 +29,11 @@ use sp_runtime::{sp_std::vec, sp_std::vec::Vec, traits::Hash};
 // ----------------------------------------------------------------------------
 // Types definition
 // ----------------------------------------------------------------------------
+
+pub type Bytes = Vec<u8>;
+
+// A cryptographic salt to be combined with a value before hashing.
+pub type Salt = [u8; 32];
 
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
