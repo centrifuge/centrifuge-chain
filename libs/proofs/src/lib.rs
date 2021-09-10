@@ -121,6 +121,7 @@ mod inner {
 
 pub mod hashing {
 	use crate::{DepositAddress, Hasher, Proof};
+	use sp_std::vec::Vec;
 
 	/// computes sorted hash of the a and b
 	/// if a < b: hash(a+b)
