@@ -188,6 +188,11 @@ pub mod pallet {
 		EpochDetails<T::BalanceRatio>,
 	>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn epoch_targets)]
+	pub type EpochTargets<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, Vec<(T::Balance, T::Balance)>>;
+
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
@@ -371,9 +376,21 @@ pub mod pallet {
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::Invalid);
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
-				pool.last_epoch_closed = Timestamp::<T>::get();
+				let previous_epoch_end = pool.last_epoch_closed;
+				let current_epoch_end = Timestamp::<T>::get();
+				pool.last_epoch_closed = current_epoch_end;
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
+
+				// TODO: get NAV
+				// For now, assume that nav == 0, so all value is in the reserve
+				let nav = Zero::zero();
+
+				let epoch_tranche_prices = Self::calculate_tranche_prices(
+					current_epoch_end - previous_epoch_end,
+					epoch_reserve.checked_add(&nav).ok_or(Error::<T>::Invalid)?,
+					&pool.tranches,
+				);
 
 				if pool
 					.tranches
@@ -381,29 +398,75 @@ pub mod pallet {
 					.all(|tranche| tranche.epoch_supply.is_zero() && tranche.epoch_redeem.is_zero())
 				{
 					// This epoch is a no-op. Finish executing it.
-					for tranche in 0..pool.tranches.len() {
+					for tranche_id in 0..pool.tranches.len() {
 						let tranche = TrancheLocator {
 							pool: pool_id,
-							tranche: T::TrancheId::try_from(tranche)
+							tranche: T::TrancheId::try_from(tranche_id)
 								.map_err(|_| Error::<T>::Invalid)?,
 						};
-						let epoch: EpochDetails<T::BalanceRatio> = Default::default();
+						let epoch = EpochDetails::<T::BalanceRatio> {
+							supply_fulfillment: Perquintill::one(),
+							redeem_fulfillment: Perquintill::one(),
+							token_price: epoch_tranche_prices[tranche_id],
+						};
 						Epoch::<T>::insert(tranche, closing_epoch, epoch)
 					}
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
+					// TODO: Emit an epoch closed event
 					return Ok(());
 				}
 
-				// Not a no-op - go through a proper closing.
-				pool.closing_epoch = Some(closing_epoch);
+				// If closing the epoch would wipe out a tranche, the close is invalid.
+				// TODO: This should instead put the tranche into an error state
+				ensure!(
+					!epoch_tranche_prices
+						.iter()
+						.any(|price| *price == Zero::zero()),
+					Error::<T>::Invalid
+				);
 
-				// TODO: get NAV
-				// TODO: get reserve balance
-				// TODO: calculate token prices
-				// TODO: handle junior tranches being wiped out?
-				// TODO: convert redeem orders to currency amounts
-				// TODO: Execute epoch if possible
+				// Redeem orders are denominated in tranche tokens, not in the pool currency.
+				// Convert redeem orders to the pool currency and return a list of (supply, redeem) pairs.
+				let epoch_targets =
+					Self::calculate_epoch_transfers(&epoch_tranche_prices, &pool.tranches)
+						.ok_or(Error::<T>::Invalid)?;
+
+				let full_epoch = epoch_targets
+					.iter()
+					.map(|_| (Perquintill::one(), Perquintill::one()))
+					.collect::<Vec<_>>();
+				if Self::is_epoch_valid(epoch_reserve, &epoch_targets, &full_epoch) {
+					Self::do_execute_epoch(pool_id, &epoch_targets, &full_epoch)?;
+				} else {
+					pool.closing_epoch = Some(closing_epoch);
+					EpochTargets::<T>::insert(pool_id, epoch_targets);
+				}
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn solve_epoch(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			solution: Vec<(Perquintill, Perquintill)>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let target = EpochTargets::<T>::try_get(pool_id).map_err(|_| Error::<T>::Invalid)?;
+			let pool_account = PoolLocator { pool: pool_id }.into_account();
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::Invalid)?;
+				let epoch_reserve = T::Tokens::free_balance(pool.currency, &pool_account);
+
+				ensure!(
+					Self::is_epoch_valid(epoch_reserve, &target, &solution),
+					Error::<T>::Invalid
+				);
+				pool.closing_epoch = None;
+				Self::do_execute_epoch(pool_id, &target, &solution)?;
+				EpochTargets::<T>::remove(pool_id);
 				Ok(())
 			})
 		}
@@ -475,6 +538,49 @@ pub mod pallet {
 				}
 				Ok(())
 			})
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn calculate_tranche_prices(
+			_epoch_duration: T::Moment,
+			_epoch_value: T::Balance,
+			tranches: &[Tranche<T::Balance>],
+		) -> Vec<T::BalanceRatio> {
+			tranches.iter().map(|_| One::one()).collect()
+		}
+
+		fn calculate_epoch_transfers(
+			epoch_tranche_prices: &[T::BalanceRatio],
+			tranches: &[Tranche<T::Balance>],
+		) -> Option<Vec<(T::Balance, T::Balance)>> {
+			epoch_tranche_prices
+				.iter()
+				.zip(tranches.iter())
+				.map(|(price, tranche)| {
+					price
+						.checked_mul_int(tranche.epoch_redeem)
+						.map(|redeem| (tranche.epoch_supply, redeem))
+				})
+				.collect()
+		}
+
+		fn is_epoch_valid(
+			_reserve: T::Balance,
+			_target: &[(T::Balance, T::Balance)],
+			_solution: &[(Perquintill, Perquintill)],
+		) -> bool {
+			// TODO: Implement this
+			true
+		}
+
+		fn do_execute_epoch(
+			_pool: T::PoolId,
+			_target: &[(T::Balance, T::Balance)],
+			_solution: &[(Perquintill, Perquintill)],
+		) -> Result<(), Error<T>> {
+			// TODO: Implement this
+			Ok(())
 		}
 	}
 }
