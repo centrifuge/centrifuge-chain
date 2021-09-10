@@ -44,7 +44,8 @@ std = [
     "sp-core/std",
     "sp-consensus-aura/std",
     "sp-runtime/std",
-    "pallet-anchors/std"
+    "pallet-anchors/std",
+    "common-traits/std"
 ]
 on-chain-release-build = [
     "sp-api/disable-logging",

@@ -23,7 +23,7 @@ pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-f
 
 # our pallets
 pallet-pool = { path = "../pool", default-features = false}
-unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 pallet-registry = { path = "../registry", default-features = false }
 
 [dev-dependencies]

@@ -21,6 +21,7 @@ sp-core = { git = "https://github.com/centrifuge/substrate", default-features = 
 default = ['std']
 std = [
     'codec/std',
+    "sp-std/std"
 ]
 
 

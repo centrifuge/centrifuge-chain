@@ -5607,7 +5607,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
@@ -11737,18 +11737,9 @@ checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 [[package]]
 name = "unique-assets"
 version = "1.0.0"
-source = "git+https://github.com/centrifuge/unique-assets?branch=cleanup#b1cff812dad7e999b179272a22442c768b0916a2"
+source = "git+https://github.com/centrifuge/unique-assets?branch=master#671b56a896869bb67f66027a7ffbf565b18f16c0"
 dependencies = [
  "frame-support",
-]
-
-[[package]]
-name = "unique_assets"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/unique-assets?branch=master#8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae"
-dependencies = [
- "frame-support",
- "sp-std",
 ]
 
 [[package]]

@@ -26,7 +26,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "cleanup" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
@@ -60,4 +60,5 @@ std = [
     'pallet-fees/std',
     'pallet-nft/std',
     'unique-assets/std',
+    "common-traits/std"
 ]

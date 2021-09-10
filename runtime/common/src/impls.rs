@@ -13,7 +13,9 @@ use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_core::H160;
-use std::convert::TryInto;
+use sp_std::convert::TryInto;
+use sp_std::vec;
+use sp_std::vec::Vec;
 
 pub struct DealWithFees<Config>(PhantomData<Config>);
 pub type NegativeImbalance<Config> =

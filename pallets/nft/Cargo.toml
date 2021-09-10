@@ -27,7 +27,7 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate", def
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "cleanup" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
@@ -58,4 +58,5 @@ std = [
     'pallet-fees/std',
     'proofs/std',
     'unique-assets/std',
+    'common-traits/std'
 ]

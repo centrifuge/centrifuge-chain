@@ -52,6 +52,7 @@ std = [
   'pallet-balances/std',
   'pallet-vesting/std',
   'sp-std/std',
+  'common-traits/std'
 ]
 
 runtime-benchmarks = ["frame-benchmarking"]

@@ -29,7 +29,7 @@ sp-std = { git = "https://github.com/centrifuge/substrate", default-features = f
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "cleanup" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
@@ -59,4 +59,5 @@ std = [
   'pallet-nft/std',
   'proofs/std',
   'unique-assets/std',
+  'common-traits/std'
 ]

@@ -11,6 +11,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+// Ensure we're `no_std` when compiling for WebAssembly.
+#![cfg_attr(not(feature = "std"), no_std)]
+
 //! # A common trait for centrifuge
 //!
 //! This crate provides some common traits used by centrifuge.
@@ -24,9 +27,9 @@ use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
 };
+use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
-use std::fmt::Debug;
-use std::str::FromStr;
+use sp_std::str::FromStr;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
