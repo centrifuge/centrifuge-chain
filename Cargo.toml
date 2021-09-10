@@ -37,8 +37,6 @@ members = [
     "pallets/bridge",
     "pallets/nft",
     "pallets/registry",
-	"pallets/pool",
-	"pallets/loan",
 	"libs/common-traits",
 	"libs/proofs",
 	"runtime/altair",
