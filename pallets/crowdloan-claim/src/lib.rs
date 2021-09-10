@@ -119,6 +119,7 @@ pub use pallet::*;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
+use common_traits::Reward;
 use frame_support::dispatch::DispatchError;
 
 // Mock runtime and unit test cases
@@ -145,12 +146,10 @@ type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
 type RootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
-type ParachainAccountIdOf<T> =
-	<<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ParachainAccountId;
+type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as Reward>::ParachainAccountId;
 
 /// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
-type ContributionAmountOf<T> =
-	<<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ContributionAmount;
+type ContributionAmountOf<T> = <<T as Config>::RewardMechanism as Reward>::ContributionAmount;
 
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
@@ -176,7 +175,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
-	use trait_crowdloan_reward::Reward;
 
 	// Crowdloan claim pallet type declaration.
 	//
@@ -432,7 +430,7 @@ pub mod pallet {
 		/// parachain account id with the claimer key.
 		/// See [`validate_unsigned`]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_reward())]
-		pub(crate) fn claim_reward(
+		pub fn claim_reward(
 			origin: OriginFor<T>,
 			relaychain_account_id: T::RelayChainAccountId,
 			parachain_account_id: ParachainAccountIdOf<T>,
@@ -505,7 +503,7 @@ pub mod pallet {
 		/// to the crowdloan campaign, and that the amount of the contribution is correct as
 		/// well.
 		#[pallet::weight(<T as Config>::WeightInfo::initialize())]
-		pub(crate) fn initialize(
+		pub fn initialize(
 			origin: OriginFor<T>,
 			contributions: RootHashOf<T>,
 			locked_at: T::BlockNumber,
@@ -552,7 +550,7 @@ pub mod pallet {
 
 		/// Set the start of the lease period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_start())]
-		pub(crate) fn set_lease_start(
+		pub fn set_lease_start(
 			origin: OriginFor<T>,
 			start: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
@@ -571,7 +569,7 @@ pub mod pallet {
 
 		/// Set the lease period.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_lease_period())]
-		pub(crate) fn set_lease_period(
+		pub fn set_lease_period(
 			origin: OriginFor<T>,
 			period: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
@@ -593,7 +591,7 @@ pub mod pallet {
 		/// This root-hash MUST be the root-hash of the relay-chain at the block
 		/// we locked at. This root-hash will be used to verify proofs of contribution.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_contributions_root())]
-		pub(crate) fn set_contributions_root(
+		pub fn set_contributions_root(
 			origin: OriginFor<T>,
 			root: RootHashOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -617,7 +615,7 @@ pub mod pallet {
 		/// will not be found in the generated proof of the contributor, which will
 		/// lead to a rejection of the proof.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_locked_at())]
-		pub(crate) fn set_locked_at(
+		pub fn set_locked_at(
 			origin: OriginFor<T>,
 			locked_at: T::BlockNumber,
 		) -> DispatchResultWithPostInfo {
@@ -640,7 +638,7 @@ pub mod pallet {
 		/// is used to derive the internal patricia key inside the child trie. The index is
 		/// stored in the `FundInfo` of the relay chain crowdloan pallet.
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_crowdloan_trie_index())]
-		pub(crate) fn set_crowdloan_trie_index(
+		pub fn set_crowdloan_trie_index(
 			origin: OriginFor<T>,
 			trie_index: TrieIndex,
 		) -> DispatchResultWithPostInfo {

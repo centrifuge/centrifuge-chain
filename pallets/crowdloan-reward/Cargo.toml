@@ -27,7 +27,7 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate", default-feat
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 # Local dependencies
-trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
+common-traits = { path= '../../libs/common-traits', default_features = false }
 
 
 [dev-dependencies]

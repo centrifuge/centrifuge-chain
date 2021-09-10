@@ -22,6 +22,13 @@ pallet-nft = { path = "../nft", default-features = false }
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-timestamp = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-authorship = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-anchors = { path = "../anchors", default-features = false }
+pallet-fees = { default-features = false, path = "../fees" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+runtime-common = { path = "../../runtime/common", default-features = false }
 
 [features]
 default = ['std']

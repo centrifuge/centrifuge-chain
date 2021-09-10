@@ -1,5 +1,5 @@
 [package]
-name = "trait-crowdloan-reward"
+name = "common-traits"
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'

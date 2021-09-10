@@ -140,6 +140,7 @@ pub mod pallet {
 
 	use super::*;
 	use chainbridge::types::ResourceId;
+	use common_traits::BigEndian;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::SaturatedConversion;
@@ -170,18 +171,11 @@ pub mod pallet {
 		+ chainbridge::Config
 	{
 		/// the type used to identify nft registry
-		type RegistryId: Parameter
-			+ Member
-			+ Debug
-			+ Default
-			+ Clone
-			+ From<Vec<u8>>
-			+ AsRef<[u8]>
-			+ From<[u8; 32]>;
+		type RegistryId: Parameter + Member + Debug + Default + Clone + AsRef<[u8]> + From<[u8; 20]>;
 
 		/// type that represents nft token ID
 		/// From should always assume big endian
-		type TokenId: Parameter + Member + Default + Clone + From<Vec<u8>> + Into<Vec<u8>>;
+		type TokenId: Parameter + Member + Default + Clone + BigEndian<Vec<u8>>;
 
 		/// The data type that is used to describe this type of asset.
 		type AssetInfo: Hashable + Member + Debug + Default + FullCodec;

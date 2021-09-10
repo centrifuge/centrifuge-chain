@@ -129,6 +129,7 @@ use proofs::Verifier;
 
 use sp_runtime::traits::Hash;
 
+use common_traits::BigEndian;
 use frame_support::pallet_prelude::Get;
 use pallet_nft::types::AssetId;
 use unique_assets::traits::Mintable;
@@ -317,14 +318,13 @@ impl<T: Config> Pallet<T> {
 		let id_nonce = Self::get_registry_nonce();
 
 		// First 20 bytes of the runtime hash of the nonce
-		let id = T::Hashing::hash_of(&id_nonce).as_ref()[..20]
-			.to_vec()
-			.into();
+		let mut id: [u8; 20] = [0; 20];
+		id.copy_from_slice(&T::Hashing::hash_of(&id_nonce).as_ref()[..20]);
 
 		// Increment and update (storage of) identifier's nonce
 		<RegistryNonce<T>>::put(id_nonce.saturating_add(1));
 
-		Ok(id)
+		Ok(id.into())
 	}
 
 	/// Return a document's root hash given an anchor identifier.
@@ -395,9 +395,11 @@ impl<T: Config>
 		// The token id is the value of the same proof, and must match the id
 		// provided in the call.
 		let idx = registry_info.fields.len() - 1;
-		let token_value = mint_info.proofs[idx].value.clone();
-		let exp_token_id: T::TokenId = token_value.into();
-		ensure!(exp_token_id == token_id, Error::<T>::InvalidProofs);
+		let proof_value = mint_info.proofs[idx].value.clone();
+		ensure!(
+			proof_value == token_id.to_big_endian(),
+			Error::<T>::InvalidProofs
+		);
 
 		// All properties the registry expects must be provided in proofs.
 		// If not, the document provided may not contain these fields and would

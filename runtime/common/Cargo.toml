@@ -26,8 +26,8 @@ sp-consensus-aura = { git = "https://github.com/centrifuge/substrate",  default-
 sp-runtime = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
 # Local Dependencies
+common-traits = { path = "../../libs/common-traits", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-
 
 [features]
 default = ["std"]
@@ -36,14 +36,15 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "node-primitives/std",
-    "pallet-anchors/std",
     "pallet-authorship/std",
     "pallet-balances/std",
-    "sp-core/std",
     "sp-api/std",
+    "sp-std/std",
     "sp-arithmetic/std",
+    "sp-core/std",
     "sp-consensus-aura/std",
     "sp-runtime/std",
+    "pallet-anchors/std"
 ]
 on-chain-release-build = [
     "sp-api/disable-logging",

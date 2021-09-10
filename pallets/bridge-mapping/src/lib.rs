@@ -58,10 +58,7 @@ pub mod pallet {
 		/// Ethereum, this may be a contract address for transferring assets.
 		type Address: Parameter
 			+ Member
-			+ MaybeSerializeDeserialize
 			+ Default
-			+ Into<[u8; 32]>
-			+ From<[u8; 32]>
 			+ From<<Self as pallet_nft::Config>::RegistryId>
 			+ Into<<Self as pallet_nft::Config>::RegistryId>;
 

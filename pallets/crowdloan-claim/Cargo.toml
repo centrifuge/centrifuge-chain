@@ -31,7 +31,7 @@ sp-state-machine = { git = "https://github.com/centrifuge/substrate", default-fe
 sp-trie = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 # Local dependencies
-trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
+common-traits = { path= '../../libs/common-traits', default_features = false }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }

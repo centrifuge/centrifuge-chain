@@ -20,7 +20,7 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_bridge, traits::WeightInfo, types::Address};
+use crate::{self as pallet_bridge, traits::WeightInfo};
 
 use chainbridge::types::{ChainId, ResourceId};
 
@@ -43,14 +43,17 @@ use pallet_registry::{
 };
 
 use runtime_common::{
-	AssetId, AssetInfo, Balance, Bytes32, RegistryId, TokenId, CFG, MILLISECS_PER_DAY, NFTS_PREFIX,
-	NFT_PROOF_VALIDATION_FEE,
+	AssetInfo, Balance, EthAddress, RegistryId, TokenId, CFG, MILLISECS_PER_DAY,
+	NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE, NFT_TOKEN_TRANSFER_FEE,
 };
 
-use sp_core::{blake2_128, H256, U256};
+use pallet_nft::types::AssetId;
+use pallet_registry::types::MintInfo;
+use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
+use common_traits::BigEndian;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Hash, IdentityLookup},
@@ -118,7 +121,7 @@ frame_support::construct_runtime!(
 		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
+		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Event<T>},
 	}
 );
@@ -141,26 +144,26 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
-	type AccountId = u64;
+	type BaseCallFilter = ();
+	type BlockWeights = ();
+	type BlockLength = ();
+	type Origin = Origin;
 	type Call = Call;
-	type Lookup = IdentityLookup<Self::AccountId>;
 	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
+	type AccountId = u64;
+	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
-	type Origin = Origin;
 	type BlockHashCount = BlockHashCount;
-	type BlockWeights = ();
-	type BlockLength = ();
+	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type DbWeight = ();
 	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type BaseCallFilter = ();
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
@@ -241,20 +244,25 @@ impl pallet_nft::Config for MockRuntime {
 	type HashId = MockHashId;
 	type NftProofValidationFee = NftProofValidationFee;
 	type WeightInfo = ();
+	type RegistryId = RegistryId;
+	type TokenId = TokenId;
 }
 
 // Implement Centrifuge Chain bridge mapping configuration trait for the mock runtime
 impl pallet_bridge_mapping::Config for MockRuntime {
-	type ResourceId = ResourceId;
-	type Address = Bytes32;
+	type Address = EthAddress;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const NftPrefix: &'static [u8] = NFTS_PREFIX;
+}
 // Implement Centrifuge Chai NFTs (so that nfts can be minted)
 impl pallet_registry::Config for MockRuntime {
 	type Event = Event;
 	type WeightInfo = ();
+	type NftPrefix = NftPrefix;
 }
 
 // Implement Centrifuge Chain anchors pallet for the mock runtime
@@ -266,6 +274,8 @@ impl pallet_anchors::Config for MockRuntime {
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
@@ -274,10 +284,11 @@ impl pallet_bridge::Config for MockRuntime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<MockRuntime>;
 	type Currency = Balances;
-	type ResourceId = ResourceId;
 	type NativeTokenId = NativeTokenId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = MockWeightInfo;
+	type NativeTokenTransferFee = NativeTokenTransferFee;
+	type NftTokenTransferFee = NftTransferFee;
 }
 
 // ----------------------------------------------------------------------------
@@ -400,7 +411,7 @@ pub fn make_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
 // Create a non-fungible token (NFT) for testing.
 //
 // This function first creates a registry, set resource id and then mint a NFT.
-pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> RegistryId {
+pub fn setup_nft(owner: u64, token_id: TokenId, resource_id: ResourceId) -> RegistryId {
 	let origin = Origin::signed(owner);
 
 	// Create registry and generate proofs
@@ -421,7 +432,7 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 	assert_ok!(Registry::mint(
 		origin,
 		owner,
-		registry_id,
+		registry_id.clone(),
 		token_id,
 		nft_data.clone(),
 		pallet_registry::types::MintInfo {
@@ -437,8 +448,7 @@ pub fn setup_nft(owner: u64, token_id: U256, resource_id: ResourceId) -> Registr
 		vec![]
 	));
 
-	let registry_id_to_address: Address = registry_id.clone().into();
-	let registry_id_to_address: Bytes32 = registry_id_to_address.into();
+	let registry_id_to_address: EthAddress = registry_id.clone().into();
 
 	// Register resource in local resource mapping
 	<pallet_bridge_mapping::Pallet<MockRuntime>>::set_resource(
@@ -454,7 +464,7 @@ pub fn setup_mint<T>(
 	owner: T::AccountId,
 	token_id: TokenId,
 ) -> (
-	AssetId,
+	AssetId<RegistryId, TokenId>,
 	T::Hash,
 	T::Hash,
 	(Vec<CompleteProof<H256>>, [H256; 3], T::Hash),
@@ -481,11 +491,18 @@ where
 	};
 
 	// Create registry, get registry id. Shouldn't fail.
-	let registry_id =
-		match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
-			Ok(r_id) => r_id,
-			Err(e) => panic!("{:#?}", e),
-		};
+	let registry_id = match <Registry as VerifierRegistry<
+		T::AccountId,
+		RegistryId,
+		RegistryInfo,
+		AssetId<RegistryId, TokenId>,
+		AssetInfo,
+		MintInfo<H256, H256>,
+	>>::create_new_registry(owner, registry_info.clone())
+	{
+		Ok(r_id) => r_id,
+		Err(e) => panic!("{:#?}", e),
+	};
 
 	// Proofs data
 	let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
@@ -514,17 +531,13 @@ pub fn proofs_data<T: frame_system::Config>(
 	token_id: TokenId,
 ) -> (Vec<CompleteProof<H256>>, [H256; 3], T::Hash) {
 	// Encode token into big endian U256
-	let mut token_enc = Vec::<u8>::with_capacity(32);
-	unsafe {
-		token_enc.set_len(32);
-	}
-	token_id.to_big_endian(&mut token_enc);
+	let token_enc = token_id.to_big_endian();
 
 	// Pre proof has registry_id: token_id as prop: value
 	let pre_proof = CompleteProof {
 		value: token_enc,
 		salt: [1; 32],
-		property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
+		property: [NFTS_PREFIX, registry_id.0.as_bytes()].concat(),
 		hashes: vec![],
 	};
 

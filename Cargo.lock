@@ -1186,7 +1186,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate?branch=master#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1275,6 +1275,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "common-traits"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -5323,6 +5333,7 @@ name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -5348,10 +5359,17 @@ dependencies = [
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
+ "chainbridge",
  "frame-support",
  "frame-system",
+ "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-fees",
  "pallet-nft",
+ "pallet-timestamp",
  "parity-scale-codec",
+ "runtime-common",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5393,6 +5411,7 @@ dependencies = [
 name = "pallet-crowdloan-claim"
 version = "0.1.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5412,13 +5431,13 @@ dependencies = [
  "sp-state-machine",
  "sp-std",
  "sp-trie",
- "trait-crowdloan-reward",
 ]
 
 [[package]]
 name = "pallet-crowdloan-reward"
 version = "0.1.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5431,7 +5450,6 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "trait-crowdloan-reward",
 ]
 
 [[package]]
@@ -5698,16 +5716,14 @@ name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
- "pallet-bridge",
- "pallet-bridge-mapping",
  "pallet-fees",
- "pallet-registry",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
@@ -5799,6 +5815,7 @@ name = "pallet-registry"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8256,6 +8273,7 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "common-traits",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -11520,16 +11538,6 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
-]
-
-[[package]]
-name = "trait-crowdloan-reward"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]

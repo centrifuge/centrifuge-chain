@@ -27,7 +27,7 @@ pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "cleanup" }
-
+common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 # Testing/mocking dependencies

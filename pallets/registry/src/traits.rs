@@ -44,27 +44,6 @@ pub trait VerifierRegistry<AccountId, RegistryId, RegistryInfo, AssetId, AssetIn
 	) -> Result<(), DispatchError>;
 }
 
-// /// An implementor of this trait *MUST* be an asset of a registry.
-// /// The registry id that an asset is a member of can be determined
-// /// when this trait is implemented.
-// pub trait InRegistry {
-// 	type RegistryId;
-//
-// 	/// Returns the registry id that the self is a member of.
-// 	fn registry_id(&self) -> Self::RegistryId;
-// }
-//
-// /// An implementor has an associated asset id that will be used as a
-// /// unique id within a registry for an asset. Asset ids *MUST* be unique
-// /// within a registry. Corresponds to a token id in a Centrifuge document.
-// pub trait HasId {
-// 	type RegistryId;
-// 	type TokenId;
-//
-// 	/// Returns unique asset id.
-// 	fn id(&self) -> &AssetId;
-// }
-
 /// Weight information for pallet extrinsics
 ///
 /// Weights are calculated using runtime benchmarking features.

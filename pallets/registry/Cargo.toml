@@ -30,6 +30,7 @@ pallet-anchors = { path = "../anchors", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "cleanup" }
+common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 # Testing and mocking dependencies

@@ -121,7 +121,10 @@ pub use pallet::*;
 
 use chainbridge::types::ChainId;
 
+use common_traits::BigEndian;
 use pallet_nft::types::AssetId;
+use sp_std::vec;
+use sp_std::vec::Vec;
 
 // Runtime, system and frame primitives
 use frame_support::{
@@ -337,7 +340,11 @@ pub mod pallet {
 			from_registry: T::RegistryId,
 			token_id: T::TokenId,
 			dest_id: ChainId,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResultWithPostInfo
+		where
+			<T as pallet_bridge_mapping::Config>::Address:
+				From<<T as pallet_nft::Config>::RegistryId>,
+		{
 			let source = ensure_signed(origin)?;
 
 			// Get resource id from registry
@@ -359,7 +366,7 @@ pub mod pallet {
 			)?;
 
 			// Ethereum is big-endian
-			let tid: Vec<u8> = token_id.into();
+			let tid = token_id.to_big_endian();
 			<chainbridge::Pallet<T>>::transfer_nonfungible(
 				dest_id,
 				resource_id.into(),

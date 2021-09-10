@@ -70,12 +70,23 @@ pub mod types {
 	// A sized vector of 32 bytes
 	pub type Bytes32 = [u8; 32];
 
-	// Registries are identified using a nonce in storage.
-	pub type RegistryId = H160;
+	/// A representation of registryID.
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct RegistryId(pub H160);
 
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	pub type TokenId = U256;
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct TokenId(pub U256);
+
+	/// A generic representation of a local address. A resource id points to this. It may be a
+	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
+	/// as an upper bound to store efficiently.
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct EthAddress(pub Bytes32);
 }
 
 /// Common constants for all runtimes
@@ -134,24 +145,3 @@ pub mod constants {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
 	}
 }
-
-// pub mod traits {
-//
-// 	/// An implementor of this trait *MUST* be an asset of a registry.
-// 	/// The registry id that an asset is a member of can be determined
-// 	/// when this trait is implemented.
-// 	pub trait InRegistry {
-// 		type RegistryId;
-//
-// 		/// Returns the registry id that the self is a member of.
-// 		fn registry_id(&self) -> Self::RegistryId;
-// 	}
-//
-// 	/// An implementor has an associated asset id that will be used as a
-// 	/// unique id within a registry for an asset. Asset ids *MUST* be unique
-// 	/// within a registry. Corresponds to a token id in a Centrifuge document.
-// 	pub trait HasId {
-// 		/// Returns unique asset id.
-// 		fn id(&self) -> &AssetId;
-// 	}
-// }

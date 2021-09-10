@@ -39,7 +39,7 @@ members = [
     "pallets/registry",
 	"pallets/pool",
 	"pallets/loan",
-	"libs/trait-crowdloan-reward",
+	"libs/common-traits",
 	"libs/proofs",
 	"runtime/altair",
 	"runtime/centrifuge",

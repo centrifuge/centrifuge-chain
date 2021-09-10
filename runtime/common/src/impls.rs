@@ -75,24 +75,6 @@ pub struct AssetInfo {
 	pub metadata: Bytes,
 }
 
-/// A generic representation of a local address. A resource id points to this. It may be a
-/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
-/// as an upper bound to store efficiently.
-#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct EthAddress(pub Bytes32);
-
-impl From<RegistryId> for EthAddress {
-	fn from(r: RegistryId) -> Self {
-		// Pad 12 bytes to the registry id - total 32 bytes
-		let padded = r.to_fixed_bytes().iter().copied()
-			.chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..32]
-			.try_into().expect("RegistryId is 20 bytes. 12 are padded. Converting to a 32 byte array should never fail");
-
-		EthAddress(padded)
-	}
-}
-
 // In order to be generic into T::Address
 impl From<Bytes32> for EthAddress {
 	fn from(v: Bytes32) -> Self {
@@ -106,8 +88,39 @@ impl From<EthAddress> for Bytes32 {
 	}
 }
 
+impl From<RegistryId> for EthAddress {
+	fn from(r: RegistryId) -> Self {
+		// Pad 12 bytes to the registry id - total 32 bytes
+		let padded = r.0.to_fixed_bytes().iter().copied()
+			.chain([0; 12].iter().copied()).collect::<Vec<u8>>()[..32]
+			.try_into().expect("RegistryId is 20 bytes. 12 are padded. Converting to a 32 byte array should never fail");
+
+		EthAddress(padded)
+	}
+}
+
 impl From<EthAddress> for RegistryId {
 	fn from(a: EthAddress) -> Self {
-		H160::from_slice(&a.0[..20])
+		RegistryId(H160::from_slice(&a.0[..20]))
+	}
+}
+
+impl From<[u8; 20]> for RegistryId {
+	fn from(d: [u8; 20]) -> Self {
+		RegistryId(H160::from(d))
+	}
+}
+
+impl AsRef<[u8]> for RegistryId {
+	fn as_ref(&self) -> &[u8] {
+		self.0.as_ref()
+	}
+}
+
+impl common_traits::BigEndian<Vec<u8>> for TokenId {
+	fn to_big_endian(&self) -> Vec<u8> {
+		let mut data = vec![];
+		self.0.to_big_endian(&mut data);
+		data
 	}
 }

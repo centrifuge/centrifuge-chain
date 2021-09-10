@@ -40,13 +40,16 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 
 use runtime_common::{
-	AssetId, AssetInfo, Balance, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
+	AssetInfo, Balance, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
 };
 
 use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
+use crate::types::MintInfo;
+use common_traits::BigEndian;
+use pallet_nft::types::AssetId;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Hash, IdentityLookup},
@@ -89,8 +92,8 @@ frame_support::construct_runtime!(
 		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
-		Registry: pallet_registry::{Pallet, Call, Config, Storage, Event<T>},
+		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
+		Registry: pallet_registry::{Pallet, Call, Storage, Event<T>},
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Config, Event<T>},
 	}
 );
@@ -149,10 +152,10 @@ impl pallet_balances::Config for MockRuntime {
 	type Event = Event;
 	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
+	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = ();
-	type WeightInfo = ();
 }
 
 // Implement Substrate FRAME authorship pallet for the mock runtime
@@ -181,10 +184,10 @@ parameter_types! {
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for MockRuntime {
 	type Event = Event;
-	type PalletId = ChainBridgePalletId;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Proposal = Call;
 	type ChainId = MockChainId;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type WeightInfo = ();
 }
@@ -204,6 +207,8 @@ impl pallet_nft::Config for MockRuntime {
 	type HashId = MockHashId;
 	type NftProofValidationFee = NftProofValidationFee;
 	type WeightInfo = ();
+	type RegistryId = RegistryId;
+	type TokenId = TokenId;
 }
 
 // Implement Centrifuge Chain anchors pallet for the mock runtime
@@ -219,10 +224,15 @@ impl pallet_fees::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const NftPrefix: &'static [u8] = NFTS_PREFIX;
+}
+
 // Implement Centrifuge Chain registry pallet for the mock runtime
 impl pallet_registry::Config for MockRuntime {
 	type Event = Event;
 	type WeightInfo = MockWeightInfo;
+	type NftPrefix = NftPrefix;
 }
 
 // ----------------------------------------------------------------------------
@@ -318,17 +328,13 @@ where
 	T: frame_system::Config<Hash = H256>,
 {
 	// Encode token into big endian U256
-	let mut token_enc = Vec::<u8>::with_capacity(32);
-	unsafe {
-		token_enc.set_len(32);
-	}
-	token_id.to_big_endian(&mut token_enc);
+	let token_enc = token_id.to_big_endian();
 
 	// Pre proof has registry_id: token_id as prop: value
 	let pre_proof = CompleteProof {
 		value: token_enc,
 		salt: [1; 32],
-		property: [NFTS_PREFIX, registry_id.as_bytes()].concat(),
+		property: [NFTS_PREFIX, registry_id.0.as_bytes()].concat(),
 		hashes: vec![],
 	};
 
@@ -364,7 +370,7 @@ pub fn setup_mint<T>(
 	owner: T::AccountId,
 	token_id: TokenId,
 ) -> (
-	AssetId,
+	AssetId<RegistryId, TokenId>,
 	T::Hash,
 	T::Hash,
 	(Vec<CompleteProof<T::Hash>>, [T::Hash; 3], T::Hash),
@@ -391,11 +397,18 @@ where
 	};
 
 	// Create registry, get registry id. Shouldn't fail.
-	let registry_id =
-		match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
-			Ok(r_id) => r_id,
-			Err(e) => panic!("{:#?}", e),
-		};
+	let registry_id = match <Registry as VerifierRegistry<
+		T::AccountId,
+		RegistryId,
+		RegistryInfo,
+		AssetId<RegistryId, TokenId>,
+		AssetInfo,
+		MintInfo<T::Hash, T::Hash>,
+	>>::create_new_registry(owner, registry_info.clone())
+	{
+		Ok(r_id) => r_id,
+		Err(e) => panic!("{:#?}", e),
+	};
 
 	// Generate dummy proofs data for testing
 	let (proofs, static_hashes, doc_root) =
