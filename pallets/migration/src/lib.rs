@@ -19,6 +19,7 @@ mod test_data;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod weights;
 
