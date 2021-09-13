@@ -89,30 +89,25 @@
 // ----------------------------------------------------------------------------
 // Imports and dependencies
 // ----------------------------------------------------------------------------
-#[macro_use]
-extern crate lazy_static;
-
-use codec::{Decode, Encode};
+use codec::Encode;
 // Runtime, system and frame primitives
 use frame_support::{
-	dispatch::{fmt::Debug, Codec, DispatchResult},
+	dispatch::{fmt::Debug, DispatchResult},
 	ensure,
-	sp_runtime::traits::{AtLeast32BitUnsigned, MaybeSerialize, Saturating},
+	sp_runtime::traits::{MaybeSerialize, Saturating},
 	traits::{EnsureOrigin, Get},
 	PalletId,
 };
 use frame_system::ensure_root;
+use proofs::{Hasher, Proof, Verifier};
 use sp_core::crypto::AccountId32;
-use sp_core::storage::ChildInfo;
-use sp_core::Hasher;
 use sp_runtime::{
-	sp_std::{vec, vec::Vec},
-	traits::{AccountIdConversion, Verify, Zero},
+	sp_std::vec,
+	sp_std::vec::Vec,
+	traits::{AccountIdConversion, Hash, Verify, Zero},
 	MultiSignature,
 };
-use sp_state_machine::read_child_proof_check;
 use sp_std::convert::TryInto;
-use sp_trie::StorageProof;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
@@ -120,7 +115,6 @@ pub use pallet::*;
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
 use common_traits::Reward;
-use frame_support::dispatch::DispatchError;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -128,11 +122,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
-
-/// A type alias for the balance type from this pallet's point of view.
-type BalanceOf<T> = <T as pallet_balances::Config>::Balance;
 
 /// A type alias for crowdloan's child trie root hash, from this claim pallet's point of view.
 ///
@@ -148,9 +142,6 @@ type RootHashOf<T> = <T as frame_system::Config>::Hash;
 /// A type alias for the parachain account identifier from this claim pallet's point of view
 type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as Reward>::ParachainAccountId;
 
-/// A type alias for the contribution amount (in relay chain tokens) from this claim pallet's point of view
-type ContributionAmountOf<T> = <<T as Config>::RewardMechanism as Reward>::ContributionAmount;
-
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
 /// on polkadot.
@@ -159,6 +150,33 @@ type TrieIndex = u32;
 /// A type that works as an index for which crowdloan the pallet is currently in.
 /// Can also be seen as some kind of counter.
 type Index = u32;
+
+/// Verifier struct, that implements our own traits to verify our proofs
+struct ProofVerifier<T>(sp_std::marker::PhantomData<T>);
+
+impl<T> ProofVerifier<T> {
+	pub fn new() -> Self {
+		ProofVerifier(sp_std::marker::PhantomData)
+	}
+}
+
+impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
+	type Hash = T::Hash;
+
+	fn hash(data: &[u8]) -> Self::Hash {
+		<T::Hashing as Hash>::hash(data)
+	}
+}
+
+impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
+	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
+		proofs::hashing::sort_hash_of::<Self>(a, b)
+	}
+
+	fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>> {
+		Some(vec![doc_root])
+	}
+}
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -215,22 +233,20 @@ pub mod pallet {
 			+ Parameter
 			+ Into<AccountId32>;
 
-		/// The balance type of the relay chain
-		type RelayChainBalance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Codec
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ Into<BalanceOf<Self>>;
+		/// The maximum length (i.e. depth of the tree) we allow a proof to have.
+		/// This mitigates DDoS attacks solely. We choose 30, which by a base 2 merkle-tree
+		/// should be more than enough.
+		type MaxProofLength: Get<u32>;
 
 		/// The reward payout mechanism this claim pallet uses.
 		///
 		/// This associated type allows to implement a loosely-coupled regime between
 		/// claiming and rewarding pallets.
-		type RewardMechanism: Reward;
+		type RewardMechanism: Reward<
+			ParachainAccountId = Self::AccountId,
+			ContributionAmount = Self::Balance,
+			BlockNumber = Self::BlockNumber,
+		>;
 
 		/// Priority of the unsigned claim transaction.
 		///
@@ -272,11 +288,7 @@ pub mod pallet {
 		ClaimPalletInitialized,
 
 		/// Event emitted when a reward has been claimed successfully.
-		RewardClaimed(
-			T::RelayChainAccountId,
-			ParachainAccountIdOf<T>,
-			ContributionAmountOf<T>,
-		),
+		RewardClaimed(T::RelayChainAccountId, ParachainAccountIdOf<T>, T::Balance),
 
 		/// The block number, where we lock the contributions has been updated
 		LockedAtUpdated(T::BlockNumber),
@@ -435,7 +447,8 @@ pub mod pallet {
 			relaychain_account_id: T::RelayChainAccountId,
 			parachain_account_id: ParachainAccountIdOf<T>,
 			identity_proof: MultiSignature,
-			contribution_proof: StorageProof,
+			contribution_proof: Proof<T::Hash>,
+			contribution: T::Balance,
 		) -> DispatchResultWithPostInfo {
 			// Ensures that this function can only be called via an unsigned transaction
 			ensure_none(origin)?;
@@ -467,8 +480,7 @@ pub mod pallet {
 			)?;
 
 			// Check the contributor's proof of contribution
-			let contribution =
-				Self::verify_contribution_proof(relaychain_account_id.clone(), contribution_proof)?;
+			Self::verify_contribution_proof(contribution_proof)?;
 
 			// Claimed amount must be positive value
 			ensure!(
@@ -678,6 +690,7 @@ pub mod pallet {
 				parachain_account_id,
 				identity_proof,
 				contribution_proof,
+				contribution,
 			) = call
 			{
 				// By checking the validity of the claim here, we ensure the extrinsic will not
@@ -695,11 +708,8 @@ pub mod pallet {
 						parachain_account_id.clone(),
 						identity_proof.clone(),
 					)
-					.is_ok() && Self::verify_contribution_proof(
-						relaychain_account_id.clone(),
-						contribution_proof.clone(),
-					)
-					.is_ok()
+					.is_ok() && Self::verify_contribution_proof(contribution_proof.clone())
+						.is_ok()
 					{
 						// Only the claim reward transaction can be invoked via an unsigned regime
 						return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
@@ -709,6 +719,7 @@ pub mod pallet {
 								parachain_account_id,
 								identity_proof,
 								contribution_proof,
+								contribution,
 							))
 							.longevity(
 								TryInto::<u64>::try_into(T::ClaimTransactionLongevity::get())
@@ -786,44 +797,25 @@ impl<T: Config> Pallet<T> {
 	// contributors. Given the contributor's relay chain account identifier, the claimed amount
 	// (in relay chain tokens) and the parachain account identifier, this function proves that the
 	// contributor's claim is valid.
-	fn verify_contribution_proof(
-		relay_account: T::RelayChainAccountId,
-		proof: StorageProof,
-	) -> Result<ContributionAmountOf<T>, DispatchError> {
-		let keys = vec![relay_account.encode()];
-
-		// rebuild child info
-		let mut buf = Vec::new();
-		buf.extend_from_slice(b"crowdloan");
-		buf.extend_from_slice(
-			&Self::crowdloan_trie_index()
-				.ok_or(Error::<T>::PalletNotInitialized)?
-				.encode()[..],
-		);
-		let child_info = ChildInfo::new_default(T::Hashing::hash(&buf[..]).as_ref());
-
+	fn verify_contribution_proof(proof: Proof<T::Hash>) -> DispatchResult {
 		// We could unwrap here, as we check in the calling function if pallet is initialized (i.e. if contributions is set)
 		// but better be safe than sorry...
 		let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
 
-		read_child_proof_check::<T::Hashing, _>(root, proof, &child_info, keys).map_or(
-			Err(Error::<T>::InvalidProofOfContribution.into()),
-			|mut key_value_map| {
-				key_value_map
-					.get_mut(&relay_account.encode())
-					.map_or(&None, |map_val| map_val)
-					.as_ref()
-					.map_or(
-						Err(Error::<T>::InvalidProofOfContribution.into()),
-						|storage_val| {
-							let (value, _memo): (ContributionAmountOf<T>, Vec<u8>) =
-								Decode::decode::<&[u8]>(&mut storage_val.as_ref())
-									.unwrap_or((Zero::zero(), Vec::new()));
+		// Number of proofs should practically never be > 30. Checking this
+		// blocks abuse.
+		ensure!(
+			proof.len() < T::MaxProofLength::get() as usize,
+			Error::<T>::InvalidProofOfContribution
+		);
 
-							Ok(value)
-						},
-					)
-			},
-		)
+		let pv = ProofVerifier::<T>::new();
+
+		ensure!(
+			pv.verify_proof(root, &proof),
+			Error::<T>::InvalidProofOfContribution
+		);
+
+		Ok(())
 	}
 }

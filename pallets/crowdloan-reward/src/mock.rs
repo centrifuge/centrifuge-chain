@@ -32,7 +32,6 @@ use sp_runtime::{
 	Perbill,
 };
 
-type AccountId = u64;
 type Balance = u64;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
@@ -95,9 +94,6 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for MockRuntime {
 	type PalletId = CrowdloanRewardPalletId;
 	type Event = Event;
-	type RelayChainBalance = Balance;
-	type Conversion = Balance;
-	type RelayChainAccountId = AccountId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }

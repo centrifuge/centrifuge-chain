@@ -80,6 +80,7 @@ pub trait Verifier: Hasher {
 	}
 }
 mod inner {
+	use super::*;
 	use crate::{Proof, Verifier};
 
 	/// This is an optimized Merkle proof checker. It caches all valid leaves in an array called
@@ -119,8 +120,8 @@ mod inner {
 }
 
 pub mod hashing {
-
 	use crate::{DepositAddress, Hasher, Proof};
+	use sp_std::vec::Vec;
 
 	/// computes sorted hash of the a and b
 	/// if a < b: hash(a+b)

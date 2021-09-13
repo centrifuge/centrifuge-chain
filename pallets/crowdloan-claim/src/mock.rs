@@ -24,6 +24,7 @@
 // ----------------------------------------------------------------------------
 
 use crate::{self as pallet_crowdloan_claim, Config};
+use frame_support::traits::GenesisBuild;
 use frame_support::{parameter_types, traits::SortedMembers, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -39,7 +40,6 @@ use sp_runtime::{
 // Type alias, constants
 // ----------------------------------------------------------------------------
 
-type AccountId = u64;
 type Balance = u64;
 
 // ----------------------------------------------------------------------------
@@ -139,9 +139,6 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for MockRuntime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type RelayChainBalance = Balance;
-	type RelayChainAccountId = AccountId;
-	type Conversion = u64;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }
@@ -149,9 +146,9 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionInterval: u64 = 128;
 	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
 	pub const ClaimTransactionLongevity: u32 = 64;
+	pub const MaxProofLength: u32 = 30;
 }
 
 // Implement crowdloan claim pallet configuration trait for the mock runtime
@@ -160,8 +157,8 @@ impl Config for MockRuntime {
 	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = ();
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type RelayChainBalance = Balance;
 	type RelayChainAccountId = AccountId32;
+	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;
 	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
@@ -208,21 +205,14 @@ impl TestExternalitiesBuilder {
 				(3, 30 * self.existential_deposit),
 				(4, 40 * self.existential_deposit),
 				(12, 10 * self.existential_deposit),
-				(
-					CrowdloanReward::account_id(),
-					10000000000000000000 * self.existential_deposit,
-				),
+				(CrowdloanReward::account_id(), 9999999999999999999),
 			],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		use frame_support::traits::GenesisBuild;
 		pallet_vesting::GenesisConfig::<MockRuntime> {
-			vesting: vec![
-				(1, 0, 10, 5 * self.existential_deposit),
-				(12, 10, 20, 5 * self.existential_deposit),
-			],
+			vesting: vec![(12, 10, 20, 5 * self.existential_deposit)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
