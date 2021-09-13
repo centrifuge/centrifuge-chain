@@ -121,7 +121,7 @@ impl AsRef<[u8]> for RegistryId {
 
 impl common_traits::BigEndian<Vec<u8>> for TokenId {
 	fn to_big_endian(&self) -> Vec<u8> {
-		let mut data = vec![];
+		let mut data = vec![0; 32];
 		self.0.to_big_endian(&mut data);
 		data
 	}
