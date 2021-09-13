@@ -117,12 +117,15 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Event<T>},
+		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
 	}
 );
 
