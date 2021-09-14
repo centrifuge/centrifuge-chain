@@ -21,10 +21,7 @@ use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use pallet_timestamp::Pallet as Timestamp;
 use sp_runtime::{
-	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, Bounded, CheckedAdd, CheckedSub, One,
-		Saturating, StaticLookup, StoredMapError, Zero,
-	},
+	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Zero},
 	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
 use sp_std::vec::Vec;
