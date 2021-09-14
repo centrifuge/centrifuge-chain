@@ -477,7 +477,7 @@ pub mod pallet {
 		// Reserve Operations
 
 		#[pallet::weight(100)]
-		pub fn deposit(
+		pub fn test_payback(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			amount: T::Balance,
@@ -497,7 +497,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn payout(
+		pub fn test_borrow(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			amount: T::Balance,
