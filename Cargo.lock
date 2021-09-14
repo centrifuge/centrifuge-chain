@@ -5802,6 +5802,7 @@ dependencies = [
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-nft",
  "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",

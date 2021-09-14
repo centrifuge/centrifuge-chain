@@ -40,7 +40,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_nft::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -53,14 +53,7 @@ pub mod pallet {
 			+ Copy
 			+ AtLeast32Bit;
 
-		type LoanID: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ Default
-			+ Copy
-			+ AsRef<[u8]>
-			+ From<[u8; 32]>;
+		type LoanID: Parameter + Copy + IsType<<Self as pallet_nft::Config>::TokenId>;
 	}
 
 	/// Stores the PoolInfo against a poolID
