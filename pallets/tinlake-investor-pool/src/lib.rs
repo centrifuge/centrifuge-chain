@@ -29,6 +29,15 @@ use sp_runtime::{
 };
 use sp_std::vec::Vec;
 
+/// Trait for converting a pool+tranche ID pair to a CurrencyId
+///
+/// This should be implemented in the runtime to convert from the
+/// PoolId and TrancheId types to a CurrencyId that represents that
+/// tranche.
+///
+/// The pool epoch logic assumes that every tranche has a UNIQUE
+/// currency, but nothing enforces that. Failure to ensure currency
+/// uniqueness will almost certainly cause some wild bugs.
 pub trait TrancheToken<T: Config> {
 	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
 }
@@ -55,12 +64,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Timestamp> {
 	pub total_reserve: Balance,
 }
 
-impl<AccountId, CurrencyId, EpochId, Balance, Timestamp> TypeId
-	for PoolDetails<AccountId, CurrencyId, EpochId, Balance, Timestamp>
-{
-	const TYPE_ID: [u8; 4] = *b"pdts";
-}
-
+/// Per-tranche and per-user order details.
 #[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
 pub struct UserOrder<Balance, EpochId> {
 	pub supply: Balance,
@@ -68,12 +72,14 @@ pub struct UserOrder<Balance, EpochId> {
 	pub epoch: EpochId,
 }
 
+/// A representation of a tranche identifier that can be used as a storage key
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct TrancheLocator<PoolId, TrancheId> {
 	pub pool: PoolId,
 	pub tranche: TrancheId,
 }
 
+/// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PoolLocator<PoolId> {
 	pub pool: PoolId,
@@ -83,6 +89,7 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 	const TYPE_ID: [u8; 4] = *b"pool";
 }
 
+/// The result of epoch execution of a given tranch within a pool
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
 pub struct EpochDetails<BalanceRatio> {
 	pub supply_fulfillment: Perquintill,
@@ -106,6 +113,9 @@ pub mod pallet {
 			+ Copy
 			+ MaxEncodedLen
 			+ FixedPointOperand;
+
+		/// A fixed-point number which represents the value of
+		/// one currency type in terms of another.
 		type BalanceRatio: Member
 			+ Parameter
 			+ Default
@@ -135,6 +145,8 @@ pub mod pallet {
 			Balance = Self::Balance,
 			CurrencyId = Self::CurrencyId,
 		>;
+
+		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self>;
 	}
 
