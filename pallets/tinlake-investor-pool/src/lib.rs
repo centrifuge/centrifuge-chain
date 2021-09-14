@@ -75,14 +75,14 @@ pub struct UserOrder<Balance, EpochId> {
 /// A representation of a tranche identifier that can be used as a storage key
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct TrancheLocator<PoolId, TrancheId> {
-	pub pool: PoolId,
-	pub tranche: TrancheId,
+	pub pool_id: PoolId,
+	pub tranche_id: TrancheId,
 }
 
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
 pub struct PoolLocator<PoolId> {
-	pub pool: PoolId,
+	pub pool_id: PoolId,
 }
 
 impl<PoolId> TypeId for PoolLocator<PoolId> {
@@ -233,7 +233,7 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn create_pool(
 			origin: OriginFor<T>,
-			id: T::PoolId,
+			pool_id: T::PoolId,
 			tranches: Vec<(u8, u8)>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
@@ -243,7 +243,7 @@ pub mod pallet {
 			// TODO: Ensure owner is authorized to create a pool
 
 			// A single pool ID can only be used by one owner.
-			ensure!(!Pool::<T>::contains_key(id), Error::<T>::PoolInUse);
+			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
 			// At least one tranch must exist, and the last
 			// tranche must have an interest rate of 0,
@@ -269,7 +269,7 @@ pub mod pallet {
 				})
 				.collect();
 			Pool::<T>::insert(
-				id,
+				pool_id,
 				PoolDetails {
 					owner: owner.clone(),
 					currency,
@@ -283,33 +283,36 @@ pub mod pallet {
 					total_reserve: Zero::zero(),
 				},
 			);
-			Self::deposit_event(Event::PoolCreated(id, owner));
+			Self::deposit_event(Event::PoolCreated(pool_id, owner));
 			Ok(())
 		}
 
 		#[pallet::weight(100)]
 		pub fn order_supply(
 			origin: OriginFor<T>,
-			pool: T::PoolId,
-			tranche: T::TrancheId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			// TODO: Ensure this account is authorized for this tranche
 			let (currency, epoch) = {
-				let pool = Pool::<T>::try_get(pool).map_err(|_| Error::<T>::NoSuchPool)?;
+				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
 				(pool.currency, pool.current_epoch)
 			};
-			let tranche = TrancheLocator { pool, tranche };
-			let pool_account = PoolLocator { pool }.into_account();
+			let tranche = TrancheLocator {
+				pool_id,
+				tranche_id,
+			};
+			let pool_account = PoolLocator { pool_id }.into_account();
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
 				if amount > order.supply {
 					let transfer_amount = amount - order.supply;
-					Pool::<T>::try_mutate(tranche.pool, |pool| {
+					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let epoch_supply = &mut pool.tranches[tranche.tranche.into()].epoch_supply;
+						let epoch_supply = &mut pool.tranches[tranche_id.into()].epoch_supply;
 						*epoch_supply = epoch_supply
 							.checked_add(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -317,9 +320,9 @@ pub mod pallet {
 					})?;
 				} else if amount < order.supply {
 					let transfer_amount = order.supply - amount;
-					Pool::<T>::try_mutate(tranche.pool, |pool| {
+					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let epoch_supply = &mut pool.tranches[tranche.tranche.into()].epoch_supply;
+						let epoch_supply = &mut pool.tranches[tranche_id.into()].epoch_supply;
 						*epoch_supply = epoch_supply
 							.checked_sub(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -335,27 +338,30 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn order_redeem(
 			origin: OriginFor<T>,
-			pool: T::PoolId,
-			tranche: T::TrancheId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			// TODO: Ensure this account is authorized for this tranche
 			let epoch = {
-				let pool = Pool::<T>::try_get(pool).map_err(|_| Error::<T>::NoSuchPool)?;
+				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
 				pool.current_epoch
 			};
-			let currency = T::TrancheToken::tranche_token(pool, tranche);
-			let tranche = TrancheLocator { pool, tranche };
-			let pool_account = PoolLocator { pool }.into_account();
+			let currency = T::TrancheToken::tranche_token(pool_id, tranche_id);
+			let tranche = TrancheLocator {
+				pool_id,
+				tranche_id,
+			};
+			let pool_account = PoolLocator { pool_id }.into_account();
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
 				if amount > order.redeem {
 					let transfer_amount = amount - order.redeem;
-					Pool::<T>::try_mutate(tranche.pool, |pool| {
+					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let epoch_redeem = &mut pool.tranches[tranche.tranche.into()].epoch_redeem;
+						let epoch_redeem = &mut pool.tranches[tranche_id.into()].epoch_redeem;
 						*epoch_redeem = epoch_redeem
 							.checked_add(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -363,9 +369,9 @@ pub mod pallet {
 					})?;
 				} else if amount < order.redeem {
 					let transfer_amount = order.redeem - amount;
-					Pool::<T>::try_mutate(tranche.pool, |pool| {
+					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let epoch_redeem = &mut pool.tranches[tranche.tranche.into()].epoch_redeem;
+						let epoch_redeem = &mut pool.tranches[tranche_id.into()].epoch_redeem;
 						*epoch_redeem = epoch_redeem
 							.checked_sub(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -412,8 +418,8 @@ pub mod pallet {
 					// This epoch is a no-op. Finish executing it.
 					for tranche_id in 0..pool.tranches.len() {
 						let tranche = TrancheLocator {
-							pool: pool_id,
-							tranche: T::TrancheId::try_from(tranche_id)
+							pool_id,
+							tranche_id: T::TrancheId::try_from(tranche_id)
 								.map_err(|_| Error::<T>::TrancheId)?,
 						};
 						let epoch = EpochDetails::<T::BalanceRatio> {
@@ -496,7 +502,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
 			let who = ensure_signed(origin)?;
-			let pool_account = PoolLocator { pool: pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.total_reserve = pool
@@ -516,7 +522,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
 			let who = ensure_signed(origin)?;
-			let pool_account = PoolLocator { pool: pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.total_reserve = pool
