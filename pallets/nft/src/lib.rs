@@ -93,7 +93,6 @@ pub mod types;
 // Pallet mock runtime
 #[cfg(test)]
 mod mock;
-
 // Pallet unit test cases
 #[cfg(test)]
 mod tests;

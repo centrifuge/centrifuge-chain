@@ -20,7 +20,7 @@ pub type DepositAddress = [u8; 20];
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof<Hash> {
 	pub leaf_hash: Hash,
-	sorted_hashes: Vec<Hash>,
+	pub sorted_hashes: Vec<Hash>,
 }
 
 impl<Hash> Proof<Hash> {

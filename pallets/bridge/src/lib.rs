@@ -40,8 +40,8 @@
 //! `Currency` - Currency as viewed from this pallet.
 //! `Event` - Type for events triggered by this pallet.
 //! `NativeTokenId` - Identifier of the native token.
-//! `TokenTransferFee` - Additional fee charged for transfering tokens.
-//! `NftTransferFee` - Additional fee charged when moving NFTs to target chains.
+//! `NativeTokenTransferFee` - Additional fee charged for transfering native tokens.
+//! `NftTokenTransferFee` - Additional fee charged when moving NFTs to target chains.
 //! `WeightInfo` - Weight information for extrinsics in this pallet.
 //!
 //! ### Events
@@ -307,12 +307,8 @@ pub mod pallet {
 		/// Invalid transfer
 		InvalidTransfer,
 
-		/// Not enough means for performing a transfer
+		/// Not enough funds for performing a transfer
 		InsufficientBalance,
-
-		/// Token transfer fee not convertible to currency
-		// TODO: no more useful
-		//		TokenTransferFeeNotConvertibleToCurrency,
 
 		/// Total amount to be transferred overflows balance type size
 		TotalAmountOverflow,
@@ -391,20 +387,11 @@ pub mod pallet {
 
 			let token_transfer_fee: BalanceOf<T> =
 				Self::get_native_token_transfer_fee().saturated_into();
-			// TODO: simplify
-			// let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
-			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
-			// 	.try_into()
-			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?;
 
 			// Add fees to initial amount (so that to be sure account has sufficient funds)
 			let total_transfer_amount = amount
 				.checked_add(&token_transfer_fee)
 				.ok_or(Error::<T>::TotalAmountOverflow)?;
-			//TODO: simplify
-			// let total_amount = amount
-			// 	.checked_add(&currency_token_fee)
-			// 	.ok_or(Error::<T>::TotalAmountNotConvertibleToCurrency)?;
 
 			// Ensure account has enough balance for both fee and transfer
 			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
