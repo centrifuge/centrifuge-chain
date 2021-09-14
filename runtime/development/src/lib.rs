@@ -626,6 +626,7 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type TrancheToken = TrancheToken<Runtime>;
+	type Time = Timestamp;
 }
 
 // admin stuff

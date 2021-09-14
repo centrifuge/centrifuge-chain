@@ -16,10 +16,9 @@ mod benchmarking;
 
 use codec::HasCompact;
 use core::{convert::TryFrom, ops::AddAssign};
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
-use pallet_timestamp::Pallet as Timestamp;
 use sp_runtime::{
 	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Zero},
 	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
@@ -48,12 +47,12 @@ pub struct Tranche<Balance> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
-pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Timestamp> {
+pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub owner: AccountId,
 	pub currency: CurrencyId,
 	pub tranches: Vec<Tranche<Balance>>,
 	pub current_epoch: EpochId,
-	pub last_epoch_closed: Timestamp,
+	pub last_epoch_closed: u64,
 	pub last_epoch_executed: EpochId,
 	pub closing_epoch: Option<EpochId>,
 	pub max_reserve: Balance,
@@ -100,7 +99,7 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_timestamp::Config {
+	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 		type Balance: Member
@@ -145,6 +144,7 @@ pub mod pallet {
 
 		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self>;
+		type Time: UnixTime;
 	}
 
 	#[pallet::pallet]
@@ -157,7 +157,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::PoolId,
-		PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::Moment>,
+		PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
 	>;
 
 	#[pallet::storage]
@@ -272,7 +272,7 @@ pub mod pallet {
 					currency,
 					tranches,
 					current_epoch: One::one(),
-					last_epoch_closed: Default::default(),
+					last_epoch_closed: T::Time::now().as_secs(),
 					last_epoch_executed: Zero::zero(),
 					closing_epoch: None,
 					max_reserve,
@@ -390,7 +390,7 @@ pub mod pallet {
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
 				let previous_epoch_end = pool.last_epoch_closed;
-				let current_epoch_end = Timestamp::<T>::get();
+				let current_epoch_end = T::Time::now().as_secs();
 				pool.last_epoch_closed = current_epoch_end;
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = pool.total_reserve;
@@ -538,7 +538,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn calculate_tranche_prices(
-			_epoch_duration: T::Moment,
+			_epoch_duration: u64,
 			_epoch_value: T::Balance,
 			tranches: &[Tranche<T::Balance>],
 		) -> Vec<T::BalanceRatio> {
