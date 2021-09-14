@@ -338,7 +338,7 @@ pub mod pallet {
 			anchor_id: T::Hash,
 			deposit_address: DepositAddress,
 			proofs: Vec<Proof<T::Hash>>,
-			_static_proofs: [T::Hash; 3],
+			static_proofs: [T::Hash; 3],
 			dest_id: <T as Config>::ChainId,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -348,7 +348,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::DocumentNotAnchored)?;
 
 			// Create a proof verifier with static proofs
-			let proof_verifier = ProofVerifier::<T>::new();
+			let proof_verifier = ProofVerifier::<T>::new(static_proofs);
 
 			// Validates the proofs again the provided document root
 			ensure!(
