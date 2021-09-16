@@ -78,7 +78,7 @@ impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
 impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
 	// Calculate a final hash from two given hashes
 	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
-	    proofs::hashing::sort_hash_of::<Self>(a, b)
+	    proofs::hashing::hash_of::<Self>(a, b)
 	}
 
 	// Calculate initial matches.
