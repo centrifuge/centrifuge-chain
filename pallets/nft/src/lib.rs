@@ -377,6 +377,13 @@ pub mod pallet {
 // Pallet implementation block
 // ----------------------------------------------------------------------------
 
+// Implement public and private pallet functions.
+//
+// This main implementation block contains two categories of functions, namely:
+// - Public functions: These are functions that are `pub` and generally fall into
+//   inspector functions that do not write to storage and operation functions that do.
+// - Private functions: These are private helpers or utilities that cannot be called
+//   from other pallets.
 impl<T: Config> Pallet<T> {
 
     /// Returns a Ethereum compatible (i.e. Keccak-based) hash.
