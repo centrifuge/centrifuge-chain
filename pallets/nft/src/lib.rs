@@ -328,10 +328,6 @@ pub mod pallet {
 		/// # <weight>
 		/// - depends on the arguments
 		/// # </weight>
-		///
-		/// FIXME (ToZ)
-		/// The [_static_proofs] parameter seems no more used. We did not remove it, as it
-		/// may break the coupling with other (client) components.
 		#[pallet::weight(<T as Config>::WeightInfo::validate_mint())]
 		pub fn validate_mint(
 			origin: OriginFor<T>,
@@ -346,7 +342,7 @@ pub mod pallet {
 			// Return anchored document root hash
 			let anchor_data = <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id)
 				.ok_or(Error::<T>::DocumentNotAnchored)?;
-
+        
 			// Create a proof verifier with static proofs
 			let proof_verifier = ProofVerifier::<T>::new(static_proofs);
 

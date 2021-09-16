@@ -63,10 +63,22 @@ pub trait Verifier: Hasher {
 			None => return false,
 		};
 
-		proofs
-			.iter()
-			.map(|proof| inner::verify_proof::<Self>(&mut matches, proof))
-			.fold(true, |acc, b| acc && b)
+        let _match_1 = matches[0];
+        let _match_2 = matches[1];
+
+// TODO: new code only for debugging (easier)
+        let mut result = true;
+        for proof in proofs {
+            result = inner::verify_proof::<Self>(&mut matches, proof)
+        }
+        result
+// TODO: end of new code (to be deleted)
+
+// TODO: uncomment following lines when debugging will be over
+		// proofs
+		// 	.iter()
+		// 	.map(|proof| inner::verify_proof::<Self>(&mut matches, proof))
+		// 	.fold(true, |acc, b| acc && b)
 	}
 
 	/// Verifies the proof and returns true if valid

@@ -64,8 +64,14 @@ impl WeightInfo for MockWeightInfo {
 	}
 }
 
-// Testing user identifier
-pub const USER_A: u64 = 0x1;
+// Testing user identifiers
+pub(crate) const USER_A: u64 = 0x1;
+pub(crate) const USER_B: u64 = 0x2;
+pub(crate) const USER_DEFAULT: u64 = 0x0;
+
+// Initial balance for user A
+pub(crate) const USER_A_INITIAL_BALANCE: Balance = 100 * CFG;
+
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -84,8 +90,8 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
-		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
+		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
         Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
 	}
 );
@@ -256,7 +262,7 @@ impl TestExternalitiesBuilder {
 		.unwrap();
 
 		pallet_balances::GenesisConfig::<MockRuntime> {
-			balances: vec![(USER_A, 100 * CFG)],
+			balances: vec![(USER_A, USER_A_INITIAL_BALANCE)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
@@ -269,6 +275,10 @@ impl TestExternalitiesBuilder {
 // Helper functions
 // ----------------------------------------------------------------------------
 
+/// Return valid proofs and hashes used for testing minting functionalities.
+/// 
+/// This function returns a tuple containing a valid proof, a document root
+/// hash and a list of static hashes.
 pub fn get_valid_proof() -> (Proof<H256>, H256, [H256; 3]) {
 	let proof = Proof {
 		leaf_hash: [
@@ -301,9 +311,9 @@ pub fn get_valid_proof() -> (Proof<H256>, H256, [H256; 3]) {
 	};
 
 	let doc_root: H256 = [
-		25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70, 161,
-		35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
-	]
+        48, 123, 58, 192, 8, 62, 20, 55, 99, 52, 37, 73, 174, 123, 214, 104, 37, 41, 189, 170,
+        205, 80, 158, 136, 224, 128, 128, 89, 55, 240, 32, 234,
+    ]
 	.into();
 
     let static_proofs: [H256; 3] = [
@@ -327,6 +337,10 @@ pub fn get_valid_proof() -> (Proof<H256>, H256, [H256; 3]) {
 	(proof, doc_root, static_proofs)
 }
 
+/// Return invalid proofs and hashes used for testing minting functionalities.
+/// 
+/// This function returns a tuple containing invalid proofs and hashes that cannot be used to
+/// calculate a document root hash.
 pub fn get_invalid_proof() -> (Proof<H256>, H256, [H256; 3]) {
 	let proof = Proof {
 		leaf_hash: [
@@ -349,9 +363,9 @@ pub fn get_invalid_proof() -> (Proof<H256>, H256, [H256; 3]) {
 	};
 
 	let doc_root: H256 = [
-		25, 102, 189, 46, 86, 242, 48, 217, 254, 16, 20, 211, 98, 206, 125, 92, 167, 175, 70, 161,
-		35, 135, 33, 80, 225, 247, 4, 240, 138, 86, 167, 142,
-	]
+        48, 123, 58, 192, 8, 62, 20, 55, 99, 52, 37, 73, 174, 123, 214, 104, 37, 41, 189, 170,
+        205, 80, 158, 136, 224, 128, 128, 89, 55, 240, 32, 234,
+    ]
 	.into();
     
     let static_proofs: [H256; 3] = [
@@ -385,10 +399,10 @@ pub fn get_params() -> (
 ) {
     let anchor_id = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
     let deposit_address: [u8; 20] = [0; 20];
-    let pfs: Vec<Proof<H256>> = vec![];
+    let proofs: Vec<Proof<H256>> = vec![];
     let static_proofs: [H256; 3] = [[0; 32].into(), [0; 32].into(), [0; 32].into()];
     let chain_id: ChainId = 1;
 
-    (anchor_id, deposit_address, pfs, static_proofs, chain_id)
+    (anchor_id, deposit_address, proofs, static_proofs, chain_id)
 }
 

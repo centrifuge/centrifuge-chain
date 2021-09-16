@@ -21,7 +21,7 @@ use codec::{Decode, Encode};
 
 use sp_runtime::{sp_std::vec::Vec, traits::Hash};
 
-// Library for building and validating proofs
+// Routines for building and validating proofs
 use proofs::{Hasher, Verifier};
 
 // ----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ pub(crate) struct ProofVerifier<T: frame_system::Config> {
 	///
 	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
 	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
-	static_hashes: [T::Hash; 3],
+	static_proofs: [T::Hash; 3],
 }
 
 // Proof verifier implementation block
@@ -53,14 +53,14 @@ impl<T: frame_system::Config> ProofVerifier<T> {
 	const ZK_DATA_ROOT_HASH: usize = 1;
 	const SIGNATURE_ROOT_HASH: usize = 2;
 
-	/// Build a new proof verifier instance, given a list of static root hashes.
+	/// Build a new proof verifier instance, given a list of static proofs.
 	///
-	/// The 'root_hashes' must be passed in a specific order, namely:
+	/// The list of static proofs must be passed in a specific order, namely:
 	///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
 	///   2. The ZK root hash (with index ['ZK_DATA_ROOT_HASH'])
 	///   3. The signature root hash (with index ['SIGNATURE_DATA_ROOT_HASH'])
-	pub fn new(static_hashes: [T::Hash; 3]) -> Self {
-		ProofVerifier { static_hashes }
+	pub fn new(static_proofs: [T::Hash; 3]) -> Self {
+		ProofVerifier { static_proofs }
 	}
 }
 
@@ -78,7 +78,7 @@ impl<T: frame_system::Config> Hasher for ProofVerifier<T> {
 impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
 	// Calculate a final hash from two given hashes
 	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
-		proofs::hashing::hash_of::<Self>(a, b)
+	    proofs::hashing::sort_hash_of::<Self>(a, b)
 	}
 
 	// Calculate initial matches.
@@ -86,7 +86,7 @@ impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
 	// This function takes 3 static proofs and calculates a document root. The
 	// calculated document root is then compared with the given document root.
 	// If they match, an `Option` containing a list of precomputed hashes is
-	// returned, or None if anything goes wrong.
+	// returned, or `None` if anything goes wrong.
 	// The returned precomputed hashes are then used while validating the proofs.
 	//
 	//
@@ -99,16 +99,16 @@ impl<T: frame_system::Config> Verifier for ProofVerifier<T> {
 	fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>> {
 		let mut matches: Vec<Self::Hash> = vec![];
 
-		let basic_data_root_hash = self.static_hashes[Self::BASIC_DATA_ROOT_HASH];
-		let zk_data_root_hash = self.static_hashes[Self::ZK_DATA_ROOT_HASH];
-		let signature_root_hash = self.static_hashes[Self::SIGNATURE_ROOT_HASH];
+		let basic_data_root_hash = self.static_proofs[Self::BASIC_DATA_ROOT_HASH];
+		let zk_data_root_hash = self.static_proofs[Self::ZK_DATA_ROOT_HASH];
+		let signature_root_hash = self.static_proofs[Self::SIGNATURE_ROOT_HASH];
 
-		// calculate signing root hash (from data root hashes)
+		// calculate signing root hash (from data hashes)
 		matches.push(basic_data_root_hash);
 		matches.push(zk_data_root_hash);
 		let signing_root_hash = Self::hash_of(basic_data_root_hash, zk_data_root_hash);
 
-		// calculate document root hash (from signing and signature root hashes)
+		// calculate document root hash (from signing and signature hashes)
 		matches.push(signing_root_hash);
 		matches.push(signature_root_hash);
 		let calculated_doc_root_hash = Self::hash_of(signing_root_hash, signature_root_hash);
