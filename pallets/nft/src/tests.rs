@@ -19,7 +19,7 @@
 
 use crate::{
     mock::*, 
-    types::AssetId, ProofVerifier, 
+    types::AssetId, // ProofVerifier, 
     *};
 
 use codec::Encode;
@@ -170,10 +170,6 @@ fn valid_proof() {
             let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
             let anchor_id = (pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
             let (proof, doc_root, static_proofs) = get_valid_proof();
-// TODO: try only            
-//            let pv = ProofVerifier::<MockRuntime>::new(static_proofs);
-//            assert!(pv.verify_proof(doc_root, &proof));
-// TODO: end of try
 
             assert_ok!(Anchors::commit(
                 Origin::signed(USER_B),
@@ -264,9 +260,6 @@ fn insufficient_balance_to_mint() {
                 static_proofs,
                 0
             ),
-            // DispatchError::Module{index:0, error:3, message: Some("InsufficientBalance")}
-            // TODO: Seems a better approach for error processing, rather than using module index and error codes
-            //       as done with DispatchError directive. 
             pallet_balances::Error::<MockRuntime>::InsufficientBalance
         );
     })
