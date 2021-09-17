@@ -30,6 +30,8 @@ use chainbridge::types::{ChainId, ResourceId};
 
 use codec::Encode;
 
+use common_traits::BigEndian;
+
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -39,17 +41,18 @@ use frame_support::{
 
 use frame_system::EnsureSignedBy;
 
+use pallet_nft::types::AssetId;
+
+use proofs::Hasher;
+
 use runtime_common::{
 	AssetInfo, Balance, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
 };
 
-use sp_core::{blake2_128, H256};
+use sp_core::{H256, blake2_128, blake2_256};
 
 use sp_io::TestExternalities;
 
-use crate::types::MintInfo;
-use common_traits::BigEndian;
-use pallet_nft::types::AssetId;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Hash, IdentityLookup},
@@ -73,6 +76,17 @@ impl WeightInfo for MockWeightInfo {
 		0 as Weight
 	}
 }
+
+// Registry hasher for building document root hash (from static proofs).
+struct MockProofVerifier;
+impl Hasher for MockProofVerifier {
+	type Hash = H256;
+
+	fn hash(data: &[u8]) -> Self::Hash {
+		blake2_256(data).into()
+	}
+}
+
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -287,43 +301,13 @@ impl TestExternalitiesBuilder {
 // Helper functions
 // ----------------------------------------------------------------------------
 
-// Calculate a hash given two input hashes
-pub fn hash_of<T: frame_system::Config>(a: T::Hash, b: T::Hash) -> T::Hash
-where
-	T: frame_system::Config<Hash = H256>,
-{
-	let data = [a.as_ref(), b.as_ref()].concat();
-	<T::Hashing as Hash>::hash(&data)
-}
-
-// Generate a dummy document root hash from static hashes for testing.
-//
-// Here's how document's root hash is calculated from the given [static_hashes].
-//
-//                      DocumentRoot
-//                      /          \
-//          Signing Root            Signature Root
-//          /          \
-//   data root 1     data root 2
-pub fn mock_doc_root<T: frame_system::Config>(static_hashes: [T::Hash; 3]) -> T::Hash
-where
-	T: frame_system::Config<Hash = H256>,
-{
-	let basic_data_root = static_hashes[0];
-	let zk_data_root = static_hashes[1];
-	let signature_root = static_hashes[2];
-	let signing_root = hash_of::<T>(basic_data_root, zk_data_root);
-
-	hash_of::<T>(signing_root, signature_root)
-}
-
 // Return dummy proofs data useful for testing.
 //
 // This function returns mocking proofs, static hashes, and document root hash.
-pub fn mock_proofs_data<T: frame_system::Config>(
+pub fn mock_proofs<T: frame_system::Config>(
 	registry_id: RegistryId,
 	token_id: TokenId,
-) -> (Vec<CompleteProof<T::Hash>>, [T::Hash; 3], T::Hash)
+) -> (Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3])
 where
 	T: frame_system::Config<Hash = H256>,
 {
@@ -356,13 +340,24 @@ where
 
 	let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
 
-	let data_root = <T::Hashing as Hash>::hash(&hash);
-	let zk_data_root = <T::Hashing as Hash>::hash(&[0]);
-	let signature_root = <T::Hashing as Hash>::hash(&[0]);
-	let static_hashes = [data_root, zk_data_root, signature_root];
-	let doc_root = mock_doc_root::<T>(static_hashes);
+    // Calculate static proofs
+	let basic_data_root_hash = sp_io::hashing::blake2_256(&hash).into();
+	let zk_data_root_hash = sp_io::hashing::blake2_256(&[0]).into();
+	let signature_root_hash = sp_io::hashing::blake2_256(&[0]).into();
+	let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
 
-	(proofs, static_hashes, doc_root)
+    // Calculate document root hash
+    //
+	// Here's how document's root hash is calculated:
+	//                                doc_root_hash  
+	//                               /             \
+	//                signing_root_hash            signature_root_hash
+	//               /                 \
+	//    basic_data_root_hash   zk_data_root_hash
+    let signing_root_hash = proofs::hashing::hash_of::<MockProofVerifier>(basic_data_root_hash, zk_data_root_hash);
+    let doc_root = proofs::hashing::hash_of::<MockProofVerifier>(signing_root_hash, signature_root_hash);
+
+	(proofs, doc_root, static_hashes)
 }
 
 // Create a registry and returns all relevant data
@@ -373,7 +368,7 @@ pub fn setup_mint<T>(
 	AssetId<RegistryId, TokenId>,
 	T::Hash,
 	T::Hash,
-	(Vec<CompleteProof<T::Hash>>, [T::Hash; 3], T::Hash),
+	(Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3]),
 	AssetInfo,
 	RegistryInfo,
 )
@@ -397,22 +392,15 @@ where
 	};
 
 	// Create registry, get registry id. Shouldn't fail.
-	let registry_id = match <Registry as VerifierRegistry<
-		T::AccountId,
-		RegistryId,
-		RegistryInfo,
-		AssetId<RegistryId, TokenId>,
-		AssetInfo,
-		MintInfo<T::Hash, T::Hash>,
-	>>::create_new_registry(owner, registry_info.clone())
+	let registry_id = match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone())
 	{
 		Ok(r_id) => r_id,
 		Err(e) => panic!("{:#?}", e),
 	};
 
 	// Generate dummy proofs data for testing
-	let (proofs, static_hashes, doc_root) =
-		mock_proofs_data::<T>(registry_id.clone(), token_id.clone());
+	let (proofs, doc_root, static_hashes) =
+		mock_proofs::<T>(registry_id.clone(), token_id.clone());
 
 	// Registry data
 	let nft_data = AssetInfo { metadata };
@@ -424,7 +412,7 @@ where
 		asset_id,
 		pre_image,
 		anchor_id,
-		(proofs, static_hashes, doc_root),
+		(proofs, doc_root, static_hashes),
 		nft_data,
 		registry_info,
 	)

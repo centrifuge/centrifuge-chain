@@ -127,6 +127,7 @@ use frame_system::ensure_signed;
 
 use proofs::Verifier;
 
+use sp_core::H256;
 use sp_runtime::traits::Hash;
 
 use common_traits::BigEndian;
@@ -277,21 +278,19 @@ pub mod pallet {
 			registry_id: T::RegistryId,
 			token_id: T::TokenId,
 			asset_info: T::AssetInfo,
-			mint_info: MintInfo<T::Hash, T::Hash>,
+			mint_info: MintInfo<T::Hash, H256>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			// Internal mint validates proofs and modifies state or returns error
 			let asset_id = AssetId(registry_id.clone(), token_id.clone());
 
-			<Self as VerifierRegistry<
-				T::AccountId,
-				T::RegistryId,
-				RegistryInfo,
-				AssetId<T::RegistryId, T::TokenId>,
-				T::AssetInfo,
-				MintInfo<T::Hash, T::Hash>,
-			>>::mint(who, owner_account, asset_id, asset_info, mint_info)?;
+			<Self as VerifierRegistry>::mint(
+                who, 
+                owner_account, 
+                asset_id, 
+                asset_info, 
+                mint_info)?;
 
 			// Mint event
 			Self::deposit_event(Event::Mint(registry_id, token_id));
@@ -328,27 +327,28 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Return a document's root hash given an anchor identifier.
-	fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, DispatchError> {
+	fn get_document_root(anchor_id: T::Hash) -> Result<H256, DispatchError> {
 		let root = match <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id) {
 			Some(anchor_data) => Ok(anchor_data.doc_root),
 			None => Err(Error::<T>::DocumentNotAnchored),
 		}?;
 
-		Ok(<T::Hashing as Hash>::hash(root.as_ref()))
+        let doc_root = H256::from_slice(root.as_ref());
+        Ok(doc_root)
+		//Ok(<T::Hashing as Hash>::hash(root.as_ref()))
 	}
 }
 
 // Implement verifier registry trait for the pallet
-impl<T: Config>
-	VerifierRegistry<
-		T::AccountId,
-		T::RegistryId,
-		RegistryInfo,
-		AssetId<T::RegistryId, T::TokenId>,
-		T::AssetInfo,
-		MintInfo<T::Hash, T::Hash>,
-	> for Pallet<T>
-{
+impl<T: Config> VerifierRegistry for Pallet<T> {
+
+    type AccountId = T::AccountId;
+	type RegistryId = T::RegistryId;
+	type RegistryInfo = RegistryInfo;
+	type AssetId = AssetId<T::RegistryId, T::TokenId>;
+	type AssetInfo = T::AssetInfo;
+	type MintInfo = MintInfo<T::Hash, H256>;
+	
 	// Registries with identical RegistryInfo may exist
 	fn create_new_registry(
 		caller: T::AccountId,
@@ -376,7 +376,7 @@ impl<T: Config>
 		owner_account: T::AccountId,
 		asset_id: AssetId<T::RegistryId, T::TokenId>,
 		asset_info: T::AssetInfo,
-		mint_info: MintInfo<T::Hash, T::Hash>,
+		mint_info: MintInfo<T::Hash, H256>,
 	) -> Result<(), DispatchError> {
 		let (registry_id, token_id) = asset_id.clone().destruct();
 		let registry_info = <Registries<T>>::get(registry_id.clone());
@@ -406,9 +406,7 @@ impl<T: Config>
 		// therefore be invalid. The order of proofs is assumed to be the same order
 		// as the registry fields.
 		ensure!(
-			registry_info
-				.fields
-				.iter()
+			registry_info.fields.iter()
 				.zip(mint_info.proofs.iter().map(|p| &p.property))
 				.fold(true, |acc, (field, prop)| acc && (field == prop)),
 			Error::<T>::InvalidProofs
@@ -421,21 +419,20 @@ impl<T: Config>
 		let doc_root = Self::get_document_root(mint_info.anchor_id)?;
 
 		// Generate leaf hashes and turn them into 'proofs::Proof' type for validation call
-		let proofs = mint_info
-			.proofs
-			.into_iter()
-			.map(|mut proof| {
+		let proofs = mint_info.proofs.into_iter()
+			.map(|proof| {
 				// Generate leaf hash from property ++ value ++ salt
-				proof.property.extend(proof.value);
-				proof.property.extend(&proof.salt);
-				let leaf_hash = <T::Hashing as Hash>::hash(&proof.property).into();
+//				proof.property.extend(proof.value);
+//				proof.property.extend(&proof.salt);
+//                let leaf_hash = sp_io::hashing::keccak_256(&proof.property);
 
-				proofs::Proof::new(leaf_hash, proof.hashes)
+//				proofs::Proof::new(leaf_hash, proof.hashes)
+                proof.into()
 			})
 			.collect();
 
 		// Create proof verifier given static hashes
-		let proof_verifier = ProofVerifier::<T>::new(mint_info.static_hashes.into());
+		let proof_verifier = ProofVerifier::new(mint_info.static_hashes);
 
 		// Verify the proof against document root
 		ensure!(

@@ -39,7 +39,7 @@ fn mint_with_valid_proofs() {
 			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
-			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
+			let (asset_id, pre_image, anchor_id, (proofs, doc_root, static_hashes), nft_data, _) =
 				setup_mint::<MockRuntime>(owner, token_id);
 
 			// Place document anchor into storage for verification
@@ -84,7 +84,7 @@ fn mint_fails_when_dont_match_doc_root() {
 			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
-			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, _), nft_data, _) =
+			let (asset_id, pre_image, anchor_id, (proofs, _doc_root, static_hashes), nft_data, _) =
 				setup_mint::<MockRuntime>(owner, token_id);
 
 			// Place document anchor into storage for verification
@@ -128,7 +128,7 @@ fn duplicate_mint_fails() {
 			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
-			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
+			let (asset_id, pre_image, anchor_id, (proofs, doc_root, static_hashes), nft_data, _) =
 				setup_mint::<MockRuntime>(owner, token_id);
 
 			// Place document anchor into storage for verification
@@ -184,7 +184,7 @@ fn mint_fails_with_wrong_tokenid_in_proof() {
 			let token_id = TokenId(U256::one());
 			let owner = 1;
 			let origin = Origin::signed(owner);
-			let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
+			let (asset_id, pre_image, anchor_id, (proofs, doc_root, static_hashes), nft_data, _) =
 				setup_mint::<MockRuntime>(owner, token_id);
 
 			// Place document anchor into storage for verification
