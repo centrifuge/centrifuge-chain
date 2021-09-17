@@ -131,9 +131,8 @@ use sp_std::vec::Vec;
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
-    PalletId,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
-	transactional,
+	transactional, PalletId,
 };
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
@@ -202,10 +201,10 @@ pub mod pallet {
 		/// The module identifier may be of the form ```PalletId(*b"r/bridge")``` (a string of eight characters)
 		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
-        #[pallet::constant]
-        type BridgePalletId: Get<PalletId>;
+		#[pallet::constant]
+		type BridgePalletId: Get<PalletId>;
 
-        /// Admin user is able to modify transfer fees (see [NativeTokenTransferFee] and [NftTokenTransferFee]).
+		/// Admin user is able to modify transfer fees (see [NativeTokenTransferFee] and [NftTokenTransferFee]).
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Currency as viewed from this pallet
@@ -214,15 +213,15 @@ pub mod pallet {
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        // Type for native token ID.
+		// Type for native token ID.
 		#[pallet::constant]
 		type NativeTokenId: Get<<Self as pallet_nft::Config>::ResourceId>;
 
-	    /// Type for setting fee that are charged when transferring native tokens to target chains (in CFGs).
-        #[pallet::constant]
+		/// Type for setting fee that are charged when transferring native tokens to target chains (in CFGs).
+		#[pallet::constant]
 		type NativeTokenTransferFee: Get<u128>;
 
-	    /// Type for setting fee that are charged when transferring NFT tokens to target chains (in CFGs).
+		/// Type for setting fee that are charged when transferring NFT tokens to target chains (in CFGs).
 		#[pallet::constant]
 		type NftTokenTransferFee: Get<u128>;
 
@@ -534,14 +533,14 @@ pub mod pallet {
 //   from other pallets.
 impl<T: Config> Pallet<T> {
 	// *** Utility methods ***
-    
-    /// Return the account identifier of the RAD claims pallet.
+
+	/// Return the account identifier of the RAD claims pallet.
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
-        T::BridgePalletId::get().into_account()
-    }
+		T::BridgePalletId::get().into_account()
+	}
 
 	/// Initialize pallet's genesis configuration.
 	///

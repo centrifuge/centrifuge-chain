@@ -289,7 +289,7 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
-    pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
@@ -299,7 +299,7 @@ parameter_types! {
 impl pallet_bridge::Config for MockRuntime {
 	type Event = Event;
 	type BridgeOrigin = chainbridge::EnsureBridge<MockRuntime>;
-    type BridgePalletId = BridgePalletId;
+	type BridgePalletId = BridgePalletId;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;

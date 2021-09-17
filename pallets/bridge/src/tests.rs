@@ -415,7 +415,10 @@ fn modify_native_token_transfer_fees() {
 			let current_fee = Bridge::get_native_token_transfer_fee();
 			assert_eq!(current_fee, NATIVE_TOKEN_TRANSFER_FEE);
 			let new_fee = 3000 * CFG;
-			assert_ok!(Bridge::set_native_token_transfer_fee(Origin::signed(1), new_fee));
+			assert_ok!(Bridge::set_native_token_transfer_fee(
+				Origin::signed(1),
+				new_fee
+			));
 			assert_eq!(new_fee, Bridge::get_native_token_transfer_fee());
 		})
 }
@@ -428,7 +431,10 @@ fn modify_nft_token_transfer_fees() {
 			let current_fee = Bridge::get_nft_token_transfer_fee();
 			assert_eq!(current_fee, NFT_TOKEN_TRANSFER_FEE);
 			let new_fee = 3000 * CFG;
-			assert_ok!(Bridge::set_nft_token_transfer_fee(Origin::signed(1), new_fee));
+			assert_ok!(Bridge::set_nft_token_transfer_fee(
+				Origin::signed(1),
+				new_fee
+			));
 			assert_eq!(new_fee, Bridge::get_nft_token_transfer_fee());
 		})
 }
