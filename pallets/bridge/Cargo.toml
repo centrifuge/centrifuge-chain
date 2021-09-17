@@ -32,7 +32,6 @@ common-traits = { path = "../../libs/common-traits", default-features = false }
 [dev-dependencies]
 # Testing/mocking dependencies
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
-#node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }

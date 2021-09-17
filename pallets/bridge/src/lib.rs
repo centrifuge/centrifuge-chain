@@ -131,6 +131,7 @@ use sp_std::vec::Vec;
 use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
+    PalletId,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
 	transactional,
 };
@@ -139,7 +140,7 @@ use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
 use sp_core::U256;
 
-use sp_runtime::traits::{CheckedAdd, CheckedSub, SaturatedConversion};
+use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
 
 use unique_assets::traits::Unique;
 
@@ -189,13 +190,20 @@ pub mod pallet {
 		frame_system::Config
 		+ pallet_balances::Config
 		+ pallet_bridge_mapping::Config
-//		+ chainbridge::Config
 		+ pallet_fees::Config
 		+ pallet_nft::Config
 	{
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+		/// Constant configuration parameter to store the module identifier for the pallet.
+		///
+		/// The module identifier may be of the form ```PalletId(*b"r/bridge")``` (a string of eight characters)
+		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
+		/// macro in one of the runtimes (see runtime folder).
+        #[pallet::constant]
+        type BridgePalletId: Get<PalletId>;
 
         /// Admin user is able to modify transfer fees (see [NativeTokenTransferFee] and [NftTokenTransferFee]).
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -526,6 +534,14 @@ pub mod pallet {
 //   from other pallets.
 impl<T: Config> Pallet<T> {
 	// *** Utility methods ***
+    
+    /// Return the account identifier of the RAD claims pallet.
+	///
+	/// This actually does computation. If you need to keep using it, then make
+	/// sure you cache the value and only call this once.
+	pub fn account_id() -> T::AccountId {
+        T::BridgePalletId::get().into_account()
+    }
 
 	/// Initialize pallet's genesis configuration.
 	///
