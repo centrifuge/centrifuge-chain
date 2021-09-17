@@ -170,10 +170,10 @@ pub mod pallet {
 		+ pallet_anchors::Config
 		+ chainbridge::Config
 	{
-		/// the type used to identify nft registry
+		/// The type used to identify nft registry
 		type RegistryId: Parameter + Member + Debug + Default + Clone + AsRef<[u8]> + From<[u8; 20]>;
 
-		/// type that represents nft token ID
+		/// Type that represents nft token ID
 		/// From should always assume big endian
 		type TokenId: Parameter + Member + Default + Clone + BigEndian<Vec<u8>>;
 
