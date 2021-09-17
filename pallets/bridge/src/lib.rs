@@ -64,6 +64,8 @@
 //! [`transfer`]
 //! [`transfer_asset`]
 //! [`transfer_native`]
+//! [`set_native_token_transfer_fee`]
+//! [`set_nft_token_transfer_fee`]
 //!
 //! ### Public Functions
 //!
@@ -487,7 +489,7 @@ pub mod pallet {
 
 		/// Modify native token transfer fee value
 		#[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
-		pub fn set_token_transfer_fee(
+		pub fn set_native_token_transfer_fee(
 			origin: OriginFor<T>,
 			new_fee: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -499,7 +501,7 @@ pub mod pallet {
 
 		/// Modify NFT token transfer fee value
 		#[pallet::weight(<T as Config>::WeightInfo::set_nft_transfer_fee())]
-		pub fn set_nft_transfer_fee(
+		pub fn set_nft_token_transfer_fee(
 			origin: OriginFor<T>,
 			new_fee: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {

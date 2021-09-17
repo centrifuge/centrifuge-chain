@@ -415,7 +415,7 @@ pub fn assert_events(mut expected: Vec<Event>) {
 	}
 }
 
-pub fn make_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
+pub fn mock_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
 	Call::Bridge(crate::Call::remark(hash, r_id))
 }
 

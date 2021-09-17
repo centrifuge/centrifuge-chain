@@ -326,7 +326,7 @@ fn create_successful_transfer_proposal() {
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"transfer");
 			let resource = b"PalletBridge.transfer".to_vec();
-			let proposal = mock::make_transfer_proposal(RELAYER_A, 10, r_id);
+			let proposal = mock_transfer_proposal(RELAYER_A, 10, r_id);
 
 			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
@@ -413,9 +413,22 @@ fn modify_native_token_transfer_fees() {
 		.build()
 		.execute_with(|| {
 			let current_fee = Bridge::get_native_token_transfer_fee();
-			assert_eq!(current_fee, 2000 * currency::CFG);
-			let new_fee = 3000 * currency::CFG;
-			assert_ok!(Bridge::set_token_transfer_fee(Origin::signed(1), new_fee));
-			assert_eq!(new_fee, Bridge::token_transfer_fee());
+			assert_eq!(current_fee, NATIVE_TOKEN_TRANSFER_FEE);
+			let new_fee = 3000 * CFG;
+			assert_ok!(Bridge::set_native_token_transfer_fee(Origin::signed(1), new_fee));
+			assert_eq!(new_fee, Bridge::get_native_token_transfer_fee());
+		})
+}
+
+#[test]
+fn modify_nft_token_transfer_fees() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let current_fee = Bridge::get_nft_token_transfer_fee();
+			assert_eq!(current_fee, NFT_TOKEN_TRANSFER_FEE);
+			let new_fee = 3000 * CFG;
+			assert_ok!(Bridge::set_nft_token_transfer_fee(Origin::signed(1), new_fee));
+			assert_eq!(new_fee, Bridge::get_nft_token_transfer_fee());
 		})
 }
