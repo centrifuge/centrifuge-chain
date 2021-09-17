@@ -565,7 +565,44 @@ pub mod pallet {
 			_target: &[(T::Balance, T::Balance)],
 			_solution: &[(Perquintill, Perquintill)],
 		) -> bool {
-			// TODO: Implement this
+			// Self::validate_core_constraints() && Self::validate_pool_constraints()
+			true
+		}
+
+		pub fn is_epoch_valid_x(_reserve: T::Balance, tranches: &[Tranche<T::Balance>]) -> bool {
+			let acc_supply: T::Balance = tranches
+				.iter()
+				.fold(Zero::zero(), |sum: T::Balance, tranche| {
+					sum.checked_add(&tranche.epoch_supply).unwrap()
+				});
+
+			let acc_redeem: T::Balance = tranches
+				.iter()
+				.fold(Zero::zero(), |sum: T::Balance, tranche| {
+					sum.checked_add(&tranche.epoch_redeem).unwrap()
+				});
+
+			let currency_available: T::Balance = acc_supply.checked_add(&_reserve).unwrap();
+
+			let core_res = Self::validate_core_constraints(currency_available, acc_redeem);
+			if !core_res {
+				return false;
+			}
+
+			Self::validate_pool_constraints()
+		}
+
+		fn validate_core_constraints(
+			currency_available: T::Balance,
+			currency_out: T::Balance,
+		) -> bool {
+			if currency_out > currency_available {
+				return false;
+			}
+			true
+		}
+
+		fn validate_pool_constraints() -> bool {
 			true
 		}
 
