@@ -62,23 +62,11 @@ pub trait Verifier: Hasher {
 			Some(matches) => matches,
 			None => return false,
 		};
-
-        let _match_1 = matches[0];
-        let _match_2 = matches[1];
-
-// TODO: new code only for debugging (easier)
-        let mut result = true;
-        for proof in proofs {
-            result = inner::verify_proof::<Self>(&mut matches, proof)
-        }
-        result
-// TODO: end of new code (to be deleted)
-
-// TODO: uncomment following lines when debugging will be over
-		// proofs
-		// 	.iter()
-		// 	.map(|proof| inner::verify_proof::<Self>(&mut matches, proof))
-		// 	.fold(true, |acc, b| acc && b)
+        
+		proofs
+			.iter()
+			.map(|proof| inner::verify_proof::<Self>(&mut matches, proof))
+			.fold(true, |acc, b| acc && b)
 	}
 
 	/// Verifies the proof and returns true if valid
@@ -176,10 +164,10 @@ pub mod hashing {
 		proofs: Vec<Proof<H::Hash>>,
 		deposit_address: DepositAddress,
 	) -> H::Hash {
-		// extract (leaf) hashes from proofs
+		// Extract (leaf) hashes from proofs
 		let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
 
-		// compute the resulting bundled hash
+		// Compute the resulting bundled hash
 		bundled_hash::<H>(hashes, deposit_address)
 	}
 }
