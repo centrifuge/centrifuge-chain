@@ -62,7 +62,7 @@ pub trait Verifier: Hasher {
 			Some(matches) => matches,
 			None => return false,
 		};
-        
+
 		proofs
 			.iter()
 			.map(|proof| inner::verify_proof::<Self>(&mut matches, proof))
