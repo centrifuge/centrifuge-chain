@@ -27,7 +27,8 @@ use runtime_common::constants::CFG;
 
 use sp_core::{blake2_256, H256};
 
-use runtime_common::{TokenId, NATIVE_TOKEN_TRANSFER_FEE};
+use runtime_common::{TokenId, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
+
 use sp_runtime::DispatchError;
 
 const TEST_THRESHOLD: u32 = 2;
@@ -142,7 +143,7 @@ fn receive_nonfungible() {
 			let token_id = TokenId(U256::one());
 
 			// Create registry, map resource id, and mint nft
-			let registry_id = setup_nft(owner, token_id.clone(), resource_id);
+			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
 			assert_ok!(Chainbridge::whitelist_chain(
@@ -179,7 +180,7 @@ fn transfer_nonfungible_asset() {
 			let token_id = TokenId(U256::one());
 
 			// Create registry, map resource id, and mint nft
-			let registry_id = setup_nft(owner, token_id.clone(), resource_id);
+			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
 			assert_ok!(Chainbridge::whitelist_chain(
@@ -234,7 +235,7 @@ fn execute_remark() {
 			let prop_id = 1;
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
-			let proposal = make_remark_proposal(hash.clone(), r_id);
+			let proposal = mock_remark_proposal(hash.clone(), r_id);
 			let resource = b"PalletBridge.remark".to_vec();
 
 			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
@@ -250,13 +251,14 @@ fn execute_remark() {
 				r_id,
 				Box::new(proposal.clone())
 			));
-			assert_ok!(Chainbridge::acknowledge_proposal(
-				Origin::signed(RELAYER_B),
-				prop_id,
-				src_id,
-				r_id,
-				Box::new(proposal.clone())
-			));
+
+			// assert_ok!(Chainbridge::acknowledge_proposal(
+			// 	Origin::signed(RELAYER_B),
+			// 	prop_id,
+			// 	src_id,
+			// 	r_id,
+			// 	Box::new(proposal.clone())
+			// ));
 
 			event_exists(pallet_bridge::Event::<MockRuntime>::Remark(hash, r_id));
 		})
@@ -402,5 +404,18 @@ fn create_successful_transfer_proposal() {
 				)),
 				mock::Event::Chainbridge(chainbridge::Event::ProposalSucceeded(src_id, prop_id)),
 			]);
+		})
+}
+
+#[test]
+fn modify_native_token_transfer_fees() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let current_fee = Bridge::get_native_token_transfer_fee();
+			assert_eq!(current_fee, 2000 * currency::CFG);
+			let new_fee = 3000 * currency::CFG;
+			assert_ok!(Bridge::set_token_transfer_fee(Origin::signed(1), new_fee));
+			assert_eq!(new_fee, Bridge::token_transfer_fee());
 		})
 }

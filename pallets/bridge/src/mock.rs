@@ -26,6 +26,8 @@ use chainbridge::types::{ChainId, ResourceId};
 
 use codec::Encode;
 
+use common_traits::BigEndian;
+
 use frame_support::{
 	assert_ok, parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -42,18 +44,19 @@ use pallet_registry::{
 	types::{CompleteProof, RegistryInfo},
 };
 
+use proofs::Hasher;
+
 use runtime_common::{
 	AssetInfo, Balance, EthAddress, RegistryId, TokenId, CFG, MILLISECS_PER_DAY,
 	NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE, NFT_TOKEN_TRANSFER_FEE,
 };
 
 use pallet_nft::types::AssetId;
-use pallet_registry::types::MintInfo;
-use sp_core::{blake2_128, H256};
+
+use sp_core::{blake2_128, blake2_256, H256};
 
 use sp_io::TestExternalities;
 
-use common_traits::BigEndian;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Hash, IdentityLookup},
@@ -98,6 +101,16 @@ impl WeightInfo for MockWeightInfo {
 	}
 }
 
+// Bridge hasher for building document root hash (from static proofs).
+struct MockProofVerifier;
+impl Hasher for MockProofVerifier {
+	type Hash = H256;
+
+	fn hash(data: &[u8]) -> Self::Hash {
+		blake2_256(data).into()
+	}
+}
+
 pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
@@ -122,6 +135,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
+		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Event<T>},
@@ -209,7 +223,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = 5;
-	pub const ChainbridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainbridgePalletId: PalletId = PalletId(*b"cb/bridg");
 	pub const ProposalLifetime: u64 = 10;
 }
 
@@ -275,7 +289,6 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
-	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
@@ -284,7 +297,6 @@ parameter_types! {
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
 impl pallet_bridge::Config for MockRuntime {
 	type Event = Event;
-	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<MockRuntime>;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
@@ -407,26 +419,37 @@ pub fn make_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
 	Call::Bridge(crate::Call::remark(hash, r_id))
 }
 
-pub fn make_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
+// Build a dummy transfer proposal.
+pub fn mock_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
 	Call::Bridge(crate::Call::transfer(to, amount, r_id))
 }
 
-// Create a non-fungible token (NFT) for testing.
+// Create non-fungible token (NFT) for testing.
 //
 // This function first creates a registry, set resource id and then mint a NFT.
-pub fn setup_nft(owner: u64, token_id: TokenId, resource_id: ResourceId) -> RegistryId {
+pub fn mock_nft<T: pallet_bridge::Config>(
+	owner: u64,
+	token_id: T::TokenId,
+	resource_id: ResourceId,
+) -> T::RegistryId
+where
+	T: frame_system::Config<Hash = H256>,
+	<T as pallet_bridge_mapping::Config>::Address: From<T::RegistryId>,
+	TokenId: From<<T as pallet_nft::Config>::TokenId>,
+	<T as pallet_nft::Config>::RegistryId: From<RegistryId>,
+{
 	let origin = Origin::signed(owner);
 
 	// Create registry and generate proofs
-	let (asset_id, pre_image, anchor_id, (proofs, static_hashes, doc_root), nft_data, _) =
-		setup_mint::<MockRuntime>(owner, token_id);
+	let (asset_id, pre_image, anchor_id, (proofs, doc_root, static_hashes), nft_data, _) =
+		mock_mint::<MockRuntime>(owner, token_id.into());
 
 	// Commit document root
 	assert_ok!(<pallet_anchors::Pallet<MockRuntime>>::commit(
 		origin.clone(),
 		pre_image,
 		doc_root,
-		<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
+		T::Hashing::hash_of(&0),
 		MILLISECS_PER_DAY + 1
 	));
 
@@ -451,88 +474,24 @@ pub fn setup_nft(owner: u64, token_id: TokenId, resource_id: ResourceId) -> Regi
 		vec![]
 	));
 
-	let registry_id_to_address: EthAddress = registry_id.clone().into();
+	let address = registry_id.clone().into();
 
 	// Register resource in local resource mapping
-	<pallet_bridge_mapping::Pallet<MockRuntime>>::set_resource(
-		resource_id.clone(),
-		registry_id_to_address,
-	);
+	<pallet_bridge_mapping::Pallet<MockRuntime>>::set_resource(resource_id.clone(), address);
 
-	registry_id
+	registry_id.into()
 }
 
-// Create a registry and returns all relevant data
-pub fn setup_mint<T>(
-	owner: T::AccountId,
-	token_id: TokenId,
-) -> (
-	AssetId<RegistryId, TokenId>,
-	T::Hash,
-	T::Hash,
-	(Vec<CompleteProof<H256>>, [H256; 3], T::Hash),
-	AssetInfo,
-	RegistryInfo,
-)
-where
-	T: frame_system::Config<AccountId = u64>
-		+ pallet_registry::Config
-		+ pallet_nft::Config<AssetInfo = AssetInfo>,
-{
-	let metadata = vec![];
-
-	// Anchor data
-	let pre_image = T::Hashing::hash(&[1, 2, 3]);
-	let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
-
-	// Registry info
-	let properties = vec![b"AMOUNT".to_vec()];
-	let registry_info = RegistryInfo {
-		owner_can_burn: false,
-		// Don't include the registry id prop which will be generated in the runtime
-		fields: properties,
-	};
-
-	// Create registry, get registry id. Shouldn't fail.
-	let registry_id = match <Registry as VerifierRegistry<
-		T::AccountId,
-		RegistryId,
-		RegistryInfo,
-		AssetId<RegistryId, TokenId>,
-		AssetInfo,
-		MintInfo<H256, H256>,
-	>>::create_new_registry(owner, registry_info.clone())
-	{
-		Ok(r_id) => r_id,
-		Err(e) => panic!("{:#?}", e),
-	};
-
-	// Proofs data
-	let (proofs, static_hashes, doc_root) = proofs_data::<T>(registry_id.clone(), token_id.clone());
-
-	// Registry data
-	let nft_data = AssetInfo { metadata };
-
-	// Asset id
-	let asset_id = AssetId(registry_id, token_id);
-
-	(
-		asset_id,
-		pre_image,
-		anchor_id,
-		(proofs, static_hashes, doc_root),
-		nft_data,
-		registry_info,
-	)
-}
-
-// Return dummy proofs data useful for testing.
+// Return dummy proofs data.
 //
-// This function returns proofs, static hashes, and document root.
-pub fn proofs_data<T: frame_system::Config>(
+// This function returns mocking proofs, static hashes, and document root hash.
+pub fn mock_proofs<T>(
 	registry_id: RegistryId,
 	token_id: TokenId,
-) -> (Vec<CompleteProof<H256>>, [H256; 3], T::Hash) {
+) -> (Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3])
+where
+	T: frame_system::Config<Hash = H256>,
+{
 	// Encode token into big endian U256
 	let token_enc = token_id.to_big_endian();
 
@@ -553,37 +512,90 @@ pub fn proofs_data<T: frame_system::Config>(
 		},
 		pre_proof.clone(),
 	];
-	let mut leaves: Vec<H256> = proofs
+
+	let mut leaves: Vec<T::Hash> = proofs
 		.iter()
-		.map(|p| proofs::Proof::from(p.clone()).leaf_hash)
+		.map(|proof| proofs::Proof::from(proof.clone()).leaf_hash)
 		.collect();
 	leaves.sort();
 
-	let mut h: Vec<u8> = Vec::with_capacity(64);
-	h.extend_from_slice(&leaves[0][..]);
-	h.extend_from_slice(&leaves[1][..]);
-	let data_root = sp_io::hashing::blake2_256(&h).into();
-	let zk_data_root = sp_io::hashing::blake2_256(&[0]).into();
-	let sig_root = sp_io::hashing::blake2_256(&[0]).into();
-	let static_hashes = [data_root, zk_data_root, sig_root];
-	let doc_root = doc_root::<T>(static_hashes);
+	let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
 
-	(proofs, static_hashes, doc_root)
+	// Calculate static proofs
+	let basic_data_root_hash = MockProofVerifier::hash(&hash);
+	let zk_data_root_hash = MockProofVerifier::hash(&[0]);
+	let signature_root_hash = MockProofVerifier::hash(&[0]);
+	let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
+
+	// Calculate document root hash
+	//
+	// Here's how document's root hash is calculated:
+	//                                doc_root_hash
+	//                               /             \
+	//                signing_root_hash            signature_root_hash
+	//               /                 \
+	//    basic_data_root_hash   zk_data_root_hash
+	let signing_root_hash =
+		proofs::hashing::hash_of::<MockProofVerifier>(basic_data_root_hash, zk_data_root_hash);
+	let doc_root =
+		proofs::hashing::hash_of::<MockProofVerifier>(signing_root_hash, signature_root_hash);
+
+	(proofs, doc_root, static_hashes)
 }
 
-// Hash two hashes
-pub fn hash_of<T: frame_system::Config>(a: H256, b: H256) -> T::Hash {
-	let mut h: Vec<u8> = Vec::with_capacity(64);
-	h.extend_from_slice(&a[..]);
-	h.extend_from_slice(&b[..]);
-	T::Hashing::hash(&h)
-}
+// Create a registry and returns all relevant data
+pub fn mock_mint<T>(
+	owner: T::AccountId,
+	token_id: TokenId,
+) -> (
+	AssetId<RegistryId, TokenId>,
+	T::Hash,
+	T::Hash,
+	(Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3]),
+	AssetInfo,
+	RegistryInfo,
+)
+where
+	T: frame_system::Config<Hash = H256, AccountId = u64>
+		+ pallet_registry::Config
+		+ pallet_nft::Config<AssetInfo = AssetInfo>,
+{
+	let metadata = vec![];
 
-// Generate a document root from static hashes
-pub fn doc_root<T: frame_system::Config>(static_hashes: [H256; 3]) -> T::Hash {
-	let basic_data_root = static_hashes[0];
-	let zk_data_root = static_hashes[1];
-	let signature_root = static_hashes[2];
-	let signing_root = H256::from_slice(hash_of::<T>(basic_data_root, zk_data_root).as_ref());
-	hash_of::<T>(signing_root, signature_root)
+	// Anchor data
+	let pre_image = T::Hashing::hash(&[1, 2, 3]);
+	let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
+
+	// Registry info
+	let properties = vec![b"AMOUNT".to_vec()];
+	let registry_info = RegistryInfo {
+		owner_can_burn: false,
+		// Don't include the registry id prop which will be generated in the runtime
+		fields: properties,
+	};
+
+	// Create registry, get registry id. Shouldn't fail.
+	let registry_id =
+		match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
+			Ok(r_id) => r_id,
+			Err(e) => panic!("{:#?}", e),
+		};
+
+	// Generate dummy proofs data for testing
+	let (proofs, doc_root, static_hashes) = mock_proofs::<T>(registry_id.clone(), token_id.clone());
+
+	// Registry data
+	let nft_data = AssetInfo { metadata };
+
+	// Asset id
+	let asset_id = AssetId(registry_id, token_id);
+
+	(
+		asset_id,
+		pre_image,
+		anchor_id,
+		(proofs, doc_root, static_hashes),
+		nft_data,
+		registry_info,
+	)
 }
