@@ -46,18 +46,18 @@ default = ['std']
 runtime-benchmarks = ["frame-benchmarking"]
 std = [
   'codec/std',
+  'common-traits/std',
   'frame-support/std',
   'frame-system/std',
+  'pallet-anchors/std',
   'pallet-authorship/std',
   'pallet-balances/std',
   'pallet-timestamp/std',
+  'pallet-nft/std',
+  'proofs/std',
   'sp-core/std',
   'sp-io/std',
   'sp-runtime/std',
   'sp-std/std',
-  'pallet-anchors/std',
-  'pallet-nft/std',
-  'proofs/std',
   'unique-assets/std',
-  'common-traits/std'
 ]

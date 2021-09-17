@@ -49,7 +49,7 @@ use runtime_common::{
 	AssetInfo, Balance, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
 };
 
-use sp_core::{H256, blake2_128, blake2_256};
+use sp_core::{blake2_128, blake2_256, H256};
 
 use sp_io::TestExternalities;
 
@@ -302,7 +302,7 @@ impl TestExternalitiesBuilder {
 
 // Return testing proofs.
 //
-// This function returns all relevant data, including dummy proofs, static 
+// This function returns all relevant data, including dummy proofs, static
 // hashes, and the related document root hash.
 pub fn mock_proofs<T: frame_system::Config>(
 	registry_id: RegistryId,
@@ -340,22 +340,24 @@ where
 
 	let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
 
-    // Calculate static proofs
-	let basic_data_root_hash = MockProofVerifier::hash(&hash); 
-	let zk_data_root_hash = MockProofVerifier::hash(&[0]); 
-    let signature_root_hash = MockProofVerifier::hash(&[0]);
-    let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
+	// Calculate static proofs
+	let basic_data_root_hash = MockProofVerifier::hash(&hash);
+	let zk_data_root_hash = MockProofVerifier::hash(&[0]);
+	let signature_root_hash = MockProofVerifier::hash(&[0]);
+	let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
 
-    // Calculate document root hash
-    //
+	// Calculate document root hash
+	//
 	// Here's how document's root hash is calculated:
-	//                                doc_root_hash  
+	//                                doc_root_hash
 	//                               /             \
 	//                signing_root_hash            signature_root_hash
 	//               /                 \
 	//    basic_data_root_hash   zk_data_root_hash
-    let signing_root_hash = proofs::hashing::hash_of::<MockProofVerifier>(basic_data_root_hash, zk_data_root_hash);
-    let doc_root = proofs::hashing::hash_of::<MockProofVerifier>(signing_root_hash, signature_root_hash);
+	let signing_root_hash =
+		proofs::hashing::hash_of::<MockProofVerifier>(basic_data_root_hash, zk_data_root_hash);
+	let doc_root =
+		proofs::hashing::hash_of::<MockProofVerifier>(signing_root_hash, signature_root_hash);
 
 	(proofs, doc_root, static_hashes)
 }
@@ -392,15 +394,14 @@ where
 	};
 
 	// Create registry, get registry id. Shouldn't fail.
-	let registry_id = match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone())
-	{
-		Ok(r_id) => r_id,
-		Err(e) => panic!("{:#?}", e),
-	};
+	let registry_id =
+		match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
+			Ok(r_id) => r_id,
+			Err(e) => panic!("{:#?}", e),
+		};
 
 	// Generate dummy proofs data for testing
-	let (proofs, doc_root, static_hashes) =
-		mock_proofs::<T>(registry_id.clone(), token_id.clone());
+	let (proofs, doc_root, static_hashes) = mock_proofs::<T>(registry_id.clone(), token_id.clone());
 
 	// Registry data
 	let nft_data = AssetInfo { metadata };

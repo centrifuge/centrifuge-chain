@@ -285,12 +285,7 @@ pub mod pallet {
 			// Internal mint validates proofs and modifies state or returns error
 			let asset_id = AssetId(registry_id.clone(), token_id.clone());
 
-			<Self as VerifierRegistry>::mint(
-                who, 
-                owner_account, 
-                asset_id, 
-                asset_info, 
-                mint_info)?;
+			<Self as VerifierRegistry>::mint(who, owner_account, asset_id, asset_info, mint_info)?;
 
 			// Mint event
 			Self::deposit_event(Event::Mint(registry_id, token_id));
@@ -333,22 +328,21 @@ impl<T: Config> Pallet<T> {
 			None => Err(Error::<T>::DocumentNotAnchored),
 		}?;
 
-        let doc_root = H256::from_slice(root.as_ref());
-        Ok(doc_root)
+		let doc_root = H256::from_slice(root.as_ref());
+		Ok(doc_root)
 		//Ok(<T::Hashing as Hash>::hash(root.as_ref()))
 	}
 }
 
 // Implement verifier registry trait for the pallet
 impl<T: Config> VerifierRegistry for Pallet<T> {
-
-    type AccountId = T::AccountId;
+	type AccountId = T::AccountId;
 	type RegistryId = T::RegistryId;
 	type RegistryInfo = RegistryInfo;
 	type AssetId = AssetId<T::RegistryId, T::TokenId>;
 	type AssetInfo = T::AssetInfo;
 	type MintInfo = MintInfo<T::Hash, H256>;
-	
+
 	// Registries with identical RegistryInfo may exist
 	fn create_new_registry(
 		caller: T::AccountId,
@@ -406,7 +400,9 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
 		// therefore be invalid. The order of proofs is assumed to be the same order
 		// as the registry fields.
 		ensure!(
-			registry_info.fields.iter()
+			registry_info
+				.fields
+				.iter()
 				.zip(mint_info.proofs.iter().map(|p| &p.property))
 				.fold(true, |acc, (field, prop)| acc && (field == prop)),
 			Error::<T>::InvalidProofs
@@ -419,15 +415,12 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
 		let doc_root = Self::get_document_root(mint_info.anchor_id)?;
 
 		// Generate leaf hashes and turn them into 'proofs::Proof' type for validation call
-		let proofs = mint_info.proofs.into_iter()
+		let proofs = mint_info
+			.proofs
+			.into_iter()
 			.map(|proof| {
 				// Generate leaf hash from property ++ value ++ salt
-//				proof.property.extend(proof.value);
-//				proof.property.extend(&proof.salt);
-//                let leaf_hash = sp_io::hashing::keccak_256(&proof.property);
-
-//				proofs::Proof::new(leaf_hash, proof.hashes)
-                proof.into()
+				proof.into()
 			})
 			.collect();
 

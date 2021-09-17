@@ -27,20 +27,19 @@ use frame_support::{dispatch::DispatchError, weights::Weight};
 /// A general interface for registries that require some sort of verification to mint their
 /// underlying NFTs. A substrate module can implement this trait.
 pub trait VerifierRegistry {
-
-    /// This should typically match the implementing substrate Module trait's AccountId type.
-    type AccountId;
-    /// The id type of a registry.
-    type RegistryId;
-    /// Metadata for an instance of a registry.
-    type RegistryInfo;
-    /// The id type of an NFT.
-    type AssetId;
-    /// The data that defines the NFT held by a registry. Asset info must contain its
-    /// associated registry id.
-    type AssetInfo;
-    /// All data necessary to determine if a requested mint is valid or not.
-    type MintInfo;
+	/// This should typically match the implementing substrate Module trait's AccountId type.
+	type AccountId;
+	/// The id type of a registry.
+	type RegistryId;
+	/// Metadata for an instance of a registry.
+	type RegistryInfo;
+	/// The id type of an NFT.
+	type AssetId;
+	/// The data that defines the NFT held by a registry. Asset info must contain its
+	/// associated registry id.
+	type AssetInfo;
+	/// All data necessary to determine if a requested mint is valid or not.
+	type MintInfo;
 
 	/// Create a new instance of a registry with the associated registry info.
 	fn create_new_registry(
