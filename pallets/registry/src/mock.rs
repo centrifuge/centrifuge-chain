@@ -87,7 +87,6 @@ impl Hasher for MockProofVerifier {
 	}
 }
 
-
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
 // ----------------------------------------------------------------------------
@@ -301,9 +300,10 @@ impl TestExternalitiesBuilder {
 // Helper functions
 // ----------------------------------------------------------------------------
 
-// Return dummy proofs data useful for testing.
+// Return testing proofs.
 //
-// This function returns mocking proofs, static hashes, and document root hash.
+// This function returns all relevant data, including dummy proofs, static 
+// hashes, and the related document root hash.
 pub fn mock_proofs<T: frame_system::Config>(
 	registry_id: RegistryId,
 	token_id: TokenId,
@@ -341,10 +341,10 @@ where
 	let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
 
     // Calculate static proofs
-	let basic_data_root_hash = sp_io::hashing::blake2_256(&hash).into();
-	let zk_data_root_hash = sp_io::hashing::blake2_256(&[0]).into();
-	let signature_root_hash = sp_io::hashing::blake2_256(&[0]).into();
-	let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
+	let basic_data_root_hash = MockProofVerifier::hash(&hash); 
+	let zk_data_root_hash = MockProofVerifier::hash(&[0]); 
+    let signature_root_hash = MockProofVerifier::hash(&[0]);
+    let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
 
     // Calculate document root hash
     //
@@ -360,7 +360,7 @@ where
 	(proofs, doc_root, static_hashes)
 }
 
-// Create a registry and returns all relevant data
+// Create a dummy registry and return all relevant data
 pub fn setup_mint<T>(
 	owner: T::AccountId,
 	token_id: TokenId,
