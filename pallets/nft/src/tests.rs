@@ -17,11 +17,7 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{
-	mock::*,
-	types::AssetId, // ProofVerifier,
-	*,
-};
+use crate::{mock::*, types::AssetId, *};
 
 use codec::Encode;
 use frame_support::{assert_err, assert_ok};

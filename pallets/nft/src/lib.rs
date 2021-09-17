@@ -227,7 +227,7 @@ pub mod pallet {
 		/// Ownership of the asset has been transferred to the account.
 		Transferred(AssetId<T::RegistryId, T::TokenId>, T::AccountId),
 
-		DepositAsset(<T as frame_system::Config>::Hash),
+		DepositAsset(T::Hash),
 	}
 
 	// ------------------------------------------------------------------------

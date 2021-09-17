@@ -83,7 +83,7 @@ pub(crate) struct ProofVerifier {
 	///
 	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
 	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
-	static_proofs: [H256; 3],
+	static_proofs: [<Self as Hasher>::Hash; 3],
 }
 
 // Proof verifier implementation block
@@ -98,7 +98,7 @@ impl ProofVerifier {
 	///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
 	///   2. The ZK root hash (with index ['ZK_DATA_ROOT_HASH'])
 	///   3. The signature root hash (with index ['SIGNATURE_DATA_ROOT_HASH'])
-	pub fn new(static_proofs: [H256; 3]) -> Self {
+	pub fn new(static_proofs: [<Self as Hasher>::Hash; 3]) -> Self {
 		ProofVerifier { static_proofs }
 	}
 }
