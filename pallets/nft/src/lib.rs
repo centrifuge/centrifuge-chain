@@ -123,7 +123,7 @@ use frame_support::{
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 
 use sp_core::H256;
-use sp_runtime::{SaturatedConversion, traits::Member};
+use sp_runtime::{traits::Member, SaturatedConversion};
 
 use sp_std::fmt::Debug;
 
@@ -141,7 +141,7 @@ use unique_assets::traits::{Mintable, Unique};
 #[frame_support::pallet]
 pub mod pallet {
 
-    use super::*;
+	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
@@ -343,18 +343,19 @@ pub mod pallet {
 			// Return anchored document root hash
 			let anchor_data = <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id)
 				.ok_or(Error::<T>::DocumentNotAnchored)?;
-        
+
 			// Create a proof verifier with static proofs
 			let proof_verifier = ProofVerifier::new(static_proofs);
 
 			// Validate the proofs again the provided document root
 			ensure!(
-				proof_verifier.verify_proofs(H256::from_slice(anchor_data.doc_root.as_ref()), &proofs),
+				proof_verifier
+					.verify_proofs(H256::from_slice(anchor_data.doc_root.as_ref()), &proofs),
 				Error::<T>::InvalidProofs
 			);
 
-            // Returns a Ethereum-compatible Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
-            let bundled_hash = Self::get_bundled_hash_from_proofs(proofs, deposit_address);
+			// Returns a Ethereum-compatible Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
+			let bundled_hash = Self::get_bundled_hash_from_proofs(proofs, deposit_address);
 			Self::deposit_event(Event::<T>::DepositAsset(bundled_hash));
 
 			let metadata = bundled_hash.as_ref().to_vec();
@@ -385,17 +386,19 @@ pub mod pallet {
 // - Private functions: These are private helpers or utilities that cannot be called
 //   from other pallets.
 impl<T: Config> Pallet<T> {
-
-    /// Returns a Ethereum compatible (i.e. Keccak-based) hash.
-    ///
-    /// This function generate a Keccak bundle of deposit_address + 
-    /// hash(keccak(name+value+salt)) of each proof provided.
-    fn get_bundled_hash_from_proofs(proofs: Vec<Proof<H256>>, deposit_address: [u8; 20]) -> T::Hash {
-        let bundled_hash = bundled_hash_from_proofs::<BundleHasher>(proofs, deposit_address);
-        let mut result: T::Hash = Default::default();
-        result.as_mut().copy_from_slice(&bundled_hash[..]);
-        result
-    }
+	/// Returns a Ethereum compatible (i.e. Keccak-based) hash.
+	///
+	/// This function generate a Keccak bundle of deposit_address +
+	/// hash(keccak(name+value+salt)) of each proof provided.
+	fn get_bundled_hash_from_proofs(
+		proofs: Vec<Proof<H256>>,
+		deposit_address: [u8; 20],
+	) -> T::Hash {
+		let bundled_hash = bundled_hash_from_proofs::<BundleHasher>(proofs, deposit_address);
+		let mut result: T::Hash = Default::default();
+		result.as_mut().copy_from_slice(&bundled_hash[..]);
+		result
+	}
 }
 
 // Implement unique trait for pallet

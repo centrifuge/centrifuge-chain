@@ -19,7 +19,7 @@
 
 use codec::{Decode, Encode};
 
-use sp_core::{H256, blake2_256, keccak_256};
+use sp_core::{blake2_256, keccak_256, H256};
 use sp_runtime::sp_std::vec::Vec;
 
 // Routines for building and validating proofs
@@ -77,10 +77,9 @@ impl Hasher for ProofVerifier {
 
 // Implement verifier trait for registry's proof verifier
 impl Verifier for ProofVerifier {
-
 	// Calculate a final hash from two given hashes
 	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
-	    proofs::hashing::sort_hash_of::<Self>(a, b)
+		proofs::hashing::sort_hash_of::<Self>(a, b)
 	}
 
 	// Calculate initial matches.
@@ -93,11 +92,11 @@ impl Verifier for ProofVerifier {
 	//
 	//
 	// Here's how document's root hash is calculated:
-	//                      DocumentRoot
-	//                      /          \
-	//          Signing Root            Signature Root
-	//          /          \
-	//   data root 1     data root 2
+	//                                doc_root_hash
+	//                               /             \
+	//                signing_root_hash            signature_root_hash
+	//               /                 \
+	//    basic_data_root_hash   zk_data_root_hash
 	fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>> {
 		let mut matches: Vec<Self::Hash> = vec![];
 
@@ -108,12 +107,14 @@ impl Verifier for ProofVerifier {
 		// calculate signing root hash (from data hashes)
 		matches.push(basic_data_root_hash);
 		matches.push(zk_data_root_hash);
-		let signing_root_hash = proofs::hashing::hash_of::<Self>(basic_data_root_hash, zk_data_root_hash);
+		let signing_root_hash =
+			proofs::hashing::hash_of::<Self>(basic_data_root_hash, zk_data_root_hash);
 
 		// calculate document root hash (from signing and signature hashes)
 		matches.push(signing_root_hash);
 		matches.push(signature_root_hash);
-		let calculated_doc_root_hash = proofs::hashing::hash_of::<Self>(signing_root_hash, signature_root_hash);
+		let calculated_doc_root_hash =
+			proofs::hashing::hash_of::<Self>(signing_root_hash, signature_root_hash);
 
 		// check if calculate and given document root hashes are equivalent
 		if calculated_doc_root_hash == doc_root {
