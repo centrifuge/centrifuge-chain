@@ -109,7 +109,9 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ MaxEncodedLen
-			+ FixedPointOperand;
+			+ FixedPointOperand
+			+ From<u64>
+			+ TryInto<u64>;
 
 		/// A fixed-point number which represents the value of
 		/// one currency type in terms of another.
@@ -222,8 +224,16 @@ pub mod pallet {
 		WipedOut,
 		/// The provided solution is not a valid one
 		InvalidSolution,
-		/// Attempted to solve a pool which is not closing,
+		/// Attempted to solve a pool which is not closing
 		NotClosing,
+		/// Insufficient currency available for desired operation
+		InsufficientCurrency,
+		/// Insufficient reserve available for desired operation
+		InsufficientReserve,
+		/// Subordination Ratio validation failed
+		SubordinationRatioViolated,
+		/// Generic error for invalid input data provided
+		InvalidData,
 	}
 
 	#[pallet::call]
@@ -473,8 +483,9 @@ pub mod pallet {
 					&epoch_targets,
 					&tranche_ratios,
 					&current_tranche_values,
-					nav,
-				) {
+				)
+				.is_ok()
+				{
 					Self::do_execute_epoch(pool_id, &epoch_targets, &full_epoch)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				} else {
@@ -513,17 +524,15 @@ pub mod pallet {
 					.map(|_| Zero::zero())
 					.collect::<Vec<_>>();
 
-				let nav = Zero::zero();
-
 				ensure!(
 					Self::is_epoch_valid(
 						epoch_reserve,
 						pool.max_reserve,
 						&target,
 						&tranche_ratios,
-						&current_tranche_values,
-						nav,
-					),
+						&current_tranche_values
+					)
+					.is_ok(),
 					Error::<T>::InvalidSolution
 				);
 				pool.closing_epoch = None;
@@ -611,8 +620,7 @@ pub mod pallet {
 			target: &[(T::Balance, T::Balance)],
 			tranche_ratios: &[Perquintill],
 			current_tranche_values: &[T::Balance],
-			epoch_nav: T::Balance,
-		) -> bool {
+		) -> DispatchResult {
 			let acc_supply: T::Balance = target
 				.iter()
 				.fold(Zero::zero(), |sum: T::Balance, tranche| {
@@ -626,10 +634,7 @@ pub mod pallet {
 				});
 
 			let currency_available: T::Balance = acc_supply.checked_add(&reserve).unwrap();
-			let core_res = Self::validate_core_constraints(currency_available, acc_redeem);
-			if !core_res {
-				return false;
-			}
+			Self::validate_core_constraints(currency_available, acc_redeem)?;
 
 			let new_reserve = currency_available.checked_sub(&acc_redeem).unwrap();
 
@@ -638,23 +643,17 @@ pub mod pallet {
 				max_reserve,
 				tranche_ratios,
 				current_tranche_values,
-				epoch_nav,
 			)
 		}
 
 		fn validate_core_constraints(
 			currency_available: T::Balance,
 			currency_out: T::Balance,
-		) -> bool {
+		) -> DispatchResult {
 			if currency_out > currency_available {
-				return false;
+				Err(Error::<T>::InsufficientCurrency)?
 			}
-
-			// Not sure if we need to add here a check to validate max order
-			// Since the close_epoch is storing these values if validation doesn't succeed.
-			// Then jumping on the submission period for best solution will not make sense to execute this
-			// validation, since it will fail.
-			true
+			Ok(())
 		}
 
 		fn validate_pool_constraints(
@@ -662,14 +661,13 @@ pub mod pallet {
 			max_reserve: T::Balance,
 			tranche_ratios: &[Perquintill],
 			current_tranche_values: &[T::Balance],
-			_nav: T::Balance,
-		) -> bool {
+		) -> DispatchResult {
 			if tranche_ratios.len() != current_tranche_values.len() {
-				return false;
+				Err(Error::<T>::InvalidData)?
 			}
 
 			if reserve > max_reserve {
-				return false;
+				Err(Error::<T>::InsufficientReserve)?
 			}
 
 			let mut count = 0;
@@ -681,25 +679,14 @@ pub mod pallet {
 						sum.checked_add(tvs).unwrap()
 					});
 
-				let acc_sub_value_u128 = match TryInto::<u128>::try_into(acc_sub_value).ok() {
-					Some(x) => x,
-					None => return false,
-				};
-
-				let tv_u128 = match TryInto::<u128>::try_into(*tv).ok() {
-					Some(x) => x,
-					None => return false,
-				};
-
-				let sub_ratio = acc_sub_value_u128 as f64 / tv_u128 as f64;
-				let calc_sub: Perquintill = Perquintill::from_percent((sub_ratio * 100.00) as u64);
+				let calc_sub: Perquintill = Perquintill::from_rational(acc_sub_value, *tv);
 				if calc_sub < tranche_ratios[count] {
-					return false;
+					Err(Error::<T>::SubordinationRatioViolated)?
 				}
 				count = count + 1;
 			}
 
-			true
+			Ok(())
 		}
 
 		fn do_execute_epoch(

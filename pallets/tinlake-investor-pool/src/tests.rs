@@ -1,5 +1,6 @@
 use super::*;
 use crate::mock::*;
+use frame_support::{assert_noop, assert_ok};
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
 
@@ -42,18 +43,16 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		let current_tranche_values = [80, 20, 5, 5];
-		let nav = Zero::zero();
 
-		assert_eq!(
+		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(
 				39,
 				40,
 				&epoch_targets,
 				&tranche_ratios,
-				&current_tranche_values,
-				nav
+				&current_tranche_values
 			),
-			false
+			Error::<Test>::InsufficientCurrency
 		);
 	});
 }
@@ -97,18 +96,16 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect::<Vec<_>>();
 
 		let current_tranche_values = [80, 20, 5, 5];
-		let nav = Zero::zero();
 
-		assert_eq!(
+		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(
 				40,
 				5,
 				&epoch_targets,
 				&tranche_ratios,
-				&current_tranche_values,
-				nav
+				&current_tranche_values
 			),
-			false
+			Error::<Test>::InsufficientReserve
 		);
 	});
 }
@@ -154,18 +151,16 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 		let current_tranche_values = [80, 20, 5, 5];
 		let max_reserve = 150;
 		let current_reserve = 50;
-		let nav = Zero::zero();
 
-		assert_eq!(
+		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(
 				current_reserve,
 				max_reserve,
 				&epoch_targets,
 				&tranche_ratios,
-				&current_tranche_values,
-				nav
+				&current_tranche_values
 			),
-			false
+			Error::<Test>::SubordinationRatioViolated
 		);
 	});
 }
@@ -211,18 +206,13 @@ fn pool_constraints_pass() {
 		let current_tranche_values = [80, 20, 5, 5];
 		let max_reserve = 150;
 		let current_reserve = 50;
-		let nav = Zero::zero();
 
-		assert_eq!(
-			TinlakeInvestorPool::is_epoch_valid(
-				current_reserve,
-				max_reserve,
-				&epoch_targets,
-				&tranche_ratios,
-				&current_tranche_values,
-				nav
-			),
-			true
-		);
+		assert_ok!(TinlakeInvestorPool::is_epoch_valid(
+			current_reserve,
+			max_reserve,
+			&epoch_targets,
+			&tranche_ratios,
+			&current_tranche_values
+		));
 	});
 }
