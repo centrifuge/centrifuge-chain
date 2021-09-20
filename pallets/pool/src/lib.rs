@@ -53,7 +53,11 @@ pub mod pallet {
 			+ Copy
 			+ AtLeast32Bit;
 
-		type LoanID: Parameter + Copy + IsType<<Self as pallet_nft::Config>::TokenId>;
+		type LoanID: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Copy
+			+ IsType<<Self as pallet_nft::Config>::TokenId>;
 	}
 
 	/// Stores the PoolInfo against a poolID
@@ -83,7 +87,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
-		#[pallet::weight(1_00_000)]
+		#[pallet::weight(100_000)]
 		pub fn create_pool(origin: OriginFor<T>, name: String) -> DispatchResult {
 			let creator = ensure_signed(origin)?;
 			let pd = PoolData { creator, name };

@@ -3,6 +3,7 @@
 use super::*;
 use codec::{Decode, Encode};
 use core::marker::PhantomData;
+use frame_support::sp_runtime::app_crypto::sp_core::U256;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::{
 	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -137,5 +138,11 @@ impl common_traits::BigEndian<Vec<u8>> for TokenId {
 		let mut data = vec![0; 32];
 		self.0.to_big_endian(&mut data);
 		data
+	}
+}
+
+impl From<U256> for TokenId {
+	fn from(v: U256) -> Self {
+		Self(v)
 	}
 }

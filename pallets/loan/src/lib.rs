@@ -19,6 +19,7 @@ pub use pallet::*;
 use pallet_nft::types::AssetId;
 use pallet_registry::traits::VerifierRegistry;
 use pallet_registry::types::{MintInfo, RegistryInfo};
+use sp_core::U256;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::convert::TryInto;
 use unique_assets::traits::{Mintable, Unique};
@@ -34,16 +35,17 @@ pub mod math;
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanInfo<Rate, Amount, Moment> {
+pub struct LoanInfo<Rate, Amount, Moment, AssetId> {
 	ceiling: Amount,
 	borrowed_amount: Amount,
 	rate_per_sec: Rate,
 	cumulative_rate: Rate,
 	normalised_debt: Amount,
 	last_updated: Moment,
+	asset_id: AssetId,
 }
 
-impl<Rate, Amount, Moment> LoanInfo<Rate, Amount, Moment>
+impl<Rate, Amount, Moment, AssetId> LoanInfo<Rate, Amount, Moment, AssetId>
 where
 	Amount: PartialOrd + sp_arithmetic::traits::Zero,
 {
@@ -69,7 +71,7 @@ pub mod pallet {
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
 	use sp_arithmetic::FixedPointNumber;
-	use sp_runtime::traits::AccountIdConversion;
+	use sp_core::U256;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -107,20 +109,6 @@ pub mod pallet {
 		type LoanPalletId: Get<PalletId>;
 	}
 
-	// Creates a new loan nft registry per pool if not already present
-	#[pallet::type_value]
-	pub fn DefaultLoanNftRegistryPerPool<T: Config>() -> RegistryIDOf<T> {
-		let loan_pallet_id = T::LoanPalletId::get().into_account();
-
-		// ensure owner can burn the nft when the loan is closed
-		let registry_info = RegistryInfo {
-			owner_can_burn: true,
-			fields: vec![],
-		};
-
-		T::VaRegistry::create_new_registry(loan_pallet_id, registry_info)
-	}
-
 	/// Stores the loan nft registry ID against
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_nft_registry)]
@@ -135,13 +123,7 @@ pub mod pallet {
 	/// Stores the next loan tokenID to be issued
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_nft_token_id)]
-	pub(super) type NextLoanNftTokenID<T: Config> = StorageValue<_, TokenIdOf<T>, ValueQuery>;
-
-	/// Stores the pool value against the poolID.
-	#[pallet::storage]
-	#[pallet::getter(fn get_pool_value)]
-	pub(super) type PoolValue<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolID, T::Amount, OptionQuery>;
+	pub(super) type NextLoanNftTokenID<T: Config> = StorageValue<_, U256, ValueQuery>;
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
@@ -152,7 +134,7 @@ pub mod pallet {
 		T::PoolID,
 		Blake2_128Concat,
 		T::LoanID,
-		LoanInfo<T::Rate, T::Amount, T::Moment>,
+		LoanInfo<T::Rate, T::Amount, T::Moment, AssetIdOf<T>>,
 		OptionQuery,
 	>;
 
@@ -200,6 +182,9 @@ pub mod pallet {
 
 		/// Emits when the nft is not an acceptable asset
 		ErrNotAValidAsset,
+
+		/// Emits when the nft token nonce is overflowed
+		ErrNftTokenNonceOverflowed,
 	}
 
 	#[pallet::call]
@@ -255,17 +240,14 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	/// returns the pool value associated with pool id.
-	pub fn pool_value(pool_id: T::PoolID) -> Option<T::Amount> {
-		PoolValue::<T>::get(pool_id)
-	}
-
 	/// returns the ceiling of the given loan under a given pool.
 	pub fn ceiling(pool_id: T::PoolID, loan_id: T::LoanID) -> Option<T::Amount> {
 		let maybe_loan_info = Loan::<T>::get(pool_id, loan_id);
 		maybe_loan_info.map(|loan_info| loan_info.ceiling)
 	}
 
+	/// fetches the loan nft registry for a given pool. If missing, then will create one,
+	/// update the state and returns the newly created nft registry
 	fn fetch_or_create_loan_nft_registry_for_pool(pool_id: T::PoolID) -> T::RegistryId {
 		match PoolToLoanNftRegistry::<T>::get(pool_id) {
 			Some(registry_id) => registry_id,
@@ -295,8 +277,7 @@ impl<T: Config> Pallet<T> {
 		asset_id: AssetIdOf<T>,
 	) -> Result<T::LoanID, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
-		let owner =
-			T::NftRegistry::owner_of(asset_id.clone()).ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
+		let owner = T::NftRegistry::owner_of(asset_id).ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
 		ensure!(owner == asset_owner, Error::<T>::ErrNotNFTOwner);
 
 		// check if the registry is not an loan nft registry
@@ -307,9 +288,10 @@ impl<T: Config> Pallet<T> {
 
 		// create new loan nft
 		let loan_pallet_account: AccountIdOf<T> = T::LoanPalletId::get().into_account();
-		let loan_id = NextLoanNftTokenID::<T>::get();
+		let token_nonce = NextLoanNftTokenID::<T>::get();
+		let loan_nft_id: T::TokenId = token_nonce.into();
 		let loan_nft_registry = Self::fetch_or_create_loan_nft_registry_for_pool(pool_id);
-		let loan_asset_id = AssetId(loan_nft_registry, loan_id);
+		let loan_asset_id = AssetId(loan_nft_registry, loan_nft_id);
 		let asset_info = Default::default();
 		T::NftRegistry::mint(
 			loan_pallet_account.clone(),
@@ -318,9 +300,30 @@ impl<T: Config> Pallet<T> {
 			asset_info,
 		)?;
 
+		// update the next token nonce
+		let next_token_id = token_nonce
+			.checked_add(U256::one())
+			.ok_or(Error::<T>::ErrNftTokenNonceOverflowed)?;
+		NextLoanNftTokenID::<T>::set(next_token_id);
+
 		// lock asset nft
 		T::NftRegistry::transfer(asset_owner, loan_pallet_account, asset_id)?;
-		Ok(loan_id.into())
+		let timestamp = <pallet_timestamp::Pallet<T>>::get();
+		let loan_id: T::LoanID = loan_nft_id.into();
+		Loan::<T>::insert(
+			pool_id,
+			loan_id,
+			LoanInfo {
+				ceiling: Zero::zero(),
+				borrowed_amount: Zero::zero(),
+				rate_per_sec: Zero::zero(),
+				cumulative_rate: Zero::zero(),
+				normalised_debt: Zero::zero(),
+				last_updated: timestamp,
+				asset_id,
+			},
+		);
+		Ok(loan_id)
 	}
 
 	pub fn borrow(pool_id: T::PoolID, loan_id: T::LoanID, amount: T::Amount) -> DispatchResult {
