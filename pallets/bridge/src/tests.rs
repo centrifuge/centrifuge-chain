@@ -277,7 +277,7 @@ fn execute_remark_with_bad_origin() {
 				hash,
 				r_id
 			));
-            
+
 			// Don't allow any signed origin except from chainbridge addr
 			assert_noop!(
 				Bridge::remark(Origin::signed(RELAYER_A), hash, r_id),

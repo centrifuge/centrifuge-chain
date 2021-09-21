@@ -187,7 +187,7 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
-        + chainbridge::Config
+		+ chainbridge::Config
 		+ pallet_balances::Config
 		+ pallet_bridge_mapping::Config
 		+ pallet_fees::Config
