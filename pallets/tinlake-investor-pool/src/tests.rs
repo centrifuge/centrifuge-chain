@@ -1,6 +1,7 @@
 use super::*;
 use crate::mock::*;
 use frame_support::{assert_noop, assert_ok};
+use runtime_common::CurrencyId;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
 
@@ -37,20 +38,32 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let epoch_targets =
 			TinlakeInvestorPool::calculate_epoch_transfers(&tranche_prices, &tranches).unwrap();
 
-		let tranche_ratios = tranches
+		let pool = &PoolDetails {
+			owner: Zero::zero(),
+			currency: CurrencyId::Usd,
+			tranches: tranches.into(),
+			current_epoch: Zero::zero(),
+			last_epoch_closed: 0,
+			last_epoch_executed: Zero::zero(),
+			closing_epoch: None,
+			max_reserve: 40,
+			available_reserve: Zero::zero(),
+			total_reserve: 39,
+		};
+
+		let full_solution = epoch_targets
 			.iter()
-			.map(|tranche| tranche.min_subordination_ratio)
+			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
 		let current_tranche_values = [80, 20, 5, 5];
 
 		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(
-				39,
-				40,
+				pool,
 				&epoch_targets,
-				&tranche_ratios,
-				&current_tranche_values
+				&current_tranche_values,
+				&full_solution
 			),
 			Error::<Test>::InsufficientCurrency
 		);
@@ -90,20 +103,32 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let epoch_targets =
 			TinlakeInvestorPool::calculate_epoch_transfers(&tranche_prices, &tranches).unwrap();
 
-		let tranche_ratios = tranches
+		let pool = &PoolDetails {
+			owner: Zero::zero(),
+			currency: CurrencyId::Usd,
+			tranches: tranches.into(),
+			current_epoch: Zero::zero(),
+			last_epoch_closed: 0,
+			last_epoch_executed: Zero::zero(),
+			closing_epoch: None,
+			max_reserve: 5,
+			available_reserve: Zero::zero(),
+			total_reserve: 40,
+		};
+
+		let full_solution = epoch_targets
 			.iter()
-			.map(|tranche| tranche.min_subordination_ratio)
+			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
 		let current_tranche_values = [80, 20, 5, 5];
 
 		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(
-				40,
-				5,
+				pool,
 				&epoch_targets,
-				&tranche_ratios,
-				&current_tranche_values
+				&current_tranche_values,
+				&full_solution
 			),
 			Error::<Test>::InsufficientReserve
 		);
@@ -143,22 +168,32 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 		let epoch_targets =
 			TinlakeInvestorPool::calculate_epoch_transfers(&tranche_prices, &tranches).unwrap();
 
-		let tranche_ratios = tranches
+		let pool = &PoolDetails {
+			owner: Zero::zero(),
+			currency: CurrencyId::Usd,
+			tranches: tranches.into(),
+			current_epoch: Zero::zero(),
+			last_epoch_closed: 0,
+			last_epoch_executed: Zero::zero(),
+			closing_epoch: None,
+			max_reserve: 150,
+			available_reserve: Zero::zero(),
+			total_reserve: 50,
+		};
+
+		let full_solution = epoch_targets
 			.iter()
-			.map(|tranche| tranche.min_subordination_ratio)
+			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
 		let current_tranche_values = [80, 20, 5, 5];
-		let max_reserve = 150;
-		let current_reserve = 50;
 
 		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(
-				current_reserve,
-				max_reserve,
+				pool,
 				&epoch_targets,
-				&tranche_ratios,
-				&current_tranche_values
+				&current_tranche_values,
+				&full_solution
 			),
 			Error::<Test>::SubordinationRatioViolated
 		);
@@ -198,21 +233,31 @@ fn pool_constraints_pass() {
 		let epoch_targets =
 			TinlakeInvestorPool::calculate_epoch_transfers(&tranche_prices, &tranches).unwrap();
 
-		let tranche_ratios = tranches
+		let pool = &PoolDetails {
+			owner: Zero::zero(),
+			currency: CurrencyId::Usd,
+			tranches: tranches.into(),
+			current_epoch: Zero::zero(),
+			last_epoch_closed: 0,
+			last_epoch_executed: Zero::zero(),
+			closing_epoch: None,
+			max_reserve: 150,
+			available_reserve: Zero::zero(),
+			total_reserve: 50,
+		};
+
+		let full_solution = epoch_targets
 			.iter()
-			.map(|tranche| tranche.min_subordination_ratio)
+			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
 		let current_tranche_values = [80, 20, 5, 5];
-		let max_reserve = 150;
-		let current_reserve = 50;
 
 		assert_ok!(TinlakeInvestorPool::is_epoch_valid(
-			current_reserve,
-			max_reserve,
+			pool,
 			&epoch_targets,
-			&tranche_ratios,
-			&current_tranche_values
+			&current_tranche_values,
+			&full_solution
 		));
 	});
 }
