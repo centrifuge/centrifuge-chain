@@ -608,11 +608,12 @@ pub mod pallet {
 				},
 			);
 
-			let acc_redeem: T::Balance = target
-				.iter()
-				.fold(Zero::zero(), |sum: T::Balance, tranche| {
-					sum.checked_add(&tranche.1).unwrap()
-				});
+			let acc_redeem: T::Balance = target.iter().zip(solution.iter()).fold(
+				Zero::zero(),
+				|sum: T::Balance, (tranche, sol)| {
+					sum.checked_add(&sol.1.mul_floor(tranche.1)).unwrap()
+				},
+			);
 
 			let currency_available: T::Balance =
 				acc_supply.checked_add(&pool_details.total_reserve).unwrap();
