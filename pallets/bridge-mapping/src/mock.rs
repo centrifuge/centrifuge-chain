@@ -12,7 +12,10 @@
 // GNU General Public License for more details.
 
 use crate::{self as pallet_bridge_mapping, *};
-use chainbridge::types::{ChainId, ResourceId};
+use chainbridge::{
+    constants::RelayerVoteThreshold,
+    types::{ChainId, ResourceId}
+};
 use frame_support::parameter_types;
 use frame_support::PalletId;
 use frame_support::{
@@ -166,6 +169,7 @@ parameter_types! {
 	pub const MockChainId: u8 = 5;
 	pub const ChainbridgePalletId: PalletId = PalletId(*b"chnbrdge");
 	pub const ProposalLifetime: u64 = 10;
+    pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
@@ -176,6 +180,7 @@ impl chainbridge::Config for Test {
 	type ChainId = MockChainId;
 	type PalletId = ChainbridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
+    type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
 }
 

@@ -22,7 +22,10 @@
 
 use crate::{self as pallet_bridge, traits::WeightInfo};
 
-use chainbridge::types::{ChainId, ResourceId};
+use chainbridge::{
+    constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
+    types::{ChainId, ResourceId}
+};
 
 use codec::Encode;
 
@@ -47,8 +50,8 @@ use pallet_registry::{
 use proofs::Hasher;
 
 use runtime_common::{
-	AssetInfo, Balance, EthAddress, RegistryId, TokenId, CFG, MILLISECS_PER_DAY,
-	NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE, NFT_TOKEN_TRANSFER_FEE,
+	AssetInfo, Balance, EthAddress, RegistryId, TokenId, 
+    constants::{CFG, MILLISECS_PER_DAY,NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE, NFT_TOKEN_TRANSFER_FEE}
 };
 
 use pallet_nft::types::AssetId;
@@ -137,7 +140,7 @@ frame_support::construct_runtime!(
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
 		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
+		Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Event<T>},
 		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
 	}
@@ -225,6 +228,7 @@ parameter_types! {
 	pub const MockChainId: u8 = 5;
 	pub const ChainbridgePalletId: PalletId = PalletId(*b"cb/bridg");
 	pub const ProposalLifetime: u64 = 10;
+    pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
@@ -235,6 +239,7 @@ impl chainbridge::Config for MockRuntime {
 	type ChainId = MockChainId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type ProposalLifetime = ProposalLifetime;
+    type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
 }
 
@@ -418,24 +423,24 @@ pub fn assert_events(mut expected: Vec<Event>) {
 }
 
 pub fn mock_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
-	Call::Bridge(crate::pallet_bridge::Call::remark(hash, r_id))
+	Call::Bridge(pallet_bridge::Call::remark(hash, r_id))
 }
 
 // Build a dummy transfer proposal.
 pub fn mock_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
-	Call::Bridge(crate::Call::transfer(to, amount, r_id))
+	Call::Bridge(pallet_bridge::Call::transfer(to, amount, r_id))
 }
 
 // Create non-fungible token (NFT) for testing.
 //
 // This function first creates a registry, set resource id and then mint a NFT.
-pub fn mock_nft<T: pallet_bridge::Config>(
+pub fn mock_nft<T>(
 	owner: u64,
 	token_id: T::TokenId,
 	resource_id: ResourceId,
 ) -> T::RegistryId
 where
-	T: frame_system::Config<Hash = H256>,
+    T: pallet_bridge::Config + frame_system::Config<Hash = H256>,
 	<T as pallet_bridge_mapping::Config>::Address: From<T::RegistryId>,
 	TokenId: From<<T as pallet_nft::Config>::TokenId>,
 	<T as pallet_nft::Config>::RegistryId: From<RegistryId>,
@@ -492,7 +497,7 @@ pub fn mock_proofs<T>(
 	token_id: TokenId,
 ) -> (Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3])
 where
-	T: frame_system::Config<Hash = H256>,
+    T: pallet_bridge::Config + frame_system::Config<Hash = H256>,
 {
 	// Encode token into big endian U256
 	let token_enc = token_id.to_big_endian();
@@ -558,9 +563,10 @@ pub fn mock_mint<T>(
 	RegistryInfo,
 )
 where
-	T: frame_system::Config<Hash = H256, AccountId = u64>
-		+ pallet_registry::Config
-		+ pallet_nft::Config<AssetInfo = AssetInfo>,
+	T: pallet_bridge::Config
+    + frame_system::Config<Hash = H256, AccountId = u64>
+	+ pallet_registry::Config
+	+ pallet_nft::Config<AssetInfo = AssetInfo>,
 {
 	let metadata = vec![];
 

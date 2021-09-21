@@ -23,11 +23,11 @@ use codec::Encode;
 
 use frame_support::{assert_err, assert_noop, assert_ok};
 
-use runtime_common::constants::CFG;
+//use runtime_common::constants::CFG;
 
 use sp_core::{blake2_256, H256};
 
-use runtime_common::{TokenId, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
+use runtime_common::{TokenId, CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
 
 use sp_runtime::DispatchError;
 
@@ -227,7 +227,7 @@ fn transfer_nonfungible_asset() {
 }
 
 #[test]
-fn execute_remark() {
+fn execute_successful_remark() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -252,20 +252,20 @@ fn execute_remark() {
 				Box::new(proposal.clone())
 			));
 
-			// assert_ok!(Chainbridge::acknowledge_proposal(
-			// 	Origin::signed(RELAYER_B),
-			// 	prop_id,
-			// 	src_id,
-			// 	r_id,
-			// 	Box::new(proposal.clone())
-			// ));
+			assert_ok!(Chainbridge::acknowledge_proposal(
+				Origin::signed(RELAYER_B),
+				prop_id,
+				src_id,
+				r_id,
+				Box::new(proposal.clone())
+			));
 
 			event_exists(pallet_bridge::Event::<MockRuntime>::Remark(hash, r_id));
 		})
 }
 
 #[test]
-fn execute_remark_bad_origin() {
+fn execute_remark_with_bad_origin() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -277,11 +277,13 @@ fn execute_remark_bad_origin() {
 				hash,
 				r_id
 			));
+            
 			// Don't allow any signed origin except from chainbridge addr
 			assert_noop!(
 				Bridge::remark(Origin::signed(RELAYER_A), hash, r_id),
 				DispatchError::BadOrigin
 			);
+
 			// Don't allow root calls
 			assert_noop!(
 				Bridge::remark(Origin::root(), hash, r_id),

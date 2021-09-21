@@ -54,8 +54,11 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_nft::Config {
-		/// A local mapping of a resource id. Represents anything that a resource id might map to. On
-		/// Ethereum, this may be a contract address for transferring assets.
+		/// A local mapping of a resource id.
+		///
+		/// This associated type represents anything that a resource id might map to.
+		/// On Ethereum, for instance, this may be a contract address for transferring
+		/// assets.
 		type Address: Parameter
 			+ Member
 			+ Default
@@ -64,6 +67,7 @@ pub mod pallet {
 
 		/// Admin is able to set/remove resource mappings.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
+
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 	}
