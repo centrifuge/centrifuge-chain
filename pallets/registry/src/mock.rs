@@ -26,7 +26,7 @@ use crate::{
 	types::{CompleteProof, RegistryInfo},
 };
 
-use chainbridge::types::{ChainId, ResourceId};
+use chainbridge::{constants::DEFAULT_RELAYER_VOTE_THRESHOLD,types::{ChainId, ResourceId}};
 
 use codec::Encode;
 
@@ -192,6 +192,7 @@ parameter_types! {
 	pub const MockChainId: ChainId = 5;
 	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 	pub const ProposalLifetime: u64 = 10;
+    pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
@@ -202,6 +203,7 @@ impl chainbridge::Config for MockRuntime {
 	type ChainId = MockChainId;
 	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
+    type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
 }
 

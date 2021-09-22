@@ -150,7 +150,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use pallet_nft::types::AssetId;
 
 	// Verifiable attributes registry pallet type declaration.
 	//

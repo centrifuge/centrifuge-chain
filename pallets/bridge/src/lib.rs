@@ -199,7 +199,7 @@ pub mod pallet {
 
 		/// Constant configuration parameter to store the module identifier for the pallet.
 		///
-		/// The module identifier may be of the form ```PalletId(*b"r/bridge")``` (a string of eight characters)
+		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
 		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]

@@ -117,6 +117,7 @@ impl Hasher for MockProofVerifier {
 	}
 }
 
+pub(crate) const TEST_CHAIN_ID: u8 = 5;
 pub(crate) const RELAYER_A: u64 = 0x2;
 pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
@@ -139,11 +140,11 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
+		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
 		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Config, Storage, Event<T>},
+		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Event<T>},
 		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
 	}
@@ -151,10 +152,10 @@ frame_support::construct_runtime!(
 
 // Fake admin user with id one
 parameter_types! {
-	pub const One: u64 = 1;
+	pub const TestUserId: u64 = 0x1;
 }
 
-impl SortedMembers<u64> for One {
+impl SortedMembers<u64> for TestUserId {
 	fn sorted_members() -> Vec<u64> {
 		vec![1]
 	}
@@ -228,8 +229,8 @@ impl pallet_timestamp::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
-	pub const MockChainId: u8 = 5;
-	pub const ChainbridgePalletId: PalletId = PalletId(*b"cb/bridg");
+	pub const MockChainId: u8 = TEST_CHAIN_ID;
+	pub const ChainbridgePalletId: PalletId = PalletId(*b"chnbridg");
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -240,7 +241,7 @@ impl chainbridge::Config for MockRuntime {
 	type PalletId = ChainbridgePalletId;
 	type Proposal = Call;
 	type ChainId = MockChainId;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
@@ -250,7 +251,7 @@ impl chainbridge::Config for MockRuntime {
 impl pallet_fees::Config for MockRuntime {
 	type Currency = Balances;
 	type Event = Event;
-	type FeeChangeOrigin = EnsureSignedBy<One, u64>;
+	type FeeChangeOrigin = EnsureSignedBy<TestUserId, u64>;
 	type WeightInfo = ();
 }
 
@@ -268,9 +269,9 @@ impl pallet_nft::Config for MockRuntime {
 	type ResourceId = ResourceId;
 	type HashId = MockHashId;
 	type NftProofValidationFee = NftProofValidationFee;
-	type WeightInfo = ();
 	type RegistryId = RegistryId;
 	type TokenId = TokenId;
+	type WeightInfo = ();
 }
 
 // Implement Centrifuge Chain bridge mapping configuration trait for the mock runtime
@@ -310,7 +311,7 @@ impl pallet_bridge::Config for MockRuntime {
 	type BridgePalletId = BridgePalletId;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
+    type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
 	type WeightInfo = MockWeightInfo;
 	type NativeTokenTransferFee = NativeTokenTransferFee;
 	type NftTokenTransferFee = NftTransferFee;
@@ -425,6 +426,7 @@ pub fn assert_events(mut expected: Vec<Event>) {
 	}
 }
 
+// Build a dummy remark proposal
 pub fn mock_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
 	Call::Bridge(pallet_bridge::Call::remark(hash, r_id))
 }

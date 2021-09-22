@@ -213,7 +213,6 @@ fn transfer_nonfungible_asset() {
 			);
 
 			// Check that transfer event was emitted
-
 			let tid = token_id.to_big_endian();
 			expect_event(chainbridge::Event::NonFungibleTransfer(
 				dest_chain,
@@ -227,7 +226,7 @@ fn transfer_nonfungible_asset() {
 }
 
 #[test]
-fn execute_successful_remark() {
+fn create_successful_remark_proposal() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -236,11 +235,12 @@ fn execute_successful_remark() {
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
 			let proposal = mock_remark_proposal(hash.clone(), r_id);
-			let resource = b"PalletBridge.remark".to_vec();
+			let resource = b"Bridge.remark".to_vec();
 
 			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
 			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_B));
+            assert_eq!(Chainbridge::get_relayer_count(), 2);
 			assert_ok!(Chainbridge::whitelist_chain(Origin::root(), src_id));
 			assert_ok!(Chainbridge::set_resource(Origin::root(), r_id, resource));
 
@@ -265,20 +265,25 @@ fn execute_successful_remark() {
 }
 
 #[test]
-fn execute_remark_with_bad_origin() {
+fn create_invalid_remark_proposal_with_bad_origin() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
 			let r_id = chainbridge::derive_resource_id(1, b"hash");
 
+            // Add a new relayer account to the chainbridge
+            assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
+
+            // Chain bridge account is a valid origin for a remark proposal
 			assert_ok!(Bridge::remark(
 				Origin::signed(Chainbridge::account_id()),
 				hash,
 				r_id
 			));
 
-			// Don't allow any signed origin except from chainbridge addr
+			// Don't allow any signed origin except from chainbridge addr,
+            // even if the relayer is listed on the chain bridge
 			assert_noop!(
 				Bridge::remark(Origin::signed(RELAYER_A), hash, r_id),
 				DispatchError::BadOrigin
@@ -327,7 +332,7 @@ fn create_successful_transfer_proposal() {
 			let prop_id = 1;
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"transfer");
-			let resource = b"PalletBridge.transfer".to_vec();
+			let resource = b"Bridge.transfer".to_vec();
 			let proposal = mock_transfer_proposal(RELAYER_A, 10, r_id);
 
 			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
