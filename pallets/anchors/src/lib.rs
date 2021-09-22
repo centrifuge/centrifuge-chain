@@ -98,27 +98,6 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-	// The genesis config type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
-
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
 	#[pallet::storage]
 	#[pallet::getter(fn get_pre_commit)]

@@ -38,7 +38,7 @@ frame_support::construct_runtime!(
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Anchors: anchors::{Pallet, Call, Config, Storage},
+		Anchors: anchors::{Pallet, Call, Storage},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage},
 	}
 );
