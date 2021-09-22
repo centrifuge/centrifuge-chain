@@ -9,8 +9,12 @@ use frame_support::weights::{
 use frame_system::pallet::Config as SystemConfig;
 use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
+use pallet_tinlake_investor_pool::Config;
+use primitives_tokens::CurrencyId;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
+
+primitives_tokens::impl_tranche_token!();
 
 pub struct DealWithFees<Config>(PhantomData<Config>);
 pub type NegativeImbalance<Config> =

@@ -2,28 +2,14 @@ use crate::{self as pallet_tinlake_investor_pool, Config};
 use frame_support::parameter_types;
 use frame_system as system;
 use orml_traits::parameter_type_with_key;
-use runtime_common::{CurrencyId, TrancheToken};
+use primitives_tokens::CurrencyId;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-// Explicit implementation of Tranche Token for Test Runtime
-impl<T> pallet_tinlake_investor_pool::TrancheToken<T> for TrancheToken<T>
-where
-	T: Config,
-	<T as Config>::PoolId: Into<u32>,
-	<T as Config>::TrancheId: Into<u8>,
-	<T as Config>::CurrencyId: From<CurrencyId>,
-{
-	fn tranche_token(
-		pool: <T as Config>::PoolId,
-		tranche: <T as Config>::TrancheId,
-	) -> <T as Config>::CurrencyId {
-		CurrencyId::Tranche(pool.into(), tranche.into()).into()
-	}
-}
+primitives_tokens::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;

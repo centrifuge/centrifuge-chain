@@ -46,6 +46,8 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
+pub use primitives_tokens::CurrencyId;
+
 /// common types for the runtime.
 pub use runtime_common::*;
 

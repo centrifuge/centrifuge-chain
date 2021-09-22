@@ -1,7 +1,7 @@
 use super::*;
 use crate::mock::*;
 use frame_support::{assert_noop, assert_ok};
-use runtime_common::CurrencyId;
+use primitives_tokens::CurrencyId;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
 
