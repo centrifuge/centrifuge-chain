@@ -5617,16 +5617,19 @@ dependencies = [
 name = "pallet-loan"
 version = "2.0.0"
 dependencies = [
+ "chainbridge",
  "frame-support",
  "frame-system",
+ "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-fees",
  "pallet-nft",
  "pallet-pool",
- "pallet-randomness-collective-flip",
  "pallet-registry",
  "pallet-timestamp",
  "parity-scale-codec",
+ "runtime-common",
  "serde",
  "sp-arithmetic",
  "sp-core",

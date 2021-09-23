@@ -39,7 +39,7 @@ pub struct LoanInfo<Rate, Amount, Moment, AssetId> {
 	ceiling: Amount,
 	borrowed_amount: Amount,
 	rate_per_sec: Rate,
-	cumulative_rate: Rate,
+	accumulated_rate: Rate,
 	normalised_debt: Amount,
 	last_updated: Moment,
 	asset_id: AssetId,
@@ -95,6 +95,7 @@ pub mod pallet {
 			+ Mintable<AssetIdOf<Self>, AssetInfoOf<Self>, AccountIdOf<Self>>;
 
 		/// Verifier registry to create NFT Registry
+		/// TODO(ved): use simple registry instead of Va Registry when we have it
 		type VaRegistry: VerifierRegistry<
 			AccountIdOf<Self>,
 			RegistryIDOf<Self>,
@@ -120,10 +121,17 @@ pub mod pallet {
 	pub(super) type LoanNftRegistryToPool<T: Config> =
 		StorageMap<_, Blake2_128Concat, RegistryIDOf<T>, T::PoolID, OptionQuery>;
 
+	#[pallet::type_value]
+	pub fn OnNextNftTokenIDEmpty() -> U256 {
+		// always start the token ID from 1 instead of zero
+		U256::one()
+	}
+
 	/// Stores the next loan tokenID to be issued
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_nft_token_id)]
-	pub(super) type NextLoanNftTokenID<T: Config> = StorageValue<_, U256, ValueQuery>;
+	pub(super) type NextLoanNftTokenID<T: Config> =
+		StorageValue<_, U256, ValueQuery, OnNextNftTokenIDEmpty>;
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
@@ -317,7 +325,7 @@ impl<T: Config> Pallet<T> {
 				ceiling: Zero::zero(),
 				borrowed_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
-				cumulative_rate: Zero::zero(),
+				accumulated_rate: Zero::zero(),
 				normalised_debt: Zero::zero(),
 				last_updated: timestamp,
 				asset_id,
@@ -345,14 +353,14 @@ impl<T: Config> Pallet<T> {
 			.or(Err(Error::<T>::ErrEpochOverflow))?;
 		let new_chi = math::calculate_cumulative_rate::<T::Rate>(
 			loan_info.rate_per_sec,
-			loan_info.cumulative_rate,
+			loan_info.accumulated_rate,
 			now,
 			last_updated,
 		)
 		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
 		let debt =
-			math::debt::<T::Amount, T::Rate>(loan_info.normalised_debt, loan_info.cumulative_rate)
+			math::debt::<T::Amount, T::Rate>(loan_info.normalised_debt, loan_info.accumulated_rate)
 				.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
 		let new_pie = math::calculate_normalised_debt::<T::Amount, T::Rate>(
@@ -366,7 +374,7 @@ impl<T: Config> Pallet<T> {
 			let mut loan_info = maybe_loan_info.take().unwrap_or_default();
 			loan_info.borrowed_amount = new_borrowed_amount;
 			loan_info.last_updated = nowt;
-			loan_info.cumulative_rate = new_chi;
+			loan_info.accumulated_rate = new_chi;
 			loan_info.normalised_debt = new_pie;
 			*maybe_loan_info = Some(loan_info);
 		});
