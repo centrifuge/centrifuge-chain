@@ -13,11 +13,134 @@
 
 //! Unit test cases for Loan pallet
 
+use super::*;
+use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
+use crate::mock::{Event, Loan, MockRuntime, Origin};
+use frame_support::{assert_err, assert_ok};
+use pallet_loan::Event as LoanEvent;
+use pallet_registry::traits::VerifierRegistry;
+use runtime_common::{AssetInfo, PoolId, TokenId};
+
+fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIDOf<T>
+where
+	T: frame_system::Config + pallet_nft::Config + pallet_loan::Config,
+{
+	let registry_info = RegistryInfo {
+		owner_can_burn: false,
+		fields: vec![],
+	};
+
+	// Create registry, get registry id. Shouldn't fail.
+	<T as pallet_loan::Config>::VaRegistry::create_new_registry(owner, registry_info.clone())
+}
+
+fn mint_nft<T>(owner: AccountIdOf<T>, registry_id: RegistryIDOf<T>) -> TokenIdOf<T>
+where
+	T: frame_system::Config
+		+ pallet_nft::Config<TokenId = TokenId, AssetInfo = AssetInfo>
+		+ pallet_loan::Config,
+{
+	let token_id = TokenId(U256::one());
+	let asset_id = AssetId(registry_id, token_id);
+	let asset_info = AssetInfo::default();
+	let caller = owner.clone();
+	<T as pallet_loan::Config>::NftRegistry::mint(caller, owner, asset_id, asset_info)
+		.expect("mint should not fail");
+	token_id.into()
+}
+
+fn create_pool<T>(owner: AccountIdOf<T>) -> PoolId
+where
+	T: pallet_pool::Config<PoolId = PoolId> + frame_system::Config,
+{
+	pallet_pool::Pallet::<T>::create_new_pool(owner, "some pool".into())
+}
+
+// Return last triggered event
+fn last_event() -> Event {
+	frame_system::Pallet::<MockRuntime>::events()
+		.pop()
+		.map(|item| item.event)
+		.expect("Event expected")
+}
+
+fn expect_event<E: Into<Event>>(event: E) {
+	assert_eq!(last_event(), event.into());
+}
+
+fn expect_asset_owner<T: frame_system::Config + pallet_loan::Config>(
+	asset_id: AssetIdOf<T>,
+	owner: AccountIdOf<T>,
+) {
+	assert_eq!(
+		<T as pallet_loan::Config>::NftRegistry::owner_of(asset_id).unwrap(),
+		owner
+	);
+}
 
 #[test]
-fn mint() {
+fn issue_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
-		.execute_with(|| assert!(true));
+		.execute_with(|| {
+			let owner: u64 = 1;
+			let pool_id = create_pool::<MockRuntime>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			// post issue checks
+			// token nonce should 2
+			assert_eq!(NextLoanNftTokenID::<MockRuntime>::get(), 2u128.into());
+
+			// loanId should be 1
+			let loan_id: LoanIdOf<MockRuntime> = TokenId(U256::one());
+			// event should be emitted
+			expect_event(LoanEvent::LoanIssued(pool_id, loan_id.into()));
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+
+			// asset is same as we sent before
+			assert_eq!(loan_data.asset_id, AssetId(asset_registry, token_id));
+
+			// asset owner is loan pallet
+			expect_asset_owner::<MockRuntime>(
+				AssetId(asset_registry, token_id),
+				Loan::account_id(),
+			);
+
+			// wrong owner
+			let owner2 = 2;
+			let res = Loan::issue_loan(
+				Origin::signed(owner2),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_err!(res, Error::<MockRuntime>::ErrNotNFTOwner);
+
+			// missing owner
+			let token_id = TokenId(100u128.into());
+			let res = Loan::issue_loan(
+				Origin::signed(owner2),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_err!(res, Error::<MockRuntime>::ErrNFTOwnerNotFound);
+
+			// trying to issue a loan with loan nft
+			let loan_nft_registry = PoolToLoanNftRegistry::<MockRuntime>::get(pool_id)
+				.expect("Registry should be created");
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(loan_nft_registry, loan_id),
+			);
+			assert_err!(res, Error::<MockRuntime>::ErrNotAValidAsset)
+		});
 }

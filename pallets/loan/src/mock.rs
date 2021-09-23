@@ -23,7 +23,7 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use runtime_common::{Amount, AssetInfo, Balance, Rate, RegistryId, TokenId};
+use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, RegistryId, TokenId};
 use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -36,7 +36,6 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 
 // Build mock runtime
 frame_support::construct_runtime!(
-
 	pub enum MockRuntime where
 		Block = Block,
 		NodeBlock = Block,
@@ -50,6 +49,7 @@ frame_support::construct_runtime!(
 		Pool: pallet_pool::{Pallet, Call, Storage, Event<T>},
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Storage, Event<T>},
+		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 	}
 );
 
@@ -110,8 +110,8 @@ impl pallet_timestamp::Config for MockRuntime {
 
 impl pallet_pool::Config for MockRuntime {
 	type Event = Event;
-	type PoolID = u64;
-	type LoanID = TokenId;
+	type PoolId = PoolId;
+	type LoanId = TokenId;
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet
@@ -248,6 +248,8 @@ impl TestExternalitiesBuilder {
 		.assimilate_storage(&mut storage)
 		.unwrap();
 
-		TestExternalities::new(storage)
+		let mut externalities = TestExternalities::new(storage);
+		externalities.execute_with(|| System::set_block_number(1));
+		externalities
 	}
 }

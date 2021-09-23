@@ -45,7 +45,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The overarching poolID type
-		type PoolID: Parameter
+		type PoolId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Debug
@@ -53,7 +53,7 @@ pub mod pallet {
 			+ Copy
 			+ AtLeast32Bit;
 
-		type LoanID: Parameter
+		type LoanId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Copy
@@ -64,18 +64,18 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_info)]
 	pub(super) type PoolInfo<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolID, PoolData<T::AccountId>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, PoolData<T::AccountId>, OptionQuery>;
 
 	/// Stores the next pool_id that will be created.
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_nonce)]
-	pub(super) type PoolNonce<T: Config> = StorageValue<_, T::PoolID, ValueQuery>;
+	pub(super) type PoolNonce<T: Config> = StorageValue<_, T::PoolId, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// PoolCreated is emitted when a new pool is created
-		PoolCreated(T::PoolID),
+		PoolCreated(T::PoolId),
 	}
 
 	#[pallet::error]
@@ -90,11 +90,7 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn create_pool(origin: OriginFor<T>, name: String) -> DispatchResult {
 			let creator = ensure_signed(origin)?;
-			let pd = PoolData { creator, name };
-			let pool_id = PoolNonce::<T>::get();
-			PoolInfo::<T>::insert(pool_id, pd);
-			let next_pool_id = pool_id + T::PoolID::one();
-			PoolNonce::<T>::set(next_pool_id);
+			let pool_id = Self::create_new_pool(creator, name);
 			Self::deposit_event(Event::PoolCreated(pool_id));
 			Ok(())
 		}
@@ -103,8 +99,18 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 	// checks if the pool associated with pool_id exists
-	pub fn check_pool(pool_id: T::PoolID) -> DispatchResult {
+	pub fn check_pool(pool_id: T::PoolId) -> DispatchResult {
 		PoolInfo::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
 		Ok(())
+	}
+
+	pub fn create_new_pool(creator: T::AccountId, name: String) -> T::PoolId {
+		let pd = PoolData { creator, name };
+		let pool_id = PoolNonce::<T>::get();
+		PoolInfo::<T>::insert(pool_id, pd);
+		// TODO(ved): should we worry about overflow here?
+		let next_pool_id = pool_id + T::PoolId::one();
+		PoolNonce::<T>::set(next_pool_id);
+		pool_id
 	}
 }

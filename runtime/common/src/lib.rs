@@ -116,6 +116,9 @@ pub mod types {
 
 	/// Amount with 18 precision fixed point decimal
 	pub type Amount = sp_arithmetic::FixedU128;
+
+	/// PoolId type we use.
+	pub type PoolId = u64;
 }
 
 /// Common constants for all runtimes

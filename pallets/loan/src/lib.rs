@@ -35,7 +35,7 @@ pub mod math;
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Default)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanInfo<Rate, Amount, Moment, AssetId> {
+pub struct LoanData<Rate, Amount, Moment, AssetId> {
 	ceiling: Amount,
 	borrowed_amount: Amount,
 	rate_per_sec: Rate,
@@ -45,7 +45,7 @@ pub struct LoanInfo<Rate, Amount, Moment, AssetId> {
 	asset_id: AssetId,
 }
 
-impl<Rate, Amount, Moment, AssetId> LoanInfo<Rate, Amount, Moment, AssetId>
+impl<Rate, Amount, Moment, AssetId> LoanData<Rate, Amount, Moment, AssetId>
 where
 	Amount: PartialOrd + sp_arithmetic::traits::Zero,
 {
@@ -62,6 +62,7 @@ pub type AssetIdOf<T> = AssetId<RegistryIDOf<T>, TokenIdOf<T>>;
 pub type AssetInfoOf<T> = <T as pallet_nft::Config>::AssetInfo;
 type HashOf<T> = <T as frame_system::Config>::Hash;
 pub type MintInfoOf<T> = MintInfo<HashOf<T>, HashOf<T>>;
+pub type LoanIdOf<T> = <T as pallet_pool::Config>::LoanId;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -114,12 +115,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_nft_registry)]
 	pub(super) type PoolToLoanNftRegistry<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolID, RegistryIDOf<T>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, RegistryIDOf<T>, OptionQuery>;
 
 	/// Stores the poolID with registryID as a key
 	#[pallet::storage]
 	pub(super) type LoanNftRegistryToPool<T: Config> =
-		StorageMap<_, Blake2_128Concat, RegistryIDOf<T>, T::PoolID, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, RegistryIDOf<T>, T::PoolId, OptionQuery>;
 
 	#[pallet::type_value]
 	pub fn OnNextNftTokenIDEmpty() -> U256 {
@@ -136,13 +137,13 @@ pub mod pallet {
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_info)]
-	pub(super) type Loan<T: Config> = StorageDoubleMap<
+	pub(super) type LoanInfo<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::PoolID,
+		T::PoolId,
 		Blake2_128Concat,
-		T::LoanID,
-		LoanInfo<T::Rate, T::Amount, T::Moment, AssetIdOf<T>>,
+		T::LoanId,
+		LoanData<T::Rate, T::Amount, T::Moment, AssetIdOf<T>>,
 		OptionQuery,
 	>;
 
@@ -150,16 +151,16 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// emits when a new loan is issued for a given
-		LoanIssued(T::PoolID, T::LoanID),
+		LoanIssued(T::PoolId, T::LoanId),
 
 		/// emits when the loan info is updated.
-		LoanInfoUpdate(T::PoolID, T::LoanID),
+		LoanInfoUpdate(T::PoolId, T::LoanId),
 
 		/// emits when the loan is activated
-		LoanActivated(T::PoolID, T::LoanID),
+		LoanActivated(T::PoolId, T::LoanId),
 
 		/// emits when some amount is borrowed again
-		LoanAmountBorrowed(T::PoolID, T::LoanID, T::Amount),
+		LoanAmountBorrowed(T::PoolId, T::LoanId, T::Amount),
 	}
 
 	#[pallet::error]
@@ -203,7 +204,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn issue_loan(
 			origin: OriginFor<T>,
-			pool_id: T::PoolID,
+			pool_id: T::PoolId,
 			asset_id: AssetIdOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
@@ -218,8 +219,8 @@ pub mod pallet {
 		#[transactional]
 		pub fn update_loan_info(
 			origin: OriginFor<T>,
-			pool_id: T::PoolID,
-			loan_id: T::LoanID,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
 			rate: T::Rate,
 			principal: T::Amount,
 		) -> DispatchResult {
@@ -230,11 +231,12 @@ pub mod pallet {
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
 
 			// check if the loan is active
-			let loan_info = Loan::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+			let loan_info =
+				LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
 			ensure!(!loan_info.is_loan_active(), Error::<T>::ErrLoanIsActive);
 
 			// update the loan info
-			Loan::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
+			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 				let mut loan_info = maybe_loan_info.take().unwrap_or_default();
 				loan_info.rate_per_sec = rate;
 				loan_info.ceiling = principal;
@@ -248,15 +250,20 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
+	/// returns the account_id of the loan pallet
+	pub fn account_id() -> T::AccountId {
+		T::LoanPalletId::get().into_account()
+	}
+
 	/// returns the ceiling of the given loan under a given pool.
-	pub fn ceiling(pool_id: T::PoolID, loan_id: T::LoanID) -> Option<T::Amount> {
-		let maybe_loan_info = Loan::<T>::get(pool_id, loan_id);
+	pub fn ceiling(pool_id: T::PoolId, loan_id: T::LoanId) -> Option<T::Amount> {
+		let maybe_loan_info = LoanInfo::<T>::get(pool_id, loan_id);
 		maybe_loan_info.map(|loan_info| loan_info.ceiling)
 	}
 
 	/// fetches the loan nft registry for a given pool. If missing, then will create one,
 	/// update the state and returns the newly created nft registry
-	fn fetch_or_create_loan_nft_registry_for_pool(pool_id: T::PoolID) -> T::RegistryId {
+	fn fetch_or_create_loan_nft_registry_for_pool(pool_id: T::PoolId) -> T::RegistryId {
 		match PoolToLoanNftRegistry::<T>::get(pool_id) {
 			Some(registry_id) => registry_id,
 			None => {
@@ -280,10 +287,10 @@ impl<T: Config> Pallet<T> {
 
 	/// issues a new loan nft and returns the LoanID
 	fn issue(
-		pool_id: T::PoolID,
+		pool_id: T::PoolId,
 		asset_owner: T::AccountId,
 		asset_id: AssetIdOf<T>,
-	) -> Result<T::LoanID, sp_runtime::DispatchError> {
+	) -> Result<T::LoanId, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
 		let owner = T::NftRegistry::owner_of(asset_id).ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
 		ensure!(owner == asset_owner, Error::<T>::ErrNotNFTOwner);
@@ -317,11 +324,11 @@ impl<T: Config> Pallet<T> {
 		// lock asset nft
 		T::NftRegistry::transfer(asset_owner, loan_pallet_account, asset_id)?;
 		let timestamp = <pallet_timestamp::Pallet<T>>::get();
-		let loan_id: T::LoanID = loan_nft_id.into();
-		Loan::<T>::insert(
+		let loan_id: T::LoanId = loan_nft_id.into();
+		LoanInfo::<T>::insert(
 			pool_id,
 			loan_id,
-			LoanInfo {
+			LoanData {
 				ceiling: Zero::zero(),
 				borrowed_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
@@ -334,8 +341,8 @@ impl<T: Config> Pallet<T> {
 		Ok(loan_id)
 	}
 
-	pub fn borrow(pool_id: T::PoolID, loan_id: T::LoanID, amount: T::Amount) -> DispatchResult {
-		let loan_info = Loan::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+	pub fn borrow(pool_id: T::PoolId, loan_id: T::LoanId, amount: T::Amount) -> DispatchResult {
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
 
 		ensure!(
 			loan_info.ceiling <= amount + loan_info.borrowed_amount,
@@ -370,7 +377,7 @@ impl<T: Config> Pallet<T> {
 		)
 		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
-		Loan::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
+		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 			let mut loan_info = maybe_loan_info.take().unwrap_or_default();
 			loan_info.borrowed_amount = new_borrowed_amount;
 			loan_info.last_updated = nowt;
