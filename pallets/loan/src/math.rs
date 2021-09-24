@@ -2,8 +2,8 @@ use crate::math::Adjustment::{Dec, Inc};
 use sp_arithmetic::traits::checked_pow;
 use sp_arithmetic::FixedPointNumber;
 
-/// calculates the latest cumulative rate since the last
-pub fn calculate_cumulative_rate<Rate: FixedPointNumber>(
+/// calculates the latest accumulated rate since the last
+pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 	rate_per_sec: Rate,
 	cumulative_rate: Rate,
 	now: u64,
@@ -26,9 +26,9 @@ fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
 /// calculates the debt using debt=normalised_debt * cumulative_rate
 pub fn debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
 	normalised_debt: Amount,
-	cumulative_rate: Rate,
+	accumulated_rate: Rate,
 ) -> Option<Amount> {
-	convert::<Rate, Amount>(cumulative_rate).and_then(|rate| normalised_debt.checked_mul(&rate))
+	convert::<Rate, Amount>(accumulated_rate).and_then(|rate| normalised_debt.checked_mul(&rate))
 }
 
 pub enum Adjustment<Amount: FixedPointNumber> {
@@ -130,7 +130,7 @@ mod tests {
 
 		// calculate cumulative rate after half a year with compounding in seconds
 		let maybe_new_cumulative_rate =
-			calculate_cumulative_rate(rate_per_sec, cumulative_rate, now, last_updated);
+			calculate_accumulated_rate(rate_per_sec, cumulative_rate, now, last_updated);
 		assert!(
 			maybe_new_cumulative_rate.is_some(),
 			"expect value to not overflow"

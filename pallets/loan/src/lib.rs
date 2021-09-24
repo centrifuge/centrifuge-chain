@@ -21,6 +21,7 @@ use pallet_registry::traits::VerifierRegistry;
 use pallet_registry::types::{MintInfo, RegistryInfo};
 use sp_core::U256;
 use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::DispatchError;
 use sp_std::convert::TryInto;
 use unique_assets::traits::{Mintable, Unique};
 
@@ -33,7 +34,16 @@ mod tests;
 pub mod math;
 
 /// The data structure for storing loan info
-#[derive(Encode, Decode, Default)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum LoanStatus {
+	Issued,
+	Active,
+	Closed,
+}
+
+/// The data structure for storing loan info
+#[derive(Encode, Decode, Copy, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanData<Rate, Amount, Moment, AssetId> {
 	ceiling: Amount,
@@ -43,6 +53,7 @@ pub struct LoanData<Rate, Amount, Moment, AssetId> {
 	normalised_debt: Amount,
 	last_updated: Moment,
 	asset_id: AssetId,
+	status: LoanStatus,
 }
 
 impl<Rate, Amount, Moment, AssetId> LoanData<Rate, Amount, Moment, AssetId>
@@ -153,6 +164,9 @@ pub mod pallet {
 		/// emits when a new loan is issued for a given
 		LoanIssued(T::PoolId, T::LoanId),
 
+		/// emits when a loan is closed
+		LoanClosed(T::PoolId, T::LoanId, AssetIdOf<T>),
+
 		/// emits when the loan info is updated.
 		LoanInfoUpdate(T::PoolId, T::LoanId),
 
@@ -194,12 +208,14 @@ pub mod pallet {
 
 		/// Emits when the nft token nonce is overflowed
 		ErrNftTokenNonceOverflowed,
+
+		/// Emits when loan amount not repayed but trying to close loan
+		ErrLoanNotRepaid,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Sets the loan info for a given loan in a pool
-		/// we update the loan details only if its not active
+		/// Issues a new loan against the asset provided
 		#[pallet::weight(100_000)]
 		#[transactional]
 		pub fn issue_loan(
@@ -210,6 +226,20 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			let loan_id = Self::issue(pool_id, owner, asset_id)?;
 			Self::deposit_event(Event::<T>::LoanIssued(pool_id, loan_id));
+			Ok(())
+		}
+
+		/// Closes a given loan if repaid fully
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn close_loan(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			let asset = Self::close(pool_id, loan_id, owner)?;
+			Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
 			Ok(())
 		}
 
@@ -237,7 +267,7 @@ pub mod pallet {
 
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
-				let mut loan_info = maybe_loan_info.take().unwrap_or_default();
+				let mut loan_info = maybe_loan_info.take().unwrap();
 				loan_info.rate_per_sec = rate;
 				loan_info.ceiling = principal;
 				*maybe_loan_info = Some(loan_info);
@@ -336,9 +366,45 @@ impl<T: Config> Pallet<T> {
 				normalised_debt: Zero::zero(),
 				last_updated: timestamp,
 				asset_id,
+				status: LoanStatus::Issued,
 			},
 		);
 		Ok(loan_id)
+	}
+
+	fn close(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		owner: T::AccountId,
+	) -> Result<AssetIdOf<T>, DispatchError> {
+		// ensure owner is the loan nft owner
+		let loan_registry = Self::fetch_or_create_loan_nft_registry_for_pool(pool_id);
+		let loan_nft = AssetId(loan_registry, loan_id.into());
+		let loan_owner =
+			T::NftRegistry::owner_of(loan_nft).ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
+		ensure!(loan_owner == owner, Error::<T>::ErrNotNFTOwner);
+
+		// ensure debt is all paid
+		let mut loan_info =
+			LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+		ensure!(
+			loan_info.normalised_debt == Zero::zero(),
+			Error::<T>::ErrLoanNotRepaid
+		);
+
+		// transfer asset to owner
+		let asset = loan_info.asset_id;
+		T::NftRegistry::transfer(Self::account_id(), owner.clone(), asset)?;
+
+		// transfer loan nft to loan pallet
+		// ideally we should burn this but we do not have a function to burn them yet.
+		// TODO(ved): burn loan nft when the functionality is available
+		T::NftRegistry::transfer(owner, Self::account_id(), loan_nft)?;
+
+		// update loan status
+		loan_info.status = LoanStatus::Closed;
+		LoanInfo::<T>::insert(pool_id, loan_id, loan_info);
+		Ok(asset)
 	}
 
 	pub fn borrow(pool_id: T::PoolId, loan_id: T::LoanId, amount: T::Amount) -> DispatchResult {
@@ -358,7 +424,7 @@ impl<T: Config> Pallet<T> {
 		let now: u64 = TryInto::<u64>::try_into(nowt).or(Err(Error::<T>::ErrEpochOverflow))?;
 		let last_updated: u64 = TryInto::<u64>::try_into(loan_info.last_updated)
 			.or(Err(Error::<T>::ErrEpochOverflow))?;
-		let new_chi = math::calculate_cumulative_rate::<T::Rate>(
+		let new_chi = math::calculate_accumulated_rate::<T::Rate>(
 			loan_info.rate_per_sec,
 			loan_info.accumulated_rate,
 			now,
@@ -378,7 +444,7 @@ impl<T: Config> Pallet<T> {
 		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
 		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
-			let mut loan_info = maybe_loan_info.take().unwrap_or_default();
+			let mut loan_info = maybe_loan_info.take().unwrap();
 			loan_info.borrowed_amount = new_borrowed_amount;
 			loan_info.last_updated = nowt;
 			loan_info.accumulated_rate = new_chi;

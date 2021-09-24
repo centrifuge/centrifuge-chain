@@ -79,6 +79,13 @@ fn expect_asset_owner<T: frame_system::Config + pallet_loan::Config>(
 	);
 }
 
+fn fetch_loan_event(event: Event) -> Option<LoanEvent<MockRuntime>> {
+	match event {
+		Event::Loan(loan_event) => Some(loan_event),
+		_ => None,
+	}
+}
+
 #[test]
 fn issue_loan() {
 	TestExternalitiesBuilder::default()
@@ -108,6 +115,7 @@ fn issue_loan() {
 
 			// asset is same as we sent before
 			assert_eq!(loan_data.asset_id, AssetId(asset_registry, token_id));
+			assert_eq!(loan_data.status, LoanStatus::Issued);
 
 			// asset owner is loan pallet
 			expect_asset_owner::<MockRuntime>(
@@ -143,4 +151,58 @@ fn issue_loan() {
 			);
 			assert_err!(res, Error::<MockRuntime>::ErrNotAValidAsset)
 		});
+}
+
+#[test]
+fn close_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let owner: u64 = 1;
+			let pool_id = create_pool::<MockRuntime>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			// close the loan
+			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);
+			assert_ok!(res);
+
+			let (pool_id, loan_id, asset) = match fetch_loan_event(last_event())
+				.expect("should be a loan event")
+			{
+				LoanEvent::LoanClosed(pool_id, loan_id, asset) => Some((pool_id, loan_id, asset)),
+				_ => None,
+			}
+			.expect("must be a Loan close event");
+			assert_eq!(asset, AssetId(asset_registry, token_id));
+
+			// check asset owner
+			expect_asset_owner::<MockRuntime>(AssetId(asset_registry, token_id), owner);
+
+			// check nft loan owner loan pallet
+			let loan_nft_registry = PoolToLoanNftRegistry::<MockRuntime>::get(pool_id)
+				.expect("must have a loan nft registry created");
+			expect_asset_owner::<MockRuntime>(
+				AssetId(loan_nft_registry, loan_id),
+				Loan::account_id(),
+			);
+
+			// check loan status as Closed
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			assert_eq!(loan_data.status, LoanStatus::Closed);
+		})
 }

@@ -66,10 +66,16 @@ pub mod pallet {
 	pub(super) type PoolInfo<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, PoolData<T::AccountId>, OptionQuery>;
 
+	#[pallet::type_value]
+	pub fn OnNextPoolIDEmpty<T: Config>() -> T::PoolId {
+		// always start the token ID from 1 instead of zero
+		T::PoolId::one()
+	}
 	/// Stores the next pool_id that will be created.
 	#[pallet::storage]
 	#[pallet::getter(fn get_pool_nonce)]
-	pub(super) type PoolNonce<T: Config> = StorageValue<_, T::PoolId, ValueQuery>;
+	pub(super) type PoolNonce<T: Config> =
+		StorageValue<_, T::PoolId, ValueQuery, OnNextPoolIDEmpty<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
