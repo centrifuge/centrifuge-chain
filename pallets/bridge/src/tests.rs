@@ -233,14 +233,14 @@ fn create_successful_remark_proposal() {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
 			let prop_id = 1;
 			let src_id = 1;
-			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
+			let r_id = chainbridge::derive_resource_id(src_id, b"cent_nft_hash");
 			let proposal = mock_remark_proposal(hash.clone(), r_id);
 			let resource = b"Bridge.remark".to_vec();
 
 			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
 			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
 			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_B));
-            assert_eq!(Chainbridge::get_relayer_count(), 2);
+			assert_eq!(Chainbridge::get_relayer_count(), 2);
 			assert_ok!(Chainbridge::whitelist_chain(Origin::root(), src_id));
 			assert_ok!(Chainbridge::set_resource(Origin::root(), r_id, resource));
 
@@ -270,12 +270,12 @@ fn create_invalid_remark_proposal_with_bad_origin() {
 		.build()
 		.execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
-			let r_id = chainbridge::derive_resource_id(1, b"hash");
+			let r_id = chainbridge::derive_resource_id(1, b"cent_nft_hash");
 
-            // Add a new relayer account to the chainbridge
-            assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
+			// Add a new relayer account to the chainbridge
+			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
 
-            // Chain bridge account is a valid origin for a remark proposal
+			// Chain bridge account is a valid origin for a remark proposal
 			assert_ok!(Bridge::remark(
 				Origin::signed(Chainbridge::account_id()),
 				hash,
@@ -283,7 +283,7 @@ fn create_invalid_remark_proposal_with_bad_origin() {
 			));
 
 			// Don't allow any signed origin except from chainbridge addr,
-            // even if the relayer is listed on the chain bridge
+			// even if the relayer is listed on the chain bridge
 			assert_noop!(
 				Bridge::remark(Origin::signed(RELAYER_A), hash, r_id),
 				DispatchError::BadOrigin

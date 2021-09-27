@@ -13,8 +13,7 @@
 
 //! # Bridge pallet
 //!
-//! This pallet implements bla bla bla
-//!
+//! This pallet implements a bridge between Chainbridge and Centrifuge Chain.
 //! - [`Config`]
 //! - [`Call`]
 //! - [`Pallet`]
@@ -29,11 +28,9 @@
 //! ## Interface
 //!
 //! ### Supported Origins
-//!
 //! Signed origin is valid.
 //!
 //! ### Types
-//!
 //! `BridgeOrigin` - Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet.
 //! `AdminOrigin` - Admin user authorized to modify [NativeTokenTransferFee] and [NftTokenTransferFee] values.
 //! `Currency` - Currency as viewed from this pallet.
@@ -44,8 +41,7 @@
 //! `WeightInfo` - Weight information for extrinsics in this pallet.
 //!
 //! ### Events
-//!
-//! `Remark` - Event triggered when ...
+//! `Remark` - Event triggered a remark proposal is approved.
 //!
 //! ### Errors
 //! `ResourceIdDoesNotExist` - Resource id provided on initiating a transfer is not a key in bridges-names mapping.
@@ -55,7 +51,6 @@
 //! `TotalAmountOverflow` - Total amount to be transfered overflows balance type size.
 //!
 //! ### Dispatchable Functions
-//!
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
 //! pallet contract. Here's the callable functions implemented in this module:
 //!
@@ -90,7 +85,7 @@
 //! - [Substrate FRAME v2 attribute macros](https://crates.parity.io/frame_support/attr.pallet.html).
 //!
 //! ## Credits
-//! The Centrifugians Tribe <tribe@centrifuge.io>
+//! The Centrifugians Tribe <contributors@centrifuge.io>
 //!
 //! ## License
 //! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
@@ -109,12 +104,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Pallet types and traits modules
+// Pallet traits declaration
 pub mod traits;
 
 // Pallet extrinsics weight information
 mod weights;
-
 use crate::traits::WeightInfo;
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -196,14 +190,6 @@ pub mod pallet {
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
-
-		/// Constant configuration parameter to store the module identifier for the pallet.
-		///
-		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
-		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
-		/// macro in one of the runtimes (see runtime folder).
-		#[pallet::constant]
-		type BridgePalletId: Get<PalletId>;
 
 		/// Admin user is able to modify transfer fees (see [NativeTokenTransferFee] and [NftTokenTransferFee]).
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -539,9 +525,9 @@ impl<T: Config> Pallet<T> {
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
-	pub fn account_id() -> T::AccountId {
-		T::BridgePalletId::get().into_account()
-	}
+	//	pub fn account_id() -> T::AccountId {
+	//		T::BridgePalletId::get().into_account()
+	//	}
 
 	/// Initialize pallet's genesis configuration.
 	///

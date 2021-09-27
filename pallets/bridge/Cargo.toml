@@ -22,7 +22,8 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-feat
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # Centrifuge Chain dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+#chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+chainbridge = { git = "https://github.com/tankofzion/chainbridge-substrate.git", default-features = false, branch = "refactor/chainbridge_pallet" }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
@@ -31,7 +32,8 @@ common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 # Testing/mocking dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+#chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+chainbridge = { git = "https://github.com/tankofzion/chainbridge-substrate.git", default-features = false, branch = "refactor/chainbridge_pallet" }
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }

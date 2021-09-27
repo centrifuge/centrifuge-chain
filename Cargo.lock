@@ -1185,7 +1185,24 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#bfb116583e765bad31dfbe93ee12c1430b1a6bf1"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "substrate-wasm-builder-runner",
+]
+
+[[package]]
+name = "chainbridge"
+version = "0.0.2"
+source = "git+https://github.com/tankofzion/chainbridge-substrate.git?branch=refactor/chainbridge_pallet#467bd016ee96b6f01bab4e641623afde49324160"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5358,11 +5375,10 @@ dependencies = [
 name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
- "chainbridge",
+ "chainbridge 0.0.2 (git+https://github.com/tankofzion/chainbridge-substrate.git?branch=refactor/chainbridge_pallet)",
  "common-traits",
  "frame-support",
  "frame-system",
- "node-primitives",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
@@ -5385,7 +5401,7 @@ dependencies = [
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
- "chainbridge",
+ "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master)",
  "frame-support",
  "frame-system",
  "pallet-anchors",
@@ -5722,7 +5738,7 @@ dependencies = [
 name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
- "chainbridge",
+ "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master)",
  "common-traits",
  "frame-benchmarking",
  "frame-support",
@@ -5802,7 +5818,7 @@ dependencies = [
 name = "pallet-registry"
 version = "2.0.0"
 dependencies = [
- "chainbridge",
+ "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master)",
  "common-traits",
  "frame-benchmarking",
  "frame-support",
@@ -11659,7 +11675,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
  "cfg-if 1.0.0",
- "rand 0.8.4",
+ "rand 0.6.5",
  "static_assertions",
 ]
 

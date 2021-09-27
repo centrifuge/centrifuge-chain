@@ -99,7 +99,7 @@ pub mod types;
 
 // Mock runtime for testing
 #[cfg(test)]
-pub mod mock;
+mod mock;
 
 // Unit test cases
 #[cfg(test)]
