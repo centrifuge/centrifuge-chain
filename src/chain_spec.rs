@@ -387,7 +387,7 @@ fn altair_genesis(
 		},
 		aura_ext: Default::default(),
 		aura: Default::default(),
-		anchor: Default::default(),
+//		anchor: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 	}
@@ -462,7 +462,7 @@ fn development_genesis(
 		},
 		aura_ext: Default::default(),
 		aura: Default::default(),
-		anchor: Default::default(),
+//		anchor: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
 	}
