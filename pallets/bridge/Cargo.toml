@@ -22,17 +22,17 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-feat
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # Centrifuge Chain dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, rev = "ba370fa64acf0a52172ddfb5ec1e910525f65db8" }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 runtime-common = { path = "../../runtime/common", default_features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, rev = "8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae" }
 
 
 [dev-dependencies]
 # Testing/mocking dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, rev = "ba370fa64acf0a52172ddfb5ec1e910525f65db8" }
 node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
@@ -60,5 +60,5 @@ std = [
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
-    'unique-assets/std',
+    'unique_assets/std',
 ]

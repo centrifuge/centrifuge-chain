@@ -1159,7 +1159,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#bfb116583e765bad31dfbe93ee12c1430b1a6bf1"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?rev=ba370fa64acf0a52172ddfb5ec1e910525f65db8#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -5368,7 +5368,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
+ "unique_assets",
 ]
 
 [[package]]
@@ -5723,7 +5723,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
+ "unique_assets",
 ]
 
 [[package]]
@@ -5803,7 +5803,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
+ "unique_assets",
 ]
 
 [[package]]
@@ -11735,11 +11735,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 
 [[package]]
-name = "unique-assets"
-version = "1.0.0"
-source = "git+https://github.com/centrifuge/unique-assets?branch=master#671b56a896869bb67f66027a7ffbf565b18f16c0"
+name = "unique_assets"
+version = "0.1.0"
+source = "git+https://github.com/centrifuge/unique-assets?rev=8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae#8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae"
 dependencies = [
  "frame-support",
+ "sp-std",
 ]
 
 [[package]]
