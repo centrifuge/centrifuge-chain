@@ -25,7 +25,8 @@ case $TARGET in
     ;;
 
   tests)
-    cargo test -p pallet-bridge-mapping -p pallet-fees -p pallet-anchors -p pallet-claims -p proofs -p pallet-nft --release
+    PACKAGES="pallet-bridge-mapping pallet-fees pallet-anchors pallet-claims proofs pallet-nft pallet-migration-manager pallet-crowdloan-claim pallet-crowdloan-reward"
+    cargo test -p $(echo $PACKAGES | sed "s/ / -p /g") --release
     ;;
 
   lint)

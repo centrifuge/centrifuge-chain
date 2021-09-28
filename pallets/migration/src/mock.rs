@@ -18,13 +18,9 @@
 
 use crate as pallet_migration_manager;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_runtime::traits::ConvertInto;
-use frame_support::{
-	parameter_types,
-	traits::{InstanceFilter, MaxEncodedLen},
-	weights::Weight,
-};
+use frame_support::{parameter_types, traits::InstanceFilter, weights::Weight};
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
