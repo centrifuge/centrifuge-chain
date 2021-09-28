@@ -20,7 +20,7 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_bridge, traits::WeightInfo};
+use crate::{self as pallet_bridge, Config as BridgePalletConfig, WeightInfo};
 
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -28,13 +28,9 @@ use chainbridge::{
 	EnsureBridge,
 };
 
-use codec::Encode;
-
-use common_traits::BigEndian;
-
 use frame_support::{
-	assert_ok, parameter_types,
-	traits::{GenesisBuild, SortedMembers},
+	parameter_types,
+	traits::{Everything, GenesisBuild, SortedMembers},
 	weights::Weight,
 	PalletId,
 };
@@ -53,15 +49,13 @@ use pallet_registry::{
 
 use proofs::Hasher;
 
-use runtime_common::{
+pub use runtime_common::{
 	constants::{
 		CFG, MILLISECS_PER_DAY, NATIVE_TOKEN_TRANSFER_FEE, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
 		NFT_TOKEN_TRANSFER_FEE,
 	},
 	AssetInfo, Balance, EthAddress, RegistryId, TokenId,
 };
-
-use pallet_nft::types::AssetId;
 
 use sp_core::{blake2_128, blake2_256, H256};
 
@@ -129,6 +123,7 @@ pub(crate) const RELAYER_B: u64 = 0x3;
 pub(crate) const RELAYER_C: u64 = 0x4;
 pub(crate) const ENDOWED_BALANCE: Balance = 10000 * CFG;
 pub(crate) const RELAYER_B_INITIAL_BALANCE: Balance = 2000 * CFG;
+pub(crate) const TEST_RELAYER_VOTE_THRESHOLD: u32 = 2;
 
 // ----------------------------------------------------------------------------
 // Mock runtime configuration
@@ -174,7 +169,7 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -236,7 +231,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = TEST_CHAIN_ID;
-	pub const ChainbridgePalletId: PalletId = PalletId(*b"chnbridg");
+	pub const ChainbridgePalletId: PalletId = PalletId(*b"cb/bridg");
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -305,17 +300,15 @@ impl pallet_anchors::Config for MockRuntime {
 
 // Parameterize Centrifuge Chain bridge pallet
 parameter_types! {
-	pub const BridgePalletId: PalletId = PalletId(*b"cc/bridg");
 	pub NativeTokenId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 // Implement Centrifuge Chain bridge pallet configuration trait for the mock runtime
-impl PalletBridgeConfig for MockRuntime {
+impl BridgePalletConfig for MockRuntime {
 	type Event = Event;
 	type BridgeOrigin = EnsureBridge<MockRuntime>;
-	type PalletId = BridgePalletId;
 	type Currency = Balances;
 	type NativeTokenId = NativeTokenId;
 	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
@@ -387,6 +380,13 @@ impl TestExternalitiesBuilder {
 // ----------------------------------------------------------------------------
 
 pub(crate) mod helpers {
+
+	use super::*;
+	use codec::Encode;
+	use common_traits::BigEndian;
+	use frame_support::assert_ok;
+	use pallet_nft::types::AssetId;
+
 	pub fn expect_event<E: Into<Event>>(event: E) {
 		assert_eq!(last_event(), event.into());
 	}

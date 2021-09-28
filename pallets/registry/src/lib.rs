@@ -72,6 +72,7 @@
 //! ## Genesis Configuration
 //! The pallet is parameterized and configured via [parameter_types] macro, at the time the runtime is built
 //! by means of the [`construct_runtime`] macro.
+//! This pallet does not have a GenesisConfig section.
 //!
 //! ## Dependencies
 //! This pallet is tightly coupled to:

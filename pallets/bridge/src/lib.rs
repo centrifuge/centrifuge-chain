@@ -117,7 +117,9 @@ pub use pallet::*;
 use chainbridge::types::ChainId;
 
 use common_traits::BigEndian;
+
 use pallet_nft::types::AssetId;
+
 use sp_std::vec;
 use sp_std::vec::Vec;
 
@@ -126,14 +128,14 @@ use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
-	transactional, PalletId,
+	transactional,
 };
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
 use sp_core::U256;
 
-use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
+use sp_runtime::traits::{CheckedAdd, CheckedSub, SaturatedConversion};
 
 use unique_assets::traits::Unique;
 

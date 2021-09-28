@@ -96,7 +96,7 @@ frame_support::construct_runtime!(
 		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
+		Anchors: pallet_anchors::{Pallet, Call, Storage},
 	}
 );
 

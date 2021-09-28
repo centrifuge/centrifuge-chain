@@ -34,7 +34,8 @@ common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 # Testing and mocking dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+#chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+chainbridge = { git = "https://github.com/tankofzion/chainbridge-substrate.git", default-features = false, branch = "refactor/chainbridge_pallet" }
 pallet-fees = { path = "../fees", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master"  }

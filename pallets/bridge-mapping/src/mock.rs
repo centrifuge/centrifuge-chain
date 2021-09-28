@@ -13,7 +13,7 @@
 
 use crate::{self as pallet_bridge_mapping, *};
 use chainbridge::{
-	constants::RelayerVoteThreshold,
+	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
 use frame_support::parameter_types;
@@ -46,8 +46,8 @@ frame_support::construct_runtime!(
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
-		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
+		Anchors: pallet_anchors::{Pallet, Call, Storage},
+		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 	}
