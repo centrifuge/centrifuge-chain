@@ -663,7 +663,7 @@ construct_runtime!(
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
-		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
+		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 
 		// admin stuff
