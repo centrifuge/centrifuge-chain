@@ -27,7 +27,7 @@ pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 runtime-common = { path = "../../runtime/common", default_features = false }
-unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 
 
 [dev-dependencies]
@@ -60,5 +60,5 @@ std = [
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
-    'unique_assets/std',
+    'unique-assets/std',
 ]

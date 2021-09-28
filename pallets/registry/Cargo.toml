@@ -30,7 +30,7 @@ pallet-anchors = { path = "../anchors", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
 runtime-common = { path = "../../runtime/common", default-features = false }
-unique_assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 
 [dev-dependencies]
 # Testing and mocking dependencies
@@ -58,5 +58,5 @@ std = [
   'sp-io/std',
   'sp-runtime/std',
   'sp-std/std',
-  'unique_assets/std',
+  'unique-assets/std',
 ]
