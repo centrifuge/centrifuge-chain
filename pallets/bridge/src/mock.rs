@@ -141,7 +141,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Bridge: pallet_bridge::{Pallet, Call, Config<T>, Event<T>},
 		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -231,7 +231,7 @@ impl pallet_timestamp::Config for MockRuntime {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = TEST_CHAIN_ID;
-	pub const ChainbridgePalletId: PalletId = PalletId(*b"cb/bridg");
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"cb/bridg");
 	pub const ProposalLifetime: u64 = 10;
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
@@ -239,7 +239,7 @@ parameter_types! {
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
 impl chainbridge::Config for MockRuntime {
 	type Event = Event;
-	type PalletId = ChainbridgePalletId;
+	type PalletId = ChainBridgePalletId;
 	type Proposal = Call;
 	type ChainId = MockChainId;
 	type AdminOrigin = EnsureSignedBy<TestUserId, u64>;
@@ -337,7 +337,7 @@ impl Default for TestExternalitiesBuilder {
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
 	pub(crate) fn build(self) -> TestExternalities {
-		let bridge_id = Chainbridge::account_id();
+		let bridge_id = ChainBridge::account_id();
 
 		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<MockRuntime>()

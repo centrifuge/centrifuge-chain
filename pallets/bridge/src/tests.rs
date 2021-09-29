@@ -20,7 +20,7 @@
 use crate::{
 	self as pallet_bridge,
 	mock::{
-		helpers::*, Balances, Bridge, Chainbridge, Event, MockRuntime, NativeTokenId, Origin,
+		helpers::*, Balances, Bridge, ChainBridge, Event, MockRuntime, NativeTokenId, Origin,
 		ProposalLifetime, TestExternalitiesBuilder, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
 		RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
 	},
@@ -53,7 +53,7 @@ fn transfer_native() {
 			let amount: u128 = 20 * CFG;
 			let recipient = vec![99];
 
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_chain.clone()
 			));
@@ -152,7 +152,7 @@ fn receive_nonfungible() {
 			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_chain.clone()
 			));
@@ -189,7 +189,7 @@ fn transfer_nonfungible_asset() {
 			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_chain.clone()
 			));
@@ -243,17 +243,17 @@ fn create_successful_remark_proposal() {
 			let proposal = mock_remark_proposal(hash.clone(), r_id);
 			let resource = b"Bridge.remark".to_vec();
 
-			assert_ok!(Chainbridge::set_threshold(
+			assert_ok!(ChainBridge::set_threshold(
 				Origin::root(),
 				TEST_RELAYER_VOTE_THRESHOLD
 			));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_B));
-			assert_eq!(Chainbridge::get_relayer_count(), 2);
-			assert_ok!(Chainbridge::whitelist_chain(Origin::root(), src_id));
-			assert_ok!(Chainbridge::set_resource(Origin::root(), r_id, resource));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_B));
+			assert_eq!(ChainBridge::get_relayer_count(), 2);
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), src_id));
+			assert_ok!(ChainBridge::set_resource(Origin::root(), r_id, resource));
 
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_A),
 				prop_id,
 				src_id,
@@ -261,7 +261,7 @@ fn create_successful_remark_proposal() {
 				Box::new(proposal.clone())
 			));
 
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_B),
 				prop_id,
 				src_id,
@@ -282,11 +282,11 @@ fn create_invalid_remark_proposal_with_bad_origin() {
 			let r_id = chainbridge::derive_resource_id(1, b"cent_nft_hash");
 
 			// Add a new relayer account to the chainbridge
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
 
 			// Chain bridge account is a valid origin for a remark proposal
 			assert_ok!(Bridge::remark(
-				Origin::signed(Chainbridge::account_id()),
+				Origin::signed(ChainBridge::account_id()),
 				hash,
 				r_id
 			));
@@ -312,7 +312,7 @@ fn transfer() {
 		.build()
 		.execute_with(|| {
 			// Check inital state
-			let bridge_id: u64 = Chainbridge::account_id();
+			let bridge_id: u64 = ChainBridge::account_id();
 			let resource_id = NativeTokenId::get();
 			let current_balance = Balances::free_balance(&bridge_id);
 
@@ -320,7 +320,7 @@ fn transfer() {
 
 			// Transfer and check result
 			assert_ok!(Bridge::transfer(
-				Origin::signed(Chainbridge::account_id()),
+				Origin::signed(ChainBridge::account_id()),
 				RELAYER_A,
 				10,
 				resource_id
@@ -329,7 +329,7 @@ fn transfer() {
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
 			assert_events(vec![Event::Balances(pallet_balances::Event::Transfer(
-				Chainbridge::account_id(),
+				ChainBridge::account_id(),
 				RELAYER_A,
 				10,
 			))]);
@@ -349,18 +349,18 @@ fn create_successful_transfer_proposal() {
 			// Create dummy transfer proposal for an amount of 10 transfered to RELAYER A
 			let transfer_proposal = mock_transfer_proposal(RELAYER_A, 10, r_id);
 
-			assert_ok!(Chainbridge::set_threshold(
+			assert_ok!(ChainBridge::set_threshold(
 				Origin::root(),
 				TEST_RELAYER_VOTE_THRESHOLD
 			));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_B));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_C));
-			assert_ok!(Chainbridge::whitelist_chain(Origin::root(), src_id));
-			assert_ok!(Chainbridge::set_resource(Origin::root(), r_id, resource));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_B));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_C));
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), src_id));
+			assert_ok!(ChainBridge::set_resource(Origin::root(), r_id, resource));
 
 			// First relayer (i.e. RELAYER_A) creates a new transfer proposal (so that an amount of 10 is transfered to his account)
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_A),
 				prop_id,
 				src_id,
@@ -368,7 +368,7 @@ fn create_successful_transfer_proposal() {
 				Box::new(transfer_proposal.clone())
 			));
 			let actual_votes =
-				Chainbridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
+				ChainBridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
 					.unwrap();
 			let expected_votes = chainbridge::types::ProposalVotes {
 				votes_for: vec![RELAYER_A],
@@ -379,7 +379,7 @@ fn create_successful_transfer_proposal() {
 			assert_eq!(actual_votes, expected_votes);
 
 			// Second relayer (i.e. RELAYER_B) votes against
-			assert_ok!(Chainbridge::reject_proposal(
+			assert_ok!(ChainBridge::reject_proposal(
 				Origin::signed(RELAYER_B),
 				prop_id,
 				src_id,
@@ -387,7 +387,7 @@ fn create_successful_transfer_proposal() {
 				Box::new(transfer_proposal.clone())
 			));
 			let actual_votes =
-				Chainbridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
+				ChainBridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
 					.unwrap();
 			let expected_votes = chainbridge::types::ProposalVotes {
 				votes_for: vec![RELAYER_A],
@@ -398,7 +398,7 @@ fn create_successful_transfer_proposal() {
 			assert_eq!(actual_votes, expected_votes);
 
 			// Third relayer (i.e. RELAYER_C) votes in favour
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_C),
 				prop_id,
 				src_id,
@@ -406,7 +406,7 @@ fn create_successful_transfer_proposal() {
 				Box::new(transfer_proposal.clone())
 			));
 			let actual_votes =
-				Chainbridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
+				ChainBridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
 					.unwrap();
 			let expected_votes = chainbridge::types::ProposalVotes {
 				votes_for: vec![RELAYER_A, RELAYER_C],
@@ -421,21 +421,21 @@ fn create_successful_transfer_proposal() {
 
 			//The chainbridge pallet's account balance must now be decreased by 10 after the transfer proposal was accepted
 			assert_eq!(
-				Balances::free_balance(Chainbridge::account_id()),
+				Balances::free_balance(ChainBridge::account_id()),
 				ENDOWED_BALANCE - 10
 			);
 
 			assert_events(vec![
-				Event::Chainbridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
-				Event::Chainbridge(chainbridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
-				Event::Chainbridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
-				Event::Chainbridge(chainbridge::Event::ProposalApproved(src_id, prop_id)),
+				Event::ChainBridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
+				Event::ChainBridge(chainbridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
+				Event::ChainBridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
+				Event::ChainBridge(chainbridge::Event::ProposalApproved(src_id, prop_id)),
 				Event::Balances(pallet_balances::Event::Transfer(
-					Chainbridge::account_id(),
+					ChainBridge::account_id(),
 					RELAYER_A,
 					10,
 				)),
-				Event::Chainbridge(chainbridge::Event::ProposalSucceeded(src_id, prop_id)),
+				Event::ChainBridge(chainbridge::Event::ProposalSucceeded(src_id, prop_id)),
 			]);
 		})
 }

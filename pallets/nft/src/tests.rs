@@ -172,7 +172,7 @@ fn valid_proof() {
 				MILLISECS_PER_DAY + 1
 			));
 
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_id.clone()
 			));
@@ -247,7 +247,7 @@ fn insufficient_balance_to_mint() {
 				MILLISECS_PER_DAY + 1
 			));
 
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_id.clone()
 			));

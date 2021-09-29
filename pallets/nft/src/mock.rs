@@ -20,7 +20,7 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_nft, traits::WeightInfo};
+use crate::{self as pallet_nft, traits::WeightInfo, Config as PalletNftConfig};
 
 use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
@@ -93,7 +93,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
-		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Anchors: pallet_anchors::{Pallet, Call, Storage},
@@ -217,7 +217,7 @@ parameter_types! {
 }
 
 // Implement NFT pallet's configuration trait for the mock runtime
-impl pallet_nft::Config for MockRuntime {
+impl PalletNftConfig for MockRuntime {
 	type RegistryId = RegistryId;
 	type TokenId = TokenId;
 	type AssetInfo = Vec<u8>;
