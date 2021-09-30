@@ -5,7 +5,7 @@
 //! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.  
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::traits::Currency;
+use frame_support::traits::{Contains, Currency};
 
 pub use pallet::*;
 pub use weights::*;
@@ -80,6 +80,15 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+	#[pallet::type_value]
+	pub fn OnCompletedEmpty() -> bool {
+		false
+	}
+
+	#[pallet::storage]
+	#[pallet::getter(fn completed)]
+	pub(super) type Completed<T: Config> = StorageValue<_, bool, ValueQuery, OnCompletedEmpty>;
 
 	/// Pallet genesis configuration type declaration.
 	///
@@ -350,6 +359,29 @@ pub mod pallet {
 				))
 				.into(),
 			)
+		}
+	}
+}
+
+impl<T: Config, Call> Contains<Call> for Pallet<T> {
+	fn contains(c: &Call) -> bool {
+		if pallet::Completed::<T>::get() {
+			matches!(
+				c,
+				// Calls from Sudo
+				Call::Sudo(..)
+
+					// Calls for runtime upgrade
+					| Call::System(frame_system::Call::set_code(..))
+					| Call::System(frame_system::Call::set_code_without_checks(..))
+
+					// Calls that are present in each block
+					| Call::ParachainSystem(
+						cumulus_pallet_parachain_system::Call::set_validation_data(..)
+					) | Call::Timestamp(pallet_timestamp::Call::set(..))
+			)
+		} else {
+			true
 		}
 	}
 }
