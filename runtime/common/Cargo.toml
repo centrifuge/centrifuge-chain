@@ -31,6 +31,7 @@ orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library
 # Local Dependencies
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 [features]
 default = ["std"]
@@ -47,6 +48,7 @@ std = [
     "sp-arithmetic/std",
     "sp-consensus-aura/std",
     "sp-runtime/std",
+    "primitives-tokens/std"
 ]
 on-chain-release-build = [
     "sp-api/disable-logging",

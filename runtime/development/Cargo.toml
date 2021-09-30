@@ -98,6 +98,7 @@ orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library
 orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
 runtime-common = { path = "../common", default-features = false }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
@@ -177,6 +178,7 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
+    "primitives-tokens/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

@@ -96,6 +96,7 @@ pub struct EpochDetails<BalanceRatio> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -108,7 +109,9 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ MaxEncodedLen
-			+ FixedPointOperand;
+			+ FixedPointOperand
+			+ From<u64>
+			+ TryInto<u64>;
 
 		/// A fixed-point number which represents the value of
 		/// one currency type in terms of another.
@@ -221,8 +224,16 @@ pub mod pallet {
 		WipedOut,
 		/// The provided solution is not a valid one
 		InvalidSolution,
-		/// Attempted to solve a pool which is not closing,
+		/// Attempted to solve a pool which is not closing
 		NotClosing,
+		/// Insufficient currency available for desired operation
+		InsufficientCurrency,
+		/// Insufficient reserve available for desired operation
+		InsufficientReserve,
+		/// Subordination Ratio validation failed
+		SubordinationRatioViolated,
+		/// Generic error for invalid input data provided
+		InvalidData,
 	}
 
 	#[pallet::call]
@@ -451,7 +462,18 @@ pub mod pallet {
 					.iter()
 					.map(|_| (Perquintill::one(), Perquintill::one()))
 					.collect::<Vec<_>>();
-				if Self::is_epoch_valid(epoch_reserve, &epoch_targets, &full_epoch) {
+
+				// todo Define/Calculate current tranche values
+				// How to include NAV in this
+				let current_tranche_values = pool
+					.tranches
+					.iter()
+					.map(|_| Zero::zero())
+					.collect::<Vec<_>>();
+
+				if Self::is_epoch_valid(pool, &epoch_targets, &current_tranche_values, &full_epoch)
+					.is_ok()
+				{
 					Self::do_execute_epoch(pool_id, &epoch_targets, &full_epoch)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				} else {
@@ -475,12 +497,25 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let closing_epoch = pool.closing_epoch.ok_or(Error::<T>::NotClosing)?;
-				let epoch_reserve = pool.total_reserve;
 
+				// todo Define/Calculate current tranche values
+				let current_tranche_values = pool
+					.tranches
+					.iter()
+					.map(|_| Zero::zero())
+					.collect::<Vec<_>>();
+
+				let epoch_validation_result =
+					Self::is_epoch_valid(pool, &target, &current_tranche_values, &solution);
+
+				// Soft error check only for core constraints
 				ensure!(
-					Self::is_epoch_valid(epoch_reserve, &target, &solution),
+					epoch_validation_result.is_ok()
+						|| (epoch_validation_result.err().unwrap()
+							!= Error::<T>::InsufficientCurrency.into()),
 					Error::<T>::InvalidSolution
 				);
+
 				pool.closing_epoch = None;
 				Self::do_execute_epoch(pool_id, &target, &solution)?;
 				EpochTargets::<T>::remove(pool_id);
@@ -545,7 +580,7 @@ pub mod pallet {
 			tranches.iter().map(|_| One::one()).collect()
 		}
 
-		fn calculate_epoch_transfers(
+		pub fn calculate_epoch_transfers(
 			epoch_tranche_prices: &[T::BalanceRatio],
 			tranches: &[Tranche<T::Balance>],
 		) -> Option<Vec<(T::Balance, T::Balance)>> {
@@ -560,13 +595,87 @@ pub mod pallet {
 				.collect()
 		}
 
-		fn is_epoch_valid(
-			_reserve: T::Balance,
-			_target: &[(T::Balance, T::Balance)],
-			_solution: &[(Perquintill, Perquintill)],
-		) -> bool {
-			// TODO: Implement this
-			true
+		pub fn is_epoch_valid(
+			pool_details: &PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+			target: &[(T::Balance, T::Balance)],
+			current_tranche_values: &[T::Balance],
+			solution: &[(Perquintill, Perquintill)],
+		) -> DispatchResult {
+			let acc_supply: T::Balance = target.iter().zip(solution.iter()).fold(
+				Zero::zero(),
+				|sum: T::Balance, (tranche, sol)| {
+					sum.checked_add(&sol.0.mul_floor(tranche.0)).unwrap()
+				},
+			);
+
+			let acc_redeem: T::Balance = target.iter().zip(solution.iter()).fold(
+				Zero::zero(),
+				|sum: T::Balance, (tranche, sol)| {
+					sum.checked_add(&sol.1.mul_floor(tranche.1)).unwrap()
+				},
+			);
+
+			let currency_available: T::Balance =
+				acc_supply.checked_add(&pool_details.total_reserve).unwrap();
+			Self::validate_core_constraints(currency_available, acc_redeem)?;
+
+			let new_reserve = currency_available.checked_sub(&acc_redeem).unwrap();
+
+			let tranche_ratios = pool_details
+				.tranches
+				.iter()
+				.map(|tranche| tranche.min_subordination_ratio)
+				.collect::<Vec<_>>();
+
+			Self::validate_pool_constraints(
+				new_reserve,
+				pool_details.max_reserve,
+				&tranche_ratios,
+				current_tranche_values,
+			)
+		}
+
+		fn validate_core_constraints(
+			currency_available: T::Balance,
+			currency_out: T::Balance,
+		) -> DispatchResult {
+			if currency_out > currency_available {
+				Err(Error::<T>::InsufficientCurrency)?
+			}
+			Ok(())
+		}
+
+		fn validate_pool_constraints(
+			reserve: T::Balance,
+			max_reserve: T::Balance,
+			tranche_ratios: &[Perquintill],
+			current_tranche_values: &[T::Balance],
+		) -> DispatchResult {
+			if tranche_ratios.len() != current_tranche_values.len() {
+				Err(Error::<T>::InvalidData)?
+			}
+
+			if reserve > max_reserve {
+				Err(Error::<T>::InsufficientReserve)?
+			}
+
+			let mut count = 0;
+			for tv in current_tranche_values {
+				let acc_sub_value = current_tranche_values
+					.iter()
+					.skip(count + 1)
+					.fold(Zero::zero(), |sum: T::Balance, tvs| {
+						sum.checked_add(tvs).unwrap()
+					});
+
+				let calc_sub: Perquintill = Perquintill::from_rational(acc_sub_value, *tv);
+				if calc_sub < tranche_ratios[count] {
+					Err(Error::<T>::SubordinationRatioViolated)?
+				}
+				count = count + 1;
+			}
+
+			Ok(())
 		}
 
 		fn do_execute_epoch(

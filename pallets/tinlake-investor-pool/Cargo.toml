@@ -29,7 +29,8 @@ orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
+orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
 [features]
 default = ['std']
@@ -38,7 +39,9 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'pallet-timestamp/std',
     'frame-benchmarking/std',
+    'primitives-tokens/std'
 ]
 try-runtime = ['frame-support/try-runtime']
 
