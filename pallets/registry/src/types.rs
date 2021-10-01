@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Types used by registry pallet.
+//! Types used by verifiable asset (VA) registry pallet.
 
 // ----------------------------------------------------------------------------
 // Module imports and re-exports
@@ -22,18 +22,22 @@ use codec::{Decode, Encode};
 // Library for building and validating proofs
 use proofs::{Hasher, Proof, Verifier};
 
+// Common runtime types
+use runtime_common::types::{Bytes, FixedArray, Salt};
+
 use sp_core::{blake2_256, H256};
 
 use sp_runtime::{sp_std::vec, sp_std::vec::Vec};
 
 // ----------------------------------------------------------------------------
-// Types definition
+// Type alias and definitions
 // ----------------------------------------------------------------------------
 
-pub type Bytes = Vec<u8>;
+/// Type alias as a shortcut for a pallet refering to a FRAME system hash (associated type).
+pub(crate) type SystemHashOf<T> = <T as frame_system::Config>::Hash;
 
-// A cryptographic salt to be combined with a value before hashing.
-pub type Salt = [u8; 32];
+/// Type alias as a shortcut for a proof verifier implementing a [Hasher] trait.
+pub(crate) type HasherHashOf<H> = <H as Hasher>::Hash;
 
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
@@ -41,6 +45,7 @@ pub struct RegistryInfo {
 	/// A configuration option that will enable a user to burn their own tokens
 	/// in the [burn] method.
 	pub owner_can_burn: bool,
+
 	/// Names of fields required to be provided for verification during a [mint].
 	/// These *MUST* be compact encoded.
 	pub fields: Vec<Bytes>,
@@ -52,7 +57,7 @@ pub struct RegistryInfo {
 /// merkle tree, then hashing with the given hashes to generate the Merkle root.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
 pub struct CompleteProof<Hash> {
-	/// The value of the associated property of a document. Corrseponds to a leaf in
+	/// The value of the associated property of a document. It corresponds to a leaf in
 	/// the document merkle tree.
 	pub value: Bytes,
 	/// A hexified and compact encoded plain text name for a document field.
@@ -65,7 +70,7 @@ pub struct CompleteProof<Hash> {
 
 /// Generates the leaf hash from underlying data, other hashes remain the same.
 ///
-/// The Keccak is the hasher used on Ethereum.
+/// The Keccak is the hasher compatible with Ethereum.
 impl From<CompleteProof<H256>> for proofs::Proof<H256> {
 	fn from(mut proof: CompleteProof<H256>) -> Self {
 		// Generate leaf hash from property ++ value ++ salt
@@ -83,7 +88,7 @@ pub(crate) struct ProofVerifier {
 	///
 	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
 	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
-	static_proofs: [<Self as Hasher>::Hash; 3],
+	static_proofs: FixedArray<HasherHashOf<Self>, 3>,
 }
 
 // Proof verifier implementation block
@@ -98,7 +103,7 @@ impl ProofVerifier {
 	///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
 	///   2. The ZK root hash (with index ['ZK_DATA_ROOT_HASH'])
 	///   3. The signature root hash (with index ['SIGNATURE_DATA_ROOT_HASH'])
-	pub fn new(static_proofs: [<Self as Hasher>::Hash; 3]) -> Self {
+	pub fn new(static_proofs: FixedArray<HasherHashOf<Self>, 3>) -> Self {
 		ProofVerifier { static_proofs }
 	}
 }
@@ -172,7 +177,7 @@ pub struct MintInfo<Anchor, Hash> {
 	/// The three hashes [DataRoot, SignatureRoot, DocRoot] *MUST* be in this order.
 	/// These are used to validate the respective branches of the merkle tree, and
 	/// to generate the final document root hash.
-	pub static_hashes: [Hash; 3],
+	pub static_hashes: FixedArray<Hash, 3>,
 
 	/// Each element of the list is a proof that a certain property of a
 	/// document has the specified value.

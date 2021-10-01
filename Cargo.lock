@@ -1159,7 +1159,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/tankofzion/chainbridge-substrate.git?branch=refactor/chainbridge_pallet#7456ce3bef54d58c352af77ac445c232f41ceb4d"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#a36507ed3e588ed1a51649b161649d34a4606e5a"
 dependencies = [
  "frame-support",
  "frame-system",

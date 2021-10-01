@@ -128,14 +128,14 @@ use frame_support::{
 	dispatch::DispatchResult,
 	ensure,
 	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, WithdrawReasons},
-	transactional,
+	transactional, PalletId,
 };
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
 
 use sp_core::U256;
 
-use sp_runtime::traits::{CheckedAdd, CheckedSub, SaturatedConversion};
+use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
 
 use unique_assets::traits::Unique;
 
@@ -189,6 +189,14 @@ pub mod pallet {
 		+ pallet_fees::Config
 		+ pallet_nft::Config
 	{
+		/// Pallet identifier.
+		///
+		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
+		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
+		/// macro in one of the runtimes (see runtime folder).
+		#[pallet::constant]
+		type BridgePalletId: Get<PalletId>;
+
 		/// Specifies the origin check provided by the chainbridge for calls
 		/// that can only be called by the chainbridge pallet.
 		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
@@ -527,9 +535,9 @@ impl<T: Config> Pallet<T> {
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
-	//	pub fn account_id() -> T::AccountId {
-	//		T::BridgePalletId::get().into_account()
-	//	}
+	pub fn account_id() -> T::AccountId {
+		<T as pallet::Config>::BridgePalletId::get().into_account()
+	}
 
 	/// Initialize pallet's genesis configuration.
 	///

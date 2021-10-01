@@ -11,13 +11,17 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Registry pallet's unit test cases
+//! Verifiable asset (VA) registry pallet's unit test cases
 
 // ----------------------------------------------------------------------------
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{mock::*, types::*, *};
+use crate::{
+	mock::{helpers::*, *},
+	pallet::*,
+	types::*,
+};
 
 use frame_support::{assert_err, assert_ok};
 

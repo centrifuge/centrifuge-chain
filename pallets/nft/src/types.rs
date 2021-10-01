@@ -25,9 +25,18 @@ use sp_runtime::sp_std::vec::Vec;
 // Routines for building and validating proofs
 use proofs::{Hasher, Verifier};
 
+// Runtime common types
+use runtime_common::types::FixedArray;
+
 // ----------------------------------------------------------------------------
-// Types definition
+// Type alias and definitions
 // ----------------------------------------------------------------------------
+
+/// Type alias as a shortcut for a pallet refering to a FRAME system hash (associated type).
+pub(crate) type SystemHashOf<T> = <T as frame_system::Config>::Hash;
+
+/// Type alias as a shortcut for a proof verifier implementing a [Hasher] trait.
+pub(crate) type HasherHashOf<H> = <H as Hasher>::Hash;
 
 /// A global identifier for an nft/asset on-chain. Composed of a registry and token id.
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
@@ -45,11 +54,12 @@ pub(crate) struct ProofVerifier {
 	///
 	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
 	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
-	static_proofs: [<Self as Hasher>::Hash; 3],
+	static_proofs: FixedArray<HasherHashOf<Self>, 3>,
 }
 
 // Proof verifier implementation block
 impl ProofVerifier {
+	// Defined associated constants of static proof indexes
 	const BASIC_DATA_ROOT_HASH: usize = 0;
 	const ZK_DATA_ROOT_HASH: usize = 1;
 	const SIGNATURE_ROOT_HASH: usize = 2;

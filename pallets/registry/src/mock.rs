@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Verifiable attributes registry pallet testing environment and utilities
+//! Verifiable asset (VA) registry pallet testing environment and utilities
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
@@ -23,7 +23,7 @@
 use crate::{
 	self as pallet_registry,
 	traits::{VerifierRegistry, WeightInfo},
-	types::{CompleteProof, RegistryInfo},
+	types::{CompleteProof, RegistryInfo, SystemHashOf},
 };
 
 use chainbridge::{
@@ -49,7 +49,7 @@ use pallet_nft::types::AssetId;
 use proofs::Hasher;
 
 use runtime_common::{
-	AssetInfo, Balance, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
+	AssetInfo, Balance, FixedArray, RegistryId, TokenId, NFTS_PREFIX, NFT_PROOF_VALIDATION_FEE,
 };
 
 use sp_core::{blake2_128, blake2_256, H256};
@@ -305,121 +305,136 @@ impl TestExternalitiesBuilder {
 // Helper functions
 // ----------------------------------------------------------------------------
 
-// Return testing proofs.
-//
-// This function returns all relevant data, including dummy proofs, static
-// hashes, and the related document root hash.
-pub fn mock_proofs<T: frame_system::Config>(
-	registry_id: RegistryId,
-	token_id: TokenId,
-) -> (Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3])
-where
-	T: frame_system::Config<Hash = H256>,
-{
-	// Encode token into big endian U256
-	let token_enc = token_id.to_big_endian();
+pub(crate) mod helpers {
 
-	// Pre proof has registry_id: token_id as prop: value
-	let pre_proof = CompleteProof {
-		value: token_enc,
-		salt: [1; 32],
-		property: [NFTS_PREFIX, registry_id.0.as_bytes()].concat(),
-		hashes: vec![],
-	};
+	use super::*;
 
-	let proofs = vec![
-		CompleteProof {
-			value: vec![1, 1],
-			salt: [1; 32],
-			property: b"AMOUNT".to_vec(),
-			hashes: vec![proofs::Proof::from(pre_proof.clone()).leaf_hash],
-		},
-		pre_proof.clone(),
-	];
-
-	let mut leaves: Vec<T::Hash> = proofs
-		.iter()
-		.map(|proof| proofs::Proof::from(proof.clone()).leaf_hash)
-		.collect();
-	leaves.sort();
-
-	let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
-
-	// Calculate static proofs
-	let basic_data_root_hash = MockProofVerifier::hash(&hash);
-	let zk_data_root_hash = MockProofVerifier::hash(&[0]);
-	let signature_root_hash = MockProofVerifier::hash(&[0]);
-	let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
-
-	// Calculate document root hash
+	// Return testing proofs.
 	//
-	// Here's how document's root hash is calculated:
-	//                                doc_root_hash
-	//                               /             \
-	//                signing_root_hash            signature_root_hash
-	//               /                 \
-	//    basic_data_root_hash   zk_data_root_hash
-	let signing_root_hash =
-		proofs::hashing::hash_of::<MockProofVerifier>(basic_data_root_hash, zk_data_root_hash);
-	let doc_root =
-		proofs::hashing::hash_of::<MockProofVerifier>(signing_root_hash, signature_root_hash);
+	// This function returns all relevant data, including dummy proofs, static
+	// hashes, and the related document root hash.
+	pub fn mock_proofs<T: frame_system::Config>(
+		registry_id: RegistryId,
+		token_id: TokenId,
+	) -> (
+		Vec<CompleteProof<SystemHashOf<T>>>,
+		SystemHashOf<T>,
+		[SystemHashOf<T>; 3],
+	)
+	where
+		T: frame_system::Config<Hash = H256>,
+	{
+		// Encode token into big endian U256
+		let token_enc = token_id.to_big_endian();
 
-	(proofs, doc_root, static_hashes)
-}
-
-// Create a dummy registry and return all relevant data
-pub fn setup_mint<T>(
-	owner: T::AccountId,
-	token_id: TokenId,
-) -> (
-	AssetId<RegistryId, TokenId>,
-	T::Hash,
-	T::Hash,
-	(Vec<CompleteProof<T::Hash>>, T::Hash, [T::Hash; 3]),
-	AssetInfo,
-	RegistryInfo,
-)
-where
-	T: frame_system::Config<Hash = H256, AccountId = u64>
-		+ pallet_registry::Config
-		+ pallet_nft::Config<AssetInfo = AssetInfo>,
-{
-	let metadata = vec![];
-
-	// Anchor data
-	let pre_image = T::Hashing::hash(&[1, 2, 3]);
-	let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
-
-	// Registry info
-	let properties = vec![b"AMOUNT".to_vec()];
-	let registry_info = RegistryInfo {
-		owner_can_burn: false,
-		// Don't include the registry id prop which will be generated in the runtime
-		fields: properties,
-	};
-
-	// Create registry, get registry id. Shouldn't fail.
-	let registry_id =
-		match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone()) {
-			Ok(r_id) => r_id,
-			Err(e) => panic!("{:#?}", e),
+		// Pre proof has registry_id: token_id as prop: value
+		let pre_proof = CompleteProof {
+			value: token_enc,
+			salt: [1; 32],
+			property: [NFTS_PREFIX, registry_id.0.as_bytes()].concat(),
+			hashes: vec![],
 		};
 
-	// Generate dummy proofs data for testing
-	let (proofs, doc_root, static_hashes) = mock_proofs::<T>(registry_id.clone(), token_id.clone());
+		let proofs = vec![
+			CompleteProof {
+				value: vec![1, 1],
+				salt: [1; 32],
+				property: b"AMOUNT".to_vec(),
+				hashes: vec![proofs::Proof::from(pre_proof.clone()).leaf_hash],
+			},
+			pre_proof.clone(),
+		];
 
-	// Registry data
-	let nft_data = AssetInfo { metadata };
+		let mut leaves: Vec<SystemHashOf<T>> = proofs
+			.iter()
+			.map(|proof| proofs::Proof::from(proof.clone()).leaf_hash)
+			.collect();
+		leaves.sort();
 
-	// Asset id
-	let asset_id = AssetId(registry_id, token_id);
+		let hash = [leaves[0].as_ref(), leaves[1].as_ref()].concat();
 
-	(
-		asset_id,
-		pre_image,
-		anchor_id,
-		(proofs, doc_root, static_hashes),
-		nft_data,
-		registry_info,
+		// Calculate static proofs
+		let basic_data_root_hash = MockProofVerifier::hash(&hash);
+		let zk_data_root_hash = MockProofVerifier::hash(&[0]);
+		let signature_root_hash = MockProofVerifier::hash(&[0]);
+		let static_hashes = [basic_data_root_hash, zk_data_root_hash, signature_root_hash];
+
+		// Calculate document root hash
+		//
+		// Here's how document's root hash is calculated:
+		//                                doc_root_hash
+		//                               /             \
+		//                signing_root_hash            signature_root_hash
+		//               /                 \
+		//    basic_data_root_hash   zk_data_root_hash
+		let signing_root_hash =
+			proofs::hashing::hash_of::<MockProofVerifier>(basic_data_root_hash, zk_data_root_hash);
+		let doc_root =
+			proofs::hashing::hash_of::<MockProofVerifier>(signing_root_hash, signature_root_hash);
+
+		(proofs, doc_root, static_hashes)
+	}
+
+	// Create a dummy registry and return all relevant data
+	pub fn setup_mint<T>(
+		owner: T::AccountId,
+		token_id: TokenId,
+	) -> (
+		AssetId<RegistryId, TokenId>,
+		SystemHashOf<T>,
+		SystemHashOf<T>,
+		(
+			Vec<CompleteProof<SystemHashOf<T>>>,
+			SystemHashOf<T>,
+			FixedArray<SystemHashOf<T>, 3>,
+		),
+		AssetInfo,
+		RegistryInfo,
 	)
+	where
+		T: frame_system::Config<Hash = H256, AccountId = u64>
+			+ pallet_registry::Config
+			+ pallet_nft::Config<AssetInfo = AssetInfo>,
+	{
+		let metadata = vec![];
+
+		// Anchor data
+		let pre_image = T::Hashing::hash(&[1, 2, 3]);
+		let anchor_id = (pre_image).using_encoded(T::Hashing::hash);
+
+		// Registry info
+		let properties = vec![b"AMOUNT".to_vec()];
+		let registry_info = RegistryInfo {
+			owner_can_burn: false,
+			// Don't include the registry id prop which will be generated in the runtime
+			fields: properties,
+		};
+
+		// Create registry, get registry id. Shouldn't fail.
+		let registry_id =
+			match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone())
+			{
+				Ok(r_id) => r_id,
+				Err(e) => panic!("{:#?}", e),
+			};
+
+		// Generate dummy proofs data for testing
+		let (proofs, doc_root, static_hashes) =
+			mock_proofs::<T>(registry_id.clone(), token_id.clone());
+
+		// Registry data
+		let nft_data = AssetInfo { metadata };
+
+		// Asset id
+		let asset_id = AssetId(registry_id, token_id);
+
+		(
+			asset_id,
+			pre_image,
+			anchor_id,
+			(proofs, doc_root, static_hashes),
+			nft_data,
+			registry_info,
+		)
+	}
 }

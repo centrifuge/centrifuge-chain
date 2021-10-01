@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Traits used and exported by registry pallet.
+//! Traits used and exported by verifiable asset (VA) registry pallet.
 
 // ----------------------------------------------------------------------------
 // Module imports and re-exports

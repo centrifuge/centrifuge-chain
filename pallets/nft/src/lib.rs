@@ -103,7 +103,7 @@ mod weights;
 // Export crate types and traits
 use crate::{
 	traits::WeightInfo,
-	types::{AssetId, BundleHasher, ProofVerifier},
+	types::{AssetId, BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -121,6 +121,8 @@ use frame_support::{
 };
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
+
+use runtime_common::types::FixedArray;
 
 use sp_core::H256;
 use sp_runtime::{traits::Member, SaturatedConversion};
@@ -332,10 +334,10 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::validate_mint())]
 		pub fn validate_mint(
 			origin: OriginFor<T>,
-			anchor_id: T::Hash,
+			anchor_id: SystemHashOf<T>,
 			deposit_address: DepositAddress,
-			proofs: Vec<Proof<H256>>,
-			static_proofs: [H256; 3],
+			proofs: Vec<Proof<HasherHashOf<BundleHasher>>>,
+			static_proofs: FixedArray<HasherHashOf<BundleHasher>, 3>,
 			dest_id: <T as Config>::ChainId,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -391,11 +393,11 @@ impl<T: Config> Pallet<T> {
 	/// This function generate a Keccak bundle of deposit_address +
 	/// hash(keccak(name+value+salt)) of each proof provided.
 	fn get_bundled_hash_from_proofs(
-		proofs: Vec<Proof<H256>>,
-		deposit_address: [u8; 20],
-	) -> T::Hash {
+		proofs: Vec<Proof<HasherHashOf<BundleHasher>>>,
+		deposit_address: DepositAddress,
+	) -> SystemHashOf<T> {
 		let bundled_hash = bundled_hash_from_proofs::<BundleHasher>(proofs, deposit_address);
-		let mut result: T::Hash = Default::default();
+		let mut result: SystemHashOf<T> = Default::default();
 		result.as_mut().copy_from_slice(&bundled_hash[..]);
 		result
 	}

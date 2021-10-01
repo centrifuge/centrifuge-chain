@@ -11,9 +11,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! # Verifiable attributes (VA) registry pallet
+//! # Verifiable asset (VA) registry pallet
 //!
-//! This Substrate FRAME pallet defines a **Verifiable Attributes Registry**
+//! This Substrate FRAME pallet defines a **Verifiable Asset (VA) Registry**
 //! for minting and managing non-fungible tokens (NFTs).
 //!
 //! ## Overview
@@ -116,7 +116,7 @@ mod weights;
 // Re-export crate types and traits
 use crate::{
 	traits::{VerifierRegistry, WeightInfo},
-	types::{MintInfo, ProofVerifier, RegistryInfo},
+	types::{MintInfo, ProofVerifier, RegistryInfo, SystemHashOf},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -278,7 +278,7 @@ pub mod pallet {
 			registry_id: T::RegistryId,
 			token_id: T::TokenId,
 			asset_info: T::AssetInfo,
-			mint_info: MintInfo<T::Hash, H256>,
+			mint_info: MintInfo<SystemHashOf<T>, H256>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
@@ -322,15 +322,15 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Return a document's root hash given an anchor identifier.
-	fn get_document_root(anchor_id: T::Hash) -> Result<H256, DispatchError> {
+	fn get_document_root(anchor_id: SystemHashOf<T>) -> Result<H256, DispatchError> {
 		let root = match <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id) {
 			Some(anchor_data) => Ok(anchor_data.doc_root),
 			None => Err(Error::<T>::DocumentNotAnchored),
 		}?;
 
 		let doc_root = H256::from_slice(root.as_ref());
+
 		Ok(doc_root)
-		//Ok(<T::Hashing as Hash>::hash(root.as_ref()))
 	}
 }
 
@@ -339,15 +339,15 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
 	type AccountId = T::AccountId;
 	type RegistryId = T::RegistryId;
 	type RegistryInfo = RegistryInfo;
-	type AssetId = AssetId<T::RegistryId, T::TokenId>;
+	type AssetId = AssetId<Self::RegistryId, T::TokenId>;
 	type AssetInfo = T::AssetInfo;
-	type MintInfo = MintInfo<T::Hash, H256>;
+	type MintInfo = MintInfo<SystemHashOf<T>, H256>;
 
 	// Registries with identical RegistryInfo may exist
 	fn create_new_registry(
 		caller: T::AccountId,
 		mut info: RegistryInfo,
-	) -> Result<T::RegistryId, DispatchError> {
+	) -> Result<Self::RegistryId, DispatchError> {
 		// Generate registry id as nonce
 		let id = Self::create_registry_id()?;
 
@@ -366,11 +366,11 @@ impl<T: Config> VerifierRegistry for Pallet<T> {
 
 	/// Mint of a non-fungible token
 	fn mint(
-		caller: T::AccountId,
-		owner_account: T::AccountId,
-		asset_id: AssetId<T::RegistryId, T::TokenId>,
-		asset_info: T::AssetInfo,
-		mint_info: MintInfo<T::Hash, H256>,
+		caller: Self::AccountId,
+		owner_account: Self::AccountId,
+		asset_id: AssetId<Self::RegistryId, T::TokenId>,
+		asset_info: Self::AssetInfo,
+		mint_info: Self::MintInfo,
 	) -> Result<(), DispatchError> {
 		let (registry_id, token_id) = asset_id.clone().destruct();
 		let registry_info = <Registries<T>>::get(registry_id.clone());
