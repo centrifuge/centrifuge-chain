@@ -15,6 +15,7 @@ use std::fmt::Debug;
 
 use frame_support::pallet_prelude::Get;
 use frame_support::storage::types::OptionQuery;
+use frame_support::traits::Time;
 pub use pallet::*;
 use pallet_nft::types::AssetId;
 use pallet_registry::traits::VerifierRegistry;
@@ -45,18 +46,18 @@ pub enum LoanStatus {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanData<Rate, Amount, Moment, AssetId> {
+pub struct LoanData<Rate, Amount, AssetId> {
 	ceiling: Amount,
 	borrowed_amount: Amount,
 	rate_per_sec: Rate,
 	accumulated_rate: Rate,
-	normalised_debt: Amount,
-	last_updated: Moment,
+	principal_debt: Amount,
+	last_updated: u64,
 	asset_id: AssetId,
 	status: LoanStatus,
 }
 
-impl<Rate, Amount, Moment, AssetId> LoanData<Rate, Amount, Moment, AssetId>
+impl<Rate, Amount, AssetId> LoanData<Rate, Amount, AssetId>
 where
 	Amount: PartialOrd + sp_arithmetic::traits::Zero,
 {
@@ -90,9 +91,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_pool::Config + pallet_timestamp::Config + pallet_nft::Config
-	{
+	pub trait Config: frame_system::Config + pallet_pool::Config + pallet_nft::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -116,6 +115,9 @@ pub mod pallet {
 			AssetInfoOf<Self>,
 			MintInfoOf<Self>,
 		>;
+
+		/// A way for use to fetch the time of the current blocks
+		type Time: frame_support::traits::Time;
 
 		/// PalletID of this loan module
 		#[pallet::constant]
@@ -154,7 +156,7 @@ pub mod pallet {
 		T::PoolId,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanData<T::Rate, T::Amount, T::Moment, AssetIdOf<T>>,
+		LoanData<T::Rate, T::Amount, AssetIdOf<T>>,
 		OptionQuery,
 	>;
 
@@ -243,6 +245,21 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Closes a given loan if repaid fully
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn borrow(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: T::Amount,
+		) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			// let asset = Self::close(pool_id, loan_id, owner)?;
+			// Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
+			Ok(())
+		}
+
 		/// Sets the loan info for a given loan in a pool
 		/// we update the loan details only if its not active
 		#[pallet::weight(100_000)]
@@ -315,6 +332,19 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
+	/// check if the given loan belongs to the owner provided
+	fn check_loan_owner(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		owner: T::AccountId,
+	) -> Result<AssetIdOf<T>, DispatchError> {
+		let registry_id = Self::fetch_or_create_loan_nft_registry_for_pool(pool_id);
+		let got = T::NftRegistry::owner_of(AssetId(registry_id, loan_id.into()))
+			.ok_or(Error::<T>::ErrNotNFTOwner)?;
+		ensure!(got == owner, Error::<T>::ErrNotNFTOwner);
+		Ok(AssetId(registry_id, loan_id.into()))
+	}
+
 	/// issues a new loan nft and returns the LoanID
 	fn issue(
 		pool_id: T::PoolId,
@@ -353,7 +383,7 @@ impl<T: Config> Pallet<T> {
 
 		// lock asset nft
 		T::NftRegistry::transfer(asset_owner, loan_pallet_account, asset_id)?;
-		let timestamp = <pallet_timestamp::Pallet<T>>::get();
+		let timestamp = Self::time_now()?;
 		let loan_id: T::LoanId = loan_nft_id.into();
 		LoanInfo::<T>::insert(
 			pool_id,
@@ -363,7 +393,7 @@ impl<T: Config> Pallet<T> {
 				borrowed_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
 				accumulated_rate: Zero::zero(),
-				normalised_debt: Zero::zero(),
+				principal_debt: Zero::zero(),
 				last_updated: timestamp,
 				asset_id,
 				status: LoanStatus::Issued,
@@ -378,17 +408,13 @@ impl<T: Config> Pallet<T> {
 		owner: T::AccountId,
 	) -> Result<AssetIdOf<T>, DispatchError> {
 		// ensure owner is the loan nft owner
-		let loan_registry = Self::fetch_or_create_loan_nft_registry_for_pool(pool_id);
-		let loan_nft = AssetId(loan_registry, loan_id.into());
-		let loan_owner =
-			T::NftRegistry::owner_of(loan_nft).ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
-		ensure!(loan_owner == owner, Error::<T>::ErrNotNFTOwner);
+		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		// ensure debt is all paid
 		let mut loan_info =
 			LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
 		ensure!(
-			loan_info.normalised_debt == Zero::zero(),
+			loan_info.principal_debt == Zero::zero(),
 			Error::<T>::ErrLoanNotRepaid
 		);
 
@@ -407,9 +433,17 @@ impl<T: Config> Pallet<T> {
 		Ok(asset)
 	}
 
-	pub fn borrow(pool_id: T::PoolId, loan_id: T::LoanId, amount: T::Amount) -> DispatchResult {
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+	fn borrow_amount(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		owner: T::AccountId,
+		amount: T::Amount,
+	) -> DispatchResult {
+		// ensure owner is the loan owner
+		Self::check_loan_owner(pool_id, loan_id, owner)?;
 
+		// fetch the loan details and check for ceiling threshold
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
 		ensure!(
 			loan_info.ceiling <= amount + loan_info.borrowed_amount,
 			Error::<T>::ErrLoanCeilingReached
@@ -420,44 +454,45 @@ impl<T: Config> Pallet<T> {
 			.checked_add(&amount)
 			.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
-		let nowt = <pallet_timestamp::Pallet<T>>::get();
-		let now: u64 = TryInto::<u64>::try_into(nowt).or(Err(Error::<T>::ErrEpochOverflow))?;
-		let last_updated: u64 = TryInto::<u64>::try_into(loan_info.last_updated)
-			.or(Err(Error::<T>::ErrEpochOverflow))?;
-		let new_chi = math::calculate_accumulated_rate::<T::Rate>(
+		// calculate new accumulated rate
+		let now: u64 = Self::time_now()?;
+		let accumulated_rate = math::calculate_accumulated_rate::<T::Rate>(
 			loan_info.rate_per_sec,
 			loan_info.accumulated_rate,
 			now,
-			last_updated,
+			loan_info.last_updated,
 		)
 		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
+		// calculate current debt
 		let debt =
-			math::debt::<T::Amount, T::Rate>(loan_info.normalised_debt, loan_info.accumulated_rate)
+			math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, loan_info.accumulated_rate)
 				.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
-		let new_pie = math::calculate_normalised_debt::<T::Amount, T::Rate>(
+		// calculate new normalised debt with borrowed amount
+		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
 			debt,
 			math::Adjustment::Inc(amount),
-			new_chi,
+			accumulated_rate,
 		)
 		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
 		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 			let mut loan_info = maybe_loan_info.take().unwrap();
 			loan_info.borrowed_amount = new_borrowed_amount;
-			loan_info.last_updated = nowt;
-			loan_info.accumulated_rate = new_chi;
-			loan_info.normalised_debt = new_pie;
+			loan_info.last_updated = now;
+			loan_info.accumulated_rate = accumulated_rate;
+			loan_info.principal_debt = principal_debt;
 			*maybe_loan_info = Some(loan_info);
 		});
 
-		if loan_info.borrowed_amount == Zero::zero() {
-			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
-		}
-
-		Self::deposit_event(Event::<T>::LoanAmountBorrowed(pool_id, loan_id, amount));
+		// TODO(ved): transfer the amount to the owner here
 
 		Ok(())
+	}
+
+	fn time_now() -> Result<u64, DispatchError> {
+		let nowt = T::Time::now();
+		TryInto::<u64>::try_into(nowt).or(Err(Error::<T>::ErrEpochOverflow.into()))
 	}
 }

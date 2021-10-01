@@ -5,12 +5,12 @@ use sp_arithmetic::FixedPointNumber;
 /// calculates the latest accumulated rate since the last
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 	rate_per_sec: Rate,
-	cumulative_rate: Rate,
+	current_accumulated_rate: Rate,
 	now: u64,
 	last_updated: u64,
 ) -> Option<Rate> {
 	let pow = now - last_updated;
-	checked_pow(rate_per_sec, pow as usize).and_then(|v| v.checked_mul(&cumulative_rate))
+	checked_pow(rate_per_sec, pow as usize).and_then(|v| v.checked_mul(&current_accumulated_rate))
 }
 
 /// converts a fixed point from A precision to B precision
@@ -36,9 +36,9 @@ pub enum Adjustment<Amount: FixedPointNumber> {
 	Dec(Amount),
 }
 
-/// calculates the normalised debt after the adjustment
+/// calculates the principal debt after the adjustment
 /// current_debt and cumulative_rate must be latest
-pub fn calculate_normalised_debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
+pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
 	current_debt: Amount,
 	adjustment: Adjustment<Amount>,
 	cumulative_rate: Rate,
@@ -114,14 +114,14 @@ mod tests {
 	}
 
 	#[test]
-	fn test_calculate_cumulative_rate() {
+	fn test_calculate_accumulated_rate() {
 		// 5% interest rate
 		let rate = FixedU128P27::from(Percent::from_percent(5));
 		let rate_per_sec = rate_per_sec(rate).unwrap_or_default();
 		assert!(rate_per_sec.is_positive(), "should not be zero");
 
-		// initial cumulative_rate
-		let cumulative_rate = FixedU128P27::from(1);
+		// initial accumulated_rate
+		let accumulated_rate = FixedU128P27::from(1);
 
 		// moment values
 		let last_updated = 0u64;
@@ -130,17 +130,17 @@ mod tests {
 
 		// calculate cumulative rate after half a year with compounding in seconds
 		let maybe_new_cumulative_rate =
-			calculate_accumulated_rate(rate_per_sec, cumulative_rate, now, last_updated);
+			calculate_accumulated_rate(rate_per_sec, accumulated_rate, now, last_updated);
 		assert!(
 			maybe_new_cumulative_rate.is_some(),
 			"expect value to not overflow"
 		);
 		let cumulative_rate = maybe_new_cumulative_rate.unwrap();
-		let expected_cumulative_rate = FixedU128P27::saturating_from_rational(
+		let expected_accumulated_rate = FixedU128P27::saturating_from_rational(
 			1025315120504108509948668518u128,
 			1000000000000000000000000000u128,
 		);
-		assert_eq!(expected_cumulative_rate, cumulative_rate);
+		assert_eq!(expected_accumulated_rate, cumulative_rate);
 
 		// calculate debt after half a year if the principal amount is 100
 		let principal = FixedU128::from(100u128);
@@ -148,7 +148,7 @@ mod tests {
 		assert!(maybe_debt.is_some(), "expect not to overflow");
 
 		let expected_debt = principal
-			.checked_mul(&convert::<FixedU128P27, FixedU128>(expected_cumulative_rate).unwrap())
+			.checked_mul(&convert::<FixedU128P27, FixedU128>(expected_accumulated_rate).unwrap())
 			.unwrap();
 		assert_eq!(expected_debt, maybe_debt.unwrap())
 	}

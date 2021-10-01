@@ -194,6 +194,7 @@ impl pallet_loan::Config for MockRuntime {
 	type Amount = Amount;
 	type NftRegistry = Nft;
 	type VaRegistry = Registry;
+	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
 }
 
