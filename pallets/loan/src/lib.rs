@@ -465,11 +465,10 @@ impl<T: Config> Pallet<T> {
 		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
 		// calculate current debt
-		let debt =
-			math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, loan_info.accumulated_rate)
-				.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
+			.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
 
-		// calculate new normalised debt with borrowed amount
+		// calculate new principal debt with borrowed amount
 		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
 			debt,
 			math::Adjustment::Inc(amount),
@@ -493,6 +492,6 @@ impl<T: Config> Pallet<T> {
 
 	fn time_now() -> Result<u64, DispatchError> {
 		let nowt = T::Time::now();
-		TryInto::<u64>::try_into(nowt).or(Err(Error::<T>::ErrEpochOverflow.into()))
+		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochOverflow.into())
 	}
 }

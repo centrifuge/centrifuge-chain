@@ -19,8 +19,10 @@ frame-system = { git = "https://github.com/centrifuge/substrate", default-featur
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-nft = { path = "../nft", default-features = false }
+
+# orml
+orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -28,6 +30,8 @@ sp-io = { git = "https://github.com/centrifuge/substrate", default-features = fa
 pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+#orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
 [features]
 default = ['std']
@@ -39,6 +43,6 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'sp-arithmetic/std',
-    'pallet-timestamp/std',
-    'pallet-nft/std'
+    'pallet-nft/std',
+    'orml-traits/std'
 ]

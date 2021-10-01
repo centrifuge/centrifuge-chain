@@ -4,12 +4,15 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
-use frame_support::sp_runtime::traits::{AtLeast32Bit, One};
+use frame_support::sp_runtime::traits::{AccountIdConversion, AtLeast32Bit, One};
 use std::fmt::Debug;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
+use frame_support::traits::{EnsureOrigin, Get};
+use frame_system::pallet_prelude::OriginFor;
+use orml_traits::MultiCurrency;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -26,11 +29,20 @@ pub struct PoolData<AccountID> {
 	pub name: String,
 }
 
+type CurrencyIdOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
+	<T as frame_system::Config>::AccountId,
+>>::CurrencyId;
+
+type MultiCurrencyBalanceOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
+
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
 	use super::*;
 	use frame_support::pallet_prelude::*;
+	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
 
 	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
@@ -58,6 +70,15 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ Copy
 			+ IsType<<Self as pallet_nft::Config>::TokenId>;
+
+		type MultiCurrency: orml_traits::MultiCurrency<<Self as frame_system::Config>::AccountId>;
+
+		/// Origin that can make transfers possible
+		type CurrencyOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+		/// PalletID of this pool module
+		#[pallet::constant]
+		type PoolPalletId: Get<PalletId>;
 	}
 
 	/// Stores the PoolInfo against a poolID
@@ -76,6 +97,12 @@ pub mod pallet {
 	#[pallet::getter(fn get_pool_nonce)]
 	pub(super) type PoolNonce<T: Config> =
 		StorageValue<_, T::PoolId, ValueQuery, OnNextPoolIDEmpty<T>>;
+
+	/// Stores the pool_id to currencyId
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_currency)]
+	pub(super) type PoolCurrency<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, CurrencyIdOf<T>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -118,5 +145,33 @@ impl<T: Config> Pallet<T> {
 		let next_pool_id = pool_id + T::PoolId::one();
 		PoolNonce::<T>::set(next_pool_id);
 		pool_id
+	}
+
+	/// returns the account_id of the pool pallet
+	pub fn account_id() -> T::AccountId {
+		T::PoolPalletId::get().into_account()
+	}
+
+	pub fn borrow_currency(
+		pool_id: T::PoolId,
+		origin: OriginFor<T>,
+		to: T::AccountId,
+		amount: MultiCurrencyBalanceOf<T>,
+	) -> DispatchResult {
+		// must be a loan origin
+		T::CurrencyOrigin::ensure_origin(origin)?;
+		let currency_id = PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
+		T::MultiCurrency::transfer(currency_id, &Self::account_id(), &to, amount)
+	}
+
+	pub fn repay_currency(
+		pool_id: T::PoolId,
+		origin: OriginFor<T>,
+		from: T::AccountId,
+		amount: MultiCurrencyBalanceOf<T>,
+	) -> DispatchResult {
+		T::CurrencyOrigin::ensure_origin(origin)?;
+		let currency_id = PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
+		T::MultiCurrency::transfer(currency_id, &from, &Self::account_id(), amount)
 	}
 }
