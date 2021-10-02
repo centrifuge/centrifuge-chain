@@ -149,19 +149,6 @@ pub mod constants {
 	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
 	pub const CFG: Balance = 100 * CENTI_CFG;
 
-	/// AIR token value
-	///
-	/// FIXME (ToZ):
-	/// The following constants are copied verbatim from Altair runtime constants so
-	/// that to avoid a circular dependency between common runtime crate and Altair
-	/// runtime crate. Can we consider such token values as primitives much like
-	/// MILLISECONDS_PER_DAY constants, for instance, and extract them in a separate
-	/// library.
-	pub const MICRO_AIR: Balance = MICRO_CFG;
-	pub const MILLI_AIR: Balance = MILLI_CFG;
-	pub const CENTI_AIR: Balance = CENTI_CFG;
-	pub const AIR: Balance = CFG;
-
 	/// Minimum vesting amount, in CFG/AIR
 	pub const MIN_VESTING: Balance = 10;
 
