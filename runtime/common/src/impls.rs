@@ -55,7 +55,7 @@ where
 /// 	let length_fee: Balance = extrinsic_bytes * transaction_byte_fee; // 920000000000
 /// 	let weight_fee: Balance = weight * weight_coefficient; // 61425000000000
 /// 	let fee: Balance = base_fee + length_fee + weight_fee;
-/// 	assert_eq!(fee, 10172 * (centrifuge_chain_runtime::constants::currency::MICRO_AIR / 100));
+/// 	assert_eq!(fee, 10172 * (runtime_common::constants::MICRO_AIR / 100));
 /// ```
 pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {
