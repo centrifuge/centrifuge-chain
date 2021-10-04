@@ -2,7 +2,6 @@
 
 set -eux
 
-#RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-07-28}"
 RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-09-28}"
 PACKAGE="${PACKAGE:-altair-runtime}" #Need to replicate job for all runtimes
 
