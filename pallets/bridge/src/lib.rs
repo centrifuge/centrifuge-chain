@@ -97,6 +97,9 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+// Extrinsics weights benchmarking routines
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 // Mock runtime and unit test cases
 #[cfg(test)]
 mod mock;
@@ -107,7 +110,7 @@ mod tests;
 // Pallet traits declaration
 pub mod traits;
 
-// Pallet extrinsics weight information
+// Pallet extrinsics weight information (generated from benchmarking routines)
 mod weights;
 use crate::traits::WeightInfo;
 

@@ -60,3 +60,5 @@ std = [
     'unique-assets/std',
     "common-traits/std"
 ]
+runtime-benchmarks = ["frame-benchmarking"]
+
