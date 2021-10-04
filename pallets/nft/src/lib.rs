@@ -93,7 +93,6 @@ pub mod types;
 // Pallet mock runtime
 #[cfg(test)]
 mod mock;
-
 // Pallet unit test cases
 #[cfg(test)]
 mod tests;
@@ -104,14 +103,17 @@ mod weights;
 // Export crate types and traits
 use crate::{
 	traits::WeightInfo,
-	types::{AssetId, ProofVerifier},
+	types::{AssetId, BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
 pub use pallet::*;
 
-// Substrate dependencies
+use chainbridge::types::ResourceId;
+
 use codec::FullCodec;
+
+use common_traits::BigEndian;
 
 use frame_support::{
 	dispatch::{result::Result, DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -120,7 +122,10 @@ use frame_support::{
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 
-use sp_runtime::traits::Member;
+use runtime_common::types::FixedArray;
+
+use sp_core::H256;
+use sp_runtime::{traits::Member, SaturatedConversion};
 
 use sp_std::fmt::Debug;
 
@@ -139,11 +144,8 @@ use unique_assets::traits::{Mintable, Unique};
 pub mod pallet {
 
 	use super::*;
-	use chainbridge::types::ResourceId;
-	use common_traits::BigEndian;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::SaturatedConversion;
 
 	// NFT pallet type declaration.
 	//
@@ -170,10 +172,10 @@ pub mod pallet {
 		+ pallet_anchors::Config
 		+ chainbridge::Config
 	{
-		/// the type used to identify nft registry
+		/// The type used to identify nft registry
 		type RegistryId: Parameter + Member + Debug + Default + Clone + AsRef<[u8]> + From<[u8; 20]>;
 
-		/// type that represents nft token ID
+		/// Type that represents nft token ID
 		/// From should always assume big endian
 		type TokenId: Parameter + Member + Default + Clone + BigEndian<Vec<u8>>;
 
@@ -329,17 +331,13 @@ pub mod pallet {
 		/// # <weight>
 		/// - depends on the arguments
 		/// # </weight>
-		///
-		/// FIXME (ToZ)
-		/// The [_static_proofs] parameter seems no more used. We did not remove it, as it
-		/// may break the coupling with other (client) components.
 		#[pallet::weight(<T as Config>::WeightInfo::validate_mint())]
 		pub fn validate_mint(
 			origin: OriginFor<T>,
-			anchor_id: T::Hash,
+			anchor_id: SystemHashOf<T>,
 			deposit_address: DepositAddress,
-			proofs: Vec<Proof<T::Hash>>,
-			_static_proofs: [T::Hash; 3],
+			proofs: Vec<Proof<HasherHashOf<BundleHasher>>>,
+			static_proofs: FixedArray<HasherHashOf<BundleHasher>, 3>,
 			dest_id: <T as Config>::ChainId,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
@@ -349,17 +347,17 @@ pub mod pallet {
 				.ok_or(Error::<T>::DocumentNotAnchored)?;
 
 			// Create a proof verifier with static proofs
-			let proof_verifier = ProofVerifier::<T>::new();
+			let proof_verifier = ProofVerifier::new(static_proofs);
 
-			// Validates the proofs again the provided document root
+			// Validate the proofs again the provided document root
 			ensure!(
-				proof_verifier.verify_proofs(anchor_data.doc_root, &proofs),
+				proof_verifier
+					.verify_proofs(H256::from_slice(anchor_data.doc_root.as_ref()), &proofs),
 				Error::<T>::InvalidProofs
 			);
 
-			// Get the bundled hash of all proofs (i.e. from proofs' leaf hashe)
-			let bundled_hash =
-				bundled_hash_from_proofs::<ProofVerifier<T>>(proofs, deposit_address);
+			// Returns a Ethereum-compatible Keccak hash of deposit_address + hash(keccak(name+value+salt)) of each proof provided.
+			let bundled_hash = Self::get_bundled_hash_from_proofs(proofs, deposit_address);
 			Self::deposit_event(Event::<T>::DepositAsset(bundled_hash));
 
 			let metadata = bundled_hash.as_ref().to_vec();
@@ -381,6 +379,29 @@ pub mod pallet {
 // ----------------------------------------------------------------------------
 // Pallet implementation block
 // ----------------------------------------------------------------------------
+
+// Implement public and private pallet functions.
+//
+// This main implementation block contains two categories of functions, namely:
+// - Public functions: These are functions that are `pub` and generally fall into
+//   inspector functions that do not write to storage and operation functions that do.
+// - Private functions: These are private helpers or utilities that cannot be called
+//   from other pallets.
+impl<T: Config> Pallet<T> {
+	/// Returns a Ethereum compatible (i.e. Keccak-based) hash.
+	///
+	/// This function generate a Keccak bundle of deposit_address +
+	/// hash(keccak(name+value+salt)) of each proof provided.
+	fn get_bundled_hash_from_proofs(
+		proofs: Vec<Proof<HasherHashOf<BundleHasher>>>,
+		deposit_address: DepositAddress,
+	) -> SystemHashOf<T> {
+		let bundled_hash = bundled_hash_from_proofs::<BundleHasher>(proofs, deposit_address);
+		let mut result: SystemHashOf<T> = Default::default();
+		result.as_mut().copy_from_slice(&bundled_hash[..]);
+		result
+	}
+}
 
 // Implement unique trait for pallet
 impl<T: Config> Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId> for Pallet<T> {

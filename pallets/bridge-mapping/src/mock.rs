@@ -11,8 +11,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as pallet_bridge_mapping, *};
-use chainbridge::types::{ChainId, ResourceId};
+use crate::{self as pallet_bridge_mapping, Config as PalletBridgeMappingConfig};
+use chainbridge::{
+	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
+	types::{ChainId, ResourceId},
+};
 use frame_support::parameter_types;
 use frame_support::PalletId;
 use frame_support::{
@@ -43,8 +46,8 @@ frame_support::construct_runtime!(
 		Authorship: pallet_authorship::{Pallet, Call, Storage, Inherent},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Anchors: pallet_anchors::{Pallet, Call, Config, Storage},
-		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
+		Anchors: pallet_anchors::{Pallet, Call, Storage},
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		BridgeMapping: pallet_bridge_mapping::{Pallet, Call, Config, Storage},
 	}
@@ -164,8 +167,9 @@ impl pallet_anchors::Config for Test {
 // Parameterize Centrifuge Chain chainbridge pallet
 parameter_types! {
 	pub const MockChainId: u8 = 5;
-	pub const ChainbridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"cb/bridg");
 	pub const ProposalLifetime: u64 = 10;
+	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
@@ -174,12 +178,14 @@ impl chainbridge::Config for Test {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Proposal = Call;
 	type ChainId = MockChainId;
-	type PalletId = ChainbridgePalletId;
+	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
+	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
 }
 
-impl Config for Test {
+// Implement Centrifuge Chain bridge mapping pallet configuration trait for the mock runtime
+impl PalletBridgeMappingConfig for Test {
 	type Address = EthAddress;
 	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type WeightInfo = ();

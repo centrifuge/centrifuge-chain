@@ -11,9 +11,9 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! # Verifiable attributes (VA) registry pallet
+//! # Verifiable asset (VA) registry pallet
 //!
-//! This Substrate FRAME pallet defines a **Verifiable Attributes Registry**
+//! This Substrate FRAME pallet defines a **Verifiable Asset (VA) Registry**
 //! for minting and managing non-fungible tokens (NFTs).
 //!
 //! ## Overview
@@ -72,6 +72,7 @@
 //! ## Genesis Configuration
 //! The pallet is parameterized and configured via [parameter_types] macro, at the time the runtime is built
 //! by means of the [`construct_runtime`] macro.
+//! This pallet does not have a GenesisConfig section.
 //!
 //! ## Dependencies
 //! This pallet is tightly coupled to:
@@ -99,7 +100,7 @@ pub mod types;
 
 // Mock runtime for testing
 #[cfg(test)]
-pub mod mock;
+mod mock;
 
 // Unit test cases
 #[cfg(test)]
@@ -115,7 +116,7 @@ mod weights;
 // Re-export crate types and traits
 use crate::{
 	traits::{VerifierRegistry, WeightInfo},
-	types::{MintInfo, ProofVerifier, RegistryInfo},
+	types::{MintInfo, ProofVerifier, RegistryInfo, SystemHashOf},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -127,6 +128,7 @@ use frame_system::ensure_signed;
 
 use proofs::Verifier;
 
+use sp_core::H256;
 use sp_runtime::traits::Hash;
 
 use common_traits::BigEndian;
@@ -149,7 +151,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use pallet_nft::types::AssetId;
 
 	// Verifiable attributes registry pallet type declaration.
 	//
@@ -277,21 +278,14 @@ pub mod pallet {
 			registry_id: T::RegistryId,
 			token_id: T::TokenId,
 			asset_info: T::AssetInfo,
-			mint_info: MintInfo<T::Hash, T::Hash>,
+			mint_info: MintInfo<SystemHashOf<T>, H256>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			// Internal mint validates proofs and modifies state or returns error
 			let asset_id = AssetId(registry_id.clone(), token_id.clone());
 
-			<Self as VerifierRegistry<
-				T::AccountId,
-				T::RegistryId,
-				RegistryInfo,
-				AssetId<T::RegistryId, T::TokenId>,
-				T::AssetInfo,
-				MintInfo<T::Hash, T::Hash>,
-			>>::mint(who, owner_account, asset_id, asset_info, mint_info)?;
+			<Self as VerifierRegistry>::mint(who, owner_account, asset_id, asset_info, mint_info)?;
 
 			// Mint event
 			Self::deposit_event(Event::Mint(registry_id, token_id));
@@ -328,32 +322,32 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Return a document's root hash given an anchor identifier.
-	fn get_document_root(anchor_id: T::Hash) -> Result<T::Hash, DispatchError> {
+	fn get_document_root(anchor_id: SystemHashOf<T>) -> Result<H256, DispatchError> {
 		let root = match <pallet_anchors::Pallet<T>>::get_anchor_by_id(anchor_id) {
 			Some(anchor_data) => Ok(anchor_data.doc_root),
 			None => Err(Error::<T>::DocumentNotAnchored),
 		}?;
 
-		Ok(<T::Hashing as Hash>::hash(root.as_ref()))
+		let doc_root = H256::from_slice(root.as_ref());
+
+		Ok(doc_root)
 	}
 }
 
 // Implement verifier registry trait for the pallet
-impl<T: Config>
-	VerifierRegistry<
-		T::AccountId,
-		T::RegistryId,
-		RegistryInfo,
-		AssetId<T::RegistryId, T::TokenId>,
-		T::AssetInfo,
-		MintInfo<T::Hash, T::Hash>,
-	> for Pallet<T>
-{
+impl<T: Config> VerifierRegistry for Pallet<T> {
+	type AccountId = T::AccountId;
+	type RegistryId = T::RegistryId;
+	type RegistryInfo = RegistryInfo;
+	type AssetId = AssetId<Self::RegistryId, T::TokenId>;
+	type AssetInfo = T::AssetInfo;
+	type MintInfo = MintInfo<SystemHashOf<T>, H256>;
+
 	// Registries with identical RegistryInfo may exist
 	fn create_new_registry(
 		caller: T::AccountId,
 		mut info: RegistryInfo,
-	) -> Result<T::RegistryId, DispatchError> {
+	) -> Result<Self::RegistryId, DispatchError> {
 		// Generate registry id as nonce
 		let id = Self::create_registry_id()?;
 
@@ -372,11 +366,11 @@ impl<T: Config>
 
 	/// Mint of a non-fungible token
 	fn mint(
-		caller: T::AccountId,
-		owner_account: T::AccountId,
-		asset_id: AssetId<T::RegistryId, T::TokenId>,
-		asset_info: T::AssetInfo,
-		mint_info: MintInfo<T::Hash, T::Hash>,
+		caller: Self::AccountId,
+		owner_account: Self::AccountId,
+		asset_id: AssetId<Self::RegistryId, T::TokenId>,
+		asset_info: Self::AssetInfo,
+		mint_info: Self::MintInfo,
 	) -> Result<(), DispatchError> {
 		let (registry_id, token_id) = asset_id.clone().destruct();
 		let registry_info = <Registries<T>>::get(registry_id.clone());
@@ -424,18 +418,14 @@ impl<T: Config>
 		let proofs = mint_info
 			.proofs
 			.into_iter()
-			.map(|mut proof| {
+			.map(|proof| {
 				// Generate leaf hash from property ++ value ++ salt
-				proof.property.extend(proof.value);
-				proof.property.extend(&proof.salt);
-				let leaf_hash = <T::Hashing as Hash>::hash(&proof.property).into();
-
-				proofs::Proof::new(leaf_hash, proof.hashes)
+				proof.into()
 			})
 			.collect();
 
 		// Create proof verifier given static hashes
-		let proof_verifier = ProofVerifier::<T>::new(mint_info.static_hashes.into());
+		let proof_verifier = ProofVerifier::new(mint_info.static_hashes);
 
 		// Verify the proof against document root
 		ensure!(

@@ -13,8 +13,7 @@
 
 //! # Bridge pallet
 //!
-//! This pallet implements bla bla bla
-//!
+//! This pallet implements a bridge between Chainbridge and Centrifuge Chain.
 //! - [`Config`]
 //! - [`Call`]
 //! - [`Pallet`]
@@ -29,24 +28,20 @@
 //! ## Interface
 //!
 //! ### Supported Origins
-//!
 //! Signed origin is valid.
 //!
 //! ### Types
-//!
 //! `BridgeOrigin` - Specifies the origin check provided by the chainbridge for calls that can only be called by the chainbridge pallet.
-//! `AdminOrigin` -
-//! `BridgePalletId` - Identifier of the pallet (parameterized when the pallet is built for a runtime).
+//! `AdminOrigin` - Admin user authorized to modify [NativeTokenTransferFee] and [NftTokenTransferFee] values.
 //! `Currency` - Currency as viewed from this pallet.
 //! `Event` - Type for events triggered by this pallet.
 //! `NativeTokenId` - Identifier of the native token.
-//! `TokenTransferFee` - Additional fee charged for transfering tokens.
-//! `NftTransferFee` - Additional fee charged when moving NFTs to target chains.
+//! `NativeTokenTransferFee` - Additional fee charged for transfering native tokens.
+//! `NftTokenTransferFee` - Additional fee charged when moving NFTs to target chains.
 //! `WeightInfo` - Weight information for extrinsics in this pallet.
 //!
 //! ### Events
-//!
-//! `Remark` - Event triggered when ...
+//! `Remark` - Event triggered a remark proposal is approved.
 //!
 //! ### Errors
 //! `ResourceIdDoesNotExist` - Resource id provided on initiating a transfer is not a key in bridges-names mapping.
@@ -56,7 +51,6 @@
 //! `TotalAmountOverflow` - Total amount to be transfered overflows balance type size.
 //!
 //! ### Dispatchable Functions
-//!
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
 //! pallet contract. Here's the callable functions implemented in this module:
 //!
@@ -65,6 +59,8 @@
 //! [`transfer`]
 //! [`transfer_asset`]
 //! [`transfer_native`]
+//! [`set_native_token_transfer_fee`]
+//! [`set_nft_token_transfer_fee`]
 //!
 //! ### Public Functions
 //!
@@ -89,7 +85,7 @@
 //! - [Substrate FRAME v2 attribute macros](https://crates.parity.io/frame_support/attr.pallet.html).
 //!
 //! ## Credits
-//! The Centrifugians Tribe <tribe@centrifuge.io>
+//! The Centrifugians Tribe <contributors@centrifuge.io>
 //!
 //! ## License
 //! GNU General Public License, Version 3, 29 June 2007 <https://www.gnu.org/licenses/gpl-3.0.html>
@@ -108,12 +104,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// Pallet types and traits modules
+// Pallet traits declaration
 pub mod traits;
 
 // Pallet extrinsics weight information
 mod weights;
-
 use crate::traits::WeightInfo;
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -122,7 +117,9 @@ pub use pallet::*;
 use chainbridge::types::ChainId;
 
 use common_traits::BigEndian;
+
 use pallet_nft::types::AssetId;
+
 use sp_std::vec;
 use sp_std::vec::Vec;
 
@@ -186,24 +183,25 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config
+		+ chainbridge::Config
 		+ pallet_balances::Config
 		+ pallet_bridge_mapping::Config
-		+ chainbridge::Config
 		+ pallet_fees::Config
 		+ pallet_nft::Config
 	{
-		/// Specifies the origin check provided by the chainbridge for calls
-		/// that can only be called by the chainbridge pallet.
-		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
-
-		/// Constant configuration parameter to store the module identifier for the pallet.
+		/// Pallet identifier.
 		///
-		/// The module identifier may be of the form ```PalletId(*b"r/bridge")``` (a string of eight characters)
+		/// The module identifier may be of the form ```PalletId(*b"c/bridge")``` (a string of eight characters)
 		/// and set using the [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
 		/// macro in one of the runtimes (see runtime folder).
 		#[pallet::constant]
 		type BridgePalletId: Get<PalletId>;
 
+		/// Specifies the origin check provided by the chainbridge for calls
+		/// that can only be called by the chainbridge pallet.
+		type BridgeOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+		/// Admin user is able to modify transfer fees (see [NativeTokenTransferFee] and [NftTokenTransferFee]).
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Currency as viewed from this pallet
@@ -212,12 +210,15 @@ pub mod pallet {
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
+		// Type for native token ID.
 		#[pallet::constant]
 		type NativeTokenId: Get<<Self as pallet_nft::Config>::ResourceId>;
 
+		/// Type for setting fee that are charged when transferring native tokens to target chains (in CFGs).
 		#[pallet::constant]
 		type NativeTokenTransferFee: Get<u128>;
 
+		/// Type for setting fee that are charged when transferring NFT tokens to target chains (in CFGs).
 		#[pallet::constant]
 		type NftTokenTransferFee: Get<u128>;
 
@@ -234,7 +235,7 @@ pub mod pallet {
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Remark(<T as frame_system::Config>::Hash, T::ResourceId),
+		Remark(T::Hash, T::ResourceId),
 	}
 
 	// ------------------------------------------------------------------------
@@ -247,7 +248,7 @@ pub mod pallet {
 	pub type NativeTokenTransferFee<T> =
 		StorageValue<_, u128, ValueQuery, <T as Config>::NativeTokenTransferFee>;
 
-	// Additional fee charged when transferring native tokens to target chains (in CFGs).
+	// Additional fee charged when transferring NFT tokens to target chains (in CFGs).
 	#[pallet::storage]
 	#[pallet::getter(fn get_nft_token_transfer_fee)]
 	pub type NftTokenTransferFee<T> =
@@ -310,10 +311,6 @@ pub mod pallet {
 		/// Not enough means for performing a transfer
 		InsufficientBalance,
 
-		/// Token transfer fee not convertible to currency
-		// TODO: no more useful
-		//		TokenTransferFeeNotConvertibleToCurrency,
-
 		/// Total amount to be transferred overflows balance type size
 		TotalAmountOverflow,
 	}
@@ -330,8 +327,9 @@ pub mod pallet {
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfer an nft to a whitelisted destination chain. Source nft is locked in bridge account
-		/// rather than being burned.
+		/// Transfer an nft to a whitelisted destination chain.
+		///
+		/// The Source NFT is locked in bridge account rather than being burned.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_asset())]
 		#[transactional]
 		pub fn transfer_asset(
@@ -352,7 +350,7 @@ pub mod pallet {
 			let resource_id = <pallet_bridge_mapping::Pallet<T>>::name_of(addr)
 				.ok_or(Error::<T>::ResourceIdDoesNotExist)?;
 
-			// Charge additional fees for transferring the NFT token to the target chain
+			// Charge additional fee for transferring the NFT token to the target chain
 			<pallet_fees::Pallet<T>>::burn_fee(
 				&source,
 				Self::get_nft_token_transfer_fee().saturated_into(),
@@ -391,20 +389,11 @@ pub mod pallet {
 
 			let token_transfer_fee: BalanceOf<T> =
 				Self::get_native_token_transfer_fee().saturated_into();
-			// TODO: simplify
-			// let currency_token_fee: BalanceOf<T> = TryInto::<u128>::try_into(token_fee)
-			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?
-			// 	.try_into()
-			// 	.map_err(|_| Error::<T>::TokenTransferFeeNotConvertibleToCurrency)?;
 
 			// Add fees to initial amount (so that to be sure account has sufficient funds)
 			let total_transfer_amount = amount
 				.checked_add(&token_transfer_fee)
 				.ok_or(Error::<T>::TotalAmountOverflow)?;
-			//TODO: simplify
-			// let total_amount = amount
-			// 	.checked_add(&currency_token_fee)
-			// 	.ok_or(Error::<T>::TotalAmountNotConvertibleToCurrency)?;
 
 			// Ensure account has enough balance for both fee and transfer
 			// Check to avoid balance errors down the line that leave balance storage in an inconsistent state
@@ -504,7 +493,7 @@ pub mod pallet {
 
 		/// Modify native token transfer fee value
 		#[pallet::weight(<T as Config>::WeightInfo::set_token_transfer_fee())]
-		pub fn set_token_transfer_fee(
+		pub fn set_native_token_transfer_fee(
 			origin: OriginFor<T>,
 			new_fee: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -516,7 +505,7 @@ pub mod pallet {
 
 		/// Modify NFT token transfer fee value
 		#[pallet::weight(<T as Config>::WeightInfo::set_nft_transfer_fee())]
-		pub fn set_nft_transfer_fee(
+		pub fn set_nft_token_transfer_fee(
 			origin: OriginFor<T>,
 			new_fee: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -540,18 +529,20 @@ pub mod pallet {
 // - Private functions: These are private helpers or utilities that cannot be called
 //   from other pallets.
 impl<T: Config> Pallet<T> {
+	// *** Utility methods ***
+
 	/// Return the account identifier of the RAD claims pallet.
 	///
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
-		T::BridgePalletId::get().into_account()
+		<T as pallet::Config>::BridgePalletId::get().into_account()
 	}
 
 	/// Initialize pallet's genesis configuration.
 	///
-	/// This private helper function is used for setting pallet's genesis
-	/// configuration up.
+	/// This private helper function is used for setting up pallet genesis
+	/// configuration.
 	fn initialize(
 		chains: &[u8],
 		relayers: &[T::AccountId],

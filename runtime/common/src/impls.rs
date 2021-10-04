@@ -50,12 +50,25 @@ where
 ///		let maximum_block_weight: Balance = 2000000000000; // 2 * WEIGHT_PER_SECOND
 /// 	let extrinsic_base_weight: Balance = 125000000; // 125 * WEIGHT_PER_MICROS
 ///
+/// 	// AIR token value
+///     //
+///     // FIXME (ToZ):
+///     // The following constants are copied verbatim from Altair runtime constants so
+///     // that to avoid a circular dependency between common runtime crate and Altair
+///     // runtime crate. Can we consider such token values as primitives much like
+///     // MILLISECONDS_PER_DAY constants, for instance, and extract them in a separate
+///     // library.
+/// 	let MICRO_AIR: Balance = runtime_common::constants::MICRO_CFG;
+/// 	let MILLI_AIR: Balance = runtime_common::constants::MILLI_CFG;
+/// 	let CENTI_AIR: Balance = runtime_common::constants::CENTI_CFG;
+/// 	let AIR: Balance = runtime_common::constants::CFG;
+///
 /// 	// Calculation:
 /// 	let base_fee: Balance = extrinsic_base_weight * weight_coefficient; // 39375000000000
 /// 	let length_fee: Balance = extrinsic_bytes * transaction_byte_fee; // 920000000000
 /// 	let weight_fee: Balance = weight * weight_coefficient; // 61425000000000
 /// 	let fee: Balance = base_fee + length_fee + weight_fee;
-/// 	assert_eq!(fee, 10172 * (centrifuge_chain_runtime::constants::currency::MICRO_AIR / 100));
+/// 	assert_eq!(fee, 10172 * (MICRO_AIR / 100));
 /// ```
 pub struct WeightToFee;
 impl WeightToFeePolynomial for WeightToFee {

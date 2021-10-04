@@ -17,20 +17,27 @@
 // Module imports
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_bridge, mock::*, *};
+use crate::{
+	self as pallet_bridge,
+	mock::{
+		helpers::*, Balances, Bridge, ChainBridge, Event, MockRuntime, NativeTokenId, Origin,
+		ProposalLifetime, TestExternalitiesBuilder, ENDOWED_BALANCE, RELAYER_A, RELAYER_B,
+		RELAYER_B_INITIAL_BALANCE, RELAYER_C, TEST_RELAYER_VOTE_THRESHOLD,
+	},
+	Error,
+};
 
 use codec::Encode;
 
+use common_traits::BigEndian;
+
 use frame_support::{assert_err, assert_noop, assert_ok};
 
-use runtime_common::constants::CFG;
+use runtime_common::{TokenId, CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
 
-use sp_core::{blake2_256, H256};
+use sp_core::{blake2_256, H256, U256};
 
-use runtime_common::{TokenId, NATIVE_TOKEN_TRANSFER_FEE};
 use sp_runtime::DispatchError;
-
-const TEST_THRESHOLD: u32 = 2;
 
 // ----------------------------------------------------------------------------
 // Test cases
@@ -46,7 +53,7 @@ fn transfer_native() {
 			let amount: u128 = 20 * CFG;
 			let recipient = vec![99];
 
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_chain.clone()
 			));
@@ -142,10 +149,10 @@ fn receive_nonfungible() {
 			let token_id = TokenId(U256::one());
 
 			// Create registry, map resource id, and mint nft
-			let registry_id = setup_nft(owner, token_id.clone(), resource_id);
+			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_chain.clone()
 			));
@@ -179,10 +186,10 @@ fn transfer_nonfungible_asset() {
 			let token_id = TokenId(U256::one());
 
 			// Create registry, map resource id, and mint nft
-			let registry_id = setup_nft(owner, token_id.clone(), resource_id);
+			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
 
 			// Whitelist destination chain
-			assert_ok!(Chainbridge::whitelist_chain(
+			assert_ok!(ChainBridge::whitelist_chain(
 				Origin::root(),
 				dest_chain.clone()
 			));
@@ -212,7 +219,6 @@ fn transfer_nonfungible_asset() {
 			);
 
 			// Check that transfer event was emitted
-
 			let tid = token_id.to_big_endian();
 			expect_event(chainbridge::Event::NonFungibleTransfer(
 				dest_chain,
@@ -226,31 +232,36 @@ fn transfer_nonfungible_asset() {
 }
 
 #[test]
-fn execute_remark() {
+fn create_successful_remark_proposal() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
 			let prop_id = 1;
 			let src_id = 1;
-			let r_id = chainbridge::derive_resource_id(src_id, b"hash");
-			let proposal = make_remark_proposal(hash.clone(), r_id);
-			let resource = b"PalletBridge.remark".to_vec();
+			let r_id = chainbridge::derive_resource_id(src_id, b"cent_nft_hash");
+			let proposal = mock_remark_proposal(hash.clone(), r_id);
+			let resource = b"Bridge.remark".to_vec();
 
-			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_B));
-			assert_ok!(Chainbridge::whitelist_chain(Origin::root(), src_id));
-			assert_ok!(Chainbridge::set_resource(Origin::root(), r_id, resource));
+			assert_ok!(ChainBridge::set_threshold(
+				Origin::root(),
+				TEST_RELAYER_VOTE_THRESHOLD
+			));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_B));
+			assert_eq!(ChainBridge::get_relayer_count(), 2);
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), src_id));
+			assert_ok!(ChainBridge::set_resource(Origin::root(), r_id, resource));
 
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_A),
 				prop_id,
 				src_id,
 				r_id,
 				Box::new(proposal.clone())
 			));
-			assert_ok!(Chainbridge::acknowledge_proposal(
+
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_B),
 				prop_id,
 				src_id,
@@ -263,23 +274,30 @@ fn execute_remark() {
 }
 
 #[test]
-fn execute_remark_bad_origin() {
+fn create_invalid_remark_proposal_with_bad_origin() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let hash: H256 = "ABC".using_encoded(blake2_256).into();
-			let r_id = chainbridge::derive_resource_id(1, b"hash");
+			let r_id = chainbridge::derive_resource_id(1, b"cent_nft_hash");
 
+			// Add a new relayer account to the chainbridge
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+
+			// Chain bridge account is a valid origin for a remark proposal
 			assert_ok!(Bridge::remark(
-				Origin::signed(Chainbridge::account_id()),
+				Origin::signed(ChainBridge::account_id()),
 				hash,
 				r_id
 			));
-			// Don't allow any signed origin except from chainbridge addr
+
+			// Don't allow any signed origin except from chainbridge addr,
+			// even if the relayer is listed on the chain bridge
 			assert_noop!(
 				Bridge::remark(Origin::signed(RELAYER_A), hash, r_id),
 				DispatchError::BadOrigin
 			);
+
 			// Don't allow root calls
 			assert_noop!(
 				Bridge::remark(Origin::root(), hash, r_id),
@@ -294,14 +312,15 @@ fn transfer() {
 		.build()
 		.execute_with(|| {
 			// Check inital state
-			let bridge_id: u64 = Chainbridge::account_id();
+			let bridge_id: u64 = ChainBridge::account_id();
 			let resource_id = NativeTokenId::get();
 			let current_balance = Balances::free_balance(&bridge_id);
 
 			assert_eq!(current_balance, ENDOWED_BALANCE);
+
 			// Transfer and check result
 			assert_ok!(Bridge::transfer(
-				Origin::signed(Chainbridge::account_id()),
+				Origin::signed(ChainBridge::account_id()),
 				RELAYER_A,
 				10,
 				resource_id
@@ -309,9 +328,11 @@ fn transfer() {
 			assert_eq!(Balances::free_balance(&bridge_id), ENDOWED_BALANCE - 10);
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
 
-			assert_events(vec![mock::Event::Balances(
-				pallet_balances::Event::Transfer(Chainbridge::account_id(), RELAYER_A, 10),
-			)]);
+			assert_events(vec![Event::Balances(pallet_balances::Event::Transfer(
+				ChainBridge::account_id(),
+				RELAYER_A,
+				10,
+			))]);
 		})
 }
 
@@ -323,84 +344,130 @@ fn create_successful_transfer_proposal() {
 			let prop_id = 1;
 			let src_id = 1;
 			let r_id = chainbridge::derive_resource_id(src_id, b"transfer");
-			let resource = b"PalletBridge.transfer".to_vec();
-			let proposal = mock::make_transfer_proposal(RELAYER_A, 10, r_id);
+			let resource = b"Bridge.transfer".to_vec();
 
-			assert_ok!(Chainbridge::set_threshold(Origin::root(), TEST_THRESHOLD,));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_A));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_B));
-			assert_ok!(Chainbridge::add_relayer(Origin::root(), RELAYER_C));
-			assert_ok!(Chainbridge::whitelist_chain(Origin::root(), src_id));
-			assert_ok!(Chainbridge::set_resource(Origin::root(), r_id, resource));
+			// Create dummy transfer proposal for an amount of 10 transfered to RELAYER A
+			let transfer_proposal = mock_transfer_proposal(RELAYER_A, 10, r_id);
 
-			// Create proposal (& vote)
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			assert_ok!(ChainBridge::set_threshold(
+				Origin::root(),
+				TEST_RELAYER_VOTE_THRESHOLD
+			));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_A));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_B));
+			assert_ok!(ChainBridge::add_relayer(Origin::root(), RELAYER_C));
+			assert_ok!(ChainBridge::whitelist_chain(Origin::root(), src_id));
+			assert_ok!(ChainBridge::set_resource(Origin::root(), r_id, resource));
+
+			// First relayer (i.e. RELAYER_A) creates a new transfer proposal (so that an amount of 10 is transfered to his account)
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_A),
 				prop_id,
 				src_id,
 				r_id,
-				Box::new(proposal.clone())
+				Box::new(transfer_proposal.clone())
 			));
-			let prop = Chainbridge::get_votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
-			let expected = chainbridge::types::ProposalVotes {
+			let actual_votes =
+				ChainBridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
+					.unwrap();
+			let expected_votes = chainbridge::types::ProposalVotes {
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![],
 				status: chainbridge::types::ProposalStatus::Initiated,
 				expiry: ProposalLifetime::get() + 1,
 			};
-			assert_eq!(prop, expected);
+			assert_eq!(actual_votes, expected_votes);
 
-			// Second relayer votes against
-			assert_ok!(Chainbridge::reject_proposal(
+			// Second relayer (i.e. RELAYER_B) votes against
+			assert_ok!(ChainBridge::reject_proposal(
 				Origin::signed(RELAYER_B),
 				prop_id,
 				src_id,
 				r_id,
-				Box::new(proposal.clone())
+				Box::new(transfer_proposal.clone())
 			));
-			let prop = Chainbridge::get_votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
-			let expected = chainbridge::types::ProposalVotes {
+			let actual_votes =
+				ChainBridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
+					.unwrap();
+			let expected_votes = chainbridge::types::ProposalVotes {
 				votes_for: vec![RELAYER_A],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::types::ProposalStatus::Initiated,
 				expiry: ProposalLifetime::get() + 1,
 			};
-			assert_eq!(prop, expected);
+			assert_eq!(actual_votes, expected_votes);
 
-			// Third relayer votes in favour
-			assert_ok!(Chainbridge::acknowledge_proposal(
+			// Third relayer (i.e. RELAYER_C) votes in favour
+			assert_ok!(ChainBridge::acknowledge_proposal(
 				Origin::signed(RELAYER_C),
 				prop_id,
 				src_id,
 				r_id,
-				Box::new(proposal.clone())
+				Box::new(transfer_proposal.clone())
 			));
-			let prop = Chainbridge::get_votes(src_id, (prop_id.clone(), proposal.clone())).unwrap();
-			let expected = chainbridge::types::ProposalVotes {
+			let actual_votes =
+				ChainBridge::get_votes(src_id, (prop_id.clone(), transfer_proposal.clone()))
+					.unwrap();
+			let expected_votes = chainbridge::types::ProposalVotes {
 				votes_for: vec![RELAYER_A, RELAYER_C],
 				votes_against: vec![RELAYER_B],
 				status: chainbridge::types::ProposalStatus::Approved,
 				expiry: ProposalLifetime::get() + 1,
 			};
-			assert_eq!(prop, expected);
+			assert_eq!(actual_votes, expected_votes);
 
+			// First relayer's (i.e. RELAYER_A) account balance is increased of 10 as there were 2 votes for (i.e. RELAYER_A and RELAYER_B)
 			assert_eq!(Balances::free_balance(RELAYER_A), ENDOWED_BALANCE + 10);
+
+			//The chainbridge pallet's account balance must now be decreased by 10 after the transfer proposal was accepted
 			assert_eq!(
-				Balances::free_balance(Chainbridge::account_id()),
+				Balances::free_balance(ChainBridge::account_id()),
 				ENDOWED_BALANCE - 10
 			);
 
 			assert_events(vec![
-				mock::Event::Chainbridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
-				mock::Event::Chainbridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_B)),
-				mock::Event::Chainbridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
-				mock::Event::Chainbridge(chainbridge::Event::ProposalApproved(src_id, prop_id)),
-				mock::Event::Balances(pallet_balances::Event::Transfer(
-					Chainbridge::account_id(),
+				Event::ChainBridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_A)),
+				Event::ChainBridge(chainbridge::Event::VoteAgainst(src_id, prop_id, RELAYER_B)),
+				Event::ChainBridge(chainbridge::Event::VoteFor(src_id, prop_id, RELAYER_C)),
+				Event::ChainBridge(chainbridge::Event::ProposalApproved(src_id, prop_id)),
+				Event::Balances(pallet_balances::Event::Transfer(
+					ChainBridge::account_id(),
 					RELAYER_A,
 					10,
 				)),
-				mock::Event::Chainbridge(chainbridge::Event::ProposalSucceeded(src_id, prop_id)),
+				Event::ChainBridge(chainbridge::Event::ProposalSucceeded(src_id, prop_id)),
 			]);
+		})
+}
+
+#[test]
+fn modify_native_token_transfer_fees() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let current_fee = Bridge::get_native_token_transfer_fee();
+			assert_eq!(current_fee, NATIVE_TOKEN_TRANSFER_FEE);
+			let new_fee = 3000 * CFG;
+			assert_ok!(Bridge::set_native_token_transfer_fee(
+				Origin::signed(1),
+				new_fee
+			));
+			assert_eq!(new_fee, Bridge::get_native_token_transfer_fee());
+		})
+}
+
+#[test]
+fn modify_nft_token_transfer_fees() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let current_fee = Bridge::get_nft_token_transfer_fee();
+			assert_eq!(current_fee, NFT_TOKEN_TRANSFER_FEE);
+			let new_fee = 3000 * CFG;
+			assert_ok!(Bridge::set_nft_token_transfer_fee(
+				Origin::signed(1),
+				new_fee
+			));
+			assert_eq!(new_fee, Bridge::get_nft_token_transfer_fee());
 		})
 }
