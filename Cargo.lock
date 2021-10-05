@@ -1159,7 +1159,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?rev=ba370fa64acf0a52172ddfb5ec1e910525f65db8#ba370fa64acf0a52172ddfb5ec1e910525f65db8"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=master#a36507ed3e588ed1a51649b161649d34a4606e5a"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -1248,6 +1248,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "common-traits"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -5350,9 +5360,9 @@ name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-support",
  "frame-system",
- "node-primitives",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
@@ -5368,16 +5378,24 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
+ "chainbridge",
  "frame-support",
  "frame-system",
+ "pallet-anchors",
+ "pallet-authorship",
+ "pallet-balances",
+ "pallet-fees",
+ "pallet-nft",
+ "pallet-timestamp",
  "parity-scale-codec",
+ "runtime-common",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5419,6 +5437,7 @@ dependencies = [
 name = "pallet-crowdloan-claim"
 version = "0.1.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5440,13 +5459,13 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-trie",
- "trait-crowdloan-reward",
 ]
 
 [[package]]
 name = "pallet-crowdloan-reward"
 version = "0.1.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5460,7 +5479,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "trait-crowdloan-reward",
 ]
 
 [[package]]
@@ -5705,16 +5723,14 @@ name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
- "pallet-bridge",
- "pallet-bridge-mapping",
  "pallet-fees",
- "pallet-registry",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
@@ -5723,7 +5739,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
@@ -5787,6 +5803,7 @@ name = "pallet-registry"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5803,7 +5820,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique_assets",
+ "unique-assets",
 ]
 
 [[package]]
@@ -8232,6 +8249,7 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "common-traits",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -11531,16 +11549,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trait-crowdloan-reward"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "parity-scale-codec",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "traitobject"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11735,12 +11743,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
 
 [[package]]
-name = "unique_assets"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/unique-assets?rev=8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae#8af1fdb0a5fa71462ce2fb9a2c752b71bab78aae"
+name = "unique-assets"
+version = "1.0.0"
+source = "git+https://github.com/centrifuge/unique-assets?branch=master#671b56a896869bb67f66027a7ffbf565b18f16c0"
 dependencies = [
  "frame-support",
- "sp-std",
 ]
 
 [[package]]

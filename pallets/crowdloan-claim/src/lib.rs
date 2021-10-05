@@ -114,6 +114,7 @@ pub use pallet::*;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
+use common_traits::Reward;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -139,8 +140,7 @@ pub mod weights;
 type RootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
-type ParachainAccountIdOf<T> =
-	<<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ParachainAccountId;
+type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as Reward>::ParachainAccountId;
 
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
@@ -193,7 +193,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
-	use trait_crowdloan_reward::Reward;
 
 	// Crowdloan claim pallet type declaration.
 	//

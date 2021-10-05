@@ -1,3 +1,16 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 //! # Anchors pallet for runtime
 //!
 //! This pallet provides functionality of Storing anchors on Chain
@@ -83,27 +96,6 @@ pub mod pallet {
 	{
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
-	}
-
-	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-	// The genesis config type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -268,7 +260,7 @@ pub mod pallet {
 				TryInto::<u64>::try_into(nowt).or(Err(Error::<T>::EvictionDateTooBig))?;
 
 			ensure!(
-				now + common::MS_PER_DAY < eviction_date_u64,
+				now + common::MILLISECS_PER_DAY < eviction_date_u64,
 				Error::<T>::AnchorStoreDateInPast
 			);
 

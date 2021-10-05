@@ -28,7 +28,7 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 
 # Local dependencies
-trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
+common-traits = { path= '../../libs/common-traits', default_features = false }
 
 
 [dev-dependencies]
@@ -43,10 +43,10 @@ runtime-benchmarks = ["frame-benchmarking"]
 std = [
   'codec/std',
   'sp-std/std',
-  'trait-crowdloan-reward/std',
   'frame-support/std',
   'frame-system/std',
   'log',
   'pallet-balances/std',
   'pallet-vesting/std',
+  'common-traits/std'
 ]

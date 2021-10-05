@@ -1,9 +1,23 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+//! # Common types and primitives used for Centrifuge chain runtime.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use apis::*;
 pub use constants::*;
 pub use impls::*;
-pub use traits::*;
 pub use types::*;
 
 mod impls;
@@ -68,18 +82,32 @@ pub mod types {
 	// A vector of bytes, conveniently named like it is in Solidity.
 	pub type Bytes = Vec<u8>;
 
-	// A sized vector of 32 bytes
-	pub type Bytes32 = [u8; 32];
+	// A 32 bytes fixed-size array.
+	pub type Bytes32 = FixedArray<u8, 32>;
 
-	// Registries are identified using a nonce in storage.
-	pub type RegistryId = H160;
+	// Fixed-size array of given typed elements.
+	pub type FixedArray<T, const S: usize> = [T; S];
 
 	// A cryptographic salt to be combined with a value before hashing.
-	pub type Salt = [u8; 32];
+	pub type Salt = FixedArray<u8, 32>;
+
+	/// A representation of registryID.
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct RegistryId(pub H160);
 
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	pub type TokenId = U256;
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct TokenId(pub U256);
+
+	/// A generic representation of a local address. A resource id points to this. It may be a
+	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
+	/// as an upper bound to store efficiently.
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct EthAddress(pub Bytes32);
 }
 
 /// Common constants for all runtimes
@@ -139,28 +167,5 @@ pub mod constants {
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
-	}
-}
-
-pub mod traits {
-
-	use super::impls::AssetId;
-
-	/// An implementor of this trait *MUST* be an asset of a registry.
-	/// The registry id that an asset is a member of can be determined
-	/// when this trait is implemented.
-	pub trait InRegistry {
-		type RegistryId;
-
-		/// Returns the registry id that the self is a member of.
-		fn registry_id(&self) -> Self::RegistryId;
-	}
-
-	/// An implementor has an associated asset id that will be used as a
-	/// unique id within a registry for an asset. Asset ids *MUST* be unique
-	/// within a registry. Corresponds to a token id in a Centrifuge document.
-	pub trait HasId {
-		/// Returns unique asset id.
-		fn id(&self) -> &AssetId;
 	}
 }

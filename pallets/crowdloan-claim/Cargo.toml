@@ -33,7 +33,7 @@ getrandom = { version = "0.2", default-features = false, optional = true }
 rand_core = { version = "0.6.2", default-features = false, optional = true}
 
 # Local dependencies
-trait-crowdloan-reward = { path= '../../libs/trait-crowdloan-reward', default_features = false }
+common-traits = { path= '../../libs/common-traits', default_features = false }
 proofs = { path= '../../libs/proofs', default_features = false }
 
 [dev-dependencies]
@@ -49,13 +49,13 @@ hex = { version="0.4.3", default_features = false }
 default = ['std']
 runtime-benchmarks = ["frame-benchmarking", "schnorrkel"]
 std = [
-  'proofs/std',
-  'trait-crowdloan-reward/std',
   'codec/std',
   'frame-support/std',
   'frame-system/std',
   'log/std',
   'pallet-balances/std',
   'sp-std/std',
+  'common-traits/std',
+  'proofs/std',
 ]
 

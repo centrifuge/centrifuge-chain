@@ -1,11 +1,29 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use frame_support::storage::child::ChildInfo;
 
-pub const MS_PER_DAY: u64 = 86400000;
+// FIXME (ToZ):
+// Will be better to use runtime-common constant instead. However
+// there is a circular dependeny between runtime-common and this
+// create :( (due to AnchorData struct). Perhaps a good idea to
+// move AnchorStruct to runtime-common impl module.
+pub const MILLISECS_PER_DAY: u64 = 86400000;
 
 /// Get days(round up) since epoch given the timestamp in ms
 pub fn get_days_since_epoch(ts: u64) -> u32 {
-	let remainder = ts % MS_PER_DAY;
-	let days = (ts / MS_PER_DAY) as u32;
+	let remainder = ts % MILLISECS_PER_DAY;
+	let days = (ts / MILLISECS_PER_DAY) as u32;
 	if remainder == 0 {
 		days
 	} else {

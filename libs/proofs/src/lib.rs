@@ -16,11 +16,12 @@ mod mock;
 
 /// Deposit address
 pub type DepositAddress = [u8; 20];
+
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof<Hash> {
 	pub leaf_hash: Hash,
-	sorted_hashes: Vec<Hash>,
+	pub sorted_hashes: Vec<Hash>,
 }
 
 impl<Hash> Proof<Hash> {
@@ -159,15 +160,15 @@ pub mod hashing {
 	/// Return a bundled hash from a list of proofs.
 	///
 	/// Same as [bundled_hash] function, but here a list of proofs is given. This function the appends [deposit_address]
-	/// and all leaf hashes from given [proofs] and a return a bundled hash.
+	/// and all leaf hashes from given [proofs] and returns a bundled hash.
 	pub fn bundled_hash_from_proofs<H: Hasher>(
 		proofs: Vec<Proof<H::Hash>>,
 		deposit_address: DepositAddress,
 	) -> H::Hash {
-		// extract (leaf) hashes from proofs
+		// Extract (leaf) hashes from proofs
 		let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
 
-		// compute the resulting bundled hash
+		// Compute the resulting bundled hash
 		bundled_hash::<H>(hashes, deposit_address)
 	}
 }

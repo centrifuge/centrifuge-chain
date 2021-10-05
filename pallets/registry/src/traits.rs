@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Traits used and exported by registry pallet.
+//! Traits used and exported by verifiable asset (VA) registry pallet.
 
 // ----------------------------------------------------------------------------
 // Module imports and re-exports
@@ -19,8 +19,6 @@
 
 // Runtime, system and frame primitives
 use frame_support::{dispatch::DispatchError, weights::Weight};
-
-use super::AssetId;
 
 // ----------------------------------------------------------------------------
 // Traits definition
@@ -31,20 +29,15 @@ use super::AssetId;
 pub trait VerifierRegistry {
 	/// This should typically match the implementing substrate Module trait's AccountId type.
 	type AccountId;
-
 	/// The id type of a registry.
 	type RegistryId;
-
 	/// Metadata for an instance of a registry.
 	type RegistryInfo;
-
 	/// The id type of an NFT.
 	type AssetId;
-
 	/// The data that defines the NFT held by a registry. Asset info must contain its
 	/// associated registry id.
 	type AssetInfo;
-
 	/// All data necessary to determine if a requested mint is valid or not.
 	type MintInfo;
 
@@ -57,33 +50,12 @@ pub trait VerifierRegistry {
 	/// Use the mint info to verify whether the mint is a valid action.
 	/// If so, use the asset info to mint an asset.
 	fn mint(
-		caller: &Self::AccountId,
-		owner_account: &Self::AccountId,
-		asset_id: &Self::AssetId,
+		caller: Self::AccountId,
+		owner_account: Self::AccountId,
+		asset_id: Self::AssetId,
 		asset_info: Self::AssetInfo,
 		mint_info: Self::MintInfo,
 	) -> Result<(), DispatchError>;
-}
-
-/// An implementor of this trait *MUST* be an asset of a registry.
-/// The registry id that an asset is a member of can be determined
-/// when this trait is implemented.
-pub trait InRegistry {
-	type RegistryId;
-
-	/// Returns the registry id that the self is a member of.
-	fn registry_id(&self) -> Self::RegistryId;
-}
-
-/// An implementor has an associated asset id that will be used as a
-/// unique id within a registry for an asset. Asset ids *MUST* be unique
-/// within a registry. Corresponds to a token id in a Centrifuge document.
-pub trait HasId {
-	type RegistryId;
-	type TokenId;
-
-	/// Returns unique asset id.
-	fn id(&self) -> &AssetId;
 }
 
 /// Weight information for pallet extrinsics
