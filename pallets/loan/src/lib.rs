@@ -68,10 +68,10 @@ where
 	}
 }
 
-pub type RegistryIDOf<T> = <T as pallet_nft::Config>::RegistryId;
+pub type RegistryIdOf<T> = <T as pallet_nft::Config>::RegistryId;
 pub type TokenIdOf<T> = <T as pallet_nft::Config>::TokenId;
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-pub type AssetIdOf<T> = AssetId<RegistryIDOf<T>, TokenIdOf<T>>;
+pub type AssetIdOf<T> = AssetId<RegistryIdOf<T>, TokenIdOf<T>>;
 pub type AssetInfoOf<T> = <T as pallet_nft::Config>::AssetInfo;
 type HashOf<T> = <T as frame_system::Config>::Hash;
 pub type MintInfoOf<T> = MintInfo<HashOf<T>, HashOf<T>>;
@@ -108,7 +108,13 @@ pub mod pallet {
 
 		/// Verifier registry to create NFT Registry
 		/// TODO(ved): use simple registry instead of Va Registry when we have it
-		type VaRegistry: VerifierRegistry;
+		type VaRegistry: VerifierRegistry<
+			AccountIdOf<Self>,
+			RegistryIdOf<Self>,
+			TokenIdOf<Self>,
+			AssetInfoOf<Self>,
+			HashOf<Self>,
+		>;
 
 		/// A way for use to fetch the time of the current blocks
 		type Time: frame_support::traits::Time;
@@ -122,12 +128,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_nft_registry)]
 	pub(super) type PoolToLoanNftRegistry<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, RegistryIDOf<T>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, RegistryIdOf<T>, OptionQuery>;
 
 	/// Stores the poolID with registryID as a key
 	#[pallet::storage]
 	pub(super) type LoanNftRegistryToPool<T: Config> =
-		StorageMap<_, Blake2_128Concat, RegistryIDOf<T>, T::PoolId, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, RegistryIdOf<T>, T::PoolId, OptionQuery>;
 
 	#[pallet::type_value]
 	pub fn OnNextNftTokenIDEmpty() -> U256 {
@@ -308,7 +314,7 @@ impl<T: Config> Pallet<T> {
 		match PoolToLoanNftRegistry::<T>::get(pool_id) {
 			Some(registry_id) => registry_id,
 			None => {
-				let loan_pallet_id = T::LoanPalletId::get().into_account();
+				let loan_pallet_id = Self::account_id();
 
 				// ensure owner can burn the nft when the loan is closed
 				let registry_info = RegistryInfo {

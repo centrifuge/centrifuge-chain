@@ -5187,9 +5187,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-tokens"
+version = "0.4.1-dev"
+source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#fa8224335c20f9f11c9c0802a323f3d0379005bc"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#cff84260ea57fa44b29dcc4361bcad73e9d3389d"
+source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#fa8224335c20f9f11c9c0802a323f3d0379005bc"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -5206,7 +5220,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#cff84260ea57fa44b29dcc4361bcad73e9d3389d"
+source = "git+https://github.com/centrifuge/open-runtime-module-library?branch=centrifuge#fa8224335c20f9f11c9c0802a323f3d0379005bc"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -5650,6 +5664,8 @@ dependencies = [
  "chainbridge",
  "frame-support",
  "frame-system",
+ "orml-tokens",
+ "orml-traits",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
@@ -11731,7 +11747,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
  "cfg-if 1.0.0",
- "rand 0.8.4",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

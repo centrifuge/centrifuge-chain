@@ -22,7 +22,7 @@ use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
 use runtime_common::{AssetInfo, PoolId, TokenId};
 
-fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIDOf<T>
+fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIdOf<T>
 where
 	T: frame_system::Config + pallet_nft::Config + pallet_loan::Config,
 {
@@ -35,7 +35,7 @@ where
 	<T as pallet_loan::Config>::VaRegistry::create_new_registry(owner, registry_info.clone())
 }
 
-fn mint_nft<T>(owner: AccountIdOf<T>, registry_id: RegistryIDOf<T>) -> TokenIdOf<T>
+fn mint_nft<T>(owner: AccountIdOf<T>, registry_id: RegistryIdOf<T>) -> TokenIdOf<T>
 where
 	T: frame_system::Config
 		+ pallet_nft::Config<TokenId = TokenId, AssetInfo = AssetInfo>
