@@ -23,7 +23,8 @@ use frame_support::{
 	PalletId,
 };
 use frame_system::EnsureSignedBy;
-use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, RegistryId, TokenId};
+use orml_traits::parameter_type_with_key;
+use runtime_common::{Amount, AssetInfo, Balance, CurrencyId, PoolId, Rate, RegistryId, TokenId};
 use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -43,13 +44,14 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Chainbridge: chainbridge::{Pallet, Call, Config, Storage, Event<T>},
+		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
 		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Pool: pallet_pool::{Pallet, Call, Storage, Event<T>},
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>},
 		Registry: pallet_registry::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 	}
 );
 
@@ -108,10 +110,40 @@ impl pallet_timestamp::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			_ => 0,
+		}
+	};
+}
+
+parameter_types! {
+	pub MaxLocks: u32 = 2;
+}
+
+impl orml_tokens::Config for MockRuntime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = i128;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = MaxLocks;
+}
+
+parameter_types! {
+	pub const PoolPalletId: PalletId = PalletId(*b"pal/pool");
+}
+
 impl pallet_pool::Config for MockRuntime {
 	type Event = Event;
 	type PoolId = PoolId;
 	type LoanId = TokenId;
+	type MultiCurrency = Tokens;
+	type TransferOrigin = crate::EnsureLoanAccount<MockRuntime>;
+	type PoolPalletId = PoolPalletId;
 }
 
 // Parameterize Centrifuge Chain chainbridge pallet
@@ -119,6 +151,7 @@ parameter_types! {
 	pub const MockChainId: ChainId = 5;
 	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 	pub const ProposalLifetime: u64 = 10;
+	pub const RelayerVoteThreshold: u32 = 1;
 }
 
 // Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
@@ -129,6 +162,7 @@ impl chainbridge::Config for MockRuntime {
 	type ChainId = MockChainId;
 	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
+	type RelayerVoteThreshold = RelayerVoteThreshold;
 	type WeightInfo = ();
 }
 

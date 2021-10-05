@@ -74,7 +74,7 @@ pub mod pallet {
 		type MultiCurrency: orml_traits::MultiCurrency<<Self as frame_system::Config>::AccountId>;
 
 		/// Origin that can make transfers possible
-		type CurrencyOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type TransferOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 
 		/// PalletID of this pool module
 		#[pallet::constant]
@@ -159,7 +159,7 @@ impl<T: Config> Pallet<T> {
 		amount: MultiCurrencyBalanceOf<T>,
 	) -> DispatchResult {
 		// must be a loan origin
-		T::CurrencyOrigin::ensure_origin(origin)?;
+		T::TransferOrigin::ensure_origin(origin)?;
 		let currency_id = PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
 		T::MultiCurrency::transfer(currency_id, &Self::account_id(), &to, amount)
 	}
@@ -170,7 +170,7 @@ impl<T: Config> Pallet<T> {
 		from: T::AccountId,
 		amount: MultiCurrencyBalanceOf<T>,
 	) -> DispatchResult {
-		T::CurrencyOrigin::ensure_origin(origin)?;
+		T::TransferOrigin::ensure_origin(origin)?;
 		let currency_id = PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
 		T::MultiCurrency::transfer(currency_id, &from, &Self::account_id(), amount)
 	}

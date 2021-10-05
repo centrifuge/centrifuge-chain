@@ -15,7 +15,8 @@ use std::fmt::Debug;
 
 use frame_support::pallet_prelude::Get;
 use frame_support::storage::types::OptionQuery;
-use frame_support::traits::Time;
+use frame_support::traits::{EnsureOrigin, Time};
+use frame_system::RawOrigin;
 pub use pallet::*;
 use pallet_nft::types::AssetId;
 use pallet_registry::traits::VerifierRegistry;
@@ -107,14 +108,7 @@ pub mod pallet {
 
 		/// Verifier registry to create NFT Registry
 		/// TODO(ved): use simple registry instead of Va Registry when we have it
-		type VaRegistry: VerifierRegistry<
-			AccountIdOf<Self>,
-			RegistryIDOf<Self>,
-			RegistryInfo,
-			AssetIdOf<Self>,
-			AssetInfoOf<Self>,
-			MintInfoOf<Self>,
-		>;
+		type VaRegistry: VerifierRegistry;
 
 		/// A way for use to fetch the time of the current blocks
 		type Time: frame_support::traits::Time;
@@ -322,7 +316,8 @@ impl<T: Config> Pallet<T> {
 					fields: vec![],
 				};
 
-				let registry_id = T::VaRegistry::create_new_registry(loan_pallet_id, registry_info);
+				let registry_id =
+					T::VaRegistry::create_new_registry(loan_pallet_id.into(), registry_info);
 
 				// update the storage
 				PoolToLoanNftRegistry::<T>::insert(pool_id, registry_id);
@@ -493,5 +488,20 @@ impl<T: Config> Pallet<T> {
 	fn time_now() -> Result<u64, DispatchError> {
 		let nowt = T::Time::now();
 		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochOverflow.into())
+	}
+}
+
+/// Simple ensure origin for the loan account
+pub struct EnsureLoanAccount<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: pallet::Config> EnsureOrigin<T::Origin> for EnsureLoanAccount<T> {
+	type Success = T::AccountId;
+
+	fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+		let loan_id = T::LoanPalletId::get().into_account();
+		o.into().and_then(|o| match o {
+			RawOrigin::Signed(who) if who == loan_id => Ok(loan_id),
+			r => Err(T::Origin::from(r)),
+		})
 	}
 }

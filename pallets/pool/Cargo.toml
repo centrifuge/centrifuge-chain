@@ -31,7 +31,6 @@ pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/subst
 pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-#orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
 [features]
 default = ['std']

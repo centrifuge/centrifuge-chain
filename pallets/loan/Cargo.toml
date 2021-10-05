@@ -37,6 +37,8 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate", def
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-registry = { path = "../registry", default-features = false }
+orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = true, branch = "centrifuge" }
+orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
 [features]
 default = ['std']
