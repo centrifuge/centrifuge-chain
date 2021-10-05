@@ -313,7 +313,7 @@ pub(crate) mod helpers {
 	//
 	// This function returns all relevant data, including dummy proofs, static
 	// hashes, and the related document root hash.
-	pub fn mock_proofs<T: frame_system::Config>(
+	pub fn mock_proofs<T: crate::Config>(
 		registry_id: RegistryId,
 		token_id: TokenId,
 	) -> (
@@ -388,7 +388,7 @@ pub(crate) mod helpers {
 			SystemHashOf<T>,
 			FixedArray<SystemHashOf<T>, 3>,
 		),
-		AssetInfo,
+		T::AssetInfo,
 		RegistryInfo,
 	)
 	where
@@ -411,12 +411,13 @@ pub(crate) mod helpers {
 		};
 
 		// Create registry, get registry id. Shouldn't fail.
-		let registry_id =
-			match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone())
-			{
-				Ok(r_id) => r_id,
-				Err(e) => panic!("{:#?}", e),
-			};
+		let registry_id = <Registry as VerifierRegistry<
+			T::AccountId,
+			RegistryId,
+			TokenId,
+			T::AssetInfo,
+			T::Hash,
+		>>::create_new_registry(owner, registry_info.clone());
 
 		// Generate dummy proofs data for testing
 		let (proofs, doc_root, static_hashes) =

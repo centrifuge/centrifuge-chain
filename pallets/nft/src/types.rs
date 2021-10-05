@@ -39,7 +39,7 @@ pub(crate) type SystemHashOf<T> = <T as frame_system::Config>::Hash;
 pub(crate) type HasherHashOf<H> = <H as Hasher>::Hash;
 
 /// A global identifier for an nft/asset on-chain. Composed of a registry and token id.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct AssetId<RegistryId, TokenId>(pub RegistryId, pub TokenId);
 
 impl<RegistryId, TokenId> AssetId<RegistryId, TokenId> {

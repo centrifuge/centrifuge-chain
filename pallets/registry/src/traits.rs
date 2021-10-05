@@ -18,7 +18,9 @@
 // ----------------------------------------------------------------------------
 
 // Runtime, system and frame primitives
+use crate::types::{MintInfo, RegistryInfo};
 use frame_support::{dispatch::DispatchError, weights::Weight};
+use pallet_nft::types::AssetId;
 
 // ----------------------------------------------------------------------------
 // Traits definition
@@ -26,35 +28,18 @@ use frame_support::{dispatch::DispatchError, weights::Weight};
 
 /// A general interface for registries that require some sort of verification to mint their
 /// underlying NFTs. A substrate module can implement this trait.
-pub trait VerifierRegistry {
-	/// This should typically match the implementing substrate Module trait's AccountId type.
-	type AccountId;
-	/// The id type of a registry.
-	type RegistryId;
-	/// Metadata for an instance of a registry.
-	type RegistryInfo;
-	/// The id type of an NFT.
-	type AssetId;
-	/// The data that defines the NFT held by a registry. Asset info must contain its
-	/// associated registry id.
-	type AssetInfo;
-	/// All data necessary to determine if a requested mint is valid or not.
-	type MintInfo;
-
+pub trait VerifierRegistry<AccountId, RegistryId, TokenId, AssetInfo, Hash> {
 	/// Create a new instance of a registry with the associated registry info.
-	fn create_new_registry(
-		caller: Self::AccountId,
-		info: Self::RegistryInfo,
-	) -> Result<Self::RegistryId, DispatchError>;
+	fn create_new_registry(caller: AccountId, info: RegistryInfo) -> RegistryId;
 
 	/// Use the mint info to verify whether the mint is a valid action.
 	/// If so, use the asset info to mint an asset.
 	fn mint(
-		caller: Self::AccountId,
-		owner_account: Self::AccountId,
-		asset_id: Self::AssetId,
-		asset_info: Self::AssetInfo,
-		mint_info: Self::MintInfo,
+		caller: AccountId,
+		owner_account: AccountId,
+		asset_id: AssetId<RegistryId, TokenId>,
+		asset_info: AssetInfo,
+		mint_info: MintInfo<Hash, Hash>,
 	) -> Result<(), DispatchError>;
 }
 
