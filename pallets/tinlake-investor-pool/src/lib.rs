@@ -424,18 +424,20 @@ pub mod pallet {
 					.all(|tranche| tranche.epoch_supply.is_zero() && tranche.epoch_redeem.is_zero())
 				{
 					// This epoch is a no-op. Finish executing it.
-					for tranche_id in 0..pool.tranches.len() {
-						let tranche = TrancheLocator {
+					for (tranche_id, tranche) in pool.tranches.iter_mut().enumerate() {
+						let loc = TrancheLocator {
 							pool_id,
 							tranche_id: T::TrancheId::try_from(tranche_id)
 								.map_err(|_| Error::<T>::TrancheId)?,
 						};
-						let epoch = EpochDetails::<T::BalanceRatio> {
-							supply_fulfillment: Perquintill::one(),
-							redeem_fulfillment: Perquintill::one(),
-							token_price: epoch_tranche_prices[tranche_id],
-						};
-						Epoch::<T>::insert(tranche, closing_epoch, epoch)
+						Self::update_tranche_for_epoch(
+							loc,
+							closing_epoch,
+							tranche,
+							(Perquintill::zero(), Perquintill::zero()),
+							(Zero::zero(), Zero::zero()),
+							Zero::zero(),
+						)?;
 					}
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
@@ -474,7 +476,7 @@ pub mod pallet {
 				if Self::is_epoch_valid(pool, &epoch_targets, &current_tranche_values, &full_epoch)
 					.is_ok()
 				{
-					Self::do_execute_epoch(pool_id, &epoch_targets, &full_epoch)?;
+					Self::do_execute_epoch(pool_id, pool, &epoch_targets, &full_epoch)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				} else {
 					pool.closing_epoch = Some(closing_epoch);
@@ -517,7 +519,7 @@ pub mod pallet {
 				);
 
 				pool.closing_epoch = None;
-				Self::do_execute_epoch(pool_id, &target, &solution)?;
+				Self::do_execute_epoch(pool_id, pool, &target, &solution)?;
 				EpochTargets::<T>::remove(pool_id);
 				Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				Ok(())
@@ -679,11 +681,117 @@ pub mod pallet {
 		}
 
 		fn do_execute_epoch(
-			_pool: T::PoolId,
-			_target: &[(T::Balance, T::Balance)],
-			_solution: &[(Perquintill, Perquintill)],
-		) -> Result<(), Error<T>> {
-			// TODO: Implement this
+			pool_id: T::PoolId,
+			pool: &mut PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+			target: &[(T::Balance, T::Balance)],
+			solution: &[(Perquintill, Perquintill)],
+		) -> DispatchResult {
+			pool.last_epoch_executed += One::one();
+
+			let execution: Vec<_> = target
+				.iter()
+				.copied()
+				.zip(solution.iter())
+				.map(|((t_supply, t_redeem), (s_supply, s_redeem))| {
+					(s_supply.mul_floor(t_supply), s_redeem.mul_floor(t_redeem))
+				})
+				.collect();
+
+			let total_supply = execution
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|acc: Option<T::Balance>, (supply, _)| {
+						acc.and_then(|acc| acc.checked_add(supply))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+
+			let total_redeem = execution
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|acc: Option<T::Balance>, (_, redeem)| {
+						acc.and_then(|acc| acc.checked_add(redeem))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+
+			for (((tranche_id, tranche), solution), execution) in pool
+				.tranches
+				.iter_mut()
+				.enumerate()
+				.zip(solution.iter().copied())
+				.zip(execution.iter().copied())
+			{
+				let loc = TrancheLocator {
+					pool_id,
+					tranche_id: T::TrancheId::try_from(tranche_id)
+						.map_err(|_| Error::<T>::TrancheId)?,
+				};
+				Self::update_tranche_for_epoch(
+					loc,
+					pool.last_epoch_executed,
+					tranche,
+					solution,
+					execution,
+					Zero::zero(), // TODO: Get token price
+				)?;
+			}
+
+			pool.total_reserve = pool
+				.total_reserve
+				.checked_add(&total_supply)
+				.and_then(|res| res.checked_sub(&total_redeem))
+				.ok_or(Error::<T>::Overflow)?;
+
+			Ok(())
+		}
+
+		fn update_tranche_for_epoch(
+			loc: TrancheLocator<T::PoolId, T::TrancheId>,
+			closing_epoch: T::EpochId,
+			tranche: &mut Tranche<T::Balance>,
+			solution: (Perquintill, Perquintill),
+			execution: (T::Balance, T::Balance),
+			price: T::BalanceRatio,
+		) -> DispatchResult {
+			// Update supply/redeem orders for the next epoch based on our execution
+			tranche.epoch_supply -= execution.0;
+			tranche.epoch_redeem -= execution.1;
+
+			// Compute the tranche tokens that need to be minted or burned based on the execution
+			let mint_amount = if price > Zero::zero() {
+				price
+					.checked_mul_int(execution.0 - execution.1)
+					.ok_or(Error::<T>::Overflow)?
+			} else {
+				Zero::zero()
+			};
+			let burn_amount = price
+				.checked_mul_int(execution.1 - execution.0)
+				.ok_or(Error::<T>::Overflow)?;
+
+			let pool_address = PoolLocator {
+				pool_id: loc.pool_id,
+			}
+			.into_account();
+			let token = T::TrancheToken::tranche_token(loc.pool_id, loc.tranche_id);
+			if mint_amount > burn_amount {
+				let tokens_to_mint = mint_amount - burn_amount;
+				T::Tokens::deposit(token, &pool_address, tokens_to_mint)?;
+			} else if burn_amount > mint_amount {
+				let tokens_to_burn = burn_amount - mint_amount;
+				T::Tokens::withdraw(token, &pool_address, tokens_to_burn)?;
+			}
+
+			// Insert epoch closing information on supply/redeem fulfillment
+			let epoch = EpochDetails::<T::BalanceRatio> {
+				supply_fulfillment: solution.0,
+				redeem_fulfillment: solution.1,
+				token_price: price,
+			};
+			Epoch::<T>::insert(loc, closing_epoch, epoch);
 			Ok(())
 		}
 	}
