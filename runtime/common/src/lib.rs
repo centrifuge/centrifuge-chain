@@ -119,6 +119,9 @@ pub mod types {
 
 	/// PoolId type we use.
 	pub type PoolId = u64;
+
+	/// MultiToken currencyID type
+	pub type CurrencyId = u32;
 }
 
 /// Common constants for all runtimes
