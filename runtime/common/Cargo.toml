@@ -10,6 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 smallvec = "1.4.0"
+serde = { version = "1.0.102", optional = true, features = ['derive'] }
 
 # Substrate dependencies
 codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
@@ -33,6 +34,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 default = ["std"]
 std = [
     "codec/std",
+    "serde/std",
     "frame-support/std",
     "frame-system/std",
     "node-primitives/std",

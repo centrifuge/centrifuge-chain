@@ -125,7 +125,7 @@ use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier}
 use runtime_common::types::FixedArray;
 
 use sp_core::H256;
-use sp_runtime::{traits::Member, SaturatedConversion};
+use sp_runtime::traits::Member;
 
 use sp_std::fmt::Debug;
 
@@ -146,6 +146,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sp_runtime::SaturatedConversion;
 
 	// NFT pallet type declaration.
 	//

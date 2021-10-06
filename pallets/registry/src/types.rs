@@ -27,7 +27,7 @@ use runtime_common::types::{Bytes, FixedArray, Salt};
 
 use sp_core::{blake2_256, H256};
 
-use sp_runtime::{sp_std::vec, sp_std::vec::Vec};
+use sp_runtime::{sp_std::vec, sp_std::vec::Vec, traits::Hash};
 
 // ----------------------------------------------------------------------------
 // Type alias and definitions
@@ -35,9 +35,6 @@ use sp_runtime::{sp_std::vec, sp_std::vec::Vec};
 
 /// Type alias as a shortcut for a pallet refering to a FRAME system hash (associated type).
 pub(crate) type SystemHashOf<T> = <T as frame_system::Config>::Hash;
-
-/// Type alias as a shortcut for a proof verifier implementing a [Hasher] trait.
-pub(crate) type HasherHashOf<H> = <H as Hasher>::Hash;
 
 /// Metadata for an instance of a registry.
 #[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
@@ -69,30 +66,28 @@ pub struct CompleteProof<Hash> {
 }
 
 /// Generates the leaf hash from underlying data, other hashes remain the same.
-///
-/// The Keccak is the hasher compatible with Ethereum.
 impl From<CompleteProof<H256>> for proofs::Proof<H256> {
 	fn from(mut proof: CompleteProof<H256>) -> Self {
 		// Generate leaf hash from property ++ value ++ salt
 		proof.property.extend(proof.value);
 		proof.property.extend(&proof.salt);
-		let leaf_hash = sp_io::hashing::keccak_256(&proof.property).into();
+		let leaf_hash = blake2_256(&proof.property).into();
 
 		Proof::new(leaf_hash, proof.hashes)
 	}
 }
 
 /// Registry proofs verifier.
-pub(crate) struct ProofVerifier {
+pub(crate) struct ProofVerifier<T: crate::Config> {
 	/// Array containing static root hashes passed when minting a non-fungible token.
 	///
 	/// See [ProofVerifier::new] for information on how to pass those hashes. Those
 	/// root hashes are passed when invoking [mint] transaction (or extrinsic).
-	static_proofs: FixedArray<HasherHashOf<Self>, 3>,
+	static_proofs: FixedArray<SystemHashOf<T>, 3>,
 }
 
 // Proof verifier implementation block
-impl ProofVerifier {
+impl<T: crate::Config> ProofVerifier<T> {
 	const BASIC_DATA_ROOT_HASH: usize = 0;
 	const ZK_DATA_ROOT_HASH: usize = 1;
 	const SIGNATURE_ROOT_HASH: usize = 2;
@@ -103,23 +98,23 @@ impl ProofVerifier {
 	///   1. The basic data root hash (with index ['BASIC_DATA_ROOT_HASH'])
 	///   2. The ZK root hash (with index ['ZK_DATA_ROOT_HASH'])
 	///   3. The signature root hash (with index ['SIGNATURE_DATA_ROOT_HASH'])
-	pub fn new(static_proofs: FixedArray<HasherHashOf<Self>, 3>) -> Self {
+	pub fn new(static_proofs: FixedArray<SystemHashOf<T>, 3>) -> Self {
 		ProofVerifier { static_proofs }
 	}
 }
 
 // Implement hasher trait for the proof verifier
-impl Hasher for ProofVerifier {
-	type Hash = H256;
+impl<T: crate::Config> Hasher for ProofVerifier<T> {
+	type Hash = T::Hash;
 
 	// Hash the input data
 	fn hash(data: &[u8]) -> Self::Hash {
-		blake2_256(data).into()
+		T::Hashing::hash(data)
 	}
 }
 
 // Implement verifier trait for registry's proof verifier
-impl Verifier for ProofVerifier {
+impl<T: crate::Config> Verifier for ProofVerifier<T> {
 	// Calculate a final hash from two given hashes
 	fn hash_of(a: Self::Hash, b: Self::Hash) -> Self::Hash {
 		proofs::hashing::sort_hash_of::<Self>(a, b)

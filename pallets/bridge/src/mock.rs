@@ -595,12 +595,13 @@ pub(crate) mod helpers {
 		};
 
 		// Create registry, get registry id. Shouldn't fail.
-		let registry_id =
-			match <Registry as VerifierRegistry>::create_new_registry(owner, registry_info.clone())
-			{
-				Ok(r_id) => r_id,
-				Err(e) => panic!("{:#?}", e),
-			};
+		let registry_id = <Registry as VerifierRegistry<
+			T::AccountId,
+			RegistryId,
+			TokenId,
+			AssetInfo,
+			T::Hash,
+		>>::create_new_registry(owner, registry_info.clone());
 
 		// Generate dummy proofs data for testing
 		let (proofs, doc_root, static_hashes) =
