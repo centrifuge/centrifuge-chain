@@ -30,7 +30,10 @@ use pallet_nft::types::AssetId;
 /// underlying NFTs. A substrate module can implement this trait.
 pub trait VerifierRegistry<AccountId, RegistryId, TokenId, AssetInfo, Hash> {
 	/// Create a new instance of a registry with the associated registry info.
-	fn create_new_registry(caller: AccountId, info: RegistryInfo) -> RegistryId;
+	fn create_new_registry(
+		caller: AccountId,
+		info: RegistryInfo,
+	) -> Result<RegistryId, DispatchError>;
 
 	/// Use the mint info to verify whether the mint is a valid action.
 	/// If so, use the asset info to mint an asset.

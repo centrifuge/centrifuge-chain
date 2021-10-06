@@ -24,6 +24,7 @@ sp-core = { git = "https://github.com/centrifuge/substrate.git", default-feature
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+pallet-uniques = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 # Centrifuge chain dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
@@ -59,5 +60,6 @@ std = [
   'sp-io/std',
   'sp-runtime/std',
   'sp-std/std',
+  'pallet-uniques/std',
   'unique-assets/std',
 ]
