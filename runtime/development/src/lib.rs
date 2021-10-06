@@ -568,7 +568,7 @@ impl pallet_fees::Config for Runtime {
 }
 
 impl pallet_anchors::Config for Runtime {
-	type WeightInfo = ();
+	type WeightInfo = pallet_anchors::weights::SubstrateWeight<Self>;
 }
 
 // Parameterize claims pallet
@@ -861,6 +861,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_anchors, Anchor);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);

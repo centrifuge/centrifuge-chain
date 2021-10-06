@@ -1,6 +1,6 @@
 [package]
 name = 'pallet-anchors'
-authors = ["Centrifuge <admin@centrifuge.io>"]
+authors = ["Centrifuge Contributors <admin@centrifuge.io>"]
 description = 'Anchors pallet for runtime'
 edition = '2018'
 license = "LGPL-3.0"
@@ -12,22 +12,23 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 serde = { version = "1.0.102" }
-codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
+codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'], default-features = false }
 
-frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false, optional = true, branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
+sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
+pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
 pallet-fees = { path = "../fees", default-features = false }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+pallet-randomness-collective-flip = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
+pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
 
 [features]
 default = ['std']
@@ -41,3 +42,5 @@ std = [
     'pallet-timestamp/std',
     'pallet-fees/std',
 ]
+runtime-benchmarks = ["frame-benchmarking"]
+
