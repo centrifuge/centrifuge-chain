@@ -33,7 +33,7 @@ type CurrencyIdOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
 	<T as frame_system::Config>::AccountId,
 >>::CurrencyId;
 
-type MultiCurrencyBalanceOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
+pub type MultiCurrencyBalanceOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 

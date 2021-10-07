@@ -20,6 +20,7 @@ pub use constants::*;
 pub use impls::*;
 pub use types::*;
 
+mod fixed_point;
 mod impls;
 
 pub mod apis {
@@ -112,10 +113,10 @@ pub mod types {
 	pub struct EthAddress(pub Bytes32);
 
 	/// Rate with 27 precision fixed point decimal
-	pub type Rate = sp_arithmetic::fixed_point::FixedU128P27;
+	pub type Rate = crate::fixed_point::Rate;
 
 	/// Amount with 18 precision fixed point decimal
-	pub type Amount = sp_arithmetic::FixedU128;
+	pub type Amount = crate::fixed_point::Amount;
 
 	/// PoolId type we use.
 	pub type PoolId = u64;

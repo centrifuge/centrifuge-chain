@@ -84,6 +84,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
+	use pallet_pool::MultiCurrencyBalanceOf;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_core::U256;
 
@@ -100,7 +101,11 @@ pub mod pallet {
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber;
 
 		/// the amount type
-		type Amount: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber;
+		type Amount: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ FixedPointNumber
+			+ Into<MultiCurrencyBalanceOf<Self>>;
 
 		/// The nft registry trait that can mint, transfer and give owner details
 		type NftRegistry: Unique<AssetIdOf<Self>, AccountIdOf<Self>>
@@ -255,8 +260,8 @@ pub mod pallet {
 			amount: T::Amount,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			// let asset = Self::close(pool_id, loan_id, owner)?;
-			// Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
+			Self::borrow_amount(pool_id, loan_id, owner, amount)?;
+			Self::deposit_event(Event::<T>::LoanAmountBorrowed(pool_id, loan_id, amount));
 			Ok(())
 		}
 
@@ -441,7 +446,7 @@ impl<T: Config> Pallet<T> {
 		amount: T::Amount,
 	) -> DispatchResult {
 		// ensure owner is the loan owner
-		Self::check_loan_owner(pool_id, loan_id, owner)?;
+		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		// fetch the loan details and check for ceiling threshold
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
@@ -486,8 +491,12 @@ impl<T: Config> Pallet<T> {
 			*maybe_loan_info = Some(loan_info);
 		});
 
-		// TODO(ved): transfer the amount to the owner here
-
+		pallet_pool::Pallet::<T>::borrow_currency(
+			pool_id,
+			RawOrigin::Signed(Self::account_id()).into(),
+			owner,
+			amount.into(),
+		)?;
 		Ok(())
 	}
 
