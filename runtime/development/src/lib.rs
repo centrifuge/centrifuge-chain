@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{Contains, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -111,7 +111,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = frame_support::traits::Everything;
+	type BaseCallFilter = Migration;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -734,6 +734,31 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type Filter = BaseFilter;
+}
+
+// our base filter
+// allow base system calls needed for block production and runtime upgrade
+// other calls will be disallowed
+pub struct BaseFilter;
+
+impl Contains<Call> for BaseFilter {
+	fn contains(c: &Call) -> bool {
+		matches!(
+			c,
+			// Calls from Sudo
+			Call::Sudo(..)
+
+				// Calls for runtime upgrade
+				| Call::System(frame_system::Call::set_code(..))
+				| Call::System(frame_system::Call::set_code_without_checks(..))
+
+				// Calls that are present in each block
+				| Call::ParachainSystem(
+					cumulus_pallet_parachain_system::Call::set_validation_data(..)
+				) | Call::Timestamp(pallet_timestamp::Call::set(..))
+		)
+	}
 }
 
 // Parameterize crowdloan reward pallet configuration

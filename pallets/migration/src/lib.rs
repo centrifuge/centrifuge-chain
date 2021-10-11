@@ -76,6 +76,8 @@ pub mod pallet {
 
 		/// WeightInfo
 		type WeightInfo: WeightInfo;
+
+		type Filter: Contains<<Self as frame_system::Config>::Call>;
 	}
 
 	#[pallet::hooks]
@@ -153,6 +155,9 @@ pub mod pallet {
 			>>::Balance,
 			u64,
 		),
+
+		/// Indicates that the migration is finished
+		MigrationFinished,
 	}
 
 	#[pallet::error]
@@ -165,6 +170,9 @@ pub mod pallet {
 
 		/// Too many proxies in the vector for the call of `migrate_proxy_proxies`.
 		TooManyProxies,
+
+		/// Indicates that a migration call happened, although the migration is already closed
+		MigrationAlreadyCompleted,
 	}
 
 	#[pallet::call]
@@ -183,6 +191,11 @@ pub mod pallet {
 			accounts: Vec<(Vec<u8>, Vec<u8>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
+
+			ensure!(
+				<Completed<T>>::get() == false,
+				Error::<T>::MigrationAlreadyCompleted
+			);
 
 			let num_accounts = accounts.len();
 			ensure!(
@@ -221,6 +234,11 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			ensure!(
+				<Completed<T>>::get() == false,
+				Error::<T>::MigrationAlreadyCompleted
+			);
+
 			let current_issuance = pallet_balances::Pallet::<T>::total_issuance();
 			let total_issuance = current_issuance.saturating_add(additional_issuance);
 
@@ -247,6 +265,11 @@ pub mod pallet {
 			vestings: Vec<(T::AccountId, VestingInfo<BalanceOf<T>, T::BlockNumber>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
+
+			ensure!(
+				<Completed<T>>::get() == false,
+				Error::<T>::MigrationAlreadyCompleted
+			);
 
 			ensure!(
 				vestings.len()
@@ -319,6 +342,11 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			ensure!(
+				<Completed<T>>::get() == false,
+				Error::<T>::MigrationAlreadyCompleted
+			);
+
+			ensure!(
 				proxies.len()
 					<= <T as Config>::MigrationMaxProxies::get()
 						.try_into()
@@ -360,26 +388,32 @@ pub mod pallet {
 				.into(),
 			)
 		}
+
+		/// This extrinsic disables the call-filter. After this has been called the chain will acceppt
+		/// all calls again.
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::finalize())]
+		#[transactional]
+		pub fn finalize(origin: OriginFor<T>) -> DispatchResult {
+			ensure_root(origin)?;
+
+			ensure!(
+				<Completed<T>>::get() == false,
+				Error::<T>::MigrationAlreadyCompleted
+			);
+
+			<Completed<T>>::put(true);
+
+			Self::deposit_event(Event::<T>::MigrationFinished);
+
+			Ok(())
+		}
 	}
 }
 
-impl<T: Config, Call> Contains<Call> for Pallet<T> {
-	fn contains(c: &Call) -> bool {
-		if pallet::Completed::<T>::get() {
-			matches!(
-				c,
-				// Calls from Sudo
-				Call::Sudo(..)
-
-					// Calls for runtime upgrade
-					| Call::System(frame_system::Call::set_code(..))
-					| Call::System(frame_system::Call::set_code_without_checks(..))
-
-					// Calls that are present in each block
-					| Call::ParachainSystem(
-						cumulus_pallet_parachain_system::Call::set_validation_data(..)
-					) | Call::Timestamp(pallet_timestamp::Call::set(..))
-			)
+impl<T: Config> Contains<<T as frame_system::Config>::Call> for Pallet<T> {
+	fn contains(c: &<T as frame_system::Config>::Call) -> bool {
+		if !pallet::Completed::<T>::get() {
+			T::Filter::contains(c)
 		} else {
 			true
 		}

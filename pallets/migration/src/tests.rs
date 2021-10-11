@@ -13,6 +13,53 @@ use rand::Rng;
 use sp_runtime::AccountId32;
 
 #[test]
+fn finalize_works() {
+	TestExternalitiesBuilder::default()
+		.existential_deposit(1)
+		.build(|| {})
+		.execute_with(|| {
+			pallet_migration_manager::Pallet::<MockRuntime>::finalize(Origin::root()).unwrap();
+
+			assert_noop!(
+				pallet_migration_manager::Pallet::<MockRuntime>::finalize(Origin::root()),
+				pallet_migration_manager::Error::<MockRuntime>::MigrationAlreadyCompleted,
+			);
+
+			assert_noop!(
+				pallet_migration_manager::Pallet::<MockRuntime>::migrate_balances_issuance(
+					Origin::root(),
+					0u32.into()
+				),
+				pallet_migration_manager::Error::<MockRuntime>::MigrationAlreadyCompleted,
+			);
+
+			assert_noop!(
+				pallet_migration_manager::Pallet::<MockRuntime>::migrate_system_account(
+					Origin::root(),
+					Vec::new(),
+				),
+				pallet_migration_manager::Error::<MockRuntime>::MigrationAlreadyCompleted,
+			);
+
+			assert_noop!(
+				pallet_migration_manager::Pallet::<MockRuntime>::migrate_proxy_proxies(
+					Origin::root(),
+					Vec::new()
+				),
+				pallet_migration_manager::Error::<MockRuntime>::MigrationAlreadyCompleted,
+			);
+
+			assert_noop!(
+				pallet_migration_manager::Pallet::<MockRuntime>::migrate_vesting_vesting(
+					Origin::root(),
+					Vec::new()
+				),
+				pallet_migration_manager::Error::<MockRuntime>::MigrationAlreadyCompleted,
+			);
+		})
+}
+
+#[test]
 fn migrate_system_account() {
 	TestExternalitiesBuilder::default()
 		.existential_deposit(1)

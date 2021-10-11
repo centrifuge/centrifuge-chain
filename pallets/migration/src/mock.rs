@@ -195,6 +195,7 @@ impl pallet_migration_manager::Config for MockRuntime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = ();
+	type Filter = ();
 }
 
 // ----------------------------------------------------------------------------

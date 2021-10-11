@@ -12,6 +12,12 @@ use sp_runtime::{traits::Zero, AccountId32};
 use sp_std::convert::TryInto;
 
 benchmarks! {
+	finalize{
+		// No setup needed
+	}: finalize(RawOrigin::Root)
+	verify {
+		assert!(<Completed<T>>::get());
+	}
   migrate_system_account{
 		let n in 1 .. <T as Config>::MigrationMaxAccounts::get();
 		inject_total_issuance();
