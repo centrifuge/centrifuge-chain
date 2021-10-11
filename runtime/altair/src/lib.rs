@@ -68,7 +68,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1003,
+	spec_version: 1004,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -618,6 +618,22 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MigrationMaxAccounts: u32 = 100;
+	pub const MigrationMaxVestings: u32 = 10;
+	pub const MigrationMaxProxies: u32 = 10;
+}
+
+// Implement the migration manager pallet
+// The actual associated type, which executes the migration can be found in the migration folder
+impl pallet_migration_manager::Config for Runtime {
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxVestings = MigrationMaxVestings;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type Event = Event;
+	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -665,7 +681,8 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
-
+		// migration pallet
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
@@ -834,8 +851,8 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			// Pallet fees benchmarks
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -851,6 +868,7 @@ impl_runtime_apis! {
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
