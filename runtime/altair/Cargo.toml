@@ -98,6 +98,7 @@ runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -170,6 +171,7 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
+    "pallet-migration-manager/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
@@ -181,6 +183,7 @@ runtime-benchmarks = [
     "xcm-builder/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
+    "pallet-migration-manager/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
