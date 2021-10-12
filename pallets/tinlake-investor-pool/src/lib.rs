@@ -40,7 +40,7 @@ pub trait TrancheToken<T: Config> {
 	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
 pub struct Tranche<Balance> {
 	pub interest_per_sec: Perquintill,
 	pub min_subordination_ratio: Perquintill,
@@ -689,7 +689,7 @@ pub mod pallet {
 						sum.and_then(|sum| sum.checked_add(&sol.0.mul_floor(tranche.supply)))
 					},
 				)
-				.ok_or(Error::<T>::Overflow)?;
+			.ok_or(Error::<T>::Overflow)?;
 
 			let acc_redeem: T::Balance = epoch
 				.tranches
