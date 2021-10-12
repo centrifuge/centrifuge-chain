@@ -180,8 +180,11 @@ pub mod pallet {
 		/// emits when the loan is activated
 		LoanActivated(T::PoolId, T::LoanId),
 
-		/// emits when some amount is borrowed again
+		/// emits when some amount is borrowed
 		LoanAmountBorrowed(T::PoolId, T::LoanId, T::Amount),
+
+		/// emits when some amount is repayed
+		LoanAmountRepayed(T::PoolId, T::LoanId, T::Amount),
 	}
 
 	#[pallet::error]
@@ -250,7 +253,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Closes a given loan if repaid fully
+		/// borrows some amount from an active loan
 		#[pallet::weight(100_000)]
 		#[transactional]
 		pub fn borrow(
@@ -262,6 +265,25 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			Self::borrow_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::LoanAmountBorrowed(pool_id, loan_id, amount));
+			Ok(())
+		}
+
+		/// repays some amount to an active loan
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn repay(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			amount: T::Amount,
+		) -> DispatchResult {
+			let owner = ensure_signed(origin)?;
+			let repaid_amount = Self::repay_amount(pool_id, loan_id, owner, amount)?;
+			Self::deposit_event(Event::<T>::LoanAmountRepayed(
+				pool_id,
+				loan_id,
+				repaid_amount,
+			));
 			Ok(())
 		}
 
@@ -416,6 +438,8 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
+		// TODO(ved): ensure loan is active
+
 		// ensure debt is all paid
 		let mut loan_info =
 			LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
@@ -448,6 +472,7 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
+		// TODO(ved): ensure loan is active
 		// fetch the loan details and check for ceiling threshold
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
 		ensure!(
@@ -498,6 +523,64 @@ impl<T: Config> Pallet<T> {
 			amount.into(),
 		)?;
 		Ok(())
+	}
+
+	fn repay_amount(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		owner: T::AccountId,
+		amount: T::Amount,
+	) -> Result<T::Amount, DispatchError> {
+		// ensure owner is the loan owner
+		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
+
+		// fetch the loan details
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+
+		// TODO(ved): ensure loan is active
+		// calculate new accumulated rate
+		let now: u64 = Self::time_now()?;
+		let accumulated_rate = math::calculate_accumulated_rate::<T::Rate>(
+			loan_info.rate_per_sec,
+			loan_info.accumulated_rate,
+			now,
+			loan_info.last_updated,
+		)
+		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+
+		// calculate current debt
+		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
+			.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+
+		// ensure amount is not more than current debt
+		let mut repay_amount = amount;
+		if repay_amount > debt {
+			repay_amount = debt
+		}
+
+		// calculate new principal debt with repayed amount
+		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
+			debt,
+			math::Adjustment::Dec(repay_amount),
+			accumulated_rate,
+		)
+		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+
+		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
+			let mut loan_info = maybe_loan_info.take().unwrap();
+			loan_info.last_updated = now;
+			loan_info.accumulated_rate = accumulated_rate;
+			loan_info.principal_debt = principal_debt;
+			*maybe_loan_info = Some(loan_info);
+		});
+
+		pallet_pool::Pallet::<T>::repay_currency(
+			pool_id,
+			RawOrigin::Signed(Self::account_id()).into(),
+			owner,
+			repay_amount.into(),
+		)?;
+		Ok(repay_amount)
 	}
 
 	fn time_now() -> Result<u64, DispatchError> {
