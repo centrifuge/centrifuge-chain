@@ -54,18 +54,9 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	accumulated_rate: Rate,
 	principal_debt: Amount,
 	last_updated: u64,
+	maturity_date: Option<u64>,
 	asset_id: AssetId,
 	status: LoanStatus,
-}
-
-impl<Rate, Amount, AssetId> LoanData<Rate, Amount, AssetId>
-where
-	Amount: PartialOrd + sp_arithmetic::traits::Zero,
-{
-	/// returns true if the loan is active
-	fn is_loan_active(&self) -> bool {
-		self.borrowed_amount > Zero::zero()
-	}
 }
 
 pub type RegistryIdOf<T> = <T as pallet_nft::Config>::RegistryId;
@@ -112,7 +103,7 @@ pub mod pallet {
 			+ Mintable<AssetIdOf<Self>, AssetInfoOf<Self>, AccountIdOf<Self>>;
 
 		/// Verifier registry to create NFT Registry
-		/// TODO(ved): use simple registry instead of Va Registry when we have it
+		/// TODO(ved): migrate to Uniques pallet
 		type VaRegistry: VerifierRegistry<
 			AccountIdOf<Self>,
 			RegistryIdOf<Self>,
@@ -174,17 +165,14 @@ pub mod pallet {
 		/// emits when a loan is closed
 		LoanClosed(T::PoolId, T::LoanId, AssetIdOf<T>),
 
-		/// emits when the loan info is updated.
-		LoanInfoUpdate(T::PoolId, T::LoanId),
-
 		/// emits when the loan is activated
 		LoanActivated(T::PoolId, T::LoanId),
 
 		/// emits when some amount is borrowed
 		LoanAmountBorrowed(T::PoolId, T::LoanId, T::Amount),
 
-		/// emits when some amount is repayed
-		LoanAmountRepayed(T::PoolId, T::LoanId, T::Amount),
+		/// emits when some amount is repaid
+		LoanAmountRepaid(T::PoolId, T::LoanId, T::Amount),
 	}
 
 	#[pallet::error]
@@ -279,7 +267,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			let repaid_amount = Self::repay_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::LoanAmountRepayed(
+			Self::deposit_event(Event::<T>::LoanAmountRepaid(
 				pool_id,
 				loan_id,
 				repaid_amount,
@@ -287,16 +275,16 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Sets the loan info for a given loan in a pool
-		/// we update the loan details only if its not active
+		/// a permissioned call to update loan specific details and activates the loan
 		#[pallet::weight(100_000)]
 		#[transactional]
-		pub fn update_loan_info(
+		pub fn activate_loan(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
-			rate: T::Rate,
-			principal: T::Amount,
+			rate_per_sec: T::Rate,
+			ceiling: T::Amount,
+			maturity_date: Option<u64>,
 		) -> DispatchResult {
 			// TODO(dev): get the origin from the config. Admin can set loan information
 			ensure_signed(origin)?;
@@ -304,20 +292,25 @@ pub mod pallet {
 			// check if the pool exists
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
 
-			// check if the loan is active
+			// ensure loan is in issued state
 			let loan_info =
 				LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
-			ensure!(!loan_info.is_loan_active(), Error::<T>::ErrLoanIsActive);
+			ensure!(
+				loan_info.status == LoanStatus::Issued,
+				Error::<T>::ErrLoanIsActive
+			);
 
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 				let mut loan_info = maybe_loan_info.take().unwrap();
-				loan_info.rate_per_sec = rate;
-				loan_info.ceiling = principal;
+				loan_info.rate_per_sec = rate_per_sec;
+				loan_info.ceiling = ceiling;
+				loan_info.status = LoanStatus::Active;
+				loan_info.maturity_date = maturity_date;
 				*maybe_loan_info = Some(loan_info);
 			});
 
-			Self::deposit_event(Event::<T>::LoanInfoUpdate(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
 			Ok(())
 		}
 	}
@@ -423,6 +416,7 @@ impl<T: Config> Pallet<T> {
 				accumulated_rate: Zero::zero(),
 				principal_debt: Zero::zero(),
 				last_updated: timestamp,
+				maturity_date: None,
 				asset_id,
 				status: LoanStatus::Issued,
 			},
