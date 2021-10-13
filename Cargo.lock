@@ -117,6 +117,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-bounties",
  "pallet-claims",
  "pallet-collective",
  "pallet-crowdloan-claim",
@@ -143,6 +144,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
@@ -2091,6 +2093,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-bounties",
  "pallet-claims",
  "pallet-collective",
  "pallet-crowdloan-claim",
@@ -2117,6 +2120,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-treasury",
  "pallet-uniques",
  "pallet-utility",
  "pallet-vesting",
@@ -6016,6 +6020,7 @@ name = "pallet-uniques"
 version = "4.0.0-dev"
 source = "git+https://github.com/centrifuge/substrate?branch=master#0a01444351a0d0176194c8fe39e8a14f4ee5fb78"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
