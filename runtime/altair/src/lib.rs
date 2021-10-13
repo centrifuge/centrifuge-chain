@@ -634,6 +634,40 @@ impl pallet_migration_manager::Config for Runtime {
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
 }
 
+// Parameterize crowdloan reward pallet configuration
+parameter_types! {
+	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+}
+
+// Implement crowdloan reward pallet's configuration trait for the runtime
+impl pallet_crowdloan_reward::Config for Runtime {
+	type Event = Event;
+	type PalletId = CrowdloanRewardPalletId;
+	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
+}
+
+// Parameterize crowdloan claim pallet
+parameter_types! {
+	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
+	pub const ClaimTransactionLongevity: u32 = 64;
+	pub const MaxProofLength: u32 = 30;
+}
+
+// Implement crowdloan claim pallet configuration trait for the mock runtime
+impl pallet_crowdloan_claim::Config for Runtime {
+	type Event = Event;
+	type PalletId = CrowdloanClaimPalletId;
+	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
+	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type RelayChainAccountId = AccountId;
+	type MaxProofLength = MaxProofLength;
+	type ClaimTransactionPriority = ClaimTransactionPriority;
+	type ClaimTransactionLongevity = ClaimTransactionLongevity;
+	type RewardMechanism = CrowdloanReward;
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -681,6 +715,9 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
+		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
+
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
@@ -853,6 +890,8 @@ impl_runtime_apis! {
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
+			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
+			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -869,6 +908,8 @@ impl_runtime_apis! {
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
+			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
+			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
