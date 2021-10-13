@@ -94,6 +94,8 @@ pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-featur
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-bounties = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 
 runtime-common = { path = "../common", default-features = false }
 
@@ -178,6 +180,9 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
+    "pallet-uniques/std",
+    "pallet-bounties/std",
+    "pallet-treasury/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
