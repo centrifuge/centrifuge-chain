@@ -578,6 +578,39 @@ impl pallet_vesting::Config for Runtime {
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
 
+parameter_types! {
+	// per byte deposit is 0.01 CFG
+	pub const DepositPerByte: Balance = CENTI_CFG;
+	// Base deposit to add attribute is 0.1 CFG
+	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
+	// Base deposit to add metadata is 0.1 CFG
+	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
+	// Deposit to create a class is 1 CFG
+	pub const ClassDeposit: Balance = CFG;
+	// Deposit to create a class is 0.1 CFG
+	pub const InstanceDeposit: Balance = 10 * CENTI_CFG;
+	// Maximum limit of bytes for Metadata, Attribute key and Value
+	pub const Limit: u32 = 256;
+}
+
+impl pallet_uniques::Config for Runtime {
+	type Event = Event;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type Currency = Balances;
+	// a straight majority of council can act as force origin
+	type ForceOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ClassDeposit = ClassDeposit;
+	type InstanceDeposit = InstanceDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = Limit;
+	type KeyLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+}
+
 // our pallets
 impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
@@ -703,6 +736,7 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 66,
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 69,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
