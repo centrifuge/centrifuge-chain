@@ -230,6 +230,7 @@ impl pallet_loan::Config for MockRuntime {
 	type VaRegistry = Registry;
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
+	type OracleOrigin = EnsureSignedBy<One, u64>;
 }
 
 parameter_types! {

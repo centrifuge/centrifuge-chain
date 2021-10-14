@@ -20,7 +20,8 @@ use crate::mock::{Event, Loan, MockRuntime, Origin};
 use frame_support::{assert_err, assert_ok};
 use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
-use runtime_common::{AssetInfo, PoolId, TokenId};
+use runtime_common::{Amount, AssetInfo, PoolId, Rate, TokenId};
+use sp_runtime::traits::One;
 
 fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIdOf<T>
 where
@@ -154,6 +155,55 @@ fn issue_loan() {
 }
 
 #[test]
+fn activate_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let owner: u64 = 100;
+			let pool_id = create_pool::<MockRuntime>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			let oracle: u64 = 1;
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				Rate::one(),
+				Amount::from_inner(100u128),
+				None,
+			);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanActivated(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue activated event");
+			// check loan status as Activated
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			assert_eq!(loan_data.status, LoanStatus::Active);
+			assert_eq!(loan_data.maturity_date, None);
+			assert_eq!(loan_data.rate_per_sec, Rate::one());
+			assert_eq!(loan_data.ceiling, Amount::from_inner(100u128));
+		})
+}
+
+#[test]
 fn close_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
@@ -175,6 +225,18 @@ fn close_loan() {
 				_ => None,
 			}
 			.expect("must be a Loan issue event");
+
+			// activate loan
+			let oracle: u64 = 1;
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				Rate::one(),
+				Amount::from_inner(100u128),
+				None,
+			);
+			assert_ok!(res);
 
 			// close the loan
 			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);

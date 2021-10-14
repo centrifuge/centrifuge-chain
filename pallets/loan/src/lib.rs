@@ -118,6 +118,9 @@ pub mod pallet {
 		/// PalletID of this loan module
 		#[pallet::constant]
 		type LoanPalletId: Get<PalletId>;
+
+		/// Origin for oracle or anything that can update and activate a loan
+		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	/// Stores the loan nft registry ID against
@@ -191,6 +194,9 @@ pub mod pallet {
 
 		/// Emits when tries to update an active loan
 		ErrLoanIsActive,
+
+		/// Emits when operation is done on an inactive loan
+		ErrLoanIsInActive,
 
 		/// Emits when epoch time is overflowed
 		ErrEpochOverflow,
@@ -286,8 +292,7 @@ pub mod pallet {
 			ceiling: T::Amount,
 			maturity_date: Option<u64>,
 		) -> DispatchResult {
-			// TODO(dev): get the origin from the config. Admin can set loan information
-			ensure_signed(origin)?;
+			T::OracleOrigin::ensure_origin(origin)?;
 
 			// check if the pool exists
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
@@ -432,11 +437,16 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
-		// TODO(ved): ensure loan is active
-
-		// ensure debt is all paid
 		let mut loan_info =
 			LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+
+		// ensure loan is active
+		ensure!(
+			loan_info.status == LoanStatus::Active,
+			Error::<T>::ErrLoanIsInActive
+		);
+
+		// ensure debt is all paid
 		ensure!(
 			loan_info.principal_debt == Zero::zero(),
 			Error::<T>::ErrLoanNotRepaid
@@ -466,9 +476,16 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
-		// TODO(ved): ensure loan is active
-		// fetch the loan details and check for ceiling threshold
+		// fetch the loan details
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+
+		// ensure loan is active
+		ensure!(
+			loan_info.status == LoanStatus::Active,
+			Error::<T>::ErrLoanIsInActive
+		);
+
+		// check for ceiling threshold
 		ensure!(
 			loan_info.ceiling <= amount + loan_info.borrowed_amount,
 			Error::<T>::ErrLoanCeilingReached
@@ -530,8 +547,12 @@ impl<T: Config> Pallet<T> {
 
 		// fetch the loan details
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+		// ensure loan is active
+		ensure!(
+			loan_info.status == LoanStatus::Active,
+			Error::<T>::ErrLoanIsInActive
+		);
 
-		// TODO(ved): ensure loan is active
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;
 		let accumulated_rate = math::calculate_accumulated_rate::<T::Rate>(
