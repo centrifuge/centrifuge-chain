@@ -5,7 +5,7 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
-use frame_support::sp_runtime::traits::Zero;
+use frame_support::sp_runtime::traits::{One, Zero};
 use frame_support::transactional;
 
 #[cfg(feature = "std")]
@@ -187,7 +187,16 @@ pub mod pallet {
 		ErrLoanCeilingReached,
 
 		/// Emits when the addition of borrowed amount overflowed
-		ErrAddBorrowedOverflow,
+		ErrAddAmountOverflow,
+
+		/// Emits when Rate overflows during calculations
+		ErrAccRateOverflow,
+
+		/// Emits when current debt calculation failed due to overflow
+		ErrCurrentDebtOverflow,
+
+		/// Emits when principal debt calcualtion failed due to overflow
+		ErrPrincipalDebtOverflow,
 
 		/// Emits when the subtraction of ceiling amount under flowed
 		ErrSubCeilingUnderflow,
@@ -366,7 +375,7 @@ impl<T: Config> Pallet<T> {
 	) -> Result<AssetIdOf<T>, DispatchError> {
 		let registry_id = Self::fetch_or_create_loan_nft_registry_for_pool(pool_id);
 		let got = T::NftRegistry::owner_of(AssetId(registry_id, loan_id.into()))
-			.ok_or(Error::<T>::ErrNotNFTOwner)?;
+			.ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
 		ensure!(got == owner, Error::<T>::ErrNotNFTOwner);
 		Ok(AssetId(registry_id, loan_id.into()))
 	}
@@ -418,7 +427,7 @@ impl<T: Config> Pallet<T> {
 				ceiling: Zero::zero(),
 				borrowed_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
-				accumulated_rate: Zero::zero(),
+				accumulated_rate: One::one(),
 				principal_debt: Zero::zero(),
 				last_updated: timestamp,
 				maturity_date: None,
@@ -487,14 +496,14 @@ impl<T: Config> Pallet<T> {
 
 		// check for ceiling threshold
 		ensure!(
-			loan_info.ceiling <= amount + loan_info.borrowed_amount,
+			amount + loan_info.borrowed_amount <= loan_info.ceiling,
 			Error::<T>::ErrLoanCeilingReached
 		);
 
 		let new_borrowed_amount = loan_info
 			.borrowed_amount
 			.checked_add(&amount)
-			.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;
@@ -504,11 +513,11 @@ impl<T: Config> Pallet<T> {
 			now,
 			loan_info.last_updated,
 		)
-		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+		.ok_or(Error::<T>::ErrAccRateOverflow)?;
 
 		// calculate current debt
 		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
-			.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+			.ok_or(Error::<T>::ErrCurrentDebtOverflow)?;
 
 		// calculate new principal debt with borrowed amount
 		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
@@ -516,7 +525,7 @@ impl<T: Config> Pallet<T> {
 			math::Adjustment::Inc(amount),
 			accumulated_rate,
 		)
-		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+		.ok_or(Error::<T>::ErrPrincipalDebtOverflow)?;
 
 		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 			let mut loan_info = maybe_loan_info.take().unwrap();
@@ -561,11 +570,11 @@ impl<T: Config> Pallet<T> {
 			now,
 			loan_info.last_updated,
 		)
-		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+		.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
 		// calculate current debt
 		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
-			.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
 		// ensure amount is not more than current debt
 		let mut repay_amount = amount;
@@ -573,13 +582,13 @@ impl<T: Config> Pallet<T> {
 			repay_amount = debt
 		}
 
-		// calculate new principal debt with repayed amount
+		// calculate new principal debt with repaid amount
 		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
 			debt,
 			math::Adjustment::Dec(repay_amount),
 			accumulated_rate,
 		)
-		.ok_or(Error::<T>::ErrAddBorrowedOverflow)?;
+		.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
 		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 			let mut loan_info = maybe_loan_info.take().unwrap();

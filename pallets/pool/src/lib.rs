@@ -29,7 +29,7 @@ pub struct PoolData<AccountID> {
 	pub name: String,
 }
 
-type CurrencyIdOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
+pub type CurrencyIdOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
 	<T as frame_system::Config>::AccountId,
 >>::CurrencyId;
 
@@ -115,15 +115,22 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when the pool associated with a pool_id is missing
 		ErrMissingPool,
+
+		/// Emits when the pool currency is missing
+		ErrMissingPoolCurrency,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(100_000)]
-		pub fn create_pool(origin: OriginFor<T>, name: String) -> DispatchResult {
+		pub fn create_pool(
+			origin: OriginFor<T>,
+			name: String,
+			currency_id: CurrencyIdOf<T>,
+		) -> DispatchResult {
 			let creator = ensure_signed(origin)?;
-			let pool_id = Self::create_new_pool(creator, name);
+			let pool_id = Self::create_new_pool(creator, name, currency_id);
 			Self::deposit_event(Event::PoolCreated(pool_id));
 			Ok(())
 		}
@@ -137,13 +144,17 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub fn create_new_pool(creator: T::AccountId, name: String) -> T::PoolId {
+	pub fn create_new_pool(
+		creator: T::AccountId,
+		name: String,
+		currency_id: CurrencyIdOf<T>,
+	) -> T::PoolId {
 		let pd = PoolData { creator, name };
 		let pool_id = PoolNonce::<T>::get();
 		PoolInfo::<T>::insert(pool_id, pd);
-		// TODO(ved): should we worry about overflow here?
 		let next_pool_id = pool_id + T::PoolId::one();
 		PoolNonce::<T>::set(next_pool_id);
+		PoolCurrency::<T>::insert(pool_id, currency_id);
 		pool_id
 	}
 
@@ -160,7 +171,8 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		// must be a loan origin
 		T::TransferOrigin::ensure_origin(origin)?;
-		let currency_id = PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
+		let currency_id =
+			PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPoolCurrency)?;
 		T::MultiCurrency::transfer(currency_id, &Self::account_id(), &to, amount)
 	}
 
@@ -171,7 +183,8 @@ impl<T: Config> Pallet<T> {
 		amount: MultiCurrencyBalanceOf<T>,
 	) -> DispatchResult {
 		T::TransferOrigin::ensure_origin(origin)?;
-		let currency_id = PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
+		let currency_id =
+			PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPoolCurrency)?;
 		T::MultiCurrency::transfer(currency_id, &from, &Self::account_id(), amount)
 	}
 }

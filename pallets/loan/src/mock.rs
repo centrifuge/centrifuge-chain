@@ -24,7 +24,9 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use runtime_common::{Amount, AssetInfo, Balance, CurrencyId, PoolId, Rate, RegistryId, TokenId};
+use runtime_common::{
+	Amount, AssetInfo, Balance, CurrencyId, PoolId, Rate, RegistryId, TokenId, CFG,
+};
 use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
 use sp_runtime::{
@@ -58,6 +60,7 @@ frame_support::construct_runtime!(
 // Fake admin user number one
 parameter_types! {
 	pub const One: u64 = 1;
+	pub const GetUSDCurrencyId: CurrencyId = 1;
 }
 
 impl SortedMembers<u64> for One {
@@ -244,6 +247,9 @@ impl pallet_registry::Config for MockRuntime {
 	type NftPrefix = NftPrefix;
 }
 
+// USD currencyId
+pub const USD: CurrencyId = 1;
+
 // Test externalities builder
 //
 // This type is mainly used for mocking storage in tests. It is the type alias
@@ -280,6 +286,17 @@ impl TestExternalitiesBuilder {
 
 		pallet_balances::GenesisConfig::<MockRuntime> {
 			balances: vec![(One::get(), 100 * runtime_common::CFG)],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		// add pool account with 1000 balance with currencyId 1
+		orml_tokens::GenesisConfig::<MockRuntime> {
+			balances: vec![(
+				pallet_pool::Pallet::<MockRuntime>::account_id(),
+				USD,
+				1000 * CFG,
+			)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

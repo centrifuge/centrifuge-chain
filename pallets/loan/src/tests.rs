@@ -16,11 +16,14 @@
 use super::*;
 use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
-use crate::mock::{Event, Loan, MockRuntime, Origin};
+use crate::mock::{Event, GetUSDCurrencyId, Loan, MockRuntime, Origin, Timestamp};
 use frame_support::{assert_err, assert_ok};
+use orml_traits::MultiCurrency;
 use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
-use runtime_common::{Amount, AssetInfo, PoolId, Rate, TokenId};
+use runtime_common::{Amount, AssetInfo, PoolId, Rate, TokenId, CFG};
+use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul};
+use sp_arithmetic::{FixedPointNumber, PerThing, Percent};
 use sp_runtime::traits::One;
 
 fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIdOf<T>
@@ -51,11 +54,13 @@ where
 	token_id.into()
 }
 
-fn create_pool<T>(owner: AccountIdOf<T>) -> PoolId
+fn create_pool<T, GetCurrencyId>(owner: AccountIdOf<T>) -> PoolId
 where
 	T: pallet_pool::Config<PoolId = PoolId> + frame_system::Config,
+	GetCurrencyId: Get<pallet_pool::CurrencyIdOf<T>>,
 {
-	pallet_pool::Pallet::<T>::create_new_pool(owner, "some pool".into())
+	// currencyId is 1
+	pallet_pool::Pallet::<T>::create_new_pool(owner, "USD Pool".into(), GetCurrencyId::get())
 }
 
 // Return last triggered event
@@ -87,13 +92,24 @@ fn fetch_loan_event(event: Event) -> Option<LoanEvent<MockRuntime>> {
 	}
 }
 
+type MultiCurrencyBalanceOf<T> =
+	<<T as pallet_pool::Config>::MultiCurrency as MultiCurrency<AccountIdOf<T>>>::Balance;
+
+fn balance_of<T, GetCurrencyId>(account: &AccountIdOf<T>) -> MultiCurrencyBalanceOf<T>
+where
+	T: pallet_pool::Config + frame_system::Config,
+	GetCurrencyId: Get<pallet_pool::CurrencyIdOf<T>>,
+{
+	<T as pallet_pool::Config>::MultiCurrency::total_balance(GetCurrencyId::get(), account)
+}
+
 #[test]
 fn issue_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let owner: u64 = 1;
-			let pool_id = create_pool::<MockRuntime>(owner);
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
 			let asset_registry = create_nft_registry::<MockRuntime>(owner);
 			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
 			let res = Loan::issue_loan(
@@ -160,7 +176,7 @@ fn activate_loan() {
 		.build()
 		.execute_with(|| {
 			let owner: u64 = 100;
-			let pool_id = create_pool::<MockRuntime>(owner);
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
 			let asset_registry = create_nft_registry::<MockRuntime>(owner);
 			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
 			let res = Loan::issue_loan(
@@ -200,6 +216,17 @@ fn activate_loan() {
 			assert_eq!(loan_data.maturity_date, None);
 			assert_eq!(loan_data.rate_per_sec, Rate::one());
 			assert_eq!(loan_data.ceiling, Amount::from_inner(100u128));
+
+			// cannot activate an already activated loan
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				Rate::one(),
+				Amount::from_inner(100u128),
+				None,
+			);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
 		})
 }
 
@@ -209,7 +236,7 @@ fn close_loan() {
 		.build()
 		.execute_with(|| {
 			let owner: u64 = 1;
-			let pool_id = create_pool::<MockRuntime>(owner);
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
 			let asset_registry = create_nft_registry::<MockRuntime>(owner);
 			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
 			let res = Loan::issue_loan(
@@ -266,5 +293,114 @@ fn close_loan() {
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			assert_eq!(loan_data.status, LoanStatus::Closed);
+		})
+}
+
+#[test]
+fn borrow_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 1;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * CFG);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			// activate loan
+			// 5% annual rate
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(
+				Percent::from_percent(5).deconstruct(),
+				Percent::ACCURACY,
+			))
+			.unwrap();
+			let oracle: u64 = 1;
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				Amount::from_inner(100 * CFG),
+				None,
+			);
+			assert_ok!(res);
+
+			// borrow 50 first
+			Timestamp::set_timestamp(1);
+			let borrow_amount = Amount::from_inner(50 * CFG);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// accumulated rate is now rate per sec
+			assert_eq!(loan_data.accumulated_rate, rate);
+			assert_eq!(loan_data.last_updated, 1);
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			let p_debt = borrow_amount
+				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
+				.unwrap();
+			assert_eq!(loan_data.principal_debt, p_debt);
+			// pool should have 50 less token
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 950 * CFG);
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, 50 * CFG);
+
+			// borrow another 20 after 1000 seconds
+			Timestamp::set_timestamp(1001);
+			let borrow_amount = Amount::from_inner(20 * CFG);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// accumulated rate is rate*rate^1000
+			assert_eq!(
+				loan_data.accumulated_rate,
+				checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
+			);
+			assert_eq!(loan_data.last_updated, 1001);
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(70 * CFG));
+			let c_debt = math::debt(p_debt, loan_data.accumulated_rate).unwrap();
+			let p_debt = c_debt
+				.checked_add(&borrow_amount)
+				.unwrap()
+				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
+				.unwrap();
+			assert_eq!(loan_data.principal_debt, p_debt);
+
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 930 * CFG);
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, 70 * CFG);
+
+			// try to borrow more than ceiling
+			// borrow another 40 after 1000 seconds
+			Timestamp::set_timestamp(2001);
+			let borrow_amount = Amount::from_inner(40 * CFG);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
 		})
 }
