@@ -33,6 +33,7 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 [features]
 default = ["std"]
 std = [
+    "serde/std",
     "codec/std",
     "serde/std",
     "frame-support/std",

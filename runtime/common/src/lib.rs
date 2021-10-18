@@ -20,6 +20,7 @@ pub use constants::*;
 pub use impls::*;
 pub use types::*;
 
+mod fixed_point;
 mod impls;
 
 pub mod apis {
@@ -100,7 +101,7 @@ pub mod types {
 
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct TokenId(pub U256);
 
@@ -110,6 +111,18 @@ pub mod types {
 	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
+
+	/// Rate with 27 precision fixed point decimal
+	pub type Rate = crate::fixed_point::Rate;
+
+	/// Amount with 18 precision fixed point decimal
+	pub type Amount = crate::fixed_point::Amount;
+
+	/// PoolId type we use.
+	pub type PoolId = u64;
+
+	/// MultiToken currencyID type
+	pub type CurrencyId = u32;
 }
 
 /// Common constants for all runtimes
