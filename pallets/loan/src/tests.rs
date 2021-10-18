@@ -16,15 +16,15 @@
 use super::*;
 use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
-use crate::mock::{Event, GetUSDCurrencyId, Loan, MockRuntime, Origin, Timestamp};
+use crate::mock::{Event, GetUSDCurrencyId, Loan, MockRuntime, Origin, Timestamp, Tokens};
 use frame_support::{assert_err, assert_ok};
 use orml_traits::MultiCurrency;
 use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
-use runtime_common::{Amount, AssetInfo, PoolId, Rate, TokenId, CFG};
-use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul};
+use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, TokenId, CFG};
+use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::{FixedPointNumber, PerThing, Percent};
-use sp_runtime::traits::One;
+use sp_runtime::traits::{One, StaticLookup};
 
 fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIdOf<T>
 where
@@ -402,5 +402,207 @@ fn borrow_loan() {
 			let borrow_amount = Amount::from_inner(40 * CFG);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+		})
+}
+
+#[test]
+fn repay_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 1;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * CFG);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			// activate loan
+			// 5% annual rate
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(
+				Percent::from_percent(5).deconstruct(),
+				Percent::ACCURACY,
+			))
+			.unwrap();
+			let oracle: u64 = 1;
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				Amount::from_inner(100 * CFG),
+				None,
+			);
+			assert_ok!(res);
+
+			// try repay without any borrowed
+			let repay_amount = Amount::from_inner(20 * CFG);
+			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
+			assert_ok!(res);
+
+			// borrow 50
+			Timestamp::set_timestamp(1);
+			let borrow_amount = Amount::from_inner(50 * CFG);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// accumulated rate is now rate per sec
+			assert_eq!(loan_data.accumulated_rate, rate);
+			assert_eq!(loan_data.last_updated, 1);
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			let p_debt = borrow_amount
+				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
+				.unwrap();
+			assert_eq!(loan_data.principal_debt, p_debt);
+			// pool should have 50 less token
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 950 * CFG);
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, 50 * CFG);
+
+			// repay 20 after 1000 seconds
+			Timestamp::set_timestamp(1001);
+			let repay_amount = Amount::from_inner(20 * CFG);
+			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
+			assert_ok!(res);
+
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// accumulated rate is now rate per sec
+			assert_eq!(
+				loan_data.accumulated_rate,
+				checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
+			);
+			assert_eq!(loan_data.last_updated, 1001);
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			// principal debt should still be more than 30 due to interest
+			assert!(loan_data.principal_debt > Amount::from_inner(30 * CFG));
+			// pool should have 30 less token
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 970 * CFG);
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, 30 * CFG);
+
+			// repay 30 more after another 1000 seconds
+			Timestamp::set_timestamp(2001);
+			let repay_amount = Amount::from_inner(30 * CFG);
+			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
+			assert_ok!(res);
+
+			// try and close the loan
+			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
+
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+
+			// repay the interest
+			// 50 for 1000 seconds
+			let amount = Amount::from_inner(50 * CFG);
+			let p_debt = amount
+				.checked_div(&math::convert::<Rate, Amount>(loan_data.rate_per_sec).unwrap())
+				.unwrap();
+			let rate_after_1000 = checked_pow(loan_data.rate_per_sec, 1001).unwrap();
+			let debt_after_1000 = p_debt
+				.checked_mul(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
+				.unwrap();
+
+			// 30 for 1000 seconds
+			let p_debt = debt_after_1000
+				.checked_sub(&Amount::from_inner(20 * CFG))
+				.unwrap()
+				.checked_div(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
+				.unwrap();
+			let rate_after_2000 = checked_pow(loan_data.rate_per_sec, 2001).unwrap();
+			let debt_after_2000 = p_debt
+				.checked_mul(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
+				.unwrap();
+			let p_debt = debt_after_2000
+				.checked_sub(&Amount::from_inner(30 * CFG))
+				.unwrap()
+				.checked_div(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
+				.unwrap();
+			assert_eq!(loan_data.principal_debt, p_debt);
+
+			// debt after 3000 seconds
+			Timestamp::set_timestamp(3001);
+			let rate_after_3000 = checked_pow(loan_data.rate_per_sec, 3001).unwrap();
+			let debt = p_debt
+				.checked_mul(&math::convert::<Rate, Amount>(rate_after_3000).unwrap())
+				.unwrap();
+
+			// transfer exact interest amount to owner account from dummy account 2
+			let dummy: u64 = 2;
+			let transfer_amount: Balance = debt.into_inner().into();
+			let dest =
+				<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(owner);
+			let res = Tokens::transfer(
+				Origin::signed(dummy),
+				dest,
+				GetUSDCurrencyId::get(),
+				transfer_amount,
+			);
+			assert_ok!(res);
+
+			// repay the interest
+			let repay_amount = debt;
+			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
+			assert_ok!(res);
+
+			// close loan
+			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);
+			assert_ok!(res);
+
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			assert_eq!(loan_data.status, LoanStatus::Closed);
+			assert_eq!(loan_data.principal_debt, Zero::zero());
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.last_updated, 3001);
+
+			// pool balance should be 1000 + interest
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			let expected_balance = 1000 * CFG + transfer_amount;
+			assert_eq!(pool_balance, expected_balance);
+
+			// owner balance should be zero
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			// owner account should own the asset NFT
+			expect_asset_owner::<MockRuntime>(AssetId(asset_registry, token_id), owner);
+
+			// Loan account should own the loan NFT
+			let loan_nft_registry = PoolToLoanNftRegistry::<MockRuntime>::get(pool_id)
+				.expect("must have a loan nft registry created");
+			expect_asset_owner::<MockRuntime>(
+				AssetId(loan_nft_registry, loan_id),
+				Loan::account_id(),
+			);
 		})
 }

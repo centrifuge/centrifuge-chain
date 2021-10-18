@@ -507,13 +507,18 @@ impl<T: Config> Pallet<T> {
 
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;
-		let accumulated_rate = math::calculate_accumulated_rate::<T::Rate>(
-			loan_info.rate_per_sec,
-			loan_info.accumulated_rate,
-			now,
-			loan_info.last_updated,
-		)
-		.ok_or(Error::<T>::ErrAccRateOverflow)?;
+
+		// if this is the first borrow, then set accumulated rate to rate per sec
+		let accumulated_rate = match loan_info.borrowed_amount == Zero::zero() {
+			true => Ok(loan_info.rate_per_sec),
+			false => math::calculate_accumulated_rate::<T::Rate>(
+				loan_info.rate_per_sec,
+				loan_info.accumulated_rate,
+				now,
+				loan_info.last_updated,
+			)
+			.ok_or(Error::<T>::ErrAccRateOverflow),
+		}?;
 
 		// calculate current debt
 		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
@@ -561,6 +566,8 @@ impl<T: Config> Pallet<T> {
 			loan_info.status == LoanStatus::Active,
 			Error::<T>::ErrLoanIsInActive
 		);
+
+		// ensure
 
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;

@@ -292,11 +292,14 @@ impl TestExternalitiesBuilder {
 
 		// add pool account with 1000 balance with currencyId 1
 		orml_tokens::GenesisConfig::<MockRuntime> {
-			balances: vec![(
-				pallet_pool::Pallet::<MockRuntime>::account_id(),
-				USD,
-				1000 * CFG,
-			)],
+			balances: vec![
+				(
+					pallet_pool::Pallet::<MockRuntime>::account_id(),
+					USD,
+					1000 * CFG,
+				),
+				(2, USD, 100 * CFG),
+			],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
