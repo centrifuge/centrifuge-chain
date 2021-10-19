@@ -195,11 +195,8 @@ pub mod pallet {
 		/// Emits when current debt calculation failed due to overflow
 		ErrCurrentDebtOverflow,
 
-		/// Emits when principal debt calcualtion failed due to overflow
+		/// Emits when principal debt calculation failed due to overflow
 		ErrPrincipalDebtOverflow,
-
-		/// Emits when the subtraction of ceiling amount under flowed
-		ErrSubCeilingUnderflow,
 
 		/// Emits when tries to update an active loan
 		ErrLoanIsActive,
@@ -208,7 +205,7 @@ pub mod pallet {
 		ErrLoanIsInActive,
 
 		/// Emits when epoch time is overflowed
-		ErrEpochOverflow,
+		ErrEpochTimeOverflow,
 
 		/// Emits when the NFT owner is not found
 		ErrNFTOwnerNotFound,
@@ -222,7 +219,7 @@ pub mod pallet {
 		/// Emits when the nft token nonce is overflowed
 		ErrNftTokenNonceOverflowed,
 
-		/// Emits when loan amount not repayed but trying to close loan
+		/// Emits when loan amount not repaid but trying to close loan
 		ErrLoanNotRepaid,
 	}
 
@@ -290,7 +287,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a permissioned call to update loan specific details and activates the loan
+		/// a call to update loan specific details and activates the loan
 		#[pallet::weight(100_000)]
 		#[transactional]
 		pub fn activate_loan(
@@ -334,12 +331,6 @@ impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
 		T::LoanPalletId::get().into_account()
-	}
-
-	/// returns the ceiling of the given loan under a given pool.
-	pub fn ceiling(pool_id: T::PoolId, loan_id: T::LoanId) -> Option<T::Amount> {
-		let maybe_loan_info = LoanInfo::<T>::get(pool_id, loan_id);
-		maybe_loan_info.map(|loan_info| loan_info.ceiling)
 	}
 
 	/// fetches the loan nft registry for a given pool. If missing, then will create one,
@@ -616,7 +607,7 @@ impl<T: Config> Pallet<T> {
 
 	fn time_now() -> Result<u64, DispatchError> {
 		let nowt = T::Time::now();
-		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochOverflow.into())
+		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochTimeOverflow.into())
 	}
 }
 
