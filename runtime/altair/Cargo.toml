@@ -99,6 +99,8 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
+pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
+pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -172,6 +174,8 @@ std = [
     "pallet-society/std",
     "runtime-common/std",
     "pallet-migration-manager/std",
+    "pallet-crowdloan-claim/std",
+    "pallet-crowdloan-reward/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
