@@ -21,7 +21,8 @@ use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use sp_runtime::{
 	traits::{
-		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One, Zero,
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
+		Saturating, Zero,
 	},
 	FixedPointNumber, FixedPointOperand, PerThing, Perquintill, TypeId,
 };
@@ -65,6 +66,8 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
+
+	pub fake_nav: Balance,
 }
 
 /// Per-tranche and per-user order details.
@@ -318,6 +321,7 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
+					fake_nav: Zero::zero(),
 				},
 			);
 			Self::deposit_event(Event::PoolCreated(pool_id, owner));
@@ -435,8 +439,7 @@ pub mod pallet {
 				let epoch_reserve = pool.total_reserve;
 
 				// TODO: get NAV
-				// For now, assume that nav == 0, so all value is in the reserve
-				let nav = Zero::zero();
+				let nav = pool.fake_nav;
 
 				if pool
 					.tranches
@@ -575,6 +578,10 @@ pub mod pallet {
 					.total_reserve
 					.checked_add(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
 				Ok(())
 			})
@@ -598,6 +605,10 @@ pub mod pallet {
 				pool.available_reserve = pool
 					.available_reserve
 					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				pool.fake_nav = T::BalanceRatio::checked_from_rational(110, 100)
+					.and_then(|nav_mul| nav_mul.checked_mul_int(amount))
+					.and_then(|nav_amount| nav_amount.checked_add(&pool.fake_nav))
 					.ok_or(Error::<T>::Overflow)?;
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
 				Ok(())
@@ -644,7 +655,8 @@ pub mod pallet {
 		}
 
 		fn update_tranche_debt(tranche: &mut Tranche<T::Balance>) -> Option<()> {
-			let delta = T::Time::now().as_secs() - tranche.last_updated_interest;
+			let now = T::Time::now().as_secs();
+			let delta = now - tranche.last_updated_interest;
 			let interest: T::BalanceRatio = <T::BalanceRatio as One>::one()
 				+ T::BalanceRatio::checked_from_rational(
 					tranche.interest_per_sec.deconstruct(),
@@ -656,6 +668,7 @@ pub mod pallet {
 				total_interest = interest.checked_mul(&total_interest)?;
 			}
 			tranche.debt = total_interest.checked_mul_int(tranche.debt)?;
+			tranche.last_updated_interest = now;
 			Some(())
 		}
 
@@ -689,7 +702,7 @@ pub mod pallet {
 						sum.and_then(|sum| sum.checked_add(&sol.0.mul_floor(tranche.supply)))
 					},
 				)
-			.ok_or(Error::<T>::Overflow)?;
+				.ok_or(Error::<T>::Overflow)?;
 
 			let acc_redeem: T::Balance = epoch
 				.tranches
@@ -811,12 +824,14 @@ pub mod pallet {
 				)
 				.ok_or(Error::<T>::Overflow)?;
 
-			for (((tranche_id, tranche), solution), execution) in pool
+			// Update tranche orders and add epoch solution state
+			for ((((tranche_id, tranche), solution), execution), epoch_tranche) in pool
 				.tranches
 				.iter_mut()
 				.enumerate()
 				.zip(solution.iter().copied())
 				.zip(execution.iter().copied())
+				.zip(&epoch.tranches)
 			{
 				let loc = TrancheLocator {
 					pool_id,
@@ -829,15 +844,94 @@ pub mod pallet {
 					tranche,
 					solution,
 					execution,
-					Zero::zero(), // TODO: Get token price
+					epoch_tranche.price,
 				)?;
 			}
 
+			// Update the total/available reserve for the new total value of the pool
 			pool.total_reserve = pool
 				.total_reserve
 				.checked_add(&total_supply)
 				.and_then(|res| res.checked_sub(&total_redeem))
 				.ok_or(Error::<T>::Overflow)?;
+			pool.available_reserve = pool.total_reserve;
+
+			// Calculate the new total asset value for each tranche
+			let mut total_assets = pool
+				.total_reserve
+				.checked_add(&epoch.nav)
+				.ok_or(Error::<T>::Overflow)?;
+			let tranche_assets = execution
+				.iter()
+				.zip(&mut pool.tranches)
+				.map(|((supply, redeem), tranche)| {
+					Self::update_tranche_debt(tranche)?;
+					tranche
+						.debt
+						.checked_add(&tranche.reserve)
+						.and_then(|value| value.checked_add(supply))
+						.and_then(|value| value.checked_sub(redeem))
+						.map(|value| {
+							if value > total_assets {
+								let assets = total_assets;
+								total_assets = Zero::zero();
+								assets
+							} else {
+								total_assets = total_assets.saturating_sub(value);
+								value
+							}
+						})
+				})
+				.collect::<Option<Vec<T::Balance>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			// Calculate the new fraction of the total pool value that each tranche contains
+			let total_assets = pool
+				.total_reserve
+				.checked_add(&epoch.nav)
+				.ok_or(Error::<T>::Overflow)?;
+			let tranche_ratios: Vec<_> = execution
+				.iter()
+				.zip(&epoch.tranches)
+				.map(|((supply, redeem), tranche)| {
+					tranche
+						.value
+						.checked_add(supply)
+						.and_then(|value| value.checked_sub(redeem))
+						.map(|tranche_asset| {
+							Perquintill::from_rational(tranche_asset, total_assets)
+						})
+				})
+				.collect::<Option<Vec<Perquintill>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			let last_tranche = pool.tranches.len() - 1;
+
+			// Rebalance tranches based on the new total NAV/resrve and each tranche's ratio.
+			let nav = pool.fake_nav;
+			let mut remaining_nav = nav;
+			let mut remaining_reserve = pool.total_reserve;
+			for (((tranche_id, tranche), ratio), value) in pool
+				.tranches
+				.iter_mut()
+				.enumerate()
+				.zip(&tranche_ratios)
+				.zip(&tranche_assets)
+			{
+				tranche.ratio = *ratio;
+				if tranche_id == last_tranche {
+					tranche.debt = remaining_nav;
+					tranche.reserve = remaining_reserve;
+				} else {
+					tranche.debt = ratio.mul_ceil(nav);
+					if tranche.debt > *value {
+						tranche.debt = *value;
+					}
+					tranche.reserve = value.saturating_sub(tranche.debt);
+					remaining_nav -= tranche.debt;
+					remaining_reserve -= tranche.reserve;
+				}
+			}
 
 			Ok(())
 		}
