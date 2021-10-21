@@ -17,14 +17,21 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
-use crate::{mock::*, *};
+use crate::{
+	mock::{helpers::*, *},
+	types::AssetId,
+	*,
+};
 
+use codec::Encode;
 use frame_support::{assert_err, assert_ok};
 
-use runtime_common::{AssetId, RegistryId, TokenId};
+use runtime_common::{RegistryId, TokenId, MILLISECS_PER_DAY, NFT_PROOF_VALIDATION_FEE};
+use sp_core::{H160, U256};
+use sp_runtime::traits::{BadOrigin, Hash};
 
 // ----------------------------------------------------------------------------
-// Test unit cases
+// Test unit cases for NFT features
 // ----------------------------------------------------------------------------
 
 #[test]
@@ -32,9 +39,11 @@ fn mint() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let asset_id = AssetId(RegistryId::zero(), TokenId::zero());
+			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
 			let asset_info = vec![];
-			assert_ok!(Nft::mint(&0, &1, &asset_id, asset_info));
+
+			// Mint to USER_A account (by USER_DEFAULT caller)
+			assert_ok!(Nft::mint(USER_DEFAULT, USER_A, asset_id, asset_info));
 		});
 }
 
@@ -43,10 +52,14 @@ fn mint_err_duplicate_id() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let asset_id = AssetId(RegistryId::zero(), TokenId::zero());
-			assert_ok!(Nft::mint(&0, &1, &asset_id, vec![]));
+			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
+
+			// First mint to USER_A account (by USER_DEFAULT caller)
+			assert_ok!(Nft::mint(USER_DEFAULT, USER_A, asset_id.clone(), vec![]));
+
+			// Then try to mint to USER_A account again (still by USER_DEFAULT caller)
 			assert_err!(
-				Nft::mint(&0, &1, &asset_id, vec![]),
+				Nft::mint(USER_DEFAULT, USER_A, asset_id, vec![]),
 				Error::<MockRuntime>::AssetExists
 			);
 		});
@@ -57,13 +70,25 @@ fn transfer() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let asset_id = AssetId(RegistryId::zero(), TokenId::zero());
-			// First mint to account 1
-			assert_ok!(Nft::mint(&1, &1, &asset_id, vec![]));
-			// Transfer to 2
-			assert_ok!(<Nft as Unique>::transfer(&1, &2, &asset_id));
-			// 2 owns asset now
-			assert_eq!(<Nft as Unique>::owner_of(&asset_id), Some(2));
+			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
+
+			// First mint to USER_A account
+			assert_ok!(Nft::mint(USER_A, USER_A, asset_id.clone(), vec![]));
+
+			// Transfer from USER_A to USER_B account (should work as USER_A owns the asset)
+			assert_ok!(
+				<Nft as Unique<AssetId<RegistryId, TokenId>, u64>>::transfer(
+					USER_A,
+					USER_B,
+					asset_id.clone()
+				)
+			);
+
+			// USER_B should own the asset now
+			assert_eq!(
+				<Nft as Unique<AssetId<RegistryId, TokenId>, u64>>::owner_of(asset_id),
+				Some(USER_B)
+			);
 		});
 }
 
@@ -72,13 +97,174 @@ fn transfer_err_when_not_owner() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let asset_id = AssetId(RegistryId::zero(), TokenId::zero());
-			// Mint to account 2
-			assert_ok!(Nft::mint(&2, &2, &asset_id, vec![]));
-			// 1 transfers to 2
+			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
+
+			// USER_B mint to her/his account
+			assert_ok!(Nft::mint(USER_B, USER_B, asset_id.clone(), vec![]));
+
+			// Invalid transfer of the asset from USER_A to USER_B account, because USER_A does not own the asset
 			assert_err!(
-				<Nft as Unique>::transfer(&1, &2, &asset_id),
+				<Nft as Unique<AssetId<RegistryId, TokenId>, u64>>::transfer(
+					USER_A, USER_B, asset_id
+				),
 				Error::<MockRuntime>::NotAssetOwner
 			);
 		});
+}
+
+// ----------------------------------------------------------------------------
+// Test unit cases for NFTs features
+// ----------------------------------------------------------------------------
+
+#[test]
+fn bad_origin() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
+			assert_err!(
+				Nft::validate_mint(
+					Origin::none(),
+					anchor_id,
+					deposit_address,
+					pfs,
+					static_proofs,
+					chain_id
+				),
+				BadOrigin
+			);
+		})
+}
+
+#[test]
+fn missing_anchor() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let (anchor_id, deposit_address, pfs, static_proofs, chain_id) = get_params();
+			assert_err!(
+				Nft::validate_mint(
+					Origin::signed(USER_A),
+					anchor_id,
+					deposit_address,
+					pfs,
+					static_proofs,
+					chain_id
+				),
+				Error::<MockRuntime>::DocumentNotAnchored
+			);
+		})
+}
+
+#[test]
+fn valid_proof() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let dest_id = 0;
+			let deposit_address: [u8; 20] = [0; 20];
+			let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
+			let anchor_id =
+				(pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
+			let (proof, doc_root, static_proofs) = get_valid_proof();
+
+			assert_ok!(Anchors::commit(
+				Origin::signed(USER_B),
+				pre_image,
+				doc_root,
+				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
+				MILLISECS_PER_DAY + 1
+			));
+
+			assert_ok!(ChainBridge::whitelist_chain(
+				Origin::root(),
+				dest_id.clone()
+			));
+
+			assert_ok!(Nft::validate_mint(
+				Origin::signed(USER_A),
+				anchor_id,
+				deposit_address,
+				vec![proof],
+				static_proofs,
+				0
+			));
+
+			// Account balance should be reduced (namely initial balance less validation fee)
+			let account_current_balance =
+				<pallet_balances::Pallet<MockRuntime>>::free_balance(USER_A);
+			let account_expected_balance = USER_A_INITIAL_BALANCE - NFT_PROOF_VALIDATION_FEE;
+			assert_eq!(account_current_balance, account_expected_balance);
+		})
+}
+
+#[test]
+fn invalid_proof() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let deposit_address: [u8; 20] = [0; 20];
+			let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
+			let anchor_id =
+				(pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
+			let (proof, doc_root, static_proofs) = get_invalid_proof();
+
+			assert_ok!(Anchors::commit(
+				Origin::signed(USER_B),
+				pre_image,
+				doc_root,
+				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
+				MILLISECS_PER_DAY + 1
+			));
+
+			assert_err!(
+				Nft::validate_mint(
+					Origin::signed(USER_A),
+					anchor_id,
+					deposit_address,
+					vec![proof],
+					static_proofs,
+					0
+				),
+				Error::<MockRuntime>::InvalidProofs
+			);
+		})
+}
+
+#[test]
+fn insufficient_balance_to_mint() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let dest_id = 0;
+			let deposit_address: [u8; 20] = [0; 20];
+			let pre_image = <MockRuntime as frame_system::Config>::Hashing::hash_of(&0);
+			let anchor_id =
+				(pre_image).using_encoded(<MockRuntime as frame_system::Config>::Hashing::hash);
+			let (pf, doc_root, static_proofs) = get_valid_proof();
+
+			assert_ok!(Anchors::commit(
+				Origin::signed(USER_B),
+				pre_image,
+				doc_root,
+				<MockRuntime as frame_system::Config>::Hashing::hash_of(&0),
+				MILLISECS_PER_DAY + 1
+			));
+
+			assert_ok!(ChainBridge::whitelist_chain(
+				Origin::root(),
+				dest_id.clone()
+			));
+			assert_err!(
+				Nft::validate_mint(
+					Origin::signed(USER_B),
+					anchor_id,
+					deposit_address,
+					vec![pf],
+					static_proofs,
+					0
+				),
+				pallet_balances::Error::<MockRuntime>::InsufficientBalance
+			);
+		})
 }

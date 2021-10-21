@@ -26,14 +26,11 @@ chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git",
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
-runtime-common = { path = "../../runtime/common", default_features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
-
+common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
 # Testing/mocking dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
-node-primitives = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
@@ -44,21 +41,22 @@ proofs = { path = "../../libs/proofs", default-features = false }
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master"  }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
+runtime-common = { path = "../../runtime/common", default_features = false }
 
 [features]
 default = ['std']
 std = [
-    'chainbridge/std',
     'codec/std',
     'frame-support/std',
     'frame-system/std',
     'pallet-balances/std',
-    'pallet-bridge-mapping/std',
-    'pallet-fees/std',
-    'pallet-nft/std',
-    'runtime-common/std',
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
+    'chainbridge/std',
+    'pallet-bridge-mapping/std',
+    'pallet-fees/std',
+    'pallet-nft/std',
     'unique-assets/std',
+    "common-traits/std"
 ]

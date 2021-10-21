@@ -114,6 +114,7 @@ pub use pallet::*;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
+use common_traits::Reward;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -139,8 +140,7 @@ pub mod weights;
 type RootHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// A type alias for the parachain account identifier from this claim pallet's point of view
-type ParachainAccountIdOf<T> =
-	<<T as Config>::RewardMechanism as trait_crowdloan_reward::Reward>::ParachainAccountId;
+type ParachainAccountIdOf<T> = <<T as Config>::RewardMechanism as Reward>::ParachainAccountId;
 
 /// Index of the crowdloan campaign inside the
 /// [crowdloan.rs](https://github.com/paritytech/polkadot/blob/77b3aa5cb3e8fa7ed063d5fbce1ae85f0af55c92/runtime/common/src/crowdloan.rs#L80)
@@ -193,7 +193,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 
 	use super::*;
-	use trait_crowdloan_reward::Reward;
 
 	// Crowdloan claim pallet type declaration.
 	//
@@ -480,8 +479,11 @@ pub mod pallet {
 				identity_proof,
 			)?;
 
+			let mut leaf_data = relaychain_account_id.encode();
+			leaf_data.extend_from_slice(&contribution.encode());
+
 			// Check the contributor's proof of contribution
-			Self::verify_contribution_proof(contribution_proof)?;
+			Self::verify_contribution_proof(contribution_proof, &leaf_data)?;
 
 			// Claimed amount must be positive value
 			ensure!(
@@ -704,35 +706,52 @@ pub mod pallet {
 					if !ProcessedClaims::<T>::contains_key((
 						&relaychain_account_id,
 						Self::curr_index(),
-					)) && Self::verify_contributor_identity_proof(
-						relaychain_account_id.clone(),
-						parachain_account_id.clone(),
-						identity_proof.clone(),
-					)
-					.is_ok() && Self::verify_contribution_proof(contribution_proof.clone())
+					)) {
+						if Self::verify_contributor_identity_proof(
+							relaychain_account_id.clone(),
+							parachain_account_id.clone(),
+							identity_proof.clone(),
+						)
 						.is_ok()
-					{
-						// Only the claim reward transaction can be invoked via an unsigned regime
-						return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
-							.priority(T::ClaimTransactionPriority::get())
-							.and_provides((
-								relaychain_account_id,
-								parachain_account_id,
-								identity_proof,
-								contribution_proof,
-								contribution,
-							))
-							.longevity(
-								TryInto::<u64>::try_into(T::ClaimTransactionLongevity::get())
-									.unwrap_or(64_u64),
+						{
+							let mut leaf_data = relaychain_account_id.encode();
+							leaf_data.extend_from_slice(&contribution.encode());
+
+							if Self::verify_contribution_proof(
+								contribution_proof.clone(),
+								&leaf_data,
 							)
-							.propagate(true)
-							.build();
+							.is_ok()
+							{
+								// Only the claim reward transaction can be invoked via an unsigned regime
+								return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
+									.priority(T::ClaimTransactionPriority::get())
+									.and_provides((
+										relaychain_account_id,
+										parachain_account_id,
+										identity_proof,
+										contribution_proof,
+										contribution,
+									))
+									.longevity(
+										TryInto::<u64>::try_into(
+											T::ClaimTransactionLongevity::get(),
+										)
+										.unwrap_or(64_u64),
+									)
+									.propagate(true)
+									.build();
+							} else {
+								return InvalidTransaction::Custom(0).into();
+							}
+						} else {
+							return InvalidTransaction::Custom(0).into();
+						}
 					} else {
-						return InvalidTransaction::BadProof.into();
+						return InvalidTransaction::Custom(0).into();
 					}
 				} else {
-					return InvalidTransaction::Call.into();
+					return InvalidTransaction::Custom(0).into();
 				}
 			}
 			// Dissallow other unsigned transactions
@@ -798,7 +817,7 @@ impl<T: Config> Pallet<T> {
 	// contributors. Given the contributor's relay chain account identifier, the claimed amount
 	// (in relay chain tokens) and the parachain account identifier, this function proves that the
 	// contributor's claim is valid.
-	fn verify_contribution_proof(proof: Proof<T::Hash>) -> DispatchResult {
+	fn verify_contribution_proof(proof: Proof<T::Hash>, leaf_data: &[u8]) -> DispatchResult {
 		// We could unwrap here, as we check in the calling function if pallet is initialized (i.e. if contributions is set)
 		// but better be safe than sorry...
 		let root = Self::contributions().ok_or(Error::<T>::PalletNotInitialized)?;
@@ -807,6 +826,11 @@ impl<T: Config> Pallet<T> {
 		// blocks abuse.
 		ensure!(
 			proof.len() < T::MaxProofLength::get() as usize,
+			Error::<T>::InvalidProofOfContribution
+		);
+
+		ensure!(
+			T::Hashing::hash(leaf_data) == proof.leaf_hash,
 			Error::<T>::InvalidProofOfContribution
 		);
 

@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Verifiable attributes registry pallet runtime benchmarking
+//! Verifiable asset (VA) registry pallet runtime benchmarking
 //!
 //! This module aims at implementing various benchmarking cases so that
 //! to calculate the pallet's extrinsics weights using the Substrate
