@@ -742,13 +742,13 @@ pub mod pallet {
 									.propagate(true)
 									.build();
 							} else {
-								return InvalidTransaction::Custom(3).into();
+								return InvalidTransaction::Custom(0).into();
 							}
 						} else {
-							return InvalidTransaction::Custom(2).into();
+							return InvalidTransaction::Custom(0).into();
 						}
 					} else {
-						return InvalidTransaction::Custom(1).into();
+						return InvalidTransaction::Custom(0).into();
 					}
 				} else {
 					return InvalidTransaction::Custom(0).into();
