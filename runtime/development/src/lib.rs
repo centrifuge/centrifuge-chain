@@ -773,8 +773,8 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 66,
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
-		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 69,
-		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 70,
+		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 69,
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
