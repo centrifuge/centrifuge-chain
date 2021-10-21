@@ -2,7 +2,8 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-03-15}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-07-28}"
+PACKAGE="${PACKAGE:-altair-runtime}" #Need to replicate job for all runtimes
 
 # Enable warnings about unused extern crates
 export RUSTFLAGS=" -W unused-extern-crates"
@@ -20,11 +21,11 @@ case $TARGET in
 
   build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
-    docker run --rm -e RUNTIME_DIR=./runtime -e PACKAGE=centrifuge-chain-runtime -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
+    docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
     ;;
 
   tests)
-    cargo test -p pallet-bridge-mapping -p pallet-fees -p pallet-anchors -p pallet-claims -p proofs --release
+    cargo test -p pallet-bridge-mapping -p pallet-fees -p pallet-anchors -p pallet-claims -p proofs -p pallet-nft --release
     ;;
 
   lint)

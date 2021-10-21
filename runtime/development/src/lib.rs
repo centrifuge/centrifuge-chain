@@ -4,10 +4,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
+	traits::{InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -110,7 +110,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -284,6 +284,7 @@ impl pallet_session::Config for Runtime {
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
+	type DisabledValidators = ();
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -326,14 +327,15 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	// Staking,
-	// Vesting,
+	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
+	NonProxy,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
 	}
 }
+
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
@@ -341,30 +343,22 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
 			ProxyType::Governance => matches!(
 				c,
-				// Call::Democracy(..) |
-				Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
 			),
-			// ProxyType::Staking => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			// 	Call::Utility(..)
-			// ),
-			// ProxyType::Vesting => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			//     Call::Democracy(..) |
-			// 	Call::Council(..) |
-			// 	Call::Elections(..) |
-			// 	Call::Vesting(pallet_vesting::Call::vest(..)) |
-			// 	Call::Vesting(pallet_vesting::Call::vest_other(..))
-			// ),
+			ProxyType::_Staking => false,
+			ProxyType::NonProxy => {
+				matches!(c, Call::Proxy(pallet_proxy::Call::proxy(..)))
+					|| !matches!(c, Call::Proxy(..))
+			}
 		}
 	}
+
 	fn is_superset(&self, o: &Self) -> bool {
 		match (self, o) {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
+			(_, ProxyType::NonProxy) => false,
 			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
@@ -573,7 +567,7 @@ impl pallet_identity::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1000 * CFG;
+	pub const MinVestedTransfer: Balance = MIN_VESTING * CFG;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -631,6 +625,56 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Time = Timestamp;
 }
 
+parameter_types! {
+	pub const MigrationMaxAccounts: u32 = 100;
+	pub const MigrationMaxVestings: u32 = 10;
+	pub const MigrationMaxProxies: u32 = 10;
+}
+
+// Implement the migration manager pallet
+// The actual associated type, which executes the migration can be found in the migration folder
+impl pallet_migration_manager::Config for Runtime {
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxVestings = MigrationMaxVestings;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type Event = Event;
+	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+}
+
+// Parameterize crowdloan reward pallet configuration
+parameter_types! {
+	pub const CrowdloanRewardPalletId: PalletId = PalletId(*b"cc/rewrd");
+}
+
+// Implement crowdloan reward pallet's configuration trait for the runtime
+impl pallet_crowdloan_reward::Config for Runtime {
+	type Event = Event;
+	type PalletId = CrowdloanRewardPalletId;
+	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
+}
+
+// Parameterize crowdloan claim pallet
+parameter_types! {
+	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
+	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
+	pub const ClaimTransactionLongevity: u32 = 64;
+	pub const MaxProofLength: u32 = 30;
+}
+
+// Implement crowdloan claim pallet configuration trait for the mock runtime
+impl pallet_crowdloan_claim::Config for Runtime {
+	type Event = Event;
+	type PalletId = CrowdloanClaimPalletId;
+	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
+	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type RelayChainAccountId = AccountId;
+	type MaxProofLength = MaxProofLength;
+	type ClaimTransactionPriority = ClaimTransactionPriority;
+	type ClaimTransactionLongevity = ClaimTransactionLongevity;
+	type RewardMechanism = CrowdloanReward;
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -681,7 +725,11 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage, Config} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
+		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 
+		// migration pallet
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
@@ -761,8 +809,9 @@ impl_runtime_apis! {
 		fn validate_transaction(
 			source: TransactionSource,
 			tx: <Block as BlockT>::Extrinsic,
+			block_hash: <Block as BlockT>::Hash,
 		) -> TransactionValidity {
-			Executive::validate_transaction(source, tx)
+			Executive::validate_transaction(source, tx, block_hash)
 		}
 	}
 
@@ -848,11 +897,32 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			// Pallet fees benchmarks
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_migration_manager, Migration);
+			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
+			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+		}
+
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_migration_manager, Migration);
+			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
+			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
 		}
 	}
 }

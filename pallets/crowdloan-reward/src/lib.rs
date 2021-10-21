@@ -85,9 +85,9 @@
 
 // Runtime, system and frame primitives
 use frame_support::{
-	dispatch::{fmt::Debug, Codec, DispatchError, DispatchResultWithPostInfo},
+	dispatch::DispatchResultWithPostInfo,
 	ensure,
-	sp_runtime::traits::{AtLeast32BitUnsigned, CheckedMul, CheckedSub, Saturating},
+	sp_runtime::traits::{CheckedSub, Saturating},
 	traits::{
 		Currency, EnsureOrigin,
 		ExistenceRequirement::{AllowDeath, KeepAlive},
@@ -98,7 +98,7 @@ use frame_support::{
 
 use frame_system::{ensure_root, RawOrigin};
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedDiv, Convert, MaybeSerialize, StaticLookup, Zero},
+	traits::{AccountIdConversion, CheckedDiv, Convert, StaticLookup, Zero},
 	Perbill,
 };
 
@@ -117,7 +117,7 @@ mod mock;
 mod tests;
 
 // Runtime benchmarking features
-#[cfg(test)]
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 // Extrinsics weight information (computed through runtime benchmarking)
@@ -182,38 +182,6 @@ pub mod pallet {
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// The balance type of the relay chain
-		type RelayChainBalance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Codec
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ Into<BalanceOf<Self>>;
-
-		// The conversion type, that allows to create a balance-object from a u64
-		type Conversion: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Codec
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ Into<BalanceOf<Self>>
-			+ From<u64>;
-
-		/// AccountId of the relay chain
-		type RelayChainAccountId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Debug
-			+ MaybeSerialize
-			+ Ord
-			+ Default;
-
 		/// Admin or the module. I.e. this is necessary in cases, where the vesting parameters need
 		/// to be changed without an additional initialization.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -238,15 +206,12 @@ pub mod pallet {
 		RewardClaimed(T::AccountId, BalanceOf<T>, BalanceOf<T>),
 
 		/// Event triggered when the reward module is ready to reward contributors
-		/// \[vesting_start, vesting_period, conversion_rate, direct_payout_ratio\]
-		RewardPalletInitialized(T::BlockNumber, T::BlockNumber, BalanceOf<T>, Perbill),
+		/// \[vesting_start, vesting_period, direct_payout_ratio\]
+		RewardPalletInitialized(T::BlockNumber, T::BlockNumber, Perbill),
 
 		/// Direct payout ratio for contributors has been updated
 		/// \[payout_ratio\]
 		DirectPayoutRatioUpdated(Perbill),
-
-		/// Conversion rate from relay to native token has been updated
-		ConversionRateUpdated(BalanceOf<T>),
 
 		/// Vesting period has been updated
 		VestingPeriodUpdated(T::BlockNumber),
@@ -254,21 +219,6 @@ pub mod pallet {
 		/// Start of vesting has been updated
 		VestingStartUpdated(T::BlockNumber),
 	}
-
-	// ----------------------------------------------------------------------------
-	// Pallet storage items
-	// ----------------------------------------------------------------------------
-
-	#[pallet::type_value]
-	pub fn OnRateEmpty<T: Config>() -> BalanceOf<T> {
-		Into::<BalanceOf<T>>::into(T::Conversion::from(1_000_000u64))
-	}
-
-	#[pallet::storage]
-	#[pallet::getter(fn conversion_rate)]
-	/// The conversion rate between relay chain and native chain balances.
-	pub(super) type ConversionRate<T: Config> =
-		StorageValue<_, BalanceOf<T>, ValueQuery, OnRateEmpty<T>>;
 
 	#[pallet::type_value]
 	pub fn OnRatioEmpty() -> Perbill {
@@ -356,7 +306,6 @@ pub mod pallet {
 		#[pallet::weight(< T as pallet::Config >::WeightInfo::initialize())]
 		pub fn initialize(
 			origin: OriginFor<T>,
-			conversion_rate: BalanceOf<T>,
 			direct_payout_ratio: Perbill,
 			vesting_period: T::BlockNumber,
 			vesting_start: T::BlockNumber,
@@ -369,12 +318,10 @@ pub mod pallet {
 			<VestingStart<T>>::set(Some(vesting_start));
 			<VestingPeriod<T>>::set(Some(vesting_period));
 			<DirectPayoutRatio<T>>::put(direct_payout_ratio);
-			<ConversionRate<T>>::set(conversion_rate);
 
 			Self::deposit_event(Event::RewardPalletInitialized(
 				vesting_start,
 				vesting_period,
-				conversion_rate,
 				direct_payout_ratio,
 			));
 
@@ -426,30 +373,6 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Set the rate of conversion between relay and para chains.
-		///
-		/// This administrative function allows to set the rate of
-		/// conversion between the relay chain and the parachain
-		/// tokens. This dispatchable function is used to modify the
-		/// rate of conversion after the pallet has already been
-		/// initialized via [`initialize`] transaction.
-		#[pallet::weight(< T as pallet::Config >::WeightInfo::set_conversion_rate())]
-		pub fn set_conversion_rate(
-			origin: OriginFor<T>,
-			rate: BalanceOf<T>,
-		) -> DispatchResultWithPostInfo {
-			// Ensure that only an administrator or root entity triggered the transaction
-			ensure!(
-				Self::is_origin_administrator(origin).is_ok(),
-				Error::<T>::MustBeAdministrator
-			);
-			<ConversionRate<T>>::put(rate);
-
-			Self::deposit_event(Event::ConversionRateUpdated(rate));
-
-			Ok(().into())
-		}
-
 		/// Modify the ratio between vested and direct payout amount.
 		///
 		/// This administrative function allows to modify the ratio
@@ -475,20 +398,6 @@ pub mod pallet {
 	}
 } // end of 'pallet' module
 
-// ----------------------------------------------------------------------------
-// Pallet implementation block
-// ----------------------------------------------------------------------------
-
-// Pallet implementation block.
-//
-// This main implementation block contains two categories of functions, namely:
-//
-// - Public functions: These are functions that are `pub` and generally fall
-//   into inspector functions (i.e. immutables) that do not write to storage
-//   and operation functions that do (i.e. mutables).
-//
-// - Private functions: These are private helpers or utilities that cannot be
-//   called from other pallets.
 impl<T: Config> Pallet<T> {
 	/// Return the account identifier of the crowdloan reward pallet.
 	///
@@ -506,15 +415,6 @@ impl<T: Config> Pallet<T> {
 
 		Ok(().into())
 	}
-
-	// Convert a contribution in relay chain's token to the parachain's native token
-	fn convert_to_native(
-		contribution: T::RelayChainBalance,
-	) -> Result<BalanceOf<T>, DispatchError> {
-		Self::conversion_rate()
-			.checked_mul(&Into::<BalanceOf<T>>::into(contribution))
-			.ok_or(Error::<T>::Overflow.into())
-	}
 }
 
 // ----------------------------------------------------------------------------
@@ -527,7 +427,7 @@ where
 	BalanceOf<T>: Send + Sync,
 {
 	type ParachainAccountId = T::AccountId;
-	type ContributionAmount = T::RelayChainBalance;
+	type ContributionAmount = BalanceOf<T>;
 	type BlockNumber = T::BlockNumber;
 
 	// Reward a payout for a claim on a given parachain account
@@ -540,17 +440,17 @@ where
 			Error::<T>::PalletNotInitialized
 		);
 
-		let reward = Self::convert_to_native(contribution)?;
 		let from: <T as frame_system::Config>::AccountId = Self::account_id();
 
 		// Ensure transfer will go through and we want to keep the module account alive.
 		let free_balance = <T as pallet_vesting::Config>::Currency::free_balance(&from)
 			.checked_sub(&<T as pallet_vesting::Config>::Currency::minimum_balance())
 			.unwrap_or(Zero::zero());
-		ensure!(free_balance > reward, Error::<T>::NotEnoughFunds);
+		ensure!(free_balance > contribution, Error::<T>::NotEnoughFunds);
 
-		let direct_reward = Self::direct_payout_ratio() * reward;
-		let vested_reward = (Perbill::one().saturating_sub(Self::direct_payout_ratio())) * reward;
+		let direct_reward = Self::direct_payout_ratio() * contribution;
+		let vested_reward =
+			(Perbill::one().saturating_sub(Self::direct_payout_ratio())) * contribution;
 
 		ensure!(
 			vested_reward >= <T as pallet_vesting::Config>::MinVestedTransfer::get(),
