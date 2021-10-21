@@ -92,7 +92,6 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
-pallet-bounties = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 pallet-treasury = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 
 runtime-common = { path = "../common", default-features = false }
@@ -177,7 +176,6 @@ std = [
     "pallet-migration-manager/std",
     "pallet-crowdloan-claim/std",
     "pallet-crowdloan-reward/std",
-    "pallet-bounties/std",
     "pallet-treasury/std"
 ]
 runtime-benchmarks = [
