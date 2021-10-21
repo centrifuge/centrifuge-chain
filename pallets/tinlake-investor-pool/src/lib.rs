@@ -582,6 +582,27 @@ pub mod pallet {
 					.fake_nav
 					.checked_sub(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+				let mut remaining_amount = amount;
+				for tranche in &mut pool.tranches {
+					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+						tranche.ratio.mul_ceil(amount)
+					} else {
+						remaining_amount
+					};
+					let tranche_amount = if tranche_amount > tranche.debt {
+						tranche.debt
+					} else {
+						tranche_amount
+					};
+
+					tranche.debt -= tranche_amount;
+					tranche.reserve = tranche
+						.reserve
+						.checked_add(&tranche_amount)
+						.ok_or(Error::<T>::Overflow)?;
+					remaining_amount -= tranche_amount;
+				}
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
 				Ok(())
 			})
@@ -606,11 +627,66 @@ pub mod pallet {
 					.available_reserve
 					.checked_sub(&amount)
 					.ok_or(Error::<T>::Overflow)?;
-				pool.fake_nav = T::BalanceRatio::checked_from_rational(110, 100)
-					.and_then(|nav_mul| nav_mul.checked_mul_int(amount))
-					.and_then(|nav_amount| nav_amount.checked_add(&pool.fake_nav))
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_add(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+				let mut remaining_amount = amount;
+				for tranche in &mut pool.tranches {
+					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+						tranche.ratio.mul_ceil(amount)
+					} else {
+						remaining_amount
+					};
+					let tranche_amount = if tranche_amount > tranche.reserve {
+						tranche.reserve
+					} else {
+						tranche_amount
+					};
+
+					tranche.reserve -= tranche_amount;
+					tranche.debt = tranche
+						.debt
+						.checked_add(&tranche_amount)
+						.ok_or(Error::<T>::Overflow)?;
+					remaining_amount -= tranche_amount;
+				}
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn test_nav_up(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_add(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn test_nav_down(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})
 		}
