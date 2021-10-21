@@ -6004,6 +6004,7 @@ dependencies = [
  "parity-scale-codec",
  "primitives-tokens",
  "serde",
+ "sp-arithmetic",
  "sp-core",
  "sp-io",
  "sp-runtime",
