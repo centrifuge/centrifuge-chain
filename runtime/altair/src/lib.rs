@@ -624,7 +624,7 @@ parameter_types! {
 
 	// Minimum amount to bond per proposal. This will be the least that gets bonded per proposal
 	// if the above yields to lower value
-	pub const ProposalBondMinimum: Balance = 100 * CFG;
+	pub const ProposalBondMinimum: Balance = 100 * AIR;
 
 	// periods between treasury spends
 	pub const SpendPeriod: BlockNumber = 30 * DAYS;
