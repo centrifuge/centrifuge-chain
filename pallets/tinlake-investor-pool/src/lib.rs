@@ -771,7 +771,7 @@ pub mod pallet {
 			let acc_supply: T::Balance = epoch
 				.tranches
 				.iter()
-				.zip(solution.iter())
+				.zip(solution)
 				.fold(
 					Some(Zero::zero()),
 					|sum: Option<T::Balance>, (tranche, sol)| {
@@ -783,7 +783,7 @@ pub mod pallet {
 			let acc_redeem: T::Balance = epoch
 				.tranches
 				.iter()
-				.zip(solution.iter())
+				.zip(solution)
 				.fold(
 					Some(Zero::zero()),
 					|sum: Option<T::Balance>, (tranche, sol)| {
@@ -807,8 +807,18 @@ pub mod pallet {
 				.map(|tranche| tranche.min_subordination_ratio)
 				.collect::<Vec<_>>();
 
-			let tranche_values: Vec<_> =
-				epoch.tranches.iter().map(|tranche| tranche.value).collect();
+			let tranche_values: Vec<_> = epoch
+				.tranches
+				.iter()
+				.zip(solution)
+				.map(|(tranche, sol)| {
+					tranche
+						.value
+						.checked_add(&sol.0.mul_floor(tranche.supply))
+						.and_then(|value| value.checked_sub(&sol.1.mul_floor(tranche.redeem)))
+				})
+				.collect::<Option<Vec<_>>>()
+				.ok_or(Error::<T>::Overflow)?;
 			Self::validate_pool_constraints(
 				new_reserve,
 				pool_details.max_reserve,
@@ -841,8 +851,7 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientReserve)?
 			}
 
-			let mut count = 0;
-			for tv in current_tranche_values {
+			for (count, tv) in current_tranche_values.iter().enumerate() {
 				let acc_sub_value = current_tranche_values
 					.iter()
 					.skip(count + 1)
@@ -854,7 +863,6 @@ pub mod pallet {
 				if calc_sub < tranche_ratios[count] {
 					Err(Error::<T>::SubordinationRatioViolated)?
 				}
-				count = count + 1;
 			}
 
 			Ok(())
