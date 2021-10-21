@@ -119,15 +119,16 @@ impl Contains<Call> for BaseFilter {
 			c,
 			// Calls from Sudo
 			Call::Sudo(..)
-
-				// Calls for runtime upgrade
-				| Call::System(frame_system::Call::set_code(..))
-				| Call::System(frame_system::Call::set_code_without_checks(..))
-
-				// Calls that are present in each block
-				| Call::ParachainSystem(
-					cumulus_pallet_parachain_system::Call::set_validation_data(..)
-				) | Call::Timestamp(pallet_timestamp::Call::set(..))
+			// Calls for runtime upgrade
+			| Call::System(frame_system::Call::set_code(..))
+			| Call::System(frame_system::Call::set_code_without_checks(..))
+			// Calls that are present in each block
+			| Call::ParachainSystem(
+				cumulus_pallet_parachain_system::Call::set_validation_data(..)
+			)
+			| Call::Timestamp(pallet_timestamp::Call::set(..))
+			// Claiming logic is also enabled
+			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward(..))
 		)
 	}
 }
