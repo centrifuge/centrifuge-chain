@@ -940,11 +940,30 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 			pool.available_reserve = pool.total_reserve;
 
-			// Calculate the new total asset value for each tranche
-			let mut total_assets = pool
+			// Calculate the new fraction of the total pool value that each tranche contains
+			// This is based on the tranche values at time of epoch close.
+			let total_assets = pool
 				.total_reserve
 				.checked_add(&epoch.nav)
 				.ok_or(Error::<T>::Overflow)?;
+			let tranche_ratios: Vec<_> = execution
+				.iter()
+				.zip(&epoch.tranches)
+				.map(|((supply, redeem), tranche)| {
+					tranche
+						.value
+						.checked_add(supply)
+						.and_then(|value| value.checked_sub(redeem))
+						.map(|tranche_asset| {
+							Perquintill::from_rational(tranche_asset, total_assets)
+						})
+				})
+				.collect::<Option<Vec<Perquintill>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			// Calculate the new total asset value for each tranche
+			// This uses the current state of the tranches, rather than the cached epoch-close-time values.
+			let mut total_assets = total_assets;
 			let tranche_assets = execution
 				.iter()
 				.zip(&mut pool.tranches)
@@ -969,32 +988,11 @@ pub mod pallet {
 				.collect::<Option<Vec<T::Balance>>>()
 				.ok_or(Error::<T>::Overflow)?;
 
-			// Calculate the new fraction of the total pool value that each tranche contains
-			let total_assets = pool
-				.total_reserve
-				.checked_add(&epoch.nav)
-				.ok_or(Error::<T>::Overflow)?;
-			let tranche_ratios: Vec<_> = execution
-				.iter()
-				.zip(&epoch.tranches)
-				.map(|((supply, redeem), tranche)| {
-					tranche
-						.value
-						.checked_add(supply)
-						.and_then(|value| value.checked_sub(redeem))
-						.map(|tranche_asset| {
-							Perquintill::from_rational(tranche_asset, total_assets)
-						})
-				})
-				.collect::<Option<Vec<Perquintill>>>()
-				.ok_or(Error::<T>::Overflow)?;
-
-			let last_tranche = pool.tranches.len() - 1;
-
-			// Rebalance tranches based on the new total NAV/resrve and each tranche's ratio.
+			// Rebalance tranches based on the new tranche asset values and ratios
 			let nav = pool.fake_nav;
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
+			let last_tranche = pool.tranches.len() - 1;
 			for (((tranche_id, tranche), ratio), value) in pool
 				.tranches
 				.iter_mut()
@@ -1025,35 +1023,39 @@ pub mod pallet {
 			closing_epoch: T::EpochId,
 			tranche: &mut Tranche<T::Balance>,
 			solution: (Perquintill, Perquintill),
-			execution: (T::Balance, T::Balance),
+			(currency_supply, _currency_redeem): (T::Balance, T::Balance),
 			price: T::BalanceRatio,
 		) -> DispatchResult {
 			// Update supply/redeem orders for the next epoch based on our execution
-			tranche.epoch_supply -= execution.0;
-			tranche.epoch_redeem -= execution.1;
+			let token_supply = price
+				.reciprocal()
+				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_supply))
+				.map(|supply| solution.0.mul_ceil(supply))
+				.unwrap_or(Zero::zero());
+			let token_redeem = price
+				.reciprocal()
+				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_redeem))
+				.map(|redeem| solution.1.mul_ceil(redeem))
+				.unwrap_or(Zero::zero());
+
+			#[cfg(test)]
+			{
+				println!("{:?}", token_redeem);
+			}
+			tranche.epoch_supply -= currency_supply;
+			tranche.epoch_redeem -= token_redeem;
 
 			// Compute the tranche tokens that need to be minted or burned based on the execution
-			let mint_amount = if price > Zero::zero() {
-				price
-					.checked_mul_int(execution.0 - execution.1)
-					.ok_or(Error::<T>::Overflow)?
-			} else {
-				Zero::zero()
-			};
-			let burn_amount = price
-				.checked_mul_int(execution.1 - execution.0)
-				.ok_or(Error::<T>::Overflow)?;
-
 			let pool_address = PoolLocator {
 				pool_id: loc.pool_id,
 			}
 			.into_account();
 			let token = T::TrancheToken::tranche_token(loc.pool_id, loc.tranche_id);
-			if mint_amount > burn_amount {
-				let tokens_to_mint = mint_amount - burn_amount;
+			if token_supply > token_redeem {
+				let tokens_to_mint = token_supply - token_redeem;
 				T::Tokens::deposit(token, &pool_address, tokens_to_mint)?;
-			} else if burn_amount > mint_amount {
-				let tokens_to_burn = burn_amount - mint_amount;
+			} else if token_redeem > token_supply {
+				let tokens_to_burn = token_redeem - token_supply;
 				T::Tokens::withdraw(token, &pool_address, tokens_to_burn)?;
 			}
 
