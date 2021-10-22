@@ -21,7 +21,7 @@ use frame_support::{assert_err, assert_ok};
 use orml_traits::MultiCurrency;
 use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
-use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, TokenId, CFG};
+use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, TokenId, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::{FixedPointNumber, PerThing, Percent};
 use sp_runtime::traits::{One, StaticLookup};
@@ -194,13 +194,23 @@ fn activate_loan() {
 			.expect("must be a Loan issue event");
 
 			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan {
+				// 80%
+				advance_rate: Rate::saturating_from_rational(80, 100),
+				// 99.8 %
+				term_recovery_rate: Rate::from_float(0.998),
+				collateral_value: Amount::from_inner(125 * USD),
+				// 4%
+				discount_rate: Rate::saturating_from_rational(4, 100),
+				// 2 years
+				maturity_date: math::seconds_per_year() * 2,
+			});
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
 				loan_id,
 				Rate::one(),
-				Amount::from_inner(100u128),
-				None,
+				loan_type,
 			);
 			assert_ok!(res);
 			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
@@ -213,9 +223,9 @@ fn activate_loan() {
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			assert_eq!(loan_data.status, LoanStatus::Active);
-			assert_eq!(loan_data.maturity_date, None);
 			assert_eq!(loan_data.rate_per_sec, Rate::one());
-			assert_eq!(loan_data.ceiling, Amount::from_inner(100u128));
+			assert_eq!(loan_data.loan_type, loan_type);
+			assert_eq!(loan_data.ceiling, Amount::from_inner(100 * USD));
 
 			// cannot activate an already activated loan
 			let res = Loan::activate_loan(
@@ -223,8 +233,7 @@ fn activate_loan() {
 				pool_id,
 				loan_id,
 				Rate::one(),
-				Amount::from_inner(100u128),
-				None,
+				loan_type,
 			);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
 		})
@@ -255,13 +264,23 @@ fn close_loan() {
 
 			// activate loan
 			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan {
+				// 80%
+				advance_rate: Rate::saturating_from_rational(80, 100),
+				// 99.8 %
+				term_recovery_rate: Rate::from_float(0.998),
+				collateral_value: Amount::from_inner(125 * USD),
+				// 4%
+				discount_rate: Rate::saturating_from_rational(4, 100),
+				// 2 years
+				maturity_date: math::seconds_per_year() * 2,
+			});
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
 				loan_id,
 				Rate::one(),
-				Amount::from_inner(100u128),
-				None,
+				loan_type,
 			);
 			assert_ok!(res);
 
@@ -304,7 +323,7 @@ fn borrow_loan() {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
 			let owner: u64 = 1;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 1000 * CFG);
+			assert_eq!(pool_balance, 1000 * USD);
 
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, Zero::zero());
@@ -334,20 +353,30 @@ fn borrow_loan() {
 			))
 			.unwrap();
 			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan {
+				// 80%
+				advance_rate: Rate::saturating_from_rational(80, 100),
+				// 99.8 %
+				term_recovery_rate: Rate::from_float(0.998),
+				collateral_value: Amount::from_inner(125 * USD),
+				// 4%
+				discount_rate: Rate::saturating_from_rational(4, 100),
+				// 2 years
+				maturity_date: math::seconds_per_year() * 2,
+			});
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
 				loan_id,
 				rate,
 				// ceiling is 100 USD
-				Amount::from_inner(100 * CFG),
-				None,
+				loan_type,
 			);
 			assert_ok!(res);
 
 			// borrow 50 first
 			Timestamp::set_timestamp(1);
-			let borrow_amount = Amount::from_inner(50 * CFG);
+			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 
@@ -357,20 +386,20 @@ fn borrow_loan() {
 			// accumulated rate is now rate per sec
 			assert_eq!(loan_data.accumulated_rate, rate);
 			assert_eq!(loan_data.last_updated, 1);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			let p_debt = borrow_amount
 				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
 				.unwrap();
 			assert_eq!(loan_data.principal_debt, p_debt);
 			// pool should have 50 less token
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 950 * CFG);
+			assert_eq!(pool_balance, 950 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 50 * CFG);
+			assert_eq!(owner_balance, 50 * USD);
 
 			// borrow another 20 after 1000 seconds
 			Timestamp::set_timestamp(1001);
-			let borrow_amount = Amount::from_inner(20 * CFG);
+			let borrow_amount = Amount::from_inner(20 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 			// check loan data
@@ -382,7 +411,7 @@ fn borrow_loan() {
 				checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 			);
 			assert_eq!(loan_data.last_updated, 1001);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(70 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(70 * USD));
 			let c_debt = math::debt(p_debt, loan_data.accumulated_rate).unwrap();
 			let p_debt = c_debt
 				.checked_add(&borrow_amount)
@@ -392,14 +421,14 @@ fn borrow_loan() {
 			assert_eq!(loan_data.principal_debt, p_debt);
 
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 930 * CFG);
+			assert_eq!(pool_balance, 930 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 70 * CFG);
+			assert_eq!(owner_balance, 70 * USD);
 
 			// try to borrow more than ceiling
 			// borrow another 40 after 1000 seconds
 			Timestamp::set_timestamp(2001);
-			let borrow_amount = Amount::from_inner(40 * CFG);
+			let borrow_amount = Amount::from_inner(40 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
 		})
@@ -413,7 +442,7 @@ fn repay_loan() {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
 			let owner: u64 = 1;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 1000 * CFG);
+			assert_eq!(pool_balance, 1000 * USD);
 
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, Zero::zero());
@@ -443,25 +472,35 @@ fn repay_loan() {
 			))
 			.unwrap();
 			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan {
+				// 80%
+				advance_rate: Rate::saturating_from_rational(80, 100),
+				// 99.8 %
+				term_recovery_rate: Rate::from_float(0.998),
+				collateral_value: Amount::from_inner(125 * USD),
+				// 4%
+				discount_rate: Rate::saturating_from_rational(4, 100),
+				// 2 years
+				maturity_date: math::seconds_per_year() * 2,
+			});
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
 				loan_id,
 				rate,
 				// ceiling is 100 USD
-				Amount::from_inner(100 * CFG),
-				None,
+				loan_type,
 			);
 			assert_ok!(res);
 
 			// try repay without any borrowed
-			let repay_amount = Amount::from_inner(20 * CFG);
+			let repay_amount = Amount::from_inner(20 * USD);
 			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
 			assert_ok!(res);
 
 			// borrow 50
 			Timestamp::set_timestamp(1);
-			let borrow_amount = Amount::from_inner(50 * CFG);
+			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 
@@ -471,20 +510,20 @@ fn repay_loan() {
 			// accumulated rate is now rate per sec
 			assert_eq!(loan_data.accumulated_rate, rate);
 			assert_eq!(loan_data.last_updated, 1);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			let p_debt = borrow_amount
 				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
 				.unwrap();
 			assert_eq!(loan_data.principal_debt, p_debt);
 			// pool should have 50 less token
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 950 * CFG);
+			assert_eq!(pool_balance, 950 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 50 * CFG);
+			assert_eq!(owner_balance, 50 * USD);
 
 			// repay 20 after 1000 seconds
 			Timestamp::set_timestamp(1001);
-			let repay_amount = Amount::from_inner(20 * CFG);
+			let repay_amount = Amount::from_inner(20 * USD);
 			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
 			assert_ok!(res);
 
@@ -497,18 +536,18 @@ fn repay_loan() {
 				checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 			);
 			assert_eq!(loan_data.last_updated, 1001);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			// principal debt should still be more than 30 due to interest
-			assert!(loan_data.principal_debt > Amount::from_inner(30 * CFG));
+			assert!(loan_data.principal_debt > Amount::from_inner(30 * USD));
 			// pool should have 30 less token
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 970 * CFG);
+			assert_eq!(pool_balance, 970 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 30 * CFG);
+			assert_eq!(owner_balance, 30 * USD);
 
 			// repay 30 more after another 1000 seconds
 			Timestamp::set_timestamp(2001);
-			let repay_amount = Amount::from_inner(30 * CFG);
+			let repay_amount = Amount::from_inner(30 * USD);
 			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
 			assert_ok!(res);
 
@@ -522,7 +561,7 @@ fn repay_loan() {
 
 			// repay the interest
 			// 50 for 1000 seconds
-			let amount = Amount::from_inner(50 * CFG);
+			let amount = Amount::from_inner(50 * USD);
 			let p_debt = amount
 				.checked_div(&math::convert::<Rate, Amount>(loan_data.rate_per_sec).unwrap())
 				.unwrap();
@@ -533,7 +572,7 @@ fn repay_loan() {
 
 			// 30 for 1000 seconds
 			let p_debt = debt_after_1000
-				.checked_sub(&Amount::from_inner(20 * CFG))
+				.checked_sub(&Amount::from_inner(20 * USD))
 				.unwrap()
 				.checked_div(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
 				.unwrap();
@@ -542,7 +581,7 @@ fn repay_loan() {
 				.checked_mul(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
 				.unwrap();
 			let p_debt = debt_after_2000
-				.checked_sub(&Amount::from_inner(30 * CFG))
+				.checked_sub(&Amount::from_inner(30 * USD))
 				.unwrap()
 				.checked_div(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
 				.unwrap();
@@ -582,12 +621,12 @@ fn repay_loan() {
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			assert_eq!(loan_data.status, LoanStatus::Closed);
 			assert_eq!(loan_data.principal_debt, Zero::zero());
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			assert_eq!(loan_data.last_updated, 3001);
 
 			// pool balance should be 1000 + interest
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			let expected_balance = 1000 * CFG + transfer_amount;
+			let expected_balance = 1000 * USD + transfer_amount;
 			assert_eq!(pool_balance, expected_balance);
 
 			// owner balance should be zero

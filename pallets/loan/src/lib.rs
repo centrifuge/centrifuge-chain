@@ -23,7 +23,7 @@ use pallet_registry::traits::VerifierRegistry;
 use pallet_registry::types::{MintInfo, RegistryInfo};
 use sp_core::U256;
 use sp_runtime::traits::AccountIdConversion;
-use sp_runtime::DispatchError;
+use sp_runtime::{DispatchError, FixedPointNumber};
 use sp_std::convert::TryInto;
 use unique_assets::traits::{Mintable, Unique};
 
@@ -54,9 +54,55 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	accumulated_rate: Rate,
 	principal_debt: Amount,
 	last_updated: u64,
-	maturity_date: Option<u64>,
 	asset_id: AssetId,
 	status: LoanStatus,
+	loan_type: LoanType<Rate, Amount>,
+}
+
+/// The data structure for storing specific loan type data
+#[derive(Encode, Decode, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct BulletLoan<Rate, Amount> {
+	advance_rate: Rate,
+	term_recovery_rate: Rate,
+	collateral_value: Amount,
+	discount_rate: Rate,
+	maturity_date: u64,
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub enum LoanType<Rate, Amount> {
+	BulletLoan(BulletLoan<Rate, Amount>),
+}
+
+impl<Rate, Amount> LoanType<Rate, Amount>
+where
+	Rate: FixedPointNumber,
+	Amount: FixedPointNumber,
+{
+	fn ceiling(&self) -> Option<Amount> {
+		match self {
+			LoanType::BulletLoan(bl) => math::convert::<Rate, Amount>(bl.advance_rate)
+				.and_then(|ar| bl.collateral_value.checked_mul(&ar)),
+		}
+	}
+}
+
+impl<Rate, Amount> Default for LoanType<Rate, Amount>
+where
+	Rate: Zero,
+	Amount: Zero,
+{
+	fn default() -> Self {
+		Self::BulletLoan(BulletLoan {
+			advance_rate: Zero::zero(),
+			term_recovery_rate: Zero::zero(),
+			collateral_value: Zero::zero(),
+			discount_rate: Zero::zero(),
+			maturity_date: 0,
+		})
+	}
 }
 
 pub type RegistryIdOf<T> = <T as pallet_nft::Config>::RegistryId;
@@ -201,6 +247,9 @@ pub mod pallet {
 		/// Emits when tries to update an active loan
 		ErrLoanIsActive,
 
+		/// Emits when loan type given is not valid
+		ErrLoanTypeInvalid,
+
 		/// Emits when operation is done on an inactive loan
 		ErrLoanIsInActive,
 
@@ -295,8 +344,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			rate_per_sec: T::Rate,
-			ceiling: T::Amount,
-			maturity_date: Option<u64>,
+			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
@@ -311,13 +359,16 @@ pub mod pallet {
 				Error::<T>::ErrLoanIsActive
 			);
 
+			// calculate ceiling
+			let ceiling = loan_type.ceiling().ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 				let mut loan_info = maybe_loan_info.take().unwrap();
 				loan_info.rate_per_sec = rate_per_sec;
 				loan_info.ceiling = ceiling;
 				loan_info.status = LoanStatus::Active;
-				loan_info.maturity_date = maturity_date;
+				loan_info.loan_type = loan_type;
 				*maybe_loan_info = Some(loan_info);
 			});
 
@@ -421,9 +472,9 @@ impl<T: Config> Pallet<T> {
 				accumulated_rate: One::one(),
 				principal_debt: Zero::zero(),
 				last_updated: timestamp,
-				maturity_date: None,
 				asset_id,
 				status: LoanStatus::Issued,
+				loan_type: Default::default(),
 			},
 		);
 		Ok(loan_id)

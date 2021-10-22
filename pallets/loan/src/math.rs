@@ -54,7 +54,7 @@ pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber
 
 /// returns the seconds in a given normal year(365 days)
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
-fn seconds_per_year() -> u64 {
+pub(crate) fn seconds_per_year() -> u64 {
 	3600 * 24 * 365
 }
 
