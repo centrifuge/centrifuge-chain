@@ -318,17 +318,6 @@ macro_rules! implement_fixed {
 			}
 		}
 
-		// impl<P: PerThing> From<P> for $name
-		// where
-		// 	P::Inner: FixedPointOperand,
-		// {
-		// 	fn from(p: P) -> Self {
-		// 		let accuracy = P::ACCURACY;
-		// 		let value = p.deconstruct();
-		// 		$name::saturating_from_rational(value, accuracy)
-		// 	}
-		// }
-
 		#[cfg(feature = "std")]
 		impl sp_std::fmt::Display for $name {
 			fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {

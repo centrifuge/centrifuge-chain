@@ -54,23 +54,76 @@ pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber
 
 /// returns the seconds in a given normal year(365 days)
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
-fn seconds_per_year<T: FixedPointNumber>() -> T {
-	T::saturating_from_integer(3600 * 24 * 365_u128)
+fn seconds_per_year() -> u64 {
+	3600 * 24 * 365
 }
 
 /// calculates rate per second from the given nominal interest rate
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
 pub fn rate_per_sec<Rate: FixedPointNumber>(nominal_interest_rate: Rate) -> Option<Rate> {
 	nominal_interest_rate
-		.checked_div(&seconds_per_year())
+		.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
 		.and_then(|res| res.checked_add(&Rate::one()))
+}
+
+/// calculates the risk adjusted expected cash flow for bullet loan type
+/// assumes maturity date has not passed
+/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+pub fn bullet_loan_expected_cash_flow<Amount, Rate>(
+	debt: Amount,
+	now: u64,
+	maturity_date: u64,
+	rate_per_sec: Rate,
+	term_recovery_rate: Rate,
+) -> Option<Amount>
+where
+	Amount: FixedPointNumber,
+	Rate: FixedPointNumber,
+{
+	// check to be sure if the maturity date has not passed
+	if now > maturity_date {
+		return None;
+	}
+
+	// calculate the rate^(m-now)
+	checked_pow(rate_per_sec, (maturity_date - now) as usize)
+		// multiply by term_recovery_rate
+		.and_then(|i| i.checked_mul(&term_recovery_rate))
+		// convert to amount
+		.and_then(|rate| convert::<Rate, Amount>(rate))
+		// calculate expected cash flow
+		.and_then(|amount| debt.checked_mul(&amount))
+}
+
+/// calculates present value for bullet loan
+/// assumes maturity date has not passed
+/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+pub fn bullet_loan_present_value<Amount, Rate>(
+	expected_cash_flow: Amount,
+	now: u64,
+	maturity_date: u64,
+	discount_rate: Rate,
+) -> Option<Amount>
+where
+	Amount: FixedPointNumber,
+	Rate: FixedPointNumber,
+{
+	if now > maturity_date {
+		return None;
+	}
+
+	// calculate total discount rate
+	checked_pow(discount_rate, (maturity_date - now) as usize)
+		.and_then(|rate| convert::<Rate, Amount>(rate))
+		// calculate the present value
+		.and_then(|d| expected_cash_flow.checked_div(&d))
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
 	use frame_support::sp_runtime::traits::CheckedMul;
-	use runtime_common::Rate;
+	use runtime_common::{Amount, Rate, CFG as USD};
 	use sp_arithmetic::{FixedI128, PerThing};
 	use sp_arithmetic::{FixedU128, Percent};
 
@@ -148,5 +201,50 @@ mod tests {
 			.checked_mul(&convert::<Rate, FixedU128>(expected_accumulated_rate).unwrap())
 			.unwrap();
 		assert_eq!(expected_debt, maybe_debt.unwrap())
+	}
+
+	#[test]
+	fn test_bullet_loan_expected_cash_flow() {
+		// debt is 100
+		let debt = Amount::from_inner(100 * USD);
+		// ttr = 99.8 percent
+		let term_recovery_rate = Rate::from_float(0.998);
+		// maturity date is 2 years
+		let md = seconds_per_year() * 2;
+		// assuming now = 0
+		let now = 0;
+		// interest rate is 5%
+		let rate_per_sec = rate_per_sec(Rate::from_float(0.05)).unwrap();
+		// expected cashflow should be 110.296
+		let cf = bullet_loan_expected_cash_flow(debt, now, md, rate_per_sec, term_recovery_rate)
+			.unwrap();
+		assert_eq!(
+			cf,
+			Amount::saturating_from_rational(110296057615205970100u128, Amount::accuracy())
+		)
+	}
+
+	#[test]
+	fn test_bullet_loan_present_value() {
+		// debt is 100
+		let debt = Amount::from_inner(100 * USD);
+		// ttr = 99.8 percent
+		let term_recovery_rate = Rate::from_float(0.998);
+		// maturity date is 2 years
+		let md = seconds_per_year() * 2;
+		// assuming now = 0
+		let now = 0;
+		// interest rate is 5%
+		let rp = rate_per_sec(Rate::from_float(0.05)).unwrap();
+		// expected cashflow should be 110.296
+		let cf = bullet_loan_expected_cash_flow(debt, now, md, rp, term_recovery_rate).unwrap();
+		// discount rate is 4%
+		let discount_rate = rate_per_sec(Rate::from_float(0.04)).unwrap();
+		// present value should be 101.81
+		let pv = bullet_loan_present_value(cf, now, md, discount_rate).unwrap();
+		assert_eq!(
+			pv,
+			Amount::saturating_from_rational(101816093731764518466u128, Amount::accuracy())
+		)
 	}
 }
