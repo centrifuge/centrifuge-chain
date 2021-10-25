@@ -7,8 +7,8 @@ pub struct BundleHasher;
 impl Hasher for BundleHasher {
 	type Hash = H256;
 
-	fn hash(data: &[u8]) -> [u8; 32] {
-		keccak_256(data)
+	fn hash(data: &[u8]) -> Self::Hash {
+		keccak_256(data).into()
 	}
 }
 
@@ -17,8 +17,8 @@ pub struct ProofVerifier;
 impl Hasher for ProofVerifier {
 	type Hash = H256;
 
-	fn hash(data: &[u8]) -> [u8; 32] {
-		blake2_256(data)
+	fn hash(data: &[u8]) -> Self::Hash {
+		blake2_256(data).into()
 	}
 }
 

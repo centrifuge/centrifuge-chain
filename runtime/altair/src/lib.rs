@@ -4,10 +4,10 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{InstanceFilter, LockIdentifier, MaxEncodedLen, U128CurrencyToVote},
+	traits::{Contains, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -52,8 +52,6 @@ use constants::currency::*;
 /// common types for the runtime.
 pub use runtime_common::*;
 
-use frame_support::traits::Filter;
-
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -70,7 +68,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1000,
+	spec_version: 1003,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -115,8 +113,8 @@ parameter_types! {
 // other calls will be disallowed
 pub struct BaseFilter;
 
-impl Filter<Call> for BaseFilter {
-	fn filter(c: &Call) -> bool {
+impl Contains<Call> for BaseFilter {
+	fn contains(c: &Call) -> bool {
 		matches!(
 			c,
 			// Calls from Sudo
@@ -293,6 +291,7 @@ impl pallet_session::Config for Runtime {
 
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
+	type DisabledValidators = ();
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -335,14 +334,15 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	// Staking,
-	// Vesting,
+	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
+	NonProxy,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
 	}
 }
+
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
@@ -350,30 +350,22 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
 			ProxyType::Governance => matches!(
 				c,
-				// Call::Democracy(..) |
-				Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
 			),
-			// ProxyType::Staking => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			// 	Call::Utility(..)
-			// ),
-			// ProxyType::Vesting => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			//     Call::Democracy(..) |
-			// 	Call::Council(..) |
-			// 	Call::Elections(..) |
-			// 	Call::Vesting(pallet_vesting::Call::vest(..)) |
-			// 	Call::Vesting(pallet_vesting::Call::vest_other(..))
-			// ),
+			ProxyType::_Staking => false,
+			ProxyType::NonProxy => {
+				matches!(c, Call::Proxy(pallet_proxy::Call::proxy(..)))
+					|| !matches!(c, Call::Proxy(..))
+			}
 		}
 	}
+
 	fn is_superset(&self, o: &Self) -> bool {
 		match (self, o) {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
+			(_, ProxyType::NonProxy) => false,
 			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
@@ -582,7 +574,7 @@ impl pallet_identity::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MinVestedTransfer: Balance = 1000 * AIR;
+	pub const MinVestedTransfer: Balance = MIN_VESTING * AIR;
 }
 
 impl pallet_vesting::Config for Runtime {
@@ -754,8 +746,9 @@ impl_runtime_apis! {
 		fn validate_transaction(
 			source: TransactionSource,
 			tx: <Block as BlockT>::Extrinsic,
+			block_hash: <Block as BlockT>::Hash,
 		) -> TransactionValidity {
-			Executive::validate_transaction(source, tx)
+			Executive::validate_transaction(source, tx, block_hash)
 		}
 	}
 
@@ -846,6 +839,22 @@ impl_runtime_apis! {
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
+		}
+
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, pallet_fees, Fees);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
 		}
 	}
 }

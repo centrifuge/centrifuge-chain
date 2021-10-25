@@ -25,7 +25,7 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     env:
-      RUST_TOOLCHAIN: "nightly-2021-03-15"
+      RUST_TOOLCHAIN: "nightly-2021-07-28"
     steps:
       - name: Free space on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'
@@ -54,4 +54,5 @@ jobs:
         run: ./ci/script.sh
         env:
           TARGET: ${{ matrix.target }}
+          RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
 

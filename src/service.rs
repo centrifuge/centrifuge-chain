@@ -69,7 +69,7 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 		TFullClient<Block, RuntimeApi, Executor>,
 		TFullBackend<Block>,
 		(),
-		sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
 		sc_transaction_pool::FullPool<Block, TFullClient<Block, RuntimeApi, Executor>>,
 		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
 	>,
@@ -96,7 +96,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 	) -> Result<
-		sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
 		sc_service::Error,
 	>,
 {
@@ -184,7 +184,7 @@ where
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
 			Arc<TFullClient<Block, RuntimeApi, Executor>>,
-		) -> jsonrpc_core::IoHandler<sc_rpc::Metadata>
+		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
 		+ Send
 		+ 'static,
 	BIQ: FnOnce(
@@ -193,7 +193,7 @@ where
 		Option<TelemetryHandle>,
 		&TaskManager,
 	) -> Result<
-		sp_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
 		sc_service::Error,
 	>,
 	BIC: FnOnce(
@@ -248,6 +248,7 @@ where
 			import_queue: import_queue.clone(),
 			on_demand: None,
 			block_announce_validator_builder: Some(Box::new(|_| block_announce_validator)),
+			warp_sync: None,
 		})?;
 
 	let rpc_client = client.clone();
@@ -325,7 +326,7 @@ pub fn build_altair_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sp_consensus::DefaultImportQueue<
+	sc_consensus::DefaultImportQueue<
 		Block,
 		TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>,
 	>,
@@ -379,7 +380,7 @@ pub async fn start_altair_node(
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
-			io
+			Ok(io)
 		},
 		build_altair_import_queue,
 		|client,
@@ -469,7 +470,7 @@ pub fn build_centrifuge_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sp_consensus::DefaultImportQueue<
+	sc_consensus::DefaultImportQueue<
 		Block,
 		TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>,
 	>,
@@ -523,7 +524,7 @@ pub async fn start_centrifuge_node(
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
-			io
+			Ok(io)
 		},
 		build_centrifuge_import_queue,
 		|client,
@@ -613,7 +614,7 @@ pub fn build_development_import_queue(
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
-	sp_consensus::DefaultImportQueue<
+	sc_consensus::DefaultImportQueue<
 		Block,
 		TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>,
 	>,
@@ -667,7 +668,7 @@ pub async fn start_development_node(
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
-			io
+			Ok(io)
 		},
 		build_development_import_queue,
 		|client,

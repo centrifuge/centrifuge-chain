@@ -19,7 +19,6 @@ codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive
 frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master", optional = true }
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
-max-encoded-len = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master", features = ["derive"] }
 pallet-timestamp = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
