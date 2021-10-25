@@ -1,5 +1,5 @@
 [package]
-name = "trait-crowdloan-reward"
+name = "common-traits"
 authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
@@ -19,8 +19,8 @@ sp-std = { git = "https://github.com/centrifuge/substrate", default-features = f
 [features]
 default = ['std']
 std = [
-    'codec/std',
-    'frame-support/std',
-    'sp-runtime/std',
-    'sp-std/std'
+    "codec/std",
+    "frame-support/std",
+    "sp-runtime/std",
+    "sp-std/std"
 ]

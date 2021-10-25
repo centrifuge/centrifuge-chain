@@ -38,7 +38,7 @@ members = [
 	"pallets/bridge",
 	"pallets/nft",
 	"pallets/registry",
-	"libs/trait-crowdloan-reward",
+	"libs/common-traits",
 	"libs/proofs",
 	"runtime/altair",
 	"runtime/centrifuge",
@@ -66,7 +66,6 @@ grandpa-primitives = { package = "sp-finality-grandpa", git = "https://github.co
 sp-core = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 sp-runtime = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 sp-timestamp = { default-features = false,  git = "https://github.com/centrifuge/substrate", branch = "master" }
-#sp-finality-tracker = { branch = "rococo-v1", default-features = false,  git = "https://github.com/paritytech/substrate.git" }
 sp-inherents = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 sp-consensus = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 sp-transaction-pool = { git = "https://github.com/centrifuge/substrate", branch = "master" }
@@ -148,7 +147,6 @@ vergen = "3.0.4"
 substrate-build-script-utils  = { optional = true, git = "https://github.com/centrifuge/substrate", branch = "master" }
 
 [dev-dependencies]
-#sc-keystore = { branch = "rococo-v1", git = "https://github.com/paritytech/substrate.git" }
 sc-service-test = { git = "https://github.com/centrifuge/substrate", branch = "master" }
 tempfile = "3.1.0"
 sp-keyring = { git = "https://github.com/centrifuge/substrate", branch = "master" }

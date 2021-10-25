@@ -92,8 +92,8 @@ parameter_types! {
 
 // Implement crowdloan reward pallet configuration for mock runtime
 impl pallet_crowdloan_reward::Config for MockRuntime {
-	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
+	type Event = Event;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type WeightInfo = ();
 }
@@ -118,8 +118,8 @@ impl frame_system::Config for MockRuntime {
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
-	type Index = u64;
 	type Call = Call;
+	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -211,7 +211,7 @@ impl TestExternalitiesBuilder {
 	}
 } // end of 'TestExternalitiesBuilder' implementation
 
-pub(crate) fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
+pub fn reward_events() -> Vec<pallet_crowdloan_reward::Event<MockRuntime>> {
 	System::events()
 		.into_iter()
 		.map(|r| r.event)

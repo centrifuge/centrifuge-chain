@@ -1,13 +1,46 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use crate::common;
 use crate::{mock::*, PRE_COMMIT_EXPIRATION_DURATION_BLOCKS};
 use codec::Encode;
 use frame_support::dispatch::DispatchError;
+use frame_support::pallet_prelude::Hooks;
 use frame_support::traits::Randomness;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H256;
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::traits::Hash;
+use sp_runtime::traits::Header;
 use std::time::Instant;
+
+fn setup_blocks(blocks: u64) {
+	let mut parent_hash = System::parent_hash();
+
+	for i in 1..(blocks + 1) {
+		System::initialize(
+			&i,
+			&parent_hash,
+			&Default::default(),
+			frame_system::InitKind::Full,
+		);
+		RandomnessCollectiveFlip::on_initialize(i);
+
+		let header = System::finalize();
+		parent_hash = header.hash();
+		System::set_block_number(*header.number());
+	}
+}
 
 #[test]
 fn basic_pre_commit() {
@@ -57,7 +90,7 @@ fn pre_commit_fail_anchor_exists() {
 			pre_image,
 			<Test as frame_system::Config>::Hashing::hash_of(&0),
 			<Test as frame_system::Config>::Hashing::hash_of(&0),
-			common::MS_PER_DAY + 1
+			common::MILLISECS_PER_DAY + 1
 		));
 
 		assert_eq!(
@@ -99,7 +132,7 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 			pre_image,
 			<Test as frame_system::Config>::Hashing::hash_of(&0),
 			<Test as frame_system::Config>::Hashing::hash_of(&0),
-			common::MS_PER_DAY + 1
+			common::MILLISECS_PER_DAY + 1
 		));
 
 		// fails because of existing anchor
@@ -282,7 +315,7 @@ fn commit_fail_anchor_exists() {
 			pre_image,
 			doc_root,
 			<Test as frame_system::Config>::Hashing::hash_of(&0),
-			common::MS_PER_DAY + 1
+			common::MILLISECS_PER_DAY + 1
 		));
 		// asserting that the stored anchor id is what we sent the pre-image for
 		let a = Anchors::get_anchor_by_id(anchor_id).unwrap();
@@ -295,7 +328,7 @@ fn commit_fail_anchor_exists() {
 				pre_image,
 				doc_root,
 				<Test as frame_system::Config>::Hashing::hash_of(&0),
-				common::MS_PER_DAY + 1
+				common::MILLISECS_PER_DAY + 1
 			),
 			DispatchError::Module {
 				index: 5,
@@ -311,7 +344,7 @@ fn commit_fail_anchor_exists() {
 				pre_image,
 				doc_root,
 				<Test as frame_system::Config>::Hashing::hash_of(&0),
-				common::MS_PER_DAY + 1
+				common::MILLISECS_PER_DAY + 1
 			),
 			DispatchError::Module {
 				index: 5,
@@ -344,7 +377,7 @@ fn basic_pre_commit_commit() {
 				pre_image,
 				random_doc_root,
 				proof,
-				common::MS_PER_DAY + 1
+				common::MILLISECS_PER_DAY + 1
 			),
 			DispatchError::Module {
 				index: 5,
@@ -359,7 +392,7 @@ fn basic_pre_commit_commit() {
 			pre_image,
 			doc_root,
 			proof,
-			common::MS_PER_DAY + 1
+			common::MILLISECS_PER_DAY + 1
 		));
 		// asserting that the stored anchor id is what we sent the pre-image for
 		let a = Anchors::get_anchor_by_id(anchor_id).unwrap();
@@ -390,7 +423,7 @@ fn pre_commit_expired_when_anchoring() {
 			pre_image,
 			doc_root,
 			proof,
-			common::MS_PER_DAY + 1
+			common::MILLISECS_PER_DAY + 1
 		));
 		// asserting that the stored anchor id is what we sent the pre-image for
 		let a = Anchors::get_anchor_by_id(anchor_id).unwrap();
@@ -420,7 +453,7 @@ fn pre_commit_commit_fail_from_another_acc() {
 				pre_image,
 				doc_root,
 				proof,
-				common::MS_PER_DAY + 1
+				common::MILLISECS_PER_DAY + 1
 			),
 			DispatchError::Module {
 				index: 5,
@@ -758,7 +791,7 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
 				pre_image,
 				doc_root,
 				proof,
-				common::MS_PER_DAY + 1
+				common::MILLISECS_PER_DAY + 1
 			),
 			DispatchError::Module {
 				index: 5,
@@ -814,7 +847,7 @@ fn pre_commit_and_then_evict_larger_than_max_evict() {
 #[test]
 fn anchor_evict_single_anchor_per_day_1000_days() {
 	new_test_ext().execute_with(|| {
-		let day = |n| common::MS_PER_DAY * n + 1;
+		let day = |n| common::MILLISECS_PER_DAY * n + 1;
 		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
 		let mut anchors = vec![];
 		let verify_anchor_eviction = |day: usize, anchors: &Vec<H256>| {
@@ -846,6 +879,7 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 		};
 
 		// create 1000 anchors one per day
+		setup_blocks(100);
 		for i in 0..1000 {
 			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
 			let pre_image =
@@ -884,8 +918,8 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 		assert_eq!(
 			Anchors::get_evicted_anchor_root_by_day(2).unwrap(),
 			[
-				180, 118, 42, 37, 220, 94, 203, 73, 67, 1, 64, 145, 96, 156, 129, 164, 252, 200,
-				197, 135, 143, 28, 204, 218, 118, 48, 212, 177, 201, 141, 150, 135
+				141, 182, 69, 210, 74, 76, 129, 19, 72, 18, 220, 239, 151, 249, 235, 160, 142, 206,
+				116, 30, 241, 179, 146, 32, 209, 7, 37, 235, 43, 29, 120, 54
 			]
 		);
 
@@ -968,10 +1002,11 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 #[test]
 fn test_remove_anchor_indexes() {
 	new_test_ext().execute_with(|| {
-		let day = |n| common::MS_PER_DAY * n + 1;
+		let day = |n| common::MILLISECS_PER_DAY * n + 1;
 		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
 
 		// create 2000 anchors that expire on same day
+		setup_blocks(100);
 		for i in 0..2000 {
 			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
 			let pre_image =
@@ -1019,11 +1054,12 @@ fn test_remove_anchor_indexes() {
 #[test]
 fn test_same_day_1001_anchors() {
 	new_test_ext().execute_with(|| {
-		let day = |n| common::MS_PER_DAY * n + 1;
+		let day = |n| common::MILLISECS_PER_DAY * n + 1;
 		let (doc_root, _signing_root, proof) = Test::test_document_hashes();
 		let mut anchors = vec![];
 
 		// create 1001 anchors that expire on same day
+		setup_blocks(100);
 		for i in 0..1001 {
 			let random_seed = <pallet_randomness_collective_flip::Pallet<Test>>::random_seed();
 			let pre_image =
@@ -1059,8 +1095,8 @@ fn test_same_day_1001_anchors() {
 		assert_eq!(
 			Anchors::get_evicted_anchor_root_by_day(2).unwrap(),
 			[
-				52, 49, 2, 175, 232, 103, 39, 98, 51, 70, 66, 210, 100, 57, 84, 183, 92, 230, 194,
-				196, 212, 223, 149, 0, 104, 133, 73, 4, 10, 254, 199, 71
+				92, 227, 43, 232, 192, 36, 154, 162, 187, 4, 214, 137, 5, 41, 2, 236, 173, 218,
+				241, 123, 165, 96, 38, 211, 182, 172, 234, 99, 53, 196, 17, 100
 			]
 		);
 
@@ -1128,7 +1164,7 @@ fn basic_commit_perf() {
 				pre_image,
 				doc_root,
 				proof,
-				today_in_ms + common::MS_PER_DAY * 2,
+				today_in_ms + common::MILLISECS_PER_DAY * 2,
 			));
 
 			elapsed = elapsed + now.elapsed().as_micros();

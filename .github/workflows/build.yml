@@ -25,7 +25,7 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     env:
-      RUST_TOOLCHAIN: "nightly-2021-07-28"
+      RUST_TOOLCHAIN: "nightly-2021-09-28"
     steps:
       - name: Free space on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'
@@ -55,4 +55,14 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
           RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
-
+      - if: matrix.target == 'build-runtime'
+        name: Setup - gcloud / gsutil
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.GCS_SA_KEY }}
+          project_id: ${{ secrets.GCS_PROJECT }}
+          export_default_credentials: true
+      - if: matrix.target == 'build-runtime'
+        name: Publish to GCS
+        run: |
+          gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.wasm gs://centrifuge-artifact-releases/parachain/altair_runtime-$(git rev-parse --short HEAD).compact.wasm

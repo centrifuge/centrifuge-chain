@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-07-28}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-09-28}"
 PACKAGE="${PACKAGE:-altair-runtime}" #Need to replicate job for all runtimes
 
 # Enable warnings about unused extern crates
@@ -25,7 +25,7 @@ case $TARGET in
     ;;
 
   tests)
-    cargo test -p pallet-bridge-mapping -p pallet-fees -p pallet-anchors -p pallet-claims -p proofs -p pallet-nft --release
+    cargo test --workspace --release
     ;;
 
   lint)

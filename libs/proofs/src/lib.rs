@@ -16,11 +16,12 @@ mod mock;
 
 /// Deposit address
 pub type DepositAddress = [u8; 20];
+
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof<Hash> {
 	pub leaf_hash: Hash,
-	sorted_hashes: Vec<Hash>,
+	pub sorted_hashes: Vec<Hash>,
 }
 
 impl<Hash> Proof<Hash> {
@@ -53,12 +54,12 @@ pub trait Verifier: Hasher {
 	fn initial_matches(&self, doc_root: Self::Hash) -> Option<Vec<Self::Hash>>;
 
 	/// Verifies each proof and return true if all the proofs are valid else returns false
-	fn verify_proofs(&self, doc_root: Self::Hash, proofs: &Vec<Proof<Self::Hash>>) -> bool {
-		if proofs.len() < 1 {
+	fn verify_proofs(&self, doc_root: Self::Hash, proofs: &[Proof<Self::Hash>]) -> bool {
+		if proofs.is_empty() {
 			return false;
 		}
 
-		let mut matches = match Self::initial_matches(&self, doc_root) {
+		let mut matches = match Self::initial_matches(self, doc_root) {
 			Some(matches) => matches,
 			None => return false,
 		};
@@ -66,12 +67,12 @@ pub trait Verifier: Hasher {
 		proofs
 			.iter()
 			.map(|proof| inner::verify_proof::<Self>(&mut matches, proof))
-			.fold(true, |acc, b| acc && b)
+			.all(|b| b)
 	}
 
 	/// Verifies the proof and returns true if valid
 	fn verify_proof(&self, doc_root: Self::Hash, proof: &Proof<Self::Hash>) -> bool {
-		let mut matches = match Self::initial_matches(&self, doc_root) {
+		let mut matches = match Self::initial_matches(self, doc_root) {
 			Some(matches) => matches,
 			None => return false,
 		};
@@ -107,15 +108,15 @@ mod inner {
 
 		let mut hash = leaf_hash;
 		for proof in sorted_hashes {
-			matches.push(proof.clone());
-			hash = V::hash_of(hash.clone(), proof.clone());
+			matches.push(proof);
+			hash = V::hash_of(hash, proof);
 			if matches.contains(&hash) {
 				return true;
 			}
 			matches.push(hash);
 		}
 
-		return false;
+		false
 	}
 }
 
@@ -137,7 +138,7 @@ pub mod hashing {
 	/// computes hash of the a + b
 	pub fn hash_of<H: Hasher>(a: H::Hash, b: H::Hash) -> H::Hash {
 		let data = [a.as_ref(), b.as_ref()].concat();
-		H::hash(&data).into()
+		H::hash(&data)
 	}
 
 	/// Return a bundled hash from a list of hashes.
@@ -153,21 +154,21 @@ pub mod hashing {
 			.fold(deposit_address.to_vec(), |acc, hash| {
 				[acc.as_slice(), hash.as_ref()].concat()
 			});
-		H::hash(data.as_slice()).into()
+		H::hash(data.as_slice())
 	}
 
 	/// Return a bundled hash from a list of proofs.
 	///
 	/// Same as [bundled_hash] function, but here a list of proofs is given. This function the appends [deposit_address]
-	/// and all leaf hashes from given [proofs] and a return a bundled hash.
+	/// and all leaf hashes from given [proofs] and returns a bundled hash.
 	pub fn bundled_hash_from_proofs<H: Hasher>(
 		proofs: Vec<Proof<H::Hash>>,
 		deposit_address: DepositAddress,
 	) -> H::Hash {
-		// extract (leaf) hashes from proofs
+		// Extract (leaf) hashes from proofs
 		let hashes = proofs.iter().map(|proof| proof.leaf_hash).collect();
 
-		// compute the resulting bundled hash
+		// Compute the resulting bundled hash
 		bundled_hash::<H>(hashes, deposit_address)
 	}
 }
