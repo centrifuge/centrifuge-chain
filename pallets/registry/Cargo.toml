@@ -5,7 +5,7 @@ authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
-repository = 'https://github.com/centrifuge/centrifuge-chain'
+repository = 'https://github.com/paritytech/centrifuge-chain'
 version = '2.0.0'
 
 [package.metadata.docs.rs]
@@ -14,16 +14,16 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 # Substrate basic primitives
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-frame-support = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-frame-system = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-frame-benchmarking = { git = "https://github.com/centrifuge/substrate.git", default-features = false, optional = true, branch = "master" }
-pallet-authorship = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
-pallet-balances = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false, branch = "master" }
-sp-core = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+frame-support = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.12" }
+frame-system = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.12" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", default-features = false, optional = true, branch = "polkadot-v0.9.12" }
+pallet-authorship = { git = "https://github.com/paritytech/substrate",  default-features = false, branch = "polkadot-v0.9.12" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false, branch = "polkadot-v0.9.12" }
+sp-core = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", default-features = false, branch = "polkadot-v0.9.12" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 
 # Centrifuge chain dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
@@ -38,8 +38,8 @@ unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-f
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
 pallet-fees = { path = "../fees", default-features = false }
 proofs = { path = "../../libs/proofs", default-features = false }
-sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master"  }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 
 [features]
 default = ['std']
