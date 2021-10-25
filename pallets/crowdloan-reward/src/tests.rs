@@ -196,7 +196,7 @@ fn account_already_vesting() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanReward::reward(1, 30),
-				pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
+				pallet_vesting::Error::<MockRuntime>::AtMaxVestingSchedules
 			);
 		});
 }
