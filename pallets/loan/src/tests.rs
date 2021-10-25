@@ -431,6 +431,11 @@ fn borrow_loan() {
 			let borrow_amount = Amount::from_inner(40 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+
+			// try to borrow after maturity date
+			Timestamp::set_timestamp(loan_type.maturity_date().unwrap());
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanMaturityDatePassed);
 		})
 }
 

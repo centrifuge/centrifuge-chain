@@ -23,7 +23,7 @@ pub fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
 	B::checked_from_rational(a.into_inner(), A::accuracy())
 }
 
-/// calculates the debt using debt=normalised_debt * cumulative_rate
+/// calculates the debt using debt=principal_debt * cumulative_rate
 pub fn debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
 	principal_debt: Amount,
 	accumulated_rate: Rate,

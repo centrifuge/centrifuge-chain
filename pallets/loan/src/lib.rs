@@ -87,6 +87,12 @@ where
 				.and_then(|ar| bl.collateral_value.checked_mul(&ar)),
 		}
 	}
+
+	fn maturity_date(&self) -> Option<u64> {
+		match self {
+			LoanType::BulletLoan(bl) => Some(bl.maturity_date),
+		}
+	}
 }
 
 impl<Rate, Amount> Default for LoanType<Rate, Amount>
@@ -270,6 +276,9 @@ pub mod pallet {
 
 		/// Emits when loan amount not repaid but trying to close loan
 		ErrLoanNotRepaid,
+
+		/// Emits when maturity has passed and borrower tried to borrow more
+		ErrLoanMaturityDatePassed,
 	}
 
 	#[pallet::call]
@@ -536,6 +545,16 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::ErrLoanIsInActive
 		);
 
+		// ensure maturity date has not passed if the loan has a maturity date
+		let now: u64 = Self::time_now()?;
+		let valid = match loan_info.loan_type.maturity_date() {
+			// loan has a maturity date
+			Some(md) => md > now,
+			// no maturity date, so continue as is
+			None => true,
+		};
+		ensure!(valid, Error::<T>::ErrLoanMaturityDatePassed);
+
 		// check for ceiling threshold
 		ensure!(
 			amount + loan_info.borrowed_amount <= loan_info.ceiling,
@@ -547,9 +566,7 @@ impl<T: Config> Pallet<T> {
 			.checked_add(&amount)
 			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
-		// calculate new accumulated rate
-		let now: u64 = Self::time_now()?;
-
+		// calculate accumulated rate
 		// if this is the first borrow, then set accumulated rate to rate per sec
 		let accumulated_rate = match loan_info.borrowed_amount == Zero::zero() {
 			true => Ok(loan_info.rate_per_sec),
