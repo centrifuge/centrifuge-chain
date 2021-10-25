@@ -53,5 +53,10 @@ std = [
     'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
+    'chainbridge/std',
+    'pallet-bridge-mapping/std',
+    'pallet-fees/std',
+    'pallet-nft/std',
     'unique-assets/std',
+    "common-traits/std"
 ]

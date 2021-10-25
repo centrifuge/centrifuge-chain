@@ -55,7 +55,7 @@ std = [
     "sp-runtime/std",
     "primitives-tokens/std",
     "pallet-anchors/std",
-    "common-traits/std",
+    "common-traits/std"
 ]
 
 on-chain-release-build = [
