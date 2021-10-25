@@ -732,16 +732,19 @@ pub mod pallet {
 
 		fn update_tranche_debt(tranche: &mut Tranche<T::Balance>) -> Option<()> {
 			let now = T::Time::now().as_secs();
-			let delta = now - tranche.last_updated_interest;
-			let interest: T::BalanceRatio = <T::BalanceRatio as One>::one()
+			let mut delta = now - tranche.last_updated_interest;
+			let mut interest: T::BalanceRatio = <T::BalanceRatio as One>::one()
 				+ T::BalanceRatio::checked_from_rational(
 					tranche.interest_per_sec.deconstruct(),
 					Perquintill::ACCURACY,
 				)?;
 			let mut total_interest = T::BalanceRatio::checked_from_integer(One::one())?;
-			// TODO: Use a less-bad pow() implementation
-			for _ in 0..delta {
-				total_interest = interest.checked_mul(&total_interest)?;
+			while delta != 0 {
+				if delta & 1 == 1 {
+					total_interest = interest.checked_mul(&total_interest)?;
+				}
+				interest = interest.checked_mul(&interest)?;
+				delta = delta >> 1;
 			}
 			tranche.debt = total_interest.checked_mul_int(tranche.debt)?;
 			tranche.last_updated_interest = now;
