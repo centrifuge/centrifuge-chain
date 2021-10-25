@@ -611,7 +611,6 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// Test stuff
 impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
