@@ -318,6 +318,10 @@ fn epoch() {
 		));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
+		assert_eq!(
+			pool.tranches[0].interest_per_sec,
+			Perquintill::from_parts(000000003170979198)
+		);
 		assert_eq!(pool.tranches[0].debt, 0);
 		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY);
 		assert_eq!(pool.tranches[0].ratio, Perquintill::from_float(0.5));
@@ -374,13 +378,25 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
-		// assert_eq!(pool.tranches[0].epoch_redeem, 0);
+		let drop_epoch = TinlakeInvestorPool::epoch(
+			TrancheLocator {
+				pool_id: 0,
+				tranche_id: 0,
+			},
+			pool.last_epoch_executed,
+		)
+		.unwrap();
+		assert_eq!(pool.tranches[0].epoch_redeem, 0);
 		assert_eq!(pool.tranches[0].debt, 0);
-		assert!(pool.tranches[0].reserve > 250 * CURRENCY); // there's interest in here now
+		assert!(pool.tranches[0].reserve > 250 * CURRENCY);
 		assert_eq!(pool.tranches[1].debt, 0);
-		assert!(pool.tranches[1].reserve > 500 * CURRENCY); // not yet rebalanced
+		assert!(pool.tranches[1].reserve > 500 * CURRENCY);
 		assert_eq!(pool.available_reserve, pool.total_reserve);
 		assert!(pool.total_reserve > 750 * CURRENCY);
 		assert!(pool.total_reserve < 800 * CURRENCY);
+		assert_eq!(
+			pool.total_reserve + drop_epoch.token_price.saturating_mul_int(250 * CURRENCY),
+			1010 * CURRENCY
+		);
 	});
 }

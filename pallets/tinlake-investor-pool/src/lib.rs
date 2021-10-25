@@ -1025,7 +1025,7 @@ pub mod pallet {
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			closing_epoch: T::EpochId,
 			tranche: &mut Tranche<T::Balance>,
-			solution: (Perquintill, Perquintill),
+			(supply_sol, redeem_sol): (Perquintill, Perquintill),
 			(currency_supply, _currency_redeem): (T::Balance, T::Balance),
 			price: T::BalanceRatio,
 		) -> DispatchResult {
@@ -1033,18 +1033,10 @@ pub mod pallet {
 			let token_supply = price
 				.reciprocal()
 				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_supply))
-				.map(|supply| solution.0.mul_ceil(supply))
+				.map(|supply| supply_sol.mul_ceil(supply))
 				.unwrap_or(Zero::zero());
-			let token_redeem = price
-				.reciprocal()
-				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_redeem))
-				.map(|redeem| solution.1.mul_ceil(redeem))
-				.unwrap_or(Zero::zero());
+			let token_redeem = supply_sol.mul_floor(tranche.epoch_redeem);
 
-			#[cfg(test)]
-			{
-				println!("{:?}", token_redeem);
-			}
 			tranche.epoch_supply -= currency_supply;
 			tranche.epoch_redeem -= token_redeem;
 
@@ -1064,8 +1056,8 @@ pub mod pallet {
 
 			// Insert epoch closing information on supply/redeem fulfillment
 			let epoch = EpochDetails::<T::BalanceRatio> {
-				supply_fulfillment: solution.0,
-				redeem_fulfillment: solution.1,
+				supply_fulfillment: supply_sol,
+				redeem_fulfillment: redeem_sol,
 				token_price: price,
 			};
 			Epoch::<T>::insert(loc, closing_epoch, epoch);
