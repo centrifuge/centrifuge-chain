@@ -35,6 +35,23 @@ mod tests;
 
 pub mod math;
 
+/// The data structure for storing pool nav details
+#[derive(Encode, Decode, Copy, Clone, PartialEq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct NAVDetails<Amount> {
+	// this is the latest nav for the given pool.
+	// this will be updated on these scenarios
+	// 1. When we are calculating pool nav
+	// 2. when there is borrow or repay or write off on a loan under this pool
+	// So NAV could be
+	//	approximate when current time != last_updated
+	//	exact when current time == last_updated
+	latest_nav: Amount,
+
+	// this is the last time when the nav was calculated for the entire pool
+	last_updated: u64,
+}
+
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
@@ -57,6 +74,70 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	asset_id: AssetId,
 	status: LoanStatus,
 	loan_type: LoanType<Rate, Amount>,
+}
+
+impl<Rate, Amount, AssetID> LoanData<Rate, Amount, AssetID>
+where
+	Rate: FixedPointNumber,
+	Amount: FixedPointNumber,
+{
+	/// returns the present value of the loan based
+	/// note: this will use the accumulated_rate and last_updated as is
+	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
+	fn present_value(&self) -> Option<Amount> {
+		// calculate current debt
+		let maybe_debt = math::debt(self.principal_debt, self.accumulated_rate);
+		let maybe_maturity_date = self.loan_type.maturity_date();
+		let maturity_has_passed = maybe_maturity_date
+			// check if maturity date has passed
+			.and_then(|maturity_date| Some(self.last_updated > maturity_date))
+			// since there is not maturity date for this loan, we return this as passed so we can return the current debt
+			.unwrap_or(true);
+
+		if maturity_has_passed {
+			return maybe_debt;
+		}
+
+		match (maybe_debt, maybe_maturity_date) {
+			(Some(debt), Some(maturity_date)) => {
+				match self.loan_type {
+					LoanType::BulletLoan(bl) => {
+						// calculate risk adjusted cash flow
+						math::bullet_loan_risk_adjusted_expected_cash_flow(
+							debt,
+							self.last_updated,
+							maturity_date,
+							self.rate_per_sec,
+							bl.expected_loss_over_asset_maturity,
+						) // calculate present value using risk adjusted cash flow
+						.and_then(|cash_flow| {
+							math::bullet_loan_present_value(
+								cash_flow,
+								self.last_updated,
+								maturity_date,
+								bl.discount_rate,
+							)
+						})
+					}
+				}
+			}
+			_ => None,
+		}
+	}
+
+	/// accrues rate from last updated until now
+	fn accrue_rate(&self, now: u64) -> Option<Rate> {
+		// if this is the first borrow, then set accumulated rate to rate per sec
+		match self.borrowed_amount == Zero::zero() {
+			true => Some(self.rate_per_sec),
+			false => math::calculate_accumulated_rate::<Rate>(
+				self.rate_per_sec,
+				self.accumulated_rate,
+				now,
+				self.last_updated,
+			),
+		}
+	}
 }
 
 /// The data structure for storing specific loan type data
@@ -91,6 +172,18 @@ where
 	fn maturity_date(&self) -> Option<u64> {
 		match self {
 			LoanType::BulletLoan(bl) => Some(bl.maturity_date),
+		}
+	}
+
+	fn is_valid(&self) -> bool {
+		match self {
+			LoanType::BulletLoan(bl) => vec![
+				bl.discount_rate >= One::one(),
+				bl.expected_loss_over_asset_maturity.is_positive(),
+				bl.maturity_date > 0,
+			]
+			.into_iter()
+			.all(|is_positive| is_positive),
 		}
 	}
 }
@@ -178,12 +271,12 @@ pub mod pallet {
 	/// Stores the loan nft registry ID against
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_nft_registry)]
-	pub(super) type PoolToLoanNftRegistry<T: Config> =
+	pub(crate) type PoolToLoanNftRegistry<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, RegistryIdOf<T>, OptionQuery>;
 
 	/// Stores the poolID with registryID as a key
 	#[pallet::storage]
-	pub(super) type LoanNftRegistryToPool<T: Config> =
+	pub(crate) type LoanNftRegistryToPool<T: Config> =
 		StorageMap<_, Blake2_128Concat, RegistryIdOf<T>, T::PoolId, OptionQuery>;
 
 	#[pallet::type_value]
@@ -195,13 +288,13 @@ pub mod pallet {
 	/// Stores the next loan tokenID to be issued
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_nft_token_id)]
-	pub(super) type NextLoanNftTokenID<T: Config> =
+	pub(crate) type NextLoanNftTokenID<T: Config> =
 		StorageValue<_, U256, ValueQuery, OnNextNftTokenIDEmpty>;
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_info)]
-	pub(super) type LoanInfo<T: Config> = StorageDoubleMap<
+	pub(crate) type LoanInfo<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -210,6 +303,12 @@ pub mod pallet {
 		LoanData<T::Rate, T::Amount, AssetIdOf<T>>,
 		OptionQuery,
 	>;
+
+	/// Stores the pool nav against poolId
+	#[pallet::storage]
+	#[pallet::getter(fn nav)]
+	pub(crate) type PoolNAV<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, NAVDetails<T::Amount>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -279,6 +378,9 @@ pub mod pallet {
 
 		/// Emits when maturity has passed and borrower tried to borrow more
 		ErrLoanMaturityDatePassed,
+
+		/// Emits when a loan data value is invalid
+		ErrLoanValueInvalid,
 	}
 
 	#[pallet::call]
@@ -370,6 +472,13 @@ pub mod pallet {
 
 			// calculate ceiling
 			let ceiling = loan_type.ceiling().ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+			ensure!(ceiling > Zero::zero(), Error::<T>::ErrLoanValueInvalid);
+
+			// ensure rate_per_sec >= one
+			ensure!(rate_per_sec >= One::one(), Error::<T>::ErrLoanValueInvalid);
+
+			// ensure loan_type is valid
+			ensure!(loan_type.is_valid(), Error::<T>::ErrLoanValueInvalid);
 
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
@@ -567,17 +676,9 @@ impl<T: Config> Pallet<T> {
 			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
 		// calculate accumulated rate
-		// if this is the first borrow, then set accumulated rate to rate per sec
-		let accumulated_rate = match loan_info.borrowed_amount == Zero::zero() {
-			true => Ok(loan_info.rate_per_sec),
-			false => math::calculate_accumulated_rate::<T::Rate>(
-				loan_info.rate_per_sec,
-				loan_info.accumulated_rate,
-				now,
-				loan_info.last_updated,
-			)
-			.ok_or(Error::<T>::ErrAccRateOverflow),
-		}?;
+		let accumulated_rate = loan_info
+			.accrue_rate(now)
+			.ok_or(Error::<T>::ErrAccRateOverflow)?;
 
 		// calculate current debt
 		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
@@ -626,17 +727,11 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::ErrLoanIsInActive
 		);
 
-		// ensure
-
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;
-		let accumulated_rate = math::calculate_accumulated_rate::<T::Rate>(
-			loan_info.rate_per_sec,
-			loan_info.accumulated_rate,
-			now,
-			loan_info.last_updated,
-		)
-		.ok_or(Error::<T>::ErrAddAmountOverflow)?;
+		let accumulated_rate = loan_info
+			.accrue_rate(now)
+			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
 		// calculate current debt
 		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
@@ -676,6 +771,10 @@ impl<T: Config> Pallet<T> {
 	fn time_now() -> Result<u64, DispatchError> {
 		let nowt = T::Time::now();
 		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochTimeOverflow.into())
+	}
+
+	pub fn pool_nav(pool_id: T::PoolId) -> Option<T::Amount> {
+		PoolNAV::<T>::get(pool_id).and_then(|nav_details| Some(nav_details.latest_nav))
 	}
 }
 

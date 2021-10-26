@@ -23,7 +23,7 @@ use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
 use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, TokenId, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
-use sp_arithmetic::{FixedPointNumber, PerThing, Percent};
+use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{One, StaticLookup};
 
 fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIdOf<T>
@@ -197,21 +197,17 @@ fn activate_loan() {
 			let loan_type = LoanType::BulletLoan(BulletLoan {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 99.8 %
-				expected_loss_over_asset_maturity: Rate::from_float(0.998),
+				// 0.15%
+				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: Rate::saturating_from_rational(4, 100),
+				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// 2 years
 				maturity_date: math::seconds_per_year() * 2,
 			});
-			let res = Loan::activate_loan(
-				Origin::signed(oracle),
-				pool_id,
-				loan_id,
-				Rate::one(),
-				loan_type,
-			);
+			// interest rate is 5%
+			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_ok!(res);
 			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 			let (pool_id, loan_id) = match loan_event {
@@ -223,7 +219,7 @@ fn activate_loan() {
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			assert_eq!(loan_data.status, LoanStatus::Active);
-			assert_eq!(loan_data.rate_per_sec, Rate::one());
+			assert_eq!(loan_data.rate_per_sec, rp);
 			assert_eq!(loan_data.loan_type, loan_type);
 			assert_eq!(loan_data.ceiling, Amount::from_inner(100 * USD));
 
@@ -267,21 +263,17 @@ fn close_loan() {
 			let loan_type = LoanType::BulletLoan(BulletLoan {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 99.8 %
-				expected_loss_over_asset_maturity: Rate::from_float(0.998),
+				// 0.15%
+				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: Rate::saturating_from_rational(4, 100),
+				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// 2 years
 				maturity_date: math::seconds_per_year() * 2,
 			});
-			let res = Loan::activate_loan(
-				Origin::signed(oracle),
-				pool_id,
-				loan_id,
-				Rate::one(),
-				loan_type,
-			);
+			// interest rate is 5%
+			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_ok!(res);
 
 			// close the loan
@@ -346,21 +338,17 @@ fn borrow_loan() {
 			.expect("must be a Loan issue event");
 
 			// activate loan
-			// 5% annual rate
-			let rate = math::rate_per_sec(Rate::saturating_from_rational(
-				Percent::from_percent(5).deconstruct(),
-				Percent::ACCURACY,
-			))
-			.unwrap();
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
 			let loan_type = LoanType::BulletLoan(BulletLoan {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 99.8 %
-				expected_loss_over_asset_maturity: Rate::from_float(0.998),
+				// 0.15%
+				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: Rate::saturating_from_rational(4, 100),
+				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// 2 years
 				maturity_date: math::seconds_per_year() * 2,
 			});
@@ -470,21 +458,17 @@ fn repay_loan() {
 			.expect("must be a Loan issue event");
 
 			// activate loan
-			// 5% annual rate
-			let rate = math::rate_per_sec(Rate::saturating_from_rational(
-				Percent::from_percent(5).deconstruct(),
-				Percent::ACCURACY,
-			))
-			.unwrap();
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
 			let loan_type = LoanType::BulletLoan(BulletLoan {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 99.8 %
-				expected_loss_over_asset_maturity: Rate::from_float(0.998),
+				// 0.15%
+				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: Rate::saturating_from_rational(4, 100),
+				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// 2 years
 				maturity_date: math::seconds_per_year() * 2,
 			});
@@ -648,5 +632,97 @@ fn repay_loan() {
 				AssetId(loan_nft_registry, loan_id),
 				Loan::account_id(),
 			);
+		})
+}
+
+#[test]
+fn test_bullet_loan_present_value() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 1;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * USD);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv: Amount = loan_data
+				.present_value()
+				.expect("present value should not return none");
+			assert_eq!(pv, Zero::zero());
+
+			// activate loan
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan {
+				// 80%
+				advance_rate: Rate::saturating_from_rational(80, 100),
+				// 0.15%
+				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
+				collateral_value: Amount::from_inner(125 * USD),
+				// 4%
+				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// 2 years
+				maturity_date: math::seconds_per_year() * 2,
+			});
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				loan_type,
+			);
+			assert_ok!(res);
+
+			// present value should still be zero
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv = loan_data
+				.present_value()
+				.expect("present value should not return none");
+			assert_eq!(pv, Zero::zero());
+
+			// borrow 50 amount at the instant
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// present value should still be around 50.93
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv = loan_data
+				.present_value()
+				.expect("present value should not return none");
+			assert_eq!(
+				pv,
+				Amount::saturating_from_rational(50933551899382200731u128, Amount::accuracy())
+			);
+
+			// pass some time. maybe 200 days
+			let after_200_days = 3600 * 24 * 200;
+			Timestamp::set_timestamp(after_200_days);
 		})
 }
