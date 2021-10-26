@@ -665,7 +665,6 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-	type Currency = Balances;
 	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
 }
 

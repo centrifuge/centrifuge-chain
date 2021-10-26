@@ -98,7 +98,6 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 	type PalletId = CrowdloanRewardPalletId;
 	type Event = Event;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Currency = Balances;
 	type WeightInfo = ();
 }
 

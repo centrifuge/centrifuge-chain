@@ -123,11 +123,9 @@ mod benchmarking;
 pub mod weights;
 
 /// A type alias for the balance type from this pallet's point of view.
-type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-/// The pallets own currency
-type CurrencyOf<T> = <T as Config>::Currency;
+type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -155,9 +153,7 @@ pub mod pallet {
 	// ----------------------------------------------------------------------------
 
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_vesting::Config<Currency = <Self as pallet::Config>::Currency>
-	{
+	pub trait Config: frame_system::Config + pallet_vesting::Config {
 		/// Constant configuration parameter to store the module identifier for the pallet.
 		///
 		/// The module identifier may be of the form ```PalletId(*b"cc/rwrd")```. This
@@ -191,9 +187,6 @@ pub mod pallet {
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
-
-		/// The overall currency type
-		type Currency: Currency<Self::AccountId>;
 	}
 
 	// ----------------------------------------------------------------------------
@@ -446,13 +439,12 @@ where
 			.unwrap_or(Zero::zero());
 
 		ensure!(
-			contribution >= <<T as Config>::Currency as Currency<T::AccountId>>::minimum_balance(),
+			contribution >= T::Currency::minimum_balance(),
 			Error::<T>::RewardInsufficient
 		);
 
 		ensure!(
-			vested_reward == Zero::zero()
-				|| vested_reward >= <T as pallet_vesting::Config>::MinVestedTransfer::get(),
+			vested_reward == Zero::zero() || vested_reward >= T::MinVestedTransfer::get(),
 			pallet_vesting::Error::<T>::AmountLow
 		);
 
@@ -467,14 +459,12 @@ where
 
 		// Ensure the division is correct or we give everything on the first block
 		let per_block = vested_reward
-			.checked_div(
-				&<<T as pallet_vesting::Config>::BlockNumberToBalance>::convert(
-					Self::vesting_period().expect("Pallet has been initialized. Qed."),
-				),
-			)
+			.checked_div(&T::BlockNumberToBalance::convert(
+				Self::vesting_period().expect("Pallet has been initialized. Qed."),
+			))
 			// In case period is 0 we will give everything on the first block
 			.unwrap_or(vested_reward)
-			// Ensure that we ware at least giving out 1 per block. Otherwise, vesting will be ongoing
+			// Ensure that we are at least giving out 1 per block. Otherwise, vesting will be ongoing
 			// forever. This is solved in substrate-polkadot-v0.9.12
 			.max(One::one());
 
@@ -484,17 +474,17 @@ where
 			Self::vesting_start().expect("Pallet has been initalized. Qed."),
 		);
 
-		let from: <T as frame_system::Config>::AccountId = Self::account_id();
+		let from: T::AccountId = Self::account_id();
 
 		// We MUST NOT fail after this point
 
 		// Mint the new tokens
-		let positive_imbalance = CurrencyOf::<T>::deposit_creating(&from, contribution);
+		let positive_imbalance = T::Currency::deposit_creating(&from, contribution);
 
 		// We are transferring everything and add the vesting schedule afterwards. This makes it easier.
 		//
 		// The reward pallet account only holds enough funds for this reward. So we must allow it to die.
-		CurrencyOf::<T>::transfer(&from, &who, contribution, AllowDeath)
+		T::Currency::transfer(&from, &who, contribution, AllowDeath)
 			.expect("Move what we created. Qed.");
 
 		<pallet_vesting::Pallet<T> as VestingSchedule<T::AccountId>>::add_vesting_schedule(
@@ -505,7 +495,7 @@ where
 		)
 		.map_err(|err| {
 			// Resolve imbalances
-			CurrencyOf::<T>::settle(
+			T::Currency::settle(
 				&from,
 				positive_imbalance,
 				WithdrawReasons::TRANSFER,
