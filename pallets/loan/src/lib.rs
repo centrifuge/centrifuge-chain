@@ -64,7 +64,7 @@ pub struct LoanData<Rate, Amount, AssetId> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct BulletLoan<Rate, Amount> {
 	advance_rate: Rate,
-	term_recovery_rate: Rate,
+	expected_loss_over_asset_maturity: Rate,
 	collateral_value: Amount,
 	discount_rate: Rate,
 	maturity_date: u64,
@@ -103,7 +103,7 @@ where
 	fn default() -> Self {
 		Self::BulletLoan(BulletLoan {
 			advance_rate: Zero::zero(),
-			term_recovery_rate: Zero::zero(),
+			expected_loss_over_asset_maturity: Zero::zero(),
 			collateral_value: Zero::zero(),
 			discount_rate: Zero::zero(),
 			maturity_date: 0,

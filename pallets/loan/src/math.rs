@@ -1,5 +1,5 @@
 use crate::math::Adjustment::{Dec, Inc};
-use sp_arithmetic::traits::checked_pow;
+use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::FixedPointNumber;
 
 /// calculates the latest accumulated rate since the last
@@ -69,16 +69,16 @@ pub fn rate_per_sec<Rate: FixedPointNumber>(nominal_interest_rate: Rate) -> Opti
 /// calculates the risk adjusted expected cash flow for bullet loan type
 /// assumes maturity date has not passed
 /// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
-pub fn bullet_loan_expected_cash_flow<Amount, Rate>(
+pub fn bullet_loan_risk_adjusted_expected_cash_flow<Amount, Rate>(
 	debt: Amount,
 	now: u64,
 	maturity_date: u64,
 	rate_per_sec: Rate,
-	term_recovery_rate: Rate,
+	expected_loss_over_asset_maturity: Rate,
 ) -> Option<Amount>
 where
 	Amount: FixedPointNumber,
-	Rate: FixedPointNumber,
+	Rate: FixedPointNumber + One,
 {
 	// check to be sure if the maturity date has not passed
 	if now > maturity_date {
@@ -87,12 +87,18 @@ where
 
 	// calculate the rate^(m-now)
 	checked_pow(rate_per_sec, (maturity_date - now) as usize)
-		// multiply by term_recovery_rate
-		.and_then(|i| i.checked_mul(&term_recovery_rate))
 		// convert to amount
 		.and_then(|rate| convert::<Rate, Amount>(rate))
 		// calculate expected cash flow
 		.and_then(|amount| debt.checked_mul(&amount))
+		// calculate risk adjusted cash flow
+		.and_then(|cf| {
+			// cf*(1-expected_loss)
+			let one: Rate = One::one();
+			one.checked_sub(&expected_loss_over_asset_maturity)
+				.and_then(|rr| convert::<Rate, Amount>(rr))
+				.and_then(|rr| cf.checked_mul(&rr))
+		})
 }
 
 /// calculates present value for bullet loan
@@ -207,20 +213,26 @@ mod tests {
 	fn test_bullet_loan_expected_cash_flow() {
 		// debt is 100
 		let debt = Amount::from_inner(100 * USD);
-		// ttr = 99.8 percent
-		let term_recovery_rate = Rate::from_float(0.998);
+		// expected loss over asset maturity is 0.15% => 0.0015
+		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
 		// maturity date is 2 years
 		let md = seconds_per_year() * 2;
 		// assuming now = 0
 		let now = 0;
 		// interest rate is 5%
-		let rate_per_sec = rate_per_sec(Rate::from_float(0.05)).unwrap();
-		// expected cashflow should be 110.296
-		let cf = bullet_loan_expected_cash_flow(debt, now, md, rate_per_sec, term_recovery_rate)
-			.unwrap();
+		let rate_per_sec = rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+		// expected cashflow should be 110.35
+		let cf = bullet_loan_risk_adjusted_expected_cash_flow(
+			debt,
+			now,
+			md,
+			rate_per_sec,
+			expected_loss_over_asset_maturity,
+		)
+		.unwrap();
 		assert_eq!(
 			cf,
-			Amount::saturating_from_rational(110296057615205970100u128, Amount::accuracy())
+			Amount::saturating_from_rational(110351316161105372133u128, Amount::accuracy())
 		)
 	}
 
@@ -228,23 +240,30 @@ mod tests {
 	fn test_bullet_loan_present_value() {
 		// debt is 100
 		let debt = Amount::from_inner(100 * USD);
-		// ttr = 99.8 percent
-		let term_recovery_rate = Rate::from_float(0.998);
+		// expected loss over asset maturity is 0.15% => 0.0015
+		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
 		// maturity date is 2 years
 		let md = seconds_per_year() * 2;
 		// assuming now = 0
 		let now = 0;
 		// interest rate is 5%
-		let rp = rate_per_sec(Rate::from_float(0.05)).unwrap();
-		// expected cashflow should be 110.296
-		let cf = bullet_loan_expected_cash_flow(debt, now, md, rp, term_recovery_rate).unwrap();
+		let rp = rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+		// expected cashflow should be 110.35
+		let cf = bullet_loan_risk_adjusted_expected_cash_flow(
+			debt,
+			now,
+			md,
+			rp,
+			expected_loss_over_asset_maturity,
+		)
+		.unwrap();
 		// discount rate is 4%
-		let discount_rate = rate_per_sec(Rate::from_float(0.04)).unwrap();
-		// present value should be 101.81
+		let discount_rate = rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap();
+		// present value should be 101.87
 		let pv = bullet_loan_present_value(cf, now, md, discount_rate).unwrap();
 		assert_eq!(
 			pv,
-			Amount::saturating_from_rational(101816093731764518466u128, Amount::accuracy())
+			Amount::saturating_from_rational(101867103798764401467u128, Amount::accuracy())
 		)
 	}
 }

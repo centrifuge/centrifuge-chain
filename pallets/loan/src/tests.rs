@@ -198,7 +198,7 @@ fn activate_loan() {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
 				// 99.8 %
-				term_recovery_rate: Rate::from_float(0.998),
+				expected_loss_over_asset_maturity: Rate::from_float(0.998),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
 				discount_rate: Rate::saturating_from_rational(4, 100),
@@ -268,7 +268,7 @@ fn close_loan() {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
 				// 99.8 %
-				term_recovery_rate: Rate::from_float(0.998),
+				expected_loss_over_asset_maturity: Rate::from_float(0.998),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
 				discount_rate: Rate::saturating_from_rational(4, 100),
@@ -357,7 +357,7 @@ fn borrow_loan() {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
 				// 99.8 %
-				term_recovery_rate: Rate::from_float(0.998),
+				expected_loss_over_asset_maturity: Rate::from_float(0.998),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
 				discount_rate: Rate::saturating_from_rational(4, 100),
@@ -481,7 +481,7 @@ fn repay_loan() {
 				// 80%
 				advance_rate: Rate::saturating_from_rational(80, 100),
 				// 99.8 %
-				term_recovery_rate: Rate::from_float(0.998),
+				expected_loss_over_asset_maturity: Rate::from_float(0.998),
 				collateral_value: Amount::from_inner(125 * USD),
 				// 4%
 				discount_rate: Rate::saturating_from_rational(4, 100),
