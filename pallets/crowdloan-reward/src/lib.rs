@@ -87,18 +87,14 @@
 use frame_support::{
 	dispatch::DispatchResultWithPostInfo,
 	ensure,
-	sp_runtime::traits::{CheckedSub, Saturating},
-	traits::{
-		Currency, EnsureOrigin,
-		ExistenceRequirement::{AllowDeath, KeepAlive},
-		Get,
-	},
+	sp_runtime::traits::CheckedSub,
+	traits::{Currency, EnsureOrigin, ExistenceRequirement::AllowDeath, Get, VestingSchedule},
 	BoundedVec, PalletId,
 };
 
-use frame_system::{ensure_root, RawOrigin};
+use frame_system::ensure_root;
 use sp_runtime::{
-	traits::{AccountIdConversion, CheckedDiv, Convert, StaticLookup, Zero},
+	traits::{AccountIdConversion, CheckedDiv, Convert, Zero},
 	Perbill,
 };
 use sp_std::convert::TryInto;
@@ -110,6 +106,8 @@ use common_traits::Reward;
 
 // Extrinsics weight information
 pub use crate::weights::WeightInfo;
+use frame_support::sp_runtime::traits::One;
+use frame_support::traits::WithdrawReasons;
 
 // Mock runtime and unit test cases
 #[cfg(test)]
@@ -125,9 +123,11 @@ mod benchmarking;
 pub mod weights;
 
 /// A type alias for the balance type from this pallet's point of view.
-type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
+type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+/// The pallets own currency
+type CurrencyOf<T> = <T as Config>::Currency;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -155,7 +155,9 @@ pub mod pallet {
 	// ----------------------------------------------------------------------------
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_vesting::Config {
+	pub trait Config:
+		frame_system::Config + pallet_vesting::Config<Currency = <Self as pallet::Config>::Currency>
+	{
 		/// Constant configuration parameter to store the module identifier for the pallet.
 		///
 		/// The module identifier may be of the form ```PalletId(*b"cc/rwrd")```. This
@@ -189,6 +191,9 @@ pub mod pallet {
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: WeightInfo;
+
+		/// The overall currency type
+		type Currency: Currency<Self::AccountId>;
 	}
 
 	// ----------------------------------------------------------------------------
@@ -278,12 +283,8 @@ pub mod pallet {
 		/// Invalid call to an administrative extrinsics
 		MustBeAdministrator,
 
-		/// Not enough funds in the pot for paying a reward
-		NotEnoughFunds,
-
-		/// Overflow happened during a mulitplication of balances
-		// TODO: Remove with Arithmetic error once we are gone from rococo branch
-		Overflow,
+		/// The reward is below the existential deposit
+		RewardInsufficient,
 
 		/// Pallet must be initialized first
 		PalletNotInitialized,
@@ -439,20 +440,19 @@ where
 			Error::<T>::PalletNotInitialized
 		);
 
-		let from: <T as frame_system::Config>::AccountId = Self::account_id();
-
-		// Ensure transfer will go through and we want to keep the module account alive.
-		let free_balance = <T as pallet_vesting::Config>::Currency::free_balance(&from)
-			.checked_sub(&<T as pallet_vesting::Config>::Currency::minimum_balance())
-			.unwrap_or(Zero::zero());
-		ensure!(free_balance > contribution, Error::<T>::NotEnoughFunds);
-
 		let direct_reward = Self::direct_payout_ratio() * contribution;
-		let vested_reward =
-			(Perbill::one().saturating_sub(Self::direct_payout_ratio())) * contribution;
+		let vested_reward = contribution
+			.checked_sub(&direct_reward)
+			.unwrap_or(Zero::zero());
 
 		ensure!(
-			vested_reward >= <T as pallet_vesting::Config>::MinVestedTransfer::get(),
+			contribution >= <<T as Config>::Currency as Currency<T::AccountId>>::minimum_balance(),
+			Error::<T>::RewardInsufficient
+		);
+
+		ensure!(
+			vested_reward == Zero::zero()
+				|| vested_reward >= <T as pallet_vesting::Config>::MinVestedTransfer::get(),
 			pallet_vesting::Error::<T>::AmountLow
 		);
 
@@ -469,37 +469,51 @@ where
 		let per_block = vested_reward
 			.checked_div(
 				&<<T as pallet_vesting::Config>::BlockNumberToBalance>::convert(
-					Self::vesting_period().unwrap_or(Zero::zero()),
+					Self::vesting_period().expect("Pallet has been initialized. Qed."),
 				),
 			)
-			.unwrap_or(vested_reward);
+			// In case period is 0 we will give everything on the first block
+			.unwrap_or(vested_reward)
+			// Ensure that we ware at least giving out 1 per block. Otherwise, vesting will be ongoing
+			// forever. This is solved in substrate-polkadot-v0.9.12
+			.max(One::one());
 
 		let schedule = pallet_vesting::VestingInfo::new(
 			vested_reward,
 			per_block,
-			Self::vesting_start().unwrap_or(<frame_system::Pallet<T>>::block_number()),
+			Self::vesting_start().expect("Pallet has been initalized. Qed."),
 		);
 
-		let to = <T::Lookup as StaticLookup>::unlookup(who.clone());
+		let from: <T as frame_system::Config>::AccountId = Self::account_id();
 
-		T::Currency::transfer(&from, &who, direct_reward, KeepAlive)?;
+		// We MUST NOT fail after this point
 
-		// Currently I know no way to secure that both extrinsic (transfer, vested_transfer)
-		// will be successful or be reverted if one of them changes.
-		// So, as `vested_transfer` is not revertible, we first transfer the direct amount, and then
-		// the vested amount. If first fails, we simply abort. If second fails, we are transferring
-		// the direct payout back to the module.
+		// Mint the new tokens
+		let positive_imbalance = CurrencyOf::<T>::deposit_creating(&from, contribution);
+
+		// We are transferring everything and add the vesting schedule afterwards. This makes it easier.
 		//
-		// NOTE: This procedure does change the state...
-		<pallet_vesting::Pallet<T>>::vested_transfer(
-			T::Origin::from(RawOrigin::Signed(from.clone())),
-			to,
-			schedule,
+		// The reward pallet account only holds enough funds for this reward. So we must allow it to die.
+		CurrencyOf::<T>::transfer(&from, &who, contribution, AllowDeath)
+			.expect("Move what we created. Qed.");
+
+		<pallet_vesting::Pallet<T> as VestingSchedule<T::AccountId>>::add_vesting_schedule(
+			&who,
+			schedule.locked(),
+			schedule.per_block(),
+			schedule.starting_block(),
 		)
 		.map_err(|err| {
-			T::Currency::transfer(&who, &from, direct_reward, AllowDeath)
-				.err()
-				.unwrap_or_else(|| err)
+			// Resolve imbalances
+			CurrencyOf::<T>::settle(
+				&from,
+				positive_imbalance,
+				WithdrawReasons::TRANSFER,
+				AllowDeath,
+			)
+			.expect_err("Remove what we created. Qed.");
+
+			err
 		})?;
 
 		Self::deposit_event(Event::RewardClaimed(who, direct_reward, vested_reward));

@@ -177,7 +177,7 @@ fn get_false_proof() -> proofs::Proof<H256> {
 }
 
 fn init_module() {
-	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 200, 400).unwrap();
+	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 0, 400).unwrap();
 	pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
 		Origin::signed(1),
 		Perbill::from_percent(20),
@@ -348,7 +348,7 @@ fn test_valid_claim_but_lease_elapsed() {
 					bob.proof,
 					bob.contribution
 				),
-				Error::<MockRuntime>::LeaseElapsed
+				Error::<MockRuntime>::OutOfLeasePeriod
 			);
 		});
 }

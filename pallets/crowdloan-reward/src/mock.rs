@@ -98,6 +98,7 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 	type PalletId = CrowdloanRewardPalletId;
 	type Event = Event;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type Currency = Balances;
 	type WeightInfo = ();
 }
 
@@ -182,11 +183,7 @@ impl TestExternalitiesBuilder {
 				(2, 200 * self.existential_deposit),
 				(3, 30 * self.existential_deposit),
 				(4, 40 * self.existential_deposit),
-				(12, 200 * self.existential_deposit),
-				(
-					CrowdloanReward::account_id(),
-					1000 * self.existential_deposit,
-				),
+				(12, 100 * self.existential_deposit),
 			],
 		}
 		.assimilate_storage(&mut storage)

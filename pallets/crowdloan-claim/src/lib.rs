@@ -410,7 +410,7 @@ pub mod pallet {
 		OngoingLease,
 
 		/// Claiming rewards is only possible during a lease
-		LeaseElapsed,
+		OutOfLeasePeriod,
 	}
 
 	// ------------------------------------------------------------------------
@@ -458,10 +458,11 @@ pub mod pallet {
 			// After this, the error will always be `LeaseElapsed`
 			ensure!(curr_index > 0, Error::<T>::PalletNotInitialized);
 
+			let n = <frame_system::Pallet<T>>::block_number();
+			let lease_start = Self::lease_start();
 			ensure!(
-				<frame_system::Pallet<T>>::block_number()
-					< Self::lease_start().saturating_add(Self::lease_period()),
-				Error::<T>::LeaseElapsed
+				lease_start <= n && n < lease_start.saturating_add(Self::lease_period()),
+				Error::<T>::OutOfLeasePeriod
 			);
 
 			// Be sure user has not already claimed her/his reward payout
@@ -694,13 +695,14 @@ pub mod pallet {
 				contribution,
 			} = call
 			{
+				let n = <frame_system::Pallet<T>>::block_number();
+				let lease_start = Self::lease_start();
+
 				// By checking the validity of the claim here, we ensure the extrinsic will not
 				// make it into a block (in case of a trusted node, not even into the pool)
 				// unless being valid. This is a trade-off between protecting the network from spam
 				// and paying validators for the work they are doing.
-				if <frame_system::Pallet<T>>::block_number()
-					< Self::lease_start().saturating_add(Self::lease_period())
-				{
+				if lease_start <= n && n < lease_start.saturating_add(Self::lease_period()) {
 					if !ProcessedClaims::<T>::contains_key((
 						&relaychain_account_id,
 						Self::curr_index(),
