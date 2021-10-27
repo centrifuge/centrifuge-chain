@@ -636,7 +636,7 @@ fn repay_loan() {
 }
 
 #[test]
-fn test_bullet_loan_present_value() {
+fn test_bullet_loan_nav() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -724,12 +724,12 @@ fn test_bullet_loan_present_value() {
 			// pass some time. maybe 200 days
 			let after_200_days = 3600 * 24 * 200;
 			Timestamp::set_timestamp(after_200_days);
-			let res = Loan::accrue_and_update_loan(pool_id, loan_id, after_200_days);
+			let res = Loan::update_nav(pool_id);
 			assert_ok!(res);
-			let pv = res.unwrap();
+			let nav = res.unwrap();
 			// present value should be 52.06
 			assert_eq!(
-				pv,
+				nav,
 				Amount::saturating_from_rational(52062227586365608471u128, Amount::accuracy())
 			);
 
@@ -739,7 +739,7 @@ fn test_bullet_loan_present_value() {
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			let (_acc_rate, debt) = loan_data.accrue(after_2_years).unwrap();
 			Timestamp::set_timestamp(after_2_years);
-			let res = Loan::accrue_and_update_loan(pool_id, loan_id, after_2_years);
+			let res = Loan::update_nav(pool_id);
 			assert_ok!(res);
 			let pv = res.unwrap();
 			// present value should be equal to current outstanding debt

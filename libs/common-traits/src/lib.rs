@@ -31,6 +31,7 @@ use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
 };
+use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
 use sp_std::str::FromStr;
@@ -93,4 +94,9 @@ pub trait Reward {
 /// A trait used to convert a type to BigEndian format
 pub trait BigEndian<T> {
 	fn to_big_endian(&self) -> T;
+}
+
+/// A trait to update nav for a given pool and returns the resultant NAV value
+pub trait UpdateNAV<PoolId, Amount> {
+	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
 }

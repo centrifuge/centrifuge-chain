@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::CheckedAdd;
 use std::fmt::Debug;
 
+use common_traits::UpdateNAV;
 use frame_support::pallet_prelude::Get;
 use frame_support::storage::types::OptionQuery;
 use frame_support::traits::{EnsureOrigin, Time};
@@ -800,19 +801,56 @@ impl<T: Config> Pallet<T> {
 			},
 		)
 	}
+
+	/// updates nav for the given pool and returns the latest NAV at this instant
+	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+		let now = Self::time_now()?;
+		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
+			Zero::zero(),
+			|sum, loan_id| -> Result<T::Amount, DispatchError> {
+				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now)?;
+				sum.checked_add(&pv)
+					.ok_or(Error::<T>::ErrLoanAccrueFailed.into())
+			},
+		)?;
+		PoolNAV::<T>::insert(
+			pool_id,
+			NAVDetails {
+				latest_nav: nav,
+				last_updated: now,
+			},
+		);
+		Ok(nav)
+	}
+}
+
+impl<T: Config> UpdateNAV<T::PoolId, T::Amount> for Pallet<T> {
+	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+		Self::update_nav(pool_id)
+	}
 }
 
 /// Simple ensure origin for the loan account
 pub struct EnsureLoanAccount<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: pallet::Config> EnsureOrigin<T::Origin> for EnsureLoanAccount<T> {
+impl<
+		T: pallet::Config,
+		Origin: Into<Result<RawOrigin<T::AccountId>, Origin>> + From<RawOrigin<T::AccountId>>,
+	> EnsureOrigin<Origin> for EnsureLoanAccount<T>
+{
 	type Success = T::AccountId;
 
-	fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		let loan_id = T::LoanPalletId::get().into_account();
 		o.into().and_then(|o| match o {
 			RawOrigin::Signed(who) if who == loan_id => Ok(loan_id),
-			r => Err(T::Origin::from(r)),
+			r => Err(Origin::from(r)),
 		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> Origin {
+		let loan_id = T::LoanPalletId::get().into_account();
+		Origin::from(RawOrigin::Signed(loan_id))
 	}
 }
