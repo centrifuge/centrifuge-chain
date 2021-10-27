@@ -26,8 +26,7 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use node_primitives::{Block, Hash};
 use sc_client_api::ExecutorProvider;
-use sc_executor::native_executor_instance;
-pub use sc_executor::NativeExecutor;
+use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
 use sc_service::{Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
@@ -38,25 +37,51 @@ use sp_runtime::traits::BlakeTwo256;
 use std::sync::Arc;
 use substrate_prometheus_endpoint::Registry;
 
-// Native executor instances.
-native_executor_instance!(
-	pub AltairExecutor,
-	altair_runtime::api::dispatch,
-	altair_runtime::native_version,
-	frame_benchmarking::benchmarking::HostFunctions,
-);
-native_executor_instance!(
-	pub CentrifugeExecutor,
-	centrifuge_runtime::api::dispatch,
-	centrifuge_runtime::native_version,
-	frame_benchmarking::benchmarking::HostFunctions,
-);
-native_executor_instance!(
-	pub DevelopmentExecutor,
-	development_runtime::api::dispatch,
-	development_runtime::native_version,
-	frame_benchmarking::benchmarking::HostFunctions,
-);
+// Native Altair executor instance.
+pub struct AltairRuntimeExecutor;
+
+impl sc_executor::NativeExecutionDispatch for AltairRuntimeExecutor {
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		altair_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		altair_runtime::native_version()
+	}
+}
+
+// Native Centrifuge executor instance.
+pub struct CentrifugeRuntimeExecutor;
+
+impl sc_executor::NativeExecutionDispatch for CentrifugeRuntimeExecutor {
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		centrifuge_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		centrifuge_runtime::native_version()
+	}
+}
+
+// Native Development executor instance.
+pub struct DevelopmentRuntimeExecutor;
+
+impl sc_executor::NativeExecutionDispatch for DevelopmentRuntimeExecutor {
+	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+
+	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
+		development_runtime::api::dispatch(method, data)
+	}
+
+	fn native_version() -> sc_executor::NativeVersion {
+		development_runtime::native_version()
+	}
+}
+
 /// Starts a `ServiceBuilder` for a full service.
 ///
 /// Use this macro if you don't actually need the full service, but just the builder in order to
@@ -66,17 +91,23 @@ pub fn new_partial<RuntimeApi, Executor, BIQ>(
 	build_import_queue: BIQ,
 ) -> Result<
 	PartialComponents<
-		TFullClient<Block, RuntimeApi, Executor>,
+		TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
 		TFullBackend<Block>,
 		(),
-		sc_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
-		sc_transaction_pool::FullPool<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<
+			Block,
+			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+		>,
+		sc_transaction_pool::FullPool<
+			Block,
+			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+		>,
 		(Option<Telemetry>, Option<TelemetryWorkerHandle>),
 	>,
 	sc_service::Error,
 >
 where
-	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, Executor>>
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
 		+ Send
 		+ Sync
 		+ 'static,
@@ -91,12 +122,15 @@ where
 	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	BIQ: FnOnce(
-		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
 	) -> Result<
-		sc_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<
+			Block,
+			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+		>,
 		sc_service::Error,
 	>,
 {
@@ -111,10 +145,17 @@ where
 		})
 		.transpose()?;
 
+	let executor = NativeElseWasmExecutor::<Executor>::new(
+		config.wasm_method,
+		config.default_heap_pages,
+		config.max_runtime_instances,
+	);
+
 	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, RuntimeApi, Executor>(
+		sc_service::new_full_parts::<Block, RuntimeApi, _>(
 			&config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
+			executor,
 		)?;
 	let client = Arc::new(client);
 
@@ -165,9 +206,12 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
-) -> sc_service::error::Result<(TaskManager, Arc<TFullClient<Block, RuntimeApi, Executor>>)>
+) -> sc_service::error::Result<(
+	TaskManager,
+	Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
+)>
 where
-	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, Executor>>
+	RuntimeApi: ConstructRuntimeApi<Block, TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>
 		+ Send
 		+ Sync
 		+ 'static,
@@ -183,26 +227,34 @@ where
 	sc_client_api::StateBackendFor<TFullBackend<Block>, Block>: sp_api::StateBackend<BlakeTwo256>,
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
-			Arc<TFullClient<Block, RuntimeApi, Executor>>,
+			Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
 		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
 		+ Send
 		+ 'static,
 	BIQ: FnOnce(
-		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
 		&Configuration,
 		Option<TelemetryHandle>,
 		&TaskManager,
 	) -> Result<
-		sc_consensus::DefaultImportQueue<Block, TFullClient<Block, RuntimeApi, Executor>>,
+		sc_consensus::DefaultImportQueue<
+			Block,
+			TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+		>,
 		sc_service::Error,
 	>,
 	BIC: FnOnce(
-		Arc<TFullClient<Block, RuntimeApi, Executor>>,
+		Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
 		Option<&Registry>,
 		Option<TelemetryHandle>,
 		&TaskManager,
 		&polkadot_service::NewFull<polkadot_service::Client>,
-		Arc<sc_transaction_pool::FullPool<Block, TFullClient<Block, RuntimeApi, Executor>>>,
+		Arc<
+			sc_transaction_pool::FullPool<
+				Block,
+				TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+			>,
+		>,
 		Arc<NetworkService<Block, Hash>>,
 		SyncCryptoStorePtr,
 		bool,
@@ -321,14 +373,24 @@ where
 
 /// Build the import queue for the "altair" runtime.
 pub fn build_altair_import_queue(
-	client: Arc<TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>>,
+	client: Arc<
+		TFullClient<
+			Block,
+			altair_runtime::RuntimeApi,
+			NativeElseWasmExecutor<AltairRuntimeExecutor>,
+		>,
+	>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<
 		Block,
-		TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>,
+		TFullClient<
+			Block,
+			altair_runtime::RuntimeApi,
+			NativeElseWasmExecutor<AltairRuntimeExecutor>,
+		>,
 	>,
 	sc_service::Error,
 > {
@@ -371,9 +433,15 @@ pub async fn start_altair_node(
 	id: ParaId,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<TFullClient<Block, altair_runtime::RuntimeApi, AltairExecutor>>,
+	Arc<
+		TFullClient<
+			Block,
+			altair_runtime::RuntimeApi,
+			NativeElseWasmExecutor<AltairRuntimeExecutor>,
+		>,
+	>,
 )> {
-	start_node_impl::<altair_runtime::RuntimeApi, AltairExecutor, _, _, _>(
+	start_node_impl::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		id,
@@ -465,14 +533,24 @@ pub async fn start_altair_node(
 
 /// Build the import queue for the "centrifuge" runtime.
 pub fn build_centrifuge_import_queue(
-	client: Arc<TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>>,
+	client: Arc<
+		TFullClient<
+			Block,
+			centrifuge_runtime::RuntimeApi,
+			NativeElseWasmExecutor<CentrifugeRuntimeExecutor>,
+		>,
+	>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<
 		Block,
-		TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>,
+		TFullClient<
+			Block,
+			centrifuge_runtime::RuntimeApi,
+			NativeElseWasmExecutor<CentrifugeRuntimeExecutor>,
+		>,
 	>,
 	sc_service::Error,
 > {
@@ -515,9 +593,15 @@ pub async fn start_centrifuge_node(
 	id: ParaId,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<TFullClient<Block, centrifuge_runtime::RuntimeApi, CentrifugeExecutor>>,
+	Arc<
+		TFullClient<
+			Block,
+			centrifuge_runtime::RuntimeApi,
+			NativeElseWasmExecutor<CentrifugeRuntimeExecutor>,
+		>,
+	>,
 )> {
-	start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeExecutor, _, _, _>(
+	start_node_impl::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		id,
@@ -609,14 +693,24 @@ pub async fn start_centrifuge_node(
 
 /// Build the import queue for the "development" runtime.
 pub fn build_development_import_queue(
-	client: Arc<TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>>,
+	client: Arc<
+		TFullClient<
+			Block,
+			development_runtime::RuntimeApi,
+			NativeElseWasmExecutor<DevelopmentRuntimeExecutor>,
+		>,
+	>,
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
 ) -> Result<
 	sc_consensus::DefaultImportQueue<
 		Block,
-		TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>,
+		TFullClient<
+			Block,
+			development_runtime::RuntimeApi,
+			NativeElseWasmExecutor<DevelopmentRuntimeExecutor>,
+		>,
 	>,
 	sc_service::Error,
 > {
@@ -659,9 +753,15 @@ pub async fn start_development_node(
 	id: ParaId,
 ) -> sc_service::error::Result<(
 	TaskManager,
-	Arc<TFullClient<Block, development_runtime::RuntimeApi, DevelopmentExecutor>>,
+	Arc<
+		TFullClient<
+			Block,
+			development_runtime::RuntimeApi,
+			NativeElseWasmExecutor<DevelopmentRuntimeExecutor>,
+		>,
+	>,
 )> {
-	start_node_impl::<development_runtime::RuntimeApi, DevelopmentExecutor, _, _, _>(
+	start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		id,

@@ -112,8 +112,8 @@ pub use pallet::*;
 use chainbridge::types::ResourceId;
 
 use codec::FullCodec;
-
 use common_traits::BigEndian;
+use scale_info::TypeInfo;
 
 use frame_support::{
 	dispatch::{result::Result, DispatchError, DispatchResult, DispatchResultWithPostInfo},
@@ -181,7 +181,7 @@ pub mod pallet {
 		type TokenId: Parameter + Member + Default + Clone + BigEndian<Vec<u8>>;
 
 		/// The data type that is used to describe this type of asset.
-		type AssetInfo: Hashable + Member + Debug + Default + FullCodec;
+		type AssetInfo: Hashable + Member + Debug + Default + FullCodec + TypeInfo;
 
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
@@ -199,7 +199,8 @@ pub mod pallet {
 			+ FullCodec
 			+ Into<[u8; 32]>
 			+ From<[u8; 32]>
-			+ MaybeSerializeDeserialize;
+			+ MaybeSerializeDeserialize
+			+ TypeInfo;
 
 		/// Resource hash id.
 		///
@@ -224,8 +225,6 @@ pub mod pallet {
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	// Additional argument to specify the metadata to use for given type
-	#[pallet::metadata(T::AccountId = "AccountId", T::Hash = "Hash")]
 	pub enum Event<T: Config> {
 		/// Ownership of the asset has been transferred to the account.
 		Transferred(AssetId<T::RegistryId, T::TokenId>, T::AccountId),

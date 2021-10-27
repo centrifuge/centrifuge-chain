@@ -17,6 +17,7 @@ use chainbridge::{
 	types::{ChainId, ResourceId},
 };
 use frame_support::parameter_types;
+use frame_support::traits::Everything;
 use frame_support::PalletId;
 use frame_support::{
 	traits::{FindAuthor, SortedMembers},
@@ -58,7 +59,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;

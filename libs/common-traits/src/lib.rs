@@ -26,6 +26,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::{Codec, DispatchResultWithPostInfo};
+use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
@@ -53,7 +54,8 @@ pub trait Reward {
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Ord
-		+ Parameter;
+		+ Parameter
+		+ TypeInfo;
 
 	/// The contribution amount in relay chain tokens.
 	type ContributionAmount: AtLeast32BitUnsigned
@@ -64,7 +66,8 @@ pub trait Reward {
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Parameter
-		+ Zero;
+		+ Zero
+		+ TypeInfo;
 
 	/// Block number type used by the runtime
 	type BlockNumber: AtLeast32BitUnsigned
@@ -78,7 +81,8 @@ pub trait Reward {
 		+ MaybeMallocSizeOf
 		+ MaybeSerializeDeserialize
 		+ Member
-		+ Parameter;
+		+ Parameter
+		+ TypeInfo;
 
 	/// Rewarding function that is invoked from the claim pallet.
 	///

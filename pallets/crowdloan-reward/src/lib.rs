@@ -93,7 +93,7 @@ use frame_support::{
 		ExistenceRequirement::{AllowDeath, KeepAlive},
 		Get,
 	},
-	PalletId,
+	BoundedVec, PalletId,
 };
 
 use frame_system::{ensure_root, RawOrigin};
@@ -101,6 +101,7 @@ use sp_runtime::{
 	traits::{AccountIdConversion, CheckedDiv, Convert, StaticLookup, Zero},
 	Perbill,
 };
+use sp_std::convert::TryInto;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
@@ -198,8 +199,6 @@ pub mod pallet {
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
-	// Additional argument to specify the metadata to use for given type
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Event emitted when a reward claim was processed successfully.
 		/// \[who, direct_reward, vested_reward\]
@@ -458,8 +457,12 @@ where
 		);
 
 		ensure!(
-			pallet_vesting::Pallet::<T>::vesting(&who).is_none(),
-			pallet_vesting::Error::<T>::ExistingVestingSchedule
+			pallet_vesting::Pallet::<T>::vesting(&who)
+				.unwrap_or(BoundedVec::default())
+				.len() < pallet_vesting::MaxVestingSchedulesGet::<T>::get()
+				.try_into()
+				.unwrap_or(0), // This is currently a u32, but in case it changes, we will fail-safe to zero.
+			pallet_vesting::Error::<T>::AtMaxVestingSchedules,
 		);
 
 		// Ensure the division is correct or we give everything on the first block
@@ -471,12 +474,11 @@ where
 			)
 			.unwrap_or(vested_reward);
 
-		let schedule = pallet_vesting::VestingInfo {
-			locked: vested_reward,
+		let schedule = pallet_vesting::VestingInfo::new(
+			vested_reward,
 			per_block,
-			starting_block: Self::vesting_start()
-				.unwrap_or(<frame_system::Pallet<T>>::block_number()),
-		};
+			Self::vesting_start().unwrap_or(<frame_system::Pallet<T>>::block_number()),
+		);
 
 		let to = <T::Lookup as StaticLookup>::unlookup(who.clone());
 

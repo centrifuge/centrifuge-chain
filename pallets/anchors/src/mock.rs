@@ -13,7 +13,7 @@
 
 use crate::{self as anchors, *};
 use frame_support::parameter_types;
-use frame_support::traits::SortedMembers;
+use frame_support::traits::{Everything, SortedMembers};
 use frame_support::{traits::FindAuthor, ConsensusEngineId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -48,7 +48,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;

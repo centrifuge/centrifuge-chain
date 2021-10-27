@@ -6,6 +6,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
+use scale_info::TypeInfo;
 use sp_std::{fmt::Debug, vec::Vec};
 
 #[cfg(test)]
@@ -17,7 +18,7 @@ mod mock;
 /// Deposit address
 pub type DepositAddress = [u8; 20];
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Proof<Hash> {
 	pub leaf_hash: Hash,

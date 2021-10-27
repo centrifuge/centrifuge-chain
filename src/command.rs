@@ -17,7 +17,9 @@
 use crate::{
 	chain_spec,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, AltairExecutor, CentrifugeExecutor, DevelopmentExecutor},
+	service::{
+		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
+	},
 };
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
@@ -196,7 +198,7 @@ macro_rules! construct_async_run {
             match runner.config().chain_spec.identify() {
                 ChainIdentity::Altair => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<altair_runtime::RuntimeApi, AltairExecutor, _>(
+				let $components = new_partial::<altair_runtime::RuntimeApi, AltairRuntimeExecutor, _>(
 					&$config,
 					crate::service::build_altair_import_queue,
 				)?;
@@ -206,7 +208,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Centrifuge => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<centrifuge_runtime::RuntimeApi, CentrifugeExecutor, _>(
+				let $components = new_partial::<centrifuge_runtime::RuntimeApi, CentrifugeRuntimeExecutor, _>(
 					&$config,
 					crate::service::build_centrifuge_import_queue,
 				)?;
@@ -216,7 +218,7 @@ macro_rules! construct_async_run {
                 }
                 ChainIdentity::Development => {
 		    runner.async_run(|$config| {
-				let $components = new_partial::<development_runtime::RuntimeApi, DevelopmentExecutor, _>(
+				let $components = new_partial::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _>(
 					&$config,
 					crate::service::build_development_import_queue,
 				)?;
@@ -271,7 +273,7 @@ pub fn run() -> Result<()> {
 				let polkadot_config = SubstrateCli::create_configuration(
 					&polkadot_cli,
 					&polkadot_cli,
-					config.task_executor.clone(),
+					config.tokio_handle.clone(),
 				)
 				.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
@@ -332,13 +334,13 @@ pub fn run() -> Result<()> {
 
 				match runner.config().chain_spec.identify() {
 					ChainIdentity::Altair => runner.sync_run(|config| {
-						cmd.run::<altair_runtime::Block, AltairExecutor>(config)
+						cmd.run::<altair_runtime::Block, AltairRuntimeExecutor>(config)
 					}),
 					ChainIdentity::Centrifuge => runner.sync_run(|config| {
-						cmd.run::<centrifuge_runtime::Block, CentrifugeExecutor>(config)
+						cmd.run::<centrifuge_runtime::Block, CentrifugeRuntimeExecutor>(config)
 					}),
 					ChainIdentity::Development => runner.sync_run(|config| {
-						cmd.run::<development_runtime::Block, DevelopmentExecutor>(config)
+						cmd.run::<development_runtime::Block, DevelopmentRuntimeExecutor>(config)
 					}),
 				}
 			} else {
@@ -367,7 +369,7 @@ pub fn run() -> Result<()> {
 					generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
-				let task_executor = config.task_executor.clone();
+				let task_executor = config.tokio_handle.clone();
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, task_executor)
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
@@ -507,10 +509,6 @@ impl CliConfiguration<Self> for RelayChainCli {
 		chain_spec: &Box<dyn ChainSpec>,
 	) -> Result<Option<sc_telemetry::TelemetryEndpoints>> {
 		self.base.base.telemetry_endpoints(chain_spec)
-	}
-
-	fn telemetry_external_transport(&self) -> Result<Option<sc_service::config::ExtTransport>> {
-		self.base.base.telemetry_external_transport()
 	}
 
 	fn default_heap_pages(&self) -> Result<Option<u64>> {

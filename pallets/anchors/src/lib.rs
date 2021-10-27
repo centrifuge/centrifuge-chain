@@ -22,6 +22,7 @@ use frame_support::{
 };
 pub use pallet::*;
 pub mod weights;
+use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
 use sp_std::{convert::TryInto, vec::Vec};
@@ -58,7 +59,7 @@ const STORAGE_MAX_DAYS: u32 = 376200;
 const ANCHOR_PREFIX: &[u8; 6] = b"anchor";
 
 /// The data structure for storing pre-committed anchors.
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 	signing_root: Hash,
@@ -67,7 +68,7 @@ pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 }
 
 /// The data structure for storing committed anchors.
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
 	id: Hash,

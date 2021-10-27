@@ -281,8 +281,6 @@ pub mod pallet {
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	// Additional argument to specify the metadata to use for given type
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Event emitted when the crowdloan claim pallet is properly configured.
 		ClaimPalletInitialized,
@@ -688,13 +686,13 @@ pub mod pallet {
 		/// Here, we make sure such unsigned, and remember, feeless unsigned transactions
 		/// can be used for malicious spams or Deny of Service (DoS) attacks.
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::claim_reward(
+			if let Call::claim_reward {
 				relaychain_account_id,
 				parachain_account_id,
 				identity_proof,
 				contribution_proof,
 				contribution,
-			) = call
+			} = call
 			{
 				// By checking the validity of the claim here, we ensure the extrinsic will not
 				// make it into a block (in case of a trusted node, not even into the pool)

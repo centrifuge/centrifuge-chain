@@ -330,8 +330,11 @@ fn validate_unsigned_check() {
 			];
 
 			// Abuse DDoS attach check
-			let inner_long =
-				pallet_rad_claims::Call::claim(USER_B, amount, sorted_hashes_long.to_vec());
+			let inner_long = pallet_rad_claims::Call::claim {
+				account_id: USER_B,
+				amount: amount,
+				sorted_hashes: sorted_hashes_long.to_vec(),
+			};
 			assert_noop!(
 				<Claims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_long),
 				InvalidTransaction::BadProof
@@ -342,7 +345,11 @@ fn validate_unsigned_check() {
 			let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
 			let root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
 			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
-			let inner = pallet_rad_claims::Call::claim(USER_B, amount, one_sorted_hashes.to_vec());
+			let inner = pallet_rad_claims::Call::claim {
+				account_id: USER_B,
+				amount: amount,
+				sorted_hashes: one_sorted_hashes.to_vec(),
+			};
 			assert_ok!(<Claims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
 		});
 }
