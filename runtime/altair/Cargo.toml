@@ -189,6 +189,8 @@ runtime-benchmarks = [
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
+    "pallet-crowdloan-claim/runtime-benchmarks",
+    "pallet-crowdloan-reward/runtime-benchmarks"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

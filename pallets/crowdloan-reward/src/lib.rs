@@ -496,12 +496,13 @@ where
 		.map_err(|err| {
 			// Resolve imbalances
 			T::Currency::settle(
-				&from,
+				&who,
 				positive_imbalance,
 				WithdrawReasons::TRANSFER,
 				AllowDeath,
 			)
-			.expect_err("Remove what we created. Qed.");
+			.map_err(|_err| panic!("Remove what we created. Qed.")) // I can not use expect here, as PositiveImbalance does not implement fmt::Debug
+			.unwrap();
 
 			err
 		})?;

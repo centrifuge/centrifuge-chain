@@ -439,7 +439,10 @@ pub mod pallet {
 		/// The [`contributor_identity_proof`] is built using a signature of the contributor's
 		/// parachain account id with the claimer key.
 		/// See [`validate_unsigned`]
-		#[pallet::weight(<T as Config>::WeightInfo::claim_reward())]
+		#[pallet::weight(<T as Config>::WeightInfo::claim_reward_sr25519()
+			.max(<T as Config>::WeightInfo::claim_reward_ed25519())
+			.max(<T as Config>::WeightInfo::claim_reward_ecdsa())
+		)]
 		pub fn claim_reward(
 			origin: OriginFor<T>,
 			relaychain_account_id: T::RelayChainAccountId,
@@ -475,7 +478,7 @@ pub mod pallet {
 			Self::verify_contributor_identity_proof(
 				relaychain_account_id.clone(),
 				parachain_account_id.clone(),
-				identity_proof,
+				identity_proof.clone(),
 			)?;
 
 			let mut leaf_data = relaychain_account_id.encode();
@@ -502,7 +505,17 @@ pub mod pallet {
 				contribution,
 			));
 
-			Ok(().into())
+			let weight = match identity_proof {
+				MultiSignature::Sr25519(..) => {
+					Some(<T as Config>::WeightInfo::claim_reward_sr25519())
+				}
+				MultiSignature::Ed25519(..) => {
+					Some(<T as Config>::WeightInfo::claim_reward_ed25519())
+				}
+				MultiSignature::Ecdsa(..) => Some(<T as Config>::WeightInfo::claim_reward_ecdsa()),
+			};
+
+			Ok(weight.into())
 		}
 
 		/// Initialize the claim pallet
