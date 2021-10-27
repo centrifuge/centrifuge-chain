@@ -19,9 +19,10 @@ mod benchmarking;
 mod tests;
 
 pub mod weights;
+use scale_info::TypeInfo;
 pub use weights::*;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Fee<Hash, Balance> {
 	key: Hash,
