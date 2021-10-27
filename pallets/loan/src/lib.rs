@@ -81,8 +81,8 @@ where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
 {
-	/// returns the present value of the loan based
-	/// note: this will use the accumulated_rate and last_updated as is
+	/// returns the present value of the loan
+	/// note: this will use the accumulated_rate and last_updated from self
 	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
 	fn present_value(&self) -> Option<Amount> {
 		// calculate current debt
@@ -125,10 +125,10 @@ where
 		}
 	}
 
-	/// accrues rate from last updated until now
-	fn accrue_rate(&self, now: u64) -> Option<Rate> {
+	/// accrues rate and current debt from last updated until now
+	fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
 		// if this is the first borrow, then set accumulated rate to rate per sec
-		match self.borrowed_amount == Zero::zero() {
+		let maybe_rate = match self.borrowed_amount == Zero::zero() {
 			true => Some(self.rate_per_sec),
 			false => math::calculate_accumulated_rate::<Rate>(
 				self.rate_per_sec,
@@ -136,6 +136,15 @@ where
 				now,
 				self.last_updated,
 			),
+		};
+
+		// calculate the current outstanding debt
+		let maybe_debt = maybe_rate
+			.and_then(|acc_rate| math::debt::<Amount, Rate>(self.principal_debt, acc_rate));
+
+		match (maybe_rate, maybe_debt) {
+			(Some(rate), Some(debt)) => Some((rate, debt)),
+			_ => None,
 		}
 	}
 }
@@ -340,12 +349,6 @@ pub mod pallet {
 		/// Emits when the addition of borrowed amount overflowed
 		ErrAddAmountOverflow,
 
-		/// Emits when Rate overflows during calculations
-		ErrAccRateOverflow,
-
-		/// Emits when current debt calculation failed due to overflow
-		ErrCurrentDebtOverflow,
-
 		/// Emits when principal debt calculation failed due to overflow
 		ErrPrincipalDebtOverflow,
 
@@ -381,6 +384,9 @@ pub mod pallet {
 
 		/// Emits when a loan data value is invalid
 		ErrLoanValueInvalid,
+
+		/// Emits when loan accrue calculation failed
+		ErrLoanAccrueFailed,
 	}
 
 	#[pallet::call]
@@ -670,19 +676,15 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::ErrLoanCeilingReached
 		);
 
+		// calculate accumulated rate and outstanding debt
+		let (accumulated_rate, debt) = loan_info
+			.accrue(now)
+			.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
+
 		let new_borrowed_amount = loan_info
 			.borrowed_amount
 			.checked_add(&amount)
 			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
-
-		// calculate accumulated rate
-		let accumulated_rate = loan_info
-			.accrue_rate(now)
-			.ok_or(Error::<T>::ErrAccRateOverflow)?;
-
-		// calculate current debt
-		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
-			.ok_or(Error::<T>::ErrCurrentDebtOverflow)?;
 
 		// calculate new principal debt with borrowed amount
 		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
@@ -729,13 +731,9 @@ impl<T: Config> Pallet<T> {
 
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;
-		let accumulated_rate = loan_info
-			.accrue_rate(now)
-			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
-
-		// calculate current debt
-		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
-			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
+		let (accumulated_rate, debt) = loan_info
+			.accrue(now)
+			.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
 
 		// ensure amount is not more than current debt
 		let mut repay_amount = amount;
@@ -775,6 +773,32 @@ impl<T: Config> Pallet<T> {
 
 	pub fn pool_nav(pool_id: T::PoolId) -> Option<T::Amount> {
 		PoolNAV::<T>::get(pool_id).and_then(|nav_details| Some(nav_details.latest_nav))
+	}
+
+	/// accrues rate and debt of a given loan and updates it
+	/// returns the present value of the loan
+	fn accrue_and_update_loan(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		now: u64,
+	) -> Result<T::Amount, DispatchError> {
+		LoanInfo::<T>::try_mutate(
+			pool_id,
+			loan_id,
+			|maybe_loan_data| -> Result<T::Amount, DispatchError> {
+				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::ErrMissingLoan)?;
+				let (acc_rate, _debt) = loan_data
+					.accrue(now)
+					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
+				loan_data.last_updated = now;
+				loan_data.accumulated_rate = acc_rate;
+				let present_value = loan_data
+					.present_value()
+					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
+				*maybe_loan_data = Some(loan_data);
+				Ok(present_value)
+			},
+		)
 	}
 }
 
