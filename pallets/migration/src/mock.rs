@@ -20,7 +20,10 @@ use crate as pallet_migration_manager;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_runtime::traits::ConvertInto;
-use frame_support::{parameter_types, traits::InstanceFilter, weights::Weight};
+use frame_support::traits::Everything;
+use frame_support::{
+	parameter_types, scale_info::TypeInfo, traits::InstanceFilter, weights::Weight,
+};
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
@@ -62,7 +65,7 @@ parameter_types! {
 }
 
 /// The type used to represent the kinds of proxying allowed.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum ProxyType {
 	Any,
 	NonTransfer,
@@ -127,6 +130,7 @@ impl pallet_balances::Config for MockRuntime {
 // Parameterize vesting pallet
 parameter_types! {
 	pub const MinVestedTransfer: u64 = 16;
+	pub const MaxVestingSchedules: u32 = 4;
 }
 
 // Implement vesting pallet configuration for mock runtime
@@ -135,6 +139,7 @@ impl pallet_vesting::Config for MockRuntime {
 	type Currency = Balances;
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
+	const MAX_VESTING_SCHEDULES: u32 = 1;
 	type WeightInfo = ();
 }
 
@@ -148,7 +153,7 @@ parameter_types! {
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;

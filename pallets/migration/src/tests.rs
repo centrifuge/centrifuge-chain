@@ -205,7 +205,11 @@ fn migrate_vesting_vesting() {
 			assert!(frame_system::Pallet::<MockRuntime>::account_exists(&id));
 
 			let data: VestingInfo<Balance, BlockNumber> =
-				pallet_vesting::Vesting::<MockRuntime>::try_get(&id).unwrap();
+				pallet_vesting::Vesting::<MockRuntime>::try_get(&id)
+					.unwrap()
+					.into_inner()
+					.pop()
+					.unwrap();
 
 			assert_eq!(data, vesting);
 
