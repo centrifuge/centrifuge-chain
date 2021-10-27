@@ -30,7 +30,7 @@ cumulus-pallet-xcmp-queue = {git = "https://github.com/paritytech/cumulus", defa
 cumulus-pallet-dmp-queue = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
-
+pallet-collator-selection = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
@@ -165,6 +165,7 @@ std = [
     "cumulus-pallet-parachain-system/std",
     "cumulus-primitives-timestamp/std",
     "cumulus-pallet-xcmp-queue/std",
+    "pallet-collator-selection/std",
     "parachain-info/std",
     "xcm/std",
     "xcm-executor/std",
@@ -195,6 +196,7 @@ runtime-benchmarks = [
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
+    'pallet-collator-selection/runtime-benchmarks',
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

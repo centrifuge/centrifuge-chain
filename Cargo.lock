@@ -109,6 +109,7 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-claims",
+ "pallet-collator-selection",
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
@@ -2038,6 +2039,7 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-claims",
+ "pallet-collator-selection",
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
@@ -5294,6 +5296,26 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-collator-selection"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.12#935bac869a72baef17e46d2ae1abc8c0c650cef5"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.14",
+ "pallet-authorship",
+ "pallet-session",
+ "parity-scale-codec",
+ "rand 0.7.3",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-staking",
  "sp-std",
 ]
 

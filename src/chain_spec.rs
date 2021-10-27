@@ -372,6 +372,15 @@ fn altair_genesis(
 		vesting: Default::default(),
 		sudo: altair_runtime::SudoConfig { key: root_key },
 		parachain_info: altair_runtime::ParachainInfoConfig { parachain_id: id },
+		collator_selection: altair_runtime::CollatorSelectionConfig {
+			invulnerables: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			candidacy_bond: 1 * AIR,
+			..Default::default()
+		},
 		session: altair_runtime::SessionConfig {
 			keys: initial_authorities
 				.iter()
@@ -447,6 +456,15 @@ fn development_genesis(
 		vesting: Default::default(),
 		sudo: development_runtime::SudoConfig { key: root_key },
 		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
+		collator_selection: development_runtime::CollatorSelectionConfig {
+			invulnerables: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			candidacy_bond: 1 * CFG,
+			..Default::default()
+		},
 		session: development_runtime::SessionConfig {
 			keys: initial_authorities
 				.iter()
