@@ -27,6 +27,7 @@ use runtime_common::types::{Bytes, FixedArray, Salt};
 
 use sp_core::{blake2_256, H256};
 
+use scale_info::TypeInfo;
 use sp_runtime::{sp_std::vec, sp_std::vec::Vec, traits::Hash};
 
 // ----------------------------------------------------------------------------
@@ -37,7 +38,7 @@ use sp_runtime::{sp_std::vec, sp_std::vec::Vec, traits::Hash};
 pub(crate) type SystemHashOf<T> = <T as frame_system::Config>::Hash;
 
 /// Metadata for an instance of a registry.
-#[derive(Encode, Decode, Clone, PartialEq, Default, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Default, Debug, TypeInfo)]
 pub struct RegistryInfo {
 	/// A configuration option that will enable a user to burn their own tokens
 	/// in the [burn] method.
@@ -52,7 +53,7 @@ pub struct RegistryInfo {
 //
 /// Proven by hashing hash(value + property + salt) into a leaf hash of the document
 /// merkle tree, then hashing with the given hashes to generate the Merkle root.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
 pub struct CompleteProof<Hash> {
 	/// The value of the associated property of a document. It corresponds to a leaf in
 	/// the document merkle tree.
@@ -164,7 +165,7 @@ impl<T: crate::Config> Verifier for ProofVerifier<T> {
 }
 
 /// Data needed to provide proofs during a mint.
-#[derive(Encode, Debug, Decode, Default, Clone, PartialEq)]
+#[derive(Encode, Debug, Decode, Default, Clone, PartialEq, TypeInfo)]
 pub struct MintInfo<Anchor, Hash> {
 	/// Unique ID to an anchor document.
 	pub anchor_id: Anchor,

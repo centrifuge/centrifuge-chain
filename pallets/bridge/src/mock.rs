@@ -439,12 +439,19 @@ pub(crate) mod helpers {
 
 	// Build a dummy remark proposal
 	pub fn mock_remark_proposal(hash: H256, r_id: ResourceId) -> Call {
-		Call::Bridge(pallet_bridge::Call::remark(hash, r_id))
+		Call::Bridge(pallet_bridge::Call::remark {
+			hash: hash,
+			r_id: r_id,
+		})
 	}
 
 	// Build a dummy transfer proposal.
 	pub fn mock_transfer_proposal(to: u64, amount: u128, r_id: ResourceId) -> Call {
-		Call::Bridge(pallet_bridge::Call::transfer(to, amount, r_id))
+		Call::Bridge(pallet_bridge::Call::transfer {
+			to: to,
+			amount: amount,
+			r_id: r_id,
+		})
 	}
 
 	// Create non-fungible token (NFT) for testing.
