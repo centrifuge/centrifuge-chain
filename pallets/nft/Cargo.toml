@@ -5,7 +5,7 @@ authors = ['The Centrifugians Tribe']
 edition = '2018'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
-repository = 'https://github.com/paritytech/centrifuge-chain'
+repository = 'https://github.com/centrifuge/centrifuge-chain'
 version = '2.0.0'
 
 [package.metadata.docs.rs]

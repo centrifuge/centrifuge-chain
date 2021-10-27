@@ -11,6 +11,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 integer-sqrt = { version = "0.1.2" }
 safe-mix = { version = "1.0", default-features = false }
 smallvec = "1.4.0"
@@ -32,12 +33,12 @@ cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", d
 
 
 # polkadot dependencies
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.12" }
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.12" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.12" }
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.12" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.12" }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.12" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
 
 # primitives
 sp-authority-discovery = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
