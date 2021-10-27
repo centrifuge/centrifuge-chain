@@ -2,7 +2,7 @@ version: '3'
 services:
   node_alice:
     container_name: alice
-    image: "centrifugeio/polkadot:latest"
+    image: "parity/polkadot:v0.9.11"
     ports:
       - "30333:30333"
       - "9933:9933"
@@ -13,7 +13,6 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      polkadot
       --chain=/chainspec.json
       --wasm-execution=compiled
       --execution=wasm
@@ -31,7 +30,7 @@ services:
 
   node_bob:
     container_name: bob
-    image: "centrifugeio/polkadot:latest"
+    image: "parity/polkadot:v0.9.11"
     ports:
       - "30344:30333"
       - "9935:9933"
@@ -42,7 +41,6 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      polkadot
       --chain=/chainspec.json
       --base-path=/data
       --wasm-execution=compiled
