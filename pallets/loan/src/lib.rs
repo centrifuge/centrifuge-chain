@@ -251,6 +251,9 @@ pub mod pallet {
 
 		/// emits when some amount is repaid
 		LoanAmountRepaid(T::PoolId, T::LoanId, T::Amount),
+
+		/// Emits when NAV is updated for a given pool
+		NAVUpdated(T::PoolId, T::Amount),
 	}
 
 	#[pallet::error]
@@ -416,6 +419,19 @@ pub mod pallet {
 			});
 
 			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
+			Ok(())
+		}
+
+		/// a call to update nav for a given pool
+		/// TODO(ved): benchmarking this to get a weight would be tricky due to n loans per pool
+		/// Maybe utility pallet would be a good source of inspiration?
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn update_nav(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			// ensure signed so that caller pays for the update fees
+			ensure_signed(origin)?;
+			let updated_nav = Self::update_nav_of_pool(pool_id)?;
+			Self::deposit_event(Event::<T>::NAVUpdated(pool_id, updated_nav));
 			Ok(())
 		}
 	}
@@ -764,6 +780,12 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			|maybe_loan_data| -> Result<T::Amount, DispatchError> {
 				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::ErrMissingLoan)?;
+				// if the loan is not active, then skip updating and return PV as zero
+				if loan_data.status != LoanStatus::Active {
+					*maybe_loan_data = Some(loan_data);
+					return Ok(Zero::zero());
+				}
+
 				let (acc_rate, _debt) = loan_data
 					.accrue(now)
 					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
@@ -779,7 +801,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant
-	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+	fn update_nav_of_pool(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
 		let now = Self::time_now()?;
 		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
 			Zero::zero(),
@@ -807,7 +829,7 @@ impl<T: Config> TPoolNav<T::PoolId, T::Amount> for Pallet<T> {
 	}
 
 	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
-		Self::update_nav(pool_id)
+		Self::update_nav_of_pool(pool_id)
 	}
 }
 

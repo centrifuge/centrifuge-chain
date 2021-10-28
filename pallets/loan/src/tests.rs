@@ -715,11 +715,17 @@ fn repay_loan() {
 				AssetId(loan_nft_registry, loan_id),
 				Loan::account_id(),
 			);
+
+			// check nav
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let nav = res.unwrap();
+			assert_eq!(nav, Zero::zero())
 		})
 }
 
 #[test]
-fn test_bullet_loan_nav() {
+fn test_pool_nav() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -754,6 +760,11 @@ fn test_bullet_loan_nav() {
 				.present_value()
 				.expect("present value should not return none");
 			assert_eq!(pv, Zero::zero());
+
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let nav = res.unwrap();
+			assert_eq!(nav, Zero::zero());
 
 			// activate loan
 			// interest rate is 5%
@@ -808,7 +819,7 @@ fn test_bullet_loan_nav() {
 			// pass some time. maybe 200 days
 			let after_200_days = 3600 * 24 * 200;
 			Timestamp::set_timestamp(after_200_days);
-			let res = Loan::update_nav(pool_id);
+			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
 			let nav = res.unwrap();
 			// present value should be 52.06
@@ -823,10 +834,24 @@ fn test_bullet_loan_nav() {
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			let (_acc_rate, debt) = loan_data.accrue(after_2_years).unwrap();
 			Timestamp::set_timestamp(after_2_years);
-			let res = Loan::update_nav(pool_id);
+			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
 			let pv = res.unwrap();
 			// present value should be equal to current outstanding debt
 			assert_eq!(pv, debt);
+			let nav = res.unwrap();
+			assert_eq!(pv, nav);
+
+			// call update nav extrinsic and check for event
+			let res = Loan::update_nav(Origin::signed(owner), pool_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (got_pool_id, updated_nav) = match loan_event {
+				LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				_ => None,
+			}
+			.expect("must be a Nav updated event");
+			assert_eq!(pool_id, got_pool_id);
+			assert_eq!(updated_nav, nav);
 		})
 }
