@@ -801,8 +801,9 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> TPoolNav<T::PoolId, T::Amount> for Pallet<T> {
-	fn nav(pool_id: T::PoolId) -> Option<T::Amount> {
-		PoolNAV::<T>::get(pool_id).and_then(|nav_details| Some(nav_details.latest_nav))
+	fn nav(pool_id: T::PoolId) -> Option<(T::Amount, u64)> {
+		PoolNAV::<T>::get(pool_id)
+			.and_then(|nav_details| Some((nav_details.latest_nav, nav_details.last_updated)))
 	}
 
 	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
@@ -810,7 +811,7 @@ impl<T: Config> TPoolNav<T::PoolId, T::Amount> for Pallet<T> {
 	}
 }
 
-/// Simple ensure origin for the loan account
+/// Ensure origin that allows only loan pallet account
 pub struct EnsureLoanAccount<T>(sp_std::marker::PhantomData<T>);
 
 impl<

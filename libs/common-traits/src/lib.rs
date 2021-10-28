@@ -98,6 +98,7 @@ pub trait BigEndian<T> {
 
 /// A trait that can be used to fetch the nav and update nav for a given pool
 pub trait PoolNAV<PoolId, Amount> {
-	fn nav(pool_id: PoolId) -> Option<Amount>;
+	// nav returns the nav and the last time it was calculated
+	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
 }
