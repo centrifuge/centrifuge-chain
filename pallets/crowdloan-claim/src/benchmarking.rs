@@ -11,54 +11,67 @@ use pallet_balances::AccountData;
 use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::Perbill;
 
-const CONTRIBUTION: u128 = 4000000000000000000000;
+const CONTRIBUTION: u128 = 40000000000000000000;
 
 benchmarks! {
-  claim_reward {
-		init_pallets::<T>();
+  where_clause {where T: pallet_balances::Config}
 
-		// Create some balances for the module
-		let mut key = Vec::new();
-		let reward_id = PalletId(*b"cc/rewrd");
-		key.extend_from_slice(&Twox128::hash(b"System"));
-		key.extend_from_slice(&Twox128::hash(b"Account"));
-		key.extend_from_slice(&Blake2_128Concat::hash(AccountIdConversion::<T::AccountId>::into_account(&reward_id).encode().as_slice()));
-
-		let info: frame_system::AccountInfo<T::Index, T::AccountData> = AccountInfo {
-			nonce: 0u32.into(),
-			consumers: 0u32.into(),
-			providers: 1u32.into(),
-			sufficients: 0u32.into(),
-			data: codec::Decode::decode(&mut AccountData {
-				free: get_balance::<T>(1000000000000000000000000000u128),
-				reserved: 0u32.into(),
-				misc_frozen: 0u32.into(),
-				fee_frozen: 0u32.into()
-			}.encode().as_slice()).unwrap()
-		};
-
-		<Account<T>>::insert(AccountIdConversion::<T::AccountId>::into_account(&reward_id), info);
-		//frame_support::storage::unhashed::put(&key, &info);
-
-		let relay_account: T::RelayChainAccountId = get_account_relay::<T>();
-		let para_account: ParachainAccountIdOf<T> = get_account_para::<T>();
-		let identity_proof: sp_runtime::MultiSignature = get_signature::<T>();
+  claim_reward_ed25519 {
+		let relay_account: T::RelayChainAccountId = get_account_relay_ed25519::<T>();
+		init_pallets::<T>(relay_account.clone());
+		let para_account: ParachainAccountIdOf<T> = get_account_para_ed25519::<T>();
+		let identity_proof: sp_runtime::MultiSignature = get_signature_ed25519::<T>();
 		let contribution: T::Balance = get_contribution::<T>(CONTRIBUTION);
 		let contribution_proof: proofs::Proof<T::Hash> = get_proof::<T>(
 			relay_account.clone(),
 			contribution
 		);
 
-  }: _(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
+  }: claim_reward(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
   verify {
 		// TODO: Not sure if it is even possible to use the balances pallet here. But "T" does not implement the pallet_balances::Config
 		//       so currently, I am not able to see a solution to get to the balances. Although, one might use storage directy. But I
 		//       am lazy right now. The tests cover this quite well...
   }
 
+	claim_reward_sr25519 {
+		let relay_account: T::RelayChainAccountId = get_account_relay_sr25519::<T>();
+		init_pallets::<T>(relay_account.clone());
+		let para_account: ParachainAccountIdOf<T> = get_account_para_sr25519::<T>();
+		let identity_proof: sp_runtime::MultiSignature = get_signature_sr25519::<T>();
+		let contribution: T::Balance = get_contribution::<T>(CONTRIBUTION);
+		let contribution_proof: proofs::Proof<T::Hash> = get_proof::<T>(
+			relay_account.clone(),
+			contribution
+		);
+	}: claim_reward(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
+	verify{
+		// TODO: Not sure if it is even possible to use the balances pallet here. But "T" does not implement the pallet_balances::Config
+		//       so currently, I am not able to see a solution to get to the balances. Although, one might use storage directy. But I
+		//       am lazy right now. The tests cover this quite well..
+	}
+
+	claim_reward_ecdsa {
+		let relay_account: T::RelayChainAccountId = get_account_relay_ecdsa::<T>();
+		init_pallets::<T>(relay_account.clone());
+		let para_account: ParachainAccountIdOf<T> = get_account_para_ecdsa::<T>();
+		let identity_proof: sp_runtime::MultiSignature = get_signature_ecdsa::<T>();
+		let contribution: T::Balance = get_contribution::<T>(CONTRIBUTION);
+		let contribution_proof: proofs::Proof<T::Hash> = get_proof::<T>(
+			relay_account.clone(),
+			contribution
+		);
+
+	  }: claim_reward(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
+	  verify {
+		// TODO: Not sure if it is even possible to use the balances pallet here. But "T" does not implement the pallet_balances::Config
+		//       so currently, I am not able to see a solution to get to the balances. Although, one might use storage directy. But I
+		//       am lazy right now. The tests cover this quite well...
+	  }
+
   initialize {
 		let contributions: RootHashOf<T> = get_root::<T>(
-			get_account_relay::<T>(),
+			get_account_relay_sr25519::<T>(),
 			get_contribution::<T>(CONTRIBUTION)
 		);
 		let locked_at: T::BlockNumber = 1u32.into();
@@ -90,7 +103,7 @@ benchmarks! {
 
   set_contributions_root {
 	let root: RootHashOf<T> = get_root::<T>(
-			get_account_relay::<T>(),
+			get_account_relay_sr25519::<T>(),
 			get_contribution::<T>(CONTRIBUTION)
 	);
   }: _(RawOrigin::Root, root)
@@ -140,64 +153,113 @@ fn get_balance<T: Config>(amount: u128) -> T::Balance {
 struct Signature(pub [u8; 64]);
 
 #[derive(codec::Encode, codec::Decode)]
+struct SignatureEcdsa(pub [u8; 65]);
+
+#[derive(codec::Encode, codec::Decode)]
 enum MultiSignature {
 	/// An Ed25519 signature.
 	Ed25519(Signature),
 	/// An Sr25519 signature.
 	Sr25519(Signature),
 	/// An ECDSA/SECP256k1 signature.
-	Ecdsa(Signature),
+	Ecdsa(SignatureEcdsa),
 }
 
-fn get_account_para<T: Config>() -> ParachainAccountIdOf<T> {
-	// This is bob as hex: 0x80402e69a3fc09da233b5332f5a8c50a0175a3641a690d25d1107467717fff0e
-	// This is bob as bytes: [
-	//   128,  64,  46, 105, 163, 252,   9, 218,
-	//    35,  59,  83,  50, 245, 168, 197,  10,
-	//     1, 117, 163, 100,  26, 105,  13,  37,
-	//   209,  16, 116, 103, 113, 127, 255,  14
-	// ]
+// All accounts in the following are derived from this Mnemonic
+//
+// "flight client wild replace umbrella april addict below deer inch mix surface"
+//
+
+fn get_account_para_ed25519<T: Config>() -> ParachainAccountIdOf<T> {
 	let pub_key: [u8; 32] = [
-		128, 64, 46, 105, 163, 252, 9, 218, 35, 59, 83, 50, 245, 168, 197, 10, 1, 117, 163, 100,
-		26, 105, 13, 37, 209, 16, 116, 103, 113, 127, 255, 14,
+		130, 168, 6, 216, 161, 211, 10, 240, 194, 245, 185, 187, 131, 189, 246, 132, 115, 145, 87,
+		11, 164, 80, 205, 180, 87, 88, 208, 16, 60, 59, 83, 186,
 	];
 
 	codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
-fn get_signature<T: Config>() -> sp_runtime::MultiSignature {
-	// This is alice signing bob's pub-key in bytes as bytes
-	// [
-	//   126, 160, 187, 236, 114,  88,   0, 178, 137, 109,   3,
-	//    76,  78, 214, 143, 161, 177, 242,  54, 176, 236,  20,
-	//    66, 232,  99, 250, 136,  40, 246, 219, 138,  66,  40,
-	//   202, 236,  83, 218, 136,  35, 200, 111, 233,  32, 184,
-	//     4, 197,  12, 155,   7, 250, 109, 102, 173,  38,   1,
-	//   127,  72,   4, 205, 211,  13,  85,  72, 128
-	// ]
-	let msg: [u8; 64] = [
-		126, 160, 187, 236, 114, 88, 0, 178, 137, 109, 3, 76, 78, 214, 143, 161, 177, 242, 54, 176,
-		236, 20, 66, 232, 99, 250, 136, 40, 246, 219, 138, 66, 40, 202, 236, 83, 218, 136, 35, 200,
-		111, 233, 32, 184, 4, 197, 12, 155, 7, 250, 109, 102, 173, 38, 1, 127, 72, 4, 205, 211, 13,
-		85, 72, 128,
+fn get_account_para_ecdsa<T: Config>() -> ParachainAccountIdOf<T> {
+	let pub_key: [u8; 32] = [
+		89, 211, 18, 12, 18, 109, 171, 175, 21, 236, 203, 33, 33, 168, 153, 55, 198, 227, 184, 139,
+		77, 115, 132, 73, 59, 235, 90, 175, 221, 88, 44, 247,
 	];
+
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+}
+
+fn get_account_para_sr25519<T: Config>() -> ParachainAccountIdOf<T> {
+	let pub_key: [u8; 32] = [
+		202, 13, 159, 82, 100, 222, 166, 237, 52, 113, 173, 161, 100, 206, 112, 67, 188, 178, 135,
+		53, 61, 178, 143, 121, 157, 182, 189, 207, 59, 166, 7, 92,
+	];
+
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+}
+
+fn get_signature_ecdsa<T: Config>() -> sp_runtime::MultiSignature {
+	let msg: [u8; 65] = [
+		234, 70, 108, 203, 158, 59, 224, 51, 248, 194, 209, 45, 0, 146, 83, 185, 172, 19, 254, 12,
+		148, 232, 249, 183, 131, 64, 115, 3, 39, 230, 101, 120, 87, 230, 202, 183, 162, 167, 122,
+		95, 186, 231, 179, 183, 119, 241, 166, 55, 10, 21, 243, 228, 147, 73, 2, 84, 34, 211, 51,
+		40, 245, 198, 16, 140, 0,
+	];
+
+	let local_sig = SignatureEcdsa(msg);
+	let local_multisig = MultiSignature::Ecdsa(local_sig);
+
+	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+}
+
+fn get_signature_sr25519<T: Config>() -> sp_runtime::MultiSignature {
+	let msg: [u8; 64] = [
+		132, 172, 248, 32, 17, 107, 155, 94, 246, 87, 44, 158, 2, 230, 220, 225, 170, 217, 104,
+		189, 211, 57, 98, 161, 179, 160, 79, 23, 185, 165, 250, 1, 160, 253, 160, 116, 27, 168, 19,
+		82, 30, 175, 146, 222, 178, 143, 46, 84, 15, 162, 146, 212, 244, 39, 166, 198, 137, 116,
+		30, 14, 184, 17, 212, 141,
+	];
+
 	let local_sig = Signature(msg);
 	let local_multisig = MultiSignature::Sr25519(local_sig);
 
 	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
 }
 
-fn get_account_relay<T: Config>() -> T::RelayChainAccountId {
-	// This is alice as hex 0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d
-	// ALice as bytes:[
-	//   212, 53, 147, 199,  21, 253, 211,  28,
-	//    97, 20,  26, 189,   4, 169, 159, 214,
-	//   130, 44, 133,  88, 133,  76, 205, 227,
-	//   154, 86, 132, 231, 165, 109, 162, 125
-	// ]
+fn get_signature_ed25519<T: Config>() -> sp_runtime::MultiSignature {
+	let msg: [u8; 64] = [
+		138, 180, 126, 32, 200, 234, 37, 182, 93, 251, 36, 179, 98, 233, 42, 246, 118, 207, 203,
+		108, 89, 229, 1, 218, 194, 32, 206, 88, 199, 27, 224, 54, 90, 214, 233, 122, 229, 50, 175,
+		248, 142, 175, 37, 185, 212, 199, 93, 92, 58, 91, 94, 29, 55, 42, 67, 107, 119, 155, 143,
+		192, 66, 181, 236, 8,
+	];
+	let local_sig = Signature(msg);
+	let local_multisig = MultiSignature::Ed25519(local_sig);
+
+	codec::Decode::decode(&mut codec::Encode::encode(&local_multisig).as_slice()).unwrap()
+}
+
+fn get_account_relay_ecdsa<T: Config>() -> T::RelayChainAccountId {
 	let pub_key: [u8; 32] = [
-		212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88,
-		133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
+		89, 211, 18, 12, 18, 109, 171, 175, 21, 236, 203, 33, 33, 168, 153, 55, 198, 227, 184, 139,
+		77, 115, 132, 73, 59, 235, 90, 175, 221, 88, 44, 247,
+	];
+
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+}
+
+fn get_account_relay_sr25519<T: Config>() -> T::RelayChainAccountId {
+	let pub_key: [u8; 32] = [
+		202, 13, 159, 82, 100, 222, 166, 237, 52, 113, 173, 161, 100, 206, 112, 67, 188, 178, 135,
+		53, 61, 178, 143, 121, 157, 182, 189, 207, 59, 166, 7, 92,
+	];
+
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
+}
+
+fn get_account_relay_ed25519<T: Config>() -> T::RelayChainAccountId {
+	let pub_key: [u8; 32] = [
+		130, 168, 6, 216, 161, 211, 10, 240, 194, 245, 185, 187, 131, 189, 246, 132, 115, 145, 87,
+		11, 164, 80, 205, 180, 87, 88, 208, 16, 60, 59, 83, 186,
 	];
 
 	codec::Decode::decode(&mut &pub_key[..]).unwrap()
@@ -283,15 +345,15 @@ fn get_root<T: Config>(relay: T::RelayChainAccountId, contribution: T::Balance) 
 	proofs::hashing::sort_hash_of::<ProofVerifier<T>>(node_000, node_4).into()
 }
 
-fn init_pallets<T: Config>() {
+fn init_pallets<T: Config>(relay_account: T::RelayChainAccountId) {
 	// Inject storage here. Using the
 	<Contributions<T>>::put(get_root::<T>(
-		get_account_relay::<T>(),
+		relay_account,
 		get_contribution::<T>(CONTRIBUTION),
 	));
 	<CrowdloanTrieIndex<T>>::put(Into::<TrieIndex>::into(100u32));
 	<LockedAt<T>>::put(Into::<T::BlockNumber>::into(0u32));
-	<LeaseStart<T>>::put(Into::<T::BlockNumber>::into(200u32));
+	<LeaseStart<T>>::put(Into::<T::BlockNumber>::into(0u32));
 	<LeasePeriod<T>>::put(Into::<T::BlockNumber>::into(400u32));
 	<CurrIndex<T>>::put(Into::<Index>::into(1u32));
 
