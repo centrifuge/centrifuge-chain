@@ -2,7 +2,7 @@ version: '3'
 services:
   node_alice:
     container_name: alice
-    image: "parity/polkadot:v0.9.11"
+    image: "parity/polkadot:v0.9.12"
     ports:
       - "30333:30333"
       - "9933:9933"
