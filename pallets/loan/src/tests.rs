@@ -384,6 +384,10 @@ fn borrow_loan() {
 			assert_eq!(pool_balance, 950 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, 50 * USD);
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap();
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// borrow another 20 after 1000 seconds
 			Timestamp::set_timestamp(1001);
@@ -412,6 +416,9 @@ fn borrow_loan() {
 			assert_eq!(pool_balance, 930 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, 70 * USD);
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap();
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// try to borrow more than ceiling
 			// borrow another 40 after 1000 seconds
@@ -421,9 +428,22 @@ fn borrow_loan() {
 			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
 
 			// try to borrow after maturity date
-			Timestamp::set_timestamp(loan_type.maturity_date().unwrap());
+			let now = loan_type.maturity_date().unwrap() + 1;
+			Timestamp::set_timestamp(now);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanMaturityDatePassed);
+
+			// update nav
+			let updated_nav = <Loan as TPoolNav<PoolId, Amount>>::update_nav(pool_id).unwrap();
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// after maturity should be current outstanding
+			let (_acc_rate, debt) = loan_data.accrue(now).unwrap();
+			assert_eq!(
+				updated_nav, debt,
+				"should be equal to outstanding debt post maturity"
+			);
 		})
 }
 
@@ -509,6 +529,10 @@ fn repay_loan() {
 			assert_eq!(pool_balance, 950 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, 50 * USD);
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap();
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// repay 20 after 1000 seconds
 			Timestamp::set_timestamp(1001);
@@ -533,6 +557,10 @@ fn repay_loan() {
 			assert_eq!(pool_balance, 970 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, 30 * USD);
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap();
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// repay 30 more after another 1000 seconds
 			Timestamp::set_timestamp(2001);
@@ -547,6 +575,10 @@ fn repay_loan() {
 			// check loan data
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap();
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// repay the interest
 			// 50 for 1000 seconds
@@ -612,6 +644,11 @@ fn repay_loan() {
 			assert_eq!(loan_data.principal_debt, Zero::zero());
 			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			assert_eq!(loan_data.last_updated, 3001);
+			// nav should be updated to latest present value and should be zero
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap();
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
+			assert_eq!(current_nav, Zero::zero());
 
 			// pool balance should be 1000 + interest
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
