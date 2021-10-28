@@ -128,6 +128,14 @@ mod benchmarking;
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
 
+/// Prefix that polkadot-js extension prepends our signed bytes into.
+/// See: https://github.com/polkadot-js/common/blob/v7.6.1/packages/util/src/u8a/wrap.ts
+const PRE_FIX: &[u8] = b"<Bytes>";
+
+/// Postfix that polkadot-js extension postpends our signed bytes into.
+/// See: https://github.com/polkadot-js/common/blob/v7.6.1/packages/util/src/u8a/wrap.ts
+const POST_FIX: &[u8] = b"</Bytes>";
+
 /// A type alias for crowdloan's child trie root hash, from this claim pallet's point of view.
 ///
 /// When setting up the pallet via the [`initialize`] transaction, the
@@ -755,13 +763,13 @@ pub mod pallet {
 									.propagate(true)
 									.build();
 							} else {
-								return InvalidTransaction::Custom(0).into();
+								return InvalidTransaction::Custom(3).into();
 							}
 						} else {
-							return InvalidTransaction::Custom(0).into();
+							return InvalidTransaction::Custom(2).into();
 						}
 					} else {
-						return InvalidTransaction::Custom(0).into();
+						return InvalidTransaction::Custom(1).into();
 					}
 				} else {
 					return InvalidTransaction::Custom(0).into();
@@ -816,8 +824,17 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		// Now check if the contributor's native identity on the relaychain is valid
 		let payload = parachain_account_id.encode();
+
+		// Due to how the polkadot-js extension handles signing of raw bytes, we must take this into
+		// account.
+		let mut payload_with_pre_post_fix = PRE_FIX.to_vec();
+		parachain_account_id.using_encoded(|id| payload_with_pre_post_fix.extend_from_slice(id));
+		payload_with_pre_post_fix.extend_from_slice(POST_FIX);
+
+		let signer: AccountId32 = relaychain_account_id.into();
 		ensure!(
-			signature.verify(payload.as_slice(), &relaychain_account_id.into()),
+			signature.verify(payload.as_slice(), &signer)
+				|| signature.verify(payload_with_pre_post_fix.as_slice(), &signer),
 			Error::<T>::InvalidContributorSignature
 		);
 
