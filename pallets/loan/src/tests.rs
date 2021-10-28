@@ -18,6 +18,7 @@ use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
 use crate::mock::{Event, GetUSDCurrencyId, Loan, MockRuntime, Origin, Timestamp, Tokens};
 use frame_support::{assert_err, assert_ok};
+use loan_type::{BulletLoan, LoanType};
 use orml_traits::MultiCurrency;
 use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
@@ -194,17 +195,18 @@ fn activate_loan() {
 			.expect("must be a Loan issue event");
 
 			let oracle: u64 = 1;
-			let loan_type = LoanType::BulletLoan(BulletLoan {
-				// 80%
-				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 0.15%
-				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
-				collateral_value: Amount::from_inner(125 * USD),
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// 2 years
-				maturity_date: math::seconds_per_year() * 2,
-			});
+				math::seconds_per_year() * 2,
+			));
 			// interest rate is 5%
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
@@ -260,51 +262,59 @@ fn close_loan() {
 
 			// invalid loan details
 			let oracle: u64 = 1;
-			let mut loan_type = LoanType::BulletLoan(BulletLoan {
-				// 80%
-				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 0.15%
-				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
-				collateral_value: Amount::from_inner(125 * USD),
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
-				// maturity date is in the past
-				maturity_date: 1,
-			});
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity date in the past
+				1,
+			));
 			// interest rate is 5%
-			let mut rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100);
 			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
 			// ceiling is zero
-			let LoanType::BulletLoan(mut bl) = loan_type;
-			bl.advance_rate = Zero::zero();
-			bl.maturity_date = math::seconds_per_year() * 2;
-			loan_type = LoanType::BulletLoan(bl);
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 0%
+				Zero::zero(),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
 			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
 			// rate_per_sec is invalid
-			let LoanType::BulletLoan(mut bl) = loan_type;
-			bl.advance_rate = Rate::saturating_from_rational(80, 100);
-			loan_type = LoanType::BulletLoan(bl);
-			rp = Zero::zero();
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			// interest rate is 0
+			let rp = Zero::zero();
 			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
-			// activate loan with
-			let loan_type = LoanType::BulletLoan(BulletLoan {
-				// 80%
-				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 0.15%
-				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
-				collateral_value: Amount::from_inner(125 * USD),
-				// 4%
-				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
-				// 2 years
-				maturity_date: math::seconds_per_year() * 2,
-			});
+			// activate loan
 			// interest rate is 5%
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
@@ -375,17 +385,18 @@ fn borrow_loan() {
 			// interest rate is 5%
 			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
-			let loan_type = LoanType::BulletLoan(BulletLoan {
-				// 80%
-				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 0.15%
-				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
-				collateral_value: Amount::from_inner(125 * USD),
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
-				// 2 years
-				maturity_date: math::seconds_per_year() * 2,
-			});
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
@@ -515,17 +526,18 @@ fn repay_loan() {
 			// interest rate is 5%
 			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
-			let loan_type = LoanType::BulletLoan(BulletLoan {
-				// 80%
-				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 0.15%
-				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
-				collateral_value: Amount::from_inner(125 * USD),
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
-				// 2 years
-				maturity_date: math::seconds_per_year() * 2,
-			});
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
@@ -747,17 +759,18 @@ fn test_bullet_loan_nav() {
 			// interest rate is 5%
 			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
-			let loan_type = LoanType::BulletLoan(BulletLoan {
-				// 80%
-				advance_rate: Rate::saturating_from_rational(80, 100),
-				// 0.15%
-				expected_loss_over_asset_maturity: Rate::saturating_from_rational(15, 10000),
-				collateral_value: Amount::from_inner(125 * USD),
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
 				// 4%
-				discount_rate: math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
-				// 2 years
-				maturity_date: math::seconds_per_year() * 2,
-			});
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,

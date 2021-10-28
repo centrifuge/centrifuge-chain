@@ -18,6 +18,7 @@ use frame_support::pallet_prelude::Get;
 use frame_support::storage::types::OptionQuery;
 use frame_support::traits::{EnsureOrigin, Time};
 use frame_system::RawOrigin;
+use loan_type::LoanType;
 pub use pallet::*;
 use pallet_nft::types::AssetId;
 use pallet_registry::traits::VerifierRegistry;
@@ -34,6 +35,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod loan_type;
 pub mod math;
 
 /// The data structure for storing pool nav details
@@ -95,44 +97,11 @@ where
 	/// note: this will use the accumulated_rate and last_updated from self
 	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
 	fn present_value(&self) -> Option<Amount> {
-		// calculate current debt
-		let maybe_debt = math::debt(self.principal_debt, self.accumulated_rate);
-		let maybe_maturity_date = self.loan_type.maturity_date();
-		let maturity_has_passed = maybe_maturity_date
-			// check if maturity date has passed
-			.and_then(|maturity_date| Some(self.last_updated > maturity_date))
-			// since there is not maturity date for this loan, we return true so we can return the current debt
-			.unwrap_or(true);
-
-		if maturity_has_passed {
-			return maybe_debt;
-		}
-
-		match (maybe_debt, maybe_maturity_date) {
-			(Some(debt), Some(maturity_date)) => {
-				match self.loan_type {
-					LoanType::BulletLoan(bl) => {
-						// calculate risk adjusted cash flow
-						math::bullet_loan_risk_adjusted_expected_cash_flow(
-							debt,
-							self.last_updated,
-							maturity_date,
-							self.rate_per_sec,
-							bl.expected_loss_over_asset_maturity,
-						) // calculate present value using risk adjusted cash flow
-						.and_then(|cash_flow| {
-							math::bullet_loan_present_value(
-								cash_flow,
-								self.last_updated,
-								maturity_date,
-								bl.discount_rate,
-							)
-						})
-					}
-				}
-			}
-			_ => None,
-		}
+		// calculate current debt and present value
+		math::debt(self.principal_debt, self.accumulated_rate).and_then(|debt| {
+			self.loan_type
+				.present_value(debt, self.last_updated, self.rate_per_sec)
+		})
 	}
 
 	/// accrues rate and current debt from last updated until now
@@ -156,73 +125,6 @@ where
 			(Some(rate), Some(debt)) => Some((rate, debt)),
 			_ => None,
 		}
-	}
-}
-
-/// The data structure for storing specific loan type data
-#[derive(Encode, Decode, Copy, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct BulletLoan<Rate, Amount> {
-	advance_rate: Rate,
-	expected_loss_over_asset_maturity: Rate,
-	collateral_value: Amount,
-	discount_rate: Rate,
-	maturity_date: u64,
-}
-
-#[derive(Encode, Decode, Copy, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum LoanType<Rate, Amount> {
-	BulletLoan(BulletLoan<Rate, Amount>),
-}
-
-impl<Rate, Amount> LoanType<Rate, Amount>
-where
-	Rate: FixedPointNumber,
-	Amount: FixedPointNumber,
-{
-	fn ceiling(&self) -> Option<Amount> {
-		match self {
-			// for bullet loan, ceiling = advance_rate * collateral_value
-			LoanType::BulletLoan(bl) => math::convert::<Rate, Amount>(bl.advance_rate)
-				.and_then(|ar| bl.collateral_value.checked_mul(&ar)),
-		}
-	}
-
-	fn maturity_date(&self) -> Option<u64> {
-		match self {
-			LoanType::BulletLoan(bl) => Some(bl.maturity_date),
-		}
-	}
-
-	fn is_valid(&self, now: u64) -> bool {
-		match self {
-			LoanType::BulletLoan(bl) => vec![
-				// discount should always be >= 1
-				bl.discount_rate >= One::one(),
-				bl.expected_loss_over_asset_maturity.is_positive(),
-				// maturity date should always be in future where now is at this instant
-				bl.maturity_date > now,
-			]
-			.into_iter()
-			.all(|is_positive| is_positive),
-		}
-	}
-}
-
-impl<Rate, Amount> Default for LoanType<Rate, Amount>
-where
-	Rate: Zero,
-	Amount: Zero,
-{
-	fn default() -> Self {
-		Self::BulletLoan(BulletLoan {
-			advance_rate: Zero::zero(),
-			expected_loss_over_asset_maturity: Zero::zero(),
-			collateral_value: Zero::zero(),
-			discount_rate: Zero::zero(),
-			maturity_date: 0,
-		})
 	}
 }
 
