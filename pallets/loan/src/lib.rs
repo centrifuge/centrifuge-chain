@@ -57,8 +57,12 @@ pub struct NAVDetails<Amount> {
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum LoanStatus {
+	// this when asset is locked and loan nft is issued.
 	Issued,
+	// this is when loan is in active state. Either underwriters or orcales can move loan to this state
+	// by providing information like discount rates etc.. to loan
 	Active,
+	// loan is closed and asset nft is transferred back to borrower and loan nft is transferred back to loan module
 	Closed,
 }
 
@@ -69,7 +73,12 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	ceiling: Amount,
 	borrowed_amount: Amount,
 	rate_per_sec: Rate,
+	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
 	accumulated_rate: Rate,
+	// principal debt used to calculate the current outstanding debt.
+	// principal debt will change on every borrow and repay.
+	// Called principal debt instead of pie or normalized debt as mentioned here - https://docs.makerdao.com/smart-contract-modules/rates-module
+	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with interest rate
 	principal_debt: Amount,
 	last_updated: u64,
 	asset_id: AssetId,
@@ -92,7 +101,7 @@ where
 		let maturity_has_passed = maybe_maturity_date
 			// check if maturity date has passed
 			.and_then(|maturity_date| Some(self.last_updated > maturity_date))
-			// since there is not maturity date for this loan, we return this as passed so we can return the current debt
+			// since there is not maturity date for this loan, we return true so we can return the current debt
 			.unwrap_or(true);
 
 		if maturity_has_passed {
@@ -128,7 +137,7 @@ where
 
 	/// accrues rate and current debt from last updated until now
 	fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
-		// if this is the first borrow, then set accumulated rate to rate per sec
+		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
 		let maybe_rate = match self.borrowed_amount == Zero::zero() {
 			true => Some(self.rate_per_sec),
 			false => math::calculate_accumulated_rate::<Rate>(
@@ -174,6 +183,7 @@ where
 {
 	fn ceiling(&self) -> Option<Amount> {
 		match self {
+			// for bullet loan, ceiling = advance_rate * collateral_value
 			LoanType::BulletLoan(bl) => math::convert::<Rate, Amount>(bl.advance_rate)
 				.and_then(|ar| bl.collateral_value.checked_mul(&ar)),
 		}
@@ -185,12 +195,14 @@ where
 		}
 	}
 
-	fn is_valid(&self) -> bool {
+	fn is_valid(&self, now: u64) -> bool {
 		match self {
 			LoanType::BulletLoan(bl) => vec![
+				// discount should always be >= 1
 				bl.discount_rate >= One::one(),
 				bl.expected_loss_over_asset_maturity.is_positive(),
-				bl.maturity_date > 0,
+				// maturity date should always be in future where now is at this instant
+				bl.maturity_date > now,
 			]
 			.into_iter()
 			.all(|is_positive| is_positive),
@@ -267,14 +279,14 @@ pub mod pallet {
 			HashOf<Self>,
 		>;
 
-		/// A way for use to fetch the time of the current blocks
+		/// A way for use to fetch the time of the current block
 		type Time: frame_support::traits::Time;
 
 		/// PalletID of this loan module
 		#[pallet::constant]
 		type LoanPalletId: Get<PalletId>;
 
-		/// Origin for oracle or anything that can update and activate a loan
+		/// Origin for oracle or anything that can activate a loan
 		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
@@ -488,7 +500,8 @@ pub mod pallet {
 			ensure!(rate_per_sec >= One::one(), Error::<T>::ErrLoanValueInvalid);
 
 			// ensure loan_type is valid
-			ensure!(loan_type.is_valid(), Error::<T>::ErrLoanValueInvalid);
+			let now = Self::time_now()?;
+			ensure!(loan_type.is_valid(now), Error::<T>::ErrLoanValueInvalid);
 
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
@@ -626,6 +639,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// ensure debt is all paid
+		// we just need to ensure principal debt is zero
 		ensure!(
 			loan_info.principal_debt == Zero::zero(),
 			Error::<T>::ErrLoanNotRepaid
@@ -698,7 +712,7 @@ impl<T: Config> Pallet<T> {
 			.checked_add(&amount)
 			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
-		// calculate new principal debt with borrowed amount
+		// calculate new principal debt with adjustment amount
 		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
 			debt,
 			math::Adjustment::Inc(amount),
@@ -747,7 +761,7 @@ impl<T: Config> Pallet<T> {
 				true => new_pv
 					.checked_sub(&old_pv)
 					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff)),
-				// maybe repay since new pv is less than old
+				// repay since new pv is less than old
 				false => old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff)),
@@ -770,13 +784,14 @@ impl<T: Config> Pallet<T> {
 
 		// fetch the loan details
 		let loan_data = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+
 		// ensure loan is active
 		ensure!(
 			loan_data.status == LoanStatus::Active,
 			Error::<T>::ErrLoanIsInActive
 		);
 
-		// ensure repay is positive
+		// ensure repay amount is positive
 		ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
 		// calculate old present_value
