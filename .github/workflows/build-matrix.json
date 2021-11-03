@@ -10,6 +10,6 @@
     "os": "ubuntu-latest",
     "target": "build-runtime",
     "run_on_event": "push",
-    "rust_toolchain": "1.53.0"
+    "rust_toolchain": "1.56.1"
   }
 ]
