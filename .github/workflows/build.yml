@@ -66,3 +66,4 @@ jobs:
         name: Publish to GCS
         run: |
           gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.wasm gs://centrifuge-artifact-releases/parachain/altair_runtime-$(git rev-parse --short HEAD).compact.wasm
+          gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.compressed.wasm gs://centrifuge-artifact-releases/parachain/altair_runtime-$(git rev-parse --short HEAD).compact.compressed.wasm

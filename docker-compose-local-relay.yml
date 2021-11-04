@@ -13,7 +13,7 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      --chain=/chainspec.json
+      --chain=rococo-local
       --wasm-execution=compiled
       --execution=wasm
       --no-beefy
@@ -41,7 +41,7 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      --chain=/chainspec.json
+      --chain=rococo-local
       --base-path=/data
       --wasm-execution=compiled
       --execution=wasm

@@ -164,7 +164,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-wasm-builder 3.0.0",
+ "substrate-wasm-builder 5.0.0-dev",
  "xcm",
  "xcm-builder",
  "xcm-executor",
