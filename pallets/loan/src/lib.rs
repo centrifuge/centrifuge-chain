@@ -643,7 +643,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			|maybe_loan_info| -> Result<(), DispatchError> {
 				// unwrap since we already checked above
-				let mut loan_data = maybe_loan_info.take().unwrap();
+				let mut loan_data = maybe_loan_info.take().expect("loan data should be present");
 				loan_data.borrowed_amount = new_borrowed_amount;
 				loan_data.last_updated = now;
 				loan_data.accumulated_rate = accumulated_rate;
@@ -652,16 +652,15 @@ impl<T: Config> Pallet<T> {
 					.present_value()
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+				pallet_pool::Pallet::<T>::borrow_currency(
+					pool_id,
+					RawOrigin::Signed(Self::account_id()).into(),
+					owner,
+					amount.into(),
+				)?;
 				*maybe_loan_info = Some(loan_data);
 				Ok(())
 			},
-		)?;
-
-		pallet_pool::Pallet::<T>::borrow_currency(
-			pool_id,
-			RawOrigin::Signed(Self::account_id()).into(),
-			owner,
-			amount.into(),
 		)?;
 		Ok(())
 	}
@@ -741,7 +740,7 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			|maybe_loan_info| -> Result<(), DispatchError> {
-				let mut loan_data = maybe_loan_info.take().unwrap();
+				let mut loan_data = maybe_loan_info.take().expect("loan data should be present");
 				loan_data.last_updated = now;
 				loan_data.accumulated_rate = accumulated_rate;
 				loan_data.principal_debt = principal_debt;
@@ -749,17 +748,17 @@ impl<T: Config> Pallet<T> {
 					.present_value()
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+				pallet_pool::Pallet::<T>::repay_currency(
+					pool_id,
+					RawOrigin::Signed(Self::account_id()).into(),
+					owner,
+					repay_amount.into(),
+				)?;
 				*maybe_loan_info = Some(loan_data);
 				Ok(())
 			},
 		)?;
 
-		pallet_pool::Pallet::<T>::repay_currency(
-			pool_id,
-			RawOrigin::Signed(Self::account_id()).into(),
-			owner,
-			repay_amount.into(),
-		)?;
 		Ok(repay_amount)
 	}
 
