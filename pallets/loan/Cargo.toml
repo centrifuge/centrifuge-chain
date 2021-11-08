@@ -26,6 +26,7 @@ pallet-pool = { path = "../pool", default-features = false}
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
 pallet-registry = { path = "../registry", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
+common-traits = { path = "../../libs/common-traits", default-features = false}
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -54,5 +55,6 @@ std = [
     'pallet-pool/std',
     'unique-assets/std',
     'pallet-registry/std',
-    'pallet-nft/std'
+    'pallet-nft/std',
+    'common-traits/std'
 ]

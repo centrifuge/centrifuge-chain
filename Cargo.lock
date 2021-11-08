@@ -5662,6 +5662,7 @@ name = "pallet-loan"
 version = "2.0.0"
 dependencies = [
  "chainbridge",
+ "common-traits",
  "frame-support",
  "frame-system",
  "orml-tokens",

@@ -18,12 +18,13 @@ use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
 use crate::mock::{Event, GetUSDCurrencyId, Loan, MockRuntime, Origin, Timestamp, Tokens};
 use frame_support::{assert_err, assert_ok};
+use loan_type::{BulletLoan, LoanType};
 use orml_traits::MultiCurrency;
 use pallet_loan::Event as LoanEvent;
 use pallet_registry::traits::VerifierRegistry;
-use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, TokenId, CFG};
+use runtime_common::{Amount, AssetInfo, Balance, PoolId, Rate, TokenId, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
-use sp_arithmetic::{FixedPointNumber, PerThing, Percent};
+use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::{One, StaticLookup};
 
 fn create_nft_registry<T>(owner: AccountIdOf<T>) -> RegistryIdOf<T>
@@ -194,14 +195,21 @@ fn activate_loan() {
 			.expect("must be a Loan issue event");
 
 			let oracle: u64 = 1;
-			let res = Loan::activate_loan(
-				Origin::signed(oracle),
-				pool_id,
-				loan_id,
-				Rate::one(),
-				Amount::from_inner(100u128),
-				None,
-			);
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// 2 years
+				math::seconds_per_year() * 2,
+			));
+			// interest rate is 5%
+			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_ok!(res);
 			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 			let (pool_id, loan_id) = match loan_event {
@@ -213,9 +221,9 @@ fn activate_loan() {
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			assert_eq!(loan_data.status, LoanStatus::Active);
-			assert_eq!(loan_data.maturity_date, None);
-			assert_eq!(loan_data.rate_per_sec, Rate::one());
-			assert_eq!(loan_data.ceiling, Amount::from_inner(100u128));
+			assert_eq!(loan_data.rate_per_sec, rp);
+			assert_eq!(loan_data.loan_type, loan_type);
+			assert_eq!(loan_data.ceiling, Amount::from_inner(100 * USD));
 
 			// cannot activate an already activated loan
 			let res = Loan::activate_loan(
@@ -223,8 +231,7 @@ fn activate_loan() {
 				pool_id,
 				loan_id,
 				Rate::one(),
-				Amount::from_inner(100u128),
-				None,
+				loan_type,
 			);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
 		})
@@ -253,16 +260,64 @@ fn close_loan() {
 			}
 			.expect("must be a Loan issue event");
 
-			// activate loan
+			// invalid loan details
 			let oracle: u64 = 1;
-			let res = Loan::activate_loan(
-				Origin::signed(oracle),
-				pool_id,
-				loan_id,
-				Rate::one(),
-				Amount::from_inner(100u128),
-				None,
-			);
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity date in the past
+				1,
+			));
+			// interest rate is 5%
+			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			Timestamp::set_timestamp(100);
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+
+			// ceiling is zero
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 0%
+				Zero::zero(),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+
+			// rate_per_sec is invalid
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			// interest rate is 0
+			let rp = Zero::zero();
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+
+			// activate loan
+			// interest rate is 5%
+			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let res = Loan::activate_loan(Origin::signed(oracle), pool_id, loan_id, rp, loan_type);
 			assert_ok!(res);
 
 			// close the loan
@@ -304,7 +359,7 @@ fn borrow_loan() {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
 			let owner: u64 = 1;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 1000 * CFG);
+			assert_eq!(pool_balance, 1000 * USD);
 
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, Zero::zero());
@@ -327,27 +382,34 @@ fn borrow_loan() {
 			.expect("must be a Loan issue event");
 
 			// activate loan
-			// 5% annual rate
-			let rate = math::rate_per_sec(Rate::saturating_from_rational(
-				Percent::from_percent(5).deconstruct(),
-				Percent::ACCURACY,
-			))
-			.unwrap();
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
 				loan_id,
 				rate,
 				// ceiling is 100 USD
-				Amount::from_inner(100 * CFG),
-				None,
+				loan_type,
 			);
 			assert_ok!(res);
 
 			// borrow 50 first
 			Timestamp::set_timestamp(1);
-			let borrow_amount = Amount::from_inner(50 * CFG);
+			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 
@@ -357,20 +419,24 @@ fn borrow_loan() {
 			// accumulated rate is now rate per sec
 			assert_eq!(loan_data.accumulated_rate, rate);
 			assert_eq!(loan_data.last_updated, 1);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			let p_debt = borrow_amount
 				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
 				.unwrap();
 			assert_eq!(loan_data.principal_debt, p_debt);
 			// pool should have 50 less token
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 950 * CFG);
+			assert_eq!(pool_balance, 950 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 50 * CFG);
+			assert_eq!(owner_balance, 50 * USD);
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// borrow another 20 after 1000 seconds
 			Timestamp::set_timestamp(1001);
-			let borrow_amount = Amount::from_inner(20 * CFG);
+			let borrow_amount = Amount::from_inner(20 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 			// check loan data
@@ -382,7 +448,7 @@ fn borrow_loan() {
 				checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 			);
 			assert_eq!(loan_data.last_updated, 1001);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(70 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(70 * USD));
 			let c_debt = math::debt(p_debt, loan_data.accumulated_rate).unwrap();
 			let p_debt = c_debt
 				.checked_add(&borrow_amount)
@@ -392,16 +458,37 @@ fn borrow_loan() {
 			assert_eq!(loan_data.principal_debt, p_debt);
 
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 930 * CFG);
+			assert_eq!(pool_balance, 930 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 70 * CFG);
+			assert_eq!(owner_balance, 70 * USD);
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// try to borrow more than ceiling
 			// borrow another 40 after 1000 seconds
 			Timestamp::set_timestamp(2001);
-			let borrow_amount = Amount::from_inner(40 * CFG);
+			let borrow_amount = Amount::from_inner(40 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+
+			// try to borrow after maturity date
+			let now = loan_type.maturity_date().unwrap() + 1;
+			Timestamp::set_timestamp(now);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanMaturityDatePassed);
+
+			// update nav
+			let updated_nav = <Loan as TPoolNav<PoolId, Amount>>::update_nav(pool_id).unwrap();
+			// check loan data
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// after maturity should be current outstanding
+			let (_acc_rate, debt) = loan_data.accrue(now).unwrap();
+			assert_eq!(
+				updated_nav, debt,
+				"should be equal to outstanding debt post maturity"
+			);
 		})
 }
 
@@ -413,7 +500,7 @@ fn repay_loan() {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
 			let owner: u64 = 1;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 1000 * CFG);
+			assert_eq!(pool_balance, 1000 * USD);
 
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
 			assert_eq!(owner_balance, Zero::zero());
@@ -436,32 +523,39 @@ fn repay_loan() {
 			.expect("must be a Loan issue event");
 
 			// activate loan
-			// 5% annual rate
-			let rate = math::rate_per_sec(Rate::saturating_from_rational(
-				Percent::from_percent(5).deconstruct(),
-				Percent::ACCURACY,
-			))
-			.unwrap();
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
 			let res = Loan::activate_loan(
 				Origin::signed(oracle),
 				pool_id,
 				loan_id,
 				rate,
 				// ceiling is 100 USD
-				Amount::from_inner(100 * CFG),
-				None,
+				loan_type,
 			);
 			assert_ok!(res);
 
 			// try repay without any borrowed
-			let repay_amount = Amount::from_inner(20 * CFG);
+			let repay_amount = Amount::from_inner(20 * USD);
 			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
 			assert_ok!(res);
 
 			// borrow 50
 			Timestamp::set_timestamp(1);
-			let borrow_amount = Amount::from_inner(50 * CFG);
+			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 
@@ -471,20 +565,24 @@ fn repay_loan() {
 			// accumulated rate is now rate per sec
 			assert_eq!(loan_data.accumulated_rate, rate);
 			assert_eq!(loan_data.last_updated, 1);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			let p_debt = borrow_amount
 				.checked_div(&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap())
 				.unwrap();
 			assert_eq!(loan_data.principal_debt, p_debt);
 			// pool should have 50 less token
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 950 * CFG);
+			assert_eq!(pool_balance, 950 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 50 * CFG);
+			assert_eq!(owner_balance, 50 * USD);
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// repay 20 after 1000 seconds
 			Timestamp::set_timestamp(1001);
-			let repay_amount = Amount::from_inner(20 * CFG);
+			let repay_amount = Amount::from_inner(20 * USD);
 			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
 			assert_ok!(res);
 
@@ -497,18 +595,22 @@ fn repay_loan() {
 				checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 			);
 			assert_eq!(loan_data.last_updated, 1001);
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			// principal debt should still be more than 30 due to interest
-			assert!(loan_data.principal_debt > Amount::from_inner(30 * CFG));
+			assert!(loan_data.principal_debt > Amount::from_inner(30 * USD));
 			// pool should have 30 less token
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			assert_eq!(pool_balance, 970 * CFG);
+			assert_eq!(pool_balance, 970 * USD);
 			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
-			assert_eq!(owner_balance, 30 * CFG);
+			assert_eq!(owner_balance, 30 * USD);
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// repay 30 more after another 1000 seconds
 			Timestamp::set_timestamp(2001);
-			let repay_amount = Amount::from_inner(30 * CFG);
+			let repay_amount = Amount::from_inner(30 * USD);
 			let res = Loan::repay(Origin::signed(owner), pool_id, loan_id, repay_amount);
 			assert_ok!(res);
 
@@ -519,10 +621,14 @@ fn repay_loan() {
 			// check loan data
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			// nav should be updated to latest present value
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
 
 			// repay the interest
 			// 50 for 1000 seconds
-			let amount = Amount::from_inner(50 * CFG);
+			let amount = Amount::from_inner(50 * USD);
 			let p_debt = amount
 				.checked_div(&math::convert::<Rate, Amount>(loan_data.rate_per_sec).unwrap())
 				.unwrap();
@@ -533,7 +639,7 @@ fn repay_loan() {
 
 			// 30 for 1000 seconds
 			let p_debt = debt_after_1000
-				.checked_sub(&Amount::from_inner(20 * CFG))
+				.checked_sub(&Amount::from_inner(20 * USD))
 				.unwrap()
 				.checked_div(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
 				.unwrap();
@@ -542,7 +648,7 @@ fn repay_loan() {
 				.checked_mul(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
 				.unwrap();
 			let p_debt = debt_after_2000
-				.checked_sub(&Amount::from_inner(30 * CFG))
+				.checked_sub(&Amount::from_inner(30 * USD))
 				.unwrap()
 				.checked_div(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
 				.unwrap();
@@ -582,12 +688,17 @@ fn repay_loan() {
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			assert_eq!(loan_data.status, LoanStatus::Closed);
 			assert_eq!(loan_data.principal_debt, Zero::zero());
-			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * CFG));
+			assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 			assert_eq!(loan_data.last_updated, 3001);
+			// nav should be updated to latest present value and should be zero
+			let current_nav = <Loan as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+			let pv = loan_data.present_value().unwrap();
+			assert_eq!(current_nav, pv, "should be same due to single loan");
+			assert_eq!(current_nav, Zero::zero());
 
 			// pool balance should be 1000 + interest
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
-			let expected_balance = 1000 * CFG + transfer_amount;
+			let expected_balance = 1000 * USD + transfer_amount;
 			assert_eq!(pool_balance, expected_balance);
 
 			// owner balance should be zero
@@ -604,5 +715,143 @@ fn repay_loan() {
 				AssetId(loan_nft_registry, loan_id),
 				Loan::account_id(),
 			);
+
+			// check nav
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let nav = res.unwrap();
+			assert_eq!(nav, Zero::zero())
+		})
+}
+
+#[test]
+fn test_pool_nav() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 1;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * USD);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv: Amount = loan_data
+				.present_value()
+				.expect("present value should not return none");
+			assert_eq!(pv, Zero::zero());
+
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let nav = res.unwrap();
+			assert_eq!(nav, Zero::zero());
+
+			// activate loan
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				loan_type,
+			);
+			assert_ok!(res);
+
+			// present value should still be zero
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv = loan_data
+				.present_value()
+				.expect("present value should not return none");
+			assert_eq!(pv, Zero::zero());
+
+			// borrow 50 amount at the instant
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// present value should still be around 50.93
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv = loan_data
+				.present_value()
+				.expect("present value should not return none");
+			assert_eq!(
+				pv,
+				Amount::saturating_from_rational(50933551899382200731u128, Amount::accuracy())
+			);
+
+			// pass some time. maybe 200 days
+			let after_200_days = 3600 * 24 * 200;
+			Timestamp::set_timestamp(after_200_days);
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let nav = res.unwrap();
+			// present value should be 52.06
+			assert_eq!(
+				nav,
+				Amount::saturating_from_rational(52062227586365608471u128, Amount::accuracy())
+			);
+
+			// let the maturity has passed 2 years + 1 day
+			let after_2_years = (math::seconds_per_year() * 2) + (24 * 3600);
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let (_acc_rate, debt) = loan_data.accrue(after_2_years).unwrap();
+			Timestamp::set_timestamp(after_2_years);
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let pv = res.unwrap();
+			// present value should be equal to current outstanding debt
+			assert_eq!(pv, debt);
+			let nav = res.unwrap();
+			assert_eq!(pv, nav);
+
+			// call update nav extrinsic and check for event
+			let res = Loan::update_nav(Origin::signed(owner), pool_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (got_pool_id, updated_nav) = match loan_event {
+				LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				_ => None,
+			}
+			.expect("must be a Nav updated event");
+			assert_eq!(pool_id, got_pool_id);
+			assert_eq!(updated_nav, nav);
 		})
 }

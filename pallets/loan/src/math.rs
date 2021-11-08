@@ -1,5 +1,5 @@
 use crate::math::Adjustment::{Dec, Inc};
-use sp_arithmetic::traits::checked_pow;
+use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::FixedPointNumber;
 
 /// calculates the latest accumulated rate since the last
@@ -23,7 +23,7 @@ pub fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
 	B::checked_from_rational(a.into_inner(), A::accuracy())
 }
 
-/// calculates the debt using debt=normalised_debt * cumulative_rate
+/// calculates the debt using debt=principal_debt * cumulative_rate
 pub fn debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
 	principal_debt: Amount,
 	accumulated_rate: Rate,
@@ -54,23 +54,82 @@ pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber
 
 /// returns the seconds in a given normal year(365 days)
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
-fn seconds_per_year<T: FixedPointNumber>() -> T {
-	T::saturating_from_integer(3600 * 24 * 365_u128)
+pub(crate) fn seconds_per_year() -> u64 {
+	3600 * 24 * 365
 }
 
 /// calculates rate per second from the given nominal interest rate
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
 pub fn rate_per_sec<Rate: FixedPointNumber>(nominal_interest_rate: Rate) -> Option<Rate> {
 	nominal_interest_rate
-		.checked_div(&seconds_per_year())
+		.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
 		.and_then(|res| res.checked_add(&Rate::one()))
+}
+
+/// calculates the risk adjusted expected cash flow for bullet loan type
+/// assumes maturity date has not passed
+/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+pub fn bullet_loan_risk_adjusted_expected_cash_flow<Amount, Rate>(
+	debt: Amount,
+	now: u64,
+	maturity_date: u64,
+	rate_per_sec: Rate,
+	expected_loss_over_asset_maturity: Rate,
+) -> Option<Amount>
+where
+	Amount: FixedPointNumber,
+	Rate: FixedPointNumber + One,
+{
+	// check to be sure if the maturity date has not passed
+	if now > maturity_date {
+		return None;
+	}
+
+	// calculate the rate^(m-now)
+	checked_pow(rate_per_sec, (maturity_date - now) as usize)
+		// convert to amount
+		.and_then(|rate| convert::<Rate, Amount>(rate))
+		// calculate expected cash flow
+		.and_then(|amount| debt.checked_mul(&amount))
+		// calculate risk adjusted cash flow
+		.and_then(|cf| {
+			// cf*(1-expected_loss)
+			let one: Rate = One::one();
+			one.checked_sub(&expected_loss_over_asset_maturity)
+				.and_then(|rr| convert::<Rate, Amount>(rr))
+				.and_then(|rr| cf.checked_mul(&rr))
+		})
+}
+
+/// calculates present value for bullet loan
+/// assumes maturity date has not passed
+/// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
+pub fn bullet_loan_present_value<Amount, Rate>(
+	expected_cash_flow: Amount,
+	now: u64,
+	maturity_date: u64,
+	discount_rate: Rate,
+) -> Option<Amount>
+where
+	Amount: FixedPointNumber,
+	Rate: FixedPointNumber,
+{
+	if now > maturity_date {
+		return None;
+	}
+
+	// calculate total discount rate
+	checked_pow(discount_rate, (maturity_date - now) as usize)
+		.and_then(|rate| convert::<Rate, Amount>(rate))
+		// calculate the present value
+		.and_then(|d| expected_cash_flow.checked_div(&d))
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
 	use frame_support::sp_runtime::traits::CheckedMul;
-	use runtime_common::Rate;
+	use runtime_common::{Amount, Rate, CFG as USD};
 	use sp_arithmetic::{FixedI128, PerThing};
 	use sp_arithmetic::{FixedU128, Percent};
 
@@ -148,5 +207,63 @@ mod tests {
 			.checked_mul(&convert::<Rate, FixedU128>(expected_accumulated_rate).unwrap())
 			.unwrap();
 		assert_eq!(expected_debt, maybe_debt.unwrap())
+	}
+
+	#[test]
+	fn test_bullet_loan_expected_cash_flow() {
+		// debt is 100
+		let debt = Amount::from_inner(100 * USD);
+		// expected loss over asset maturity is 0.15% => 0.0015
+		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
+		// maturity date is 2 years
+		let md = seconds_per_year() * 2;
+		// assuming now = 0
+		let now = 0;
+		// interest rate is 5%
+		let rate_per_sec = rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+		// expected cashflow should be 110.35
+		let cf = bullet_loan_risk_adjusted_expected_cash_flow(
+			debt,
+			now,
+			md,
+			rate_per_sec,
+			expected_loss_over_asset_maturity,
+		)
+		.unwrap();
+		assert_eq!(
+			cf,
+			Amount::saturating_from_rational(110351316161105372133u128, Amount::accuracy())
+		)
+	}
+
+	#[test]
+	fn test_bullet_loan_present_value() {
+		// debt is 100
+		let debt = Amount::from_inner(100 * USD);
+		// expected loss over asset maturity is 0.15% => 0.0015
+		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
+		// maturity date is 2 years
+		let md = seconds_per_year() * 2;
+		// assuming now = 0
+		let now = 0;
+		// interest rate is 5%
+		let rp = rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+		// expected cashflow should be 110.35
+		let cf = bullet_loan_risk_adjusted_expected_cash_flow(
+			debt,
+			now,
+			md,
+			rp,
+			expected_loss_over_asset_maturity,
+		)
+		.unwrap();
+		// discount rate is 4%
+		let discount_rate = rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap();
+		// present value should be 101.87
+		let pv = bullet_loan_present_value(cf, now, md, discount_rate).unwrap();
+		assert_eq!(
+			pv,
+			Amount::saturating_from_rational(101867103798764401467u128, Amount::accuracy())
+		)
 	}
 }

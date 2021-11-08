@@ -10,20 +10,22 @@ use frame_support::transactional;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_arithmetic::traits::CheckedAdd;
+use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
 use std::fmt::Debug;
 
+use common_traits::PoolNAV as TPoolNav;
 use frame_support::pallet_prelude::Get;
 use frame_support::storage::types::OptionQuery;
 use frame_support::traits::{EnsureOrigin, Time};
 use frame_system::RawOrigin;
+use loan_type::LoanType;
 pub use pallet::*;
 use pallet_nft::types::AssetId;
 use pallet_registry::traits::VerifierRegistry;
 use pallet_registry::types::{MintInfo, RegistryInfo};
 use sp_core::U256;
 use sp_runtime::traits::AccountIdConversion;
-use sp_runtime::DispatchError;
+use sp_runtime::{DispatchError, FixedPointNumber};
 use sp_std::convert::TryInto;
 use unique_assets::traits::{Mintable, Unique};
 
@@ -33,14 +35,36 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod loan_type;
 pub mod math;
+
+/// The data structure for storing pool nav details
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct NAVDetails<Amount> {
+	// this is the latest nav for the given pool.
+	// this will be updated on these scenarios
+	// 1. When we are calculating pool nav
+	// 2. when there is borrow or repay or write off on a loan under this pool
+	// So NAV could be
+	//	approximate when current time != last_updated
+	//	exact when current time == last_updated
+	latest_nav: Amount,
+
+	// this is the last time when the nav was calculated for the entire pool
+	last_updated: u64,
+}
 
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum LoanStatus {
+	// this when asset is locked and loan nft is issued.
 	Issued,
+	// this is when loan is in active state. Either underwriters or orcales can move loan to this state
+	// by providing information like discount rates etc.. to loan
 	Active,
+	// loan is closed and asset nft is transferred back to borrower and loan nft is transferred back to loan module
 	Closed,
 }
 
@@ -51,12 +75,57 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	ceiling: Amount,
 	borrowed_amount: Amount,
 	rate_per_sec: Rate,
+	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
 	accumulated_rate: Rate,
+	// principal debt used to calculate the current outstanding debt.
+	// principal debt will change on every borrow and repay.
+	// Called principal debt instead of pie or normalized debt as mentioned here - https://docs.makerdao.com/smart-contract-modules/rates-module
+	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with interest rate
 	principal_debt: Amount,
 	last_updated: u64,
-	maturity_date: Option<u64>,
 	asset_id: AssetId,
 	status: LoanStatus,
+	loan_type: LoanType<Rate, Amount>,
+}
+
+impl<Rate, Amount, AssetID> LoanData<Rate, Amount, AssetID>
+where
+	Rate: FixedPointNumber,
+	Amount: FixedPointNumber,
+{
+	/// returns the present value of the loan
+	/// note: this will use the accumulated_rate and last_updated from self
+	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
+	fn present_value(&self) -> Option<Amount> {
+		// calculate current debt and present value
+		math::debt(self.principal_debt, self.accumulated_rate).and_then(|debt| {
+			self.loan_type
+				.present_value(debt, self.last_updated, self.rate_per_sec)
+		})
+	}
+
+	/// accrues rate and current debt from last updated until now
+	fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
+		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
+		let maybe_rate = match self.borrowed_amount == Zero::zero() {
+			true => Some(self.rate_per_sec),
+			false => math::calculate_accumulated_rate::<Rate>(
+				self.rate_per_sec,
+				self.accumulated_rate,
+				now,
+				self.last_updated,
+			),
+		};
+
+		// calculate the current outstanding debt
+		let maybe_debt = maybe_rate
+			.and_then(|acc_rate| math::debt::<Amount, Rate>(self.principal_debt, acc_rate));
+
+		match (maybe_rate, maybe_debt) {
+			(Some(rate), Some(debt)) => Some((rate, debt)),
+			_ => None,
+		}
+	}
 }
 
 pub type RegistryIdOf<T> = <T as pallet_nft::Config>::RegistryId;
@@ -112,26 +181,26 @@ pub mod pallet {
 			HashOf<Self>,
 		>;
 
-		/// A way for use to fetch the time of the current blocks
+		/// A way for use to fetch the time of the current block
 		type Time: frame_support::traits::Time;
 
 		/// PalletID of this loan module
 		#[pallet::constant]
 		type LoanPalletId: Get<PalletId>;
 
-		/// Origin for oracle or anything that can update and activate a loan
+		/// Origin for oracle or anything that can activate a loan
 		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	/// Stores the loan nft registry ID against
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_nft_registry)]
-	pub(super) type PoolToLoanNftRegistry<T: Config> =
+	pub(crate) type PoolToLoanNftRegistry<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, RegistryIdOf<T>, OptionQuery>;
 
 	/// Stores the poolID with registryID as a key
 	#[pallet::storage]
-	pub(super) type LoanNftRegistryToPool<T: Config> =
+	pub(crate) type LoanNftRegistryToPool<T: Config> =
 		StorageMap<_, Blake2_128Concat, RegistryIdOf<T>, T::PoolId, OptionQuery>;
 
 	#[pallet::type_value]
@@ -143,13 +212,13 @@ pub mod pallet {
 	/// Stores the next loan tokenID to be issued
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_nft_token_id)]
-	pub(super) type NextLoanNftTokenID<T: Config> =
+	pub(crate) type NextLoanNftTokenID<T: Config> =
 		StorageValue<_, U256, ValueQuery, OnNextNftTokenIDEmpty>;
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_info)]
-	pub(super) type LoanInfo<T: Config> = StorageDoubleMap<
+	pub(crate) type LoanInfo<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::PoolId,
@@ -158,6 +227,12 @@ pub mod pallet {
 		LoanData<T::Rate, T::Amount, AssetIdOf<T>>,
 		OptionQuery,
 	>;
+
+	/// Stores the pool nav against poolId
+	#[pallet::storage]
+	#[pallet::getter(fn nav)]
+	pub(crate) type PoolNAV<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, NAVDetails<T::Amount>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -176,6 +251,9 @@ pub mod pallet {
 
 		/// emits when some amount is repaid
 		LoanAmountRepaid(T::PoolId, T::LoanId, T::Amount),
+
+		/// Emits when NAV is updated for a given pool
+		NAVUpdated(T::PoolId, T::Amount),
 	}
 
 	#[pallet::error]
@@ -189,17 +267,14 @@ pub mod pallet {
 		/// Emits when the addition of borrowed amount overflowed
 		ErrAddAmountOverflow,
 
-		/// Emits when Rate overflows during calculations
-		ErrAccRateOverflow,
-
-		/// Emits when current debt calculation failed due to overflow
-		ErrCurrentDebtOverflow,
-
 		/// Emits when principal debt calculation failed due to overflow
 		ErrPrincipalDebtOverflow,
 
 		/// Emits when tries to update an active loan
 		ErrLoanIsActive,
+
+		/// Emits when loan type given is not valid
+		ErrLoanTypeInvalid,
 
 		/// Emits when operation is done on an inactive loan
 		ErrLoanIsInActive,
@@ -221,6 +296,18 @@ pub mod pallet {
 
 		/// Emits when loan amount not repaid but trying to close loan
 		ErrLoanNotRepaid,
+
+		/// Emits when maturity has passed and borrower tried to borrow more
+		ErrLoanMaturityDatePassed,
+
+		/// Emits when a loan data value is invalid
+		ErrLoanValueInvalid,
+
+		/// Emits when loan accrue calculation failed
+		ErrLoanAccrueFailed,
+
+		/// Emits when loan present value calculation failed
+		ErrLoanPresentValueFailed,
 	}
 
 	#[pallet::call]
@@ -295,8 +382,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			loan_id: T::LoanId,
 			rate_per_sec: T::Rate,
-			ceiling: T::Amount,
-			maturity_date: Option<u64>,
+			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
 			T::OracleOrigin::ensure_origin(origin)?;
 
@@ -311,17 +397,41 @@ pub mod pallet {
 				Error::<T>::ErrLoanIsActive
 			);
 
+			// calculate ceiling
+			let ceiling = loan_type.ceiling().ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+			ensure!(ceiling > Zero::zero(), Error::<T>::ErrLoanValueInvalid);
+
+			// ensure rate_per_sec >= one
+			ensure!(rate_per_sec >= One::one(), Error::<T>::ErrLoanValueInvalid);
+
+			// ensure loan_type is valid
+			let now = Self::time_now()?;
+			ensure!(loan_type.is_valid(now), Error::<T>::ErrLoanValueInvalid);
+
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
 				let mut loan_info = maybe_loan_info.take().unwrap();
 				loan_info.rate_per_sec = rate_per_sec;
 				loan_info.ceiling = ceiling;
 				loan_info.status = LoanStatus::Active;
-				loan_info.maturity_date = maturity_date;
+				loan_info.loan_type = loan_type;
 				*maybe_loan_info = Some(loan_info);
 			});
 
 			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
+			Ok(())
+		}
+
+		/// a call to update nav for a given pool
+		/// TODO(ved): benchmarking this to get a weight would be tricky due to n loans per pool
+		/// Maybe utility pallet would be a good source of inspiration?
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn update_nav(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			// ensure signed so that caller pays for the update fees
+			ensure_signed(origin)?;
+			let updated_nav = Self::update_nav_of_pool(pool_id)?;
+			Self::deposit_event(Event::<T>::NAVUpdated(pool_id, updated_nav));
 			Ok(())
 		}
 	}
@@ -421,9 +531,9 @@ impl<T: Config> Pallet<T> {
 				accumulated_rate: One::one(),
 				principal_debt: Zero::zero(),
 				last_updated: timestamp,
-				maturity_date: None,
 				asset_id,
 				status: LoanStatus::Issued,
+				loan_type: Default::default(),
 			},
 		);
 		Ok(loan_id)
@@ -447,6 +557,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// ensure debt is all paid
+		// we just need to ensure principal debt is zero
 		ensure!(
 			loan_info.principal_debt == Zero::zero(),
 			Error::<T>::ErrLoanNotRepaid
@@ -477,45 +588,49 @@ impl<T: Config> Pallet<T> {
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		// fetch the loan details
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+		let loan_data = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
 
 		// ensure loan is active
 		ensure!(
-			loan_info.status == LoanStatus::Active,
+			loan_data.status == LoanStatus::Active,
 			Error::<T>::ErrLoanIsInActive
 		);
 
+		// ensure maturity date has not passed if the loan has a maturity date
+		let now: u64 = Self::time_now()?;
+		let valid = match loan_data.loan_type.maturity_date() {
+			// loan has a maturity date
+			Some(md) => md > now,
+			// no maturity date, so continue as is
+			None => true,
+		};
+		ensure!(valid, Error::<T>::ErrLoanMaturityDatePassed);
+
+		// ensure borrow amount is positive
+		ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
+
 		// check for ceiling threshold
 		ensure!(
-			amount + loan_info.borrowed_amount <= loan_info.ceiling,
+			amount + loan_data.borrowed_amount <= loan_data.ceiling,
 			Error::<T>::ErrLoanCeilingReached
 		);
 
-		let new_borrowed_amount = loan_info
+		// get previous present value so that we can update the nav accordingly
+		let old_pv = loan_data
+			.present_value()
+			.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
+
+		// calculate accumulated rate and outstanding debt
+		let (accumulated_rate, debt) = loan_data
+			.accrue(now)
+			.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
+
+		let new_borrowed_amount = loan_data
 			.borrowed_amount
 			.checked_add(&amount)
 			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
-		// calculate new accumulated rate
-		let now: u64 = Self::time_now()?;
-
-		// if this is the first borrow, then set accumulated rate to rate per sec
-		let accumulated_rate = match loan_info.borrowed_amount == Zero::zero() {
-			true => Ok(loan_info.rate_per_sec),
-			false => math::calculate_accumulated_rate::<T::Rate>(
-				loan_info.rate_per_sec,
-				loan_info.accumulated_rate,
-				now,
-				loan_info.last_updated,
-			)
-			.ok_or(Error::<T>::ErrAccRateOverflow),
-		}?;
-
-		// calculate current debt
-		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
-			.ok_or(Error::<T>::ErrCurrentDebtOverflow)?;
-
-		// calculate new principal debt with borrowed amount
+		// calculate new principal debt with adjustment amount
 		let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
 			debt,
 			math::Adjustment::Inc(amount),
@@ -523,22 +638,56 @@ impl<T: Config> Pallet<T> {
 		)
 		.ok_or(Error::<T>::ErrPrincipalDebtOverflow)?;
 
-		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
-			let mut loan_info = maybe_loan_info.take().unwrap();
-			loan_info.borrowed_amount = new_borrowed_amount;
-			loan_info.last_updated = now;
-			loan_info.accumulated_rate = accumulated_rate;
-			loan_info.principal_debt = principal_debt;
-			*maybe_loan_info = Some(loan_info);
-		});
-
-		pallet_pool::Pallet::<T>::borrow_currency(
+		LoanInfo::<T>::try_mutate(
 			pool_id,
-			RawOrigin::Signed(Self::account_id()).into(),
-			owner,
-			amount.into(),
+			loan_id,
+			|maybe_loan_info| -> Result<(), DispatchError> {
+				// unwrap since we already checked above
+				let mut loan_data = maybe_loan_info.take().expect("loan data should be present");
+				loan_data.borrowed_amount = new_borrowed_amount;
+				loan_data.last_updated = now;
+				loan_data.accumulated_rate = accumulated_rate;
+				loan_data.principal_debt = principal_debt;
+				let new_pv = loan_data
+					.present_value()
+					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
+				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+				pallet_pool::Pallet::<T>::borrow_currency(
+					pool_id,
+					RawOrigin::Signed(Self::account_id()).into(),
+					owner,
+					amount.into(),
+				)?;
+				*maybe_loan_info = Some(loan_data);
+				Ok(())
+			},
 		)?;
 		Ok(())
+	}
+
+	fn update_nav_with_updated_present_value(
+		pool_id: T::PoolId,
+		new_pv: T::Amount,
+		old_pv: T::Amount,
+	) -> Result<(), DispatchError> {
+		// calculate new diff from the old and new present value and update the nav accordingly
+		PoolNAV::<T>::try_mutate(pool_id, |maybe_nav_details| -> Result<(), DispatchError> {
+			let mut nav = maybe_nav_details.take().unwrap_or_default();
+			let new_nav = match new_pv > old_pv {
+				// borrow
+				true => new_pv
+					.checked_sub(&old_pv)
+					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff)),
+				// repay since new pv is less than old
+				false => old_pv
+					.checked_sub(&new_pv)
+					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff)),
+			}
+			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
+			nav.latest_nav = new_nav;
+			*maybe_nav_details = Some(nav);
+			Ok(())
+		})
 	}
 
 	fn repay_amount(
@@ -551,28 +700,27 @@ impl<T: Config> Pallet<T> {
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		// fetch the loan details
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+		let loan_data = LoanInfo::<T>::get(pool_id, loan_id).ok_or(Error::<T>::ErrMissingLoan)?;
+
 		// ensure loan is active
 		ensure!(
-			loan_info.status == LoanStatus::Active,
+			loan_data.status == LoanStatus::Active,
 			Error::<T>::ErrLoanIsInActive
 		);
 
-		// ensure
+		// ensure repay amount is positive
+		ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
+
+		// calculate old present_value
+		let old_pv = loan_data
+			.present_value()
+			.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 		// calculate new accumulated rate
 		let now: u64 = Self::time_now()?;
-		let accumulated_rate = math::calculate_accumulated_rate::<T::Rate>(
-			loan_info.rate_per_sec,
-			loan_info.accumulated_rate,
-			now,
-			loan_info.last_updated,
-		)
-		.ok_or(Error::<T>::ErrAddAmountOverflow)?;
-
-		// calculate current debt
-		let debt = math::debt::<T::Amount, T::Rate>(loan_info.principal_debt, accumulated_rate)
-			.ok_or(Error::<T>::ErrAddAmountOverflow)?;
+		let (accumulated_rate, debt) = loan_data
+			.accrue(now)
+			.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
 
 		// ensure amount is not more than current debt
 		let mut repay_amount = amount;
@@ -588,20 +736,29 @@ impl<T: Config> Pallet<T> {
 		)
 		.ok_or(Error::<T>::ErrAddAmountOverflow)?;
 
-		LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
-			let mut loan_info = maybe_loan_info.take().unwrap();
-			loan_info.last_updated = now;
-			loan_info.accumulated_rate = accumulated_rate;
-			loan_info.principal_debt = principal_debt;
-			*maybe_loan_info = Some(loan_info);
-		});
-
-		pallet_pool::Pallet::<T>::repay_currency(
+		LoanInfo::<T>::try_mutate(
 			pool_id,
-			RawOrigin::Signed(Self::account_id()).into(),
-			owner,
-			repay_amount.into(),
+			loan_id,
+			|maybe_loan_info| -> Result<(), DispatchError> {
+				let mut loan_data = maybe_loan_info.take().expect("loan data should be present");
+				loan_data.last_updated = now;
+				loan_data.accumulated_rate = accumulated_rate;
+				loan_data.principal_debt = principal_debt;
+				let new_pv = loan_data
+					.present_value()
+					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
+				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+				pallet_pool::Pallet::<T>::repay_currency(
+					pool_id,
+					RawOrigin::Signed(Self::account_id()).into(),
+					owner,
+					repay_amount.into(),
+				)?;
+				*maybe_loan_info = Some(loan_data);
+				Ok(())
+			},
 		)?;
+
 		Ok(repay_amount)
 	}
 
@@ -609,19 +766,93 @@ impl<T: Config> Pallet<T> {
 		let nowt = T::Time::now();
 		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochTimeOverflow.into())
 	}
+
+	/// accrues rate and debt of a given loan and updates it
+	/// returns the present value of the loan
+	fn accrue_and_update_loan(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		now: u64,
+	) -> Result<T::Amount, DispatchError> {
+		LoanInfo::<T>::try_mutate(
+			pool_id,
+			loan_id,
+			|maybe_loan_data| -> Result<T::Amount, DispatchError> {
+				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::ErrMissingLoan)?;
+				// if the loan is not active, then skip updating and return PV as zero
+				if loan_data.status != LoanStatus::Active {
+					*maybe_loan_data = Some(loan_data);
+					return Ok(Zero::zero());
+				}
+
+				let (acc_rate, _debt) = loan_data
+					.accrue(now)
+					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
+				loan_data.last_updated = now;
+				loan_data.accumulated_rate = acc_rate;
+				let present_value = loan_data
+					.present_value()
+					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
+				*maybe_loan_data = Some(loan_data);
+				Ok(present_value)
+			},
+		)
+	}
+
+	/// updates nav for the given pool and returns the latest NAV at this instant
+	fn update_nav_of_pool(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+		let now = Self::time_now()?;
+		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
+			Zero::zero(),
+			|sum, loan_id| -> Result<T::Amount, DispatchError> {
+				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now)?;
+				sum.checked_add(&pv)
+					.ok_or(Error::<T>::ErrLoanAccrueFailed.into())
+			},
+		)?;
+		PoolNAV::<T>::insert(
+			pool_id,
+			NAVDetails {
+				latest_nav: nav,
+				last_updated: now,
+			},
+		);
+		Ok(nav)
+	}
 }
 
-/// Simple ensure origin for the loan account
+impl<T: Config> TPoolNav<T::PoolId, T::Amount> for Pallet<T> {
+	fn nav(pool_id: T::PoolId) -> Option<(T::Amount, u64)> {
+		PoolNAV::<T>::get(pool_id)
+			.and_then(|nav_details| Some((nav_details.latest_nav, nav_details.last_updated)))
+	}
+
+	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+		Self::update_nav_of_pool(pool_id)
+	}
+}
+
+/// Ensure origin that allows only loan pallet account
 pub struct EnsureLoanAccount<T>(sp_std::marker::PhantomData<T>);
 
-impl<T: pallet::Config> EnsureOrigin<T::Origin> for EnsureLoanAccount<T> {
+impl<
+		T: pallet::Config,
+		Origin: Into<Result<RawOrigin<T::AccountId>, Origin>> + From<RawOrigin<T::AccountId>>,
+	> EnsureOrigin<Origin> for EnsureLoanAccount<T>
+{
 	type Success = T::AccountId;
 
-	fn try_origin(o: T::Origin) -> Result<Self::Success, T::Origin> {
+	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
 		let loan_id = T::LoanPalletId::get().into_account();
 		o.into().and_then(|o| match o {
 			RawOrigin::Signed(who) if who == loan_id => Ok(loan_id),
-			r => Err(T::Origin::from(r)),
+			r => Err(Origin::from(r)),
 		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> Origin {
+		let loan_id = T::LoanPalletId::get().into_account();
+		Origin::from(RawOrigin::Signed(loan_id))
 	}
 }
