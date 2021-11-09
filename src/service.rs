@@ -520,10 +520,10 @@ pub async fn start_altair_node(
 				keystore,
 				force_authoring,
 				slot_duration,
-				// We got around 500ms for proposing
-				block_proposal_slot_portion: SlotProportion::new(1f32 / 24f32),
-				// And a maximum of 750ms if slots are skipped
-				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 16f32)),
+				// We got around 2s for proposing
+				block_proposal_slot_portion: SlotProportion::new(1f32 / 6f32),
+				// And a maximum of 3s if slots are skipped
+				max_block_proposal_slot_portion: Some(SlotProportion::new(1f32 / 4f32)),
 				telemetry,
 			}))
 		},
