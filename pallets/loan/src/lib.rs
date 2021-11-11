@@ -2,6 +2,7 @@
 //!
 //! This pallet provides functionality for managing loans on Tinlake
 #![cfg_attr(not(feature = "std"), no_std)]
+
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
@@ -72,7 +73,7 @@ pub struct WriteOffGroup<Rate> {
 pub enum LoanStatus {
 	// this when asset is locked and loan nft is issued.
 	Issued,
-	// this is when loan is in active state. Either underwriters or orcales can move loan to this state
+	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
 	// loan is closed and asset nft is transferred back to borrower and loan nft is transferred back to loan module
@@ -99,7 +100,7 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	loan_type: LoanType<Rate, Amount>,
 
 	// whether the loan written off by admin
-	// if so, we wont update the writeoff group on this loan further from permission less call
+	// if so, we wont update the write off group on this loan further from permission less call
 	admin_written_off: bool,
 	// write off group index in the vec of write off groups
 	// none, the loan is not written off yet

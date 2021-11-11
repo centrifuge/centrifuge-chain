@@ -857,14 +857,14 @@ fn test_pool_nav() {
 }
 
 #[test]
-fn writeoff_groups() {
+fn write_off_groups() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let oracle: u64 = 1;
 			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(oracle);
 
-			// fetch writeoff groups
+			// fetch write off groups
 			let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
 			assert_eq!(groups, vec![]);
 
