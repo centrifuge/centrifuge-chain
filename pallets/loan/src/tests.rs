@@ -855,3 +855,38 @@ fn test_pool_nav() {
 			assert_eq!(updated_nav, nav);
 		})
 }
+
+#[test]
+fn writeoff_groups() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let oracle: u64 = 1;
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(oracle);
+
+			// fetch writeoff groups
+			let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
+			assert_eq!(groups, vec![]);
+
+			for percentage in vec![10, 20, 30, 40, 30, 50, 70, 100] {
+				// add a new write off group
+				let group = WriteOffGroup {
+					percentage: Rate::saturating_from_rational(percentage, 100),
+					overdue_days: 3,
+				};
+				let res = Loan::add_writeoff_group(Origin::signed(oracle), pool_id, group);
+				assert_ok!(res);
+				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+				let (_pool_id, index) = match loan_event {
+					LoanEvent::WriteOffGroupAdded(pool_id, index) => Some((pool_id, index)),
+					_ => None,
+				}
+				.expect("must be a write off group added event");
+
+				// check if the write off group is added
+				let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
+				assert_eq!(groups[index as usize], group);
+				assert_eq!(groups.len() - 1, index as usize);
+			}
+		})
+}

@@ -55,6 +55,17 @@ pub struct NAVDetails<Amount> {
 	last_updated: u64,
 }
 
+/// The data structure for storing a specific write off group
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct WriteOffGroup<Rate> {
+	/// percentage of outstanding debt we are going to write off on a loan
+	percentage: Rate,
+
+	/// number in days after the maturity has passed at which this write off group is valid
+	overdue_days: u64,
+}
+
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
@@ -86,6 +97,14 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	asset_id: AssetId,
 	status: LoanStatus,
 	loan_type: LoanType<Rate, Amount>,
+
+	// whether the loan writeoff was overriden by admin
+	// if so, we wont update the writeoff group on this loan further from permission less call
+	writeoff_overridden: bool,
+	// write off group index in the vec of write off groups
+	// none, the loan is not written off yet
+	// some(index), loan is written off and write off details are found under the given index
+	writeoff_index: Option<u32>,
 }
 
 impl<Rate, Amount, AssetID> LoanData<Rate, Amount, AssetID>
@@ -234,6 +253,12 @@ pub mod pallet {
 	pub(crate) type PoolNAV<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, NAVDetails<T::Amount>, OptionQuery>;
 
+	/// Stores the pool associated with the its write off groups
+	#[pallet::storage]
+	#[pallet::getter(fn pool_writeoff_groups)]
+	pub(crate) type PoolWriteOffGroups<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, Vec<WriteOffGroup<T::Rate>>, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -254,6 +279,9 @@ pub mod pallet {
 
 		/// Emits when NAV is updated for a given pool
 		NAVUpdated(T::PoolId, T::Amount),
+
+		/// Emits when a write off group is added to the given pool
+		WriteOffGroupAdded(T::PoolId, u32),
 	}
 
 	#[pallet::error]
@@ -434,6 +462,31 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::NAVUpdated(pool_id, updated_nav));
 			Ok(())
 		}
+
+		/// a call to add a new write off group for a given pool
+		/// write off groups are always append only
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn add_writeoff_group(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			group: WriteOffGroup<T::Rate>,
+		) -> DispatchResult {
+			// ensure this is coming from an admin origin
+			T::OracleOrigin::ensure_origin(origin)?;
+
+			// check if the pool exists
+			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
+
+			// append new group
+			let index = PoolWriteOffGroups::<T>::mutate(pool_id, |writeoff_groups| -> u32 {
+				writeoff_groups.push(group);
+				// return the index of the write off group
+				(writeoff_groups.len() - 1) as u32
+			});
+			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
+			Ok(())
+		}
 	}
 }
 
@@ -534,6 +587,8 @@ impl<T: Config> Pallet<T> {
 				asset_id,
 				status: LoanStatus::Issued,
 				loan_type: Default::default(),
+				writeoff_overridden: false,
+				writeoff_index: None,
 			},
 		);
 		Ok(loan_id)
