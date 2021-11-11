@@ -1001,6 +1001,7 @@ dependencies = [
  "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-core",
+ "sp-database",
  "sp-finality-grandpa",
  "sp-inherents",
  "sp-io",

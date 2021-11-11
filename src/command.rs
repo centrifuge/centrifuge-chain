@@ -31,8 +31,10 @@ use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
 	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
 };
+use sc_client_db::DatabaseSource;
 use sc_service::config::{BasePath, PrometheusConfig};
 use sp_core::hexdisplay::HexDisplay;
+use sp_core::sp_std::sync::Arc;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
@@ -350,7 +352,10 @@ pub fn run() -> Result<()> {
 			}
 		}
 		None => {
-			let runner = cli.create_runner(&cli.run.normalize())?;
+			let mut runner = cli.create_runner(&cli.run.normalize())?;
+
+			runner.config_mut().database =
+				DatabaseSource::Custom(Arc::new(sp_database::MemDb::new()));
 
 			runner.run_node_until_exit(|config| async move {
 				let polkadot_cli = RelayChainCli::new(

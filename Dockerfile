@@ -1,5 +1,4 @@
 # Based from https://github.com/paritytech/substrate/blob/master/.maintain/Dockerfile
-
 FROM phusion/baseimage:focal-1.0.0 as builder
 LABEL maintainer="Centrifuge Team"
 LABEL description="This is the build stage for the Centrifuge Chain client. Here the binary is created."
