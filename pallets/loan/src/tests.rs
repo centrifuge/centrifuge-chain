@@ -874,7 +874,7 @@ fn writeoff_groups() {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
 				};
-				let res = Loan::add_writeoff_group(Origin::signed(oracle), pool_id, group);
+				let res = Loan::add_write_off_group(Origin::signed(oracle), pool_id, group);
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, index) = match loan_event {

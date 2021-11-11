@@ -98,13 +98,13 @@ pub struct LoanData<Rate, Amount, AssetId> {
 	status: LoanStatus,
 	loan_type: LoanType<Rate, Amount>,
 
-	// whether the loan writeoff was overriden by admin
+	// whether the loan written off by admin
 	// if so, we wont update the writeoff group on this loan further from permission less call
-	writeoff_overridden: bool,
+	admin_written_off: bool,
 	// write off group index in the vec of write off groups
 	// none, the loan is not written off yet
 	// some(index), loan is written off and write off details are found under the given index
-	writeoff_index: Option<u32>,
+	write_off_index: Option<u32>,
 }
 
 impl<Rate, Amount, AssetID> LoanData<Rate, Amount, AssetID>
@@ -280,7 +280,7 @@ pub mod pallet {
 		/// Emits when NAV is updated for a given pool
 		NAVUpdated(T::PoolId, T::Amount),
 
-		/// Emits when a write off group is added to the given pool
+		/// Emits when a write off group is added to the given pool with its index
 		WriteOffGroupAdded(T::PoolId, u32),
 	}
 
@@ -467,7 +467,7 @@ pub mod pallet {
 		/// write off groups are always append only
 		#[pallet::weight(100_000)]
 		#[transactional]
-		pub fn add_writeoff_group(
+		pub fn add_write_off_group(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			group: WriteOffGroup<T::Rate>,
@@ -479,10 +479,10 @@ pub mod pallet {
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
 
 			// append new group
-			let index = PoolWriteOffGroups::<T>::mutate(pool_id, |writeoff_groups| -> u32 {
-				writeoff_groups.push(group);
+			let index = PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| -> u32 {
+				write_off_groups.push(group);
 				// return the index of the write off group
-				(writeoff_groups.len() - 1) as u32
+				(write_off_groups.len() - 1) as u32
 			});
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
@@ -587,8 +587,8 @@ impl<T: Config> Pallet<T> {
 				asset_id,
 				status: LoanStatus::Issued,
 				loan_type: Default::default(),
-				writeoff_overridden: false,
-				writeoff_index: None,
+				admin_written_off: false,
+				write_off_index: None,
 			},
 		);
 		Ok(loan_id)
