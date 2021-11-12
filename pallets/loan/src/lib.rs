@@ -146,6 +146,28 @@ where
 			_ => None,
 		}
 	}
+
+	/// returns the present value of the loan adjusted to the write off group assigned to the loan if any
+	// pv = pv*(1 - write_off_percentage)
+	fn present_value_with_write_off(
+		&self,
+		write_off_groups: Vec<WriteOffGroup<Rate>>,
+	) -> Option<Amount> {
+		let maybe_present_value = self.present_value();
+		match self.write_off_index {
+			None => maybe_present_value,
+			Some(index) => maybe_present_value.and_then(|pv| {
+				write_off_groups
+					.get(index as usize)
+					// convert rate to amount
+					.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
+					// calculate write off amount
+					.and_then(|write_off_percentage| pv.checked_mul(&write_off_percentage))
+					// calculate adjusted present value
+					.and_then(|write_off_amount| pv.checked_sub(&write_off_amount))
+			}),
+		}
+	}
 }
 
 pub type RegistryIdOf<T> = <T as pallet_nft::Config>::RegistryId;
@@ -283,6 +305,9 @@ pub mod pallet {
 
 		/// Emits when a write off group is added to the given pool with its index
 		WriteOffGroupAdded(T::PoolId, u32),
+
+		/// Emits when a loan is written off
+		LoanWrittenOff(T::PoolId, T::LoanId, u32),
 	}
 
 	#[pallet::error]
@@ -306,7 +331,7 @@ pub mod pallet {
 		ErrLoanTypeInvalid,
 
 		/// Emits when operation is done on an inactive loan
-		ErrLoanIsInActive,
+		ErrLoanNotActive,
 
 		/// Emits when epoch time is overflowed
 		ErrEpochTimeOverflow,
@@ -337,6 +362,15 @@ pub mod pallet {
 
 		/// Emits when loan present value calculation failed
 		ErrLoanPresentValueFailed,
+
+		/// Emits when trying to write off of a healthy loan
+		ErrLoanHealthy,
+
+		/// Emits when trying to write off loan that was written off by admin already
+		ErrLoanWrittenOffByAdmin,
+
+		/// Emits when there is no valid write off group available for unhealthy loan
+		ErrNoValidWriteOffGroup,
 	}
 
 	#[pallet::call]
@@ -488,6 +522,24 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
 		}
+
+		/// a call to write of an unhealthy loan
+		/// a valid write off group will be chosen based on the loan overdue date since maturity
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn write_off_loan(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+		) -> DispatchResult {
+			// ensure this is a signed call
+			ensure_signed(origin)?;
+
+			// try to write off
+			let index = Self::write_off(pool_id, loan_id, None)?;
+			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
+			Ok(())
+		}
 	}
 }
 
@@ -609,7 +661,7 @@ impl<T: Config> Pallet<T> {
 		// ensure loan is active
 		ensure!(
 			loan_info.status == LoanStatus::Active,
-			Error::<T>::ErrLoanIsInActive
+			Error::<T>::ErrLoanNotActive
 		);
 
 		// ensure debt is all paid
@@ -649,7 +701,7 @@ impl<T: Config> Pallet<T> {
 		// ensure loan is active
 		ensure!(
 			loan_data.status == LoanStatus::Active,
-			Error::<T>::ErrLoanIsInActive
+			Error::<T>::ErrLoanNotActive
 		);
 
 		// ensure maturity date has not passed if the loan has a maturity date
@@ -761,7 +813,7 @@ impl<T: Config> Pallet<T> {
 		// ensure loan is active
 		ensure!(
 			loan_data.status == LoanStatus::Active,
-			Error::<T>::ErrLoanIsInActive
+			Error::<T>::ErrLoanNotActive
 		);
 
 		// ensure repay amount is positive
@@ -874,6 +926,89 @@ impl<T: Config> Pallet<T> {
 			},
 		);
 		Ok(nav)
+	}
+
+	/// writes off a given unhealthy loan
+	/// if override_write_off_index is Some, this is a admin action and loan override flag is set
+	/// if loan is already overridden and override_write_off_index is None, we return error
+	/// if loan is still healthy, we return an error
+	/// loan is accrued and nav is updated accordingly
+	/// returns new write off index applied to loan
+	fn write_off(
+		pool_id: T::PoolId,
+		loan_id: T::LoanId,
+		override_write_off_index: Option<u32>,
+	) -> Result<u32, DispatchError> {
+		LoanInfo::<T>::try_mutate(
+			pool_id,
+			loan_id,
+			|maybe_loan_data| -> Result<u32, DispatchError> {
+				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::ErrMissingLoan)?;
+				// ensure loan is active
+				ensure!(
+					loan_data.status == LoanStatus::Active,
+					Error::<T>::ErrLoanNotActive
+				);
+
+				let maturity_date = loan_data
+					.loan_type
+					.maturity_date()
+					.ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+				let now = Self::time_now()?;
+
+				// ensure loan's maturity date has passed
+				ensure!(now > maturity_date, Error::<T>::ErrLoanHealthy);
+
+				// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
+				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let write_off_group_index =
+					match (loan_data.admin_written_off, override_write_off_index) {
+						// admin is trying to overwrite the write off
+						(true, Some(index)) => Ok(index),
+						// non-admin is trying to write off but admin already did. So error out
+						(true, None) => Err(Error::<T>::ErrLoanWrittenOffByAdmin),
+						// not written off by admin, and non admin trying to write off, then
+						// fetch the best write group available for this loan
+						(false, None) => math::valid_write_off_group(
+							maturity_date,
+							now,
+							write_off_groups.clone(),
+						)
+						.ok_or(Error::<T>::ErrNoValidWriteOffGroup),
+						// admin writing off a loan for the first time
+						(false, Some(index)) => {
+							loan_data.admin_written_off = true;
+							Ok(index)
+						}
+					}?;
+
+				// get old present value accounting for any write offs
+				let old_pv = loan_data
+					.present_value_with_write_off(write_off_groups.clone())
+					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
+
+				// accrue and calculate the new present value with current chosen write off
+				let (accumulated_rate, _current_debt) = loan_data
+					.accrue(now)
+					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
+
+				loan_data.accumulated_rate = accumulated_rate;
+				loan_data.last_updated = now;
+				loan_data.write_off_index = Some(write_off_group_index);
+
+				// calculate updated write off adjusted present value
+				let new_pv = loan_data
+					.present_value_with_write_off(write_off_groups)
+					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
+
+				// update nav
+				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+
+				// update loan data
+				*maybe_loan_data = Some(loan_data);
+				Ok(write_off_group_index)
+			},
+		)
 	}
 }
 

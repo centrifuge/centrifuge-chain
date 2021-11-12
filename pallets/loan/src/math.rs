@@ -141,7 +141,7 @@ pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: u64,
 	now: u64,
 	groups: Vec<WriteOffGroup<Rate>>,
-) -> Option<usize> {
+) -> Option<u32> {
 	let mut index = None;
 	let mut highest_overdue_days = 0;
 	let seconds_per_day = seconds_per_day();
@@ -149,7 +149,7 @@ pub(crate) fn valid_write_off_group<Rate>(
 		let overdue_days = group.overdue_days;
 		let offset = maturity_date + seconds_per_day * overdue_days;
 		if overdue_days >= highest_overdue_days && now >= offset {
-			index = Some(idx);
+			index = Some(idx as u32);
 			highest_overdue_days = overdue_days;
 		}
 	});
@@ -331,7 +331,7 @@ fn valid_write_off_groups() {
 	let sec_per_day = seconds_per_day();
 
 	// maturity date in days and current time offset to maturity date  and resultant index from the group
-	let tests: Vec<(u64, u64, Option<usize>)> = vec![
+	let tests: Vec<(u64, u64, Option<u32>)> = vec![
 		// day 0, and now is at zero, index is None
 		(0, 0, None),
 		(0, 1, None),
