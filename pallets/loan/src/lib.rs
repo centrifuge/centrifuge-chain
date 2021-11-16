@@ -230,8 +230,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type LoanPalletId: Get<PalletId>;
 
-		/// Origin for oracle or anything that can activate a loan
-		type OracleOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		/// Origin for admin that can activate a loan
+		type AdminOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
 	}
 
 	/// Stores the loan nft registry ID against
@@ -371,6 +371,9 @@ pub mod pallet {
 
 		/// Emits when there is no valid write off group available for unhealthy loan
 		ErrNoValidWriteOffGroup,
+
+		/// Emits when there is no valid write off groups associated with given index
+		ErrInvalidWriteOffGroupIndex,
 	}
 
 	#[pallet::call]
@@ -447,7 +450,7 @@ pub mod pallet {
 			rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
-			T::OracleOrigin::ensure_origin(origin)?;
+			<T as Config>::AdminOrigin::ensure_origin(origin)?;
 
 			// check if the pool exists
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
@@ -508,7 +511,7 @@ pub mod pallet {
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure this is coming from an admin origin
-			T::OracleOrigin::ensure_origin(origin)?;
+			<T as Config>::AdminOrigin::ensure_origin(origin)?;
 
 			// check if the pool exists
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
@@ -523,7 +526,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to write of an unhealthy loan
+		/// a call to write off an unhealthy loan
 		/// a valid write off group will be chosen based on the loan overdue date since maturity
 		#[pallet::weight(100_000)]
 		#[transactional]
@@ -537,6 +540,25 @@ pub mod pallet {
 
 			// try to write off
 			let index = Self::write_off(pool_id, loan_id, None)?;
+			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
+			Ok(())
+		}
+
+		/// a permissioned call to write off an unhealthy loan
+		/// write_off_index is overwritten to the loan and the is fixed until changes it with another call.
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn admin_write_off_loan(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			loan_id: T::LoanId,
+			write_off_index: u32,
+		) -> DispatchResult {
+			// ensure this is a call from admin
+			<T as Config>::AdminOrigin::ensure_origin(origin)?;
+
+			// try to write off
+			let index = Self::write_off(pool_id, loan_id, Some(write_off_index))?;
 			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
 			Ok(())
 		}
@@ -963,22 +985,29 @@ impl<T: Config> Pallet<T> {
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 				let write_off_group_index =
 					match (loan_data.admin_written_off, override_write_off_index) {
-						// admin is trying to overwrite the write off
-						(true, Some(index)) => Ok(index),
-						// non-admin is trying to write off but admin already did. So error out
-						(true, None) => Err(Error::<T>::ErrLoanWrittenOffByAdmin),
-						// not written off by admin, and non admin trying to write off, then
-						// fetch the best write group available for this loan
-						(false, None) => math::valid_write_off_group(
-							maturity_date,
-							now,
-							write_off_groups.clone(),
-						)
-						.ok_or(Error::<T>::ErrNoValidWriteOffGroup),
-						// admin writing off a loan for the first time
-						(false, Some(index)) => {
+						// admin is trying to write off
+						(_admin_written_off, Some(index)) => {
+							// check if the write off group exists
+							write_off_groups
+								.get(index as usize)
+								.ok_or(Error::<T>::ErrInvalidWriteOffGroupIndex)?;
 							loan_data.admin_written_off = true;
 							Ok(index)
+						}
+						(admin_written_off, None) => {
+							// non-admin is trying to write off but admin already did. So error out
+							if admin_written_off {
+								return Err(Error::<T>::ErrLoanWrittenOffByAdmin.into());
+							}
+
+							// not written off by admin, and non admin trying to write off, then
+							// fetch the best write group available for this loan
+							math::valid_write_off_group(
+								maturity_date,
+								now,
+								write_off_groups.clone(),
+							)
+							.ok_or(Error::<T>::ErrNoValidWriteOffGroup)
 						}
 					}?;
 

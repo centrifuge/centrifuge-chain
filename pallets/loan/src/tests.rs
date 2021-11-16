@@ -224,6 +224,8 @@ fn activate_loan() {
 			assert_eq!(loan_data.rate_per_sec, rp);
 			assert_eq!(loan_data.loan_type, loan_type);
 			assert_eq!(loan_data.ceiling, Amount::from_inner(100 * USD));
+			assert_eq!(loan_data.write_off_index, None);
+			assert!(!loan_data.admin_written_off);
 
 			// cannot activate an already activated loan
 			let res = Loan::activate_loan(
@@ -857,7 +859,7 @@ fn test_pool_nav() {
 }
 
 #[test]
-fn write_off_groups() {
+fn add_write_off_groups() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -888,5 +890,242 @@ fn write_off_groups() {
 				assert_eq!(groups[index as usize], group);
 				assert_eq!(groups.len() - 1, index as usize);
 			}
+		})
+}
+
+#[test]
+fn write_off_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 1;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * USD);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			// activate loan
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				loan_type,
+			);
+			assert_ok!(res);
+
+			// borrow 50
+			Timestamp::set_timestamp(1);
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// after one year
+			// anyone can trigger the call
+			let caller = 100;
+			Timestamp::set_timestamp(math::seconds_per_year());
+			let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanHealthy);
+
+			// let the maturity date passes + 1 day
+			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
+			Timestamp::set_timestamp(t);
+			let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrNoValidWriteOffGroup);
+
+			// add write off groups
+			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				let res = Loan::add_write_off_group(
+					Origin::signed(oracle),
+					pool_id,
+					WriteOffGroup {
+						percentage: Rate::saturating_from_rational(group.1, 100),
+						overdue_days: group.0,
+					},
+				);
+				assert_ok!(res);
+			}
+
+			// same since write off group is missing
+			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
+			Timestamp::set_timestamp(t);
+			let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrNoValidWriteOffGroup);
+
+			// days, index
+			for days_index in vec![(3, 0), (5, 1), (7, 2), (20, 3)] {
+				// move to more than 3 days
+				let t = math::seconds_per_year() * 2 + math::seconds_per_day() * days_index.0;
+				Timestamp::set_timestamp(t);
+				let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
+				assert_ok!(res);
+
+				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+				let (_pool_id, _loan_id, write_off_index) = match loan_event {
+					LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+						Some((pool_id, loan_id, write_off_index))
+					}
+					_ => None,
+				}
+				.expect("must be a Loan issue event");
+				assert_eq!(write_off_index, days_index.1);
+				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+					.expect("LoanData should be present");
+				assert_eq!(loan_data.write_off_index, Some(days_index.1));
+				assert!(!loan_data.admin_written_off);
+			}
+		})
+}
+
+#[test]
+fn admin_write_off_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 1;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * USD);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			// activate loan
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				loan_type,
+			);
+			assert_ok!(res);
+
+			// borrow 50
+			Timestamp::set_timestamp(1);
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// after one year
+			// caller should be admin
+			let caller = 1;
+			Timestamp::set_timestamp(math::seconds_per_year());
+			let res = Loan::admin_write_off_loan(Origin::signed(caller), pool_id, loan_id, 0);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanHealthy);
+
+			// let the maturity date passes + 1 day
+			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
+			Timestamp::set_timestamp(t);
+			let res = Loan::admin_write_off_loan(Origin::signed(caller), pool_id, loan_id, 0);
+			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroupIndex);
+
+			// add write off groups
+			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				let res = Loan::add_write_off_group(
+					Origin::signed(oracle),
+					pool_id,
+					WriteOffGroup {
+						percentage: Rate::saturating_from_rational(group.1, 100),
+						overdue_days: group.0,
+					},
+				);
+				assert_ok!(res);
+			}
+
+			// index
+			let t = math::seconds_per_year() * 2 + math::seconds_per_day() * 3;
+			Timestamp::set_timestamp(t);
+
+			for index in vec![0, 3, 2, 1, 0] {
+				let res =
+					Loan::admin_write_off_loan(Origin::signed(caller), pool_id, loan_id, index);
+				assert_ok!(res);
+
+				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+				let (_pool_id, _loan_id, write_off_index) = match loan_event {
+					LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+						Some((pool_id, loan_id, write_off_index))
+					}
+					_ => None,
+				}
+				.expect("must be a Loan issue event");
+				assert_eq!(write_off_index, index);
+				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+					.expect("LoanData should be present");
+				assert_eq!(loan_data.write_off_index, Some(index));
+				assert!(loan_data.admin_written_off);
+			}
+
+			// permission less write off should not work once written off by admin
+			let res = Loan::write_off_loan(Origin::signed(100), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanWrittenOffByAdmin)
 		})
 }
