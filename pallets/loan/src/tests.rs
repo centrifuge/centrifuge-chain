@@ -109,7 +109,7 @@ fn issue_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
 			let asset_registry = create_nft_registry::<MockRuntime>(owner);
 			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
@@ -244,7 +244,7 @@ fn close_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
 			let asset_registry = create_nft_registry::<MockRuntime>(owner);
 			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
@@ -359,7 +359,7 @@ fn borrow_loan() {
 		.build()
 		.execute_with(|| {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
 
@@ -500,7 +500,7 @@ fn repay_loan() {
 		.build()
 		.execute_with(|| {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
 
@@ -732,7 +732,7 @@ fn test_pool_nav() {
 		.build()
 		.execute_with(|| {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
 
@@ -932,6 +932,14 @@ fn add_write_off_groups() {
 				assert_eq!(groups[index as usize], group);
 				assert_eq!(groups.len() - 1, index as usize);
 			}
+
+			// invalid write off group
+			let group = WriteOffGroup {
+				percentage: Rate::saturating_from_rational(110, 100),
+				overdue_days: 3,
+			};
+			let res = Loan::add_write_off_group(Origin::signed(oracle), pool_id, group);
+			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroup);
 		})
 }
 
@@ -941,7 +949,7 @@ fn write_off_loan() {
 		.build()
 		.execute_with(|| {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
 
@@ -1060,7 +1068,7 @@ fn admin_write_off_loan() {
 		.build()
 		.execute_with(|| {
 			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
-			let owner: u64 = 1;
+			let owner: u64 = 10;
 			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
 
@@ -1169,5 +1177,157 @@ fn admin_write_off_loan() {
 			// permission less write off should not work once written off by admin
 			let res = Loan::write_off_loan(Origin::signed(100), pool_id, loan_id);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanWrittenOffByAdmin)
+		})
+}
+
+#[test]
+fn close_written_off_loan() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let pool_account = pallet_pool::Pallet::<MockRuntime>::account_id();
+			let owner: u64 = 10;
+			let pool_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&pool_account);
+			assert_eq!(pool_balance, 1000 * USD);
+
+			let owner_balance = balance_of::<MockRuntime, GetUSDCurrencyId>(&owner);
+			assert_eq!(owner_balance, Zero::zero());
+
+			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(owner);
+			let asset_registry = create_nft_registry::<MockRuntime>(owner);
+			let token_id = mint_nft::<MockRuntime>(owner, asset_registry);
+			let res = Loan::issue_loan(
+				Origin::signed(owner),
+				pool_id,
+				AssetId(asset_registry, token_id),
+			);
+			assert_ok!(res);
+
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (pool_id, loan_id) = match loan_event {
+				LoanEvent::LoanIssued(pool_id, loan_id) => Some((pool_id, loan_id)),
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+
+			// activate loan
+			// interest rate is 5%
+			let rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let oracle: u64 = 1;
+			let loan_type = LoanType::BulletLoan(BulletLoan::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// expected loss over asset maturity 0.15%
+				Rate::saturating_from_rational(15, 10000),
+				// collateral value
+				Amount::from_inner(125 * USD),
+				// 4%
+				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				// maturity in 2 years
+				math::seconds_per_year() * 2,
+			));
+			let res = Loan::activate_loan(
+				Origin::signed(oracle),
+				pool_id,
+				loan_id,
+				rate,
+				// ceiling is 100 USD
+				loan_type,
+			);
+			assert_ok!(res);
+
+			// borrow 50
+			Timestamp::set_timestamp(1);
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(owner), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// let the maturity pass and closing loan should not work
+			Timestamp::set_timestamp(math::seconds_per_year() * 2 + 5 * math::seconds_per_day());
+			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
+
+			// add write off groups
+			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
+				let res = Loan::add_write_off_group(
+					Origin::signed(oracle),
+					pool_id,
+					WriteOffGroup {
+						percentage: Rate::saturating_from_rational(group.1, 100),
+						overdue_days: group.0,
+					},
+				);
+				assert_ok!(res);
+			}
+
+			// write off loan but should not be able to close since its not 100% write off
+			let res = Loan::write_off_loan(Origin::signed(200), pool_id, loan_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (_pool_id, _loan_id, write_off_index) = match loan_event {
+				LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+					Some((pool_id, loan_id, write_off_index))
+				}
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+			assert_eq!(write_off_index, 1);
+			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
+
+			// let it be 120 days beyond maturity, we write off 100% now
+			Timestamp::set_timestamp(math::seconds_per_year() * 2 + 120 * math::seconds_per_day());
+			let res = Loan::write_off_loan(Origin::signed(200), pool_id, loan_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (_pool_id, _loan_id, write_off_index) = match loan_event {
+				LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+					Some((pool_id, loan_id, write_off_index))
+				}
+				_ => None,
+			}
+			.expect("must be a Loan written off event");
+			assert_eq!(write_off_index, 4);
+
+			// nav should be zero
+			let res = Loan::update_nav(Origin::signed(owner), pool_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (got_pool_id, updated_nav) = match loan_event {
+				LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				_ => None,
+			}
+			.expect("must be a Nav updated event");
+			assert_eq!(pool_id, got_pool_id);
+			assert_eq!(updated_nav, Zero::zero());
+
+			// close loan now
+			let res = Loan::close_loan(Origin::signed(owner), pool_id, loan_id);
+			assert_ok!(res);
+
+			let (pool_id, loan_id, asset) = match fetch_loan_event(last_event())
+				.expect("should be a loan event")
+			{
+				LoanEvent::LoanClosed(pool_id, loan_id, asset) => Some((pool_id, loan_id, asset)),
+				_ => None,
+			}
+			.expect("must be a Loan close event");
+			assert_eq!(asset, AssetId(asset_registry, token_id));
+
+			// check asset owner
+			expect_asset_owner::<MockRuntime>(AssetId(asset_registry, token_id), owner);
+
+			// check nft loan owner loan pallet
+			let loan_nft_registry = PoolToLoanNftRegistry::<MockRuntime>::get(pool_id)
+				.expect("must have a loan nft registry created");
+			expect_asset_owner::<MockRuntime>(
+				AssetId(loan_nft_registry, loan_id),
+				Loan::account_id(),
+			);
+
+			// check loan status as Closed
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			assert_eq!(loan_data.status, LoanStatus::Closed);
 		})
 }

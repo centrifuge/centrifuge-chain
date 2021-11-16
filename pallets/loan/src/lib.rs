@@ -374,6 +374,9 @@ pub mod pallet {
 
 		/// Emits when there is no valid write off groups associated with given index
 		ErrInvalidWriteOffGroupIndex,
+
+		/// Emits when new write off group is invalid
+		ErrInvalidWriteOffGroup,
 	}
 
 	#[pallet::call]
@@ -463,16 +466,16 @@ pub mod pallet {
 				Error::<T>::ErrLoanIsActive
 			);
 
-			// calculate ceiling
-			let ceiling = loan_type.ceiling().ok_or(Error::<T>::ErrLoanTypeInvalid)?;
-			ensure!(ceiling > Zero::zero(), Error::<T>::ErrLoanValueInvalid);
+			// ensure loan_type is valid
+			let now = Self::time_now()?;
+			ensure!(loan_type.is_valid(now), Error::<T>::ErrLoanValueInvalid);
 
 			// ensure rate_per_sec >= one
 			ensure!(rate_per_sec >= One::one(), Error::<T>::ErrLoanValueInvalid);
 
-			// ensure loan_type is valid
-			let now = Self::time_now()?;
-			ensure!(loan_type.is_valid(now), Error::<T>::ErrLoanValueInvalid);
+			// calculate ceiling
+			let ceiling = loan_type.ceiling().ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+			ensure!(ceiling > Zero::zero(), Error::<T>::ErrLoanValueInvalid);
 
 			// update the loan info
 			LoanInfo::<T>::mutate(pool_id, loan_id, |maybe_loan_info| {
@@ -515,6 +518,12 @@ pub mod pallet {
 
 			// check if the pool exists
 			pallet_pool::Pallet::<T>::check_pool(pool_id)?;
+
+			// ensure write off percentage is not more than 100
+			ensure!(
+				group.percentage <= One::one(),
+				Error::<T>::ErrInvalidWriteOffGroup
+			);
 
 			// append new group
 			let index = PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| -> u32 {
@@ -688,10 +697,26 @@ impl<T: Config> Pallet<T> {
 
 		// ensure debt is all paid
 		// we just need to ensure principal debt is zero
-		ensure!(
+		// if not, we check if the loan is written of 100%
+		match (
 			loan_info.principal_debt == Zero::zero(),
-			Error::<T>::ErrLoanNotRepaid
-		);
+			loan_info.write_off_index,
+		) {
+			// debt is cleared
+			(true, _) => Ok(()),
+			// debt not cleared and loan not written off
+			(_, None) => Err(Error::<T>::ErrLoanNotRepaid),
+			// debt not cleared but loan is written off
+			// if written off completely, then we can close it
+			(_, Some(write_off_index)) => {
+				let groups = PoolWriteOffGroups::<T>::get(pool_id);
+				let group = groups
+					.get(write_off_index as usize)
+					.ok_or(Error::<T>::ErrInvalidWriteOffGroupIndex)?;
+				ensure!(group.percentage == One::one(), Error::<T>::ErrLoanNotRepaid);
+				Ok(())
+			}
+		}?;
 
 		// transfer asset to owner
 		let asset = loan_info.asset_id;
