@@ -830,8 +830,8 @@ fn test_pool_nav() {
 				Amount::saturating_from_rational(52062227586365608471u128, Amount::accuracy())
 			);
 
-			// let the maturity has passed 2 years + 1 day
-			let after_2_years = (math::seconds_per_year() * 2) + (24 * 3600);
+			// let the maturity has passed 2 years + 10 day
+			let after_2_years = (math::seconds_per_year() * 2) + math::seconds_per_day() * 10;
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			let (_acc_rate, debt) = loan_data.accrue(after_2_years).unwrap();
@@ -855,6 +855,48 @@ fn test_pool_nav() {
 			.expect("must be a Nav updated event");
 			assert_eq!(pool_id, got_pool_id);
 			assert_eq!(updated_nav, nav);
+
+			// write off the loan and check for updated nav
+			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				let group = WriteOffGroup {
+					percentage: Rate::saturating_from_rational(group.1, 100),
+					overdue_days: group.0,
+				};
+				let res = Loan::add_write_off_group(Origin::signed(oracle), pool_id, group);
+				assert_ok!(res);
+			}
+
+			// write off loan. someone calls write off
+			let res = Loan::write_off_loan(Origin::signed(100), pool_id, loan_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (_pool_id, _loan_id, write_off_index) = match loan_event {
+				LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+					Some((pool_id, loan_id, write_off_index))
+				}
+				_ => None,
+			}
+			.expect("must be a loan written off event");
+			// it must be 2 with overdue days as 7 and write off percentage as 20%
+			assert_eq!(write_off_index, 2);
+
+			// update nav
+			let res = Loan::update_nav(Origin::signed(owner), pool_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (_pool_id, updated_nav) = match loan_event {
+				LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				_ => None,
+			}
+			.expect("must be a Nav updated event");
+
+			// updated nav should be (1-20%) outstanding debt
+			let expected_nav =
+				math::convert::<Rate, Amount>(Rate::saturating_from_rational(20, 100))
+					.and_then(|rate| debt.checked_mul(&rate))
+					.and_then(|written_off_amount| debt.checked_sub(&written_off_amount))
+					.unwrap();
+			assert_eq!(expected_nav, updated_nav);
 		})
 }
 

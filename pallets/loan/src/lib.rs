@@ -898,11 +898,12 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// accrues rate and debt of a given loan and updates it
-	/// returns the present value of the loan
+	/// returns the present value of the loan accounting any write offs
 	fn accrue_and_update_loan(
 		pool_id: T::PoolId,
 		loan_id: T::LoanId,
 		now: u64,
+		write_off_groups: Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Amount, DispatchError> {
 		LoanInfo::<T>::try_mutate(
 			pool_id,
@@ -921,7 +922,7 @@ impl<T: Config> Pallet<T> {
 				loan_data.last_updated = now;
 				loan_data.accumulated_rate = acc_rate;
 				let present_value = loan_data
-					.present_value()
+					.present_value_with_write_off(write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				*maybe_loan_data = Some(loan_data);
 				Ok(present_value)
@@ -932,10 +933,12 @@ impl<T: Config> Pallet<T> {
 	/// updates nav for the given pool and returns the latest NAV at this instant
 	fn update_nav_of_pool(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
 		let now = Self::time_now()?;
+		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
 			Zero::zero(),
 			|sum, loan_id| -> Result<T::Amount, DispatchError> {
-				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now)?;
+				let pv =
+					Self::accrue_and_update_loan(pool_id, loan_id, now, write_off_groups.clone())?;
 				sum.checked_add(&pv)
 					.ok_or(Error::<T>::ErrLoanAccrueFailed.into())
 			},
