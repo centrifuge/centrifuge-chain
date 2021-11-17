@@ -281,7 +281,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// emits when a new loan is issued for a given
-		LoanIssued(T::PoolId, T::LoanId),
+		LoanIssued(T::PoolId, T::LoanId, AssetOf<T>),
 
 		/// emits when a loan is closed
 		LoanClosed(T::PoolId, T::LoanId, AssetOf<T>),
@@ -341,7 +341,7 @@ pub mod pallet {
 		ErrNFTOwnerNotFound,
 
 		/// Emits when nft owner doesn't match the expected owner
-		ErrNotNFTOwner,
+		ErrNotAssetOwner,
 
 		/// Emits when the nft is not an acceptable asset
 		ErrNotAValidAsset,
@@ -392,7 +392,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			let loan_id = Self::issue(pool_id, owner, asset)?;
-			Self::deposit_event(Event::<T>::LoanIssued(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::LoanIssued(pool_id, loan_id, asset));
 			Ok(())
 		}
 
@@ -607,12 +607,12 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 	) -> Result<AssetOf<T>, DispatchError> {
-		let class_id =
+		let loan_class_id =
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::ErrPoolNotInitialised)?;
-		let got = T::NonFungible::owner(&class_id.into(), &loan_id.into())
+		let got = T::NonFungible::owner(&loan_class_id.into(), &loan_id.into())
 			.ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
-		ensure!(got == owner, Error::<T>::ErrNotNFTOwner);
-		Ok(Asset(class_id, loan_id))
+		ensure!(got == owner, Error::<T>::ErrNotAssetOwner);
+		Ok(Asset(loan_class_id, loan_id))
 	}
 
 	/// issues a new loan nft and returns the LoanID
@@ -622,14 +622,14 @@ impl<T: Config> Pallet<T> {
 		asset: AssetOf<T>,
 	) -> Result<T::LoanId, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
-		let (class_id, instance_id) = asset.destruct();
-		let owner = T::NonFungible::owner(&class_id.into(), &instance_id.into())
+		let (asset_class_id, instance_id) = asset.destruct();
+		let owner = T::NonFungible::owner(&asset_class_id.into(), &instance_id.into())
 			.ok_or(Error::<T>::ErrNFTOwnerNotFound)?;
-		ensure!(owner == asset_owner, Error::<T>::ErrNotNFTOwner);
+		ensure!(owner == asset_owner, Error::<T>::ErrNotAssetOwner);
 
 		// check if the registry is not an loan nft registry
 		ensure!(
-			!LoanNftClassToPool::<T>::contains_key(class_id),
+			!LoanNftClassToPool::<T>::contains_key(asset_class_id),
 			Error::<T>::ErrNotAValidAsset
 		);
 
@@ -637,12 +637,16 @@ impl<T: Config> Pallet<T> {
 		let loan_pallet_account: T::AccountId = T::LoanPalletId::get().into_account();
 		let nonce = NextLoanId::<T>::get();
 		let loan_id: T::LoanId = nonce.into();
-		let loan_nft_class_id =
+		let loan_class_id =
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::ErrPoolNotInitialised)?;
-		T::NonFungible::mint_into(&loan_nft_class_id.into(), &loan_id.into(), &owner)?;
+		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock asset nft
-		T::NonFungible::transfer(&class_id.into(), &instance_id.into(), &loan_pallet_account)?;
+		T::NonFungible::transfer(
+			&asset_class_id.into(),
+			&instance_id.into(),
+			&loan_pallet_account,
+		)?;
 		let timestamp = Self::time_now()?;
 
 		// update the next token nonce
@@ -714,14 +718,14 @@ impl<T: Config> Pallet<T> {
 
 		// transfer asset to owner
 		let asset = loan_info.asset;
-		let (class_id, instance_id) = asset.destruct();
-		T::NonFungible::transfer(&class_id.into(), &instance_id.into(), &owner)?;
+		let (asset_class_id, instance_id) = asset.destruct();
+		T::NonFungible::transfer(&asset_class_id.into(), &instance_id.into(), &owner)?;
 
 		// transfer loan nft to loan pallet
 		// ideally we should burn this but we do not have a function to burn them yet.
 		// TODO(ved): burn loan nft when the functionality is available
-		let (class_id, instance_id) = loan_nft.destruct();
-		T::NonFungible::transfer(&class_id.into(), &instance_id.into(), &Self::account_id())?;
+		let (loan_class_id, loan_id) = loan_nft.destruct();
+		T::NonFungible::transfer(&loan_class_id.into(), &loan_id.into(), &Self::account_id())?;
 
 		// update loan status
 		loan_info.status = LoanStatus::Closed;

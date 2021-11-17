@@ -26,7 +26,7 @@ use orml_traits::parameter_type_with_key;
 use runtime_common::{
 	Amount, Balance, ClassId, CurrencyId, InstanceId, PoolId, Rate, CENTI_CFG, CFG,
 };
-use sp_core::{blake2_128, H256};
+use sp_core::H256;
 use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
