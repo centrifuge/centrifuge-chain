@@ -1125,11 +1125,11 @@ fn admin_write_off_loan() {
 			assert_ok!(res);
 
 			// after one year
-			// caller should be admin
+			// caller should be admin, can write off before maturity
 			let caller = 1;
 			Timestamp::set_timestamp(math::seconds_per_year());
 			let res = Loan::admin_write_off_loan(Origin::signed(caller), pool_id, loan_id, 0);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanHealthy);
+			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroupIndex);
 
 			// let the maturity date passes + 1 day
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
@@ -1151,27 +1151,31 @@ fn admin_write_off_loan() {
 			}
 
 			// index
-			let t = math::seconds_per_year() * 2 + math::seconds_per_day() * 3;
-			Timestamp::set_timestamp(t);
+			for time in vec![
+				math::seconds_per_year(),
+				math::seconds_per_year() * 2 + math::seconds_per_day() * 3,
+			] {
+				Timestamp::set_timestamp(time);
+				for index in vec![0, 3, 2, 1, 0] {
+					let res =
+						Loan::admin_write_off_loan(Origin::signed(caller), pool_id, loan_id, index);
+					assert_ok!(res);
 
-			for index in vec![0, 3, 2, 1, 0] {
-				let res =
-					Loan::admin_write_off_loan(Origin::signed(caller), pool_id, loan_id, index);
-				assert_ok!(res);
-
-				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
-				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
-						Some((pool_id, loan_id, write_off_index))
+					let loan_event =
+						fetch_loan_event(last_event()).expect("should be a loan event");
+					let (_pool_id, _loan_id, write_off_index) = match loan_event {
+						LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+							Some((pool_id, loan_id, write_off_index))
+						}
+						_ => None,
 					}
-					_ => None,
+					.expect("must be a Loan issue event");
+					assert_eq!(write_off_index, index);
+					let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+						.expect("LoanData should be present");
+					assert_eq!(loan_data.write_off_index, Some(index));
+					assert!(loan_data.admin_written_off);
 				}
-				.expect("must be a Loan issue event");
-				assert_eq!(write_off_index, index);
-				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanData should be present");
-				assert_eq!(loan_data.write_off_index, Some(index));
-				assert!(loan_data.admin_written_off);
 			}
 
 			// permission less write off should not work once written off by admin

@@ -121,8 +121,6 @@ where
 			self.expected_loss_over_asset_maturity.is_positive(),
 			// maturity date should always be in future where now is at this instant
 			self.maturity_date > now,
-			// advance rate should not be more than 1
-			self.advance_rate <= One::one(),
 		]
 		.into_iter()
 		.all(|is_positive| is_positive)

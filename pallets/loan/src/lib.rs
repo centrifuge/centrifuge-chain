@@ -1000,14 +1000,7 @@ impl<T: Config> Pallet<T> {
 					Error::<T>::ErrLoanNotActive
 				);
 
-				let maturity_date = loan_data
-					.loan_type
-					.maturity_date()
-					.ok_or(Error::<T>::ErrLoanTypeInvalid)?;
 				let now = Self::time_now()?;
-
-				// ensure loan's maturity date has passed
-				ensure!(now > maturity_date, Error::<T>::ErrLoanHealthy);
 
 				// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
@@ -1027,6 +1020,14 @@ impl<T: Config> Pallet<T> {
 							if admin_written_off {
 								return Err(Error::<T>::ErrLoanWrittenOffByAdmin.into());
 							}
+
+							let maturity_date = loan_data
+								.loan_type
+								.maturity_date()
+								.ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+
+							// ensure loan's maturity date has passed
+							ensure!(now > maturity_date, Error::<T>::ErrLoanHealthy);
 
 							// not written off by admin, and non admin trying to write off, then
 							// fetch the best write group available for this loan
