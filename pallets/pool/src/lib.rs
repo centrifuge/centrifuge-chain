@@ -5,6 +5,7 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::traits::{AccountIdConversion, AtLeast32Bit, One};
+#[cfg(feature = "std")]
 use std::fmt::Debug;
 
 #[cfg(feature = "std")]
@@ -52,7 +53,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_nft::Config {
+	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -64,12 +65,6 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ AtLeast32Bit;
-
-		type LoanId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Copy
-			+ IsType<<Self as pallet_nft::Config>::TokenId>;
 
 		type MultiCurrency: orml_traits::MultiCurrency<<Self as frame_system::Config>::AccountId>;
 

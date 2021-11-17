@@ -16,7 +16,6 @@
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
 use crate as pallet_loan;
-use chainbridge::types::{ChainId, ResourceId};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -25,7 +24,7 @@ use frame_support::{
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use runtime_common::{
-	Amount, AssetInfo, Balance, CurrencyId, PoolId, Rate, RegistryId, TokenId, CFG,
+	Amount, Balance, ClassId, CurrencyId, InstanceId, PoolId, Rate, CENTI_CFG, CFG,
 };
 use sp_core::{blake2_128, H256};
 use sp_io::TestExternalities;
@@ -46,14 +45,11 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Chainbridge: chainbridge::{Pallet, Call, Storage, Event<T>},
-		Fees: pallet_fees::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Nft: pallet_nft::{Pallet, Call, Storage, Event<T>},
 		Pool: pallet_pool::{Pallet, Call, Storage, Event<T>},
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>},
-		Registry: pallet_registry::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -143,30 +139,9 @@ parameter_types! {
 impl pallet_pool::Config for MockRuntime {
 	type Event = Event;
 	type PoolId = PoolId;
-	type LoanId = TokenId;
 	type MultiCurrency = Tokens;
 	type TransferOrigin = crate::EnsureLoanAccount<MockRuntime>;
 	type PoolPalletId = PoolPalletId;
-}
-
-// Parameterize Centrifuge Chain chainbridge pallet
-parameter_types! {
-	pub const MockChainId: ChainId = 5;
-	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
-	pub const ProposalLifetime: u64 = 10;
-	pub const RelayerVoteThreshold: u32 = 1;
-}
-
-// Implement Centrifuge Chain chainbridge pallet configuration trait for the mock runtime
-impl chainbridge::Config for MockRuntime {
-	type Event = Event;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type Proposal = Call;
-	type ChainId = MockChainId;
-	type PalletId = ChainBridgePalletId;
-	type ProposalLifetime = ProposalLifetime;
-	type RelayerVoteThreshold = RelayerVoteThreshold;
-	type WeightInfo = ();
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
@@ -182,42 +157,36 @@ impl pallet_balances::Config for MockRuntime {
 	type ReserveIdentifier = ();
 }
 
-// Implement Centrifuge Chain anchors pallet for the mock runtime
-impl pallet_anchors::Config for MockRuntime {
-	type WeightInfo = ();
-}
-
-// Implement Substrate FRAME authorship pallet for the mock runtime
-impl pallet_authorship::Config for MockRuntime {
-	type FindAuthor = ();
-	type UncleGenerations = ();
-	type FilterUncle = ();
-	type EventHandler = ();
-}
-
-// Implement Centrifuge Chain fees pallet for the mock runtime
-impl pallet_fees::Config for MockRuntime {
-	type Currency = Balances;
-	type Event = Event;
-	type FeeChangeOrigin = EnsureSignedBy<One, u64>;
-	type WeightInfo = ();
-}
-
-// Parameterize NFT pallet
 parameter_types! {
-	pub const NftProofValidationFee: u128 = runtime_common::NFT_PROOF_VALIDATION_FEE;
-	pub MockHashId: ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"hash"));
+	// per byte deposit is 0.01 CFG
+	pub const DepositPerByte: Balance = CENTI_CFG;
+	// Base deposit to add attribute is 0.1 CFG
+	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
+	// Base deposit to add metadata is 0.1 CFG
+	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
+	// Deposit to create a class is 1 CFG
+	pub const ClassDeposit: Balance = CFG;
+	// Deposit to create a class is 0.1 CFG
+	pub const InstanceDeposit: Balance = 10 * CENTI_CFG;
+	// Maximum limit of bytes for Metadata, Attribute key and Value
+	pub const Limit: u32 = 256;
 }
 
-impl pallet_nft::Config for MockRuntime {
-	type RegistryId = RegistryId;
-	type TokenId = TokenId;
-	type AssetInfo = AssetInfo;
+impl pallet_uniques::Config for MockRuntime {
 	type Event = Event;
-	type ChainId = ChainId;
-	type ResourceId = ResourceId;
-	type HashId = MockHashId;
-	type NftProofValidationFee = NftProofValidationFee;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type Currency = Balances;
+	// a straight majority of council can act as force origin
+	type ForceOrigin = EnsureSignedBy<One, u64>;
+	type ClassDeposit = ClassDeposit;
+	type InstanceDeposit = InstanceDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = Limit;
+	type KeyLimit = Limit;
+	type ValueLimit = Limit;
 	type WeightInfo = ();
 }
 
@@ -227,24 +196,14 @@ parameter_types! {
 
 impl pallet_loan::Config for MockRuntime {
 	type Event = Event;
+	type ClassId = ClassId;
+	type LoanId = InstanceId;
 	type Rate = Rate;
 	type Amount = Amount;
-	type NftRegistry = Nft;
-	type VaRegistry = Registry;
+	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-}
-
-parameter_types! {
-	pub const NftPrefix: &'static [u8] = runtime_common::NFTS_PREFIX;
-}
-
-// Implement Centrifuge Chain registry pallet for the mock runtime
-impl pallet_registry::Config for MockRuntime {
-	type Event = Event;
-	type WeightInfo = ();
-	type NftPrefix = NftPrefix;
 }
 
 // USD currencyId
@@ -270,22 +229,24 @@ impl TestExternalitiesBuilder {
 			.build_storage::<MockRuntime>()
 			.unwrap();
 
-		pallet_fees::GenesisConfig::<MockRuntime> {
-			initial_fees: vec![(
-				// anchoring state rent fee per day
-				H256::from(&[
-					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
-					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
-				]),
-				// state rent 0 for tests
-				0,
-			)],
-		}
-		.assimilate_storage(&mut storage)
-		.unwrap();
-
 		pallet_balances::GenesisConfig::<MockRuntime> {
-			balances: vec![(One::get(), 100 * runtime_common::CFG)],
+			// add balances to 1..10 and loan account for minting nft instances
+			balances: vec![
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				pallet_loan::Pallet::<MockRuntime>::account_id(),
+			]
+			.into_iter()
+			.map(|acc| (acc, 100 * runtime_common::CFG))
+			.collect(),
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();
