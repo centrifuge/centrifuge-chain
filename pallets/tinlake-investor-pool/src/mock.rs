@@ -1,5 +1,8 @@
 use crate::{self as pallet_tinlake_investor_pool, Config};
-use frame_support::parameter_types;
+use frame_support::{
+	parameter_types,
+	traits::{GenesisBuild, Hooks},
+};
 use frame_system as system;
 use orml_traits::parameter_type_with_key;
 use primitives_tokens::CurrencyId;
@@ -92,7 +95,7 @@ impl orml_tokens::Config for Test {
 impl Config for Test {
 	type Event = Event;
 	type Balance = Balance;
-	type BalanceRatio = sp_runtime::FixedU128;
+	type BalanceRatio = sp_arithmetic::fixed_point::FixedU128P27;
 	type PoolId = u32;
 	type TrancheId = u8;
 	type EpochId = u32;
@@ -102,10 +105,41 @@ impl Config for Test {
 	type Time = Timestamp;
 }
 
+pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
+
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	system::GenesisConfig::default()
+	let mut t = system::GenesisConfig::default()
 		.build_storage::<Test>()
-		.unwrap()
-		.into()
+		.unwrap();
+
+	orml_tokens::GenesisConfig::<Test> {
+		balances: (0..10)
+			.into_iter()
+			.map(|idx| (idx, CurrencyId::Usd, 1000 * CURRENCY))
+			.collect(),
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| {
+		System::set_block_number(1);
+		System::on_initialize(System::block_number());
+		Timestamp::on_initialize(System::block_number());
+		Timestamp::set(Origin::none(), 1).unwrap();
+	});
+	ext
+}
+
+pub fn next_block() {
+	next_block_after(6)
+}
+
+pub fn next_block_after(seconds: u64) {
+	Timestamp::on_finalize(System::block_number());
+	System::on_finalize(System::block_number());
+	System::set_block_number(System::block_number() + 1);
+	System::on_initialize(System::block_number());
+	Timestamp::on_initialize(System::block_number());
+	Timestamp::set(Origin::none(), Timestamp::now() + seconds).unwrap();
 }

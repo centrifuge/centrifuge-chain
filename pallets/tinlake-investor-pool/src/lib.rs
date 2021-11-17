@@ -20,8 +20,11 @@ use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTim
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use sp_runtime::{
-	traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Zero},
-	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
+	traits::{
+		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
+		Saturating, Zero,
+	},
+	FixedPointNumber, FixedPointOperand, PerThing, Perquintill, TypeId,
 };
 use sp_std::vec::Vec;
 
@@ -38,12 +41,17 @@ pub trait TrancheToken<T: Config> {
 	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
 pub struct Tranche<Balance> {
 	pub interest_per_sec: Perquintill,
 	pub min_subordination_ratio: Perquintill,
 	pub epoch_supply: Balance,
 	pub epoch_redeem: Balance,
+
+	pub debt: Balance,
+	pub reserve: Balance,
+	pub ratio: Perquintill,
+	pub last_updated_interest: u64,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
@@ -58,6 +66,8 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
+
+	pub fake_nav: Balance,
 }
 
 /// Per-tranche and per-user order details.
@@ -91,6 +101,22 @@ pub struct EpochDetails<BalanceRatio> {
 	pub supply_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
 	pub token_price: BalanceRatio,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
+pub struct EpochExecutionTranche<Balance, BalanceRatio> {
+	value: Balance,
+	price: BalanceRatio,
+	supply: Balance,
+	redeem: Balance,
+}
+
+/// The information for a currently executing epoch
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
+pub struct EpochExecutionInfo<Balance, BalanceRatio> {
+	nav: Balance,
+	reserve: Balance,
+	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
 }
 
 #[frame_support::pallet]
@@ -188,8 +214,8 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn epoch_targets)]
-	pub type EpochTargets<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, Vec<(T::Balance, T::Balance)>>;
+	pub type EpochExecution<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfo<T::Balance, T::BalanceRatio>>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
@@ -262,6 +288,7 @@ pub mod pallet {
 				Error::<T>::NoJuniorTranche
 			);
 
+			let now = T::Time::now().as_secs();
 			let tranches = tranches
 				.into_iter()
 				.map(|(interest, sub_percent)| {
@@ -273,6 +300,11 @@ pub mod pallet {
 						min_subordination_ratio: Perquintill::from_percent(sub_percent.into()),
 						epoch_supply: Zero::zero(),
 						epoch_redeem: Zero::zero(),
+
+						debt: Zero::zero(),
+						reserve: Zero::zero(),
+						ratio: Perquintill::zero(),
+						last_updated_interest: now,
 					}
 				})
 				.collect();
@@ -283,12 +315,13 @@ pub mod pallet {
 					currency,
 					tranches,
 					current_epoch: One::one(),
-					last_epoch_closed: T::Time::now().as_secs(),
+					last_epoch_closed: now,
 					last_epoch_executed: Zero::zero(),
 					closing_epoch: None,
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
+					fake_nav: Zero::zero(),
 				},
 			);
 			Self::deposit_event(Event::PoolCreated(pool_id, owner));
@@ -400,23 +433,13 @@ pub mod pallet {
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
-				let previous_epoch_end = pool.last_epoch_closed;
 				let current_epoch_end = T::Time::now().as_secs();
 				pool.last_epoch_closed = current_epoch_end;
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = pool.total_reserve;
 
 				// TODO: get NAV
-				// For now, assume that nav == 0, so all value is in the reserve
-				let nav = Zero::zero();
-
-				let epoch_tranche_prices = Self::calculate_tranche_prices(
-					current_epoch_end - previous_epoch_end,
-					epoch_reserve
-						.checked_add(&nav)
-						.ok_or(Error::<T>::Overflow)?,
-					&pool.tranches,
-				);
+				let nav = pool.fake_nav;
 
 				if pool
 					.tranches
@@ -424,18 +447,20 @@ pub mod pallet {
 					.all(|tranche| tranche.epoch_supply.is_zero() && tranche.epoch_redeem.is_zero())
 				{
 					// This epoch is a no-op. Finish executing it.
-					for tranche_id in 0..pool.tranches.len() {
-						let tranche = TrancheLocator {
+					for (tranche_id, tranche) in pool.tranches.iter_mut().enumerate() {
+						let loc = TrancheLocator {
 							pool_id,
 							tranche_id: T::TrancheId::try_from(tranche_id)
 								.map_err(|_| Error::<T>::TrancheId)?,
 						};
-						let epoch = EpochDetails::<T::BalanceRatio> {
-							supply_fulfillment: Perquintill::one(),
-							redeem_fulfillment: Perquintill::one(),
-							token_price: epoch_tranche_prices[tranche_id],
-						};
-						Epoch::<T>::insert(tranche, closing_epoch, epoch)
+						Self::update_tranche_for_epoch(
+							loc,
+							closing_epoch,
+							tranche,
+							(Perquintill::zero(), Perquintill::zero()),
+							(Zero::zero(), Zero::zero()),
+							Zero::zero(),
+						)?;
 					}
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
@@ -443,8 +468,12 @@ pub mod pallet {
 					return Ok(());
 				}
 
+				let epoch_tranche_prices =
+					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
+						.ok_or(Error::<T>::Overflow)?;
+
 				// If closing the epoch would wipe out a tranche, the close is invalid.
-				// TODO: This should instead put the tranche into an error state
+				// TODO: This should instead put the pool into an error state
 				ensure!(
 					!epoch_tranche_prices
 						.iter()
@@ -463,22 +492,37 @@ pub mod pallet {
 					.map(|_| (Perquintill::one(), Perquintill::one()))
 					.collect::<Vec<_>>();
 
-				// todo Define/Calculate current tranche values
-				// How to include NAV in this
 				let current_tranche_values = pool
 					.tranches
 					.iter()
-					.map(|_| Zero::zero())
-					.collect::<Vec<_>>();
+					.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
+					.collect::<Option<Vec<_>>>()
+					.ok_or(Error::<T>::Overflow)?;
 
-				if Self::is_epoch_valid(pool, &epoch_targets, &current_tranche_values, &full_epoch)
-					.is_ok()
-				{
-					Self::do_execute_epoch(pool_id, &epoch_targets, &full_epoch)?;
+				let epoch_tranches: Vec<_> = epoch_targets
+					.iter()
+					.zip(&current_tranche_values)
+					.zip(&epoch_tranche_prices)
+					.map(|(((supply, redeem), value), price)| EpochExecutionTranche {
+						value: *value,
+						price: *price,
+						supply: *supply,
+						redeem: *redeem,
+					})
+					.collect();
+
+				let epoch = EpochExecutionInfo {
+					nav,
+					reserve: pool.total_reserve,
+					tranches: epoch_tranches,
+				};
+
+				if Self::is_epoch_valid(pool, &epoch, &full_epoch).is_ok() {
+					Self::do_execute_epoch(pool_id, pool, &epoch, &full_epoch)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				} else {
 					pool.closing_epoch = Some(closing_epoch);
-					EpochTargets::<T>::insert(pool_id, epoch_targets);
+					EpochExecution::<T>::insert(pool_id, epoch);
 					Self::deposit_event(Event::EpochClosed(pool_id, closing_epoch));
 				}
 				Ok(())
@@ -493,20 +537,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let target = EpochTargets::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			let epoch =
+				EpochExecution::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let closing_epoch = pool.closing_epoch.ok_or(Error::<T>::NotClosing)?;
 
-				// todo Define/Calculate current tranche values
-				let current_tranche_values = pool
-					.tranches
-					.iter()
-					.map(|_| Zero::zero())
-					.collect::<Vec<_>>();
-
-				let epoch_validation_result =
-					Self::is_epoch_valid(pool, &target, &current_tranche_values, &solution);
+				let epoch_validation_result = Self::is_epoch_valid(pool, &epoch, &solution);
 
 				// Soft error check only for core constraints
 				ensure!(
@@ -517,8 +554,8 @@ pub mod pallet {
 				);
 
 				pool.closing_epoch = None;
-				Self::do_execute_epoch(pool_id, &target, &solution)?;
-				EpochTargets::<T>::remove(pool_id);
+				Self::do_execute_epoch(pool_id, pool, &epoch, &solution)?;
+				EpochExecution::<T>::remove(pool_id);
 				Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
 				Ok(())
 			})
@@ -541,6 +578,31 @@ pub mod pallet {
 					.total_reserve
 					.checked_add(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				let mut remaining_amount = amount;
+				for tranche in &mut pool.tranches {
+					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+						tranche.ratio.mul_ceil(amount)
+					} else {
+						remaining_amount
+					};
+					let tranche_amount = if tranche_amount > tranche.debt {
+						tranche.debt
+					} else {
+						tranche_amount
+					};
+
+					tranche.debt -= tranche_amount;
+					tranche.reserve = tranche
+						.reserve
+						.checked_add(&tranche_amount)
+						.ok_or(Error::<T>::Overflow)?;
+					remaining_amount -= tranche_amount;
+				}
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
 				Ok(())
 			})
@@ -565,7 +627,66 @@ pub mod pallet {
 					.available_reserve
 					.checked_sub(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_add(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				let mut remaining_amount = amount;
+				for tranche in &mut pool.tranches {
+					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+						tranche.ratio.mul_ceil(amount)
+					} else {
+						remaining_amount
+					};
+					let tranche_amount = if tranche_amount > tranche.reserve {
+						tranche.reserve
+					} else {
+						tranche_amount
+					};
+
+					tranche.reserve -= tranche_amount;
+					tranche.debt = tranche
+						.debt
+						.checked_add(&tranche_amount)
+						.ok_or(Error::<T>::Overflow)?;
+					remaining_amount -= tranche_amount;
+				}
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn test_nav_up(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_add(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn test_nav_down(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})
 		}
@@ -573,11 +694,61 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		fn calculate_tranche_prices(
-			_epoch_duration: u64,
-			_epoch_value: T::Balance,
-			tranches: &[Tranche<T::Balance>],
-		) -> Vec<T::BalanceRatio> {
-			tranches.iter().map(|_| One::one()).collect()
+			pool_id: T::PoolId,
+			epoch_nav: T::Balance,
+			epoch_reserve: T::Balance,
+			tranches: &mut [Tranche<T::Balance>],
+		) -> Option<Vec<T::BalanceRatio>> {
+			let total_assets = epoch_nav.checked_add(&epoch_reserve).unwrap();
+			let mut remaining_assets = total_assets;
+			let pool_is_zero = total_assets == Zero::zero();
+			let last_tranche = tranches.len() - 1;
+			tranches
+				.iter_mut()
+				.enumerate()
+				.map(|(tranche_id, tranche)| {
+					let currency =
+						T::TrancheToken::tranche_token(pool_id, tranche_id.try_into().ok()?);
+					let total_issuance = T::Tokens::total_issuance(currency);
+					if pool_is_zero || total_issuance == Zero::zero() {
+						Some(One::one())
+					} else if tranche_id == last_tranche {
+						T::BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
+					} else {
+						Self::update_tranche_debt(tranche)?;
+						let tranche_value = tranche.debt.checked_add(&tranche.reserve)?;
+						let tranche_value = if tranche_value > remaining_assets {
+							remaining_assets = Zero::zero();
+							remaining_assets
+						} else {
+							remaining_assets -= tranche_value;
+							tranche_value
+						};
+						T::BalanceRatio::checked_from_rational(tranche_value, total_issuance)
+					}
+				})
+				.collect()
+		}
+
+		fn update_tranche_debt(tranche: &mut Tranche<T::Balance>) -> Option<()> {
+			let now = T::Time::now().as_secs();
+			let mut delta = now - tranche.last_updated_interest;
+			let mut interest: T::BalanceRatio = <T::BalanceRatio as One>::one()
+				+ T::BalanceRatio::checked_from_rational(
+					tranche.interest_per_sec.deconstruct(),
+					Perquintill::ACCURACY,
+				)?;
+			let mut total_interest = T::BalanceRatio::checked_from_integer(One::one())?;
+			while delta != 0 {
+				if delta & 1 == 1 {
+					total_interest = interest.checked_mul(&total_interest)?;
+				}
+				interest = interest.checked_mul(&interest)?;
+				delta = delta >> 1;
+			}
+			tranche.debt = total_interest.checked_mul_int(tranche.debt)?;
+			tranche.last_updated_interest = now;
+			Some(())
 		}
 
 		pub fn calculate_epoch_transfers(
@@ -597,29 +768,41 @@ pub mod pallet {
 
 		pub fn is_epoch_valid(
 			pool_details: &PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
-			target: &[(T::Balance, T::Balance)],
-			current_tranche_values: &[T::Balance],
+			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			solution: &[(Perquintill, Perquintill)],
 		) -> DispatchResult {
-			let acc_supply: T::Balance = target.iter().zip(solution.iter()).fold(
-				Zero::zero(),
-				|sum: T::Balance, (tranche, sol)| {
-					sum.checked_add(&sol.0.mul_floor(tranche.0)).unwrap()
-				},
-			);
+			let acc_supply: T::Balance = epoch
+				.tranches
+				.iter()
+				.zip(solution)
+				.fold(
+					Some(Zero::zero()),
+					|sum: Option<T::Balance>, (tranche, sol)| {
+						sum.and_then(|sum| sum.checked_add(&sol.0.mul_floor(tranche.supply)))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
 
-			let acc_redeem: T::Balance = target.iter().zip(solution.iter()).fold(
-				Zero::zero(),
-				|sum: T::Balance, (tranche, sol)| {
-					sum.checked_add(&sol.1.mul_floor(tranche.1)).unwrap()
-				},
-			);
+			let acc_redeem: T::Balance = epoch
+				.tranches
+				.iter()
+				.zip(solution)
+				.fold(
+					Some(Zero::zero()),
+					|sum: Option<T::Balance>, (tranche, sol)| {
+						sum.and_then(|sum| sum.checked_add(&sol.1.mul_floor(tranche.redeem)))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
 
-			let currency_available: T::Balance =
-				acc_supply.checked_add(&pool_details.total_reserve).unwrap();
+			let currency_available: T::Balance = acc_supply
+				.checked_add(&epoch.reserve)
+				.ok_or(Error::<T>::Overflow)?;
 			Self::validate_core_constraints(currency_available, acc_redeem)?;
 
-			let new_reserve = currency_available.checked_sub(&acc_redeem).unwrap();
+			let new_reserve = currency_available
+				.checked_sub(&acc_redeem)
+				.ok_or(Error::<T>::Overflow)?;
 
 			let tranche_ratios = pool_details
 				.tranches
@@ -627,11 +810,23 @@ pub mod pallet {
 				.map(|tranche| tranche.min_subordination_ratio)
 				.collect::<Vec<_>>();
 
+			let tranche_values: Vec<_> = epoch
+				.tranches
+				.iter()
+				.zip(solution)
+				.map(|(tranche, sol)| {
+					tranche
+						.value
+						.checked_add(&sol.0.mul_floor(tranche.supply))
+						.and_then(|value| value.checked_sub(&sol.1.mul_floor(tranche.redeem)))
+				})
+				.collect::<Option<Vec<_>>>()
+				.ok_or(Error::<T>::Overflow)?;
 			Self::validate_pool_constraints(
 				new_reserve,
 				pool_details.max_reserve,
 				&tranche_ratios,
-				current_tranche_values,
+				&tranche_values,
 			)
 		}
 
@@ -659,8 +854,7 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientReserve)?
 			}
 
-			let mut count = 0;
-			for tv in current_tranche_values {
+			for (count, tv) in current_tranche_values.iter().enumerate() {
 				let acc_sub_value = current_tranche_values
 					.iter()
 					.skip(count + 1)
@@ -672,18 +866,201 @@ pub mod pallet {
 				if calc_sub < tranche_ratios[count] {
 					Err(Error::<T>::SubordinationRatioViolated)?
 				}
-				count = count + 1;
 			}
 
 			Ok(())
 		}
 
 		fn do_execute_epoch(
-			_pool: T::PoolId,
-			_target: &[(T::Balance, T::Balance)],
-			_solution: &[(Perquintill, Perquintill)],
-		) -> Result<(), Error<T>> {
-			// TODO: Implement this
+			pool_id: T::PoolId,
+			pool: &mut PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
+			solution: &[(Perquintill, Perquintill)],
+		) -> DispatchResult {
+			pool.last_epoch_executed += One::one();
+
+			let execution: Vec<_> = epoch
+				.tranches
+				.iter()
+				.zip(solution.iter())
+				.map(|(tranche, (s_supply, s_redeem))| {
+					(
+						s_supply.mul_floor(tranche.supply),
+						s_redeem.mul_floor(tranche.redeem),
+					)
+				})
+				.collect();
+
+			let total_supply = execution
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|acc: Option<T::Balance>, (supply, _)| {
+						acc.and_then(|acc| acc.checked_add(supply))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+
+			let total_redeem = execution
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|acc: Option<T::Balance>, (_, redeem)| {
+						acc.and_then(|acc| acc.checked_add(redeem))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+
+			// Update tranche orders and add epoch solution state
+			for ((((tranche_id, tranche), solution), execution), epoch_tranche) in pool
+				.tranches
+				.iter_mut()
+				.enumerate()
+				.zip(solution.iter().copied())
+				.zip(execution.iter().copied())
+				.zip(&epoch.tranches)
+			{
+				let loc = TrancheLocator {
+					pool_id,
+					tranche_id: T::TrancheId::try_from(tranche_id)
+						.map_err(|_| Error::<T>::TrancheId)?,
+				};
+				Self::update_tranche_for_epoch(
+					loc,
+					pool.last_epoch_executed,
+					tranche,
+					solution,
+					execution,
+					epoch_tranche.price,
+				)?;
+			}
+
+			// Update the total/available reserve for the new total value of the pool
+			pool.total_reserve = pool
+				.total_reserve
+				.checked_add(&total_supply)
+				.and_then(|res| res.checked_sub(&total_redeem))
+				.ok_or(Error::<T>::Overflow)?;
+			pool.available_reserve = pool.total_reserve;
+
+			// Calculate the new fraction of the total pool value that each tranche contains
+			// This is based on the tranche values at time of epoch close.
+			let total_assets = pool
+				.total_reserve
+				.checked_add(&epoch.nav)
+				.ok_or(Error::<T>::Overflow)?;
+			let tranche_ratios: Vec<_> = execution
+				.iter()
+				.zip(&epoch.tranches)
+				.map(|((supply, redeem), tranche)| {
+					tranche
+						.value
+						.checked_add(supply)
+						.and_then(|value| value.checked_sub(redeem))
+						.map(|tranche_asset| {
+							Perquintill::from_rational(tranche_asset, total_assets)
+						})
+				})
+				.collect::<Option<Vec<Perquintill>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			// Calculate the new total asset value for each tranche
+			// This uses the current state of the tranches, rather than the cached epoch-close-time values.
+			let mut total_assets = total_assets;
+			let tranche_assets = execution
+				.iter()
+				.zip(&mut pool.tranches)
+				.map(|((supply, redeem), tranche)| {
+					Self::update_tranche_debt(tranche)?;
+					tranche
+						.debt
+						.checked_add(&tranche.reserve)
+						.and_then(|value| value.checked_add(supply))
+						.and_then(|value| value.checked_sub(redeem))
+						.map(|value| {
+							if value > total_assets {
+								let assets = total_assets;
+								total_assets = Zero::zero();
+								assets
+							} else {
+								total_assets = total_assets.saturating_sub(value);
+								value
+							}
+						})
+				})
+				.collect::<Option<Vec<T::Balance>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			// Rebalance tranches based on the new tranche asset values and ratios
+			let nav = pool.fake_nav;
+			let mut remaining_nav = nav;
+			let mut remaining_reserve = pool.total_reserve;
+			let last_tranche = pool.tranches.len() - 1;
+			for (((tranche_id, tranche), ratio), value) in pool
+				.tranches
+				.iter_mut()
+				.enumerate()
+				.zip(&tranche_ratios)
+				.zip(&tranche_assets)
+			{
+				tranche.ratio = *ratio;
+				if tranche_id == last_tranche {
+					tranche.debt = remaining_nav;
+					tranche.reserve = remaining_reserve;
+				} else {
+					tranche.debt = ratio.mul_ceil(nav);
+					if tranche.debt > *value {
+						tranche.debt = *value;
+					}
+					tranche.reserve = value.saturating_sub(tranche.debt);
+					remaining_nav -= tranche.debt;
+					remaining_reserve -= tranche.reserve;
+				}
+			}
+
+			Ok(())
+		}
+
+		fn update_tranche_for_epoch(
+			loc: TrancheLocator<T::PoolId, T::TrancheId>,
+			closing_epoch: T::EpochId,
+			tranche: &mut Tranche<T::Balance>,
+			(supply_sol, redeem_sol): (Perquintill, Perquintill),
+			(currency_supply, _currency_redeem): (T::Balance, T::Balance),
+			price: T::BalanceRatio,
+		) -> DispatchResult {
+			// Update supply/redeem orders for the next epoch based on our execution
+			let token_supply = price
+				.reciprocal()
+				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_supply))
+				.map(|supply| supply_sol.mul_ceil(supply))
+				.unwrap_or(Zero::zero());
+			let token_redeem = supply_sol.mul_floor(tranche.epoch_redeem);
+
+			tranche.epoch_supply -= currency_supply;
+			tranche.epoch_redeem -= token_redeem;
+
+			// Compute the tranche tokens that need to be minted or burned based on the execution
+			let pool_address = PoolLocator {
+				pool_id: loc.pool_id,
+			}
+			.into_account();
+			let token = T::TrancheToken::tranche_token(loc.pool_id, loc.tranche_id);
+			if token_supply > token_redeem {
+				let tokens_to_mint = token_supply - token_redeem;
+				T::Tokens::deposit(token, &pool_address, tokens_to_mint)?;
+			} else if token_redeem > token_supply {
+				let tokens_to_burn = token_redeem - token_supply;
+				T::Tokens::withdraw(token, &pool_address, tokens_to_burn)?;
+			}
+
+			// Insert epoch closing information on supply/redeem fulfillment
+			let epoch = EpochDetails::<T::BalanceRatio> {
+				supply_fulfillment: supply_sol,
+				redeem_fulfillment: redeem_sol,
+				token_price: price,
+			};
+			Epoch::<T>::insert(loc, closing_epoch, epoch);
 			Ok(())
 		}
 	}

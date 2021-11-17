@@ -60,4 +60,3 @@ std = [
     'unique-assets/std',
     'common-traits/std'
 ]
-

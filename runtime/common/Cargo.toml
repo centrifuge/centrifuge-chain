@@ -57,6 +57,7 @@ std = [
     "pallet-anchors/std",
     "common-traits/std"
 ]
+
 on-chain-release-build = [
     "sp-api/disable-logging",
 ]
