@@ -252,7 +252,7 @@ mod tests {
 		let now = 0;
 		// interest rate is 5%
 		let rate_per_sec = rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-		// expected cashflow should be 110.35
+		// expected cash flow should be 110.35
 		let cf = bullet_loan_risk_adjusted_expected_cash_flow(
 			debt,
 			now,
@@ -279,7 +279,7 @@ mod tests {
 		let now = 0;
 		// interest rate is 5%
 		let rp = rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-		// expected cashflow should be 110.35
+		// expected cash flow should be 110.35
 		let cf = bullet_loan_risk_adjusted_expected_cash_flow(
 			debt,
 			now,

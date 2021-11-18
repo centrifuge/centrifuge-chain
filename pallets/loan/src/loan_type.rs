@@ -1,15 +1,5 @@
 use super::*;
 
-/// Asset that represents a non fungible
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct Asset<ClassId, InstanceId>(pub ClassId, pub InstanceId);
-
-impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
-	pub fn destruct(self) -> (ClassId, InstanceId) {
-		(self.0, self.1)
-	}
-}
-
 /// different types of loans
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]

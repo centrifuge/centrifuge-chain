@@ -751,7 +751,7 @@ fn test_pool_nav() {
 					percentage: Rate::saturating_from_rational(group.1, 100),
 					overdue_days: group.0,
 				};
-				let res = Loan::add_write_off_group(Origin::signed(admin), pool_id, group);
+				let res = Loan::add_write_off_group_to_pool(Origin::signed(admin), pool_id, group);
 				assert_ok!(res);
 			}
 
@@ -796,6 +796,7 @@ fn add_write_off_groups() {
 		.execute_with(|| {
 			let admin: u64 = 1;
 			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(admin);
+			initialise_pool::<MockRuntime>(pool_id);
 
 			// fetch write off groups
 			let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
@@ -807,7 +808,7 @@ fn add_write_off_groups() {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
 				};
-				let res = Loan::add_write_off_group(Origin::signed(admin), pool_id, group);
+				let res = Loan::add_write_off_group_to_pool(Origin::signed(admin), pool_id, group);
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, index) = match loan_event {
@@ -827,7 +828,7 @@ fn add_write_off_groups() {
 				percentage: Rate::saturating_from_rational(110, 100),
 				overdue_days: 3,
 			};
-			let res = Loan::add_write_off_group(Origin::signed(admin), pool_id, group);
+			let res = Loan::add_write_off_group_to_pool(Origin::signed(admin), pool_id, group);
 			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroup);
 		})
 }
@@ -875,7 +876,7 @@ fn write_off_loan() {
 
 			// add write off groups
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
-				let res = Loan::add_write_off_group(
+				let res = Loan::add_write_off_group_to_pool(
 					Origin::signed(admin),
 					pool_id,
 					WriteOffGroup {
@@ -959,7 +960,7 @@ fn admin_write_off_loan() {
 
 			// add write off groups
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
-				let res = Loan::add_write_off_group(
+				let res = Loan::add_write_off_group_to_pool(
 					Origin::signed(admin),
 					pool_id,
 					WriteOffGroup {
@@ -1039,7 +1040,7 @@ fn close_written_off_loan() {
 
 			// add write off groups
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
-				let res = Loan::add_write_off_group(
+				let res = Loan::add_write_off_group_to_pool(
 					Origin::signed(admin),
 					pool_id,
 					WriteOffGroup {
