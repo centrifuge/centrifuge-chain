@@ -389,7 +389,7 @@ pub mod pallet {
 			)
 		}
 
-		/// This extrinsic disables the call-filter. After this has been called the chain will acceppt
+		/// This extrinsic disables the call-filter. After this has been called the chain will accept
 		/// all calls again.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::finalize())]
 		#[transactional]

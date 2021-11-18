@@ -146,7 +146,7 @@ impl Contains<Call> for BaseFilter {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = BaseFilter;
+	type BaseCallFilter = Migration;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -720,6 +720,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type Filter = BaseFilter;
 }
 
 // Parameterize crowdloan reward pallet configuration
