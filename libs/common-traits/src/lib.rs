@@ -110,7 +110,6 @@ pub trait PoolReserve<Origin, AccountId> {
 
 	/// transfers the amount to the account from reserve
 	/// caller must be whitelisted.
-	/// TODO(ved): we dont need to check the caller since we know who can call
 	fn transfer_to(
 		pool_id: Self::PoolId,
 		caller: Origin,
@@ -120,7 +119,6 @@ pub trait PoolReserve<Origin, AccountId> {
 
 	/// transfers the amount from the account to reserve
 	/// caller must be whitelisted.
-	/// TODO(ved): we dont need to check the caller since we know who can call
 	fn transfer_from(
 		pool_id: Self::PoolId,
 		caller: Origin,

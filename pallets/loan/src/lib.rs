@@ -251,6 +251,28 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Initiates a new pool and maps the poolId with the loan nft classId
+		#[pallet::weight(100_000)]
+		#[transactional]
+		pub fn initialise_pool(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			loan_nft_class_id: T::ClassId,
+		) -> DispatchResult {
+			// ensure admin is the origin
+			T::AdminOrigin::ensure_origin(origin)?;
+
+			// ensure pool is not initialised yet
+			ensure!(
+				!PoolToLoanNftClass::<T>::contains_key(pool_id),
+				Error::<T>::ErrPoolAlreadyInitialised
+			);
+
+			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
+			LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
+			Ok(())
+		}
+
 		/// Issues a new loan against the asset provided
 		#[pallet::weight(100_000)]
 		#[transactional]
@@ -376,7 +398,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a permissioned call to write off an unhealthy loan
+		/// a admin call to write off an unhealthy loan
 		/// write_off_index is overwritten to the loan and the is fixed until changes it with another call.
 		#[pallet::weight(100_000)]
 		#[transactional]

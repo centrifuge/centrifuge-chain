@@ -6,26 +6,6 @@ impl<T: Config> Pallet<T> {
 		T::LoanPalletId::get().into_account()
 	}
 
-	// TODO(ved): make this a hook maybe
-	pub(crate) fn initialise_pool(
-		origin: OriginFor<T>,
-		pool_id: PoolIdOf<T>,
-		loan_nft_class_id: T::ClassId,
-	) -> DispatchResult {
-		// ensure admin is the origin
-		T::AdminOrigin::ensure_origin(origin)?;
-
-		// ensure pool is not initialised yet
-		ensure!(
-			!PoolToLoanNftClass::<T>::contains_key(pool_id),
-			Error::<T>::ErrPoolAlreadyInitialised
-		);
-
-		PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
-		LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
-		Ok(())
-	}
-
 	/// check if the given loan belongs to the owner provided
 	pub(crate) fn check_loan_owner(
 		pool_id: PoolIdOf<T>,

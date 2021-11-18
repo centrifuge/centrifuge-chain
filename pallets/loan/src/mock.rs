@@ -177,7 +177,6 @@ impl pallet_uniques::Config for MockRuntime {
 	type ClassId = ClassId;
 	type InstanceId = InstanceId;
 	type Currency = Balances;
-	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
