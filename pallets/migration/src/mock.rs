@@ -20,9 +20,11 @@ use crate as pallet_migration_manager;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_runtime::traits::ConvertInto;
-use frame_support::traits::Everything;
 use frame_support::{
-	parameter_types, scale_info::TypeInfo, traits::InstanceFilter, weights::Weight,
+	parameter_types,
+	scale_info::TypeInfo,
+	traits::{Contains, InstanceFilter},
+	weights::Weight,
 };
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
@@ -153,7 +155,7 @@ parameter_types! {
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = Everything;
+	type BaseCallFilter = Migration;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -195,7 +197,24 @@ impl pallet_migration_manager::Config for MockRuntime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = ();
-	type Filter = ();
+	type Filter = BaseFilter;
+}
+
+// our base filter
+// allow base system calls needed for block production and runtime upgrade
+// other calls will be disallowed
+pub struct BaseFilter;
+
+impl Contains<Call> for BaseFilter {
+	fn contains(c: &Call) -> bool {
+		matches!(
+			c,
+			// Calls for runtime upgrade
+			|Call::System(frame_system::Call::set_code { .. })| Call::System(
+				frame_system::Call::set_code_without_checks { .. }
+			) // Calls that are present in each block
+		)
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -228,17 +247,15 @@ impl TestExternalitiesBuilder {
 
 	// Build a genesis storage key/value store
 	pub fn build<R>(self, execute: impl FnOnce() -> R) -> sp_io::TestExternalities {
-		let storage = frame_system::GenesisConfig::default()
+		let mut storage = frame_system::GenesisConfig::default()
 			.build_storage::<MockRuntime>()
 			.unwrap();
 
-		/*pallet_balances::GenesisConfig::<MockRuntime> { balances: vec![] }
-			.assimilate_storage(&mut storage)
-			.unwrap();
-
-		pallet_vesting::GenesisConfig::<MockRuntime> { vesting: vec![] }
-			.assimilate_storage(&mut storage)
-			.unwrap();*/
+		pallet_balances::GenesisConfig::<MockRuntime> {
+			balances: vec![(get_account(), 1000)],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
 
 		let mut ext = sp_io::TestExternalities::new(storage);
 		ext.execute_with(|| {
@@ -247,6 +264,15 @@ impl TestExternalitiesBuilder {
 		ext.execute_with(execute);
 		ext
 	}
+}
+
+pub(crate) fn get_account() -> AccountId {
+	let pub_key: [u8; 32] = [
+		89, 211, 18, 12, 18, 109, 171, 175, 21, 236, 203, 33, 33, 168, 153, 55, 198, 227, 184, 139,
+		77, 115, 132, 73, 59, 235, 90, 175, 221, 88, 44, 247,
+	];
+
+	codec::Decode::decode(&mut &pub_key[..]).unwrap()
 }
 
 pub(crate) fn reward_events() -> Vec<pallet_migration_manager::Event<MockRuntime>> {
