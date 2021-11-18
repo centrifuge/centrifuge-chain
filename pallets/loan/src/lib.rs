@@ -4,7 +4,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::PoolNAV as TPoolNav;
+use common_traits::{PoolNAV as TPoolNav, PoolReserve};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -45,7 +45,6 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
-	use pallet_pool::MultiCurrencyBalanceOf;
 	use sp_arithmetic::FixedPointNumber;
 
 	#[pallet::pallet]
@@ -53,7 +52,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_pool::Config {
+	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -80,7 +79,7 @@ pub mod pallet {
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ FixedPointNumber
-			+ Into<MultiCurrencyBalanceOf<Self>>;
+			+ Into<ReserveBalanceOf<Self>>;
 
 		/// The NonFungible trait that can mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId> + Mutate<Self::AccountId>;
@@ -94,19 +93,22 @@ pub mod pallet {
 
 		/// Origin for admin that can activate a loan
 		type AdminOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+
+		/// Pool reserve type
+		type PoolReserve: PoolReserve<Self::Origin, Self::AccountId>;
 	}
 
 	/// Stores the loan nft class ID against a given pool
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan_nft_class)]
 	pub(crate) type PoolToLoanNftClass<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, T::ClassId, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, T::ClassId, OptionQuery>;
 
 	/// Stores the poolID against ClassId as a key
 	/// this is a reverse lookup used to ensure the collateral itself is not a Loan Nft
 	#[pallet::storage]
 	pub(crate) type LoanNftClassToPool<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::ClassId, T::PoolId, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, T::ClassId, PoolIdOf<T>, OptionQuery>;
 
 	#[pallet::type_value]
 	pub fn OnNextLoanIdEmpty() -> u128 {
@@ -125,7 +127,7 @@ pub mod pallet {
 	pub(crate) type LoanInfo<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::PoolId,
+		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
 		LoanData<T::Rate, T::Amount, AssetOf<T>>,
@@ -136,40 +138,40 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn nav)]
 	pub(crate) type PoolNAV<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, NAVDetails<T::Amount>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Amount>, OptionQuery>;
 
 	/// Stores the pool associated with the its write off groups
 	#[pallet::storage]
 	#[pallet::getter(fn pool_writeoff_groups)]
 	pub(crate) type PoolWriteOffGroups<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, Vec<WriteOffGroup<T::Rate>>, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, Vec<WriteOffGroup<T::Rate>>, ValueQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// emits when a new loan is issued for a given
-		LoanIssued(T::PoolId, T::LoanId, AssetOf<T>),
+		LoanIssued(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when a loan is closed
-		LoanClosed(T::PoolId, T::LoanId, AssetOf<T>),
+		LoanClosed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when the loan is activated
-		LoanActivated(T::PoolId, T::LoanId),
+		LoanActivated(PoolIdOf<T>, T::LoanId),
 
 		/// emits when some amount is borrowed
-		LoanAmountBorrowed(T::PoolId, T::LoanId, T::Amount),
+		LoanAmountBorrowed(PoolIdOf<T>, T::LoanId, T::Amount),
 
 		/// emits when some amount is repaid
-		LoanAmountRepaid(T::PoolId, T::LoanId, T::Amount),
+		LoanAmountRepaid(PoolIdOf<T>, T::LoanId, T::Amount),
 
 		/// Emits when NAV is updated for a given pool
-		NAVUpdated(T::PoolId, T::Amount),
+		NAVUpdated(PoolIdOf<T>, T::Amount),
 
 		/// Emits when a write off group is added to the given pool with its index
-		WriteOffGroupAdded(T::PoolId, u32),
+		WriteOffGroupAdded(PoolIdOf<T>, u32),
 
 		/// Emits when a loan is written off
-		LoanWrittenOff(T::PoolId, T::LoanId, u32),
+		LoanWrittenOff(PoolIdOf<T>, T::LoanId, u32),
 	}
 
 	#[pallet::error]
@@ -254,7 +256,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn issue_loan(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			asset: AssetOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
@@ -268,7 +270,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn close_loan(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
@@ -282,7 +284,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn borrow(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Amount,
 		) -> DispatchResult {
@@ -297,7 +299,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Amount,
 		) -> DispatchResult {
@@ -316,7 +318,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn activate_loan(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Amount>,
@@ -332,7 +334,7 @@ pub mod pallet {
 		/// Maybe utility pallet would be a good source of inspiration?
 		#[pallet::weight(100_000)]
 		#[transactional]
-		pub fn update_nav(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+		pub fn update_nav(origin: OriginFor<T>, pool_id: PoolIdOf<T>) -> DispatchResult {
 			// ensure signed so that caller pays for the update fees
 			ensure_signed(origin)?;
 			let updated_nav = Self::update_nav_of_pool(pool_id)?;
@@ -346,7 +348,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn add_write_off_group_to_pool(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure this is coming from an admin origin
@@ -362,7 +364,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn write_off_loan(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 		) -> DispatchResult {
 			// ensure this is a signed call
@@ -380,7 +382,7 @@ pub mod pallet {
 		#[transactional]
 		pub fn admin_write_off_loan(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
+			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			write_off_index: u32,
 		) -> DispatchResult {
@@ -395,13 +397,13 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> TPoolNav<T::PoolId, T::Amount> for Pallet<T> {
-	fn nav(pool_id: T::PoolId) -> Option<(T::Amount, u64)> {
+impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
+	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, u64)> {
 		PoolNAV::<T>::get(pool_id)
 			.and_then(|nav_details| Some((nav_details.latest_nav, nav_details.last_updated)))
 	}
 
-	fn update_nav(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
 		Self::update_nav_of_pool(pool_id)
 	}
 }

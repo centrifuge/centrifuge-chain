@@ -22,7 +22,6 @@ sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = 
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
 # our pallets
-pallet-pool = { path = "../pool", default-features = false}
 common-traits = { path = "../../libs/common-traits", default-features = false}
 
 [dev-dependencies]
@@ -33,6 +32,7 @@ pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-f
 orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = true, branch = "centrifuge" }
 orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+pallet-pool = { path = "../pool", default-features = false}
 
 [features]
 default = ['std']
@@ -45,6 +45,5 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'sp-arithmetic/std',
-    'pallet-pool/std',
     'common-traits/std',
 ]

@@ -9,7 +9,7 @@ impl<T: Config> Pallet<T> {
 	// TODO(ved): make this a hook maybe
 	pub(crate) fn initialise_pool(
 		origin: OriginFor<T>,
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_nft_class_id: T::ClassId,
 	) -> DispatchResult {
 		// ensure admin is the origin
@@ -28,7 +28,7 @@ impl<T: Config> Pallet<T> {
 
 	/// check if the given loan belongs to the owner provided
 	pub(crate) fn check_loan_owner(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 	) -> Result<AssetOf<T>, DispatchError> {
@@ -42,7 +42,7 @@ impl<T: Config> Pallet<T> {
 
 	/// issues a new loan nft and returns the LoanID
 	pub(crate) fn issue(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		asset_owner: T::AccountId,
 		asset: AssetOf<T>,
 	) -> Result<T::LoanId, sp_runtime::DispatchError> {
@@ -102,7 +102,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn activate(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Amount>,
@@ -139,7 +139,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn close(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 	) -> Result<AssetOf<T>, DispatchError> {
@@ -205,7 +205,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn borrow_amount(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 		amount: T::Amount,
@@ -273,7 +273,7 @@ impl<T: Config> Pallet<T> {
 				.present_value()
 				.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 			Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-			pallet_pool::Pallet::<T>::borrow_currency(
+			T::PoolReserve::transfer_to(
 				pool_id,
 				RawOrigin::Signed(Self::account_id()).into(),
 				owner,
@@ -285,7 +285,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn update_nav_with_updated_present_value(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		new_pv: T::Amount,
 		old_pv: T::Amount,
 	) -> Result<(), DispatchError> {
@@ -310,7 +310,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn repay_amount(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 		amount: T::Amount,
@@ -365,7 +365,7 @@ impl<T: Config> Pallet<T> {
 					.present_value()
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-				pallet_pool::Pallet::<T>::repay_currency(
+				T::PoolReserve::transfer_from(
 					pool_id,
 					RawOrigin::Signed(Self::account_id()).into(),
 					owner,
@@ -385,7 +385,7 @@ impl<T: Config> Pallet<T> {
 	/// accrues rate and debt of a given loan and updates it
 	/// returns the present value of the loan accounting any write offs
 	pub(crate) fn accrue_and_update_loan(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		now: u64,
 		write_off_groups: Vec<WriteOffGroup<T::Rate>>,
@@ -416,7 +416,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant
-	pub(crate) fn update_nav_of_pool(pool_id: T::PoolId) -> Result<T::Amount, DispatchError> {
+	pub(crate) fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
 		let now = Self::time_now()?;
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
@@ -439,7 +439,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn add_write_off_group(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		group: WriteOffGroup<T::Rate>,
 	) -> Result<u32, DispatchError> {
 		// ensure pool is initialised
@@ -471,7 +471,7 @@ impl<T: Config> Pallet<T> {
 	/// loan is accrued and nav is updated accordingly
 	/// returns new write off index applied to loan
 	pub(crate) fn write_off(
-		pool_id: T::PoolId,
+		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		override_write_off_index: Option<u32>,
 	) -> Result<u32, DispatchError> {

@@ -33,14 +33,13 @@ fn create_nft_class<T>(
 	maybe_admin: Option<T::AccountId>,
 ) -> T::ClassId
 where
-	T: frame_system::Config<AccountId = u64> + pallet_loan::Config,
-	T::ClassId: From<u64>,
+	T: frame_system::Config<AccountId = u64> + pallet_loan::Config<ClassId = ClassId>,
 {
 	// Create class. Shouldn't fail.
 	let admin = maybe_admin.unwrap_or(owner);
-	<Uniques as Create<T::AccountId>>::create_class(&class_id.into(), &owner, &admin)
+	<Uniques as Create<T::AccountId>>::create_class(&class_id, &owner, &admin)
 		.expect("class creation should not fail");
-	class_id.into()
+	class_id
 }
 
 fn mint_nft<T>(owner: T::AccountId, class_id: T::ClassId) -> T::LoanId
@@ -64,9 +63,9 @@ where
 
 fn initialise_pool<T>(pool_id: T::PoolId) -> T::ClassId
 where
-	T: pallet_pool::Config<PoolId = PoolId>
-		+ frame_system::Config
-		+ pallet_loan::Config<ClassId = ClassId>,
+	T: frame_system::Config
+		+ pallet_loan::Config<ClassId = ClassId>
+		+ pallet_pool::Config<PoolId = PoolId>,
 {
 	let class_id = create_nft_class::<MockRuntime>(1, 1, Some(Loan::account_id()));
 	Loan::initialise_pool(Origin::signed(1), pool_id, class_id)
@@ -143,7 +142,7 @@ where
 
 	// event should be emitted
 	expect_event(LoanEvent::LoanIssued(pool_id, loan_id, asset));
-	let loan_data = LoanInfo::<T>::get(pool_id, loan_id).expect("LoanData should be present");
+	let loan_data = Loan::get_loan_info(pool_id, loan_id).expect("LoanData should be present");
 
 	// asset is same as we sent before
 	assert_eq!(loan_data.asset, asset);
@@ -155,7 +154,7 @@ where
 	// pool should be initialised
 	assert_eq!(
 		loan_nft_class_id,
-		PoolToLoanNftClass::<T>::get(pool_id).expect("Loan class should be created")
+		Loan::get_loan_nft_class(pool_id).expect("Loan class should be created")
 	);
 	(pool_id, Asset(loan_nft_class_id, loan_id), asset)
 }

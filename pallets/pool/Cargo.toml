@@ -23,6 +23,9 @@ sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-feat
 # orml
 orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
+# our crates
+common-traits = { path = "../../libs/common-traits", default-features = false}
+
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -41,5 +44,6 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'sp-arithmetic/std',
-    'orml-traits/std'
+    'orml-traits/std',
+    'common-traits/std'
 ]

@@ -5838,6 +5838,7 @@ dependencies = [
 name = "pallet-pool"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "frame-support",
  "frame-system",
  "orml-traits",

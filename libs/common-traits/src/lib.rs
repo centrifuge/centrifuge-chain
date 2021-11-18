@@ -25,7 +25,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::{Codec, DispatchResultWithPostInfo};
+use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::Parameter;
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
@@ -101,4 +101,30 @@ pub trait PoolNAV<PoolId, Amount> {
 	// nav returns the nav and the last time it was calculated
 	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
+}
+
+/// A trait that support pool reserve operations such as borrow and repay
+pub trait PoolReserve<Origin, AccountId> {
+	type PoolId: Parameter + Member + Debug + Copy;
+	type Balance;
+
+	/// transfers the amount to the account from reserve
+	/// caller must be whitelisted.
+	/// TODO(ved): we dont need to check the caller since we know who can call
+	fn transfer_to(
+		pool_id: Self::PoolId,
+		caller: Origin,
+		to: AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult;
+
+	/// transfers the amount from the account to reserve
+	/// caller must be whitelisted.
+	/// TODO(ved): we dont need to check the caller since we know who can call
+	fn transfer_from(
+		pool_id: Self::PoolId,
+		caller: Origin,
+		from: AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult;
 }

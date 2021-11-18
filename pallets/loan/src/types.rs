@@ -149,3 +149,13 @@ pub(crate) type InstanceIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::InstanceId;
 /// type alias to Non fungible Asset
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
+/// type alias for pool reserve balance type
+pub(crate) type ReserveBalanceOf<T> = <<T as Config>::PoolReserve as PoolReserve<
+	<T as frame_system::Config>::Origin,
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
+/// type alias for poolId type
+pub(crate) type PoolIdOf<T> = <<T as Config>::PoolReserve as PoolReserve<
+	<T as frame_system::Config>::Origin,
+	<T as frame_system::Config>::AccountId,
+>>::PoolId;
