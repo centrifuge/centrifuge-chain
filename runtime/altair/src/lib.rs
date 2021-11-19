@@ -129,9 +129,9 @@ impl Contains<Call> for BaseFilter {
 			)
 			| Call::Timestamp(pallet_timestamp::Call::set{..})
 			// Claiming logic is also enabled
-			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward(..))
+			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
 			// Enable Governance
-			| Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..} | Call::Utility{..}
 		)
 	}
 }
