@@ -133,7 +133,7 @@ where
 		.and_then(|d| expected_cash_flow.checked_div(&d))
 }
 
-/// returns the valid write off group give the maturity date and current time
+/// returns the valid write off group given the maturity date and current time
 /// since the write off groups are not guaranteed to be in a sorted order and
 /// we want to preserve the index of the group,
 /// we also pick the group that has the highest overdue days found in the vector
