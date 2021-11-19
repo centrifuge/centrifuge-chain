@@ -484,41 +484,36 @@ impl<T: Config> Pallet<T> {
 
 				// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-				let write_off_group_index =
-					match (loan_data.admin_written_off, override_write_off_index) {
-						// admin is trying to write off
-						(_admin_written_off, Some(index)) => {
-							// check if the write off group exists
-							write_off_groups
-								.get(index as usize)
-								.ok_or(Error::<T>::ErrInvalidWriteOffGroupIndex)?;
-							loan_data.admin_written_off = true;
-							Ok(index)
+				let write_off_group_index = match override_write_off_index {
+					// admin is trying to write off
+					Some(index) => {
+						// check if the write off group exists
+						write_off_groups
+							.get(index as usize)
+							.ok_or(Error::<T>::ErrInvalidWriteOffGroupIndex)?;
+						loan_data.admin_written_off = true;
+						Ok(index)
+					}
+					None => {
+						// non-admin is trying to write off but admin already did. So error out
+						if loan_data.admin_written_off {
+							return Err(Error::<T>::ErrLoanWrittenOffByAdmin.into());
 						}
-						(admin_written_off, None) => {
-							// non-admin is trying to write off but admin already did. So error out
-							if admin_written_off {
-								return Err(Error::<T>::ErrLoanWrittenOffByAdmin.into());
-							}
 
-							let maturity_date = loan_data
-								.loan_type
-								.maturity_date()
-								.ok_or(Error::<T>::ErrLoanTypeInvalid)?;
+						let maturity_date = loan_data
+							.loan_type
+							.maturity_date()
+							.ok_or(Error::<T>::ErrLoanTypeInvalid)?;
 
-							// ensure loan's maturity date has passed
-							ensure!(now > maturity_date, Error::<T>::ErrLoanHealthy);
+						// ensure loan's maturity date has passed
+						ensure!(now > maturity_date, Error::<T>::ErrLoanHealthy);
 
-							// not written off by admin, and non admin trying to write off, then
-							// fetch the best write group available for this loan
-							math::valid_write_off_group(
-								maturity_date,
-								now,
-								write_off_groups.clone(),
-							)
+						// not written off by admin, and non admin trying to write off, then
+						// fetch the best write group available for this loan
+						math::valid_write_off_group(maturity_date, now, write_off_groups.clone())
 							.ok_or(Error::<T>::ErrNoValidWriteOffGroup)
-						}
-					}?;
+					}
+				}?;
 
 				// get old present value accounting for any write offs
 				let old_pv = loan_data
