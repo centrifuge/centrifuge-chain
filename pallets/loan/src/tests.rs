@@ -1150,7 +1150,7 @@ fn admin_write_off_loan() {
 				assert_ok!(res);
 			}
 
-			// index
+			// verify and check before and after maturity
 			for time in vec![
 				math::seconds_per_year(),
 				math::seconds_per_year() * 2 + math::seconds_per_day() * 3,
