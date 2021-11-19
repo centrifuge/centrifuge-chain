@@ -147,7 +147,7 @@ where
 		}
 	}
 
-	/// returns the present value of the loan adjusted to the write off group assigned to the loan if any
+	/// returns the present value of the loan adjusted to the write off group assigned to the loan (if any)
 	// pv = pv*(1 - write_off_percentage)
 	fn present_value_with_write_off(
 		&self,
