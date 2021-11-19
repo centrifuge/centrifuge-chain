@@ -19,10 +19,12 @@ frame-system = { git = "https://github.com/centrifuge/substrate", default-featur
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-nft = { path = "../nft", default-features = false }
 
 # orml
 orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
+
+# our crates
+common-traits = { path = "../../libs/common-traits", default-features = false}
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -42,6 +44,6 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'sp-arithmetic/std',
-    'pallet-nft/std',
-    'orml-traits/std'
+    'orml-traits/std',
+    'common-traits/std'
 ]

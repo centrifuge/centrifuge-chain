@@ -123,6 +123,16 @@ pub mod types {
 
 	/// MultiToken currencyID type
 	pub type CurrencyId = u32;
+
+	/// A representation of ClassId for Uniques
+	pub type ClassId = u64;
+
+	/// A representation of InstanceId for Uniques.
+	#[derive(
+		codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, codec::CompactAs,
+	)]
+	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	pub struct InstanceId(pub u128);
 }
 
 /// Common constants for all runtimes
