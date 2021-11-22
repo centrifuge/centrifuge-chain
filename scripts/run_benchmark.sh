@@ -11,10 +11,10 @@ if [  -z "${output}" ]; then
 fi
 
 echo "Benchmark: ${pallet}"
-cargo +nightly run --release --features runtime-benchmarks -- benchmark \
+cargo run --release --features runtime-benchmarks -- benchmark \
   --chain="${chain}" \
   --steps=100 \
-  --repeat=200 \
+  --repeat=2000 \
   --pallet="${pallet}" \
   --extrinsic=* \
   --execution=wasm \

@@ -204,6 +204,7 @@ impl pallet_loan::Config for MockRuntime {
 	type LoanPalletId = LoanPalletId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type PoolReserve = Pool;
+	type WeightInfo = ();
 }
 
 // USD currencyId

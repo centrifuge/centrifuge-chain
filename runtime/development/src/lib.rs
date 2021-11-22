@@ -701,6 +701,7 @@ impl pallet_loan::Config for Runtime {
 	type LoanPalletId = LoanPalletId;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	type PoolReserve = Pool;
+	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
 }
 
 parameter_type_with_key! {
@@ -956,6 +957,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
+			add_benchmark!(params, batches, pallet_loan, Loan);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -974,6 +976,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
+			list_benchmark!(list, extra, pallet_loan, Loan);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

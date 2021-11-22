@@ -105,7 +105,7 @@ pub trait PoolNAV<PoolId, Amount> {
 
 /// A trait that support pool reserve operations such as borrow and repay
 pub trait PoolReserve<Origin, AccountId> {
-	type PoolId: Parameter + Member + Debug + Copy;
+	type PoolId: Parameter + Member + Debug + Copy + Default;
 	type Balance;
 
 	/// transfers the amount to the account from reserve

@@ -54,11 +54,13 @@ pub mod functions;
 mod loan_type;
 pub mod math;
 pub mod types;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
 	use super::*;
+	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
@@ -78,6 +80,7 @@ pub mod pallet {
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Copy
+			+ Default
 			+ IsType<ClassIdOf<Self>>;
 
 		/// The LoanId/InstanceId type
@@ -113,6 +116,9 @@ pub mod pallet {
 
 		/// Pool reserve type
 		type PoolReserve: PoolReserve<Self::Origin, Self::AccountId>;
+
+		/// Weight info trait for extrinsics
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Stores the loan nft class ID against a given pool
@@ -269,8 +275,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Initiates a new pool and maps the poolId with the loan nft classId
-		#[pallet::weight(100_000)]
-		#[transactional]
+		#[pallet::weight(<T as Config>::WeightInfo::initialise_pool())]
 		pub fn initialise_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
