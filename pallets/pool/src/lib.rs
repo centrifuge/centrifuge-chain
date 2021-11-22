@@ -2,14 +2,20 @@
 //!
 //! This pallet provides functionality for managing a tinlake pool
 #![cfg_attr(not(feature = "std"), no_std)]
+#[cfg(not(feature = "std"))]
+use codec::alloc::string::String;
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::traits::{AccountIdConversion, AtLeast32Bit, One};
+#[cfg(not(feature = "std"))]
+use sp_std::fmt::Debug;
+#[cfg(feature = "std")]
 use std::fmt::Debug;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
+use common_traits::PoolReserve;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_system::pallet_prelude::OriginFor;
 use orml_traits::MultiCurrency;
@@ -52,7 +58,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_nft::Config {
+	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -64,12 +70,6 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ AtLeast32Bit;
-
-		type LoanId: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ Copy
-			+ IsType<<Self as pallet_nft::Config>::TokenId>;
 
 		type MultiCurrency: orml_traits::MultiCurrency<<Self as frame_system::Config>::AccountId>;
 
@@ -138,12 +138,6 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	// checks if the pool associated with pool_id exists
-	pub fn check_pool(pool_id: T::PoolId) -> DispatchResult {
-		PoolInfo::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPool)?;
-		Ok(())
-	}
-
 	pub fn create_new_pool(
 		creator: T::AccountId,
 		name: String,
@@ -162,27 +156,31 @@ impl<T: Config> Pallet<T> {
 	pub fn account_id() -> T::AccountId {
 		T::PoolPalletId::get().into_account()
 	}
+}
 
-	pub fn borrow_currency(
-		pool_id: T::PoolId,
-		origin: OriginFor<T>,
+impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
+	type PoolId = T::PoolId;
+	type Balance = MultiCurrencyBalanceOf<T>;
+
+	fn transfer_to(
+		pool_id: Self::PoolId,
+		caller: OriginFor<T>,
 		to: T::AccountId,
-		amount: MultiCurrencyBalanceOf<T>,
+		amount: Self::Balance,
 	) -> DispatchResult {
-		// must be a loan origin
-		T::TransferOrigin::ensure_origin(origin)?;
+		T::TransferOrigin::ensure_origin(caller)?;
 		let currency_id =
 			PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPoolCurrency)?;
 		T::MultiCurrency::transfer(currency_id, &Self::account_id(), &to, amount)
 	}
 
-	pub fn repay_currency(
-		pool_id: T::PoolId,
-		origin: OriginFor<T>,
+	fn transfer_from(
+		pool_id: Self::PoolId,
+		caller: OriginFor<T>,
 		from: T::AccountId,
-		amount: MultiCurrencyBalanceOf<T>,
+		amount: Self::Balance,
 	) -> DispatchResult {
-		T::TransferOrigin::ensure_origin(origin)?;
+		T::TransferOrigin::ensure_origin(caller)?;
 		let currency_id =
 			PoolCurrency::<T>::get(pool_id).ok_or(Error::<T>::ErrMissingPoolCurrency)?;
 		T::MultiCurrency::transfer(currency_id, &from, &Self::account_id(), amount)

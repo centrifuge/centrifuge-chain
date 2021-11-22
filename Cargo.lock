@@ -5661,20 +5661,15 @@ dependencies = [
 name = "pallet-loan"
 version = "2.0.0"
 dependencies = [
- "chainbridge",
  "common-traits",
  "frame-support",
  "frame-system",
  "orml-tokens",
  "orml-traits",
- "pallet-anchors",
- "pallet-authorship",
  "pallet-balances",
- "pallet-fees",
- "pallet-nft",
  "pallet-pool",
- "pallet-registry",
  "pallet-timestamp",
+ "pallet-uniques",
  "parity-scale-codec",
  "runtime-common",
  "serde",
@@ -5683,7 +5678,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "unique-assets",
 ]
 
 [[package]]
@@ -5844,12 +5838,12 @@ dependencies = [
 name = "pallet-pool"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "frame-support",
  "frame-system",
  "orml-traits",
  "pallet-authorship",
  "pallet-balances",
- "pallet-nft",
  "pallet-randomness-collective-flip",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -6093,6 +6087,19 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-uniques"
+version = "4.0.0-dev"
+source = "git+https://github.com/centrifuge/substrate?branch=master#0a01444351a0d0176194c8fe39e8a14f4ee5fb78"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "sp-core",
  "sp-runtime",
  "sp-std",
 ]
@@ -11748,7 +11755,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
  "cfg-if 1.0.0",
- "rand 0.3.23",
+ "rand 0.8.4",
  "static_assertions",
 ]
 
