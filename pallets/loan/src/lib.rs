@@ -48,7 +48,10 @@ mod mock;
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+pub mod benchmarking;
+
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub(crate) mod test_utils;
 
 pub mod functions;
 mod loan_type;
@@ -172,6 +175,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Emits when a pool is initiated
+		PoolInitiated(PoolIdOf<T>),
+
 		/// emits when a new loan is issued for a given
 		LoanIssued(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
@@ -292,11 +298,12 @@ pub mod pallet {
 
 			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
 			LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
+			Self::deposit_event(Event::<T>::PoolInitiated(pool_id));
 			Ok(())
 		}
 
 		/// Issues a new loan against the asset provided
-		#[pallet::weight(100_000)]
+		#[pallet::weight(<T as Config>::WeightInfo::issue_loan())]
 		#[transactional]
 		pub fn issue_loan(
 			origin: OriginFor<T>,

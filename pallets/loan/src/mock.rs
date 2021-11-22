@@ -56,7 +56,6 @@ frame_support::construct_runtime!(
 // Fake admin user number one
 parameter_types! {
 	pub const One: u64 = 1;
-	pub const GetUSDCurrencyId: CurrencyId = 1;
 }
 
 impl SortedMembers<u64> for One {

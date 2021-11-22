@@ -21,8 +21,12 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features
 sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
-# benchmarking
+# optional dependencies for benchmarking
 frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true, branch = "master" }
+pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-features = false , features=["runtime-benchmarks"], optional = true, branch = "master" }
+runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
+pallet-pool = { path = "../pool", optional = true, default-features = false }
 
 # our pallets
 common-traits = { path = "../../libs/common-traits", default-features = false}
@@ -39,7 +43,7 @@ pallet-pool = { path = "../pool", default-features = false}
 
 [features]
 default = ['std']
-runtime-benchmarks = ["frame-benchmarking"]
+runtime-benchmarks = ["frame-benchmarking", "pallet-balances", "pallet-uniques", "runtime-common", "pallet-pool"]
 std = [
     'serde/std',
     'codec/std',
