@@ -2,24 +2,21 @@
 //!
 //! This pallet provides functionality for managing a tinlake pool
 #![cfg_attr(not(feature = "std"), no_std)]
-#[cfg(not(feature = "std"))]
-use codec::alloc::string::String;
 use codec::{Decode, Encode};
+use common_traits::PoolReserve;
 use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::traits::{AccountIdConversion, AtLeast32Bit, One};
-#[cfg(not(feature = "std"))]
-use sp_std::fmt::Debug;
-#[cfg(feature = "std")]
-use std::fmt::Debug;
-
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-
-use common_traits::PoolReserve;
 use frame_support::traits::{EnsureOrigin, Get};
 use frame_system::pallet_prelude::OriginFor;
 use orml_traits::MultiCurrency;
 pub use pallet::*;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+#[cfg(not(feature = "std"))]
+use sp_std::fmt::Debug;
+use sp_std::vec::Vec;
+#[cfg(feature = "std")]
+use std::fmt::Debug;
 
 #[cfg(test)]
 mod mock;
@@ -32,7 +29,7 @@ mod tests;
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct PoolData<AccountID> {
 	pub creator: AccountID,
-	pub name: String,
+	pub name: Vec<u8>,
 }
 
 pub type CurrencyIdOf<T> = <<T as pallet::Config>::MultiCurrency as MultiCurrency<
@@ -126,7 +123,7 @@ pub mod pallet {
 		#[pallet::weight(100_000)]
 		pub fn create_pool(
 			origin: OriginFor<T>,
-			name: String,
+			name: Vec<u8>,
 			currency_id: CurrencyIdOf<T>,
 		) -> DispatchResult {
 			let creator = ensure_signed(origin)?;
@@ -140,7 +137,7 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	pub fn create_new_pool(
 		creator: T::AccountId,
-		name: String,
+		name: Vec<u8>,
 		currency_id: CurrencyIdOf<T>,
 	) -> T::PoolId {
 		let pd = PoolData { creator, name };

@@ -92,6 +92,12 @@ pallet-vesting = { git = "https://github.com/centrifuge/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 pallet-aura = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
 pallet-society = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+
+# orml pallets
+orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
+orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
+
 
 runtime-common = { path = "../common", default-features = false }
 
@@ -101,6 +107,8 @@ pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
+pallet-pool = { path = "../../pallets/pool", default-features = false }
+pallet-loan = { path = "../../pallets/loan", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = "3.0.0"
@@ -176,6 +184,10 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
+    "pallet-uniques/std",
+    "orml-tokens/std",
+    "pallet-pool/std",
+    "pallet-loan/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
@@ -190,6 +202,7 @@ runtime-benchmarks = [
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
+    "pallet-loan/runtime-benchmarks"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

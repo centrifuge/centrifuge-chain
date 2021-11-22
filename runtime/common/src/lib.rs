@@ -64,6 +64,9 @@ pub mod types {
 	/// Balance of an account.
 	pub type Balance = u128;
 
+	/// Amount is the signed version of the Balance for orml tokens
+	pub type IBalance = i128;
+
 	/// Index of a transaction in the chain.
 	pub type Index = u32;
 
@@ -129,9 +132,9 @@ pub mod types {
 
 	/// A representation of InstanceId for Uniques.
 	#[derive(
-		codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, codec::CompactAs,
+		codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, codec::CompactAs, Debug,
 	)]
-	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct InstanceId(pub u128);
 }
 

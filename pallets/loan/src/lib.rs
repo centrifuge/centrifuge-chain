@@ -36,6 +36,7 @@ use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
 use sp_runtime::traits::{AccountIdConversion, Member};
 use sp_runtime::{DispatchError, FixedPointNumber};
 use sp_std::convert::TryInto;
+use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::fmt::Debug;
 use types::*;
@@ -45,6 +46,9 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 pub mod functions;
 mod loan_type;
@@ -105,7 +109,7 @@ pub mod pallet {
 		type LoanPalletId: Get<PalletId>;
 
 		/// Origin for admin that can activate a loan
-		type AdminOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Pool reserve type
 		type PoolReserve: PoolReserve<Self::Origin, Self::AccountId>;
