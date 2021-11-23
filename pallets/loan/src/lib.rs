@@ -327,8 +327,19 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Closes a given loan if repaid fully
-		#[pallet::weight(100_000)]
+		/// Closes a given loan
+		///
+		/// Loan can be closed on two scenarios
+		/// 1. When the outstanding is fully paid off
+		/// 2. When loan is written off 100%
+		/// Loan status is moved to Closed
+		/// Asset/Collateral is transferred back to the loan owner.
+		/// LoanNFT is transferred back to LoanAccount.
+		#[pallet::weight(
+			<T as Config>::WeightInfo::repay_and_close().max(
+				<T as Config>::WeightInfo::write_off_and_close()
+			)
+		)]
 		#[transactional]
 		pub fn close_loan(
 			origin: OriginFor<T>,

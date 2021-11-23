@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! module provides loan related functions
+//! Module provides loan related functions
 use super::*;
 
 impl<T: Config> Pallet<T> {

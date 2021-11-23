@@ -1,3 +1,17 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+//! Module provides benchmarking for Loan Pallet
 use super::*;
 use crate::loan_type::BulletLoan;
 use crate::test_utils::initialise_test_pool;
@@ -61,6 +75,14 @@ fn check_free_token_balance<T, GetCurrencyId>(
 		ORMLPallet::<T>::balance(GetCurrencyId::get(), account),
 		balance
 	);
+}
+
+fn get_free_token_balance<T, GetCurrencyId>(account: &T::AccountId) -> <T as ORMLConfig>::Balance
+where
+	T: Config + ORMLConfig,
+	GetCurrencyId: Get<<T as ORMLConfig>::CurrencyId>,
+{
+	ORMLPallet::<T>::balance(GetCurrencyId::get(), account)
 }
 
 fn whitelist_acc<T: frame_system::Config>(acc: &T::AccountId) {
@@ -424,6 +446,84 @@ benchmarks! {
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan_info.write_off_index, Some(index));
 		assert!(loan_info.admin_written_off);
+	}
+
+	repay_and_close {
+		let (_pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>();
+		let (loan_owner, asset) = create_asset::<T>();
+		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		let loan_id: T::LoanId = 1u128.into();
+		activate_test_loan_with_defaults::<T>(pool_id, loan_id);
+		// add some balance to pool reserve
+		let pool_reserve_account: T::AccountId = pallet_pool::Pallet::<T>::account_id();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+		let amount = Amount::from_inner(100 * CFG).into();
+		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+		// set timestamp to around 2 year
+		let now = TimestampPallet::<T>::get().into();
+		let after_two_years = now + 2 * math::seconds_per_year();
+		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
+		// repay all. sent more than current debt
+		let owner_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&loan_owner, owner_balance);
+		let amount = Amount::from_inner(200 * CFG).into();
+		LoanPallet::<T>::repay(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("repay should not fail");
+	}:close_loan(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
+	verify {
+		assert_last_event::<T>(LoanEvent::LoanClosed(pool_id, loan_id, asset).into());
+		// pool reserve should have more 1000 USD. this is with interest
+		assert!(get_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account) > pool_reserve_balance);
+
+		// Loan should be closed
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan_info.status, LoanStatus::Closed);
+
+		// asset owner must be loan owner
+		expect_asset_owner::<T>(asset, loan_owner);
+
+		// loan nft owner is loan account
+		let loan_asset = Asset(loan_class_id, loan_id);
+		expect_asset_owner::<T>(loan_asset, loan_account);
+	}
+
+	write_off_and_close {
+		let (_pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>();
+		let (loan_owner, asset) = create_asset::<T>();
+		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		let loan_id: T::LoanId = 1u128.into();
+		activate_test_loan_with_defaults::<T>(pool_id, loan_id);
+		// add some balance to pool reserve
+		let pool_reserve_account: T::AccountId = pallet_pool::Pallet::<T>::account_id();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+		let amount = Amount::from_inner(100 * CFG).into();
+		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+		// set timestamp to around 2 year
+		let now = TimestampPallet::<T>::get().into();
+		let after_two_years = now + 2 * math::seconds_per_year() + 130 * math::seconds_per_day();
+		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
+		// add write off groups
+		add_test_write_off_groups::<T>(pool_id);
+		// write off loan. the loan will be moved to full write off after 120 days beyond maturity based on the test write off groups
+		LoanPallet::<T>::write_off_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id).expect("write off should not fail");
+	}:close_loan(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
+	verify {
+		assert_last_event::<T>(LoanEvent::LoanClosed(pool_id, loan_id, asset).into());
+		// pool reserve should have 900 USD since loan is written off 100%
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+
+		// Loan should be closed
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan_info.status, LoanStatus::Closed);
+
+		// asset owner must be loan owner
+		expect_asset_owner::<T>(asset, loan_owner);
+
+		// loan nft owner is loan account
+		let loan_asset = Asset(loan_class_id, loan_id);
+		expect_asset_owner::<T>(loan_asset, loan_account);
 	}
 }
 

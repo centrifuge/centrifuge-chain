@@ -12,7 +12,6 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-
 use super::*;
 use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
