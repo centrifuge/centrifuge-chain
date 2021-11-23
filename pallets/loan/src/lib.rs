@@ -280,7 +280,12 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Initiates a new pool and maps the poolId with the loan nft classId
+		/// Initiates a new pool
+		///
+		/// `initialise_pool` checks if pool is not initialised yet and then adds the loan nft class id.
+		/// All the Loan NFTs will be created into this Class. So loan account *should* be able to mint new NFTs into the class.
+		/// Adding LoanAccount as admin to the NFT class will be enough to mint new NFTs.
+		/// The origin must be an Admin origin
 		#[pallet::weight(<T as Config>::WeightInfo::initialise_pool())]
 		pub fn initialise_pool(
 			origin: OriginFor<T>,
@@ -303,6 +308,12 @@ pub mod pallet {
 		}
 
 		/// Issues a new loan against the asset provided
+		///
+		/// `issue_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
+		/// caller *must* be the owner of the asset.
+		/// LoanStatus is set to issued and needs to be activated by an admin origin to start borrowing.
+		/// Loan cannot be closed until the status has changed to Active.
+		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
 		#[pallet::weight(<T as Config>::WeightInfo::issue_loan())]
 		#[transactional]
 		pub fn issue_loan(
@@ -364,7 +375,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to update loan specific details and activates the loan
+		/// Activates the loan with loan specific details like Rate, Loan type
+		///
+		/// LoanStatus must be in Issued state.
+		/// AdminOrigin can activate the loan with Rate and Loan type.
+		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
 		#[pallet::weight(<T as Config>::WeightInfo::activate_loan())]
 		pub fn activate_loan(
 			origin: OriginFor<T>,
@@ -392,10 +407,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to add a new write off group for a given pool
-		/// write off groups are always append only
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Appends a new write off group to the Pool
+		///
+		/// Since written off loans keep written off group index,
+		/// we only allow adding new write off groups.
+		/// Overdue days doesn't need to be in the sorted order.
+		#[pallet::weight(<T as Config>::WeightInfo::add_write_off_group_to_pool())]
 		pub fn add_write_off_group_to_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,

@@ -32,23 +32,29 @@ pub trait WeightInfo {
 	fn initialise_pool() -> Weight;
 	fn issue_loan() -> Weight;
 	fn activate_loan() -> Weight;
+	fn add_write_off_group_to_pool() -> Weight;
 }
 
 /// Weights for pallet_loan using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialise_pool() -> Weight {
-		(45_000_000 as Weight)
+		(55_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn issue_loan() -> Weight {
-		(225_000_000 as Weight)
+		(279_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn activate_loan() -> Weight {
-		(54_000_000 as Weight)
+		(86_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(2 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn add_write_off_group_to_pool() -> Weight {
+		(56_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -57,17 +63,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn initialise_pool() -> Weight {
-		(45_000_000 as Weight)
+		(55_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 	fn issue_loan() -> Weight {
-		(225_000_000 as Weight)
+		(279_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
 	}
 	fn activate_loan() -> Weight {
-		(54_000_000 as Weight)
+		(86_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn add_write_off_group_to_pool() -> Weight {
+		(56_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}

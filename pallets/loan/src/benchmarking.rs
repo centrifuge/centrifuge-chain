@@ -1,6 +1,7 @@
 use super::*;
 use crate::loan_type::BulletLoan;
 use crate::test_utils::initialise_test_pool;
+use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoanPallet};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::{Currency, UnfilteredDispatchable};
@@ -154,6 +155,21 @@ benchmarks! {
 		assert_eq!(loan_info.loan_type, loan_type);
 		assert_eq!(loan_info.status, LoanStatus::Active);
 		assert_eq!(loan_info.rate_per_sec, rp);
+	}
+
+	add_write_off_group_to_pool{
+		let origin = T::AdminOrigin::successful_origin();
+		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>();
+		let write_off_group = WriteOffGroup {
+			// 10%
+			percentage: Rate::saturating_from_rational(10, 100).into(),
+			overdue_days: 3
+		};
+		let call = Call::<T>::add_write_off_group_to_pool(pool_id, write_off_group);
+	}:{ call.dispatch_bypass_filter(origin)? }
+	verify{
+		let index = 0u32;
+		assert_last_event::<T>(LoanEvent::WriteOffGroupAdded(pool_id, index).into());
 	}
 }
 
