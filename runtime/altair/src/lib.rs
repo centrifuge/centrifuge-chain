@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -50,7 +50,6 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
-use frame_benchmarking::frame_support::traits::Everything;
 /// common types for the runtime.
 pub use runtime_common::*;
 
