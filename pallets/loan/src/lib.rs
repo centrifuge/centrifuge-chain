@@ -447,10 +447,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to write off an unhealthy loan
-		/// a valid write off group will be chosen based on the loan overdue date since maturity
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Write off an unhealthy loan
+		///
+		/// `write_off_loan` will find the best write off group available based on the overdue days since maturity.
+		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// Cannot update a loan that was written off by admin.
+		/// Cannot write off a healthy loan or loan type that do not have maturity date.
+		#[pallet::weight(<T as Config>::WeightInfo::write_off_loan())]
 		pub fn write_off_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -465,10 +468,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a admin call to write off an unhealthy loan
-		/// write_off_index is overwritten to the loan and the is fixed until changes it with another call.
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Write off an loan from admin origin
+		///
+		/// `admin_write_off_loan` will write off a loan with write off group associated with index passed.
+		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// AdminOrigin can write off a healthy loan as well.
+		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
+		/// Admin can write off loan with any index potentially going up the index or down.
+		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off_loan())]
 		pub fn admin_write_off_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
