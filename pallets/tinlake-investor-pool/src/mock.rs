@@ -1,4 +1,4 @@
-use crate::{self as pallet_tinlake_investor_pool, Config};
+use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
@@ -17,6 +17,49 @@ primitives_tokens::impl_tranche_token!();
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
+mod fake_nav {
+	use super::Balance;
+	use codec::HasCompact;
+	use frame_support::pallet_prelude::*;
+	pub use pallet::*;
+
+	#[frame_support::pallet]
+	pub mod pallet {
+		use super::*;
+
+		#[pallet::config]
+		pub trait Config: frame_system::Config {
+			type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		}
+
+		#[pallet::pallet]
+		#[pallet::generate_store(pub(super) trait Store)]
+		pub struct Pallet<T>(_);
+
+		#[pallet::storage]
+		pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, Balance>;
+
+		impl<T: Config> Pallet<T> {
+			pub fn value(pool_id: T::PoolId) -> Balance {
+				Nav::<T>::get(pool_id).unwrap_or(0)
+			}
+
+			pub fn update(pool_id: T::PoolId, balance: Balance) {
+				Nav::<T>::insert(pool_id, balance);
+			}
+		}
+	}
+
+	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
+		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
+			Some((Self::value(pool_id), 0))
+		}
+		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
+			Ok(Self::value(pool_id))
+		}
+	}
+}
+
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
 	pub enum Test where
@@ -28,6 +71,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		TinlakeInvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
+		FakeNav: fake_nav::{Pallet, Storage},
 	}
 );
 
@@ -101,8 +145,14 @@ impl Config for Test {
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
+	type LoanAmount = Balance;
+	type NAV = FakeNav;
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
+}
+
+impl fake_nav::Config for Test {
+	type PoolId = u32;
 }
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
@@ -142,4 +192,22 @@ pub fn next_block_after(seconds: u64) {
 	System::on_initialize(System::block_number());
 	Timestamp::on_initialize(System::block_number());
 	Timestamp::set(Origin::none(), Timestamp::now() + seconds).unwrap();
+}
+
+pub fn test_borrow(borrower: u64, pool_id: u32, amount: Balance) -> DispatchResult {
+	test_nav_up(pool_id, amount);
+	TinlakeInvestorPool::do_borrow(borrower, pool_id, amount)
+}
+
+pub fn test_payback(borrower: u64, pool_id: u32, amount: Balance) -> DispatchResult {
+	test_nav_down(pool_id, amount);
+	TinlakeInvestorPool::do_payback(borrower, pool_id, amount)
+}
+
+pub fn test_nav_up(pool_id: u32, amount: Balance) {
+	FakeNav::update(pool_id, FakeNav::value(pool_id) + amount);
+}
+
+pub fn test_nav_down(pool_id: u32, amount: Balance) {
+	FakeNav::update(pool_id, FakeNav::value(pool_id) - amount);
 }

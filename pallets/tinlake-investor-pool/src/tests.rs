@@ -37,7 +37,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			max_reserve: 40,
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
-			fake_nav: 0,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -105,7 +104,6 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			max_reserve: 5,
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
-			fake_nav: 90,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -178,7 +176,6 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
-			fake_nav: 0,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -251,7 +248,6 @@ fn pool_constraints_pass() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
-			fake_nav: 145,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -280,7 +276,7 @@ fn epoch() {
 		let tin_investor = Origin::signed(0);
 		let drop_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
-		let borrower = Origin::signed(3);
+		let borrower = 3;
 		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
 
 		// Initialize pool with initial investments
@@ -332,11 +328,7 @@ fn epoch() {
 
 		// Borrow some money
 		next_block();
-		assert_ok!(TinlakeInvestorPool::test_borrow(
-			borrower.clone(),
-			0,
-			500 * CURRENCY
-		));
+		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].debt, 250 * CURRENCY);
@@ -348,16 +340,8 @@ fn epoch() {
 
 		// Repay (with made up interest) after a month.
 		next_block_after(60 * 60 * 24 * 30);
-		assert_ok!(TinlakeInvestorPool::test_nav_up(
-			borrower.clone(),
-			0,
-			10 * CURRENCY
-		));
-		assert_ok!(TinlakeInvestorPool::test_payback(
-			borrower.clone(),
-			0,
-			510 * CURRENCY
-		));
+		test_nav_up(0, 10 * CURRENCY);
+		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].debt, 0);

@@ -15,7 +15,7 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::PoolReserve;
+use common_traits::{PoolNAV, PoolReserve};
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
@@ -67,8 +67,6 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
-
-	pub fake_nav: Balance,
 }
 
 /// Per-tranche and per-user order details.
@@ -172,6 +170,9 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 		>;
 
+		type LoanAmount: Into<Self::Balance>;
+		type NAV: PoolNAV<Self::PoolId, Self::LoanAmount>;
+
 		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self>;
 		type Time: UnixTime;
@@ -259,6 +260,8 @@ pub mod pallet {
 		InsufficientReserve,
 		/// Subordination Ratio validation failed
 		SubordinationRatioViolated,
+		/// The NAV was not available
+		NoNAV,
 		/// Generic error for invalid input data provided
 		InvalidData,
 	}
@@ -322,7 +325,6 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
-					fake_nav: Zero::zero(),
 				},
 			);
 			Self::deposit_event(Event::PoolCreated(pool_id, owner));
@@ -438,9 +440,7 @@ pub mod pallet {
 				pool.last_epoch_closed = current_epoch_end;
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = pool.total_reserve;
-
-				// TODO: get NAV
-				let nav = pool.fake_nav;
+				let nav = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?.0.into();
 
 				if pool
 					.tranches
@@ -558,64 +558,6 @@ pub mod pallet {
 				Self::do_execute_epoch(pool_id, pool, &epoch, &solution)?;
 				EpochExecution::<T>::remove(pool_id);
 				Self::deposit_event(Event::EpochExecuted(pool_id, closing_epoch));
-				Ok(())
-			})
-		}
-
-		// Reserve Operations
-
-		#[pallet::weight(100)]
-		pub fn test_payback(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			amount: T::Balance,
-		) -> DispatchResult {
-			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
-			let who = ensure_signed(origin)?;
-			Self::do_payback(who, pool_id, amount)
-		}
-
-		#[pallet::weight(100)]
-		pub fn test_borrow(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			amount: T::Balance,
-		) -> DispatchResult {
-			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
-			let who = ensure_signed(origin)?;
-			Self::do_borrow(who, pool_id, amount)
-		}
-
-		#[pallet::weight(100)]
-		pub fn test_nav_up(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			amount: T::Balance,
-		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.fake_nav = pool
-					.fake_nav
-					.checked_add(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				Ok(())
-			})
-		}
-
-		#[pallet::weight(100)]
-		pub fn test_nav_down(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			amount: T::Balance,
-		) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
-			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.fake_nav = pool
-					.fake_nav
-					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
 				Ok(())
 			})
 		}
@@ -921,7 +863,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 
 			// Rebalance tranches based on the new tranche asset values and ratios
-			let nav = pool.fake_nav;
+			let nav = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?.0.into();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
 			let last_tranche = pool.tranches.len() - 1;
@@ -1005,10 +947,6 @@ pub mod pallet {
 					.total_reserve
 					.checked_add(&amount)
 					.ok_or(Error::<T>::Overflow)?;
-				pool.fake_nav = pool
-					.fake_nav
-					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
 				let mut remaining_amount = amount;
 				for tranche in &mut pool.tranches {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
@@ -1050,10 +988,6 @@ pub mod pallet {
 				pool.available_reserve = pool
 					.available_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				pool.fake_nav = pool
-					.fake_nav
-					.checked_add(&amount)
 					.ok_or(Error::<T>::Overflow)?;
 				let mut remaining_amount = amount;
 				for tranche in &mut pool.tranches {

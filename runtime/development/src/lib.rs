@@ -635,6 +635,8 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
+	type LoanAmount = Amount;
+	type NAV = Loan;
 	type TrancheToken = TrancheToken<Runtime>;
 	type Time = Timestamp;
 }
