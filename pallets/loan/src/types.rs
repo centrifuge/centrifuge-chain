@@ -54,7 +54,8 @@ pub struct WriteOffGroup<Rate> {
 
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanStatus {
 	// this when asset is locked and loan nft is issued.
 	Issued,

@@ -365,8 +365,7 @@ pub mod pallet {
 		}
 
 		/// a call to update loan specific details and activates the loan
-		#[pallet::weight(100_000)]
-		#[transactional]
+		#[pallet::weight(<T as Config>::WeightInfo::activate_loan())]
 		pub fn activate_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,

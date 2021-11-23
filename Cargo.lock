@@ -5664,7 +5664,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-loan"
-version = "2.0.0"
+version = "1.0.0"
 dependencies = [
  "common-traits",
  "frame-benchmarking",
@@ -5842,7 +5842,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-pool"
-version = "2.0.0"
+version = "1.0.0"
 dependencies = [
  "common-traits",
  "frame-support",
