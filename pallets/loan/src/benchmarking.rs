@@ -4,6 +4,7 @@ use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoanPallet};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_support::sp_runtime::traits::Zero;
 use frame_support::traits::tokens::fungibles::{Inspect, Unbalanced};
 use frame_support::traits::{Currency, UnfilteredDispatchable};
 use frame_system::RawOrigin;
@@ -282,6 +283,74 @@ benchmarks! {
 		// loan owner should have 100 USD
 		let loan_owner_balance: <T as ORMLConfig>::Balance = (100 * CFG).into();
 		check_free_token_balance::<T, GetUSDCurrencyId>(&loan_owner, loan_owner_balance);
+	}
+
+	repay_before_maturity {
+		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>();
+		let (loan_owner, asset) = create_asset::<T>();
+		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		let loan_id: T::LoanId = 1u128.into();
+		activate_test_loan_with_defaults::<T>(pool_id, loan_id);
+		// add some balance to pool reserve
+		let pool_reserve_account: T::AccountId = pallet_pool::Pallet::<T>::account_id();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+		let amount = Amount::from_inner(100 * CFG).into();
+		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+		// set timestamp to around 1 year
+		let now = TimestampPallet::<T>::get().into();
+		let after_one_year = now + math::seconds_per_year();
+		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
+		let amount = Amount::from_inner(100 * CFG).into();
+	}:repay(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
+	verify{
+		assert_last_event::<T>(LoanEvent::LoanAmountRepaid(pool_id, loan_id, amount).into());
+		// pool reserve should have 1000 USD
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+
+		// loan owner should have 0 USD
+		let loan_owner_balance: <T as ORMLConfig>::Balance = (0 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&loan_owner, loan_owner_balance);
+
+		// current debt should not be zero
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan_info.status, LoanStatus::Active);
+		assert!(loan_info.present_value().unwrap() > Zero::zero());
+	}
+
+	repay_after_maturity {
+		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>();
+		let (loan_owner, asset) = create_asset::<T>();
+		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		let loan_id: T::LoanId = 1u128.into();
+		activate_test_loan_with_defaults::<T>(pool_id, loan_id);
+		// add some balance to pool reserve
+		let pool_reserve_account: T::AccountId = pallet_pool::Pallet::<T>::account_id();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+		let amount = Amount::from_inner(100 * CFG).into();
+		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+		// set timestamp to around 2+ years
+		let now = TimestampPallet::<T>::get().into();
+		let after_maturity = now + 2 * math::seconds_per_year() + math::seconds_per_day();
+		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
+		let amount = Amount::from_inner(100 * CFG).into();
+	}:repay(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
+	verify{
+		assert_last_event::<T>(LoanEvent::LoanAmountRepaid(pool_id, loan_id, amount).into());
+		// pool reserve should have 1000 USD
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+
+		// loan owner should have 0 USD
+		let loan_owner_balance: <T as ORMLConfig>::Balance = (0 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&loan_owner, loan_owner_balance);
+
+		// current debt should not be zero
+		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan_info.status, LoanStatus::Active);
+		assert!(loan_info.present_value().unwrap() > Zero::zero());
 	}
 }
 

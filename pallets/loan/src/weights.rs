@@ -35,39 +35,51 @@ pub trait WeightInfo {
 	fn add_write_off_group_to_pool() -> Weight;
 	fn initial_borrow() -> Weight;
 	fn further_borrows() -> Weight;
+	fn repay_before_maturity() -> Weight;
+	fn repay_after_maturity() -> Weight;
 }
 
 /// Weights for pallet_loan using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialise_pool() -> Weight {
-		(61_000_000 as Weight)
+		(44_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn issue_loan() -> Weight {
-		(325_000_000 as Weight)
+		(214_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
 	fn activate_loan() -> Weight {
-		(95_000_000 as Weight)
+		(60_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn add_write_off_group_to_pool() -> Weight {
-		(68_000_000 as Weight)
+		(46_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn initial_borrow() -> Weight {
-		(2_953_000_000 as Weight)
+		(1_878_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 	fn further_borrows() -> Weight {
-		(3_565_000_000 as Weight)
+		(2_253_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
+	fn repay_before_maturity() -> Weight {
+		(2_251_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(8 as Weight))
+			.saturating_add(T::DbWeight::get().writes(4 as Weight))
+	}
+	fn repay_after_maturity() -> Weight {
+		(1_501_000_000 as Weight)
+			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(4 as Weight))
 	}
 }
@@ -75,33 +87,43 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn initialise_pool() -> Weight {
-		(61_000_000 as Weight)
+		(44_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
 	fn issue_loan() -> Weight {
-		(325_000_000 as Weight)
+		(214_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
 	}
 	fn activate_loan() -> Weight {
-		(95_000_000 as Weight)
+		(60_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn add_write_off_group_to_pool() -> Weight {
-		(68_000_000 as Weight)
+		(46_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 	fn initial_borrow() -> Weight {
-		(2_953_000_000 as Weight)
+		(1_878_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 	fn further_borrows() -> Weight {
-		(3_565_000_000 as Weight)
+		(2_253_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
+	}
+	fn repay_before_maturity() -> Weight {
+		(2_251_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
+	}
+	fn repay_after_maturity() -> Weight {
+		(1_501_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(4 as Weight))
 	}
 }

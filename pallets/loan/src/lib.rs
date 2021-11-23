@@ -369,8 +369,17 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// repays some amount to an active loan
-		#[pallet::weight(100_000)]
+		/// Transfers amount borrowed to the pool reserve.
+		///
+		/// LoanStatus must be Active.
+		/// Loan is accrued before transferring the amount to reserve.
+		/// If the repaying amount is more than current debt, only current debt is transferred.
+		/// Amount of token will be transferred from owner to Pool reserve.
+		#[pallet::weight(
+			<T as Config>::WeightInfo::repay_before_maturity().max(
+				<T as Config>::WeightInfo::repay_after_maturity()
+			)
+		)]
 		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
