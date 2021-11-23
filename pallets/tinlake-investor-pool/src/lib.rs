@@ -15,6 +15,7 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
+use common_traits::PoolReserve;
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
@@ -571,41 +572,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
 			let who = ensure_signed(origin)?;
-			let pool_account = PoolLocator { pool_id }.into_account();
-			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.total_reserve = pool
-					.total_reserve
-					.checked_add(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				pool.fake_nav = pool
-					.fake_nav
-					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				let mut remaining_amount = amount;
-				for tranche in &mut pool.tranches {
-					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
-					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
-						tranche.ratio.mul_ceil(amount)
-					} else {
-						remaining_amount
-					};
-					let tranche_amount = if tranche_amount > tranche.debt {
-						tranche.debt
-					} else {
-						tranche_amount
-					};
-
-					tranche.debt -= tranche_amount;
-					tranche.reserve = tranche
-						.reserve
-						.checked_add(&tranche_amount)
-						.ok_or(Error::<T>::Overflow)?;
-					remaining_amount -= tranche_amount;
-				}
-				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
-				Ok(())
-			})
+			Self::do_payback(who, pool_id, amount)
 		}
 
 		#[pallet::weight(100)]
@@ -616,45 +583,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// Internal/pvt call from Coordinator, so no need to check origin on final implementation
 			let who = ensure_signed(origin)?;
-			let pool_account = PoolLocator { pool_id }.into_account();
-			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.total_reserve = pool
-					.total_reserve
-					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				pool.available_reserve = pool
-					.available_reserve
-					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				pool.fake_nav = pool
-					.fake_nav
-					.checked_add(&amount)
-					.ok_or(Error::<T>::Overflow)?;
-				let mut remaining_amount = amount;
-				for tranche in &mut pool.tranches {
-					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
-					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
-						tranche.ratio.mul_ceil(amount)
-					} else {
-						remaining_amount
-					};
-					let tranche_amount = if tranche_amount > tranche.reserve {
-						tranche.reserve
-					} else {
-						tranche_amount
-					};
-
-					tranche.reserve -= tranche_amount;
-					tranche.debt = tranche
-						.debt
-						.checked_add(&tranche_amount)
-						.ok_or(Error::<T>::Overflow)?;
-					remaining_amount -= tranche_amount;
-				}
-				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
-				Ok(())
-			})
+			Self::do_borrow(who, pool_id, amount)
 		}
 
 		#[pallet::weight(100)]
@@ -1063,5 +992,116 @@ pub mod pallet {
 			Epoch::<T>::insert(loc, closing_epoch, epoch);
 			Ok(())
 		}
+
+		pub(crate) fn do_payback(
+			who: T::AccountId,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let pool_account = PoolLocator { pool_id }.into_account();
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.total_reserve = pool
+					.total_reserve
+					.checked_add(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				let mut remaining_amount = amount;
+				for tranche in &mut pool.tranches {
+					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+						tranche.ratio.mul_ceil(amount)
+					} else {
+						remaining_amount
+					};
+					let tranche_amount = if tranche_amount > tranche.debt {
+						tranche.debt
+					} else {
+						tranche_amount
+					};
+
+					tranche.debt -= tranche_amount;
+					tranche.reserve = tranche
+						.reserve
+						.checked_add(&tranche_amount)
+						.ok_or(Error::<T>::Overflow)?;
+					remaining_amount -= tranche_amount;
+				}
+				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
+				Ok(())
+			})
+		}
+
+		pub(crate) fn do_borrow(
+			who: T::AccountId,
+			pool_id: T::PoolId,
+			amount: T::Balance,
+		) -> DispatchResult {
+			let pool_account = PoolLocator { pool_id }.into_account();
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.total_reserve = pool
+					.total_reserve
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				pool.available_reserve = pool
+					.available_reserve
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				pool.fake_nav = pool
+					.fake_nav
+					.checked_add(&amount)
+					.ok_or(Error::<T>::Overflow)?;
+				let mut remaining_amount = amount;
+				for tranche in &mut pool.tranches {
+					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+						tranche.ratio.mul_ceil(amount)
+					} else {
+						remaining_amount
+					};
+					let tranche_amount = if tranche_amount > tranche.reserve {
+						tranche.reserve
+					} else {
+						tranche_amount
+					};
+
+					tranche.reserve -= tranche_amount;
+					tranche.debt = tranche
+						.debt
+						.checked_add(&tranche_amount)
+						.ok_or(Error::<T>::Overflow)?;
+					remaining_amount -= tranche_amount;
+				}
+				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
+				Ok(())
+			})
+		}
+	}
+}
+
+impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
+	type PoolId = T::PoolId;
+	type Balance = T::Balance;
+
+	fn withdraw(
+		pool_id: Self::PoolId,
+		_caller: OriginFor<T>,
+		to: T::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult {
+		Self::do_borrow(to, pool_id, amount)
+	}
+
+	fn deposit(
+		pool_id: Self::PoolId,
+		_caller: OriginFor<T>,
+		from: T::AccountId,
+		amount: Self::Balance,
+	) -> DispatchResult {
+		Self::do_payback(from, pool_id, amount)
 	}
 }

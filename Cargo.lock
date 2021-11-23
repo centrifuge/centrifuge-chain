@@ -6033,6 +6033,7 @@ dependencies = [
 name = "pallet-tinlake-investor-pool"
 version = "3.0.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
