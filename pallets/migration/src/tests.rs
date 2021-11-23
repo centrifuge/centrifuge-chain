@@ -19,6 +19,10 @@ fn finalize_works() {
 		.existential_deposit(1)
 		.build(|| {})
 		.execute_with(|| {
+			// Call filter is inactive
+			// We need to actually trigger storage to change status to Status::Ongoing
+			helper_migrate_total_issuance();
+
 			assert!(
 				!<<MockRuntime as frame_system::Config>::BaseCallFilter as Contains<Call>>::contains(
 					&Call::Balances(pallet_balances::Call::transfer{
@@ -41,7 +45,7 @@ fn finalize_works() {
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<MockRuntime>::finalize(Origin::root()),
-				pallet_migration_manager::Error::<MockRuntime>::MigrationAlreadyCompleted,
+				pallet_migration_manager::Error::<MockRuntime>::OnlyFinalizeOngoing,
 			);
 
 			assert_noop!(

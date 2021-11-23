@@ -5,7 +5,9 @@
 //! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.  
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::traits::{Contains, Currency};
+use scale_info::TypeInfo;
 
 pub use pallet::*;
 pub use weights::*;
@@ -26,6 +28,13 @@ mod weights;
 type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
+
+#[derive(Encode, Decode, PartialEq, Clone, TypeInfo)]
+pub enum Status {
+	Inactive,
+	Ongoing,
+	Complete,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -77,38 +86,27 @@ pub mod pallet {
 		/// WeightInfo
 		type WeightInfo: WeightInfo;
 
-		type Filter: Contains<<Self as frame_system::Config>::Call>;
+		/// The call filter that will be used when pallet is in an ongoing migration
+		type OngoingFilter: Contains<<Self as frame_system::Config>::Call>;
+
+		/// The call filter that will be used when pallet has finalize the migration
+		type FinalizedFilter: Contains<<Self as frame_system::Config>::Call>;
+
+		/// The call filter that will be used when pallet is inactive
+		type InactiveFilter: Contains<<Self as frame_system::Config>::Call>;
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::type_value]
-	pub fn OnCompletedEmpty() -> bool {
-		false
+	pub fn OnCompletedEmpty() -> Status {
+		Status::Inactive
 	}
 
 	#[pallet::storage]
 	#[pallet::getter(fn completed)]
-	pub(super) type Completed<T: Config> = StorageValue<_, bool, ValueQuery, OnCompletedEmpty>;
-
-	/// Pallet genesis configuration type declaration.
-	///
-	/// It allows to build genesis storage.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
-	}
-
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
+	pub(super) type Completed<T: Config> = StorageValue<_, Status, ValueQuery, OnCompletedEmpty>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -173,6 +171,10 @@ pub mod pallet {
 
 		/// Indicates that a migration call happened, although the migration is already closed
 		MigrationAlreadyCompleted,
+
+		/// Indicates that a finalize call happened, although the migration pallet is not in an
+		/// ongoing migration
+		OnlyFinalizeOngoing,
 	}
 
 	#[pallet::call]
@@ -192,8 +194,15 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			let mut status = <Completed<T>>::get();
+
+			if status == Status::Inactive {
+				<Completed<T>>::set(Status::Ongoing);
+				status = Status::Ongoing;
+			}
+
 			ensure!(
-				<Completed<T>>::get() == false,
+				status == Status::Ongoing,
 				Error::<T>::MigrationAlreadyCompleted
 			);
 
@@ -234,8 +243,15 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			let mut status = <Completed<T>>::get();
+
+			if status == Status::Inactive {
+				<Completed<T>>::set(Status::Ongoing);
+				status = Status::Ongoing;
+			}
+
 			ensure!(
-				<Completed<T>>::get() == false,
+				status == Status::Ongoing,
 				Error::<T>::MigrationAlreadyCompleted
 			);
 
@@ -266,8 +282,15 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			let mut status = <Completed<T>>::get();
+
+			if status == Status::Inactive {
+				<Completed<T>>::set(Status::Ongoing);
+				status = Status::Ongoing;
+			}
+
 			ensure!(
-				<Completed<T>>::get() == false,
+				status == Status::Ongoing,
 				Error::<T>::MigrationAlreadyCompleted
 			);
 
@@ -341,8 +364,15 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			let mut status = <Completed<T>>::get();
+
+			if status == Status::Inactive {
+				<Completed<T>>::set(Status::Ongoing);
+				status = Status::Ongoing;
+			}
+
 			ensure!(
-				<Completed<T>>::get() == false,
+				status == Status::Ongoing,
 				Error::<T>::MigrationAlreadyCompleted
 			);
 
@@ -397,11 +427,11 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			ensure!(
-				<Completed<T>>::get() == false,
-				Error::<T>::MigrationAlreadyCompleted
+				<Completed<T>>::get() == Status::Ongoing,
+				Error::<T>::OnlyFinalizeOngoing
 			);
 
-			<Completed<T>>::put(true);
+			<Completed<T>>::put(Status::Complete);
 
 			Self::deposit_event(Event::<T>::MigrationFinished);
 
@@ -412,10 +442,11 @@ pub mod pallet {
 
 impl<T: Config> Contains<<T as frame_system::Config>::Call> for Pallet<T> {
 	fn contains(c: &<T as frame_system::Config>::Call) -> bool {
-		if !pallet::Completed::<T>::get() {
-			T::Filter::contains(c)
-		} else {
-			true
+		let status = <Completed<T>>::get();
+		match status {
+			Status::Inactive => T::InactiveFilter::contains(c),
+			Status::Ongoing => T::OngoingFilter::contains(c),
+			Status::Complete => T::FinalizedFilter::contains(c),
 		}
 	}
 }

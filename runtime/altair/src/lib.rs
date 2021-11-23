@@ -50,6 +50,7 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
+use frame_benchmarking::frame_support::traits::Everything;
 /// common types for the runtime.
 pub use runtime_common::*;
 
@@ -720,7 +721,9 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
-	type Filter = BaseFilter;
+	type FinalizedFilter = Everything;
+	type InactiveFilter = BaseFilter;
+	type OngoingFilter = BaseFilter;
 }
 
 // Parameterize crowdloan reward pallet configuration

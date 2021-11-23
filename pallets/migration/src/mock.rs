@@ -20,6 +20,7 @@ use crate as pallet_migration_manager;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_runtime::traits::ConvertInto;
+use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,
@@ -51,7 +52,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>},
 		Proxy: pallet_proxy::{Pallet, Call, Storage, Event<T>},
-		Migration: pallet_migration_manager::{Pallet, Call, Config, Storage, Event<T>},
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -197,7 +198,9 @@ impl pallet_migration_manager::Config for MockRuntime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = ();
-	type Filter = BaseFilter;
+	type FinalizedFilter = Everything;
+	type InactiveFilter = BaseFilter;
+	type OngoingFilter = BaseFilter;
 }
 
 // our base filter

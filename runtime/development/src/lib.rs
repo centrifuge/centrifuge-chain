@@ -47,6 +47,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
+use frame_benchmarking::frame_support::traits::Everything;
 pub use primitives_tokens::CurrencyId;
 
 /// common types for the runtime.
@@ -734,7 +735,9 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
-	type Filter = BaseFilter;
+	type FinalizedFilter = Everything;
+	type InactiveFilter = BaseFilter;
+	type OngoingFilter = BaseFilter;
 }
 
 // our base filter
