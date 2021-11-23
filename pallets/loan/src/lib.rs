@@ -341,8 +341,21 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// borrows some amount from an active loan
-		#[pallet::weight(100_000)]
+		/// Transfers borrow amount to the loan owner.
+		///
+		/// LoanStatus must be active.
+		/// Total Borrowed amount(Previously borrowed + requested) should not exceed ceiling set for the loan.
+		/// Loan should still be healthy. If loan type supports maturity, then maturity date should not have passed.
+		/// Loan should not be written off.
+		/// Rate accumulation will start after the first borrow
+		/// Loan is accrued upto the current time.
+		/// Pool NAV is updated to reflect new present value of the loan.
+		/// Amount of tokens of an Asset will be transferred from pool reserve to loan owner.
+		#[pallet::weight(
+			<T as Config>::WeightInfo::initial_borrow().max(
+				<T as Config>::WeightInfo::further_borrows()
+			)
+		)]
 		#[transactional]
 		pub fn borrow(
 			origin: OriginFor<T>,

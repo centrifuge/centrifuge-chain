@@ -4,10 +4,13 @@ use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoanPallet};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_support::traits::tokens::fungibles::{Inspect, Unbalanced};
 use frame_support::traits::{Currency, UnfilteredDispatchable};
 use frame_system::RawOrigin;
+use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
 use pallet_balances::Pallet as BalancePallet;
 use pallet_pool::CurrencyIdOf;
+use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
 use runtime_common::{Amount, Rate, CFG};
 use test_utils::{
 	assert_last_event, create_nft_class, create_pool, expect_asset_owner, mint_nft,
@@ -21,16 +24,42 @@ pub trait Config:
 	+ pallet_balances::Config
 	+ pallet_uniques::Config
 	+ pallet_pool::Config
+	+ ORMLConfig
+	+ TimestampConfig
 {
 }
 
-fn make_free_balance_minimum<T>(account: T::AccountId)
+fn make_free_cfg_balance<T>(account: T::AccountId)
 where
 	T: Config + pallet_balances::Config,
 	<T as pallet_balances::Config>::Balance: From<u128>,
 {
-	let min_balance: T::Balance = (10u128 * CFG).into();
+	let min_balance: <T as pallet_balances::Config>::Balance = (10u128 * CFG).into();
 	let _ = BalancePallet::<T>::make_free_balance_be(&account, min_balance);
+}
+
+fn make_free_token_balance<T, GetCurrencyId>(
+	account: &T::AccountId,
+	balance: <T as ORMLConfig>::Balance,
+) where
+	T: Config + ORMLConfig,
+	GetCurrencyId: Get<<T as ORMLConfig>::CurrencyId>,
+{
+	ORMLPallet::<T>::set_balance(GetCurrencyId::get(), account, balance)
+		.expect("should not fail to set new token balance");
+}
+
+fn check_free_token_balance<T, GetCurrencyId>(
+	account: &T::AccountId,
+	balance: <T as ORMLConfig>::Balance,
+) where
+	T: Config + ORMLConfig,
+	GetCurrencyId: Get<<T as ORMLConfig>::CurrencyId>,
+{
+	assert_eq!(
+		ORMLPallet::<T>::balance(GetCurrencyId::get(), account),
+		balance
+	);
 }
 
 fn whitelist_acc<T: frame_system::Config>(acc: &T::AccountId) {
@@ -53,12 +82,12 @@ where
 {
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
-	make_free_balance_minimum::<T>(pool_owner.clone());
+	make_free_cfg_balance::<T>(pool_owner.clone());
 	let pool_id: PoolIdOf<T> = create_pool::<T, GetUSDCurrencyId>(pool_owner.clone()).into();
 
 	// initialise pool on loan
 	let loan_account = LoanPallet::<T>::account_id();
-	make_free_balance_minimum::<T>(loan_account.clone());
+	make_free_cfg_balance::<T>(loan_account.clone());
 	let loan_class_id = initialise_test_pool::<T>(
 		pool_id,
 		1,
@@ -79,12 +108,40 @@ where
 {
 	// create asset
 	let loan_owner = account::<T::AccountId>("caller", 0, 0);
-	make_free_balance_minimum::<T>(loan_owner.clone());
+	make_free_cfg_balance::<T>(loan_owner.clone());
 	let asset_class_id = create_nft_class::<T>(2, loan_owner.clone(), None);
 	let asset_instance_id = mint_nft::<T>(loan_owner.clone(), asset_class_id);
 	let asset = Asset(asset_class_id, asset_instance_id);
 	whitelist_acc::<T>(&loan_owner);
 	(loan_owner, asset)
+}
+
+fn activate_test_loan_with_defaults<T: Config>(pool_id: PoolIdOf<T>, loan_id: T::LoanId)
+where
+	<T as LoanConfig>::Rate: From<Rate>,
+	<T as LoanConfig>::Amount: From<Amount>,
+{
+	let loan_type = LoanType::BulletLoan(BulletLoan::new(
+		// advance rate 80%
+		Rate::saturating_from_rational(80, 100).into(),
+		// expected loss over asset maturity 0.15%
+		Rate::saturating_from_rational(15, 10000).into(),
+		// collateral value
+		Amount::from_inner(125 * CFG).into(),
+		// 4%
+		math::rate_per_sec(Rate::saturating_from_rational(4, 100))
+			.unwrap()
+			.into(),
+		// 2 years
+		math::seconds_per_year() * 2,
+	));
+	// interest rate is 5%
+	let rp: T::Rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100))
+		.unwrap()
+		.into();
+	let origin = T::AdminOrigin::successful_origin();
+	LoanPallet::<T>::activate_loan(origin, pool_id, loan_id, rp, loan_type)
+		.expect("loan activation should not fail");
 }
 
 benchmarks! {
@@ -95,7 +152,11 @@ benchmarks! {
 		CurrencyIdOf<T>: From<u32>,
 		<T as LoanConfig>::Rate: From<Rate>,
 		<T as LoanConfig>::Amount: From<Amount>,
-		PoolIdOf<T>: From<<T as pallet_pool::Config>::PoolId> }
+		PoolIdOf<T>: From<<T as pallet_pool::Config>::PoolId>,
+		<T as ORMLConfig>::Balance: From<u128>,
+		<T as ORMLConfig>::CurrencyId: From<u32>,
+		<T as TimestampConfig>::Moment: From<u64> + Into<u64>,
+	}
 
 	initialise_pool{
 		let origin = T::AdminOrigin::successful_origin();
@@ -170,6 +231,57 @@ benchmarks! {
 	verify{
 		let index = 0u32;
 		assert_last_event::<T>(LoanEvent::WriteOffGroupAdded(pool_id, index).into());
+	}
+
+	initial_borrow {
+		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>();
+		let (loan_owner, asset) = create_asset::<T>();
+		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		let loan_id: T::LoanId = 1u128.into();
+		activate_test_loan_with_defaults::<T>(pool_id, loan_id);
+		// add some balance to pool reserve
+		let pool_reserve_account: T::AccountId = pallet_pool::Pallet::<T>::account_id();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+		let amount = Amount::from_inner(100 * CFG).into();
+	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
+	verify{
+		assert_last_event::<T>(LoanEvent::LoanAmountBorrowed(pool_id, loan_id, amount).into());
+		// pool reserve should have 100 USD less = 900 USD
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+
+		// loan owner should have 100 USD
+		let loan_owner_balance: <T as ORMLConfig>::Balance = (100 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&loan_owner, loan_owner_balance);
+	}
+
+	further_borrows {
+		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>();
+		let (loan_owner, asset) = create_asset::<T>();
+		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		let loan_id: T::LoanId = 1u128.into();
+		activate_test_loan_with_defaults::<T>(pool_id, loan_id);
+		// add some balance to pool reserve
+		let pool_reserve_account: T::AccountId = pallet_pool::Pallet::<T>::account_id();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CFG).into();
+		make_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+		let amount = Amount::from_inner(50 * CFG).into();
+		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+		// set timestamp to around 1 year
+		let now = TimestampPallet::<T>::get().into();
+		let after_one_year = now + math::seconds_per_year();
+		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
+	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
+	verify{
+		assert_last_event::<T>(LoanEvent::LoanAmountBorrowed(pool_id, loan_id, amount).into());
+		// pool reserve should have 100 USD less = 900 USD
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&pool_reserve_account, pool_reserve_balance);
+
+		// loan owner should have 100 USD
+		let loan_owner_balance: <T as ORMLConfig>::Balance = (100 * CFG).into();
+		check_free_token_balance::<T, GetUSDCurrencyId>(&loan_owner, loan_owner_balance);
 	}
 }
 

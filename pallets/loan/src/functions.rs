@@ -216,6 +216,12 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::ErrLoanNotActive
 			);
 
+			// ensure loan is not written off
+			ensure!(
+				loan_info.write_off_index.is_none(),
+				Error::<T>::ErrLoanWrittenOffByAdmin
+			);
+
 			// ensure maturity date has not passed if the loan has a maturity date
 			let now: u64 = Self::time_now()?;
 			let valid = match loan_info.loan_type.maturity_date() {
