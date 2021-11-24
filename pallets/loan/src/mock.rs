@@ -190,6 +190,7 @@ impl pallet_uniques::Config for MockRuntime {
 
 parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const MaxLoansPerPool: u64 = 200;
 }
 
 impl pallet_loan::Config for MockRuntime {
@@ -204,6 +205,7 @@ impl pallet_loan::Config for MockRuntime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type PoolReserve = Pool;
 	type WeightInfo = ();
+	type MaxLoansPerPool = MaxLoansPerPool;
 }
 
 // USD currencyId

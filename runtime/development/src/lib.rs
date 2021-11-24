@@ -688,6 +688,7 @@ impl pallet_pool::Config for Runtime {
 
 parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const MaxLoansPerPool: u64 = 200;
 }
 
 impl pallet_loan::Config for Runtime {
@@ -702,6 +703,7 @@ impl pallet_loan::Config for Runtime {
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 	type PoolReserve = Pool;
 	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
+	type MaxLoansPerPool = MaxLoansPerPool;
 }
 
 parameter_type_with_key! {

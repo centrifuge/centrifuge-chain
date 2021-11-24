@@ -122,6 +122,10 @@ pub mod pallet {
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
+
+		/// This is a soft limit for maximum loans we can expect in a pool.
+		/// this is mainly used to calculate estimated weight for NAV calculation.
+		type MaxLoansPerPool: Get<u64>;
 	}
 
 	/// Stores the loan nft class ID against a given pool
@@ -345,11 +349,14 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let asset = Self::close(pool_id, loan_id, owner)?;
+			let (asset, written_off) = Self::close(pool_id, loan_id, owner)?;
 			Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
-			Ok(())
+			match written_off {
+				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
+				false => Ok(Some(T::WeightInfo::repay_and_close()).into()),
+			}
 		}
 
 		/// Transfers borrow amount to the loan owner.
@@ -373,11 +380,14 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Amount,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			Self::borrow_amount(pool_id, loan_id, owner, amount)?;
+			let first_borrow = Self::borrow_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::LoanAmountBorrowed(pool_id, loan_id, amount));
-			Ok(())
+			match first_borrow {
+				true => Ok(Some(T::WeightInfo::initial_borrow()).into()),
+				false => Ok(Some(T::WeightInfo::further_borrows()).into()),
+			}
 		}
 
 		/// Transfers amount borrowed to the pool reserve.
@@ -386,11 +396,7 @@ pub mod pallet {
 		/// Loan is accrued before transferring the amount to reserve.
 		/// If the repaying amount is more than current debt, only current debt is transferred.
 		/// Amount of token will be transferred from owner to Pool reserve.
-		#[pallet::weight(
-			<T as Config>::WeightInfo::repay_before_maturity().max(
-				<T as Config>::WeightInfo::repay_after_maturity()
-			)
-		)]
+		#[pallet::weight(<T as Config>::WeightInfo::repay())]
 		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
@@ -427,17 +433,35 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to update nav for a given pool
-		/// TODO(ved): benchmarking this to get a weight would be tricky due to n loans per pool
-		/// Maybe utility pallet would be a good source of inspiration?
-		#[pallet::weight(100_000)]
-		#[transactional]
-		pub fn update_nav(origin: OriginFor<T>, pool_id: PoolIdOf<T>) -> DispatchResult {
+		/// Updates the NAV for a given pool
+		///
+		/// Iterate through each loan and calculate the present value of each active loan.
+		/// The loan is accrued and updated.
+		///
+		/// Weight for the update nav is not straightforward since there could n loans in a pool
+		/// So instead, we calculate weight for one loan. We assume a maximum of 200 loans and deposit that weight
+		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
+		/// transaction payment can return the deposit.
+		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxLoansPerPool::get()))]
+		pub fn update_nav(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+		) -> DispatchResultWithPostInfo {
 			// ensure signed so that caller pays for the update fees
 			ensure_signed(origin)?;
-			let updated_nav = Self::update_nav_of_pool(pool_id)?;
+			let (updated_nav, updated_loans) = Self::update_nav_of_pool(pool_id)?;
 			Self::deposit_event(Event::<T>::NAVUpdated(pool_id, updated_nav));
-			Ok(())
+
+			// if the total loans updated are more than max loans, we are charging lower txn fees for this pool nav calculation.
+			// there is nothing we can do right now. return Ok
+			if updated_loans > T::MaxLoansPerPool::get() {
+				return Ok(().into());
+			}
+
+			// calculate actual weight of the updating nav based on number of loan processed.
+			let total_weight =
+				T::WeightInfo::nav_update_single_loan().saturating_mul(updated_loans);
+			Ok(Some(total_weight).into())
 		}
 
 		/// Appends a new write off group to the Pool
@@ -511,7 +535,8 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	}
 
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
-		Self::update_nav_of_pool(pool_id)
+		let (updated_nav, ..) = Self::update_nav_of_pool(pool_id)?;
+		Ok(updated_nav)
 	}
 }
 

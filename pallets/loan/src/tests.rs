@@ -605,8 +605,9 @@ fn repay_loan() {
 			// check nav
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
-			let nav = res.unwrap();
-			assert_eq!(nav, Zero::zero())
+			let (nav, loans_updated) = res.unwrap();
+			assert_eq!(nav, Zero::zero());
+			assert_eq!(loans_updated, 1);
 		})
 }
 
@@ -661,7 +662,7 @@ fn test_pool_nav() {
 			Timestamp::set_timestamp(after_200_days);
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
-			let nav = res.unwrap();
+			let (nav, ..) = res.unwrap();
 			// present value should be 52.06
 			assert_eq!(
 				nav,
@@ -676,10 +677,10 @@ fn test_pool_nav() {
 			Timestamp::set_timestamp(after_2_years);
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
-			let pv = res.unwrap();
+			let (pv, ..) = res.unwrap();
 			// present value should be equal to current outstanding debt
 			assert_eq!(pv, debt);
-			let nav = res.unwrap();
+			let (nav, ..) = res.unwrap();
 			assert_eq!(pv, nav);
 
 			// call update nav extrinsic and check for event
