@@ -50,8 +50,10 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
+use frame_support::traits::OnRuntimeUpgrade;
 /// common types for the runtime.
 pub use runtime_common::*;
+use sp_std::marker::PhantomData;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -81,6 +83,62 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
+	}
+}
+
+/// Costum runtime upgrades
+///
+/// Migration to include collator-selection in a running chain
+pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
+
+//const CANDIDATES: [AccountId] = [];
+//const ADD_INVULNERABLES: [AccountId] = [];
+const DESIRED_CANDIDATES: u32 = 0;
+const CANDIDACY_BOND: Balance = 1 * CFG;
+
+impl<T> IntegrateCollatorSelection<T>
+where
+	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+{
+	fn to_version() -> u32 {
+		1007
+	}
+
+	fn inject_invulnerables(additional: &[AccountId]) -> Weight {
+		todo!()
+	}
+
+	fn inject_desired_candidates(max: u32) -> Weight {
+		todo!()
+	}
+
+	fn inject_candidates(candidates: &[AccountId]) -> Weight {
+		todo!()
+	}
+
+	fn inject_candidacy_bond(bond: Balance) -> Weight {
+		todo!()
+	}
+}
+
+impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
+where
+	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+{
+	fn on_runtime_upgrade() -> Weight {
+		let mut consumed: Weight = 0;
+
+		if VERSION.spec_version == IntegrateCollatorSelection::<Runtime>::to_version() {
+			consumed += IntegrateCollatorSelection::<Runtime>::inject_invulnerables(&[]);
+			consumed += IntegrateCollatorSelection::<Runtime>::inject_desired_candidates(
+				DESIRED_CANDIDATES,
+			);
+			consumed += IntegrateCollatorSelection::<Runtime>::inject_candidates(&[]);
+			consumed +=
+				IntegrateCollatorSelection::<Runtime>::inject_candidacy_bond(CANDIDACY_BOND);
+		}
+
+		return consumed;
 	}
 }
 
@@ -869,7 +927,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPallets,
-	(),
+	IntegrateCollatorSelection<Runtime>,
 >;
 
 impl_runtime_apis! {
