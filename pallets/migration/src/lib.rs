@@ -6,10 +6,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::traits::{Contains, Currency};
-use scale_info::TypeInfo;
-
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	traits::{Contains, Currency},
+};
 pub use pallet::*;
+use scale_info::TypeInfo;
 pub use weights::*;
 
 #[cfg(test)]
@@ -30,7 +33,7 @@ type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 >>::Balance;
 
 #[derive(Encode, Decode, PartialEq, Clone, TypeInfo)]
-pub enum Status {
+pub enum MigrationStatus {
 	Inactive,
 	Ongoing,
 	Complete,
@@ -100,13 +103,13 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
 	#[pallet::type_value]
-	pub fn OnCompletedEmpty() -> Status {
-		Status::Inactive
+	pub fn OnStatusEmpty() -> MigrationStatus {
+		MigrationStatus::Inactive
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn completed)]
-	pub(super) type Completed<T: Config> = StorageValue<_, Status, ValueQuery, OnCompletedEmpty>;
+	#[pallet::getter(fn status)]
+	pub(super) type Status<T: Config> = StorageValue<_, MigrationStatus, ValueQuery, OnStatusEmpty>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -194,17 +197,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
-			let mut status = <Completed<T>>::get();
-
-			if status == Status::Inactive {
-				<Completed<T>>::set(Status::Ongoing);
-				status = Status::Ongoing;
-			}
-
-			ensure!(
-				status == Status::Ongoing,
-				Error::<T>::MigrationAlreadyCompleted
-			);
+			Self::activate_migration()?;
 
 			let num_accounts = accounts.len();
 			ensure!(
@@ -243,17 +236,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
-			let mut status = <Completed<T>>::get();
-
-			if status == Status::Inactive {
-				<Completed<T>>::set(Status::Ongoing);
-				status = Status::Ongoing;
-			}
-
-			ensure!(
-				status == Status::Ongoing,
-				Error::<T>::MigrationAlreadyCompleted
-			);
+			Self::activate_migration()?;
 
 			let current_issuance = pallet_balances::Pallet::<T>::total_issuance();
 			let total_issuance = current_issuance.saturating_add(additional_issuance);
@@ -282,17 +265,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
-			let mut status = <Completed<T>>::get();
-
-			if status == Status::Inactive {
-				<Completed<T>>::set(Status::Ongoing);
-				status = Status::Ongoing;
-			}
-
-			ensure!(
-				status == Status::Ongoing,
-				Error::<T>::MigrationAlreadyCompleted
-			);
+			Self::activate_migration()?;
 
 			ensure!(
 				vestings.len()
@@ -364,17 +337,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
-			let mut status = <Completed<T>>::get();
-
-			if status == Status::Inactive {
-				<Completed<T>>::set(Status::Ongoing);
-				status = Status::Ongoing;
-			}
-
-			ensure!(
-				status == Status::Ongoing,
-				Error::<T>::MigrationAlreadyCompleted
-			);
+			Self::activate_migration()?;
 
 			ensure!(
 				proxies.len()
@@ -427,11 +390,11 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			ensure!(
-				<Completed<T>>::get() == Status::Ongoing,
+				<Status<T>>::get() == MigrationStatus::Ongoing,
 				Error::<T>::OnlyFinalizeOngoing
 			);
 
-			<Completed<T>>::put(Status::Complete);
+			<Status<T>>::set(MigrationStatus::Complete);
 
 			Self::deposit_event(Event::<T>::MigrationFinished);
 
@@ -440,13 +403,31 @@ pub mod pallet {
 	}
 }
 
+impl<T: Config> Pallet<T> {
+	fn activate_migration() -> DispatchResult {
+		let mut status = <Status<T>>::get();
+
+		if status == MigrationStatus::Inactive {
+			<Status<T>>::set(MigrationStatus::Ongoing);
+			status = MigrationStatus::Ongoing;
+		}
+
+		ensure!(
+			status == MigrationStatus::Ongoing,
+			Error::<T>::MigrationAlreadyCompleted
+		);
+
+		Ok(())
+	}
+}
+
 impl<T: Config> Contains<<T as frame_system::Config>::Call> for Pallet<T> {
 	fn contains(c: &<T as frame_system::Config>::Call) -> bool {
-		let status = <Completed<T>>::get();
+		let status = <Status<T>>::get();
 		match status {
-			Status::Inactive => T::InactiveFilter::contains(c),
-			Status::Ongoing => T::OngoingFilter::contains(c),
-			Status::Complete => T::FinalizedFilter::contains(c),
+			MigrationStatus::Inactive => T::InactiveFilter::contains(c),
+			MigrationStatus::Ongoing => T::OngoingFilter::contains(c),
+			MigrationStatus::Complete => T::FinalizedFilter::contains(c),
 		}
 	}
 }
