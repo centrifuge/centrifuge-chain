@@ -138,14 +138,14 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
-	) -> Result<(AssetOf<T>, bool), DispatchError> {
+	) -> Result<ClosedLoan<T>, DispatchError> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		LoanInfo::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_info| -> Result<(AssetOf<T>, bool), DispatchError> {
+			|maybe_loan_info| -> Result<ClosedLoan<T>, DispatchError> {
 				let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::ErrMissingLoan)?;
 
 				// ensure loan is active
@@ -195,7 +195,7 @@ impl<T: Config> Pallet<T> {
 				// update loan status
 				loan_info.status = LoanStatus::Closed;
 				*maybe_loan_info = Some(loan_info);
-				Ok((asset, written_off))
+				Ok(ClosedLoan { asset, written_off })
 			},
 		)
 	}
@@ -232,9 +232,7 @@ impl<T: Config> Pallet<T> {
 				// ensure maturity date has not passed if the loan has a maturity date
 				let now: u64 = Self::time_now()?;
 				let valid = match loan_info.loan_type.maturity_date() {
-					// loan has a maturity date
 					Some(md) => md > now,
-					// no maturity date, so continue as is
 					None => true,
 				};
 				ensure!(valid, Error::<T>::ErrLoanMaturityDatePassed);
@@ -397,7 +395,7 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		now: u64,
-		write_off_groups: Vec<WriteOffGroup<T::Rate>>,
+		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Amount, DispatchError> {
 		LoanInfo::<T>::try_mutate(
 			pool_id,
@@ -434,8 +432,7 @@ impl<T: Config> Pallet<T> {
 		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
 			Zero::zero(),
 			|sum, loan_id| -> Result<T::Amount, DispatchError> {
-				let pv =
-					Self::accrue_and_update_loan(pool_id, loan_id, now, write_off_groups.clone())?;
+				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now, &write_off_groups)?;
 				updated_loans += 1;
 				sum.checked_add(&pv)
 					.ok_or(Error::<T>::ErrLoanAccrueFailed.into())
@@ -470,7 +467,7 @@ impl<T: Config> Pallet<T> {
 		// append new group
 		let index = PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| -> u32 {
 			write_off_groups.push(group);
-			// return the index of the write off group
+			// return the index of the latest write off group
 			(write_off_groups.len() - 1) as u32
 		});
 
@@ -536,7 +533,7 @@ impl<T: Config> Pallet<T> {
 
 				// get old present value accounting for any write offs
 				let old_pv = loan_data
-					.present_value_with_write_off(write_off_groups.clone())
+					.present_value_with_write_off(&write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// accrue and calculate the new present value with current chosen write off
@@ -550,7 +547,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate updated write off adjusted present value
 				let new_pv = loan_data
-					.present_value_with_write_off(write_off_groups)
+					.present_value_with_write_off(&write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// update nav

@@ -24,6 +24,13 @@ impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
 	}
 }
 
+/// ClosedLoan holds the collateral reference of the loan and if loan was written off
+pub(crate) struct ClosedLoan<T: pallet::Config> {
+	pub(crate) asset: AssetOf<T>,
+	// Whether the loan has been 100% written off
+	pub(crate) written_off: bool,
+}
+
 /// The data structure for storing pool nav details
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
@@ -137,7 +144,7 @@ where
 	// pv = pv*(1 - write_off_percentage)
 	pub(crate) fn present_value_with_write_off(
 		&self,
-		write_off_groups: Vec<WriteOffGroup<Rate>>,
+		write_off_groups: &Vec<WriteOffGroup<Rate>>,
 	) -> Option<Amount> {
 		let maybe_present_value = self.present_value();
 		match self.write_off_index {
