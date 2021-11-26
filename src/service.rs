@@ -329,7 +329,7 @@ where
 			prometheus_registry.as_ref(),
 			telemetry.as_ref().map(|t| t.handle()),
 			&task_manager,
-			&relay_chain_full_node,
+			&relay_chain_full_node.relay_chain_full_node,
 			transaction_pool,
 			network,
 			params.keystore_container.sync_keystore(),

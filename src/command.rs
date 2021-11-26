@@ -360,10 +360,10 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.unwrap_or(100));
+				let para_id = ParaId::from(100 as u32);
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
+					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&para_id);
 
 				let block: Block =
 					generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
@@ -381,7 +381,7 @@ pub fn run() -> Result<()> {
 						.chain_id(polkadot_cli.shared_params().is_dev())
 				);
 				info!("Parachain spec: {:?}", cli.run.base.shared_params.chain);
-				info!("Parachain id: {:?}", id);
+				info!("Parachain id: {:?}", para_id);
 				info!("Parachain Account: {}", parachain_account);
 				info!("Parachain genesis state: {}", genesis_state);
 				info!(
@@ -395,19 +395,19 @@ pub fn run() -> Result<()> {
 
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, id)
+						crate::service::start_altair_node(config, polkadot_config, para_id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
 					}
 					ChainIdentity::Centrifuge => {
-						crate::service::start_centrifuge_node(config, polkadot_config, id)
+						crate::service::start_centrifuge_node(config, polkadot_config, para_id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
 					}
 					ChainIdentity::Development => {
-						crate::service::start_development_node(config, polkadot_config, id)
+						crate::service::start_development_node(config, polkadot_config, para_id)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
