@@ -16,7 +16,7 @@ integer-sqrt = { version = "0.1.2" }
 safe-mix = { version = "1.0", default-features = false }
 smallvec = "1.4.0"
 static_assertions = "1.1.0"
-hex-literal = { version = "0.2.1", optional = true }
+hex-literal = { version = "0.3.4", optional = true }
 rustc-hex = { version = "2.0", optional = true }
 serde = { version = "1.0.102", optional = true }
 
@@ -33,12 +33,12 @@ cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", d
 
 
 # polkadot dependencies
-polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13-rc1" }
+polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13-rc1" }
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13-rc1" }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13-rc1" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13-rc1" }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13-rc1" }
 
 # primitives
 sp-authority-discovery = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
