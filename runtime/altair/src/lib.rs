@@ -50,7 +50,7 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
-use frame_support::traits::OnRuntimeUpgrade;
+use frame_support::traits::{Currency, Get, OnRuntimeUpgrade};
 /// common types for the runtime.
 pub use runtime_common::*;
 use sp_std::marker::PhantomData;
@@ -86,15 +86,29 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
+use frame_support::sp_runtime::app_crypto::Public;
+use frame_support::sp_runtime::traits::{Convert, OpaqueKeys};
 /// Costum runtime upgrades
 ///
 /// Migration to include collator-selection in a running chain
+use pallet_collator_selection::CandidateInfo;
+
 pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
 
-//const CANDIDATES: [AccountId] = [];
-//const ADD_INVULNERABLES: [AccountId] = [];
+//const CANDIDATES: [(AccountId, SessionKeys)] = [];
+/*const INVULNERABLES: [(AccountId, SessionKeys); 1] = [(
+	AccountId::from_ss58check(""),
+	SessionKeys {
+		aura: Public::try_from(&[0u8; 32]).expect(""),
+	},
+)];*/
 const DESIRED_CANDIDATES: u32 = 0;
 const CANDIDACY_BOND: Balance = 1 * CFG;
+
+type BalanceOfCollatorSelection<T> =
+	<<T as pallet_collator_selection::Config>::Currency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
 
 impl<T> IntegrateCollatorSelection<T>
 where
@@ -104,38 +118,151 @@ where
 		1007
 	}
 
-	fn inject_invulnerables(additional: &[AccountId]) -> Weight {
-		todo!()
+	fn inject_invulnerables(invulnerables: &[(T::AccountId, T::Keys)]) -> Weight {
+		// Store the keys of any additional invulnerables in the `NextKeys` storage
+		let consumed = Self::set_keys(invulnerables);
+
+		let session_validators = invulnerables
+			.iter()
+			.map(|(who, _keys)| who.clone())
+			.collect();
+
+		<pallet_collator_selection::Invulnerables<T>>::set(session_validators);
+
+		let queued_validators: Vec<(<T as pallet_session::Config>::ValidatorId, T::Keys)> =
+			invulnerables
+				.iter()
+				.map(|(who, keys)| {
+					(
+						// TODO(frederik): Take care of handling this unwrap()
+						<<T as pallet_session::Config>::ValidatorIdOf>::convert(who.clone())
+							.unwrap(),
+						keys.clone(),
+					)
+				})
+				.collect();
+
+		<pallet_session::QueuedKeys<T>>::set(queued_validators);
+
+		consumed + Self::db_access_weights(Some(1), Some(2))
 	}
 
 	fn inject_desired_candidates(max: u32) -> Weight {
-		todo!()
+		<pallet_collator_selection::DesiredCandidates<T>>::set(max);
+
+		Self::db_access_weights(None, Some(1))
 	}
 
-	fn inject_candidates(candidates: &[AccountId]) -> Weight {
-		todo!()
+	fn inject_candidates(
+		candidates: &[(T::AccountId, T::Keys)],
+		deposit: BalanceOfCollatorSelection<T>,
+	) -> Weight {
+		// Store the keys of any additional candidates in the `NextKeys` storage
+		let consumed = Self::set_keys(candidates);
+		let threshold = T::KickThreshold::get();
+		let now = frame_system::Pallet::<T>::block_number();
+
+		let infos = candidates
+			.iter()
+			.map(|(who, _key)| {
+				<pallet_collator_selection::LastAuthoredBlock<T>>::insert(
+					who.clone(),
+					now + threshold,
+				);
+
+				CandidateInfo {
+					who: who.clone(),
+					deposit,
+				}
+			})
+			.collect();
+
+		<pallet_collator_selection::Candidates<T>>::set(infos);
+
+		consumed + Self::db_access_weights(Some(2), Some(1 + 1 * (candidates.len() as u64)))
 	}
 
-	fn inject_candidacy_bond(bond: Balance) -> Weight {
-		todo!()
+	fn inject_candidacy_bond(bond: BalanceOfCollatorSelection<T>) -> Weight {
+		<pallet_collator_selection::CandidacyBond<T>>::set(bond);
+
+		Self::db_access_weights(None, Some(1))
+	}
+
+	fn db_access_weights(reads: Option<u64>, writes: Option<u64>) -> Weight {
+		let mut weight: Weight = 0u32 as Weight;
+
+		if let Some(num_reads) = reads {
+			weight += T::DbWeight::get()
+				.reads(1 as Weight)
+				.saturating_mul(num_reads);
+		}
+
+		if let Some(num_writes) = writes {
+			weight += T::DbWeight::get()
+				.writes(1 as Weight)
+				.saturating_mul(num_writes);
+		}
+
+		weight
+	}
+
+	fn set_keys(from: &[(T::AccountId, T::Keys)]) -> Weight {
+		let inner_set_keys = |who, keys: T::Keys| {
+			let old_keys = <pallet_session::NextKeys<T>>::get(&who);
+
+			for id in T::Keys::key_ids() {
+				let _key = keys.get_raw(*id);
+
+				// TODO(frederik): Do we need this
+				// ensure keys are without duplication.
+				// let is_owner = <pallet_session::KeyOwner<T>>::get((id, key).map_or(true, |owner| &owner == who);
+			}
+
+			for id in T::Keys::key_ids() {
+				let key = keys.get_raw(*id);
+
+				if let Some(old) = old_keys.as_ref().map(|k| k.get_raw(*id)) {
+					if key == old {
+						continue;
+					}
+
+					<pallet_session::KeyOwner<T>>::remove((*id, old));
+				}
+
+				<pallet_session::KeyOwner<T>>::insert((*id, key), &who);
+			}
+
+			<pallet_session::NextKeys<T>>::insert(&who, &keys);
+		};
+
+		from.iter().for_each(|(who, keys)| {
+			inner_set_keys(
+				// TODO(frederik): think of something to recover from the convert...
+				<T as pallet_session::Config>::ValidatorIdOf::convert(who.clone()).unwrap(),
+				keys.clone(),
+			)
+		});
+
+		Self::db_access_weights(Some(3 * (from.len() as u64)), Some(2 * (from.len() as u64)))
 	}
 }
 
 impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
 where
 	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+	BalanceOfCollatorSelection<T>: From<u128>,
 {
 	fn on_runtime_upgrade() -> Weight {
 		let mut consumed: Weight = 0;
 
-		if VERSION.spec_version == IntegrateCollatorSelection::<Runtime>::to_version() {
-			consumed += IntegrateCollatorSelection::<Runtime>::inject_invulnerables(&[]);
-			consumed += IntegrateCollatorSelection::<Runtime>::inject_desired_candidates(
-				DESIRED_CANDIDATES,
-			);
-			consumed += IntegrateCollatorSelection::<Runtime>::inject_candidates(&[]);
+		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
+			consumed += IntegrateCollatorSelection::<T>::inject_invulnerables(&[]);
 			consumed +=
-				IntegrateCollatorSelection::<Runtime>::inject_candidacy_bond(CANDIDACY_BOND);
+				IntegrateCollatorSelection::<T>::inject_desired_candidates(DESIRED_CANDIDATES);
+			consumed +=
+				IntegrateCollatorSelection::<T>::inject_candidates(&[], CANDIDACY_BOND.into());
+			consumed +=
+				IntegrateCollatorSelection::<T>::inject_candidacy_bond(CANDIDACY_BOND.into());
 		}
 
 		return consumed;
