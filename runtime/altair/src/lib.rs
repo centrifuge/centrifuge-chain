@@ -86,8 +86,7 @@ pub fn native_version() -> NativeVersion {
 	}
 }
 
-use frame_support::sp_runtime::app_crypto::Public;
-use frame_support::sp_runtime::traits::{Convert, OpaqueKeys};
+use frame_support::sp_runtime::traits::{Convert, IdentifyAccount, OpaqueKeys, Verify};
 /// Costum runtime upgrades
 ///
 /// Migration to include collator-selection in a running chain
@@ -95,16 +94,13 @@ use pallet_collator_selection::CandidateInfo;
 
 pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
 
-//const CANDIDATES: [(AccountId, SessionKeys)] = [];
-/*const INVULNERABLES: [(AccountId, SessionKeys); 1] = [(
-	AccountId::from_ss58check(""),
-	SessionKeys {
-		aura: Public::try_from(&[0u8; 32]).expect(""),
-	},
-)];*/
+const CANDIDATES: [[u8; 32]; 0] = [];
+const INVULNERABLES: [[u8; 32]; 1] = [[0u8; 32]];
+
 const DESIRED_CANDIDATES: u32 = 0;
 const CANDIDACY_BOND: Balance = 1 * CFG;
 
+type AccountPublic = <Signature as Verify>::Signer;
 type BalanceOfCollatorSelection<T> =
 	<<T as pallet_collator_selection::Config>::Currency as Currency<
 		<T as frame_system::Config>::AccountId,
@@ -113,6 +109,8 @@ type BalanceOfCollatorSelection<T> =
 impl<T> IntegrateCollatorSelection<T>
 where
 	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+	T::AccountId: From<sp_runtime::AccountId32>,
+	T::Keys: From<SessionKeys>,
 {
 	fn to_version() -> u32 {
 		1007
@@ -245,22 +243,51 @@ where
 
 		Self::db_access_weights(Some(3 * (from.len() as u64)), Some(2 * (from.len() as u64)))
 	}
+
+	#[allow(non_snake_case)]
+	fn into_T_tuple(raw_ids: &[[u8; 32]]) -> Vec<(T::AccountId, T::Keys)> {
+		raw_ids
+			.to_vec()
+			.into_iter()
+			.map::<(T::AccountId, T::Keys), _>(|bytes| {
+				(
+					AccountPublic::from(sp_core::sr25519::Public(bytes))
+						.into_account()
+						.into(),
+					SessionKeys {
+						aura: sp_consensus_aura::sr25519::AuthorityId::from(
+							sp_core::sr25519::Public(bytes),
+						),
+					}
+					.into(),
+				)
+			})
+			.collect::<Vec<(T::AccountId, T::Keys)>>()
+	}
 }
 
 impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
 where
 	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
 	BalanceOfCollatorSelection<T>: From<u128>,
+	T::AccountId: From<sp_runtime::AccountId32>,
+	T::Keys: From<SessionKeys>,
 {
 	fn on_runtime_upgrade() -> Weight {
 		let mut consumed: Weight = 0;
 
+		let invulnerables = Self::into_T_tuple(&INVULNERABLES);
+		let candidates = Self::into_T_tuple(&CANDIDATES);
+
 		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
-			consumed += IntegrateCollatorSelection::<T>::inject_invulnerables(&[]);
+			consumed +=
+				IntegrateCollatorSelection::<T>::inject_invulnerables(invulnerables.as_slice());
 			consumed +=
 				IntegrateCollatorSelection::<T>::inject_desired_candidates(DESIRED_CANDIDATES);
-			consumed +=
-				IntegrateCollatorSelection::<T>::inject_candidates(&[], CANDIDACY_BOND.into());
+			consumed += IntegrateCollatorSelection::<T>::inject_candidates(
+				candidates.as_slice(),
+				CANDIDACY_BOND.into(),
+			);
 			consumed +=
 				IntegrateCollatorSelection::<T>::inject_candidacy_bond(CANDIDACY_BOND.into());
 		}
