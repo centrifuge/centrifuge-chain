@@ -117,7 +117,7 @@ pub trait PoolReserve<Origin, AccountId> {
 		amount: Self::Balance,
 	) -> DispatchResult;
 
-	/// transfers the amount from the account to reserve
+	/// Deposit `amount` from the `from` account into the reserve.
 	/// caller must be whitelisted.
 	fn deposit(
 		pool_id: Self::PoolId,
