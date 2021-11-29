@@ -2082,6 +2082,8 @@ dependencies = [
  "hex-literal 0.2.1",
  "integer-sqrt",
  "node-primitives",
+ "orml-tokens",
+ "orml-traits",
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
@@ -2099,10 +2101,12 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-loan",
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-offences",
+ "pallet-pool",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -2114,6 +2118,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-uniques",
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
@@ -5659,9 +5664,10 @@ dependencies = [
 
 [[package]]
 name = "pallet-loan"
-version = "2.0.0"
+version = "1.0.0"
 dependencies = [
  "common-traits",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "orml-tokens",
@@ -5836,7 +5842,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-pool"
-version = "2.0.0"
+version = "1.0.0"
 dependencies = [
  "common-traits",
  "frame-support",
@@ -6096,6 +6102,7 @@ name = "pallet-uniques"
 version = "4.0.0-dev"
 source = "git+https://github.com/centrifuge/substrate?branch=master#0a01444351a0d0176194c8fe39e8a14f4ee5fb78"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",

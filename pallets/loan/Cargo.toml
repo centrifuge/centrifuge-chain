@@ -5,7 +5,7 @@ edition = '2018'
 license = "LGPL-3.0"
 name = 'pallet-loan'
 repository = "https://github.com/centrifuge/centrifuge-chain/pallets/nav-feed"
-version = '2.0.0'
+version = '1.0.0'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -20,6 +20,15 @@ sp-core = { git = "https://github.com/centrifuge/substrate", default-features = 
 sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
+
+# optional dependencies for benchmarking
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true , branch = "master" }
+pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true, branch = "master" }
+pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true, branch = "master" }
+runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
+pallet-pool = { path = "../pool", optional = true, default-features = false }
+orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, optional = true, branch = "centrifuge" }
+pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false, optional = true, branch = "master" }
 
 # our pallets
 common-traits = { path = "../../libs/common-traits", default-features = false}
@@ -36,6 +45,15 @@ pallet-pool = { path = "../pool", default-features = false}
 
 [features]
 default = ['std']
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "pallet-balances",
+    "pallet-uniques",
+    "runtime-common",
+    "pallet-pool",
+    "orml-tokens",
+    "pallet-timestamp"
+]
 std = [
     'serde/std',
     'codec/std',

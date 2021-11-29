@@ -12,12 +12,14 @@
 // GNU General Public License for more details.
 
 //! Unit test cases for Loan pallet
-
 use super::*;
 use crate as pallet_loan;
 use crate::mock::TestExternalitiesBuilder;
-use crate::mock::{Event, GetUSDCurrencyId, Loan, MockRuntime, Origin, Timestamp, Tokens, Uniques};
-use frame_support::traits::tokens::nonfungibles::Create;
+use crate::mock::{Event, Loan, MockRuntime, Origin, Timestamp, Tokens};
+use crate::test_utils::{
+	assert_last_event, create_nft_class, create_pool, expect_asset_owner, initialise_test_pool,
+	mint_nft, GetUSDCurrencyId,
+};
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use orml_traits::MultiCurrency;
@@ -27,74 +29,12 @@ use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
 
-fn create_nft_class<T>(
-	class_id: u64,
-	owner: T::AccountId,
-	maybe_admin: Option<T::AccountId>,
-) -> T::ClassId
-where
-	T: frame_system::Config<AccountId = u64> + pallet_loan::Config<ClassId = ClassId>,
-{
-	// Create class. Shouldn't fail.
-	let admin = maybe_admin.unwrap_or(owner);
-	<Uniques as Create<T::AccountId>>::create_class(&class_id, &owner, &admin)
-		.expect("class creation should not fail");
-	class_id
-}
-
-fn mint_nft<T>(owner: T::AccountId, class_id: T::ClassId) -> T::LoanId
-where
-	T: frame_system::Config + pallet_loan::Config,
-{
-	let loan_id: T::LoanId = 1u128.into();
-	T::NonFungible::mint_into(&class_id.into(), &loan_id.into(), &owner)
-		.expect("mint should not fail");
-	loan_id
-}
-
-fn create_pool<T, GetCurrencyId>(owner: T::AccountId) -> T::PoolId
-where
-	T: pallet_pool::Config<PoolId = PoolId> + frame_system::Config,
-	GetCurrencyId: Get<pallet_pool::CurrencyIdOf<T>>,
-{
-	// currencyId is 1
-	pallet_pool::Pallet::<T>::create_new_pool(owner, "USD Pool".into(), GetCurrencyId::get())
-}
-
-fn initialise_pool<T>(pool_id: T::PoolId) -> T::ClassId
-where
-	T: frame_system::Config
-		+ pallet_loan::Config<ClassId = ClassId>
-		+ pallet_pool::Config<PoolId = PoolId>,
-{
-	let class_id = create_nft_class::<MockRuntime>(1, 1, Some(Loan::account_id()));
-	Loan::initialise_pool(Origin::signed(1), pool_id, class_id)
-		.expect("initialisation of pool should not fail");
-	class_id
-}
-
 // Return last triggered event
 fn last_event() -> Event {
 	frame_system::Pallet::<MockRuntime>::events()
 		.pop()
 		.map(|item| item.event)
 		.expect("Event expected")
-}
-
-fn expect_event<E: Into<Event>>(event: E) {
-	assert_eq!(last_event(), event.into());
-}
-
-fn expect_asset_owner<T: frame_system::Config + pallet_loan::Config>(
-	asset: AssetOf<T>,
-	owner: T::AccountId,
-) {
-	let (class_id, instance_id) = asset.destruct();
-	assert_eq!(
-		<T as pallet_loan::Config>::NonFungible::owner(&class_id.into(), &instance_id.into())
-			.unwrap(),
-		owner
-	);
 }
 
 fn fetch_loan_event(event: Event) -> Option<LoanEvent<MockRuntime>> {
@@ -120,13 +60,23 @@ fn issue_test_loan<T>(owner: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>
 where
 	T: pallet_pool::Config<PoolId = PoolId>
 		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
-		+ frame_system::Config<AccountId = u64>,
+		+ frame_system::Config<AccountId = u64>
+		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>,
 	<<T as pallet_pool::Config>::MultiCurrency as MultiCurrency<
 		<T as frame_system::Config>::AccountId,
 	>>::CurrencyId: From<u32>,
+	PoolIdOf<T>: From<<T as pallet_pool::Config>::PoolId>,
 {
-	let pool_id = create_pool::<T, GetUSDCurrencyId>(owner);
-	let loan_nft_class_id = initialise_pool::<T>(pool_id);
+	let admin = 1;
+	let pool_id = create_pool::<T, GetUSDCurrencyId>(admin);
+	let pr_pool_id: PoolIdOf<T> = pool_id.into();
+	let loan_nft_class_id = initialise_test_pool::<T>(
+		pr_pool_id,
+		1,
+		RawOrigin::Signed(admin).into(),
+		admin,
+		Some(Loan::account_id()),
+	);
 	let asset_class = create_nft_class::<T>(2, owner.clone(), None);
 	let instance_id = mint_nft::<T>(owner.clone(), asset_class);
 	let asset = Asset(asset_class, instance_id);
@@ -141,7 +91,7 @@ where
 	let loan_id = 1u128.into();
 
 	// event should be emitted
-	expect_event(LoanEvent::LoanIssued(pool_id, loan_id, asset));
+	assert_last_event::<MockRuntime>(LoanEvent::LoanIssued(pool_id, loan_id, asset).into());
 	let loan_data = Loan::get_loan_info(pool_id, loan_id).expect("LoanData should be present");
 
 	// asset is same as we sent before
@@ -655,8 +605,9 @@ fn repay_loan() {
 			// check nav
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
-			let nav = res.unwrap();
-			assert_eq!(nav, Zero::zero())
+			let (nav, loans_updated) = res.unwrap();
+			assert_eq!(nav, Zero::zero());
+			assert_eq!(loans_updated, 1);
 		})
 }
 
@@ -711,7 +662,7 @@ fn test_pool_nav() {
 			Timestamp::set_timestamp(after_200_days);
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
-			let nav = res.unwrap();
+			let (nav, ..) = res.unwrap();
 			// present value should be 52.06
 			assert_eq!(
 				nav,
@@ -726,10 +677,10 @@ fn test_pool_nav() {
 			Timestamp::set_timestamp(after_2_years);
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
-			let pv = res.unwrap();
+			let (pv, ..) = res.unwrap();
 			// present value should be equal to current outstanding debt
 			assert_eq!(pv, debt);
-			let nav = res.unwrap();
+			let (nav, ..) = res.unwrap();
 			assert_eq!(pv, nav);
 
 			// call update nav extrinsic and check for event
@@ -795,7 +746,14 @@ fn add_write_off_groups() {
 		.execute_with(|| {
 			let admin: u64 = 1;
 			let pool_id = create_pool::<MockRuntime, GetUSDCurrencyId>(admin);
-			initialise_pool::<MockRuntime>(pool_id);
+			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
+			initialise_test_pool::<MockRuntime>(
+				pr_pool_id,
+				1,
+				RawOrigin::Signed(admin).into(),
+				admin,
+				None,
+			);
 
 			// fetch write off groups
 			let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);

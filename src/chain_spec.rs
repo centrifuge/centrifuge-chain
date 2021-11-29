@@ -463,5 +463,6 @@ fn development_genesis(
 		aura: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
+		tokens: Default::default(),
 	}
 }

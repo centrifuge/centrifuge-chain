@@ -105,21 +105,21 @@ pub trait PoolNAV<PoolId, Amount> {
 
 /// A trait that support pool reserve operations such as borrow and repay
 pub trait PoolReserve<Origin, AccountId> {
-	type PoolId: Parameter + Member + Debug + Copy;
+	type PoolId: Parameter + Member + Debug + Copy + Default;
 	type Balance;
 
-	/// transfers the amount to the account from reserve
+	/// Withdraw `amount` from the reserve to the `to` account.
 	/// caller must be whitelisted.
-	fn transfer_to(
+	fn withdraw(
 		pool_id: Self::PoolId,
 		caller: Origin,
 		to: AccountId,
 		amount: Self::Balance,
 	) -> DispatchResult;
 
-	/// transfers the amount from the account to reserve
+	/// Deposit `amount` from the `from` account into the reserve.
 	/// caller must be whitelisted.
-	fn transfer_from(
+	fn deposit(
 		pool_id: Self::PoolId,
 		caller: Origin,
 		from: AccountId,

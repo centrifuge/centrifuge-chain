@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! module provides base types and their functions
+//! Module provides base types and their functions
 use super::*;
 
 /// Asset that represents a non fungible
@@ -22,6 +22,13 @@ impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
 	pub fn destruct(self) -> (ClassId, InstanceId) {
 		(self.0, self.1)
 	}
+}
+
+/// ClosedLoan holds the collateral reference of the loan and if loan was written off
+pub(crate) struct ClosedLoan<T: pallet::Config> {
+	pub(crate) asset: AssetOf<T>,
+	// Whether the loan has been 100% written off
+	pub(crate) written_off: bool,
 }
 
 /// The data structure for storing pool nav details
@@ -54,7 +61,8 @@ pub struct WriteOffGroup<Rate> {
 
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanStatus {
 	// this when asset is locked and loan nft is issued.
 	Issued,
@@ -136,7 +144,7 @@ where
 	// pv = pv*(1 - write_off_percentage)
 	pub(crate) fn present_value_with_write_off(
 		&self,
-		write_off_groups: Vec<WriteOffGroup<Rate>>,
+		write_off_groups: &Vec<WriteOffGroup<Rate>>,
 	) -> Option<Amount> {
 		let maybe_present_value = self.present_value();
 		match self.write_off_index {

@@ -11,11 +11,12 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! module provides all the interest and rate related calculations
+//! Module provides all the interest and rate related calculations
 use crate::math::Adjustment::{Dec, Inc};
 use crate::WriteOffGroup;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::FixedPointNumber;
+use sp_std::vec::Vec;
 
 /// calculates the latest accumulated rate since the last
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(

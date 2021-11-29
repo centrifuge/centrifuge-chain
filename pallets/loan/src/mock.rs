@@ -56,7 +56,6 @@ frame_support::construct_runtime!(
 // Fake admin user number one
 parameter_types! {
 	pub const One: u64 = 1;
-	pub const GetUSDCurrencyId: CurrencyId = 1;
 }
 
 impl SortedMembers<u64> for One {
@@ -191,6 +190,7 @@ impl pallet_uniques::Config for MockRuntime {
 
 parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const MaxLoansPerPool: u64 = 200;
 }
 
 impl pallet_loan::Config for MockRuntime {
@@ -204,6 +204,8 @@ impl pallet_loan::Config for MockRuntime {
 	type LoanPalletId = LoanPalletId;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type PoolReserve = Pool;
+	type WeightInfo = ();
+	type MaxLoansPerPool = MaxLoansPerPool;
 }
 
 // USD currencyId

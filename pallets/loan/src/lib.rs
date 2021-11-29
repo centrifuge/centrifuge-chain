@@ -36,6 +36,7 @@ use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
 use sp_runtime::traits::{AccountIdConversion, Member};
 use sp_runtime::{DispatchError, FixedPointNumber};
 use sp_std::convert::TryInto;
+use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::fmt::Debug;
 use types::*;
@@ -46,15 +47,23 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub(crate) mod test_utils;
+
 pub mod functions;
 mod loan_type;
 pub mod math;
 pub mod types;
+pub mod weights;
 
 #[frame_support::pallet]
 pub mod pallet {
 	// Import various types used to declare pallet in scope.
 	use super::*;
+	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
@@ -74,6 +83,7 @@ pub mod pallet {
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Copy
+			+ Default
 			+ IsType<ClassIdOf<Self>>;
 
 		/// The LoanId/InstanceId type
@@ -105,10 +115,17 @@ pub mod pallet {
 		type LoanPalletId: Get<PalletId>;
 
 		/// Origin for admin that can activate a loan
-		type AdminOrigin: EnsureOrigin<Self::Origin, Success = Self::AccountId>;
+		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
 		/// Pool reserve type
 		type PoolReserve: PoolReserve<Self::Origin, Self::AccountId>;
+
+		/// Weight info trait for extrinsics
+		type WeightInfo: WeightInfo;
+
+		/// This is a soft limit for maximum loans we can expect in a pool.
+		/// this is mainly used to calculate estimated weight for NAV calculation.
+		type MaxLoansPerPool: Get<u64>;
 	}
 
 	/// Stores the loan nft class ID against a given pool
@@ -162,6 +179,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// Emits when a pool is initiated
+		PoolInitiated(PoolIdOf<T>),
+
 		/// emits when a new loan is issued for a given
 		LoanIssued(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
@@ -264,9 +284,13 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Initiates a new pool and maps the poolId with the loan nft classId
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Initiates a new pool
+		///
+		/// `initialise_pool` checks if pool is not initialised yet and then adds the loan nft class id.
+		/// All the Loan NFTs will be created into this Class. So loan account *should* be able to mint new NFTs into the class.
+		/// Adding LoanAccount as admin to the NFT class will be enough to mint new NFTs.
+		/// The origin must be an Admin origin
+		#[pallet::weight(<T as Config>::WeightInfo::initialise_pool())]
 		pub fn initialise_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -283,11 +307,18 @@ pub mod pallet {
 
 			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
 			LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
+			Self::deposit_event(Event::<T>::PoolInitiated(pool_id));
 			Ok(())
 		}
 
 		/// Issues a new loan against the asset provided
-		#[pallet::weight(100_000)]
+		///
+		/// `issue_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
+		/// caller *must* be the owner of the asset.
+		/// LoanStatus is set to issued and needs to be activated by an admin origin to start borrowing.
+		/// Loan cannot be closed until the status has changed to Active.
+		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
+		#[pallet::weight(<T as Config>::WeightInfo::issue_loan())]
 		#[transactional]
 		pub fn issue_loan(
 			origin: OriginFor<T>,
@@ -300,37 +331,72 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Closes a given loan if repaid fully
-		#[pallet::weight(100_000)]
+		/// Closes a given loan
+		///
+		/// Loan can be closed on two scenarios
+		/// 1. When the outstanding is fully paid off
+		/// 2. When loan is written off 100%
+		/// Loan status is moved to Closed
+		/// Asset/Collateral is transferred back to the loan owner.
+		/// LoanNFT is transferred back to LoanAccount.
+		#[pallet::weight(
+			<T as Config>::WeightInfo::repay_and_close().max(
+				<T as Config>::WeightInfo::write_off_and_close()
+			)
+		)]
 		#[transactional]
 		pub fn close_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let asset = Self::close(pool_id, loan_id, owner)?;
+			let ClosedLoan { asset, written_off } = Self::close(pool_id, loan_id, owner)?;
 			Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
-			Ok(())
+			match written_off {
+				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
+				false => Ok(Some(T::WeightInfo::repay_and_close()).into()),
+			}
 		}
 
-		/// borrows some amount from an active loan
-		#[pallet::weight(100_000)]
+		/// Transfers borrow amount to the loan owner.
+		///
+		/// LoanStatus must be active.
+		/// Total Borrowed amount(Previously borrowed + requested) should not exceed ceiling set for the loan.
+		/// Loan should still be healthy. If loan type supports maturity, then maturity date should not have passed.
+		/// Loan should not be written off.
+		/// Rate accumulation will start after the first borrow
+		/// Loan is accrued upto the current time.
+		/// Pool NAV is updated to reflect new present value of the loan.
+		/// Amount of tokens of an Asset will be transferred from pool reserve to loan owner.
+		#[pallet::weight(
+			<T as Config>::WeightInfo::initial_borrow().max(
+				<T as Config>::WeightInfo::further_borrows()
+			)
+		)]
 		#[transactional]
 		pub fn borrow(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Amount,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			Self::borrow_amount(pool_id, loan_id, owner, amount)?;
+			let first_borrow = Self::borrow_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::LoanAmountBorrowed(pool_id, loan_id, amount));
-			Ok(())
+			match first_borrow {
+				true => Ok(Some(T::WeightInfo::initial_borrow()).into()),
+				false => Ok(Some(T::WeightInfo::further_borrows()).into()),
+			}
 		}
 
-		/// repays some amount to an active loan
-		#[pallet::weight(100_000)]
+		/// Transfers amount borrowed to the pool reserve.
+		///
+		/// LoanStatus must be Active.
+		/// Loan is accrued before transferring the amount to reserve.
+		/// If the repaying amount is more than current debt, only current debt is transferred.
+		/// Amount of token will be transferred from owner to Pool reserve.
+		#[pallet::weight(<T as Config>::WeightInfo::repay())]
 		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
@@ -348,9 +414,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to update loan specific details and activates the loan
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Activates the loan with loan specific details like Rate, Loan type
+		///
+		/// LoanStatus must be in Issued state.
+		/// AdminOrigin can activate the loan with Rate and Loan type.
+		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
+		#[pallet::weight(<T as Config>::WeightInfo::activate_loan())]
 		pub fn activate_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -364,23 +433,43 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to update nav for a given pool
-		/// TODO(ved): benchmarking this to get a weight would be tricky due to n loans per pool
-		/// Maybe utility pallet would be a good source of inspiration?
-		#[pallet::weight(100_000)]
-		#[transactional]
-		pub fn update_nav(origin: OriginFor<T>, pool_id: PoolIdOf<T>) -> DispatchResult {
+		/// Updates the NAV for a given pool
+		///
+		/// Iterate through each loan and calculate the present value of each active loan.
+		/// The loan is accrued and updated.
+		///
+		/// Weight for the update nav is not straightforward since there could n loans in a pool
+		/// So instead, we calculate weight for one loan. We assume a maximum of 200 loans and deposit that weight
+		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
+		/// transaction payment can return the deposit.
+		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxLoansPerPool::get()))]
+		pub fn update_nav(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+		) -> DispatchResultWithPostInfo {
 			// ensure signed so that caller pays for the update fees
 			ensure_signed(origin)?;
-			let updated_nav = Self::update_nav_of_pool(pool_id)?;
+			let (updated_nav, updated_loans) = Self::update_nav_of_pool(pool_id)?;
 			Self::deposit_event(Event::<T>::NAVUpdated(pool_id, updated_nav));
-			Ok(())
+
+			// if the total loans updated are more than max loans, we are charging lower txn fees for this pool nav calculation.
+			// there is nothing we can do right now. return Ok
+			if updated_loans > T::MaxLoansPerPool::get() {
+				return Ok(().into());
+			}
+
+			// calculate actual weight of the updating nav based on number of loan processed.
+			let total_weight =
+				T::WeightInfo::nav_update_single_loan().saturating_mul(updated_loans);
+			Ok(Some(total_weight).into())
 		}
 
-		/// a call to add a new write off group for a given pool
-		/// write off groups are always append only
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Appends a new write off group to the Pool
+		///
+		/// Since written off loans keep written off group index,
+		/// we only allow adding new write off groups.
+		/// Overdue days doesn't need to be in the sorted order.
+		#[pallet::weight(<T as Config>::WeightInfo::add_write_off_group_to_pool())]
 		pub fn add_write_off_group_to_pool(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -393,10 +482,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a call to write off an unhealthy loan
-		/// a valid write off group will be chosen based on the loan overdue date since maturity
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Write off an unhealthy loan
+		///
+		/// `write_off_loan` will find the best write off group available based on the overdue days since maturity.
+		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// Cannot update a loan that was written off by admin.
+		/// Cannot write off a healthy loan or loan type that do not have maturity date.
+		#[pallet::weight(<T as Config>::WeightInfo::write_off_loan())]
 		pub fn write_off_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -411,10 +503,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// a admin call to write off an unhealthy loan
-		/// write_off_index is overwritten to the loan and the is fixed until changes it with another call.
-		#[pallet::weight(100_000)]
-		#[transactional]
+		/// Write off an loan from admin origin
+		///
+		/// `admin_write_off_loan` will write off a loan with write off group associated with index passed.
+		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// AdminOrigin can write off a healthy loan as well.
+		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
+		/// Admin can write off loan with any index potentially going up the index or down.
+		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off_loan())]
 		pub fn admin_write_off_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -439,7 +535,8 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	}
 
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
-		Self::update_nav_of_pool(pool_id)
+		let (updated_nav, ..) = Self::update_nav_of_pool(pool_id)?;
+		Ok(updated_nav)
 	}
 }
 

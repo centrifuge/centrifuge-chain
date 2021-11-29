@@ -11,12 +11,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! module provides functionality for different loan types
+//! Module provides functionality for different loan types
 use super::*;
 
 /// different types of loans
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanType<Rate, Amount> {
 	BulletLoan(BulletLoan<Rate, Amount>),
 }
@@ -74,7 +75,8 @@ where
 
 /// The data structure for Bullet loan type
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BulletLoan<Rate, Amount> {
 	advance_rate: Rate,
 	expected_loss_over_asset_maturity: Rate,
@@ -88,7 +90,7 @@ where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
 {
-	#[cfg(test)]
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	pub(crate) fn new(
 		advance_rate: Rate,
 		expected_loss_over_asset_maturity: Rate,
