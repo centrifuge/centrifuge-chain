@@ -110,7 +110,7 @@ pub trait PoolReserve<Origin, AccountId> {
 
 	/// transfers the amount to the account from reserve
 	/// caller must be whitelisted.
-	fn transfer_to(
+	fn withdraw(
 		pool_id: Self::PoolId,
 		caller: Origin,
 		to: AccountId,
@@ -119,7 +119,7 @@ pub trait PoolReserve<Origin, AccountId> {
 
 	/// transfers the amount from the account to reserve
 	/// caller must be whitelisted.
-	fn transfer_from(
+	fn deposit(
 		pool_id: Self::PoolId,
 		caller: Origin,
 		from: AccountId,

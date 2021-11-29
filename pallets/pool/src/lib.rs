@@ -159,7 +159,7 @@ impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
 	type PoolId = T::PoolId;
 	type Balance = MultiCurrencyBalanceOf<T>;
 
-	fn transfer_to(
+	fn withdraw(
 		pool_id: Self::PoolId,
 		caller: OriginFor<T>,
 		to: T::AccountId,
@@ -171,7 +171,7 @@ impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
 		T::MultiCurrency::transfer(currency_id, &Self::account_id(), &to, amount)
 	}
 
-	fn transfer_from(
+	fn deposit(
 		pool_id: Self::PoolId,
 		caller: OriginFor<T>,
 		from: T::AccountId,
