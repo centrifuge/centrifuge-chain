@@ -108,7 +108,7 @@ pub trait PoolReserve<Origin, AccountId> {
 	type PoolId: Parameter + Member + Debug + Copy + Default;
 	type Balance;
 
-	/// transfers the amount to the account from reserve
+	/// Withdraw `amount` from the reserve to the `to` account.
 	/// caller must be whitelisted.
 	fn withdraw(
 		pool_id: Self::PoolId,
