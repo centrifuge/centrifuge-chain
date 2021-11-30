@@ -153,7 +153,7 @@ where
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
-			&config,
+			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
@@ -418,7 +418,7 @@ pub fn build_altair_import_queue(
 
 			Ok((time, slot))
 		},
-		registry: config.prometheus_registry().clone(),
+		registry: config.prometheus_registry(),
 		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
@@ -447,7 +447,7 @@ pub async fn start_altair_node(
 		id,
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
 		build_altair_import_queue,
@@ -466,7 +466,7 @@ pub async fn start_altair_node(
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -514,7 +514,7 @@ pub async fn start_altair_node(
 				block_import: client.clone(),
 				relay_chain_client: relay_chain_node.client.clone(),
 				relay_chain_backend: relay_chain_node.backend.clone(),
-				para_client: client.clone(),
+				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
 				keystore,
@@ -578,7 +578,7 @@ pub fn build_centrifuge_import_queue(
 
 			Ok((time, slot))
 		},
-		registry: config.prometheus_registry().clone(),
+		registry: config.prometheus_registry(),
 		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
@@ -607,7 +607,7 @@ pub async fn start_centrifuge_node(
 		id,
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
 		build_centrifuge_import_queue,
@@ -626,7 +626,7 @@ pub async fn start_centrifuge_node(
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -674,7 +674,7 @@ pub async fn start_centrifuge_node(
 				block_import: client.clone(),
 				relay_chain_client: relay_chain_node.client.clone(),
 				relay_chain_backend: relay_chain_node.backend.clone(),
-				para_client: client.clone(),
+				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
 				keystore,
@@ -738,7 +738,7 @@ pub fn build_development_import_queue(
 
 			Ok((time, slot))
 		},
-		registry: config.prometheus_registry().clone(),
+		registry: config.prometheus_registry(),
 		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
@@ -767,7 +767,7 @@ pub async fn start_development_node(
 		id,
 		|client| {
 			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
 		build_development_import_queue,
@@ -786,7 +786,7 @@ pub async fn start_development_node(
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -834,7 +834,7 @@ pub async fn start_development_node(
 				block_import: client.clone(),
 				relay_chain_client: relay_chain_node.client.clone(),
 				relay_chain_backend: relay_chain_node.backend.clone(),
-				para_client: client.clone(),
+				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
 				keystore,
