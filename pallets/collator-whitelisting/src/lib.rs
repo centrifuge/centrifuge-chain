@@ -4,10 +4,7 @@
 //! Fees are set by FeeOrigin or RootOrigin
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::DispatchResult,
-	traits::{ValidatorRegistration},
-};
+use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
 
 use frame_system::ensure_root;
 
@@ -20,7 +17,7 @@ pub use weights::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo, )]
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum CollatorStatus {
 	Whitelisted,
@@ -68,15 +65,16 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			self.initial_state.iter().for_each(|(id, status)| <Status<T>>::insert(id, status));
+			self.initial_state
+				.iter()
+				.for_each(|(id, status)| <Status<T>>::insert(id, status));
 		}
 	}
 
 	/// Stores the status associated with a collator Id
 	#[pallet::storage]
 	#[pallet::getter(fn status)]
-	pub(super) type Status<T: Config> =
-		StorageMap<_, Blake2_256, T::ValidatorId, CollatorStatus>;
+	pub(super) type Status<T: Config> = StorageMap<_, Blake2_256, T::ValidatorId, CollatorStatus>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -94,14 +92,11 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// TODO(nuno): use the right weight here
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
-		pub fn whitelist(
-			_origin: OriginFor<T>,
-			collator_id: T::ValidatorId,
-		) -> DispatchResult {
+		pub fn whitelist(_origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			// TODO(nuno): ensure origin is sudo
 
 			<Status<T>>::insert(collator_id.clone(), CollatorStatus::Whitelisted);
-			
+
 			Self::deposit_event(Event::CollatorWhitelisted(collator_id));
 			Ok(())
 		}

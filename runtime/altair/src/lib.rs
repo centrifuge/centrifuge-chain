@@ -978,7 +978,7 @@ type CollatorSelectionUpdateOrigin = EnsureOneOf<
 
 impl pallet_collator_whitelisting::Config for Runtime {
 	type Event = Event;
-	type WeightInfo	= pallet_collator_whitelisting::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = pallet_collator_whitelisting::weights::SubstrateWeight<Runtime>;
 }
 
 // Implement Collator Selection pallet configuration trait for the runtime
