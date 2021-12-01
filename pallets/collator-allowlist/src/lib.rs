@@ -1,9 +1,17 @@
-//! # Fees pallet for runtime
+//! Collator Allowlist Pallet
 //!
-//! This pallet provides functionality for setting and getting fees associated with an Hash key..
-//! Fees are set by FeeOrigin or RootOrigin
+//! This pallet provides two extrinsics, one that allows sudo to
+//! add collator ids to an allowlist, and another one that allows
+//! sudo remove them.
+//!
+//! We have this pallet implementing `ValidatorRegistration`, which,
+//! in addition to the default `Session` pallet implementation, also
+//! checks for the presence of a collator id in this allowlist.
+//!
+//! We do that to have tigher control over which collators get selected
+//! per time windows, to avoid it defaulting to a FCFS setup until we
+//! have chosen the right staking mechanism.
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode};
 use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
 
 use frame_system::ensure_root;
@@ -11,17 +19,7 @@ use frame_system::ensure_root;
 pub use pallet::*;
 
 pub mod weights;
-use scale_info::TypeInfo;
 pub use weights::*;
-
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
-
-#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub enum CollatorStatus {
-	Allowlisted,
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -48,7 +46,7 @@ pub mod pallet {
 	// The genesis config type.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_state: Vec<(T::ValidatorId, CollatorStatus)>,
+		pub initial_state: Vec<T::ValidatorId>,
 	}
 
 	// The default value for the genesis config type.
@@ -67,14 +65,14 @@ pub mod pallet {
 		fn build(&self) {
 			self.initial_state
 				.iter()
-				.for_each(|(id, status)| <Status<T>>::insert(id, status));
+				.for_each(|id| <Allowlist<T>>::insert(id, ()));
 		}
 	}
 
-	/// Stores the status associated with a collator Id
+	/// The collator's allowlist.
+	/// Note: We implement it as a close-enough HashSet: Map<ValidatorId, ()>.
 	#[pallet::storage]
-	#[pallet::getter(fn status)]
-	pub(super) type Status<T: Config> = StorageMap<_, Blake2_256, T::ValidatorId, CollatorStatus>;
+	pub(super) type Allowlist<T: Config> = StorageMap<_, Blake2_256, T::ValidatorId, ()>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -103,7 +101,11 @@ pub mod pallet {
 		pub fn add(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
-			<Status<T>>::insert(collator_id.clone(), CollatorStatus::Allowlisted);
+			ensure!(
+				!<Allowlist<T>>::contains_key(&collator_id),
+				Error::<T>::CollatorAlreadyAllowed
+			);
+			<Allowlist<T>>::insert(collator_id.clone(), ());
 			Self::deposit_event(Event::CollatorAdded(collator_id));
 			Ok(())
 		}
@@ -117,10 +119,10 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			ensure!(
-				<Status<T>>::contains_key(collator_id.clone()),
+				<Allowlist<T>>::contains_key(&collator_id),
 				Error::<T>::CollatorNotPresent
 			);
-			<Status<T>>::remove(collator_id.clone());
+			<Allowlist<T>>::remove(collator_id.clone());
 			Self::deposit_event(Event::CollatorRemoved(collator_id));
 			Ok(())
 		}
@@ -130,7 +132,6 @@ pub mod pallet {
 /// Custom `ValidatorRegistration` implementation.
 impl<T: Config + pallet_session::Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
 	fn is_registered(id: &T::ValidatorId) -> bool {
-		Self::status(id) == Some(CollatorStatus::Allowlisted)
-			&& pallet_session::Pallet::<T>::is_registered(id)
+		<Allowlist<T>>::contains_key(id) && pallet_session::Pallet::<T>::is_registered(id)
 	}
 }
