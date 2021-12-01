@@ -98,12 +98,13 @@ pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-fea
 orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 
-
 runtime-common = { path = "../common", default-features = false }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
@@ -178,6 +179,7 @@ std = [
     "cumulus-pallet-aura-ext/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
+    "orml-tokens/std",
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-claims/std",
@@ -187,7 +189,8 @@ std = [
     "pallet-uniques/std",
     "orml-tokens/std",
     "pallet-pool/std",
-    "pallet-loan/std"
+    "pallet-loan/std",
+    "primitives-tokens/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

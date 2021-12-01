@@ -64,7 +64,7 @@ pub mod types {
 	/// Balance of an account.
 	pub type Balance = u128;
 
-	/// Amount is the signed version of the Balance for orml tokens
+	/// IBalance is the signed version of the Balance for orml tokens
 	pub type IBalance = i128;
 
 	/// Index of a transaction in the chain.
