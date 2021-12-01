@@ -6,8 +6,9 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,
-	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
+	traits::{ValidatorRegistration},
 };
+
 use frame_system::ensure_root;
 
 pub use pallet::*;
@@ -18,7 +19,6 @@ pub use weights::*;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-
 
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo, )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
@@ -43,6 +43,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_authorship::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
 	}
@@ -105,5 +106,11 @@ pub mod pallet {
 			Self::deposit_event(Event::CollatorWhitelisted(collator_id));
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> ValidatorRegistration<T::AccountId> for Pallet<T> {
+	fn is_registered(id: &T::AccountId) -> bool {
+		Self::status(id) == Some(CollatorStatus::Whitelisted)
 	}
 }
