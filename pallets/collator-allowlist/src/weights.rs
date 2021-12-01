@@ -15,7 +15,7 @@
 // --execution=wasm
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --output=./pallets/fees/src/weights.rs
+// --output=./pallets/collator-allowlist/src/weights.rs
 // --template=./scripts/frame-weight-template.hbs
 
 #![allow(unused_parens)]
