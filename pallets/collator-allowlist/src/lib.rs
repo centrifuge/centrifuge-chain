@@ -96,7 +96,9 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Add the given `collator_id` to the allowlist.
-		/// Fails if `origin` fails the `ensure_root` check.
+		/// Fails if
+		///   - `origin` fails the `ensure_root` check
+		///   - `collator_id` is already part of the allowlist
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::allow())]
 		pub fn add(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
