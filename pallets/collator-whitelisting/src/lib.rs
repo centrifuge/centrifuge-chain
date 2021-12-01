@@ -80,22 +80,42 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		CollatorWhitelisted(T::ValidatorId),
+		CollatorRemoved(T::ValidatorId),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Placeholder variant for now
 		CollatorAlreadyWhitelisted,
+
+		CollatorNotPresent,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Whitelist the provided `collator_id`.
+		/// Fails if `origin` fails the `ensure_root` check.
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
 		pub fn whitelist(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
 			<Status<T>>::insert(collator_id.clone(), CollatorStatus::Whitelisted);
 			Self::deposit_event(Event::CollatorWhitelisted(collator_id));
+			Ok(())
+		}
+
+		/// Remove a `collator_id` from the whitelist.
+		/// Fails if `origin` fails the `ensure_root` check.
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
+		pub fn remove(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			ensure!(
+				<Status<T>>::contains_key(collator_id.clone()),
+				Error::<T>::CollatorNotPresent
+			);
+			<Status<T>>::remove(collator_id.clone());
+			Self::deposit_event(Event::CollatorRemoved(collator_id));
 			Ok(())
 		}
 	}
