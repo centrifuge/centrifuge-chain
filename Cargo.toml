@@ -31,7 +31,7 @@ members = [
 	"pallets/fees",
 	"pallets/anchors",
 	"pallets/claims",
-	"pallets/collator-whitelisting",
+	"pallets/collator-allowlist",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
 	"pallets/migration",

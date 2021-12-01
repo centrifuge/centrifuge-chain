@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum CollatorStatus {
-	Whitelisted,
+	Allowlisted,
 }
 
 #[frame_support::pallet]
@@ -79,34 +79,40 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CollatorWhitelisted(T::ValidatorId),
+		/// A collator has been added to the allowlist
+		CollatorAdded(T::ValidatorId),
+
+		/// A collator has been removed from the allowlist
 		CollatorRemoved(T::ValidatorId),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Placeholder variant for now
-		CollatorAlreadyWhitelisted,
+		/// The collator has already been added to the allowlist.
+		CollatorAlreadyAllowed,
 
+		/// The provided collator was not found in the storage.
 		CollatorNotPresent,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Whitelist the provided `collator_id`.
+		/// Add the given `collator_id` to the allowlist.
 		/// Fails if `origin` fails the `ensure_root` check.
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
-		pub fn whitelist(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::allow())]
+		pub fn add(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
-			<Status<T>>::insert(collator_id.clone(), CollatorStatus::Whitelisted);
-			Self::deposit_event(Event::CollatorWhitelisted(collator_id));
+			<Status<T>>::insert(collator_id.clone(), CollatorStatus::Allowlisted);
+			Self::deposit_event(Event::CollatorAdded(collator_id));
 			Ok(())
 		}
 
-		/// Remove a `collator_id` from the whitelist.
-		/// Fails if `origin` fails the `ensure_root` check.
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
+		/// Remove a `collator_id` from the allowlist.
+		/// Fails if 
+		///   - `origin` fails the `ensure_root` check 
+		///   - `collator_id` is not part of the allowlist
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove())]
 		pub fn remove(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
@@ -121,9 +127,10 @@ pub mod pallet {
 	}
 }
 
+/// Custom `ValidatorRegistration` implementation.
 impl<T: Config + pallet_session::Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
 	fn is_registered(id: &T::ValidatorId) -> bool {
-		Self::status(id) == Some(CollatorStatus::Whitelisted)
+		Self::status(id) == Some(CollatorStatus::Allowlisted)
 			&& pallet_session::Pallet::<T>::is_registered(id)
 	}
 }

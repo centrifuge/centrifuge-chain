@@ -1,10 +1,10 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Collator whitelisting pallet'
+description = 'Collator allowlist pallet'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'pallet-collator-whitelisting'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/collator-whitelisting"
+name = 'pallet-collator-allowlist'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/collator-allowlist"
 version = '2.0.0'
 
 [package.metadata.docs.rs]

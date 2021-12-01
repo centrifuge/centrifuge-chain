@@ -27,23 +27,23 @@ use frame_support::{
 };
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for pallet_collator_whitelisting.
+/// Weight functions needed for pallet_collator_allowlist.
 pub trait WeightInfo {
-	fn whitelist() -> Weight;
+	fn allow() -> Weight;
 	fn remove() -> Weight;
 }
 
-/// The weight associated with whitelisting a collator
-const WHITELIST_WEIGHT: Weight = 42 as Weight;
+/// The weight associated with allowlist a collator
+const ALLOWLIST_WEIGHT: Weight = 42 as Weight;
 
 /// The weight associated with removing a collator
 const REMOVE_WEIGHT: Weight = 24 as Weight;
 
-/// Weights for pallet_collator_whitelisting using the Substrate node and recommended hardware.
+/// Weights for pallet_collator_allowlist using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn whitelist() -> Weight {
-		WHITELIST_WEIGHT
+	fn allow() -> Weight {
+		ALLOWLIST_WEIGHT
 	}
 
 	fn remove() -> Weight {
@@ -53,8 +53,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn whitelist() -> Weight {
-		WHITELIST_WEIGHT
+	fn allow() -> Weight {
+		ALLOWLIST_WEIGHT
 	}
 
 	fn remove() -> Weight {
