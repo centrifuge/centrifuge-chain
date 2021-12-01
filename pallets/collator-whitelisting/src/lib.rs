@@ -40,7 +40,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_authorship::Config {
+	pub trait Config: frame_system::Config + pallet_session::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -51,7 +51,7 @@ pub mod pallet {
 	// The genesis config type.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		pub initial_state: Vec<(T::AccountId, CollatorStatus)>,
+		pub initial_state: Vec<(T::ValidatorId, CollatorStatus)>,
 	}
 
 	// The default value for the genesis config type.
@@ -76,12 +76,12 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn status)]
 	pub(super) type Status<T: Config> =
-		StorageMap<_, Blake2_256, T::AccountId, CollatorStatus>;
+		StorageMap<_, Blake2_256, T::ValidatorId, CollatorStatus>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		CollatorWhitelisted(T::AccountId),
+		CollatorWhitelisted(T::ValidatorId),
 	}
 
 	#[pallet::error]
@@ -92,12 +92,11 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Set the given fee for the key
 		/// TODO(nuno): use the right weight here
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
 		pub fn whitelist(
 			_origin: OriginFor<T>,
-			collator_id: T::AccountId,
+			collator_id: T::ValidatorId,
 		) -> DispatchResult {
 			// TODO(nuno): ensure origin is sudo
 
@@ -109,8 +108,9 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> ValidatorRegistration<T::AccountId> for Pallet<T> {
-	fn is_registered(id: &T::AccountId) -> bool {
+impl<T: Config + pallet_session::Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
+	fn is_registered(id: &T::ValidatorId) -> bool {
 		Self::status(id) == Some(CollatorStatus::Whitelisted)
+			&& pallet_session::Pallet::<T>::is_registered(id)
 	}
 }

@@ -110,6 +110,7 @@ dependencies = [
  "pallet-balances",
  "pallet-claims",
  "pallet-collator-selection",
+ "pallet-collator-whitelisting",
  "pallet-collective",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",

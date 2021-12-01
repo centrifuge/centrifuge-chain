@@ -103,6 +103,7 @@ pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
+pallet-collator-whitelisting = { path = "../../pallets/collator-whitelisting", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
