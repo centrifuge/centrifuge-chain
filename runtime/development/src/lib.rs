@@ -46,6 +46,8 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
+pub use primitives_tokens::CurrencyId;
+
 /// common types for the runtime.
 pub use runtime_common::*;
 
@@ -624,6 +626,21 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_tinlake_investor_pool::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type BalanceRatio = sp_runtime::FixedU128;
+	type PoolId = u32;
+	type TrancheId = u8;
+	type EpochId = u32;
+	type CurrencyId = CurrencyId;
+	type Tokens = Tokens;
+	type LoanAmount = Amount;
+	type NAV = Loan;
+	type TrancheToken = TrancheToken<Runtime>;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	pub const MigrationMaxAccounts: u32 = 100;
 	pub const MigrationMaxVestings: u32 = 10;
@@ -701,7 +718,7 @@ impl pallet_loan::Config for Runtime {
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-	type PoolReserve = Pool;
+	type PoolReserve = InvestorPool;
 	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 }
@@ -782,6 +799,7 @@ construct_runtime!(
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		Pool: pallet_pool::{Pallet, Call, Storage, Event<T>} = 95,
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
+		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 97,
 
 		// 3rd party pallets
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,

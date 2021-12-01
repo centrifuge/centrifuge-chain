@@ -1,0 +1,49 @@
+[package]
+authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
+description = 'FRAME pallet template for defining custom runtime logic.'
+edition = '2018'
+homepage = 'https://substrate.dev'
+license = 'Unlicense'
+name = 'pallet-tinlake-investor-pool'
+readme = 'README.md'
+repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
+version = '3.0.0'
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+serde = { version = "1.0.102" }
+codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
+
+
+frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master", optional = true }
+frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+pallet-timestamp = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+
+orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
+
+common-traits = { path = "../../libs/common-traits", default-features = false }
+
+[dev-dependencies]
+sp-arithmetic = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
+orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
+
+[features]
+default = ['std']
+runtime-benchmarks = ['frame-benchmarking']
+std = [
+    'codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'pallet-timestamp/std',
+    'frame-benchmarking/std',
+    'primitives-tokens/std'
+]
+try-runtime = ['frame-support/try-runtime']
+

@@ -119,6 +119,8 @@ dependencies = [
  "pallet-balances",
  "pallet-claims",
  "pallet-collective",
+ "pallet-crowdloan-claim",
+ "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-fees",
@@ -127,6 +129,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-indices",
  "pallet-membership",
+ "pallet-migration-manager",
  "pallet-multisig",
  "pallet-offences",
  "pallet-proxy",
@@ -2116,6 +2119,7 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
+ "pallet-tinlake-investor-pool",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-uniques",
@@ -2126,6 +2130,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-runtime-common",
+ "primitives-tokens",
  "runtime-common",
  "rustc-hex",
  "safe-mix",
@@ -6025,6 +6030,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-tinlake-investor-pool"
+version = "3.0.0"
+dependencies = [
+ "common-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "primitives-tokens",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-tips"
 version = "4.0.0-dev"
 source = "git+https://github.com/centrifuge/substrate?branch=master#0a01444351a0d0176194c8fe39e8a14f4ee5fb78"
@@ -7656,6 +7682,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "primitives-tokens"
+version = "1.0.0"
+dependencies = [
+ "parity-scale-codec",
+ "serde",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8357,10 +8391,13 @@ dependencies = [
  "frame-support",
  "frame-system",
  "node-primitives",
+ "orml-traits",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-tinlake-investor-pool",
  "parity-scale-codec",
+ "primitives-tokens",
  "serde",
  "smallvec 1.7.0",
  "sp-api",

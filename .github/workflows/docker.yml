@@ -2,11 +2,19 @@ name: docker
 on:
   push:
     branches: [master, parachain]
+  workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: 'Docker Image tag'
+        required: true
+        default: ''
 env:
   RUST_TOOLCHAIN: "nightly-2021-09-28"
 jobs:
   docker:
     runs-on: ubuntu-latest
+    env:
+      WORKFLOW_TAG: ${{ github.event.inputs.docker_tag }}
     steps:
       - uses: actions/checkout@v2
         with:
@@ -28,16 +36,22 @@ jobs:
           echo "Removing large directories"
           rm -rf /usr/share/dotnet/
           df -h
-      - run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV
+      - name: Set docker tag
+        run: |
+          if [ "${WORKFLOW_TAG}" != "" ]; then
+            echo "DOCKER_TAG=${WORKFLOW_TAG}" >> $GITHUB_ENV
+          else
+            echo "DOCKER_TAG=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV
+          fi
       - name: Build docker
-        run: docker build --build-arg RUST_TOOLCHAIN=${{ env.RUST_TOOLCHAIN }} -t centrifugeio/centrifuge-chain:${{ env.BRANCH }}-latest .
+        run: docker build --build-arg RUST_TOOLCHAIN=${{ env.RUST_TOOLCHAIN }} -t centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-latest .
       - name: Login to Docker Hub
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
       - name: Tag image
-        run: docker tag centrifugeio/centrifuge-chain:${{ env.BRANCH }}-latest "centrifugeio/centrifuge-chain:${{ env.BRANCH }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
+        run: docker tag centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-latest "centrifugeio/centrifuge-chain:${{ env.DOCKER_TAG }}-$(date -u +%Y%m%d%H%M%S)-$(git rev-parse --short HEAD)"
       - name: List images
         run: docker images
       - name: Push image to Docker Hub
