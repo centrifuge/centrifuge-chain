@@ -976,11 +976,6 @@ type CollatorSelectionUpdateOrigin = EnsureOneOf<
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
 >;
 
-impl pallet_collator_allowlist::Config for Runtime {
-	type Event = Event;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Runtime>;
-}
-
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
 	type Event = Event;
@@ -994,7 +989,7 @@ impl pallet_collator_selection::Config for Runtime {
 	type KickThreshold = Period;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type ValidatorRegistration = pallet_collator_allowlist::Pallet<Runtime>;
+	type ValidatorRegistration = Session;
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
@@ -1051,7 +1046,6 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
-		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Event<T>} = 95,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
