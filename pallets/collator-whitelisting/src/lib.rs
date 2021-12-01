@@ -90,13 +90,11 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// TODO(nuno): use the right weight here
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::whitelist())]
-		pub fn whitelist(_origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
-			// TODO(nuno): ensure origin is sudo
+		pub fn whitelist(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
+			ensure_root(origin)?;
 
 			<Status<T>>::insert(collator_id.clone(), CollatorStatus::Whitelisted);
-
 			Self::deposit_event(Event::CollatorWhitelisted(collator_id));
 			Ok(())
 		}
