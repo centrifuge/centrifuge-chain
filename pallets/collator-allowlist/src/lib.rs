@@ -109,8 +109,8 @@ pub mod pallet {
 		}
 
 		/// Remove a `collator_id` from the allowlist.
-		/// Fails if 
-		///   - `origin` fails the `ensure_root` check 
+		/// Fails if
+		///   - `origin` fails the `ensure_root` check
 		///   - `collator_id` is not part of the allowlist
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove())]
 		pub fn remove(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
