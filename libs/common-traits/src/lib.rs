@@ -25,8 +25,11 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::Parameter;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
@@ -103,9 +106,32 @@ pub trait PoolNAV<PoolId, Amount> {
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
 }
 
-/// A trait that support pool reserve operations such as borrow and repay
-pub trait PoolReserve<Origin, AccountId> {
+/// Role can hold any type of role specific functions a user can do on a given pool.
+#[derive(Encode, Decode, PartialEq)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum Role {
+	PoolAdmin,
+	Borrower,
+	PricingAdmin,
+	LiquidityAdmin,
+	MemberListAdmin,
+	RiskAdmin,
+}
+
+/// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
+pub trait PoolInspect<AccountId> {
 	type PoolId: Parameter + Member + Debug + Copy + Default;
+
+	/// check if the pool exists
+	fn pool_exists(pool_id: Self::PoolId) -> bool;
+
+	/// checks if the given account has the requested role in the given pool.
+	fn has_role(pool_id: Self::PoolId, account: AccountId, role: Role) -> bool;
+}
+
+/// A trait that support pool reserve operations such as withdraw and deposit
+pub trait PoolReserve<Origin, AccountId>: PoolInspect<AccountId> {
 	type Balance;
 
 	/// Withdraw `amount` from the reserve to the `to` account.

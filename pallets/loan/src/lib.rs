@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::{PoolNAV as TPoolNav, PoolReserve};
+use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve, Role};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -68,6 +68,7 @@ pub mod pallet {
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
 	use sp_arithmetic::FixedPointNumber;
+	use sp_runtime::traits::BadOrigin;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -114,11 +115,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type LoanPalletId: Get<PalletId>;
 
-		/// Origin for admin that can activate a loan
-		type AdminOrigin: EnsureOrigin<Self::Origin>;
-
 		/// Pool reserve type
-		type PoolReserve: PoolReserve<Self::Origin, Self::AccountId>;
+		type Pool: PoolReserve<Self::Origin, Self::AccountId>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
@@ -296,8 +294,8 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_nft_class_id: T::ClassId,
 		) -> DispatchResult {
-			// ensure admin is the origin
-			T::AdminOrigin::ensure_origin(origin)?;
+			// ensure the sender has the pool admin role
+			ensure_role!(pool_id, origin, Role::PoolAdmin);
 
 			// ensure pool is not initialised yet
 			ensure!(
@@ -427,7 +425,8 @@ pub mod pallet {
 			rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
-			<T as Config>::AdminOrigin::ensure_origin(origin)?;
+			// ensure sender has the pricing admin role in the pool
+			ensure_role!(pool_id, origin, Role::PricingAdmin);
 			Self::activate(pool_id, loan_id, rate_per_sec, loan_type)?;
 			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
 			Ok(())
@@ -475,8 +474,8 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
-			// ensure this is coming from an admin origin
-			<T as Config>::AdminOrigin::ensure_origin(origin)?;
+			// ensure sender has the risk admin role in the pool
+			ensure_role!(pool_id, origin, Role::RiskAdmin);
 			let index = Self::add_write_off_group(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
@@ -517,8 +516,8 @@ pub mod pallet {
 			loan_id: T::LoanId,
 			write_off_index: u32,
 		) -> DispatchResult {
-			// ensure this is a call from admin
-			<T as Config>::AdminOrigin::ensure_origin(origin)?;
+			// ensure this is a call from risk admin
+			ensure_role!(pool_id, origin, Role::RiskAdmin);
 
 			// try to write off
 			let index = Self::write_off(pool_id, loan_id, Some(write_off_index))?;
@@ -563,4 +562,12 @@ impl<
 		let loan_id = T::LoanPalletId::get().into_account();
 		Origin::from(RawOrigin::Signed(loan_id))
 	}
+}
+
+#[macro_export]
+macro_rules! ensure_role {
+	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
+		let sender = ensure_signed($origin)?;
+		ensure!(T::Pool::has_role($pool_id, sender, $role), BadOrigin);
+	}};
 }

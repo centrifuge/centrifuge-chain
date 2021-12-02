@@ -15,7 +15,7 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::{PoolNAV, PoolReserve};
+use common_traits::{PoolInspect, PoolNAV, PoolReserve, Role};
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
@@ -219,6 +219,71 @@ pub mod pallet {
 	pub type EpochExecution<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfo<T::Balance, T::BalanceRatio>>;
 
+	// storage for pool admins
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_admins)]
+	pub type PoolAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for borrowers of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_borrowers)]
+	pub type Borrowers<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for liquidity admins of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_liquidity_admins)]
+	pub type LiquidityAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for member list admins of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_member_list_admins)]
+	pub type MemberListAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for risk admins of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_risk_admins)]
+	pub type RiskAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
@@ -327,6 +392,7 @@ pub mod pallet {
 					total_reserve: Zero::zero(),
 				},
 			);
+			PoolAdmins::<T>::insert(pool_id, owner.clone(), ());
 			Self::deposit_event(Event::PoolCreated(pool_id, owner));
 			Ok(())
 		}
@@ -564,6 +630,22 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub(crate) fn has_role_in_pool(
+			pool_id: T::PoolId,
+			role: Role,
+			account: T::AccountId,
+		) -> bool {
+			match role {
+				Role::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
+				Role::Borrower | Role::PricingAdmin => {
+					Borrowers::<T>::contains_key(pool_id, account)
+				}
+				Role::LiquidityAdmin => LiquidityAdmins::<T>::contains_key(pool_id, account),
+				Role::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
+				Role::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
+			}
+		}
+
 		fn calculate_tranche_prices(
 			pool_id: T::PoolId,
 			epoch_nav: T::Balance,
@@ -1017,8 +1099,19 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
+impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 	type PoolId = T::PoolId;
+
+	fn pool_exists(pool_id: Self::PoolId) -> bool {
+		Pool::<T>::contains_key(pool_id)
+	}
+
+	fn has_role(pool_id: Self::PoolId, account: T::AccountId, role: Role) -> bool {
+		Self::has_role_in_pool(pool_id, role, account)
+	}
+}
+
+impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
 	type Balance = T::Balance;
 
 	fn withdraw(

@@ -718,7 +718,7 @@ impl pallet_loan::Config for Runtime {
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-	type PoolReserve = InvestorPool;
+	type Pool = InvestorPool;
 	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 }

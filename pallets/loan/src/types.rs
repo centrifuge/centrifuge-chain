@@ -13,6 +13,7 @@
 
 //! Module provides base types and their functions
 use super::*;
+use common_traits::PoolInspect;
 
 /// Asset that represents a non fungible
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug)]
@@ -59,7 +60,7 @@ pub struct WriteOffGroup<Rate> {
 	pub(crate) overdue_days: u64,
 }
 
-/// The data structure for storing loan info
+/// The data structure for storing loan status
 #[derive(Encode, Decode, Copy, Clone, PartialEq)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -172,12 +173,10 @@ pub(crate) type InstanceIdOf<T> =
 /// type alias to Non fungible Asset
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
 /// type alias for pool reserve balance type
-pub(crate) type ReserveBalanceOf<T> = <<T as Config>::PoolReserve as PoolReserve<
+pub(crate) type ReserveBalanceOf<T> = <<T as Config>::Pool as PoolReserve<
 	<T as frame_system::Config>::Origin,
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 /// type alias for poolId type
-pub(crate) type PoolIdOf<T> = <<T as Config>::PoolReserve as PoolReserve<
-	<T as frame_system::Config>::Origin,
-	<T as frame_system::Config>::AccountId,
->>::PoolId;
+pub(crate) type PoolIdOf<T> =
+	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;

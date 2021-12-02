@@ -279,7 +279,7 @@ impl<T: Config> Pallet<T> {
 					.present_value()
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-				T::PoolReserve::withdraw(
+				T::Pool::withdraw(
 					pool_id,
 					RawOrigin::Signed(Self::account_id()).into(),
 					owner,
@@ -372,7 +372,7 @@ impl<T: Config> Pallet<T> {
 					.present_value()
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-				T::PoolReserve::deposit(
+				T::Pool::deposit(
 					pool_id,
 					RawOrigin::Signed(Self::account_id()).into(),
 					owner,

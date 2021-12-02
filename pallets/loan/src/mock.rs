@@ -202,8 +202,7 @@ impl pallet_loan::Config for MockRuntime {
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type PoolReserve = Pool;
+	type Pool = Pool;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 }
