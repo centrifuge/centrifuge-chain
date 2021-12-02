@@ -595,8 +595,8 @@ parameter_types! {
 
 impl pallet_uniques::Config for Runtime {
 	type Event = Event;
-	type ClassId = u16; //TODO: Filler
-	type InstanceId = u16; // TODO: Filler
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
 	type Currency = Balances;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
