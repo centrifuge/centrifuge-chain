@@ -50,10 +50,8 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
-use frame_support::traits::{Currency, Get};
 /// common types for the runtime.
 pub use runtime_common::*;
-use sp_std::marker::PhantomData;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
