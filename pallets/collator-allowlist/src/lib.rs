@@ -23,24 +23,29 @@ pub use weights::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	// Import various types used to declare pallet in scope.
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
-	// Simple declaration of the `Pallet` type. It is placeholder we use to implement traits and
-	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_session::Config {
+	pub trait Config: frame_system::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
+
+		/// The Validator Id type
+		type ValidatorId: Member + Parameter + MaybeSerializeDeserialize;
+
+		/// Type representing the underlying validator registration center.
+		/// It offers us the API we need to check whether a collator
+		/// is ready for its duties in the upcoming session.
+		type ValidatorRegistration: ValidatorRegistration<Self::ValidatorId>;
 	}
 
 	// The genesis config type.
@@ -89,8 +94,8 @@ pub mod pallet {
 		/// The collator has already been added to the allowlist.
 		CollatorAlreadyAllowed,
 
-		/// The collator did not yet load their keys in the session pallet.
-		CollatorKeysNotLoaded,
+		/// The collator is not ready yet following to the underlying `T::ValidatorRegistration`
+		CollatorNotReady,
 
 		/// The provided collator was not found in the storage.
 		CollatorNotPresent,
@@ -108,8 +113,8 @@ pub mod pallet {
 			ensure_root(origin)?;
 
 			ensure!(
-				pallet_session::Pallet::<T>::is_registered(&collator_id),
-				Error::<T>::CollatorKeysNotLoaded
+				Self::collator_is_ready(&collator_id),
+				Error::<T>::CollatorNotReady
 			);
 
 			ensure!(
@@ -142,9 +147,22 @@ pub mod pallet {
 	}
 }
 
+impl<T: Config> Pallet<T> {
+	/// Check whether the collator is ready to be called to duty.
+	/// We use this indirection to provide a more natural and clear
+	/// language that better matches our use case.
+	fn collator_is_ready(collator_id: &T::ValidatorId) -> bool {
+		T::ValidatorRegistration::is_registered(collator_id)
+	}
+}
+
 /// Custom `ValidatorRegistration` implementation.
-impl<T: Config + pallet_session::Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
+impl<T: Config> ValidatorRegistration<T::ValidatorId> for Pallet<T> {
+	/// Check whether a validator is registered according to the pallet.
+	/// True iff
+	///   - the validator id is present in the allowlist and
+	///   - the validator id is registered in the underlying validator registration center
 	fn is_registered(id: &T::ValidatorId) -> bool {
-		<Allowlist<T>>::contains_key(id) && pallet_session::Pallet::<T>::is_registered(id)
+		<Allowlist<T>>::contains_key(id) && T::ValidatorRegistration::is_registered(id)
 	}
 }
