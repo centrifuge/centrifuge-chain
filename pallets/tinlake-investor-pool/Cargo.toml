@@ -15,7 +15,6 @@ targets = ['x86_64-unknown-linux-gnu']
 serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
 
-
 frame-benchmarking = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master", optional = true }
 frame-support = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
 frame-system = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }

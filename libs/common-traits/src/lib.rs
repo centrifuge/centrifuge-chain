@@ -107,7 +107,7 @@ pub trait PoolNAV<PoolId, Amount> {
 }
 
 /// Role can hold any type of role specific functions a user can do on a given pool.
-#[derive(Encode, Decode, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Role {
@@ -127,7 +127,7 @@ pub trait PoolInspect<AccountId> {
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
 
 	/// checks if the given account has the requested role in the given pool.
-	fn has_role(pool_id: Self::PoolId, account: AccountId, role: Role) -> bool;
+	fn has_role(pool_id: Self::PoolId, account: &AccountId, role: Role) -> bool;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit

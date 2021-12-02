@@ -20,6 +20,7 @@ use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
+use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
@@ -117,6 +118,9 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio> {
 	reserve: Balance,
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
 }
+
+// type alias for StaticLookup source that resolves to account
+type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -296,6 +300,10 @@ pub mod pallet {
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
+		/// When a role is for some accounts
+		RoleApproved(T::PoolId, Role, Vec<T::AccountId>),
+		// When a role was revoked for an account in pool
+		RoleRevoked(T::PoolId, Role, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -329,6 +337,8 @@ pub mod pallet {
 		NoNAV,
 		/// Generic error for invalid input data provided
 		InvalidData,
+		/// No permission to do a specific action
+		NoPermission,
 	}
 
 	#[pallet::call]
@@ -627,13 +637,61 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		#[pallet::weight(100)]
+		pub fn approve_role_for(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			role: Role,
+			accounts: Vec<LookUpSource<T>>,
+		) -> DispatchResult {
+			let pool_admin = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, Role::PoolAdmin, &pool_admin),
+				Error::<T>::NoPermission
+			);
+
+			// look up all the sources through lookup
+			let mut targets = vec![];
+			for source in accounts {
+				let acc: T::AccountId = T::Lookup::lookup(source)?;
+				targets.push(acc);
+			}
+
+			// setup role for each account
+			targets
+				.iter()
+				.for_each(|account| Self::approve_role_in_pool(pool_id, role, account));
+			Self::deposit_event(Event::RoleApproved(pool_id, role, targets));
+			Ok(())
+		}
+
+		#[pallet::weight(100)]
+		pub fn revoke_role_for(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			role: Role,
+			account: LookUpSource<T>,
+		) -> DispatchResult {
+			let pool_admin = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, Role::PoolAdmin, &pool_admin),
+				Error::<T>::NoPermission
+			);
+
+			// revoke the role
+			T::Lookup::lookup(account)
+				.and_then(|acc| Ok(Self::revoke_role_in_pool(pool_id, role, &acc)))?;
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn has_role_in_pool(
 			pool_id: T::PoolId,
 			role: Role,
-			account: T::AccountId,
+			account: &T::AccountId,
 		) -> bool {
 			match role {
 				Role::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
@@ -644,6 +702,26 @@ pub mod pallet {
 				Role::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
 				Role::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
 			}
+		}
+
+		pub(crate) fn approve_role_in_pool(pool_id: T::PoolId, role: Role, account: &T::AccountId) {
+			match role {
+				Role::PoolAdmin => PoolAdmins::<T>::insert(pool_id, account, ()),
+				Role::Borrower | Role::PricingAdmin => Borrowers::<T>::insert(pool_id, account, ()),
+				Role::LiquidityAdmin => LiquidityAdmins::<T>::insert(pool_id, account, ()),
+				Role::MemberListAdmin => MemberListAdmins::<T>::insert(pool_id, account, ()),
+				Role::RiskAdmin => RiskAdmins::<T>::insert(pool_id, account, ()),
+			};
+		}
+
+		pub(crate) fn revoke_role_in_pool(pool_id: T::PoolId, role: Role, account: &T::AccountId) {
+			match role {
+				Role::PoolAdmin => PoolAdmins::<T>::remove(pool_id, account),
+				Role::Borrower | Role::PricingAdmin => Borrowers::<T>::remove(pool_id, account),
+				Role::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
+				Role::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
+				Role::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
+			};
 		}
 
 		fn calculate_tranche_prices(
@@ -1106,7 +1184,7 @@ impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 		Pool::<T>::contains_key(pool_id)
 	}
 
-	fn has_role(pool_id: Self::PoolId, account: T::AccountId, role: Role) -> bool {
+	fn has_role(pool_id: Self::PoolId, account: &T::AccountId, role: Role) -> bool {
 		Self::has_role_in_pool(pool_id, role, account)
 	}
 }
