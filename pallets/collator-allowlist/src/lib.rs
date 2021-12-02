@@ -89,6 +89,9 @@ pub mod pallet {
 		/// The collator has already been added to the allowlist.
 		CollatorAlreadyAllowed,
 
+		/// The collator did not yet load their keys in the session pallet.
+		CollatorKeysNotLoaded,
+
 		/// The provided collator was not found in the storage.
 		CollatorNotPresent,
 	}
@@ -98,17 +101,25 @@ pub mod pallet {
 		/// Add the given `collator_id` to the allowlist.
 		/// Fails if
 		///   - `origin` fails the `ensure_root` check
+		///   - `collator_id` did not yet load their keys into the session pallet
 		///   - `collator_id` is already part of the allowlist
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::allow())]
 		pub fn add(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
 			ensure!(
+				pallet_session::Pallet::<T>::is_registered(&collator_id),
+				Error::<T>::CollatorKeysNotLoaded
+			);
+
+			ensure!(
 				!<Allowlist<T>>::contains_key(&collator_id),
 				Error::<T>::CollatorAlreadyAllowed
 			);
+
 			<Allowlist<T>>::insert(collator_id.clone(), ());
 			Self::deposit_event(Event::CollatorAdded(collator_id));
+
 			Ok(())
 		}
 

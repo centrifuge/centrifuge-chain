@@ -109,7 +109,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-claims",
- "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-crowdloan-claim",
