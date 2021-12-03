@@ -96,13 +96,13 @@ fn whitelist_acc<T: frame_system::Config>(acc: &T::AccountId) {
 	);
 }
 
-// return white listed drop and tin investors
+// return white listed senior and junior tranche investors
 fn investors<T: frame_system::Config>() -> (T::AccountId, T::AccountId) {
-	let drop_investor = account::<T::AccountId>("drop", 0, 0);
-	let tin_investor = account::<T::AccountId>("tin", 0, 0);
-	whitelist_acc::<T>(&drop_investor);
-	whitelist_acc::<T>(&tin_investor);
-	(drop_investor, tin_investor)
+	let senior_investor = account::<T::AccountId>("senior", 0, 0);
+	let junior_investor = account::<T::AccountId>("junior", 0, 0);
+	whitelist_acc::<T>(&senior_investor);
+	whitelist_acc::<T>(&junior_investor);
+	(senior_investor, junior_investor)
 }
 
 fn risk_admin<T: frame_system::Config>() -> T::AccountId {
@@ -139,11 +139,11 @@ where
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
 	make_free_cfg_balance::<T>(pool_owner.clone());
-	let (drop_inv, tin_inv) = investors::<T>();
-	make_free_cfg_balance::<T>(drop_inv.clone());
-	make_free_cfg_balance::<T>(tin_inv.clone());
-	make_free_token_balance::<T>(CurrencyId::Usd, &drop_inv, (500 * CURRENCY).into());
-	make_free_token_balance::<T>(CurrencyId::Usd, &tin_inv, (500 * CURRENCY).into());
+	let (senior_inv, junior_inv) = investors::<T>();
+	make_free_cfg_balance::<T>(senior_inv.clone());
+	make_free_cfg_balance::<T>(junior_inv.clone());
+	make_free_token_balance::<T>(CurrencyId::Usd, &senior_inv, (500 * CURRENCY).into());
+	make_free_token_balance::<T>(CurrencyId::Usd, &junior_inv, (500 * CURRENCY).into());
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
 	let pal_pool_id: T::PoolId = pool_id.into();
@@ -160,8 +160,8 @@ where
 	create_pool::<T>(
 		pool_id.into(),
 		pool_owner.clone(),
-		tin_inv.clone(),
-		drop_inv.clone(),
+		junior_inv.clone(),
+		senior_inv.clone(),
 		CurrencyId::Usd,
 	);
 

@@ -27,8 +27,8 @@ use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
 
 parameter_types! {
-	pub const DropTrancheId: u8 = 0;
-	pub const TinTrancheId: u8 = 1;
+	pub const SeniorTrancheId: u8 = 0;
+	pub const JuniorTrancheId: u8 = 1;
 }
 
 pub(crate) fn create_nft_class<T>(
@@ -67,8 +67,8 @@ where
 pub(crate) fn create_pool<T>(
 	pool_id: T::PoolId,
 	owner: T::AccountId,
-	tin_investor: T::AccountId,
-	drop_investor: T::AccountId,
+	junior_investor: T::AccountId,
+	senior_investor: T::AccountId,
 	currency_id: CurrencyId,
 ) where
 	T: pallet_tinlake_investor_pool::Config + frame_system::Config + pallet_loan::Config,
@@ -90,15 +90,15 @@ pub(crate) fn create_pool<T>(
 	));
 
 	assert_ok!(PoolPallet::<T>::order_supply(
-		RawOrigin::Signed(tin_investor.clone()).into(),
+		RawOrigin::Signed(junior_investor.clone()).into(),
 		pool_id,
-		TinTrancheId::get().into(),
+		JuniorTrancheId::get().into(),
 		(500 * CURRENCY).into(),
 	));
 	assert_ok!(PoolPallet::<T>::order_supply(
-		RawOrigin::Signed(drop_investor.clone()).into(),
+		RawOrigin::Signed(senior_investor.clone()).into(),
 		pool_id,
-		DropTrancheId::get().into(),
+		SeniorTrancheId::get().into(),
 		(500 * CURRENCY).into(),
 	));
 	<pallet_loan::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
@@ -117,7 +117,7 @@ pub(crate) fn create_pool<T>(
 		<T as pallet_tinlake_investor_pool::Config>::Tokens::transfer(
 			CurrencyId::Tranche(pool_id.into(), 1).into(),
 			&pool_account,
-			&tin_investor,
+			&junior_investor,
 			(500 * CURRENCY).into(),
 		)
 	);
@@ -125,7 +125,7 @@ pub(crate) fn create_pool<T>(
 		<T as pallet_tinlake_investor_pool::Config>::Tokens::transfer(
 			CurrencyId::Tranche(pool_id.into(), 0).into(),
 			&pool_account,
-			&drop_investor,
+			&senior_investor,
 			(500 * CURRENCY).into(),
 		)
 	);

@@ -16,7 +16,7 @@
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
 use crate as pallet_loan;
-use crate::test_utils::{DropTrancheId, TinTrancheId};
+use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -235,8 +235,8 @@ parameter_types! {
 	pub const PoolAdmin: u64 = 1;
 	pub const Borrower: u64 = 2;
 	pub const RiskAdmin: u64 = 3;
-	pub const DropInvestor: u64 = 4;
-	pub const TinInvestor: u64 = 5;
+	pub const SeniorInvestor: u64 = 4;
+	pub const JuniorInvestor: u64 = 5;
 }
 
 impl TestExternalitiesBuilder {
@@ -273,17 +273,17 @@ impl TestExternalitiesBuilder {
 			balances: vec![
 				(
 					PoolLocator { pool_id: 0 }.into_account(),
-					CurrencyId::Tranche(0, TinTrancheId::get()),
+					CurrencyId::Tranche(0, JuniorTrancheId::get()),
 					100_000 * CURRENCY,
 				),
 				(
 					PoolLocator { pool_id: 0 }.into_account(),
-					CurrencyId::Tranche(0, DropTrancheId::get()),
+					CurrencyId::Tranche(0, SeniorTrancheId::get()),
 					100_000 * CURRENCY,
 				),
 				(7, USD, 100 * CURRENCY),
-				(TinInvestor::get(), USD, 1000 * CURRENCY),
-				(DropInvestor::get(), USD, 1000 * CURRENCY),
+				(SeniorInvestor::get(), USD, 1000 * CURRENCY),
+				(JuniorInvestor::get(), USD, 1000 * CURRENCY),
 			],
 		}
 		.assimilate_storage(&mut storage)

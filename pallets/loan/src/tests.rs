@@ -15,8 +15,8 @@
 use super::*;
 use crate as pallet_loan;
 use crate::mock::{
-	Borrower, DropInvestor, Event, Loan, MockRuntime, Origin, RiskAdmin, Timestamp, TinInvestor,
-	Tokens,
+	Borrower, Event, JuniorInvestor, Loan, MockRuntime, Origin, RiskAdmin, SeniorInvestor,
+	Timestamp, Tokens,
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
@@ -77,8 +77,8 @@ where
 	create_pool::<T>(
 		pool_id,
 		pool_admin,
-		TinInvestor::get(),
-		DropInvestor::get(),
+		JuniorInvestor::get(),
+		SeniorInvestor::get(),
 		CurrencyId::Usd,
 	);
 	// add borrower role and price admin role
@@ -782,8 +782,8 @@ fn add_write_off_groups() {
 			create_pool::<MockRuntime>(
 				pool_id,
 				pool_admin,
-				TinInvestor::get(),
-				DropInvestor::get(),
+				JuniorInvestor::get(),
+				SeniorInvestor::get(),
 				CurrencyId::Usd,
 			);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
