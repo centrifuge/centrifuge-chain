@@ -12,6 +12,13 @@
 //! per time windows, to avoid it defaulting to a FCFS setup until we
 //! have chosen the right staking mechanism.
 #![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+mod mock;
+
 use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
 
 use frame_system::ensure_root;
@@ -77,6 +84,7 @@ pub mod pallet {
 	/// The collator's allowlist.
 	/// Note: We implement it as a close-enough HashSet: Map<ValidatorId, ()>.
 	#[pallet::storage]
+	#[pallet::getter(fn get_allowlisted)]
 	pub(super) type Allowlist<T: Config> = StorageMap<_, Blake2_256, T::ValidatorId, ()>;
 
 	#[pallet::event]

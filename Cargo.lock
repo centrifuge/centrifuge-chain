@@ -5308,6 +5308,8 @@ dependencies = [
  "frame-system",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-randomness-collective-flip",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "serde",
