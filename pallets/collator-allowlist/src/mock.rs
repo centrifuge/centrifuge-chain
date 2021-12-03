@@ -37,6 +37,8 @@ frame_support::construct_runtime!(
 	}
 );
 
+type AccountId = u64;
+
 impl frame_system::Config for Test {
 	type BaseCallFilter = Everything;
 	type BlockWeights = ();
@@ -47,7 +49,7 @@ impl frame_system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = ();
@@ -83,7 +85,7 @@ parameter_types! {
 	pub const One: u64 = 1;
 }
 
-type ValidatorId = u32;
+type ValidatorId = u64;
 
 impl Config for Test {
 	type Event = ();

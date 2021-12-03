@@ -98,6 +98,7 @@ runtime-common = { path = "../common", default-features = false }
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 
 [build-dependencies]
@@ -175,6 +176,7 @@ std = [
 runtime-benchmarks = [
     "frame-benchmarking",
     "hex-literal",
+    "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",

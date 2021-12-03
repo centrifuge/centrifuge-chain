@@ -49,7 +49,11 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// The Validator Id type
-		type ValidatorId: Member + Parameter + MaybeSerializeDeserialize;
+		type ValidatorId: Member
+			+ Parameter
+			+ MaybeSerializeDeserialize
+			+ sp_std::convert::TryFrom<Self::AccountId>;
+
 
 		/// Type representing the underlying validator registration center.
 		/// It offers us the API we need to check whether a collator
