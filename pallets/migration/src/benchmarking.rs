@@ -92,7 +92,7 @@ benchmarks! {
 		for ( id, vesting_info) in data {
 			let storage_vesting_info: VestingInfo<<<T as pallet_vesting::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance,
 			T::BlockNumber> =
-				pallet_vesting::Vesting::<T>::try_get(id).unwrap();
+				pallet_vesting::Vesting::<T>::get(id).unwrap().first().unwrap().clone();
 
 			assert_eq!(vesting_info, storage_vesting_info);
 		}
