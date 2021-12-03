@@ -5303,16 +5303,11 @@ dependencies = [
 name = "pallet-collator-allowlist"
 version = "2.0.0"
 dependencies = [
- "frame-benchmarking",
  "frame-support",
  "frame-system",
- "pallet-authorship",
  "pallet-balances",
- "pallet-randomness-collective-flip",
- "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
- "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",

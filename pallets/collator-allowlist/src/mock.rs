@@ -83,8 +83,6 @@ parameter_types! {
 	pub const One: u64 = 1;
 }
 
-impl pallet_randomness_collective_flip::Config for Test {}
-
 type ValidatorId = u32;
 
 impl Config for Test {
