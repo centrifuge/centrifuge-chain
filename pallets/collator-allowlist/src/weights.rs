@@ -29,21 +29,21 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_collator_allowlist.
 pub trait WeightInfo {
-	fn allow() -> Weight;
+	fn add() -> Weight;
 	fn remove() -> Weight;
 }
 
-/// The weight associated with allowlist a collator
-const ALLOWLIST_WEIGHT: Weight = 42 as Weight;
+/// The weight associated with adding a collator to the allowlist
+const ADD_WEIGHT: Weight = 42 as Weight;
 
-/// The weight associated with removing a collator
+/// The weight associated with removing a collator from the allowlist
 const REMOVE_WEIGHT: Weight = 24 as Weight;
 
 /// Weights for pallet_collator_allowlist using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn allow() -> Weight {
-		ALLOWLIST_WEIGHT
+	fn add() -> Weight {
+		ADD_WEIGHT
 	}
 
 	fn remove() -> Weight {
@@ -53,8 +53,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn allow() -> Weight {
-		ALLOWLIST_WEIGHT
+	fn add() -> Weight {
+		ADD_WEIGHT
 	}
 
 	fn remove() -> Weight {

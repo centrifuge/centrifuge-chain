@@ -2,13 +2,13 @@
 //!
 //! This pallet provides two extrinsics, one that allows sudo to
 //! add collator ids to an allowlist, and another one that allows
-//! sudo remove them.
+//! sudo to remove them.
 //!
 //! We have this pallet implementing `ValidatorRegistration`, which,
 //! in addition to the default `Session` pallet implementation, also
 //! checks for the presence of a collator id in this allowlist.
 //!
-//! We do that to have tigher control over which collators get selected
+//! We do that to have tighter control over which collators get selected
 //! per time windows, to avoid it defaulting to a FCFS setup until we
 //! have chosen the right staking mechanism.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -116,7 +116,7 @@ pub mod pallet {
 		///   - `origin` fails the `ensure_root` check
 		///   - `collator_id` did not yet load their keys into the session pallet
 		///   - `collator_id` is already part of the allowlist
-		#[pallet::weight(<T as pallet::Config>::WeightInfo::allow())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::add())]
 		pub fn add(origin: OriginFor<T>, collator_id: T::ValidatorId) -> DispatchResult {
 			ensure_root(origin)?;
 
