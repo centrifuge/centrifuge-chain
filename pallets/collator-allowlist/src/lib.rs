@@ -19,6 +19,8 @@ mod tests;
 #[cfg(test)]
 mod mock;
 
+mod benchmarking;
+
 use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
 
 use frame_system::ensure_root;
