@@ -27,7 +27,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
+use sp_core::u32_trait::{_1, _2, _3, _4, _5};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
@@ -132,6 +132,12 @@ impl Contains<Call> for BaseFilter {
 			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
 			// Enable Governance
 			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..}
+			// Enable Treasury
+			| Call::Treasury{..}
+			// Enable Identity
+			| Call::Identity{..}
+			// Enable Proxy
+			| Call::Proxy{..}
 		)
 	}
 }
@@ -449,12 +455,12 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 1000 * AIR;
+	pub const CandidacyBond: Balance = 500 * AIR;
 	pub const VotingBond: Balance = 50 * CENTI_AIR;
 	pub const VotingBondBase: Balance = 50 * CENTI_AIR;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
-	pub const DesiredRunnersUp: u32 = 3;
+	pub const DesiredRunnersUp: u32 = 7;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
@@ -478,8 +484,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 
-	type LoserCandidate = ();
-	type KickedMember = ();
+	type LoserCandidate = Treasury;
+	type KickedMember = Treasury;
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -499,7 +505,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 1000 * AIR;
+	pub const MinimumDeposit: Balance = 500 * AIR;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_AIR;
@@ -563,7 +569,7 @@ impl pallet_democracy::Config for Runtime {
 	type PreimageByteDeposit = PreimageByteDeposit;
 	type OperationalPreimageOrigin = EnsureMember<AccountId, CouncilCollective>;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = ();
+	type Slash = Treasury;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MaxVotes = MaxVotes;
@@ -589,7 +595,7 @@ impl pallet_identity::Config for Runtime {
 	type MaxSubAccounts = MaxSubAccounts;
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
-	type Slashed = ();
+	type Slashed = Treasury;
 	type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 	type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
@@ -611,7 +617,7 @@ impl pallet_vesting::Config for Runtime {
 type ApproveOrigin = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>,
 >;
 
 type RejectOrigin = EnsureOneOf<
@@ -629,13 +635,13 @@ parameter_types! {
 	pub const ProposalBondMinimum: Balance = 100 * AIR;
 
 	// periods between treasury spends
-	pub const SpendPeriod: BlockNumber = 30 * DAYS;
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
 
 	// percentage of treasury we burn per Spend period if there is a surplus
 	// If the treasury is able to spend on all the approved proposals and didn't miss any
 	// then we burn % amount of remaining balance
 	// If the treasury couldn't spend on all the approved proposals, then we dont burn any
-	pub const Burn: Permill = Permill::from_percent(1);
+	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
@@ -646,7 +652,7 @@ parameter_types! {
 
 impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
-	// either democracy or 75% of council votes
+	// either democracy or 66% of council votes
 	type ApproveOrigin = ApproveOrigin;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = RejectOrigin;
