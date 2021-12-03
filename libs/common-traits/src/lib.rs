@@ -131,24 +131,12 @@ pub trait PoolInspect<AccountId> {
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
-pub trait PoolReserve<Origin, AccountId>: PoolInspect<AccountId> {
+pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 	type Balance;
 
 	/// Withdraw `amount` from the reserve to the `to` account.
-	/// caller must be whitelisted.
-	fn withdraw(
-		pool_id: Self::PoolId,
-		caller: Origin,
-		to: AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
+	fn withdraw(pool_id: Self::PoolId, to: AccountId, amount: Self::Balance) -> DispatchResult;
 
 	/// Deposit `amount` from the `from` account into the reserve.
-	/// caller must be whitelisted.
-	fn deposit(
-		pool_id: Self::PoolId,
-		caller: Origin,
-		from: AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult;
+	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }

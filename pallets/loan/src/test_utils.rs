@@ -13,18 +13,23 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loan;
-use crate::mock::{DropTrancheId, TinTrancheId};
 use crate::{AssetOf, PoolIdOf};
 use common_traits::PoolNAV;
-use frame_support::assert_ok;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
+use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use pallet_tinlake_investor_pool::Pallet as PoolPallet;
 use pallet_tinlake_investor_pool::PoolLocator;
+use pallet_tinlake_investor_pool::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::traits::AccountIdConversion;
+use sp_std::vec;
+
+parameter_types! {
+	pub const DropTrancheId: u8 = 0;
+	pub const TinTrancheId: u8 = 1;
+}
 
 pub(crate) fn create_nft_class<T>(
 	class_id: u64,
@@ -98,13 +103,14 @@ pub(crate) fn create_pool<T>(
 	));
 	<pallet_loan::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
 		.expect("update nav should work");
+
 	assert_ok!(PoolPallet::<T>::close_epoch(
 		RawOrigin::Signed(owner).into(),
 		pool_id,
 	));
-	assert_last_event::<T, <T as pallet_tinlake_investor_pool::Config>::Event>(
-		pallet_tinlake_investor_pool::Event::EpochExecuted(pool_id, 1u32.into()).into(),
-	);
+
+	let pool = PoolStorage::<T>::get(pool_id).unwrap();
+	assert_eq!(pool.available_reserve, (1000 * CURRENCY).into());
 
 	// TODO(ved) do disbursal manually for now
 	assert_ok!(
@@ -128,7 +134,6 @@ pub(crate) fn create_pool<T>(
 pub(crate) fn initialise_test_pool<T>(
 	pool_id: PoolIdOf<T>,
 	class_id: u64,
-	admin_origin: T::Origin,
 	pool_owner: T::AccountId,
 	maybe_admin: Option<T::AccountId>,
 ) -> <T as pallet_loan::Config>::ClassId
@@ -139,8 +144,12 @@ where
 	<T as pallet_uniques::Config>::ClassId: From<u64>,
 {
 	let class_id = create_nft_class::<T>(class_id, pool_owner.clone(), maybe_admin);
-	pallet_loan::Pallet::<T>::initialise_pool(admin_origin, pool_id, class_id)
-		.expect("initialisation of pool should not fail");
+	pallet_loan::Pallet::<T>::initialise_pool(
+		RawOrigin::Signed(pool_owner).into(),
+		pool_id,
+		class_id,
+	)
+	.expect("initialisation of pool should not fail");
 	class_id
 }
 

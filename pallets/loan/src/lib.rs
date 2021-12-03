@@ -23,11 +23,10 @@ use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
 use frame_support::storage::types::OptionQuery;
 use frame_support::traits::tokens::nonfungibles::{Inspect, Mutate, Transfer};
-use frame_support::traits::{EnsureOrigin, Time};
+use frame_support::traits::Time;
 use frame_support::transactional;
 use frame_support::{ensure, Parameter};
 use frame_system::pallet_prelude::OriginFor;
-use frame_system::RawOrigin;
 use loan_type::LoanType;
 pub use pallet::*;
 #[cfg(feature = "std")]
@@ -116,7 +115,7 @@ pub mod pallet {
 		type LoanPalletId: Get<PalletId>;
 
 		/// Pool reserve type
-		type Pool: PoolReserve<Self::Origin, Self::AccountId>;
+		type Pool: PoolReserve<Self::AccountId>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
@@ -329,7 +328,8 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			asset: AssetOf<T>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
+			// ensure borrower is whitelisted.
+			let owner = ensure_role!(pool_id, origin, Role::Borrower);
 			let loan_id = Self::issue(pool_id, owner, asset)?;
 			Self::deposit_event(Event::<T>::LoanIssued(pool_id, loan_id, asset));
 			Ok(())
@@ -542,31 +542,6 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
 		let (updated_nav, ..) = Self::update_nav_of_pool(pool_id)?;
 		Ok(updated_nav)
-	}
-}
-
-/// Ensure origin that allows only loan pallet account
-pub struct EnsureLoanAccount<T>(sp_std::marker::PhantomData<T>);
-
-impl<
-		T: pallet::Config,
-		Origin: Into<Result<RawOrigin<T::AccountId>, Origin>> + From<RawOrigin<T::AccountId>>,
-	> EnsureOrigin<Origin> for EnsureLoanAccount<T>
-{
-	type Success = T::AccountId;
-
-	fn try_origin(o: Origin) -> Result<Self::Success, Origin> {
-		let loan_id = T::LoanPalletId::get().into_account();
-		o.into().and_then(|o| match o {
-			RawOrigin::Signed(who) if who == loan_id => Ok(loan_id),
-			r => Err(Origin::from(r)),
-		})
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin() -> Origin {
-		let loan_id = T::LoanPalletId::get().into_account();
-		Origin::from(RawOrigin::Signed(loan_id))
 	}
 }
 

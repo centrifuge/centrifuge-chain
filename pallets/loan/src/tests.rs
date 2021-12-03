@@ -24,6 +24,7 @@ use crate::test_utils::{
 	mint_nft,
 };
 use frame_support::{assert_err, assert_ok};
+use frame_system::RawOrigin;
 use loan_type::{BulletLoan, LoanType};
 use orml_traits::MultiCurrency;
 use pallet_loan::Event as LoanEvent;
@@ -94,13 +95,8 @@ where
 		vec![<T::Lookup as StaticLookup>::unlookup(borrower)]
 	));
 	let pr_pool_id: PoolIdOf<T> = pool_id.into();
-	let loan_nft_class_id = initialise_test_pool::<T>(
-		pr_pool_id,
-		1,
-		RawOrigin::Signed(pool_admin).into(),
-		pool_admin,
-		Some(Loan::account_id()),
-	);
+	let loan_nft_class_id =
+		initialise_test_pool::<T>(pr_pool_id, 1, pool_admin, Some(Loan::account_id()));
 	let asset_class = create_nft_class::<T>(2, borrower.clone(), None);
 	let instance_id = mint_nft::<T>(borrower.clone(), asset_class);
 	let asset = Asset(asset_class, instance_id);
@@ -791,13 +787,7 @@ fn add_write_off_groups() {
 				CurrencyId::Usd,
 			);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
-			initialise_test_pool::<MockRuntime>(
-				pr_pool_id,
-				1,
-				RawOrigin::Signed(pool_admin).into(),
-				pool_admin,
-				None,
-			);
+			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
 			assert_ok!(
 				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),

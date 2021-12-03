@@ -124,9 +124,6 @@ pub mod types {
 	/// PoolId type we use.
 	pub type PoolId = u64;
 
-	/// MultiToken currencyID type
-	pub type CurrencyId = u32;
-
 	/// A representation of ClassId for Uniques
 	pub type ClassId = u64;
 

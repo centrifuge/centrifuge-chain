@@ -16,6 +16,7 @@
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
 use crate as pallet_loan;
+use crate::test_utils::{DropTrancheId, TinTrancheId};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -236,8 +237,6 @@ parameter_types! {
 	pub const RiskAdmin: u64 = 3;
 	pub const DropInvestor: u64 = 4;
 	pub const TinInvestor: u64 = 5;
-	pub const DropTrancheId: u8 = 0;
-	pub const TinTrancheId: u8 = 1;
 }
 
 impl TestExternalitiesBuilder {

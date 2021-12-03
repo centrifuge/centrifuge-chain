@@ -21,6 +21,9 @@ sp-runtime = { git = "https://github.com/centrifuge/substrate", default-features
 sp-std = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 sp-arithmetic = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
 
+# our pallets
+common-traits = { path = "../../libs/common-traits", default-features = false}
+
 # optional dependencies for benchmarking
 frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true , branch = "master" }
 pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true, branch = "master" }
@@ -28,9 +31,9 @@ pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-fea
 runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
 orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, optional = true, branch = "centrifuge" }
 pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false, optional = true, branch = "master" }
-
-# our pallets
-common-traits = { path = "../../libs/common-traits", default-features = false}
+pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", optional = true, default-features = false}
+primitives-tokens = { path = "../../primitives/tokens", optional = true, default-features = false }
+orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, optional = true, branch = "centrifuge" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false , branch = "master" }
@@ -51,7 +54,10 @@ runtime-benchmarks = [
     "pallet-uniques",
     "runtime-common",
     "orml-tokens",
-    "pallet-timestamp"
+    "orml-traits",
+    "pallet-timestamp",
+    "pallet-tinlake-investor-pool",
+    "primitives-tokens"
 ]
 std = [
     'serde/std',

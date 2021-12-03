@@ -1189,24 +1189,14 @@ impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 	}
 }
 
-impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
+impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
 	type Balance = T::Balance;
 
-	fn withdraw(
-		pool_id: Self::PoolId,
-		_caller: OriginFor<T>,
-		to: T::AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult {
+	fn withdraw(pool_id: Self::PoolId, to: T::AccountId, amount: Self::Balance) -> DispatchResult {
 		Self::do_borrow(to, pool_id, amount)
 	}
 
-	fn deposit(
-		pool_id: Self::PoolId,
-		_caller: OriginFor<T>,
-		from: T::AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult {
+	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
 		Self::do_payback(from, pool_id, amount)
 	}
 }
