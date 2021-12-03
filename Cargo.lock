@@ -2110,7 +2110,6 @@ dependencies = [
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-offences",
- "pallet-pool",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -5679,10 +5678,11 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
- "pallet-pool",
  "pallet-timestamp",
+ "pallet-tinlake-investor-pool",
  "pallet-uniques",
  "parity-scale-codec",
+ "primitives-tokens",
  "runtime-common",
  "serde",
  "sp-arithmetic",
@@ -5843,27 +5843,6 @@ dependencies = [
  "serde",
  "sp-runtime",
  "sp-staking",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-pool"
-version = "1.0.0"
-dependencies = [
- "common-traits",
- "frame-support",
- "frame-system",
- "orml-traits",
- "pallet-authorship",
- "pallet-balances",
- "pallet-randomness-collective-flip",
- "pallet-timestamp",
- "parity-scale-codec",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
  "sp-std",
 ]
 

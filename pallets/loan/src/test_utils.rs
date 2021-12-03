@@ -13,15 +13,18 @@
 
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loan;
+use crate::mock::{DropTrancheId, TinTrancheId};
 use crate::{AssetOf, PoolIdOf};
-use frame_support::pallet_prelude::Get;
-use frame_support::parameter_types;
+use common_traits::PoolNAV;
+use frame_support::assert_ok;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use runtime_common::CurrencyId;
-
-parameter_types! {
-	pub const GetUSDCurrencyId: CurrencyId = 1;
-}
+use frame_system::RawOrigin;
+use orml_traits::MultiCurrency;
+use pallet_tinlake_investor_pool::Pallet as PoolPallet;
+use pallet_tinlake_investor_pool::PoolLocator;
+use primitives_tokens::CurrencyId;
+use runtime_common::CFG as CURRENCY;
+use sp_runtime::traits::AccountIdConversion;
 
 pub(crate) fn create_nft_class<T>(
 	class_id: u64,
@@ -56,13 +59,70 @@ where
 	loan_id
 }
 
-pub(crate) fn create_pool<T, GetCurrencyId>(owner: T::AccountId) -> T::PoolId
-where
-	T: pallet_pool::Config + frame_system::Config,
-	GetCurrencyId: Get<pallet_pool::CurrencyIdOf<T>>,
+pub(crate) fn create_pool<T>(
+	pool_id: T::PoolId,
+	owner: T::AccountId,
+	tin_investor: T::AccountId,
+	drop_investor: T::AccountId,
+	currency_id: CurrencyId,
+) where
+	T: pallet_tinlake_investor_pool::Config + frame_system::Config + pallet_loan::Config,
+	<T as pallet_tinlake_investor_pool::Config>::Balance: From<u128>,
+	<T as pallet_tinlake_investor_pool::Config>::CurrencyId: From<CurrencyId>,
+	<T as pallet_tinlake_investor_pool::Config>::TrancheId: From<u8>,
+	<T as pallet_tinlake_investor_pool::Config>::EpochId: From<u32>,
+	<T as pallet_tinlake_investor_pool::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
-	// currencyId is 1
-	pallet_pool::Pallet::<T>::create_new_pool(owner, "USD Pool".into(), GetCurrencyId::get())
+	let pool_account = PoolLocator { pool_id }.into_account();
+
+	// Initialize pool with initial investments
+	assert_ok!(PoolPallet::<T>::create_pool(
+		RawOrigin::Signed(owner.clone()).into(),
+		pool_id,
+		vec![(10, 10), (0, 0)],
+		currency_id.into(),
+		(100_000 * CURRENCY).into(),
+	));
+
+	assert_ok!(PoolPallet::<T>::order_supply(
+		RawOrigin::Signed(tin_investor.clone()).into(),
+		pool_id,
+		TinTrancheId::get().into(),
+		(500 * CURRENCY).into(),
+	));
+	assert_ok!(PoolPallet::<T>::order_supply(
+		RawOrigin::Signed(drop_investor.clone()).into(),
+		pool_id,
+		DropTrancheId::get().into(),
+		(500 * CURRENCY).into(),
+	));
+	<pallet_loan::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
+		.expect("update nav should work");
+	assert_ok!(PoolPallet::<T>::close_epoch(
+		RawOrigin::Signed(owner).into(),
+		pool_id,
+	));
+	assert_last_event::<T, <T as pallet_tinlake_investor_pool::Config>::Event>(
+		pallet_tinlake_investor_pool::Event::EpochExecuted(pool_id, 1u32.into()).into(),
+	);
+
+	// TODO(ved) do disbursal manually for now
+	assert_ok!(
+		<T as pallet_tinlake_investor_pool::Config>::Tokens::transfer(
+			CurrencyId::Tranche(pool_id.into(), 1).into(),
+			&pool_account,
+			&tin_investor,
+			(500 * CURRENCY).into(),
+		)
+	);
+	assert_ok!(
+		<T as pallet_tinlake_investor_pool::Config>::Tokens::transfer(
+			CurrencyId::Tranche(pool_id.into(), 0).into(),
+			&pool_account,
+			&drop_investor,
+			(500 * CURRENCY).into(),
+		)
+	);
 }
 
 pub(crate) fn initialise_test_pool<T>(
@@ -84,11 +144,13 @@ where
 	class_id
 }
 
-pub(crate) fn assert_last_event<T: pallet_loan::Config>(
-	generic_event: <T as pallet_loan::Config>::Event,
-) {
+pub(crate) fn assert_last_event<T, E>(generic_event: E)
+where
+	T: pallet_loan::Config + pallet_tinlake_investor_pool::Config,
+	E: Into<<T as frame_system::Config>::Event>,
+{
 	let events = frame_system::Pallet::<T>::events();
-	let system_event: <T as frame_system::Config>::Event = generic_event.into();
+	let system_event = generic_event.into();
 	// compare to the last event record
 	let frame_system::EventRecord { event, .. } = &events[events.len() - 1];
 	assert_eq!(event, &system_event);

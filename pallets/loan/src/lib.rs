@@ -207,6 +207,9 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Emits when pool doesn't exist
+		ErrPoolMissing,
+
 		/// Emits when pool is not initialised
 		ErrPoolNotInitialised,
 
@@ -296,6 +299,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			// ensure the sender has the pool admin role
 			ensure_role!(pool_id, origin, Role::PoolAdmin);
+
+			// ensure pool exists
+			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::ErrPoolMissing);
 
 			// ensure pool is not initialised yet
 			ensure!(
@@ -568,6 +574,7 @@ impl<
 macro_rules! ensure_role {
 	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
 		let sender = ensure_signed($origin)?;
-		ensure!(T::Pool::has_role($pool_id, sender, $role), BadOrigin);
+		ensure!(T::Pool::has_role($pool_id, &sender, $role), BadOrigin);
+		sender
 	}};
 }

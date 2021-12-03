@@ -28,7 +28,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, PerThing, Perquintill, TypeId,
 };
-use sp_std::vec::Vec;
+use sp_std::{vec, vec::Vec};
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///

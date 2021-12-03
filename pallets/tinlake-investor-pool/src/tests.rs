@@ -407,6 +407,8 @@ fn test_approve_and_remove_roles() {
 			&pool_owner,
 			Role::PoolAdmin
 		));
+
+		// setup test cases
 		for (role, sources) in vec![
 			(Role::PoolAdmin, vec![2, 3]),
 			(Role::Borrower, vec![4, 5]),

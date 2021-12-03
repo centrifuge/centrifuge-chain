@@ -43,7 +43,6 @@ members = [
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
-	"pallets/pool",
 	"pallets/loan",
 ]
 

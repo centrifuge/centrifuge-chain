@@ -23,11 +23,15 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
+use pallet_tinlake_investor_pool::PoolLocator;
+use primitives_tokens::CurrencyId;
 use runtime_common::{
-	Amount, Balance, ClassId, CurrencyId, InstanceId, PoolId, Rate, CENTI_CFG, CFG,
+	Amount, Balance, ClassId, InstanceId, PoolId, Rate, TrancheToken, CENTI_CFG as CENTI_CURRENCY,
+	CFG as CURRENCY,
 };
 use sp_core::H256;
 use sp_io::TestExternalities;
+use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -45,7 +49,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Pool: pallet_pool::{Pallet, Call, Storage, Event<T>},
+		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
@@ -131,16 +135,19 @@ impl orml_tokens::Config for MockRuntime {
 	type MaxLocks = MaxLocks;
 }
 
-parameter_types! {
-	pub const PoolPalletId: PalletId = PalletId(*b"pal/pool");
-}
-
-impl pallet_pool::Config for MockRuntime {
+impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type Event = Event;
+	type Balance = Balance;
+	type BalanceRatio = Rate;
 	type PoolId = PoolId;
-	type MultiCurrency = Tokens;
-	type TransferOrigin = crate::EnsureLoanAccount<MockRuntime>;
-	type PoolPalletId = PoolPalletId;
+	type TrancheId = u8;
+	type EpochId = u32;
+	type CurrencyId = CurrencyId;
+	type Tokens = Tokens;
+	type LoanAmount = Amount;
+	type NAV = Loan;
+	type TrancheToken = TrancheToken<MockRuntime>;
+	type Time = Timestamp;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
@@ -157,16 +164,16 @@ impl pallet_balances::Config for MockRuntime {
 }
 
 parameter_types! {
-	// per byte deposit is 0.01 CFG
-	pub const DepositPerByte: Balance = CENTI_CFG;
-	// Base deposit to add attribute is 0.1 CFG
-	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
-	// Base deposit to add metadata is 0.1 CFG
-	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
-	// Deposit to create a class is 1 CFG
-	pub const ClassDeposit: Balance = CFG;
-	// Deposit to create a class is 0.1 CFG
-	pub const InstanceDeposit: Balance = 10 * CENTI_CFG;
+	// per byte deposit is 0.01 Currency
+	pub const DepositPerByte: Balance = CENTI_CURRENCY;
+	// Base deposit to add attribute is 0.1 Currency
+	pub const AttributeDepositBase: Balance = 10 * CENTI_CURRENCY;
+	// Base deposit to add metadata is 0.1 Currency
+	pub const MetadataDepositBase: Balance = 10 * CENTI_CURRENCY;
+	// Deposit to create a class is 1 Currency
+	pub const ClassDeposit: Balance = CURRENCY;
+	// Deposit to create a class is 0.1 Currency
+	pub const InstanceDeposit: Balance = 10 * CENTI_CURRENCY;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
@@ -202,13 +209,13 @@ impl pallet_loan::Config for MockRuntime {
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
-	type Pool = Pool;
+	type Pool = InvestorPool;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 }
 
 // USD currencyId
-pub const USD: CurrencyId = 1;
+pub const USD: CurrencyId = CurrencyId::Usd;
 
 // Test externalities builder
 //
@@ -221,6 +228,16 @@ impl Default for TestExternalitiesBuilder {
 	fn default() -> Self {
 		Self {}
 	}
+}
+
+parameter_types! {
+	pub const PoolAdmin: u64 = 1;
+	pub const Borrower: u64 = 2;
+	pub const RiskAdmin: u64 = 3;
+	pub const DropInvestor: u64 = 4;
+	pub const TinInvestor: u64 = 5;
+	pub const DropTrancheId: u8 = 0;
+	pub const TinTrancheId: u8 = 1;
 }
 
 impl TestExternalitiesBuilder {
@@ -246,7 +263,7 @@ impl TestExternalitiesBuilder {
 				pallet_loan::Pallet::<MockRuntime>::account_id(),
 			]
 			.into_iter()
-			.map(|acc| (acc, 100 * runtime_common::CFG))
+			.map(|acc| (acc, 100 * CURRENCY))
 			.collect(),
 		}
 		.assimilate_storage(&mut storage)
@@ -256,11 +273,18 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				(
-					pallet_pool::Pallet::<MockRuntime>::account_id(),
-					USD,
-					1000 * CFG,
+					PoolLocator { pool_id: 0 }.into_account(),
+					CurrencyId::Tranche(0, TinTrancheId::get()),
+					100_000 * CURRENCY,
 				),
-				(2, USD, 100 * CFG),
+				(
+					PoolLocator { pool_id: 0 }.into_account(),
+					CurrencyId::Tranche(0, DropTrancheId::get()),
+					100_000 * CURRENCY,
+				),
+				(7, USD, 100 * CURRENCY),
+				(TinInvestor::get(), USD, 1000 * CURRENCY),
+				(DropInvestor::get(), USD, 1000 * CURRENCY),
 			],
 		}
 		.assimilate_storage(&mut storage)

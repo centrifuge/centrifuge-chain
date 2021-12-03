@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	Usd,
-	Tranche(u32, u8),
+	Tranche(u64, u8),
 }
 
 #[macro_export]
@@ -20,7 +20,7 @@ macro_rules! impl_tranche_token {
 		impl<T> pallet_tinlake_investor_pool::TrancheToken<T> for TrancheToken<T>
 		where
 			T: Config,
-			<T as Config>::PoolId: Into<u32>,
+			<T as Config>::PoolId: Into<u64>,
 			<T as Config>::TrancheId: Into<u8>,
 			<T as Config>::CurrencyId: From<CurrencyId>,
 		{

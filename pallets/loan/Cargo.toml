@@ -26,7 +26,6 @@ frame-benchmarking = { git = "https://github.com/centrifuge/substrate",  default
 pallet-balances = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true, branch = "master" }
 pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-features = false , optional = true, branch = "master" }
 runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
-pallet-pool = { path = "../pool", optional = true, default-features = false }
 orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, optional = true, branch = "centrifuge" }
 pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-features = false, optional = true, branch = "master" }
 
@@ -41,7 +40,8 @@ pallet-timestamp = { git = "https://github.com/centrifuge/substrate",  default-f
 orml-tokens = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = true, branch = "centrifuge" }
 orml-traits = { git = "https://github.com/centrifuge/open-runtime-module-library", default-features = false, branch = "centrifuge" }
 pallet-uniques = { git = "https://github.com/centrifuge/substrate",  default-features = false , branch = "master" }
-pallet-pool = { path = "../pool", default-features = false}
+pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", default-features = false}
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 [features]
 default = ['std']
@@ -50,7 +50,6 @@ runtime-benchmarks = [
     "pallet-balances",
     "pallet-uniques",
     "runtime-common",
-    "pallet-pool",
     "orml-tokens",
     "pallet-timestamp"
 ]
