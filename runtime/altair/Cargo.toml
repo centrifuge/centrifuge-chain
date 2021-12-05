@@ -173,6 +173,7 @@ std = [
     "sp-consensus-aura/std",
     "pallet-fees/std",
     "pallet-anchors/std",
+    "pallet-collator-allowlist/std",
     "pallet-claims/std",
     "pallet-sudo/std",
     "pallet-society/std",

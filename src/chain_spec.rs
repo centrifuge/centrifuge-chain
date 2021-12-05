@@ -381,6 +381,9 @@ fn altair_genesis(
 			candidacy_bond: 1 * AIR,
 			..Default::default()
 		},
+		collator_allowlist: altair_runtime::CollatorAllowlistConfig {
+			initial_state: vec![],
+		},
 		session: altair_runtime::SessionConfig {
 			keys: initial_authorities
 				.iter()

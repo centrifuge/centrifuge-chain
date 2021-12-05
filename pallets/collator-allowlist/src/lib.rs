@@ -54,7 +54,6 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ sp_std::convert::TryFrom<Self::AccountId>;
 
-
 		/// Type representing the underlying validator registration center.
 		/// It offers us the API we need to check whether a collator
 		/// is ready for its duties in the upcoming session.
