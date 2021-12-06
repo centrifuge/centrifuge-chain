@@ -7,7 +7,7 @@ benchmarks! {
 	// Add a collator to the allowlist
 	add {
 		let collator_id = get_account::<T>();
-	}: add(RawOrigin::Root, collator_id.clone())
+	}: _(RawOrigin::Root, collator_id.clone())
 	verify {
 		assert!(<Allowlist<T>>::get(collator_id).is_some(), "Collator should be in the allowlist");
 	}
