@@ -138,6 +138,8 @@ impl Contains<Call> for BaseFilter {
 			| Call::Identity{..}
 			// Enable Proxy
 			| Call::Proxy{..}
+			// Enable Utility
+			| Call::Utility{..}
 		)
 	}
 }
