@@ -29,8 +29,8 @@ impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Tes
 // state of the pallet_session in the runtime used for benchmarking.
 fn get_account<T: Config>() -> T::ValidatorId {
 	let pub_key: [u8; 32] = [
-		212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214,
-		130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
+		212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88,
+		133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
 	];
 
 	codec::Decode::decode(&mut &pub_key[..]).unwrap()
