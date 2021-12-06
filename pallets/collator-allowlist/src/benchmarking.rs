@@ -6,7 +6,7 @@ use frame_system::RawOrigin;
 benchmarks! {
 	// Add a collator to the allowlist
 	add {
-		let collator_id = get_invulnerable_account::<T>();
+		let collator_id = get_account::<T>();
 	}: add(RawOrigin::Root, collator_id.clone())
 	verify {
 		assert!(<Allowlist<T>>::get(collator_id).is_some(), "Collator should be in the allowlist");
@@ -14,7 +14,7 @@ benchmarks! {
 
 	// Remove a collator from the allowlist
 	remove {
-		let collator_id = get_invulnerable_account::<T>();
+		let collator_id = get_account::<T>();
 		// We need the collator to already be in the allowlist before we remove it.
 		<Allowlist<T>>::insert(collator_id.clone(), ());
 	}: remove(RawOrigin::Root, collator_id.clone())
@@ -27,10 +27,10 @@ impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Tes
 
 // Return an account that will be included as part of the initial
 // state of the pallet_session in the runtime used for benchmarking.
-fn get_invulnerable_account<T: Config>() -> T::ValidatorId {
+fn get_account<T: Config>() -> T::ValidatorId {
 	let pub_key: [u8; 32] = [
-		212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88,
-		133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
+		212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214,
+		130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125,
 	];
 
 	codec::Decode::decode(&mut &pub_key[..]).unwrap()
