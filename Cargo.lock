@@ -1051,7 +1051,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-claims",
- "pallet-collator-allowlist",
  "pallet-collective",
  "pallet-democracy",
  "pallet-elections-phragmen",
