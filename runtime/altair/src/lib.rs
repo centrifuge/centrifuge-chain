@@ -16,7 +16,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureOneOf, EnsureRoot,
 };
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
@@ -27,7 +27,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
+use sp_core::u32_trait::{_1, _2, _3, _4, _5};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
@@ -38,7 +38,7 @@ use sp_runtime::transaction_validity::{
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
-	Perquintill,
+	Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -69,7 +69,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1006,
+	spec_version: 1007,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -130,6 +130,16 @@ impl Contains<Call> for BaseFilter {
 			| Call::Timestamp(pallet_timestamp::Call::set{..})
 			// Claiming logic is also enabled
 			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
+			// Enable Governance
+			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..}
+			// Enable Treasury
+			| Call::Treasury{..}
+			// Enable Identity
+			| Call::Identity{..}
+			// Enable Proxy
+			| Call::Proxy{..}
+			// Enable Utility
+			| Call::Utility{..}
 		)
 	}
 }
@@ -447,12 +457,12 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 1000 * AIR;
+	pub const CandidacyBond: Balance = 500 * AIR;
 	pub const VotingBond: Balance = 50 * CENTI_AIR;
 	pub const VotingBondBase: Balance = 50 * CENTI_AIR;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
 	pub const DesiredMembers: u32 = 7;
-	pub const DesiredRunnersUp: u32 = 3;
+	pub const DesiredRunnersUp: u32 = 7;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
@@ -476,8 +486,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 
-	type LoserCandidate = ();
-	type KickedMember = ();
+	type LoserCandidate = Treasury;
+	type KickedMember = Treasury;
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -497,7 +507,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 1000 * AIR;
+	pub const MinimumDeposit: Balance = 500 * AIR;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_AIR;
@@ -561,7 +571,7 @@ impl pallet_democracy::Config for Runtime {
 	type PreimageByteDeposit = PreimageByteDeposit;
 	type OperationalPreimageOrigin = EnsureMember<AccountId, CouncilCollective>;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = ();
+	type Slash = Treasury;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MaxVotes = MaxVotes;
@@ -587,7 +597,7 @@ impl pallet_identity::Config for Runtime {
 	type MaxSubAccounts = MaxSubAccounts;
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
-	type Slashed = ();
+	type Slashed = Treasury;
 	type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 	type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
@@ -604,6 +614,63 @@ impl pallet_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
 	const MAX_VESTING_SCHEDULES: u32 = 28;
+}
+
+type ApproveOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>,
+>;
+
+type RejectOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+>;
+
+parameter_types! {
+	// 5% of the proposal value need to be bonded. This will be returned
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+
+	// Minimum amount to bond per proposal. This will be the least that gets bonded per proposal
+	// if the above yields to lower value
+	pub const ProposalBondMinimum: Balance = 100 * AIR;
+
+	// periods between treasury spends
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
+
+	// percentage of treasury we burn per Spend period if there is a surplus
+	// If the treasury is able to spend on all the approved proposals and didn't miss any
+	// then we burn % amount of remaining balance
+	// If the treasury couldn't spend on all the approved proposals, then we dont burn any
+	pub const Burn: Permill = Permill::from_percent(0);
+
+	// treasury pallet account id
+	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+
+	// Maximum number of approvals that can be in the spending queue
+	pub const MaxApprovals: u32 = 100;
+}
+
+impl pallet_treasury::Config for Runtime {
+	type Currency = Balances;
+	// either democracy or 66% of council votes
+	type ApproveOrigin = ApproveOrigin;
+	// either democracy or more than 50% council votes
+	type RejectOrigin = RejectOrigin;
+	type Event = Event;
+	// slashed amount goes to treasury account
+	type OnSlash = Treasury;
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type PalletId = TreasuryPalletId;
+	// we burn and dont handle the unbalance
+	type BurnDestination = ();
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
+	type SpendFunds = ();
+	type MaxApprovals = MaxApprovals;
 }
 
 // our pallets
@@ -676,7 +743,7 @@ parameter_types! {
 	pub const MaxProofLength: u32 = 30;
 }
 
-// Implement crowdloan claim pallet configuration trait for the mock runtime
+// Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
@@ -731,6 +798,8 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 66,
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
+		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 69,
+		// Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -760,8 +829,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	// disable paying the fees for now.
-	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;

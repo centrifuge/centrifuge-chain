@@ -260,7 +260,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 					// 	.unchecked_into(),
 				)],
 				endowed_accounts(),
-				None,
+				Some(100000000 * AIR),
 				para_id,
 			)
 		},
@@ -389,6 +389,7 @@ fn altair_genesis(
 		aura: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
+		treasury: Default::default(),
 	}
 }
 
@@ -463,5 +464,6 @@ fn development_genesis(
 		aura: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
+		treasury: Default::default(),
 	}
 }
