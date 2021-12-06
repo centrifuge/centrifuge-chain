@@ -140,7 +140,7 @@ impl Config for Test {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = sp_arithmetic::fixed_point::FixedU128P27;
-	type PoolId = u32;
+	type PoolId = u64;
 	type TrancheId = u8;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
@@ -152,7 +152,7 @@ impl Config for Test {
 }
 
 impl fake_nav::Config for Test {
-	type PoolId = u32;
+	type PoolId = u64;
 }
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
@@ -194,20 +194,20 @@ pub fn next_block_after(seconds: u64) {
 	Timestamp::set(Origin::none(), Timestamp::now() + seconds).unwrap();
 }
 
-pub fn test_borrow(borrower: u64, pool_id: u32, amount: Balance) -> DispatchResult {
+pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
 	TinlakeInvestorPool::do_borrow(borrower, pool_id, amount)
 }
 
-pub fn test_payback(borrower: u64, pool_id: u32, amount: Balance) -> DispatchResult {
+pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
 	TinlakeInvestorPool::do_payback(borrower, pool_id, amount)
 }
 
-pub fn test_nav_up(pool_id: u32, amount: Balance) {
+pub fn test_nav_up(pool_id: u64, amount: Balance) {
 	FakeNav::update(pool_id, FakeNav::value(pool_id) + amount);
 }
 
-pub fn test_nav_down(pool_id: u32, amount: Balance) {
+pub fn test_nav_down(pool_id: u64, amount: Balance) {
 	FakeNav::update(pool_id, FakeNav::value(pool_id) - amount);
 }

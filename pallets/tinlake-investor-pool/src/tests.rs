@@ -384,3 +384,84 @@ fn epoch() {
 		);
 	});
 }
+
+#[test]
+fn test_approve_and_remove_roles() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = 1;
+		// Initialize pool with initial investments
+		assert_ok!(TinlakeInvestorPool::create_pool(
+			Origin::signed(pool_owner),
+			0,
+			vec![(10, 10), (0, 0)],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		let pool_id = 0;
+		assert!(<TinlakeInvestorPool as PoolInspect<u64>>::pool_exists(
+			pool_id
+		));
+		assert!(<TinlakeInvestorPool as PoolInspect<u64>>::has_role(
+			pool_id,
+			&pool_owner,
+			PoolRole::PoolAdmin
+		));
+
+		// setup test cases
+		for (role, sources) in vec![
+			(PoolRole::PoolAdmin, vec![2, 3]),
+			(PoolRole::Borrower, vec![4, 5]),
+			(PoolRole::PricingAdmin, vec![6, 7]),
+			(PoolRole::MemberListAdmin, vec![8, 9]),
+			(PoolRole::RiskAdmin, vec![10, 11]),
+			(PoolRole::LiquidityAdmin, vec![12, 13]),
+		] {
+			// they should not have a role first
+			let targets: Vec<u64> = sources
+				.iter()
+				.map(|admin| {
+					<<Test as frame_system::Config>::Lookup as StaticLookup>::unlookup(*admin)
+				})
+				.collect();
+
+			targets.iter().for_each(|acc| {
+				assert!(!<TinlakeInvestorPool as PoolInspect<u64>>::has_role(
+					pool_id, acc, role
+				))
+			});
+
+			// approve role for all the accounts
+			assert_ok!(TinlakeInvestorPool::approve_role_for(
+				Origin::signed(pool_owner),
+				pool_id,
+				role,
+				sources.clone()
+			));
+
+			// they should have role now
+			targets.iter().for_each(|acc| {
+				assert!(<TinlakeInvestorPool as PoolInspect<u64>>::has_role(
+					pool_id, acc, role
+				))
+			});
+
+			sources.iter().for_each(|source| {
+				// revoke roles
+				assert_ok!(TinlakeInvestorPool::revoke_role_for(
+					Origin::signed(pool_owner),
+					pool_id,
+					role,
+					*source
+				));
+			});
+
+			// they should not have role now
+			targets.iter().for_each(|acc| {
+				assert!(!<TinlakeInvestorPool as PoolInspect<u64>>::has_role(
+					pool_id, acc, role
+				))
+			});
+		}
+	});
+}

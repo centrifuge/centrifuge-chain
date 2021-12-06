@@ -108,7 +108,6 @@ pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", d
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
-pallet-pool = { path = "../../pallets/pool", default-features = false }
 pallet-loan = { path = "../../pallets/loan", default-features = false }
 
 [build-dependencies]
@@ -188,7 +187,6 @@ std = [
     "runtime-common/std",
     "pallet-uniques/std",
     "orml-tokens/std",
-    "pallet-pool/std",
     "pallet-loan/std",
     "primitives-tokens/std",
 ]

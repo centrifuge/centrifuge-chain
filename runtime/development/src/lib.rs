@@ -629,8 +629,8 @@ impl pallet_claims::Config for Runtime {
 impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
-	type BalanceRatio = sp_runtime::FixedU128;
-	type PoolId = u32;
+	type BalanceRatio = Rate;
+	type PoolId = PoolId;
 	type TrancheId = u8;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
@@ -692,18 +692,6 @@ impl pallet_crowdloan_claim::Config for Runtime {
 }
 
 parameter_types! {
-	pub const PoolPalletId: PalletId = PalletId(*b"pal/pool");
-}
-
-impl pallet_pool::Config for Runtime {
-	type Event = Event;
-	type PoolId = PoolId;
-	type MultiCurrency = Tokens;
-	type TransferOrigin = pallet_loan::EnsureLoanAccount<Runtime>;
-	type PoolPalletId = PoolPalletId;
-}
-
-parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
 	pub const MaxLoansPerPool: u64 = 200;
 }
@@ -717,8 +705,7 @@ impl pallet_loan::Config for Runtime {
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-	type PoolReserve = InvestorPool;
+	type Pool = InvestorPool;
 	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 }
@@ -797,9 +784,8 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
-		Pool: pallet_pool::{Pallet, Call, Storage, Event<T>} = 95,
+		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 95,
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
-		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 97,
 
 		// 3rd party pallets
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,

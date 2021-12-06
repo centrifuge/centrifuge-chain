@@ -15,11 +15,12 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::{PoolNAV, PoolReserve};
+use common_traits::{PoolInspect, PoolNAV, PoolReserve, PoolRole};
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
+use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
@@ -27,7 +28,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, PerThing, Perquintill, TypeId,
 };
-use sp_std::vec::Vec;
+use sp_std::{vec, vec::Vec};
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
@@ -117,6 +118,9 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio> {
 	reserve: Balance,
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
 }
+
+// type alias for StaticLookup source that resolves to account
+type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -219,6 +223,71 @@ pub mod pallet {
 	pub type EpochExecution<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfo<T::Balance, T::BalanceRatio>>;
 
+	// storage for pool admins
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_admins)]
+	pub type PoolAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for borrowers of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_borrowers)]
+	pub type Borrowers<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for liquidity admins of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_liquidity_admins)]
+	pub type LiquidityAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for member list admins of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_member_list_admins)]
+	pub type MemberListAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
+	// storage for risk admins of the pool
+	#[pallet::storage]
+	#[pallet::getter(fn get_pool_risk_admins)]
+	pub type RiskAdmins<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::PoolId,
+		Blake2_128Concat,
+		T::AccountId,
+		(),
+		OptionQuery,
+	>;
+
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
@@ -231,6 +300,10 @@ pub mod pallet {
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
+		/// When a role is for some accounts
+		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
+		// When a role was revoked for an account in pool
+		RoleRevoked(T::PoolId, PoolRole, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -264,6 +337,8 @@ pub mod pallet {
 		NoNAV,
 		/// Generic error for invalid input data provided
 		InvalidData,
+		/// No permission to do a specific action
+		NoPermission,
 	}
 
 	#[pallet::call]
@@ -327,6 +402,7 @@ pub mod pallet {
 					total_reserve: Zero::zero(),
 				},
 			);
+			PoolAdmins::<T>::insert(pool_id, owner.clone(), ());
 			Self::deposit_event(Event::PoolCreated(pool_id, owner));
 			Ok(())
 		}
@@ -561,9 +637,105 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		#[pallet::weight(100)]
+		pub fn approve_role_for(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			role: PoolRole,
+			accounts: Vec<LookUpSource<T>>,
+		) -> DispatchResult {
+			let pool_admin = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
+				Error::<T>::NoPermission
+			);
+
+			// look up all the sources through lookup
+			let mut targets = vec![];
+			for source in accounts {
+				let acc: T::AccountId = T::Lookup::lookup(source)?;
+				targets.push(acc);
+			}
+
+			// setup role for each account
+			targets
+				.iter()
+				.for_each(|account| Self::approve_role_in_pool(pool_id, role, account));
+			Self::deposit_event(Event::RoleApproved(pool_id, role, targets));
+			Ok(())
+		}
+
+		#[pallet::weight(100)]
+		pub fn revoke_role_for(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			role: PoolRole,
+			account: LookUpSource<T>,
+		) -> DispatchResult {
+			let pool_admin = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
+				Error::<T>::NoPermission
+			);
+
+			// revoke the role
+			T::Lookup::lookup(account)
+				.and_then(|acc| Ok(Self::revoke_role_in_pool(pool_id, role, &acc)))?;
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub(crate) fn has_role_in_pool(
+			pool_id: T::PoolId,
+			role: PoolRole,
+			account: &T::AccountId,
+		) -> bool {
+			match role {
+				PoolRole::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::Borrower | PoolRole::PricingAdmin => {
+					Borrowers::<T>::contains_key(pool_id, account)
+				}
+				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
+			}
+		}
+
+		pub(crate) fn approve_role_in_pool(
+			pool_id: T::PoolId,
+			role: PoolRole,
+			account: &T::AccountId,
+		) {
+			match role {
+				PoolRole::PoolAdmin => PoolAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::Borrower | PoolRole::PricingAdmin => {
+					Borrowers::<T>::insert(pool_id, account, ())
+				}
+				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::MemberListAdmin => MemberListAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::RiskAdmin => RiskAdmins::<T>::insert(pool_id, account, ()),
+			};
+		}
+
+		pub(crate) fn revoke_role_in_pool(
+			pool_id: T::PoolId,
+			role: PoolRole,
+			account: &T::AccountId,
+		) {
+			match role {
+				PoolRole::PoolAdmin => PoolAdmins::<T>::remove(pool_id, account),
+				PoolRole::Borrower | PoolRole::PricingAdmin => {
+					Borrowers::<T>::remove(pool_id, account)
+				}
+				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
+				PoolRole::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
+				PoolRole::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
+			};
+		}
+
 		fn calculate_tranche_prices(
 			pool_id: T::PoolId,
 			epoch_nav: T::Balance,
@@ -1017,25 +1189,26 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> PoolReserve<OriginFor<T>, T::AccountId> for Pallet<T> {
+impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 	type PoolId = T::PoolId;
+
+	fn pool_exists(pool_id: Self::PoolId) -> bool {
+		Pool::<T>::contains_key(pool_id)
+	}
+
+	fn has_role(pool_id: Self::PoolId, account: &T::AccountId, role: PoolRole) -> bool {
+		Self::has_role_in_pool(pool_id, role, account)
+	}
+}
+
+impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
 	type Balance = T::Balance;
 
-	fn withdraw(
-		pool_id: Self::PoolId,
-		_caller: OriginFor<T>,
-		to: T::AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult {
+	fn withdraw(pool_id: Self::PoolId, to: T::AccountId, amount: Self::Balance) -> DispatchResult {
 		Self::do_borrow(to, pool_id, amount)
 	}
 
-	fn deposit(
-		pool_id: Self::PoolId,
-		_caller: OriginFor<T>,
-		from: T::AccountId,
-		amount: Self::Balance,
-	) -> DispatchResult {
+	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
 		Self::do_payback(from, pool_id, amount)
 	}
 }
