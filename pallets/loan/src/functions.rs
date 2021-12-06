@@ -79,7 +79,6 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			LoanData {
-				ceiling: Zero::zero(),
 				borrowed_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
 				accumulated_rate: One::one(),
@@ -90,6 +89,7 @@ impl<T: Config> Pallet<T> {
 				admin_written_off: false,
 				write_off_index: None,
 				asset,
+				origination: 0,
 			},
 		);
 		Ok(loan_id)
@@ -117,13 +117,8 @@ impl<T: Config> Pallet<T> {
 			// ensure rate_per_sec >= one
 			ensure!(rate_per_sec >= One::one(), Error::<T>::ErrLoanValueInvalid);
 
-			// calculate ceiling
-			let ceiling = loan_type.ceiling().ok_or(Error::<T>::ErrLoanTypeInvalid)?;
-			ensure!(ceiling > Zero::zero(), Error::<T>::ErrLoanValueInvalid);
-
 			// update the loan info
 			loan_info.rate_per_sec = rate_per_sec;
-			loan_info.ceiling = ceiling;
 			loan_info.status = LoanStatus::Active;
 			loan_info.loan_type = loan_type;
 			*maybe_loan_info = Some(loan_info);
@@ -241,14 +236,14 @@ impl<T: Config> Pallet<T> {
 				ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
 				// check for ceiling threshold
-				ensure!(
-					amount + loan_info.borrowed_amount <= loan_info.ceiling,
-					Error::<T>::ErrLoanCeilingReached
-				);
+				let ceiling = loan_info.ceiling().ok_or(Error::<T>::ErrLoanValueInvalid)?;
+				ensure!(amount <= ceiling, Error::<T>::ErrLoanCeilingReached);
 
 				// get previous present value so that we can update the nav accordingly
+				// we already know that that loan is not written off,
+				// means we wont need to have write off groups. so save a DB read and pass empty
 				let old_pv = loan_info
-					.present_value()
+					.present_value(&vec![])
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// calculate accumulated rate and outstanding debt
@@ -271,12 +266,15 @@ impl<T: Config> Pallet<T> {
 
 				// update loan
 				let first_borrow = loan_info.borrowed_amount == Zero::zero();
+				if first_borrow {
+					loan_info.origination = now;
+				}
 				loan_info.borrowed_amount = new_borrowed_amount;
 				loan_info.last_updated = now;
 				loan_info.accumulated_rate = accumulated_rate;
 				loan_info.principal_debt = principal_debt;
 				let new_pv = loan_info
-					.present_value()
+					.present_value(&vec![])
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::withdraw(pool_id, owner, amount.into())?;
@@ -336,8 +334,9 @@ impl<T: Config> Pallet<T> {
 				ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
 				// calculate old present_value
+				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 				let old_pv = loan_info
-					.present_value()
+					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// calculate new accumulated rate
@@ -347,10 +346,7 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
 
 				// ensure amount is not more than current debt
-				let mut repay_amount = amount;
-				if repay_amount > debt {
-					repay_amount = debt
-				}
+				let repay_amount = amount.min(debt);
 
 				// calculate new principal debt with repaid amount
 				let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
@@ -364,7 +360,7 @@ impl<T: Config> Pallet<T> {
 				loan_info.accumulated_rate = accumulated_rate;
 				loan_info.principal_debt = principal_debt;
 				let new_pv = loan_info
-					.present_value()
+					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::deposit(pool_id, owner, repay_amount.into())?;
@@ -404,7 +400,7 @@ impl<T: Config> Pallet<T> {
 				loan_data.last_updated = now;
 				loan_data.accumulated_rate = acc_rate;
 				let present_value = loan_data
-					.present_value_with_write_off(write_off_groups)
+					.present_value(write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 				*maybe_loan_data = Some(loan_data);
 				Ok(present_value)
@@ -516,14 +512,14 @@ impl<T: Config> Pallet<T> {
 
 						// not written off by admin, and non admin trying to write off, then
 						// fetch the best write group available for this loan
-						math::valid_write_off_group(maturity_date, now, write_off_groups.clone())
+						math::valid_write_off_group(maturity_date, now, &write_off_groups)
 							.ok_or(Error::<T>::ErrNoValidWriteOffGroup)
 					}
 				}?;
 
 				// get old present value accounting for any write offs
 				let old_pv = loan_data
-					.present_value_with_write_off(&write_off_groups)
+					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// accrue and calculate the new present value with current chosen write off
@@ -537,7 +533,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate updated write off adjusted present value
 				let new_pv = loan_data
-					.present_value_with_write_off(&write_off_groups)
+					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// update nav

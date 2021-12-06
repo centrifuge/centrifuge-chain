@@ -83,8 +83,8 @@ pub(crate) fn seconds_per_year() -> u64 {
 
 /// calculates rate per second from the given nominal interest rate
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
-pub fn rate_per_sec<Rate: FixedPointNumber>(nominal_interest_rate: Rate) -> Option<Rate> {
-	nominal_interest_rate
+pub fn rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
+	rate_per_annum
 		.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
 		.and_then(|res| res.checked_add(&Rate::one()))
 }
@@ -155,7 +155,7 @@ where
 pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: u64,
 	now: u64,
-	groups: Vec<WriteOffGroup<Rate>>,
+	groups: &Vec<WriteOffGroup<Rate>>,
 ) -> Option<u32> {
 	let mut index = None;
 	let mut highest_overdue_days = 0;
@@ -169,6 +169,62 @@ pub(crate) fn valid_write_off_group<Rate>(
 		}
 	});
 	index
+}
+
+/// calculates ceiling for a loan,
+/// ceiling = advance_rate * collateral_value - debt
+pub(crate) fn ceiling<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	advance_rate: Rate,
+	value: Amount,
+	debt: Amount,
+) -> Option<Amount> {
+	convert::<Rate, Amount>(advance_rate)
+		.and_then(|ar| value.checked_mul(&ar))
+		.and_then(|val| val.checked_sub(&debt))
+}
+
+/// calculates the expected loss over term
+/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
+/// we cap the term expected loss to 100%
+#[inline]
+pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
+	pd: Rate,
+	ldg: Rate,
+	origination: u64,
+	maturity: u64,
+) -> Option<Rate> {
+	Rate::saturating_from_rational(maturity - origination, seconds_per_year())
+		.checked_mul(&pd)
+		.and_then(|val| val.checked_mul(&ldg))
+		.and_then(|tel| Some(tel.min(One::one())))
+}
+
+/// calculates expected cash flow from current debt till maturity at the given rate per second
+#[inline]
+pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	debt: Amount,
+	now: u64,
+	maturity_date: u64,
+	interest_per_sec: Rate,
+) -> Option<Amount> {
+	checked_pow(interest_per_sec, (maturity_date - now) as usize)
+		.and_then(|acc_rate| convert(acc_rate))
+		.and_then(|acc_rate| debt.checked_mul(&acc_rate))
+}
+
+/// calculates discounted cash flow given the discount rate until maturity
+#[inline]
+pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	ra_ecf: Amount,
+	discount_rate: Rate,
+	maturity: u64,
+	now: u64,
+) -> Option<Amount> {
+	// calculate accumulated discount rate
+	checked_pow(discount_rate, (maturity - now) as usize)
+		.and_then(|rate| convert(rate))
+		// calculate the present value
+		.and_then(|d| ra_ecf.checked_div(&d))
 }
 
 #[cfg(test)]
@@ -368,7 +424,7 @@ fn valid_write_off_groups() {
 	tests.into_iter().for_each(|(maturity, now, index)| {
 		let md = maturity * sec_per_day;
 		let now = md + now * sec_per_day;
-		let got_index = valid_write_off_group(md, now, groups.clone());
+		let got_index = valid_write_off_group(md, now, &groups);
 		assert_eq!(index, got_index);
 	})
 }
