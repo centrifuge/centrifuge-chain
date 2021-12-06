@@ -405,17 +405,17 @@ fn test_approve_and_remove_roles() {
 		assert!(<TinlakeInvestorPool as PoolInspect<u64>>::has_role(
 			pool_id,
 			&pool_owner,
-			Role::PoolAdmin
+			PoolRole::PoolAdmin
 		));
 
 		// setup test cases
 		for (role, sources) in vec![
-			(Role::PoolAdmin, vec![2, 3]),
-			(Role::Borrower, vec![4, 5]),
-			(Role::PricingAdmin, vec![6, 7]),
-			(Role::MemberListAdmin, vec![8, 9]),
-			(Role::RiskAdmin, vec![10, 11]),
-			(Role::LiquidityAdmin, vec![12, 13]),
+			(PoolRole::PoolAdmin, vec![2, 3]),
+			(PoolRole::Borrower, vec![4, 5]),
+			(PoolRole::PricingAdmin, vec![6, 7]),
+			(PoolRole::MemberListAdmin, vec![8, 9]),
+			(PoolRole::RiskAdmin, vec![10, 11]),
+			(PoolRole::LiquidityAdmin, vec![12, 13]),
 		] {
 			// they should not have a role first
 			let targets: Vec<u64> = sources

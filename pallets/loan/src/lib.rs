@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve, Role};
+use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve, PoolRole};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -297,7 +297,7 @@ pub mod pallet {
 			loan_nft_class_id: T::ClassId,
 		) -> DispatchResult {
 			// ensure the sender has the pool admin role
-			ensure_role!(pool_id, origin, Role::PoolAdmin);
+			ensure_role!(pool_id, origin, PoolRole::PoolAdmin);
 
 			// ensure pool exists
 			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::ErrPoolMissing);
@@ -329,7 +329,7 @@ pub mod pallet {
 			asset: AssetOf<T>,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
-			let owner = ensure_role!(pool_id, origin, Role::Borrower);
+			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
 			let loan_id = Self::issue(pool_id, owner, asset)?;
 			Self::deposit_event(Event::<T>::LoanIssued(pool_id, loan_id, asset));
 			Ok(())
@@ -432,7 +432,7 @@ pub mod pallet {
 			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
 			// ensure sender has the pricing admin role in the pool
-			ensure_role!(pool_id, origin, Role::PricingAdmin);
+			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			Self::activate(pool_id, loan_id, rate_per_sec, loan_type)?;
 			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
 			Ok(())
@@ -481,7 +481,7 @@ pub mod pallet {
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
-			ensure_role!(pool_id, origin, Role::RiskAdmin);
+			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
 			let index = Self::add_write_off_group(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
@@ -523,7 +523,7 @@ pub mod pallet {
 			write_off_index: u32,
 		) -> DispatchResult {
 			// ensure this is a call from risk admin
-			ensure_role!(pool_id, origin, Role::RiskAdmin);
+			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
 
 			// try to write off
 			let index = Self::write_off(pool_id, loan_id, Some(write_off_index))?;

@@ -171,19 +171,19 @@ where
 	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_owner.clone()).into(),
 		pool_id.into(),
-		Role::Borrower,
+		PoolRole::Borrower,
 		vec![<T::Lookup as StaticLookup>::unlookup(borrower::<T>())]
 	));
 	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_owner.clone()).into(),
 		pool_id.into(),
-		Role::PricingAdmin,
+		PoolRole::PricingAdmin,
 		vec![<T::Lookup as StaticLookup>::unlookup(borrower::<T>())]
 	));
 	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_owner.clone()).into(),
 		pool_id.into(),
-		Role::RiskAdmin,
+		PoolRole::RiskAdmin,
 		vec![<T::Lookup as StaticLookup>::unlookup(risk_admin::<T>())]
 	));
 

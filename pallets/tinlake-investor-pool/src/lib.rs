@@ -15,7 +15,7 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, Role};
+use common_traits::{PoolInspect, PoolNAV, PoolReserve, PoolRole};
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
@@ -301,9 +301,9 @@ pub mod pallet {
 		/// Epoch closed [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
 		/// When a role is for some accounts
-		RoleApproved(T::PoolId, Role, Vec<T::AccountId>),
+		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
 		// When a role was revoked for an account in pool
-		RoleRevoked(T::PoolId, Role, T::AccountId),
+		RoleRevoked(T::PoolId, PoolRole, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -642,12 +642,12 @@ pub mod pallet {
 		pub fn approve_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: Role,
+			role: PoolRole,
 			accounts: Vec<LookUpSource<T>>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, Role::PoolAdmin, &pool_admin),
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
 				Error::<T>::NoPermission
 			);
 
@@ -670,12 +670,12 @@ pub mod pallet {
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: Role,
+			role: PoolRole,
 			account: LookUpSource<T>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, Role::PoolAdmin, &pool_admin),
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
 				Error::<T>::NoPermission
 			);
 
@@ -690,37 +690,49 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn has_role_in_pool(
 			pool_id: T::PoolId,
-			role: Role,
+			role: PoolRole,
 			account: &T::AccountId,
 		) -> bool {
 			match role {
-				Role::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
-				Role::Borrower | Role::PricingAdmin => {
+				PoolRole::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::Borrower | PoolRole::PricingAdmin => {
 					Borrowers::<T>::contains_key(pool_id, account)
 				}
-				Role::LiquidityAdmin => LiquidityAdmins::<T>::contains_key(pool_id, account),
-				Role::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
-				Role::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
+				PoolRole::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
 			}
 		}
 
-		pub(crate) fn approve_role_in_pool(pool_id: T::PoolId, role: Role, account: &T::AccountId) {
+		pub(crate) fn approve_role_in_pool(
+			pool_id: T::PoolId,
+			role: PoolRole,
+			account: &T::AccountId,
+		) {
 			match role {
-				Role::PoolAdmin => PoolAdmins::<T>::insert(pool_id, account, ()),
-				Role::Borrower | Role::PricingAdmin => Borrowers::<T>::insert(pool_id, account, ()),
-				Role::LiquidityAdmin => LiquidityAdmins::<T>::insert(pool_id, account, ()),
-				Role::MemberListAdmin => MemberListAdmins::<T>::insert(pool_id, account, ()),
-				Role::RiskAdmin => RiskAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::PoolAdmin => PoolAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::Borrower | PoolRole::PricingAdmin => {
+					Borrowers::<T>::insert(pool_id, account, ())
+				}
+				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::MemberListAdmin => MemberListAdmins::<T>::insert(pool_id, account, ()),
+				PoolRole::RiskAdmin => RiskAdmins::<T>::insert(pool_id, account, ()),
 			};
 		}
 
-		pub(crate) fn revoke_role_in_pool(pool_id: T::PoolId, role: Role, account: &T::AccountId) {
+		pub(crate) fn revoke_role_in_pool(
+			pool_id: T::PoolId,
+			role: PoolRole,
+			account: &T::AccountId,
+		) {
 			match role {
-				Role::PoolAdmin => PoolAdmins::<T>::remove(pool_id, account),
-				Role::Borrower | Role::PricingAdmin => Borrowers::<T>::remove(pool_id, account),
-				Role::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
-				Role::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
-				Role::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
+				PoolRole::PoolAdmin => PoolAdmins::<T>::remove(pool_id, account),
+				PoolRole::Borrower | PoolRole::PricingAdmin => {
+					Borrowers::<T>::remove(pool_id, account)
+				}
+				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
+				PoolRole::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
+				PoolRole::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
 			};
 		}
 
@@ -1184,7 +1196,7 @@ impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 		Pool::<T>::contains_key(pool_id)
 	}
 
-	fn has_role(pool_id: Self::PoolId, account: &T::AccountId, role: Role) -> bool {
+	fn has_role(pool_id: Self::PoolId, account: &T::AccountId, role: PoolRole) -> bool {
 		Self::has_role_in_pool(pool_id, role, account)
 	}
 }

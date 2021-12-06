@@ -85,13 +85,13 @@ where
 	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_admin).into(),
 		pool_id,
-		Role::Borrower,
+		PoolRole::Borrower,
 		vec![<T::Lookup as StaticLookup>::unlookup(borrower)]
 	));
 	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_admin).into(),
 		pool_id,
-		Role::PricingAdmin,
+		PoolRole::PricingAdmin,
 		vec![<T::Lookup as StaticLookup>::unlookup(borrower)]
 	));
 	let pr_pool_id: PoolIdOf<T> = pool_id.into();
@@ -718,7 +718,7 @@ fn test_pool_nav() {
 				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(PoolAdmin::get()).into(),
 					pool_id,
-					Role::RiskAdmin,
+					PoolRole::RiskAdmin,
 					vec![
 						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 							risk_admin
@@ -792,7 +792,7 @@ fn add_write_off_groups() {
 				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
-					Role::RiskAdmin,
+					PoolRole::RiskAdmin,
 					vec![
 						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 							risk_admin
@@ -883,7 +883,7 @@ fn write_off_loan() {
 				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
-					Role::RiskAdmin,
+					PoolRole::RiskAdmin,
 					vec![
 						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 							risk_admin
@@ -969,7 +969,7 @@ fn admin_write_off_loan() {
 				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
-					Role::RiskAdmin,
+					PoolRole::RiskAdmin,
 					vec![
 						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 							risk_admin
@@ -1078,7 +1078,7 @@ fn close_written_off_loan() {
 				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
-					Role::RiskAdmin,
+					PoolRole::RiskAdmin,
 					vec![
 						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 							risk_admin
