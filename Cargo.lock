@@ -109,6 +109,7 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-claims",
+ "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-crowdloan-claim",
@@ -2039,6 +2040,7 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-claims",
+ "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
  "pallet-crowdloan-claim",
@@ -5303,6 +5305,7 @@ dependencies = [
 name = "pallet-collator-allowlist"
 version = "2.0.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",

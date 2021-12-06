@@ -99,6 +99,7 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate", default-fea
 runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
@@ -172,6 +173,7 @@ std = [
     "sp-consensus-aura/std",
     "pallet-fees/std",
     "pallet-anchors/std",
+    "pallet-collator-allowlist/std",
     "pallet-claims/std",
     "pallet-sudo/std",
     "pallet-society/std",
@@ -189,6 +191,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
+    "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
