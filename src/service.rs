@@ -459,11 +459,11 @@ pub async fn start_altair_node(
 		polkadot_config,
 		id,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(FullDeps {
+			let mut io = crate::rpc::create_full(
 				client: client.clone(),
 				pool,
 				deny_unsafe,
-			});
+			);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
@@ -623,11 +623,11 @@ pub async fn start_centrifuge_node(
 		polkadot_config,
 		id,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(FullDeps {
+			let mut io = crate::rpc::create_full(
 				client: client.clone(),
 				pool,
 				deny_unsafe,
-			});
+			);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
@@ -787,11 +787,11 @@ pub async fn start_development_node(
 		polkadot_config,
 		id,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(FullDeps {
+			let mut io = crate::rpc::create_full(
 				client: client.clone(),
 				pool,
 				deny_unsafe,
-			});
+			);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},

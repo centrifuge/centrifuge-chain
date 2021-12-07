@@ -25,18 +25,12 @@ use substrate_frame_rpc_system::{FullSystem, SystemApi};
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 
-/// Full client dependencies.
-pub struct FullDeps<C, P> {
-	/// The client instance to use.
-	pub client: Arc<C>,
-	/// Transaction pool instance.
-	pub pool: Arc<P>,
-	/// Whether to deny unsafe calls
-	pub deny_unsafe: DenyUnsafe,
-}
-
 /// Instantiate all Full RPC extensions.
-pub fn create_full<C, P, Block>(deps: FullDeps<C, P>) -> RpcExtension
+pub fn create_full<C, P, Block>(
+	client: Arc<C>,
+	pool: Arc<P>,
+	deny_unsafe: DenyUnsafe,
+) -> RpcExtension
 where
 	Block: sp_api::BlockT,
 	C: ProvideRuntimeApi<Block>,
@@ -48,17 +42,13 @@ where
 	P: TransactionPool + Sync + Send + 'static,
 {
 	let mut io = jsonrpc_core::IoHandler::default();
-	let FullDeps {
-		client,
-		pool,
-		deny_unsafe,
-	} = deps;
 
 	io.extend_with(SystemApi::to_delegate(FullSystem::new(
 		client.clone(),
 		pool,
 		deny_unsafe,
 	)));
+
 	io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
 		client.clone(),
 	)));
