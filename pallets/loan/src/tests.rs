@@ -14,6 +14,7 @@
 //! Unit test cases for Loan pallet
 use super::*;
 use crate as pallet_loan;
+use crate::loan_type::CreditLine;
 use crate::mock::{
 	Borrower, Event, JuniorInvestor, Loan, MockRuntime, Origin, RiskAdmin, SeniorInvestor,
 	Timestamp, Tokens,
@@ -59,7 +60,7 @@ where
 	<T as pallet_tinlake_investor_pool::Config>::Tokens::total_balance(currency_id, account)
 }
 
-fn issue_test_loan<T>(borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)
+fn issue_test_loan<T>(pool_id: u64, borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)
 where
 	T: pallet_tinlake_investor_pool::Config<
 			CurrencyId = CurrencyId,
@@ -73,7 +74,6 @@ where
 	PoolIdOf<T>: From<<T as pallet_tinlake_investor_pool::Config>::PoolId>,
 {
 	let pool_admin = PoolAdmin::get();
-	let pool_id = 0;
 	create_pool::<T>(
 		pool_id,
 		pool_admin,
@@ -131,17 +131,8 @@ where
 	(pool_id, Asset(loan_nft_class_id, loan_id), asset)
 }
 
-fn price_loan_with_defaults<T>(
-	admin: T::AccountId,
-	pool_id: T::PoolId,
-	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Amount>)
-where
-	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
-		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
-		+ frame_system::Config<AccountId = u64>,
-{
-	let loan_type = LoanType::BulletLoan(BulletLoan::new(
+fn default_bullet_loan_params() -> LoanType<Rate, Amount> {
+	LoanType::BulletLoan(BulletLoan::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
 		// probability of default is 4%
@@ -154,14 +145,34 @@ where
 		math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 		// 2 years
 		math::seconds_per_year() * 2,
-	));
-	// interest rate is 5%
-	let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-	let res = Loan::activate_loan(Origin::signed(admin), pool_id, loan_id, rp, loan_type);
+	))
+}
+
+fn default_credit_line_params() -> LoanType<Rate, Amount> {
+	LoanType::CreditLine(CreditLine::new(
+		// advance rate 80%
+		Rate::saturating_from_rational(80, 100),
+		// collateral value
+		Amount::from_inner(125 * USD),
+	))
+}
+
+fn price_test_loan<T>(
+	admin: T::AccountId,
+	pool_id: T::PoolId,
+	loan_id: T::LoanId,
+	rp: Rate,
+	loan_type: LoanType<Rate, Amount>,
+) where
+	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
+		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ frame_system::Config<AccountId = u64>,
+{
+	let res = Loan::price_loan(Origin::signed(admin), pool_id, loan_id, rp, loan_type);
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
-		LoanEvent::LoanActivated(pool_id, loan_id) => Some((pool_id, loan_id)),
+		LoanEvent::LoanPriceSet(pool_id, loan_id) => Some((pool_id, loan_id)),
 		_ => None,
 	}
 	.expect("must be a Loan issue activated event");
@@ -174,9 +185,42 @@ where
 	assert_eq!(loan_data.status, LoanStatus::Active);
 	assert_eq!(loan_data.rate_per_sec, rp);
 	assert_eq!(loan_data.loan_type, loan_type);
-	assert_eq!(loan_data.ceiling().unwrap(), Amount::from_inner(100 * USD));
+	assert_eq!(loan_data.ceiling(0).unwrap(), Amount::from_inner(100 * USD));
 	assert_eq!(loan_data.write_off_index, None);
 	assert!(!loan_data.admin_written_off);
+}
+
+fn price_bullet_loan<T>(
+	admin: T::AccountId,
+	pool_id: T::PoolId,
+	loan_id: T::LoanId,
+) -> (Rate, LoanType<Rate, Amount>)
+where
+	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
+		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ frame_system::Config<AccountId = u64>,
+{
+	let loan_type = default_bullet_loan_params();
+	// interest rate is 5%
+	let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
+	(rp, loan_type)
+}
+
+fn price_credit_line_loan<T>(
+	admin: T::AccountId,
+	pool_id: T::PoolId,
+	loan_id: T::LoanId,
+) -> (Rate, LoanType<Rate, Amount>)
+where
+	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
+		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ frame_system::Config<AccountId = u64>,
+{
+	let loan_type = default_credit_line_params();
+	// interest rate is 5%
+	let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
 	(rp, loan_type)
 }
 
@@ -215,14 +259,14 @@ where
 }
 
 #[test]
-fn issue_loan() {
+fn test_issue_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let borrower: u64 = Borrower::get();
 
 			// successful issue
-			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			// wrong owner
 			let owner2 = 2;
@@ -242,14 +286,14 @@ fn issue_loan() {
 }
 
 #[test]
-fn price_loan() {
+fn test_price_bullet_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let borrower: u64 = Borrower::get();
 
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			let loan_id = loan.1;
 
@@ -270,8 +314,7 @@ fn price_loan() {
 			));
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100);
-			let res =
-				Loan::activate_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
+			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
 			// rate_per_sec is invalid
@@ -290,46 +333,86 @@ fn price_loan() {
 				math::seconds_per_year() * 2,
 			));
 			let rp = Zero::zero();
-			let res =
-				Loan::activate_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
+			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
 			// successful activation
-			let (rate, loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// cannot activate an already activated loan
-			let res =
-				Loan::activate_loan(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
+			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
 		})
 }
 
 #[test]
-fn close_loan() {
+fn test_price_credit_line_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			let borrower = Borrower::get();
+			let borrower: u64 = Borrower::get();
+
 			// successful issue
-			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+
+			let loan_id = loan.1;
+
+			// rate_per_sec is invalid
+			let loan_type = LoanType::CreditLine(CreditLine::new(
+				// advance rate 80%
+				Rate::saturating_from_rational(80, 100),
+				// collateral value
+				Amount::from_inner(125 * USD),
+			));
+			let rp = Zero::zero();
+			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
 			// successful activation
-			price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan.1);
+			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
-			// successful close of loan
-			close_test_loan::<MockRuntime>(borrower, pool_id, loan, asset);
+			// cannot activate an already activated loan
+			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
 		})
 }
 
+macro_rules! test_close_loan {
+	($price_loan:ident) => {
+		TestExternalitiesBuilder::default()
+			.build()
+			.execute_with(|| {
+				let borrower = Borrower::get();
+				// successful issue
+				let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
+
+				// successful activation
+				$price_loan::<MockRuntime>(borrower, pool_id, loan.1);
+
+				// successful close of loan
+				close_test_loan::<MockRuntime>(borrower, pool_id, loan, asset);
+			})
+	};
+}
+
 #[test]
-fn borrow_loan() {
+fn test_close_bullet_loan() {
+	test_close_loan!(price_bullet_loan)
+}
+
+#[test]
+fn test_close_credit_line_loan() {
+	test_close_loan!(price_credit_line_loan)
+}
+
+#[test]
+fn test_borrow_bullet_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let borrower = Borrower::get();
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 			let pool_account = PoolLocator { pool_id }.into_account();
 			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
@@ -339,8 +422,7 @@ fn borrow_loan() {
 
 			// successful activation
 			let loan_id = loan.1;
-			let (rate, loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50 first
 			Timestamp::set_timestamp(1);
@@ -429,13 +511,13 @@ fn borrow_loan() {
 }
 
 #[test]
-fn repay_loan() {
+fn test_repay_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let borrower: u64 = Borrower::get();
 			// successful issue
-			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
 			let pool_account = PoolLocator { pool_id }.into_account();
 			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
@@ -445,8 +527,7 @@ fn repay_loan() {
 			let loan_id = loan.1;
 
 			// successful activation
-			let (rate, _loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (rate, _loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// try repay without any borrowed
 			let repay_amount = Amount::from_inner(20 * USD);
@@ -627,7 +708,7 @@ fn test_pool_nav() {
 		.execute_with(|| {
 			let borrower: u64 = Borrower::get();
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 			let pool_account = PoolLocator { pool_id }.into_account();
 			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
@@ -637,8 +718,7 @@ fn test_pool_nav() {
 			let loan_id = loan.1;
 
 			// successful activation
-			let (_rate, _loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (_rate, _loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// present value should still be zero
 			let loan_data =
@@ -653,7 +733,7 @@ fn test_pool_nav() {
 			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 
-			// present value should still be around 48.96
+			// check present value
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			println!("{:?}", loan_data);
@@ -762,7 +842,140 @@ fn test_pool_nav() {
 }
 
 #[test]
-fn add_write_off_groups() {
+fn test_credit_line_nav() {
+	TestExternalitiesBuilder::default()
+		.build()
+		.execute_with(|| {
+			let borrower: u64 = Borrower::get();
+			// successful issue
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+			assert_eq!(pool_balance, 1000 * USD);
+
+			let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+			assert_eq!(owner_balance, Zero::zero());
+			let loan_id = loan.1;
+
+			// successful activation
+			let (_rate, _loan_type) =
+				price_credit_line_loan::<MockRuntime>(borrower, pool_id, loan_id);
+
+			// present value should still be zero
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let pv = loan_data
+				.present_value(&vec![])
+				.expect("present value should not return none");
+			assert_eq!(pv, Zero::zero());
+
+			// borrow 50 amount at the instant
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			// pass some time. maybe 200 days
+			let after_200_days = 3600 * 24 * 200;
+			Timestamp::set_timestamp(after_200_days);
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let (nav, ..) = res.unwrap();
+
+			// present value should be 51.388
+			assert_eq!(
+				nav,
+				Amount::saturating_from_rational(51388800811704851007u128, Amount::accuracy())
+			);
+
+			// can borrow upto ceiling
+			// ceiling = 125 * 0.8 - 51.388800811704851007
+			let borrow_amount = Amount::from_inner(100 * USD).checked_sub(&nav).unwrap();
+			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let (nav, ..) = res.unwrap();
+
+			// present value should be 100 since that would be the ceiling
+			assert_eq!(nav, Amount::from_inner(99999999999999999999u128));
+
+			// cannot borrow more than ceiling, 1
+			let borrow_amount = Amount::from_inner(1 * USD);
+			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+
+			// call update nav extrinsic and check for event
+			let res = Loan::update_nav(Origin::signed(borrower), pool_id);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (got_pool_id, updated_nav) = match loan_event {
+				LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				_ => None,
+			}
+			.expect("must be a Nav updated event");
+			assert_eq!(pool_id, got_pool_id);
+			assert_eq!(updated_nav, Amount::from_inner(99999999999999999999u128));
+
+			let risk_admin = RiskAdmin::get();
+			assert_ok!(
+				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+					RawOrigin::Signed(PoolAdmin::get()).into(),
+					pool_id,
+					PoolRole::RiskAdmin,
+					vec![
+						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
+							risk_admin
+						)
+					]
+				)
+			);
+			// write off the loan and check for updated nav
+			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				let group = WriteOffGroup {
+					percentage: Rate::saturating_from_rational(group.1, 100),
+					overdue_days: group.0,
+				};
+				let res =
+					Loan::add_write_off_group_to_pool(Origin::signed(risk_admin), pool_id, group);
+				assert_ok!(res);
+			}
+
+			// cannot write off a credit line since no maturity is present
+			let res = Loan::write_off_loan(Origin::signed(100), pool_id, loan_id);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanTypeInvalid);
+
+			// admin can write off loan
+			let res = Loan::admin_write_off_loan(Origin::signed(risk_admin), pool_id, loan_id, 0);
+			assert_ok!(res);
+			let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
+			let (_pool_id, _loan_id, write_off_index) = match loan_event {
+				LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+					Some((pool_id, loan_id, write_off_index))
+				}
+				_ => None,
+			}
+			.expect("must be a Loan issue event");
+			assert_eq!(write_off_index, 0);
+
+			// updated nav should be (1-20%) outstanding debt
+			let loan_data =
+				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
+			let (_, debt) = loan_data.accrue(after_200_days).unwrap();
+			let res = Loan::update_nav_of_pool(pool_id);
+			assert_ok!(res);
+			let (nav, ..) = res.unwrap();
+			let expected_nav =
+				math::convert::<Rate, Amount>(Rate::saturating_from_rational(10, 100))
+					.and_then(|rate| debt.checked_mul(&rate))
+					.and_then(|written_off_amount| debt.checked_sub(&written_off_amount))
+					.unwrap();
+			assert_eq!(nav, expected_nav);
+		})
+}
+
+#[test]
+fn test_add_write_off_groups() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -828,14 +1041,14 @@ fn add_write_off_groups() {
 }
 
 #[test]
-fn write_off_loan() {
+fn test_write_off_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let pool_admin = PoolAdmin::get();
 			let borrower: u64 = Borrower::get();
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 			let pool_account = PoolLocator { pool_id }.into_account();
 			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
@@ -845,8 +1058,7 @@ fn write_off_loan() {
 			let loan_id = loan.1;
 
 			// successful activation
-			let (_rate, _loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (_rate, _loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50
 			Timestamp::set_timestamp(1);
@@ -925,14 +1137,14 @@ fn write_off_loan() {
 }
 
 #[test]
-fn admin_write_off_loan() {
+fn test_admin_write_off_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let pool_admin = PoolAdmin::get();
 			let borrower: u64 = Borrower::get();
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 			let pool_account = PoolLocator { pool_id }.into_account();
 			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
@@ -943,8 +1155,7 @@ fn admin_write_off_loan() {
 			let loan_id = loan.1;
 
 			// successful activation
-			let (_rate, _loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (_rate, _loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50
 			Timestamp::set_timestamp(1);
@@ -1030,14 +1241,14 @@ fn admin_write_off_loan() {
 }
 
 #[test]
-fn close_written_off_loan() {
+fn test_close_written_off_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
 			let pool_admin = PoolAdmin::get();
 			let borrower: u64 = Borrower::get();
 			// successful issue
-			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(borrower);
+			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
 			let pool_account = PoolLocator { pool_id }.into_account();
 			let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 			assert_eq!(pool_balance, 1000 * USD);
@@ -1048,8 +1259,7 @@ fn close_written_off_loan() {
 			let loan_id = loan.1;
 
 			// successful activation
-			let (_rate, _loan_type) =
-				price_loan_with_defaults::<MockRuntime>(borrower, pool_id, loan_id);
+			let (_rate, _loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50
 			Timestamp::set_timestamp(1);

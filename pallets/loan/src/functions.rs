@@ -95,7 +95,7 @@ impl<T: Config> Pallet<T> {
 		Ok(loan_id)
 	}
 
-	pub(crate) fn activate(
+	pub(crate) fn price(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		rate_per_sec: T::Rate,
@@ -236,7 +236,9 @@ impl<T: Config> Pallet<T> {
 				ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
 				// check for ceiling threshold
-				let ceiling = loan_info.ceiling().ok_or(Error::<T>::ErrLoanValueInvalid)?;
+				let ceiling = loan_info
+					.ceiling(now)
+					.ok_or(Error::<T>::ErrLoanValueInvalid)?;
 				ensure!(amount <= ceiling, Error::<T>::ErrLoanCeilingReached);
 
 				// get previous present value so that we can update the nav accordingly

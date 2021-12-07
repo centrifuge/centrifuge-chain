@@ -186,7 +186,7 @@ pub mod pallet {
 		LoanClosed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when the loan is activated
-		LoanActivated(PoolIdOf<T>, T::LoanId),
+		LoanPriceSet(PoolIdOf<T>, T::LoanId),
 
 		/// emits when some amount is borrowed
 		LoanAmountBorrowed(PoolIdOf<T>, T::LoanId, T::Amount),
@@ -418,13 +418,12 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Activates the loan with loan specific details like Rate, Loan type
+		/// Set pricing for the loan with loan specific details like Rate, Loan type
 		///
 		/// LoanStatus must be in Issued state.
-		/// AdminOrigin can activate the loan with Rate and Loan type.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
-		#[pallet::weight(<T as Config>::WeightInfo::activate_loan())]
-		pub fn activate_loan(
+		#[pallet::weight(<T as Config>::WeightInfo::price_loan())]
+		pub fn price_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -433,8 +432,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
-			Self::activate(pool_id, loan_id, rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::LoanActivated(pool_id, loan_id));
+			Self::price(pool_id, loan_id, rate_per_sec, loan_type)?;
+			Self::deposit_event(Event::<T>::LoanPriceSet(pool_id, loan_id));
 			Ok(())
 		}
 

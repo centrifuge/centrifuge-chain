@@ -368,63 +368,63 @@ mod tests {
 			Amount::saturating_from_rational(101867103798764401467u128, Amount::accuracy())
 		)
 	}
-}
 
-#[test]
-fn valid_write_off_groups() {
-	let groups = vec![
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 3,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 5,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 6,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 14,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 9,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 7,
-		},
-	];
+	#[test]
+	fn test_valid_write_off_groups() {
+		let groups = vec![
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 3,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 5,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 6,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 14,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 9,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 7,
+			},
+		];
 
-	let sec_per_day = seconds_per_day();
+		let sec_per_day = seconds_per_day();
 
-	// maturity date in days and current time offset to maturity date  and resultant index from the group
-	let tests: Vec<(u64, u64, Option<u32>)> = vec![
-		// day 0, and now is at zero, index is None
-		(0, 0, None),
-		(0, 1, None),
-		// now is 3 and less than 5 days, the index is valid
-		(0, 3, Some(0)),
-		(0, 4, Some(0)),
-		// now is 5 and less than 6 days, the index is valid
-		(0, 5, Some(1)),
-		// now is 6 and less than 7 days, the index is valid
-		(0, 6, Some(2)),
-		// now is 7 and 8 and less than 9 days, the index is valid
-		(0, 7, Some(5)),
-		(0, 8, Some(5)),
-		// 9 <= now < 14, the index is valid
-		(0, 9, Some(4)),
-		// 14 <= now , the index is valid
-		(0, 15, Some(3)),
-	];
-	tests.into_iter().for_each(|(maturity, now, index)| {
-		let md = maturity * sec_per_day;
-		let now = md + now * sec_per_day;
-		let got_index = valid_write_off_group(md, now, &groups);
-		assert_eq!(index, got_index);
-	})
+		// maturity date in days and current time offset to maturity date  and resultant index from the group
+		let tests: Vec<(u64, u64, Option<u32>)> = vec![
+			// day 0, and now is at zero, index is None
+			(0, 0, None),
+			(0, 1, None),
+			// now is 3 and less than 5 days, the index is valid
+			(0, 3, Some(0)),
+			(0, 4, Some(0)),
+			// now is 5 and less than 6 days, the index is valid
+			(0, 5, Some(1)),
+			// now is 6 and less than 7 days, the index is valid
+			(0, 6, Some(2)),
+			// now is 7 and 8 and less than 9 days, the index is valid
+			(0, 7, Some(5)),
+			(0, 8, Some(5)),
+			// 9 <= now < 14, the index is valid
+			(0, 9, Some(4)),
+			// 14 <= now , the index is valid
+			(0, 15, Some(3)),
+		];
+		tests.into_iter().for_each(|(maturity, now, index)| {
+			let md = maturity * sec_per_day;
+			let now = md + now * sec_per_day;
+			let got_index = valid_write_off_group(md, now, &groups);
+			assert_eq!(index, got_index);
+		})
+	}
 }

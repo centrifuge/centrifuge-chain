@@ -135,6 +135,7 @@ where
 				LoanType::BulletLoan(bl) => {
 					bl.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
 				}
+				LoanType::CreditLine(cl) => cl.present_value(debt),
 			})
 	}
 
@@ -162,9 +163,14 @@ where
 	}
 
 	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self) -> Option<Amount> {
+	pub(crate) fn ceiling(&self, now: u64) -> Option<Amount> {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.ceiling(self.borrowed_amount),
+			LoanType::CreditLine(cl) => {
+				// we need to accrue and calculate the latest debt
+				// calculate accumulated rate and outstanding debt
+				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
+			}
 		}
 	}
 }
