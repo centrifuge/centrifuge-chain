@@ -31,7 +31,6 @@ cumulus-pallet-dmp-queue = {git = "https://github.com/NunoAlexandre/cumulus", de
 cumulus-pallet-aura-ext = {git = "https://github.com/NunoAlexandre/cumulus", default-features = false, branch = "polkadot-v0.9.13" }
 cumulus-primitives-timestamp = {git = "https://github.com/NunoAlexandre/cumulus", default-features = false, branch = "polkadot-v0.9.13" }
 
-
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13" }
@@ -93,9 +92,9 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.13" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
+pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
 
 runtime-common = { path = "../common", default-features = false }
-
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
@@ -176,7 +175,8 @@ std = [
     "runtime-common/std",
     "pallet-migration-manager/std",
     "pallet-crowdloan-claim/std",
-    "pallet-crowdloan-reward/std"
+    "pallet-crowdloan-reward/std",
+    "pallet-treasury/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
@@ -189,8 +189,8 @@ runtime-benchmarks = [
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
+    "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
-    "pallet-crowdloan-reward/runtime-benchmarks"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

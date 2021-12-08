@@ -16,7 +16,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureOneOf, EnsureRoot,
 };
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
@@ -38,7 +38,7 @@ use sp_runtime::transaction_validity::{
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
-	Perquintill,
+	Permill, Perquintill,
 };
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -580,6 +580,96 @@ impl pallet_vesting::Config for Runtime {
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
 
+parameter_types! {
+	// per byte deposit is 0.01 CFG
+	pub const DepositPerByte: Balance = CENTI_CFG;
+	// Base deposit to add attribute is 0.1 CFG
+	pub const AttributeDepositBase: Balance = 10 * CENTI_CFG;
+	// Base deposit to add metadata is 0.1 CFG
+	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
+	// Deposit to create a class is 1 CFG
+	pub const ClassDeposit: Balance = CFG;
+	// Deposit to create a class is 0.1 CFG
+	pub const InstanceDeposit: Balance = 10 * CENTI_CFG;
+	// Maximum limit of bytes for Metadata, Attribute key and Value
+	pub const Limit: u32 = 256;
+}
+
+impl pallet_uniques::Config for Runtime {
+	type Event = Event;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type Currency = Balances;
+	// a straight majority of council can act as force origin
+	type ForceOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ClassDeposit = ClassDeposit;
+	type InstanceDeposit = InstanceDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = Limit;
+	type KeyLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+}
+
+type ApproveOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+>;
+
+type RejectOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+>;
+
+parameter_types! {
+	// 5% of the proposal value need to be bonded. This will be returned
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+
+	// Minimum amount to bond per proposal. This will be the least that gets bonded per proposal
+	// if the above yields to lower value
+	pub const ProposalBondMinimum: Balance = 100 * CFG;
+
+	// periods between treasury spends
+	pub const SpendPeriod: BlockNumber = 30 * DAYS;
+
+	// percentage of treasury we burn per Spend period if there is a surplus
+	// If the treasury is able to spend on all the approved proposals and didn't miss any
+	// then we burn % amount of remaining balance
+	// If the treasury couldn't spend on all the approved proposals, then we dont burn any
+	pub const Burn: Permill = Permill::from_percent(1);
+
+	// treasury pallet account id
+	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+
+	// Maximum number of approvals that can be in the spending queue
+	pub const MaxApprovals: u32 = 100;
+}
+
+impl pallet_treasury::Config for Runtime {
+	type Currency = Balances;
+	// either democracy or 75% of council votes
+	type ApproveOrigin = ApproveOrigin;
+	// either democracy or more than 50% council votes
+	type RejectOrigin = RejectOrigin;
+	type Event = Event;
+	// slashed amount goes to treasury account
+	type OnSlash = Treasury;
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type PalletId = TreasuryPalletId;
+	// we burn and dont handle the unbalance
+	type BurnDestination = ();
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
+	type SpendFunds = ();
+	type MaxApprovals = MaxApprovals;
+}
+
 // our pallets
 impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
@@ -650,7 +740,7 @@ parameter_types! {
 	pub const MaxProofLength: u32 = 30;
 }
 
-// Implement crowdloan claim pallet configuration trait for the mock runtime
+// Implement crowdloan claim pallet configuration trait for the runtime
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
@@ -705,6 +795,8 @@ construct_runtime!(
 		Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 66,
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
+		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 69,
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,

@@ -99,6 +99,12 @@ pub mod types {
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RegistryId(pub H160);
 
+	/// A representation of ClassId for Uniques
+	pub type ClassId = u64;
+
+	/// A representation of InstanceId for Uniques
+	pub type InstanceId = u128;
+
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
 	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]

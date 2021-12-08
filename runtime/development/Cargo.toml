@@ -31,7 +31,6 @@ cumulus-pallet-dmp-queue = {git = "https://github.com/NunoAlexandre/cumulus", de
 cumulus-pallet-aura-ext = {git = "https://github.com/NunoAlexandre/cumulus", default-features = false, branch = "polkadot-v0.9.13" }
 cumulus-primitives-timestamp = {git = "https://github.com/NunoAlexandre/cumulus", default-features = false, branch = "polkadot-v0.9.13" }
 
-
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.13" }
@@ -93,6 +92,8 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.13" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
+pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.13" }
 
 runtime-common = { path = "../common", default-features = false }
 
@@ -177,6 +178,8 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
+    "pallet-uniques/std",
+    "pallet-treasury/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
