@@ -48,9 +48,9 @@ start-parachain)
 onboard-parachain)
   yarn global add @polkadot/api-cli@0.32.1
   genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
-  wasm=$(./target/release/centrifuge-chain export-genesis-wasm --chain="${parachain}")
+  wasm_path="./target/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.wasm"
   echo "Genesis state:" $genesis
-  echo "WASM:" "./target/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.wasm"
+  echo "WASM:" $wasm_path
 
   polkadot-js-api \
           --ws ws://0.0.0.0:9944 \
@@ -58,7 +58,7 @@ onboard-parachain)
           --sudo \
           tx.parasSudoWrapper.sudoScheduleParaInitialize \
           2000 \
-          "{ \"genesisHead\":\"${genesis?}\", \"validationCode\": \"${wasm}\", \"parachain\": true }"
+          "{ \"genesisHead\":\"${genesis?}\", \"validationCode\": \"${wasm_path}\", \"parachain\": true }"
   ;;
 
 benchmark)
