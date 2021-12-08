@@ -347,7 +347,8 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
+	/// Deprecated ProxyType, that we are keeping due to the migration
+	_Staking,
 	NonProxy,
 }
 impl Default for ProxyType {
