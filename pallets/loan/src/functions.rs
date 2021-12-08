@@ -236,9 +236,7 @@ impl<T: Config> Pallet<T> {
 				ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
 				// check for ceiling threshold
-				let ceiling = loan_info
-					.ceiling(now)
-					.ok_or(Error::<T>::ErrLoanValueInvalid)?;
+				let ceiling = loan_info.ceiling(now);
 				ensure!(amount <= ceiling, Error::<T>::ErrLoanCeilingReached);
 
 				// get previous present value so that we can update the nav accordingly

@@ -185,7 +185,7 @@ fn price_test_loan<T>(
 	assert_eq!(loan_data.status, LoanStatus::Active);
 	assert_eq!(loan_data.rate_per_sec, rp);
 	assert_eq!(loan_data.loan_type, loan_type);
-	assert_eq!(loan_data.ceiling(0).unwrap(), Amount::from_inner(100 * USD));
+	assert_eq!(loan_data.ceiling(0), Amount::from_inner(100 * USD));
 	assert_eq!(loan_data.write_off_index, None);
 	assert!(!loan_data.admin_written_off);
 }
@@ -905,6 +905,25 @@ fn test_credit_line_nav() {
 			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
 
+			// payback 50 and borrow more later
+			let repay_amount = Amount::from_inner(50 * USD);
+			let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
+			assert_ok!(res);
+
+			// pass some time. maybe 500 days
+			let after_500_days = 3600 * 24 * 500;
+			Timestamp::set_timestamp(after_500_days);
+
+			// you cannot borrow more than 50 since the debt is more than 50 by now
+			let borrow_amount = Amount::from_inner(50 * USD);
+			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+			assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+
+			// borrow 40 maybe
+			let borrow_amount = Amount::from_inner(40 * USD);
+			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+			assert_ok!(res);
+
 			// call update nav extrinsic and check for event
 			let res = Loan::update_nav(Origin::signed(borrower), pool_id);
 			assert_ok!(res);
@@ -915,7 +934,7 @@ fn test_credit_line_nav() {
 			}
 			.expect("must be a Nav updated event");
 			assert_eq!(pool_id, got_pool_id);
-			assert_eq!(updated_nav, Amount::from_inner(99999999999999999999u128));
+			assert_eq!(updated_nav, Amount::from_inner(92097600696407321224u128));
 
 			let risk_admin = RiskAdmin::get();
 			assert_ok!(
@@ -961,7 +980,7 @@ fn test_credit_line_nav() {
 			// updated nav should be (1-20%) outstanding debt
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
-			let (_, debt) = loan_data.accrue(after_200_days).unwrap();
+			let (_, debt) = loan_data.accrue(after_500_days).unwrap();
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
 			let (nav, ..) = res.unwrap();

@@ -14,6 +14,7 @@
 //! Module provides base types and their functions
 use super::*;
 use common_traits::PoolInspect;
+use sp_arithmetic::traits::Zero;
 
 /// Asset that represents a non fungible
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug)]
@@ -163,7 +164,7 @@ where
 	}
 
 	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self, now: u64) -> Option<Amount> {
+	pub(crate) fn ceiling(&self, now: u64) -> Amount {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.ceiling(self.borrowed_amount),
 			LoanType::CreditLine(cl) => {
@@ -172,6 +173,8 @@ where
 				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
 			}
 		}
+		// always fallback to zero ceiling
+		.unwrap_or(Zero::zero())
 	}
 }
 
