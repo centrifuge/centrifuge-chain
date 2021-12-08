@@ -107,6 +107,10 @@ pub struct Cli {
 	/// Relaychain arguments
 	#[structopt(raw = true)]
 	pub relaychain_args: Vec<String>,
+
+	/// Id of the parachain the `run` execution may need.
+	#[structopt(long)]
+	pub parachain_id: Option<u32>,
 }
 
 #[derive(Debug)]
