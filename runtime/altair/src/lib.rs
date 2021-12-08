@@ -545,8 +545,8 @@ impl pallet_democracy::Config for Runtime {
 	/// (NTB) vote.
 	type ExternalDefaultOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
-	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
-	/// be tabled immediately and with a shorter voting/enactment period.
+	/// Half of the council can have an ExternalMajority/ExternalDefault vote
+	/// be tabled immedsiately and with a shorter voting/enactment period.
 	type FastTrackOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	type InstantOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
