@@ -3,6 +3,7 @@
 
 mod api;
 mod chain_spec;
+mod rpc;
 #[macro_use]
 mod service;
 mod cli;
