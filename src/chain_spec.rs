@@ -345,7 +345,6 @@ fn altair_genesis(
 			code: altair_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
@@ -419,7 +418,6 @@ fn development_genesis(
 			code: development_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
 		elections: development_runtime::ElectionsConfig { members: vec![] },
