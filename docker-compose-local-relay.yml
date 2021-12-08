@@ -2,7 +2,7 @@ version: '3'
 services:
   node_alice:
     container_name: alice
-    image: "parity/polkadot:v0.9.12"
+    image: "parity/polkadot:v0.9.13"
     ports:
       - "30333:30333"
       - "9933:9933"
@@ -13,24 +13,14 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      --chain=/chainspec.json
-      --wasm-execution=compiled
-      --execution=wasm
-      --no-beefy
-      --base-path=/data
-      --port 30333
-      --rpc-port 9933
-      --ws-port 9944
-      --rpc-external
-      --rpc-cors all
-      --ws-external
-      --rpc-methods=Unsafe
-      --alice
+      --chain=/chainspec.json --wasm-execution=compiled --execution=wasm
+      --no-beefy --base-path=/data --port 30333 --rpc-port 9933 --ws-port 9944
+      --rpc-external --rpc-cors all --ws-external --rpc-methods=Unsafe --alice
       --log="main,debug"
 
   node_bob:
     container_name: bob
-    image: "parity/polkadot:v0.9.12"
+    image: "parity/polkadot:v0.9.13"
     ports:
       - "30344:30333"
       - "9935:9933"
@@ -41,17 +31,7 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      --chain=/chainspec.json
-      --base-path=/data
-      --wasm-execution=compiled
-      --execution=wasm
-      --no-beefy
-      --port 30333
-      --rpc-port 9933
-      --ws-port 9944
-      --rpc-external
-      --ws-external
-      --rpc-cors all
-      --rpc-methods=Unsafe
-      --bob
+      --chain=/chainspec.json --base-path=/data --wasm-execution=compiled
+      --execution=wasm --no-beefy --port 30333 --rpc-port 9933 --ws-port 9944
+      --rpc-external --ws-external --rpc-cors all --rpc-methods=Unsafe --bob
       --log="main,info"
