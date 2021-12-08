@@ -227,6 +227,39 @@ pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNum
 		.and_then(|d| ra_ecf.checked_div(&d))
 }
 
+pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	debt: Amount,
+	rate_per_sec: Rate,
+	discount_rate: Rate,
+	probability_of_default: Rate,
+	loss_given_default: Rate,
+	origination: u64,
+	maturity_date: u64,
+	now: u64,
+) -> Option<Amount> {
+	// check if maturity is in the past
+	if now > maturity_date {
+		return Some(debt);
+	}
+
+	// calculate term expected loss
+	term_expected_loss(
+		probability_of_default,
+		loss_given_default,
+		origination,
+		maturity_date,
+	)
+	.and_then(|tel| Rate::one().checked_sub(&tel).and_then(|diff| convert(diff)))
+	.and_then(|diff| {
+		// calculate expected cash flow from not till maturity
+		expected_cash_flow(debt, now, maturity_date, rate_per_sec)
+			// calculate risk adjusted cash flow
+			.and_then(|ecf| ecf.checked_mul(&diff))
+	})
+	// calculate discounted cash flow
+	.and_then(|ra_ecf| discounted_cash_flow(ra_ecf, discount_rate, maturity_date, now))
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;

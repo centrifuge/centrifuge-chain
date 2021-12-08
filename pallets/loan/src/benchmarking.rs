@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use super::*;
-use crate::loan_type::BulletLoan;
+use crate::loan_type::{BulletLoan, CreditLineWithMaturity};
 use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoanPallet};
@@ -225,7 +225,7 @@ fn activate_test_loan_with_defaults<T: Config>(
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Amount: From<Amount>,
 {
-	let loan_type = LoanType::BulletLoan(BulletLoan::new(
+	let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100).into(),
 		// probability of default is 4%
@@ -401,16 +401,17 @@ benchmarks! {
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
 		let after_one_year = now + math::seconds_per_year();
+		let amount = Amount::from_inner(40 * CURRENCY).into();
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanAmountBorrowed(pool_id, loan_id, amount).into());
 		// pool reserve should have 100 USD less = 900 USD
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (910 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 
 		// loan owner should have 100 USD
-		let loan_owner_balance: <T as ORMLConfig>::Balance = (100 * CURRENCY).into();
+		let loan_owner_balance: <T as ORMLConfig>::Balance = (90 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, loan_owner_balance);
 	}
 

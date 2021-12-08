@@ -13,7 +13,6 @@
 
 //! Module provides functionality for different loan types
 use super::*;
-use crate::math::convert;
 use sp_arithmetic::traits::Zero;
 
 /// different types of loans
@@ -23,6 +22,7 @@ use sp_arithmetic::traits::Zero;
 pub enum LoanType<Rate, Amount> {
 	BulletLoan(BulletLoan<Rate, Amount>),
 	CreditLine(CreditLine<Rate, Amount>),
+	CreditLineWithMaturity(CreditLineWithMaturity<Rate, Amount>),
 }
 
 impl<Rate, Amount> LoanType<Rate, Amount>
@@ -34,6 +34,7 @@ where
 		match self {
 			LoanType::BulletLoan(bl) => Some(bl.maturity_date),
 			LoanType::CreditLine(_) => None,
+			LoanType::CreditLineWithMaturity(clm) => Some(clm.maturity_date),
 		}
 	}
 
@@ -41,6 +42,7 @@ where
 		match self {
 			LoanType::BulletLoan(bl) => bl.is_valid(now),
 			LoanType::CreditLine(cl) => cl.is_valid(),
+			LoanType::CreditLineWithMaturity(clm) => clm.is_valid(now),
 		}
 	}
 }
@@ -109,29 +111,16 @@ where
 		now: u64,
 		rate_per_sec: Rate,
 	) -> Option<Amount> {
-		// check if maturity is in the past
-		if now > self.maturity_date {
-			return Some(debt);
-		}
-
-		// calculate term expected loss
-		math::term_expected_loss(
+		math::maturity_based_present_value(
+			debt,
+			rate_per_sec,
+			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,
 			origination,
 			self.maturity_date,
+			now,
 		)
-		.and_then(|tel| Rate::one().checked_sub(&tel).and_then(|diff| convert(diff)))
-		.and_then(|diff| {
-			// calculate expected cash flow from not till maturity
-			math::expected_cash_flow(debt, now, self.maturity_date, rate_per_sec)
-				// calculate risk adjusted cash flow
-				.and_then(|ecf| ecf.checked_mul(&diff))
-		})
-		// calculate discounted cash flow
-		.and_then(|ra_ecf| {
-			math::discounted_cash_flow(ra_ecf, self.discount_rate, self.maturity_date, now)
-		})
 	}
 
 	/// validates the bullet loan parameters
@@ -165,6 +154,7 @@ pub struct CreditLine<Rate, Amount> {
 
 impl<Rate, Amount> CreditLine<Rate, Amount> {
 	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	#[allow(dead_code)]
 	pub(crate) fn new(advance_rate: Rate, value: Amount) -> Self {
 		Self {
 			advance_rate,
@@ -182,6 +172,89 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 	/// validates credit line loan parameters
 	pub(crate) fn is_valid(&self) -> bool {
 		true
+	}
+
+	/// calculates ceiling for credit line loan,
+	/// ceiling = advance_rate * collateral_value - debt
+	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
+	pub(crate) fn ceiling(&self, debt: Amount) -> Option<Amount>
+	where
+		Rate: FixedPointNumber,
+		Amount: FixedPointNumber,
+	{
+		math::ceiling(self.advance_rate, self.value, debt)
+	}
+}
+
+/// The data structure for Credit line with maturity loan type
+#[derive(Encode, Decode, Copy, Clone, PartialEq)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct CreditLineWithMaturity<Rate, Amount> {
+	advance_rate: Rate,
+	probability_of_default: Rate,
+	loss_given_default: Rate,
+	value: Amount,
+	discount_rate: Rate,
+	maturity_date: u64,
+}
+
+impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	pub(crate) fn new(
+		advance_rate: Rate,
+		probability_of_default: Rate,
+		loss_given_default: Rate,
+		value: Amount,
+		discount_rate: Rate,
+		maturity_date: u64,
+	) -> Self {
+		Self {
+			advance_rate,
+			probability_of_default,
+			value,
+			discount_rate,
+			maturity_date,
+			loss_given_default,
+		}
+	}
+
+	/// calculates the present value of the credit line with maturity loan type
+	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value2
+	/// The debt = current outstanding debt * (1 - written off percentage)
+	pub(crate) fn present_value(
+		&self,
+		debt: Amount,
+		origination: u64,
+		now: u64,
+		rate_per_sec: Rate,
+	) -> Option<Amount>
+	where
+		Rate: FixedPointNumber,
+		Amount: FixedPointNumber,
+	{
+		math::maturity_based_present_value(
+			debt,
+			rate_per_sec,
+			self.discount_rate,
+			self.probability_of_default,
+			self.loss_given_default,
+			origination,
+			self.maturity_date,
+			now,
+		)
+	}
+
+	/// validates credit line loan parameters
+	pub(crate) fn is_valid(&self, now: u64) -> bool {
+		vec![
+			// discount should always be >= 1
+			self.discount_rate >= One::one(),
+			// maturity date should always be in future where now is at this instant
+			self.maturity_date > now,
+		]
+		.into_iter()
+		.all(|is_positive| is_positive)
 	}
 
 	/// calculates ceiling for credit line loan,

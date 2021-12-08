@@ -137,6 +137,9 @@ where
 					bl.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
 				}
 				LoanType::CreditLine(cl) => cl.present_value(debt),
+				LoanType::CreditLineWithMaturity(clm) => {
+					clm.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
+				}
 			})
 	}
 
@@ -171,6 +174,11 @@ where
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt
 				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
+			}
+			LoanType::CreditLineWithMaturity(clm) => {
+				// we need to accrue and calculate the latest debt
+				// calculate accumulated rate and outstanding debt
+				self.accrue(now).and_then(|(_, debt)| clm.ceiling(debt))
 			}
 		}
 		// always fallback to zero ceiling
