@@ -132,7 +132,8 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		load_spec(id, self.run.parachain_id.unwrap_or(10001).into())
+		// TODO(nuno): read parachain id from the CLI args
+		load_spec(id, 10001.into())
 	}
 
 	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -360,10 +361,13 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
+				// TODO(nuno): read parachain ID from the CLI args
 				let para_id = ParaId::from(100 as u32);
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&para_id);
+					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(
+						&para_id,
+					);
 
 				let block: Block =
 					generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
