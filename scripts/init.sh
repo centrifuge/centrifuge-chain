@@ -46,7 +46,7 @@ start-parachain)
   ;;
 
 onboard-parachain)
-  yarn global add @polkadot/api-cli@0.32.1
+  yarn global add @polkadot/api-cli@0.48.6
   genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
   wasm_path="./target/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.wasm"
   echo "Genesis state:" $genesis
