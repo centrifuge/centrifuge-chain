@@ -27,7 +27,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4, _5};
+use sp_core::u32_trait::{_1, _2, _3, _5};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
