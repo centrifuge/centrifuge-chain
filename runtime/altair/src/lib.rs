@@ -461,8 +461,8 @@ parameter_types! {
 	pub const VotingBond: Balance = 50 * CENTI_AIR;
 	pub const VotingBondBase: Balance = 50 * CENTI_AIR;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
-	pub const DesiredMembers: u32 = 7;
-	pub const DesiredRunnersUp: u32 = 7;
+	pub const DesiredMembers: u32 = 9;
+	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
@@ -539,7 +539,7 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type ExternalMajorityOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
@@ -547,7 +547,7 @@ impl pallet_democracy::Config for Runtime {
 
 	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type FastTrackOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	type InstantOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
@@ -556,7 +556,7 @@ impl pallet_democracy::Config for Runtime {
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type CancellationOrigin = EnsureProportionAtLeast<_2s, _3, AccountId, CouncilCollective>;
 
 	type BlacklistOrigin = EnsureRoot<AccountId>;
 
