@@ -13,7 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use super::*;
-use crate::loan_type::BulletLoan;
+use crate::loan_type::{BulletLoan, CreditLineWithMaturity};
 use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoanPallet};
@@ -30,6 +30,7 @@ use pallet_tinlake_investor_pool::PoolLocator;
 use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Rate, CFG as CURRENCY};
 use sp_runtime::traits::StaticLookup;
+use sp_std::vec;
 use test_utils::{assert_last_event, create_nft_class, create_pool, expect_asset_owner, mint_nft};
 
 pub struct Pallet<T: Config>(LoanPallet<T>);
@@ -224,11 +225,13 @@ fn activate_test_loan_with_defaults<T: Config>(
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Amount: From<Amount>,
 {
-	let loan_type = LoanType::BulletLoan(BulletLoan::new(
+	let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100).into(),
-		// expected loss over asset maturity 0.15%
-		Rate::saturating_from_rational(15, 10000).into(),
+		// probability of default is 4%
+		Rate::saturating_from_rational(4, 100).into(),
+		// loss given default is 50%
+		Rate::saturating_from_rational(50, 100).into(),
 		// collateral value
 		Amount::from_inner(125 * CURRENCY).into(),
 		// 4%
@@ -242,7 +245,7 @@ fn activate_test_loan_with_defaults<T: Config>(
 	let rp: T::Rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100))
 		.unwrap()
 		.into();
-	LoanPallet::<T>::activate_loan(
+	LoanPallet::<T>::price_loan(
 		RawOrigin::Signed(borrower).into(),
 		pool_id,
 		loan_id,
@@ -317,15 +320,17 @@ benchmarks! {
 		expect_asset_owner::<T>(loan_asset, loan_owner);
 	}
 
-	activate_loan {
+	price_loan {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_type = LoanType::BulletLoan(BulletLoan::new(
 			// advance rate 80%
 			Rate::saturating_from_rational(80, 100).into(),
-			// expected loss over asset maturity 0.15%
-			Rate::saturating_from_rational(15, 10000).into(),
+			// probability of default is 4%
+			Rate::saturating_from_rational(4, 100).into(),
+			// loss given default is 50%
+			Rate::saturating_from_rational(50, 100).into(),
 			// collateral value
 			Amount::from_inner(125 * CURRENCY).into(),
 			// 4%
@@ -338,7 +343,7 @@ benchmarks! {
 		let loan_id: T::LoanId = 1u128.into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanActivated(pool_id, loan_id).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanPriceSet(pool_id, loan_id).into());
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan_info.loan_type, loan_type);
 		assert_eq!(loan_info.status, LoanStatus::Active);
@@ -396,16 +401,17 @@ benchmarks! {
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
 		let after_one_year = now + math::seconds_per_year();
+		let amount = Amount::from_inner(40 * CURRENCY).into();
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanAmountBorrowed(pool_id, loan_id, amount).into());
 		// pool reserve should have 100 USD less = 900 USD
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (910 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 
 		// loan owner should have 100 USD
-		let loan_owner_balance: <T as ORMLConfig>::Balance = (100 * CURRENCY).into();
+		let loan_owner_balance: <T as ORMLConfig>::Balance = (90 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, loan_owner_balance);
 	}
 
@@ -440,7 +446,7 @@ benchmarks! {
 		// current debt should not be zero
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan_info.status, LoanStatus::Active);
-		assert!(loan_info.present_value().unwrap() > Zero::zero());
+		assert!(loan_info.present_value(&vec![]).unwrap() > Zero::zero());
 	}
 
 	write_off_loan {

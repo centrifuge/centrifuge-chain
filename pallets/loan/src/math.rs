@@ -83,8 +83,8 @@ pub(crate) fn seconds_per_year() -> u64 {
 
 /// calculates rate per second from the given nominal interest rate
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
-pub fn rate_per_sec<Rate: FixedPointNumber>(nominal_interest_rate: Rate) -> Option<Rate> {
-	nominal_interest_rate
+pub fn rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate> {
+	rate_per_annum
 		.checked_div(&Rate::saturating_from_integer(seconds_per_year() as u128))
 		.and_then(|res| res.checked_add(&Rate::one()))
 }
@@ -155,7 +155,7 @@ where
 pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: u64,
 	now: u64,
-	groups: Vec<WriteOffGroup<Rate>>,
+	groups: &Vec<WriteOffGroup<Rate>>,
 ) -> Option<u32> {
 	let mut index = None;
 	let mut highest_overdue_days = 0;
@@ -169,6 +169,95 @@ pub(crate) fn valid_write_off_group<Rate>(
 		}
 	});
 	index
+}
+
+/// calculates ceiling for a loan,
+/// ceiling = advance_rate * collateral_value - debt
+pub(crate) fn ceiling<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	advance_rate: Rate,
+	value: Amount,
+	debt: Amount,
+) -> Option<Amount> {
+	convert::<Rate, Amount>(advance_rate)
+		.and_then(|ar| value.checked_mul(&ar))
+		.and_then(|val| val.checked_sub(&debt))
+}
+
+/// calculates the expected loss over term
+/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
+/// we cap the term expected loss to 100%
+#[inline]
+pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
+	pd: Rate,
+	ldg: Rate,
+	origination: u64,
+	maturity: u64,
+) -> Option<Rate> {
+	Rate::saturating_from_rational(maturity - origination, seconds_per_year())
+		.checked_mul(&pd)
+		.and_then(|val| val.checked_mul(&ldg))
+		.and_then(|tel| Some(tel.min(One::one())))
+}
+
+/// calculates expected cash flow from current debt till maturity at the given rate per second
+#[inline]
+pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	debt: Amount,
+	now: u64,
+	maturity_date: u64,
+	interest_per_sec: Rate,
+) -> Option<Amount> {
+	checked_pow(interest_per_sec, (maturity_date - now) as usize)
+		.and_then(|acc_rate| convert(acc_rate))
+		.and_then(|acc_rate| debt.checked_mul(&acc_rate))
+}
+
+/// calculates discounted cash flow given the discount rate until maturity
+#[inline]
+pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	ra_ecf: Amount,
+	discount_rate: Rate,
+	maturity: u64,
+	now: u64,
+) -> Option<Amount> {
+	// calculate accumulated discount rate
+	checked_pow(discount_rate, (maturity - now) as usize)
+		.and_then(|rate| convert(rate))
+		// calculate the present value
+		.and_then(|d| ra_ecf.checked_div(&d))
+}
+
+pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+	debt: Amount,
+	rate_per_sec: Rate,
+	discount_rate: Rate,
+	probability_of_default: Rate,
+	loss_given_default: Rate,
+	origination: u64,
+	maturity_date: u64,
+	now: u64,
+) -> Option<Amount> {
+	// check if maturity is in the past
+	if now > maturity_date {
+		return Some(debt);
+	}
+
+	// calculate term expected loss
+	term_expected_loss(
+		probability_of_default,
+		loss_given_default,
+		origination,
+		maturity_date,
+	)
+	.and_then(|tel| Rate::one().checked_sub(&tel).and_then(|diff| convert(diff)))
+	.and_then(|diff| {
+		// calculate expected cash flow from not till maturity
+		expected_cash_flow(debt, now, maturity_date, rate_per_sec)
+			// calculate risk adjusted cash flow
+			.and_then(|ecf| ecf.checked_mul(&diff))
+	})
+	// calculate discounted cash flow
+	.and_then(|ra_ecf| discounted_cash_flow(ra_ecf, discount_rate, maturity_date, now))
 }
 
 #[cfg(test)]
@@ -312,63 +401,63 @@ mod tests {
 			Amount::saturating_from_rational(101867103798764401467u128, Amount::accuracy())
 		)
 	}
-}
 
-#[test]
-fn valid_write_off_groups() {
-	let groups = vec![
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 3,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 5,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 6,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 14,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 9,
-		},
-		WriteOffGroup {
-			percentage: (),
-			overdue_days: 7,
-		},
-	];
+	#[test]
+	fn test_valid_write_off_groups() {
+		let groups = vec![
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 3,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 5,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 6,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 14,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 9,
+			},
+			WriteOffGroup {
+				percentage: (),
+				overdue_days: 7,
+			},
+		];
 
-	let sec_per_day = seconds_per_day();
+		let sec_per_day = seconds_per_day();
 
-	// maturity date in days and current time offset to maturity date  and resultant index from the group
-	let tests: Vec<(u64, u64, Option<u32>)> = vec![
-		// day 0, and now is at zero, index is None
-		(0, 0, None),
-		(0, 1, None),
-		// now is 3 and less than 5 days, the index is valid
-		(0, 3, Some(0)),
-		(0, 4, Some(0)),
-		// now is 5 and less than 6 days, the index is valid
-		(0, 5, Some(1)),
-		// now is 6 and less than 7 days, the index is valid
-		(0, 6, Some(2)),
-		// now is 7 and 8 and less than 9 days, the index is valid
-		(0, 7, Some(5)),
-		(0, 8, Some(5)),
-		// 9 <= now < 14, the index is valid
-		(0, 9, Some(4)),
-		// 14 <= now , the index is valid
-		(0, 15, Some(3)),
-	];
-	tests.into_iter().for_each(|(maturity, now, index)| {
-		let md = maturity * sec_per_day;
-		let now = md + now * sec_per_day;
-		let got_index = valid_write_off_group(md, now, groups.clone());
-		assert_eq!(index, got_index);
-	})
+		// maturity date in days and current time offset to maturity date  and resultant index from the group
+		let tests: Vec<(u64, u64, Option<u32>)> = vec![
+			// day 0, and now is at zero, index is None
+			(0, 0, None),
+			(0, 1, None),
+			// now is 3 and less than 5 days, the index is valid
+			(0, 3, Some(0)),
+			(0, 4, Some(0)),
+			// now is 5 and less than 6 days, the index is valid
+			(0, 5, Some(1)),
+			// now is 6 and less than 7 days, the index is valid
+			(0, 6, Some(2)),
+			// now is 7 and 8 and less than 9 days, the index is valid
+			(0, 7, Some(5)),
+			(0, 8, Some(5)),
+			// 9 <= now < 14, the index is valid
+			(0, 9, Some(4)),
+			// 14 <= now , the index is valid
+			(0, 15, Some(3)),
+		];
+		tests.into_iter().for_each(|(maturity, now, index)| {
+			let md = maturity * sec_per_day;
+			let now = md + now * sec_per_day;
+			let got_index = valid_write_off_group(md, now, &groups);
+			assert_eq!(index, got_index);
+		})
+	}
 }

@@ -14,6 +14,7 @@
 //! Module provides base types and their functions
 use super::*;
 use common_traits::PoolInspect;
+use sp_arithmetic::traits::Zero;
 
 /// Asset that represents a non fungible
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug)]
@@ -78,7 +79,6 @@ pub enum LoanStatus {
 #[derive(Encode, Decode, Copy, Clone)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanData<Rate, Amount, Asset> {
-	pub(crate) ceiling: Amount,
 	pub(crate) borrowed_amount: Amount,
 	pub(crate) rate_per_sec: Rate,
 	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
@@ -89,6 +89,8 @@ pub struct LoanData<Rate, Amount, Asset> {
 	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with the accumulated interest rate
 	pub(crate) principal_debt: Amount,
 	pub(crate) last_updated: u64,
+	// time at which first borrow occurred
+	pub(crate) origination: u64,
 	pub(crate) asset: Asset,
 	pub(crate) status: LoanStatus,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
@@ -110,12 +112,34 @@ where
 	/// returns the present value of the loan
 	/// note: this will use the accumulated_rate and last_updated from self
 	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
-	pub(crate) fn present_value(&self) -> Option<Amount> {
+	pub(crate) fn present_value(
+		&self,
+		write_off_groups: &Vec<WriteOffGroup<Rate>>,
+	) -> Option<Amount> {
 		// calculate current debt and present value
-		math::debt(self.principal_debt, self.accumulated_rate).and_then(|debt| {
-			self.loan_type
-				.present_value(debt, self.last_updated, self.rate_per_sec)
-		})
+		math::debt(self.principal_debt, self.accumulated_rate)
+			.and_then(|debt| {
+				// if the debt is written off, write off accordingly
+				self.write_off_index.map_or(Some(debt), |index| {
+					write_off_groups
+						.get(index as usize)
+						// convert rate to amount
+						.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
+						// calculate write off amount
+						.and_then(|write_off_percentage| debt.checked_mul(&write_off_percentage))
+						// calculate debt after written off
+						.and_then(|write_off_amount| debt.checked_sub(&write_off_amount))
+				})
+			})
+			.and_then(|debt| match self.loan_type {
+				LoanType::BulletLoan(bl) => {
+					bl.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
+				}
+				LoanType::CreditLine(cl) => cl.present_value(debt),
+				LoanType::CreditLineWithMaturity(clm) => {
+					clm.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
+				}
+			})
 	}
 
 	/// accrues rate and current debt from last updated until now
@@ -141,26 +165,23 @@ where
 		}
 	}
 
-	/// returns the present value of the loan adjusted to the write off group assigned to the loan if any
-	// pv = pv*(1 - write_off_percentage)
-	pub(crate) fn present_value_with_write_off(
-		&self,
-		write_off_groups: &Vec<WriteOffGroup<Rate>>,
-	) -> Option<Amount> {
-		let maybe_present_value = self.present_value();
-		match self.write_off_index {
-			None => maybe_present_value,
-			Some(index) => maybe_present_value.and_then(|pv| {
-				write_off_groups
-					.get(index as usize)
-					// convert rate to amount
-					.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
-					// calculate write off amount
-					.and_then(|write_off_percentage| pv.checked_mul(&write_off_percentage))
-					// calculate adjusted present value
-					.and_then(|write_off_amount| pv.checked_sub(&write_off_amount))
-			}),
+	/// returns the ceiling amount for the loan based on the loan type
+	pub(crate) fn ceiling(&self, now: u64) -> Amount {
+		match self.loan_type {
+			LoanType::BulletLoan(bl) => bl.ceiling(self.borrowed_amount),
+			LoanType::CreditLine(cl) => {
+				// we need to accrue and calculate the latest debt
+				// calculate accumulated rate and outstanding debt
+				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
+			}
+			LoanType::CreditLineWithMaturity(clm) => {
+				// we need to accrue and calculate the latest debt
+				// calculate accumulated rate and outstanding debt
+				self.accrue(now).and_then(|(_, debt)| clm.ceiling(debt))
+			}
 		}
+		// always fallback to zero ceiling
+		.unwrap_or(Zero::zero())
 	}
 }
 
