@@ -120,17 +120,16 @@ where
 		math::debt(self.principal_debt, self.accumulated_rate)
 			.and_then(|debt| {
 				// if the debt is written off, write off accordingly
-				match self.write_off_index {
-					None => Some(debt),
-					Some(index) => write_off_groups
+				self.write_off_index.map_or(Some(debt), |index| {
+					write_off_groups
 						.get(index as usize)
 						// convert rate to amount
 						.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
 						// calculate write off amount
 						.and_then(|write_off_percentage| debt.checked_mul(&write_off_percentage))
 						// calculate debt after written off
-						.and_then(|write_off_amount| debt.checked_sub(&write_off_amount)),
-				}
+						.and_then(|write_off_amount| debt.checked_sub(&write_off_amount))
+				})
 			})
 			.and_then(|debt| match self.loan_type {
 				LoanType::BulletLoan(bl) => {
