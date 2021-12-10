@@ -6034,6 +6034,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-xcm-chain-adapter"
+version = "0.1.0"
+dependencies = [
+ "cumulus-primitives-core",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex",
+ "log 0.4.14",
+ "parity-scale-codec",
+ "rand 0.8.4",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "sp-version",
+ "xcm",
+]
+
+[[package]]
 name = "parachain-info"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.12#f5926c2f50df73bf36171b138241437131d76fff"

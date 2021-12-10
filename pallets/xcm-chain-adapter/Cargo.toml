@@ -1,0 +1,48 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = 'Adapter pallet to provide easy access to XCMs for local pallets.'
+edition = '2018'
+license = "LGPL-3.0"
+name = 'pallet-xcm-chain-adapter'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/fees"
+version = '0.1.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+## Common dependencies
+codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+log = { version = "0.4.14", default-features = false }
+
+## Frame dependecies
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.12" }
+
+## Substrate primitive dependencies
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
+sp-version = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+
+## Cumulus dependencies
+cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", default-features = false , branch = "polkadot-v0.9.12" }
+
+## Polkadot dependencies
+xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
+
+[dev-dependencies]
+hex = "0.4.3"
+rand = "0.8.4"
+
+[features]
+default = ['std']
+runtime-benchmarks = ["frame-benchmarking"]
+std = [
+    'codec/std',
+    'frame-support/std',
+    'frame-system/std',
+]
