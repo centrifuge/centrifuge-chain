@@ -107,7 +107,7 @@ where
 	pub(crate) fn present_value(
 		&self,
 		debt: Amount,
-		origination: u64,
+		origination_date: u64,
 		now: u64,
 		rate_per_sec: Rate,
 	) -> Option<Amount> {
@@ -117,7 +117,7 @@ where
 			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,
-			origination,
+			origination_date,
 			self.maturity_date,
 			now,
 		)

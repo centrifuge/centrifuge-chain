@@ -189,13 +189,13 @@ pub(crate) fn ceiling<Rate: FixedPointNumber, Amount: FixedPointNumber>(
 #[inline]
 pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 	pd: Rate,
-	ldg: Rate,
+	lgd: Rate,
 	origination: u64,
 	maturity: u64,
 ) -> Option<Rate> {
 	Rate::saturating_from_rational(maturity - origination, seconds_per_year())
 		.checked_mul(&pd)
-		.and_then(|val| val.checked_mul(&ldg))
+		.and_then(|val| val.checked_mul(&lgd))
 		.and_then(|tel| Some(tel.min(One::one())))
 }
 
@@ -233,7 +233,7 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 	discount_rate: Rate,
 	probability_of_default: Rate,
 	loss_given_default: Rate,
-	origination: u64,
+	origination_date: u64,
 	maturity_date: u64,
 	now: u64,
 ) -> Option<Amount> {
@@ -246,7 +246,7 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 	term_expected_loss(
 		probability_of_default,
 		loss_given_default,
-		origination,
+		origination_date,
 		maturity_date,
 	)
 	.and_then(|tel| Rate::one().checked_sub(&tel).and_then(|diff| convert(diff)))
