@@ -90,7 +90,7 @@ pub struct LoanData<Rate, Amount, Asset> {
 	pub(crate) principal_debt: Amount,
 	pub(crate) last_updated: u64,
 	// time at which first borrow occurred
-	pub(crate) origination: u64,
+	pub(crate) origination_date: u64,
 	pub(crate) asset: Asset,
 	pub(crate) status: LoanStatus,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
@@ -132,13 +132,19 @@ where
 				})
 			})
 			.and_then(|debt| match self.loan_type {
-				LoanType::BulletLoan(bl) => {
-					bl.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
-				}
+				LoanType::BulletLoan(bl) => bl.present_value(
+					debt,
+					self.origination_date,
+					self.last_updated,
+					self.rate_per_sec,
+				),
 				LoanType::CreditLine(cl) => cl.present_value(debt),
-				LoanType::CreditLineWithMaturity(clm) => {
-					clm.present_value(debt, self.origination, self.last_updated, self.rate_per_sec)
-				}
+				LoanType::CreditLineWithMaturity(clm) => clm.present_value(
+					debt,
+					self.origination_date,
+					self.last_updated,
+					self.rate_per_sec,
+				),
 			})
 	}
 

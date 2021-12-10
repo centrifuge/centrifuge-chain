@@ -89,7 +89,7 @@ impl<T: Config> Pallet<T> {
 				admin_written_off: false,
 				write_off_index: None,
 				asset,
-				origination: 0,
+				origination_date: 0,
 			},
 		);
 		Ok(loan_id)
@@ -267,7 +267,7 @@ impl<T: Config> Pallet<T> {
 				// update loan
 				let first_borrow = loan_info.borrowed_amount == Zero::zero();
 				if first_borrow {
-					loan_info.origination = now;
+					loan_info.origination_date = now;
 				}
 				loan_info.borrowed_amount = new_borrowed_amount;
 				loan_info.last_updated = now;
