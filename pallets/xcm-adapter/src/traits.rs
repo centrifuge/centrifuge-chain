@@ -27,7 +27,7 @@ use frame_support::dispatch::DispatchResult;
 /// ```
 /// use xcm::v0::{Xcm, MultiLocation};
 /// use frame_support::dispatch::DispatchResult;
-/// use pallet_xcm_chain_adapter::traits::XcmSink;
+/// use pallet_xcm_adapter::traits::XcmSink;
 ///
 /// struct Sink;
 ///
@@ -46,7 +46,7 @@ use frame_support::dispatch::DispatchResult;
 /// ```
 /// use xcm::{opaque::{VersionedXcm}, VersionedMultiLocation};
 /// use frame_support::dispatch::DispatchResult;
-/// use pallet_xcm_chain_adapter::traits::XcmSink;
+/// use pallet_xcm_adapter::traits::XcmSink;
 ///
 /// struct Sink;
 ///
@@ -63,7 +63,7 @@ pub trait XcmSink {
 	type Xcm;
 	type Receiver;
 
-	fn send(msg: Self::Xcm, recv: Self::Receiver) -> DispatchResult;
+	fn send(recv: Self::Receiver, msg: Self::Xcm) -> DispatchResult;
 }
 
 /// A handler that is able to receive responses from previously sent XCMs.
@@ -77,4 +77,24 @@ pub trait XcmResponseHandler {
 	fn handle_response(resp: Self::Response);
 
 	fn handle_error(err: Self::Error);
+}
+
+/// A router that decides wether something should go into the UMP-Queue or into the
+/// XCMP-queue.
+///
+/// Implementors if this trait might wanna decide to alter the incoming receiving type to
+/// a Multilocation of their will.
+pub trait XcmRouter {
+	type Xcm;
+	type Receiver;
+
+	fn route(recv: Self::Receiver, msg: Self::Xcm) -> Destination<Self::Receiver, Self::Xcm>;
+}
+
+/// An enum that defines which destination a XCM is routed to.
+pub enum Destination<Xcm, Recv> {
+	/// The XCM `Xcm` will be routed via an UMP channel to the receiver `Recv`
+	Parent(Recv, Xcm),
+	/// The XCM `Xcm` will be routed via an XCMP channel to the receiver `Recv`
+	Sibling(Recv, Xcm),
 }
