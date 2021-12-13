@@ -20,10 +20,11 @@ use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoanPallet};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_support::sp_runtime::traits::Zero;
-use frame_support::traits::tokens::fungibles::{Inspect, Unbalanced};
+use frame_support::traits::tokens::fungibles::Inspect;
 use frame_support::traits::{Currency, IsType};
 use frame_system::RawOrigin;
 use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
+use orml_traits::MultiCurrency;
 use pallet_balances::Pallet as BalancePallet;
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
 use pallet_tinlake_investor_pool::PoolLocator;
@@ -62,7 +63,7 @@ fn make_free_token_balance<T>(
 	T: Config + ORMLConfig,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 {
-	ORMLPallet::<T>::set_balance(currency_id.into(), account, balance)
+	<ORMLPallet<T> as MultiCurrency<T::AccountId>>::deposit(currency_id.into(), account, balance)
 		.expect("should not fail to set new token balance");
 }
 
