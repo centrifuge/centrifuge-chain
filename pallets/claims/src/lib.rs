@@ -227,8 +227,6 @@ pub mod pallet {
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	// Additional argument to specify the metadata to use for given type
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Event triggered after a reward claim is successfully processed
 		Claimed(T::AccountId, <T as pallet_balances::Config>::Balance),
@@ -437,7 +435,12 @@ pub mod pallet {
 		/// Here, we make sure such unsigned, and remember, feeless unsigned transactions
 		/// can be used for malicious spams or Deny of Service (DoS) attacks.
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::claim(account_id, amount, sorted_hashes) = call {
+			if let Call::claim {
+				account_id,
+				amount,
+				sorted_hashes,
+			} = call
+			{
 				// Check that proofs are valid with a root that exists in the root hash storage
 				if Self::verify_proofs(account_id, amount, sorted_hashes.into()) {
 					return ValidTransaction::with_tag_prefix("RadClaims")

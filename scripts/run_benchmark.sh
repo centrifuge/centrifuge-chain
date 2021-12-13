@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
 chain=$1
+# The pallet name is expected to be the `name` set in the
+# respective Cargo.toml, e.g. 'pallet-crowdloan-claim'.
 pallet=$2
 output=$3
+
 if [  -z "${output}" ]; then
-    output=$(echo "./${pallet}/src/weights.rs" | sed 's/_/\//')
-    output=$(echo "${output}" | sed 's/pallet\//pallets\//')
+    output=$(echo "./${pallet}/src/weights.rs" | sed 's/pallet-/\pallets\//')
 fi
 
 echo "Benchmarking ${pallet}..."

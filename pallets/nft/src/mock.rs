@@ -45,6 +45,7 @@ use sp_core::{blake2_128, H256};
 
 use sp_io::TestExternalities;
 
+use frame_support::traits::Everything;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, Hash, IdentityLookup},
@@ -118,7 +119,7 @@ parameter_types! {
 
 // Implement FRAME system pallet configuration trait for the mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;

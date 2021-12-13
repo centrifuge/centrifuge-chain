@@ -254,9 +254,9 @@ pub mod pallet {
 			for (who, schedule) in vestings {
 				let _not_care_here = pallet_vesting::Pallet::<T>::add_vesting_schedule(
 					&who,
-					schedule.locked,
-					schedule.per_block,
-					schedule.starting_block,
+					schedule.locked(),
+					schedule.per_block(),
+					schedule.starting_block(),
 				)
 				.map_err(|_| {
 					Self::deposit_event(Event::<T>::FailedToMigrateVestingFor(who.clone()));
@@ -265,9 +265,9 @@ pub mod pallet {
 				.map(|_| {
 					Self::deposit_event(Event::<T>::MigratedVestingFor(
 						who,
-						schedule.locked,
-						schedule.per_block,
-						schedule.starting_block,
+						schedule.locked(),
+						schedule.per_block(),
+						schedule.starting_block(),
 					))
 				});
 			}

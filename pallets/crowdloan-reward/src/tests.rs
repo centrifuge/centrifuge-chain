@@ -116,11 +116,14 @@ fn reward_participant() {
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
+			let total_issuance = Balances::total_issuance();
 			let mod_balance = Balances::free_balance(&mod_account);
 			let rew_balance = Balances::free_balance(&4);
 
 			assert!(CrowdloanReward::reward(4, 100).is_ok());
-			assert_eq!(Balances::free_balance(&mod_account), mod_balance - 100);
+			assert_eq!(Balances::free_balance(&mod_account), 0);
+			assert_eq!(mod_balance, 0);
+			assert_eq!(Balances::total_issuance(), total_issuance + 100);
 
 			assert_eq!(Vesting::vesting_balance(&4), Some(80));
 			assert_eq!(Balances::usable_balance(&4), rew_balance + 20);
@@ -147,11 +150,13 @@ fn zero_direct_payout_reward() {
 		})
 		.execute_with(|| {
 			let mod_account = CrowdloanReward::account_id();
+			let total_issuance = Balances::total_issuance();
 			let mod_balance = Balances::free_balance(&mod_account);
 			let rew_balance = Balances::free_balance(&4);
 
 			assert!(CrowdloanReward::reward(4, 100).is_ok());
-			assert_eq!(Balances::free_balance(&mod_account), mod_balance - 100);
+			assert_eq!(Balances::free_balance(&mod_account), mod_balance);
+			assert_eq!(Balances::total_issuance(), total_issuance + 100);
 
 			assert_eq!(Vesting::vesting_balance(&4), Some(100));
 			// Ensure that no direct payout happened
@@ -170,22 +175,6 @@ fn zero_direct_payout_reward() {
 }
 
 #[test]
-fn not_enough_funds_to_reward() {
-	TestExternalitiesBuilder::default()
-		.existential_deposit(1)
-		.build(|| {
-			System::set_block_number(1);
-			CrowdloanReward::initialize(Origin::signed(1), Perbill::from_percent(20), 4, 3).unwrap()
-		})
-		.execute_with(|| {
-			assert_noop!(
-				CrowdloanReward::reward(4, 20000),
-				CrowdloanRewardError::<MockRuntime>::NotEnoughFunds
-			);
-		});
-}
-
-#[test]
 fn account_already_vesting() {
 	TestExternalitiesBuilder::default()
 		.existential_deposit(1)
@@ -196,7 +185,7 @@ fn account_already_vesting() {
 		.execute_with(|| {
 			assert_noop!(
 				CrowdloanReward::reward(1, 30),
-				pallet_vesting::Error::<MockRuntime>::ExistingVestingSchedule
+				pallet_vesting::Error::<MockRuntime>::AtMaxVestingSchedules
 			);
 		});
 }

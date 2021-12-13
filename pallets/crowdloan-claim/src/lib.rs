@@ -128,6 +128,14 @@ mod benchmarking;
 // Extrinsics weight information (computed through runtime benchmarking)
 pub mod weights;
 
+/// Prefix that polkadot-js extension prepends our signed bytes into.
+/// See: https://github.com/polkadot-js/common/blob/v7.6.1/packages/util/src/u8a/wrap.ts
+const PRE_FIX: &[u8] = b"<Bytes>";
+
+/// Postfix that polkadot-js extension postpends our signed bytes into.
+/// See: https://github.com/polkadot-js/common/blob/v7.6.1/packages/util/src/u8a/wrap.ts
+const POST_FIX: &[u8] = b"</Bytes>";
+
 /// A type alias for crowdloan's child trie root hash, from this claim pallet's point of view.
 ///
 /// When setting up the pallet via the [`initialize`] transaction, the
@@ -281,8 +289,6 @@ pub mod pallet {
 	#[pallet::event]
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	// Additional argument to specify the metadata to use for given type
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
 		/// Event emitted when the crowdloan claim pallet is properly configured.
 		ClaimPalletInitialized,
@@ -412,7 +418,7 @@ pub mod pallet {
 		OngoingLease,
 
 		/// Claiming rewards is only possible during a lease
-		LeaseElapsed,
+		OutOfLeasePeriod,
 	}
 
 	// ------------------------------------------------------------------------
@@ -441,7 +447,10 @@ pub mod pallet {
 		/// The [`contributor_identity_proof`] is built using a signature of the contributor's
 		/// parachain account id with the claimer key.
 		/// See [`validate_unsigned`]
-		#[pallet::weight(<T as Config>::WeightInfo::claim_reward())]
+		#[pallet::weight(<T as Config>::WeightInfo::claim_reward_sr25519()
+			.max(<T as Config>::WeightInfo::claim_reward_ed25519())
+			.max(<T as Config>::WeightInfo::claim_reward_ecdsa())
+		)]
 		pub fn claim_reward(
 			origin: OriginFor<T>,
 			relaychain_account_id: T::RelayChainAccountId,
@@ -460,10 +469,11 @@ pub mod pallet {
 			// After this, the error will always be `LeaseElapsed`
 			ensure!(curr_index > 0, Error::<T>::PalletNotInitialized);
 
+			let n = <frame_system::Pallet<T>>::block_number();
+			let lease_start = Self::lease_start();
 			ensure!(
-				<frame_system::Pallet<T>>::block_number()
-					< Self::lease_start().saturating_add(Self::lease_period()),
-				Error::<T>::LeaseElapsed
+				lease_start <= n && n < lease_start.saturating_add(Self::lease_period()),
+				Error::<T>::OutOfLeasePeriod
 			);
 
 			// Be sure user has not already claimed her/his reward payout
@@ -476,7 +486,7 @@ pub mod pallet {
 			Self::verify_contributor_identity_proof(
 				relaychain_account_id.clone(),
 				parachain_account_id.clone(),
-				identity_proof,
+				identity_proof.clone(),
 			)?;
 
 			let mut leaf_data = relaychain_account_id.encode();
@@ -503,7 +513,17 @@ pub mod pallet {
 				contribution,
 			));
 
-			Ok(().into())
+			let weight = match identity_proof {
+				MultiSignature::Sr25519(..) => {
+					Some(<T as Config>::WeightInfo::claim_reward_sr25519())
+				}
+				MultiSignature::Ed25519(..) => {
+					Some(<T as Config>::WeightInfo::claim_reward_ed25519())
+				}
+				MultiSignature::Ecdsa(..) => Some(<T as Config>::WeightInfo::claim_reward_ecdsa()),
+			};
+
+			Ok(weight.into())
 		}
 
 		/// Initialize the claim pallet
@@ -688,21 +708,22 @@ pub mod pallet {
 		/// Here, we make sure such unsigned, and remember, feeless unsigned transactions
 		/// can be used for malicious spams or Deny of Service (DoS) attacks.
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::claim_reward(
+			if let Call::claim_reward {
 				relaychain_account_id,
 				parachain_account_id,
 				identity_proof,
 				contribution_proof,
 				contribution,
-			) = call
+			} = call
 			{
+				let n = <frame_system::Pallet<T>>::block_number();
+				let lease_start = Self::lease_start();
+
 				// By checking the validity of the claim here, we ensure the extrinsic will not
 				// make it into a block (in case of a trusted node, not even into the pool)
 				// unless being valid. This is a trade-off between protecting the network from spam
 				// and paying validators for the work they are doing.
-				if <frame_system::Pallet<T>>::block_number()
-					< Self::lease_start().saturating_add(Self::lease_period())
-				{
+				if lease_start <= n && n < lease_start.saturating_add(Self::lease_period()) {
 					if !ProcessedClaims::<T>::contains_key((
 						&relaychain_account_id,
 						Self::curr_index(),
@@ -803,8 +824,17 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		// Now check if the contributor's native identity on the relaychain is valid
 		let payload = parachain_account_id.encode();
+
+		// Due to how the polkadot-js extension handles signing of raw bytes, we must take this into
+		// account.
+		let mut payload_with_pre_post_fix = PRE_FIX.to_vec();
+		parachain_account_id.using_encoded(|id| payload_with_pre_post_fix.extend_from_slice(id));
+		payload_with_pre_post_fix.extend_from_slice(POST_FIX);
+
+		let signer: AccountId32 = relaychain_account_id.into();
 		ensure!(
-			signature.verify(payload.as_slice(), &relaychain_account_id.into()),
+			signature.verify(payload.as_slice(), &signer)
+				|| signature.verify(payload_with_pre_post_fix.as_slice(), &signer),
 			Error::<T>::InvalidContributorSignature
 		);
 

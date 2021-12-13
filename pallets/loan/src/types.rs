@@ -14,10 +14,11 @@
 //! Module provides base types and their functions
 use super::*;
 use common_traits::PoolInspect;
+use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
 
 /// Asset that represents a non fungible
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
 pub struct Asset<ClassId, InstanceId>(pub ClassId, pub InstanceId);
 
 impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
@@ -34,7 +35,7 @@ pub(crate) struct ClosedLoan<T: pallet::Config> {
 }
 
 /// The data structure for storing pool nav details
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct NAVDetails<Amount> {
 	// this is the latest nav for the given pool.
@@ -51,7 +52,7 @@ pub struct NAVDetails<Amount> {
 }
 
 /// The data structure for storing a specific write off group
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct WriteOffGroup<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
@@ -62,7 +63,7 @@ pub struct WriteOffGroup<Rate> {
 }
 
 /// The data structure for storing loan status
-#[derive(Encode, Decode, Copy, Clone, PartialEq)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LoanStatus {
@@ -76,7 +77,7 @@ pub enum LoanStatus {
 }
 
 /// The data structure for storing loan info
-#[derive(Encode, Decode, Copy, Clone)]
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanData<Rate, Amount, Asset> {
 	pub(crate) borrowed_amount: Amount,

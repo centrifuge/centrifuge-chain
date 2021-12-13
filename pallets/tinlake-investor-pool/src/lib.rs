@@ -20,6 +20,7 @@ use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
+use scale_info::TypeInfo;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
 	traits::{
@@ -43,7 +44,7 @@ pub trait TrancheToken<T: Config> {
 	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct Tranche<Balance> {
 	pub interest_per_sec: Perquintill,
 	pub min_subordination_ratio: Perquintill,
@@ -56,7 +57,7 @@ pub struct Tranche<Balance> {
 	pub last_updated_interest: u64,
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub owner: AccountId,
 	pub currency: CurrencyId,
@@ -71,7 +72,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 }
 
 /// Per-tranche and per-user order details.
-#[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug)]
+#[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct UserOrder<Balance, EpochId> {
 	pub supply: Balance,
 	pub redeem: Balance,
@@ -79,14 +80,14 @@ pub struct UserOrder<Balance, EpochId> {
 }
 
 /// A representation of a tranche identifier that can be used as a storage key
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct TrancheLocator<PoolId, TrancheId> {
 	pub pool_id: PoolId,
 	pub tranche_id: TrancheId,
 }
 
 /// A representation of a pool identifier that can be converted to an account address
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
 	pub pool_id: PoolId,
 }
@@ -96,14 +97,14 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 }
 
 /// The result of epoch execution of a given tranch within a pool
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochDetails<BalanceRatio> {
 	pub supply_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
 	pub token_price: BalanceRatio,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	value: Balance,
 	price: BalanceRatio,
@@ -112,7 +113,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 }
 
 /// The information for a currently executing epoch
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochExecutionInfo<Balance, BalanceRatio> {
 	nav: Balance,
 	reserve: Balance,
@@ -140,6 +141,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ FixedPointOperand
 			+ From<u64>
+			+ TypeInfo
 			+ TryInto<u64>;
 
 		/// A fixed-point number which represents the value of
@@ -148,6 +150,7 @@ pub mod pallet {
 			+ Parameter
 			+ Default
 			+ Copy
+			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>;
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 		type TrancheId: Member
@@ -157,6 +160,7 @@ pub mod pallet {
 			+ HasCompact
 			+ MaxEncodedLen
 			+ Into<usize>
+			+ TypeInfo
 			+ TryFrom<usize>;
 		type EpochId: Member
 			+ Parameter
@@ -166,6 +170,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ Zero
 			+ One
+			+ TypeInfo
 			+ AddAssign;
 		type CurrencyId: Parameter + Copy;
 		type Tokens: MultiCurrency<
@@ -291,7 +296,6 @@ pub mod pallet {
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
-	#[pallet::metadata(T::AccountId = "AccountId")]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Pool Created. [pool, who]

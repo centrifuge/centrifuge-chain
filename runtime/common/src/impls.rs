@@ -13,6 +13,7 @@ use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use pallet_tinlake_investor_pool::Config;
 use primitives_tokens::CurrencyId;
+use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_core::H160;
@@ -90,7 +91,7 @@ impl WeightToFeePolynomial for WeightToFee {
 }
 
 /// All data for an instance of an NFT.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, Debug, TypeInfo)]
 pub struct AssetInfo {
 	pub metadata: Bytes,
 }

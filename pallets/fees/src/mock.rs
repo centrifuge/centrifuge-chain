@@ -1,7 +1,10 @@
 use crate::{self as pallet_fees, *};
 use frame_support::parameter_types;
 use frame_support::traits::SortedMembers;
-use frame_support::{traits::FindAuthor, ConsensusEngineId};
+use frame_support::{
+	traits::{Everything, FindAuthor},
+	ConsensusEngineId,
+};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_runtime::{
@@ -32,7 +35,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;

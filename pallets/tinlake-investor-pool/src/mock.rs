@@ -6,6 +6,7 @@ use frame_support::{
 use frame_system as system;
 use orml_traits::parameter_type_with_key;
 use primitives_tokens::CurrencyId;
+use runtime_common::Rate;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -81,7 +82,7 @@ parameter_types! {
 }
 
 impl system::Config for Test {
-	type BaseCallFilter = ();
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
@@ -134,12 +135,13 @@ impl orml_tokens::Config for Test {
 	type OnDust = ();
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
 impl Config for Test {
 	type Event = Event;
 	type Balance = Balance;
-	type BalanceRatio = sp_arithmetic::fixed_point::FixedU128P27;
+	type BalanceRatio = Rate;
 	type PoolId = u64;
 	type TrancheId = u8;
 	type EpochId = u32;

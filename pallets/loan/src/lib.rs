@@ -66,6 +66,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::PalletId;
 	use frame_system::pallet_prelude::*;
+	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::traits::BadOrigin;
 
@@ -84,6 +85,7 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ Copy
 			+ Default
+			+ TypeInfo
 			+ IsType<ClassIdOf<Self>>;
 
 		/// The LoanId/InstanceId type
@@ -91,17 +93,19 @@ pub mod pallet {
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Copy
+			+ TypeInfo
 			+ From<u128>
 			+ IsType<InstanceIdOf<Self>>;
 
 		/// the rate type
-		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber;
+		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
 		/// the amount type
 		type Amount: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ FixedPointNumber
+			+ TypeInfo
 			+ Into<ReserveBalanceOf<Self>>;
 
 		/// The NonFungible trait that can mint, transfer, and inspect assets.

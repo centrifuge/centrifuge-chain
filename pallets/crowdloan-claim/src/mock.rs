@@ -24,7 +24,7 @@
 // ----------------------------------------------------------------------------
 
 use crate::{self as pallet_crowdloan_claim, Config};
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{parameter_types, traits::SortedMembers, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -71,7 +71,7 @@ parameter_types! {
 
 // Implement frame system configuration for the mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = BlockWeights;
 	type BlockLength = ();
 	type Origin = Origin;
@@ -117,7 +117,7 @@ impl pallet_balances::Config for MockRuntime {
 
 parameter_types! {
 	pub const TestMinVestedTransfer: u64 = 16;
-	pub static TestExistentialDeposit: u64 = 1;
+	pub const MaxVestingSchedules: u32 = 4;
 }
 
 // Parameterize vesting pallet configuration
@@ -126,6 +126,7 @@ impl pallet_vesting::Config for MockRuntime {
 	type Currency = Balances;
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
 	type MinVestedTransfer = TestMinVestedTransfer;
+	const MAX_VESTING_SCHEDULES: u32 = 1;
 	type WeightInfo = ();
 }
 
@@ -204,7 +205,7 @@ impl TestExternalitiesBuilder {
 				(2, 20 * self.existential_deposit),
 				(3, 30 * self.existential_deposit),
 				(4, 40 * self.existential_deposit),
-				(12, 10 * self.existential_deposit),
+				(12, 100 * self.existential_deposit),
 				(CrowdloanReward::account_id(), 9999999999999999999),
 			],
 		}
@@ -212,7 +213,7 @@ impl TestExternalitiesBuilder {
 		.unwrap();
 
 		pallet_vesting::GenesisConfig::<MockRuntime> {
-			vesting: vec![(12, 10, 20, 5 * self.existential_deposit)],
+			vesting: vec![(12, 10, 20, 5)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

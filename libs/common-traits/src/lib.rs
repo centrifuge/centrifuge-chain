@@ -27,6 +27,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
+use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -57,7 +58,8 @@ pub trait Reward {
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Ord
-		+ Parameter;
+		+ Parameter
+		+ TypeInfo;
 
 	/// The contribution amount in relay chain tokens.
 	type ContributionAmount: AtLeast32BitUnsigned
@@ -68,7 +70,8 @@ pub trait Reward {
 		+ MaybeSerializeDeserialize
 		+ Member
 		+ Parameter
-		+ Zero;
+		+ Zero
+		+ TypeInfo;
 
 	/// Block number type used by the runtime
 	type BlockNumber: AtLeast32BitUnsigned
@@ -82,7 +85,8 @@ pub trait Reward {
 		+ MaybeMallocSizeOf
 		+ MaybeSerializeDeserialize
 		+ Member
-		+ Parameter;
+		+ Parameter
+		+ TypeInfo;
 
 	/// Rewarding function that is invoked from the claim pallet.
 	///
@@ -107,7 +111,7 @@ pub trait PoolNAV<PoolId, Amount> {
 }
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
-#[derive(Encode, Decode, Clone, Copy, PartialEq)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PoolRole {
@@ -121,7 +125,7 @@ pub enum PoolRole {
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId> {
-	type PoolId: Parameter + Member + Debug + Copy + Default;
+	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo;
 
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;

@@ -21,7 +21,7 @@ case $TARGET in
 
   build-runtime)
     export RUSTC_VERSION=$RUST_TOOLCHAIN
-    docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home chevdor/srtool:$RUSTC_VERSION build
+    docker run --rm -e PACKAGE=$PACKAGE -v $PWD:/build -v /tmp/cargo:/cargo-home paritytech/srtool:$RUSTC_VERSION build
     ;;
 
   tests)

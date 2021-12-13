@@ -75,7 +75,7 @@ parameter_types! {
 }
 
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -134,6 +134,7 @@ impl orml_tokens::Config for MockRuntime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
 	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
 impl pallet_tinlake_investor_pool::Config for MockRuntime {

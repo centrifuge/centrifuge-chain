@@ -260,7 +260,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 					// 	.unchecked_into(),
 				)],
 				endowed_accounts(),
-				None,
+				Some(100000000 * AIR),
 				para_id,
 			)
 		},
@@ -379,7 +379,7 @@ fn altair_genesis(
 				.map(|(acc, aura)| {
 					(
 						acc.clone(),                   // account id
-						acc.clone(),                   // validator id
+						acc,                           // validator id
 						get_altair_session_keys(aura), // session keys
 					)
 				})
@@ -389,6 +389,7 @@ fn altair_genesis(
 		aura: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
+		treasury: Default::default(),
 	}
 }
 
@@ -463,7 +464,7 @@ fn development_genesis(
 				.map(|(acc, aura)| {
 					(
 						acc.clone(),                        // account id
-						acc.clone(),                        // validator id
+						acc,                                // validator id
 						get_development_session_keys(aura), // session keys
 					)
 				})
@@ -473,5 +474,6 @@ fn development_genesis(
 		aura: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
+		treasury: Default::default(),
 	}
 }

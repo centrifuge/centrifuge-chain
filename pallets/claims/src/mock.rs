@@ -42,6 +42,7 @@ use sp_runtime::{
 
 use crate::traits::WeightInfo;
 
+use frame_support::traits::Everything;
 pub use pallet_balances as balances;
 
 // ----------------------------------------------------------------------------
@@ -128,7 +129,7 @@ impl frame_system::Config for MockRuntime {
 	type AccountData = balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();

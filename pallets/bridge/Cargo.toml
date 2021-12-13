@@ -14,19 +14,20 @@ targets = ['x86_64-unknown-linux-gnu']
 [dependencies]
 # Substrate basic primitives
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false }
-frame-support = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-frame-system = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-pallet-balances = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-sp-core = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-sp-std = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 
 # Centrifuge Chain dependencies
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "master" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
-unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "master" }
+unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.12" }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
 [dev-dependencies]
@@ -35,12 +36,12 @@ pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-registry = { path = "../registry", default-features = false }
-pallet-authorship = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
-pallet-timestamp = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
+pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 proofs = { path = "../../libs/proofs", default-features = false }
-sp-core = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master"  }
-sp-io = { git = "https://github.com/centrifuge/substrate", default-features = false, branch = "master" }
-sp-runtime = { git = "https://github.com/centrifuge/substrate.git", default-features = false, branch = "master" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 runtime-common = { path = "../../runtime/common", default_features = false }
 
 [features]

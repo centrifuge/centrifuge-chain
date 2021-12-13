@@ -93,6 +93,129 @@ fn get_root() -> H256 {
 	)
 }
 
+fn get_root_for_ext_sig() -> H256 {
+	let amount = 4000000000000000u64;
+	let contributor: AccountId32 = AccountId32::from([
+		202, 13, 159, 82, 100, 222, 166, 237, 52, 113, 173, 161, 100, 206, 112, 67, 188, 178, 135,
+		53, 61, 178, 143, 121, 157, 182, 189, 207, 59, 166, 7, 92,
+	]);
+
+	let mut v: Vec<u8> = contributor.encode();
+	v.extend(amount.encode());
+	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+
+	// 10-leaf tree
+	let leaf_hash_0: H256 = [0; 32].into();
+	let leaf_hash_1: H256 = [1; 32].into();
+	let leaf_hash_2: H256 = leaf_hash;
+	let leaf_hash_3: H256 = [3; 32].into();
+	let leaf_hash_4: H256 = [4; 32].into();
+	let leaf_hash_5: H256 = [5; 32].into();
+	let leaf_hash_6: H256 = [6; 32].into();
+	let leaf_hash_7: H256 = [7; 32].into();
+	let leaf_hash_8: H256 = [8; 32].into();
+	let leaf_hash_9: H256 = [9; 32].into();
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_0,
+		leaf_hash_1,
+	);
+	let node_1 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_2,
+		leaf_hash_3,
+	);
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_4,
+		leaf_hash_5,
+	);
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_6,
+		leaf_hash_7,
+	);
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_8,
+		leaf_hash_9,
+	);
+	let node_00 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_0, node_1,
+	);
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_2, node_3,
+	);
+	let node_000 = proofs::hashing::sort_hash_of::<
+		pallet_crowdloan_claim::ProofVerifier<MockRuntime>,
+	>(node_00, node_01);
+
+	proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_000, node_4,
+	)
+}
+
+fn get_contributor_ext_sig() -> Contributor {
+	let amount = 4000000000000000u64;
+	let contributor: AccountId32 = AccountId32::from([
+		202, 13, 159, 82, 100, 222, 166, 237, 52, 113, 173, 161, 100, 206, 112, 67, 188, 178, 135,
+		53, 61, 178, 143, 121, 157, 182, 189, 207, 59, 166, 7, 92,
+	]);
+
+	let mut v: Vec<u8> = contributor.encode();
+	v.extend(amount.encode());
+	let leaf_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&v);
+
+	// 10-leaf tree
+	let mut sorted_hashed: Vec<H256> = Vec::new();
+
+	let leaf_hash_0: H256 = [0; 32].into();
+	let leaf_hash_1: H256 = [1; 32].into();
+	let leaf_hash_3: H256 = [3; 32].into();
+	let leaf_hash_4: H256 = [4; 32].into();
+	let leaf_hash_5: H256 = [5; 32].into();
+	let leaf_hash_6: H256 = [6; 32].into();
+	let leaf_hash_7: H256 = [7; 32].into();
+	let leaf_hash_8: H256 = [8; 32].into();
+	let leaf_hash_9: H256 = [9; 32].into();
+	let node_0 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_0,
+		leaf_hash_1,
+	);
+	let node_2 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_4,
+		leaf_hash_5,
+	);
+	let node_3 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_6,
+		leaf_hash_7,
+	);
+	let node_4 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		leaf_hash_8,
+		leaf_hash_9,
+	);
+	let node_01 = proofs::hashing::sort_hash_of::<pallet_crowdloan_claim::ProofVerifier<MockRuntime>>(
+		node_2, node_3,
+	);
+
+	sorted_hashed.push(leaf_hash_3);
+	sorted_hashed.push(node_0);
+	sorted_hashed.push(node_01);
+	sorted_hashed.push(node_4);
+
+	// This signature is generate with the logic of: "Bytes" + Data + "Bytes".
+	// Reason to test this is:
+	let signature: [u8; 64] = [
+		94, 215, 90, 147, 120, 40, 201, 58, 58, 69, 247, 113, 19, 18, 122, 200, 50, 194, 125, 133,
+		72, 241, 154, 88, 122, 223, 138, 245, 237, 158, 72, 76, 144, 61, 44, 104, 25, 209, 72, 79,
+		252, 106, 132, 44, 129, 133, 85, 45, 243, 53, 60, 167, 219, 238, 167, 89, 38, 204, 44, 245,
+		99, 56, 31, 130,
+	];
+
+	Contributor {
+		proof: proofs::Proof::new(leaf_hash, sorted_hashed),
+		signature: MultiSignature::Sr25519(sp_core::sr25519::Signature(signature)),
+		parachain_account: 1,
+		relaychain_account: contributor,
+		contribution: amount,
+	}
+}
+
 fn get_contributor() -> Contributor {
 	let amount = 4000000000000000u64;
 	let contributor =
@@ -177,7 +300,7 @@ fn get_false_proof() -> proofs::Proof<H256> {
 }
 
 fn init_module() {
-	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 200, 400).unwrap();
+	CrowdloanClaim::initialize(Origin::signed(1), get_root(), 100, 0, 0, 400).unwrap();
 	pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
 		Origin::signed(1),
 		Perbill::from_percent(20),
@@ -305,8 +428,50 @@ fn test_valid_claim() {
 		.build(Some(init_module))
 		.execute_with(|| {
 			let bob = get_contributor();
-
 			let bob_balance = Balances::free_balance(&bob.parachain_account);
+
+			assert_ok!(CrowdloanClaim::claim_reward(
+				Origin::none(),
+				bob.relaychain_account.clone(),
+				bob.parachain_account,
+				bob.signature,
+				bob.proof,
+				bob.contribution
+			));
+			assert!(ProcessedClaims::<MockRuntime>::contains_key((
+				&bob.relaychain_account,
+				1
+			)));
+
+			assert_eq!(
+				Vesting::vesting_balance(&bob.parachain_account),
+				Some(3200000000000000)
+			);
+			assert_eq!(
+				Balances::usable_balance(&bob.parachain_account),
+				bob_balance + 800000000000000
+			);
+		});
+}
+
+#[test]
+fn test_valid_claim_ext_signature() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {
+			CrowdloanClaim::initialize(Origin::signed(1), get_root_for_ext_sig(), 100, 0, 0, 400)
+				.unwrap();
+			pallet_crowdloan_reward::Pallet::<MockRuntime>::initialize(
+				Origin::signed(1),
+				Perbill::from_percent(20),
+				500,
+				100,
+			)
+			.unwrap();
+		}))
+		.execute_with(|| {
+			let bob = get_contributor_ext_sig();
+			let bob_balance = Balances::free_balance(&bob.parachain_account);
+
 			assert_ok!(CrowdloanClaim::claim_reward(
 				Origin::none(),
 				bob.relaychain_account.clone(),
@@ -348,7 +513,7 @@ fn test_valid_claim_but_lease_elapsed() {
 					bob.proof,
 					bob.contribution
 				),
-				Error::<MockRuntime>::LeaseElapsed
+				Error::<MockRuntime>::OutOfLeasePeriod
 			);
 		});
 }

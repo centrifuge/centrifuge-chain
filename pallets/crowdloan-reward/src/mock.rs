@@ -23,6 +23,7 @@
 // ----------------------------------------------------------------------------
 
 use crate as pallet_crowdloan_reward;
+use frame_support::traits::Everything;
 use frame_support::{parameter_types, traits::SortedMembers, weights::Weight, PalletId};
 use frame_system::EnsureSignedBy;
 use sp_core::H256;
@@ -73,6 +74,7 @@ impl pallet_balances::Config for MockRuntime {
 // Parameterize vesting pallet
 parameter_types! {
 	pub const MinVestedTransfer: u64 = 16;
+	pub const MaxVestingSchedules: u32 = 4;
 }
 
 // Implement vesting pallet configuration for mock runtime
@@ -81,6 +83,7 @@ impl pallet_vesting::Config for MockRuntime {
 	type Currency = Balances;
 	type BlockNumberToBalance = sp_runtime::traits::Identity;
 	type MinVestedTransfer = MinVestedTransfer;
+	const MAX_VESTING_SCHEDULES: u32 = 1;
 	type WeightInfo = ();
 }
 
@@ -114,7 +117,7 @@ parameter_types! {
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = ();
+	type BaseCallFilter = Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -175,15 +178,11 @@ impl TestExternalitiesBuilder {
 
 		pallet_balances::GenesisConfig::<MockRuntime> {
 			balances: vec![
-				(1, 10 * self.existential_deposit),
-				(2, 20 * self.existential_deposit),
+				(1, 100 * self.existential_deposit),
+				(2, 200 * self.existential_deposit),
 				(3, 30 * self.existential_deposit),
 				(4, 40 * self.existential_deposit),
-				(12, 10 * self.existential_deposit),
-				(
-					CrowdloanReward::account_id(),
-					1000 * self.existential_deposit,
-				),
+				(12, 100 * self.existential_deposit),
 			],
 		}
 		.assimilate_storage(&mut storage)
@@ -191,11 +190,7 @@ impl TestExternalitiesBuilder {
 
 		use frame_support::traits::GenesisBuild;
 		pallet_vesting::GenesisConfig::<MockRuntime> {
-			vesting: vec![
-				(1, 0, 10, 5 * self.existential_deposit),
-				(2, 10, 20, 0),
-				(12, 10, 20, 5 * self.existential_deposit),
-			],
+			vesting: vec![(1, 1, 10, 0), (2, 10, 20, 0), (12, 10, 20, 0)],
 		}
 		.assimilate_storage(&mut storage)
 		.unwrap();

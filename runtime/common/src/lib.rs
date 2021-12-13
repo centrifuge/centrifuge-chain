@@ -38,6 +38,7 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
+	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
@@ -98,20 +99,20 @@ pub mod types {
 	pub type Salt = FixedArray<u8, 32>;
 
 	/// A representation of registryID.
-	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq)]
+	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RegistryId(pub H160);
 
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq)]
+	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct TokenId(pub U256);
 
 	/// A generic representation of a local address. A resource id points to this. It may be a
 	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
 	/// as an upper bound to store efficiently.
-	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq)]
+	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
 
@@ -129,7 +130,16 @@ pub mod types {
 
 	/// A representation of InstanceId for Uniques.
 	#[derive(
-		codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, codec::CompactAs, Debug,
+		codec::Encode,
+		codec::Decode,
+		Default,
+		Copy,
+		Clone,
+		PartialEq,
+		Eq,
+		codec::CompactAs,
+		Debug,
+		TypeInfo,
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct InstanceId(pub u128);
