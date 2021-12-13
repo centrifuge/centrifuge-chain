@@ -103,7 +103,7 @@ parameter_types! {
 		})
 		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
 		.build_or_panic();
-	pub const SS58Prefix: u8 = 136;
+	pub const SS58Prefix: u8 = 36;
 }
 // our base filter
 // allow base system calls needed for block production and runtime upgrade
