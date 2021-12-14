@@ -9,6 +9,7 @@
   {
     "os": "ubuntu-latest",
     "target": "build-runtime",
+    "package": "altair-runtime",
     "run_on_event": "push",
     "rust_toolchain": "1.56.1"
   },
@@ -16,7 +17,7 @@
   {
     "os": "ubuntu-latest",
     "target": "build-runtime",
-    "package": "centrifuge",
+    "package": "centrifuge-runtime",
     "run_on_event": "push",
     "rust_toolchain": "1.56.1"
   }
