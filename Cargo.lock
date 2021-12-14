@@ -165,7 +165,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-wasm-builder 5.0.0-dev",
+ "substrate-wasm-builder",
  "xcm",
  "xcm-builder",
  "xcm-executor",
@@ -897,19 +897,6 @@ dependencies = [
 
 [[package]]
 name = "cargo_metadata"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7714a157da7991e23d90686b9524b9e12e0407a108647f52e9328f4b3d51ac7f"
-dependencies = [
- "cargo-platform",
- "semver 0.11.0",
- "semver-parser 0.10.2",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "cargo_metadata"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "081e3f0755c1f380c2d010481b6fa2e02973586d5f2b24eebb7a2a1d98b143d8"
@@ -1101,7 +1088,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-wasm-builder 3.0.0",
+ "substrate-wasm-builder",
  "xcm",
  "xcm-builder",
  "xcm-executor",
@@ -2095,7 +2082,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-wasm-builder 3.0.0",
+ "substrate-wasm-builder",
  "xcm",
  "xcm-builder",
  "xcm-executor",
@@ -7172,7 +7159,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-version",
  "static_assertions",
- "substrate-wasm-builder 5.0.0-dev",
+ "substrate-wasm-builder",
 ]
 
 [[package]]
@@ -10615,7 +10602,7 @@ dependencies = [
  "sp-transaction-pool",
  "sp-trie",
  "sp-version",
- "substrate-wasm-builder 5.0.0-dev",
+ "substrate-wasm-builder",
  "trie-db",
 ]
 
@@ -10641,28 +10628,12 @@ dependencies = [
 
 [[package]]
 name = "substrate-wasm-builder"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79091baab813855ddf65b191de9fe53e656b6b67c1e9bd23fdcbff8788164684"
-dependencies = [
- "ansi_term 0.12.1",
- "atty",
- "build-helper",
- "cargo_metadata 0.12.3",
- "tempfile",
- "toml",
- "walkdir",
- "wasm-gc-api",
-]
-
-[[package]]
-name = "substrate-wasm-builder"
 version = "5.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.12#d76f39995315ec36980908e4b99709bd14927044"
 dependencies = [
  "ansi_term 0.12.1",
  "build-helper",
- "cargo_metadata 0.13.1",
+ "cargo_metadata",
  "sp-maybe-compressed-blob",
  "tempfile",
  "toml",
