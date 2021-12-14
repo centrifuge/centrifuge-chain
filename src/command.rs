@@ -48,12 +48,9 @@ trait IdentifyChain {
 
 impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn identify(&self) -> ChainIdentity {
-		if self.id().starts_with("centrifuge") || self.id().starts_with("cyclone") {
+		if self.id().starts_with("centrifuge") {
 			ChainIdentity::Centrifuge
-		} else if self.id().starts_with("altair")
-			|| self.id().starts_with("charcoal")
-			|| self.id().starts_with("rumba")
-		{
+		} else if self.id().starts_with("altair") || self.id().starts_with("charcoal") {
 			ChainIdentity::Altair
 		} else {
 			ChainIdentity::Development
@@ -71,21 +68,22 @@ fn load_spec(
 	id: &str,
 	para_id: ParaId,
 ) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-	Ok(match id {
-		"cyclone" | "" => Box::new(chain_spec::cyclone_config()),
-		"altair" => Box::new(chain_spec::altair_config()),
-		"altair-dev" => Box::new(chain_spec::altair_dev(para_id)),
-		"altair-staging" => Box::new(chain_spec::altair_staging_network(para_id)),
-		"devel-local" => Box::new(chain_spec::devel_local(para_id)),
-		"charcoal" => Box::new(chain_spec::charcoal_config()),
-		"charcoal-staging" => Box::new(chain_spec::charcoal_staging_network(para_id)),
-		"charcoal-local" => Box::new(chain_spec::charcoal_local_network(para_id)),
-		"rumba" => Box::new(chain_spec::rumba_config()),
-		"rumba-staging" => Box::new(chain_spec::rumba_staging_network(para_id)),
+	match id {
+		"centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
+		"centrifuge-staging" => Ok(Box::new(chain_spec::centrifuge_staging(para_id))),
+		"centrifuge-dev" => Ok(Box::new(chain_spec::centrifuge_dev(para_id))),
+		"altair" => Ok(Box::new(chain_spec::altair_config())),
+		"altair-staging" => Ok(Box::new(chain_spec::altair_staging(para_id))),
+		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
+		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
+		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging(para_id))),
+		"charcoal-dev" => Ok(Box::new(chain_spec::charcoal_dev(para_id))),
+		"development" => Ok(Box::new(chain_spec::development(para_id))),
+		"" => Err(String::from("No Chain-id provided")),
 
 		path => {
 			let chain_spec = chain_spec::CentrifugeChainSpec::from_json_file(path.into())?;
-			match chain_spec.identify() {
+			Ok(match chain_spec.identify() {
 				ChainIdentity::Altair => {
 					Box::new(chain_spec::AltairChainSpec::from_json_file(path.into())?)
 				}
@@ -95,9 +93,9 @@ fn load_spec(
 				ChainIdentity::Development => Box::new(
 					chain_spec::DevelopmentChainSpec::from_json_file(path.into())?,
 				),
-			}
+			})
 		}
-	})
+	}
 }
 
 impl SubstrateCli for Cli {
