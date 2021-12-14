@@ -43,14 +43,12 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           default: true
-      - name: Prepare cache runtime build
-        if: matrix.target == 'build-runtime'
+      - if: matrix.target == 'build-runtime'
         uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
         with: # cache the runtime target instead of root target for build-runtime
           working-directory: './runtime'
           target-dir: './target/srtool'
-      - name: Prepare cache node build
-        if: matrix.target == 'build-node'
+      - if: matrix.target == 'build-node'
         uses: Swatinem/rust-cache@842ef286fff290e445b90b4002cc9807c3669641
       - name: ${{ matrix.target }}
         run: ./ci/script.sh
@@ -58,13 +56,15 @@ jobs:
           TARGET: ${{ matrix.target }}
           RUST_TOOLCHAIN: ${{ matrix.rust_toolchain }}
           PACKAGE: ${{matrix.package}}
-      - name: Publish on GCS
-        if: matrix.target == 'build-runtime'
+      - if: matrix.target == 'build-runtime'
+        name: Setup - gcloud / gsutil
         uses: google-github-actions/setup-gcloud@master
         with:
           service_account_key: ${{ secrets.GCS_SA_KEY }}
           project_id: ${{ secrets.GCS_PROJECT }}
           export_default_credentials: true
+      - if: matrix.target == 'build-runtime'
+        name: Publish to GCS
         run: |
           gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.wasm gs://centrifuge-artifact-releases/parachain/altair_runtime-$(git rev-parse --short HEAD).compact.wasm
           gsutil cp ./runtime/altair/target/srtool/release/wbuild/altair-runtime/altair_runtime.compact.compressed.wasm gs://centrifuge-artifact-releases/parachain/altair_runtime-$(git rev-parse --short HEAD).compact.compressed.wasm
