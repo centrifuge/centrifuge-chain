@@ -138,7 +138,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
 				Some(100000000 * AIR),
@@ -379,8 +379,8 @@ fn centrifuge_genesis(
 	let balances = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as altair_runtime::Balance)
-				.unwrap_or(0 as altair_runtime::Balance);
+				.checked_div(num_endowed_accounts as centrifuge_runtime::Balance)
+				.unwrap_or(0 as centrifuge_runtime::Balance);
 			endowed_accounts
 				.iter()
 				.cloned()
@@ -391,8 +391,8 @@ fn centrifuge_genesis(
 	};
 
 	centrifuge_runtime::GenesisConfig {
-		system: altair_runtime::SystemConfig {
-			code: altair_runtime::WASM_BINARY
+		system: centrifuge_runtime::SystemConfig {
+			code: centrifuge_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
 			changes_trie_config: Default::default(),
