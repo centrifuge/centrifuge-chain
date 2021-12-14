@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain, centrifuge-alpha1]
+    branches: [master, parachain]
   pull_request:
 name: Build
 jobs:
