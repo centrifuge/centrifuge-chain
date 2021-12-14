@@ -80,36 +80,36 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		"centrifuge",
 		ChainType::Live,
 		move || {
-			// TODO (mustermeiszer): Generate root key and store in 1pwd. Generate and store init auth keys.
-			//      Note: This is currently the Charcoal one.
 			centrifuge_genesis(
-				// kAJSPJQGb1w5Cn4ZTFPokiStQ6sNkYHApjzPBeNPdVwbyLGjs
-				hex!["38e779a7cc9cc462e19ae0c8e76d6135caba7fee745645dbf9b4a1b9f53dbd6e"].into(),
+				// 4fKpoZoBEvw2K48tQf5rMAfexaX9fS9WbsEqWPTaREWBRvhs
+				hex!["b03cd3fb823de75f888ac647105d7820476a6b1943a74af840996d2b28e64017"].into(),
 				vec![
 					(
-						// kALpizfCQweMJjhMpDhfozAtLXrLfbkE7iMFWVt92xXrdcoZg
-						hex!["a269a32274ddc7cb7f3a42ffb305c17011a67fbb97c9667a9f8ceb3141b6cb24"]
+						// 4dsemFj9QroJbpP1Zdd18DXVvYeyo6ymvnGTEvEvs5ikPCxF
+						hex!["700a6abbcdbb6595cf48f019a4409c3670c42552d7f4b5bc317af642d91ceb09"]
 							.into(),
-						hex!["f09f14e7b7bf0538793b1ff512fbe88c6f1d0ee08015dba416d27e6950803b21"]
+						hex!["7e2a9759dcef70d18fa271026ba1b891391c22f1531055bf687b34fe547c3029"]
 							.unchecked_into(),
 					),
 					(
-						// kAHvxmKFqevc6uJ3o7VoMZU78HTLZtoh9A4nrWrf3WLhwy76e
-						hex!["2276c356c435f6bcbf7793b6419d1e12f8f270a6a53c28ce02737a9b5c65554d"]
+						// 4dCqKqsy3VuQzakfQT2XTGTaMSC2jWK1jL8EaNZyvvApjjMG
+						hex!["526f668def3ef79c8087552cfcecf575b89ac48a903379b5b5ec4f657ed6c67b"]
 							.into(),
-						hex!["2211f2a23e278e9f9b8eba37033797c103b6453201369c3a951cf32d6a6e6b59"]
+						hex!["087e9792a7ea8eb599d3696dbdbd0b1e957a3a29cc78405d7c84f96a6ecab725"]
 							.unchecked_into(),
 					),
 					(
-						// kAKFBeQp4fZyYumtDNDu2xapHjoBFr6pzcVpXkEAoohC9JF7k
-						hex!["5c98c66394608ea47747ce7a935fd94a70b508047383e8a6e9bbf3c620531c22"]
+						// 4deVxTkHqXeueeNS8dF9fwKFiDJEMujCzEzrhm2aFhkELxLA
+						hex!["6602949762bcfc0e52685f01d9723ea9eb92e4102fae739b7f1143cae518ce74"]
 							.into(),
-						hex!["4e5e5a7d116fe3528b9f015ff2f36af8460da4b38eb14a3f1659f278ff888709"]
+						hex!["96504d2fe659a6ab6b4d2ded1340de5d995d25d9aad3be37d948bc5259355512"]
 							.unchecked_into(),
 					),
 				],
-				vec![],
-				None,
+				vec![
+					hex!["b03cd3fb823de75f888ac647105d7820476a6b1943a74af840996d2b28e64017"].into(),
+				],
+				Some(1000 * AIR),
 				para_id,
 			)
 		},
