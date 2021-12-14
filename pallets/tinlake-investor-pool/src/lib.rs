@@ -1145,7 +1145,7 @@ pub mod pallet {
 				let mut remaining_amount = amount;
 				for tranche in &mut pool.tranches {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
-					let tranche_amount = if tranche.interest_per_sec != Zero::zero() {
+					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
@@ -1187,7 +1187,7 @@ pub mod pallet {
 				let mut remaining_amount = amount;
 				for tranche in &mut pool.tranches {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
-					let tranche_amount = if tranche.interest_per_sec != Zero::zero() {
+					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
