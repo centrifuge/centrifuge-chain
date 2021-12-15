@@ -429,7 +429,18 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
-type CouncilCollective = pallet_collective::Instance1;
+/// The council origin
+type CouncilCollectiveOrigin = pallet_collective::Instance1;
+
+/// All council members must vote yes to create this origin.
+type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollectiveOrigin>;
+
+/// 1/2 of all council members must vote yes to create this origin.
+type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollectiveOrigin>;
+
+/// 2/3 of all council members must vote yes to create this origin.
+type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollectiveOrigin>;
+
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -521,27 +532,28 @@ impl pallet_democracy::Config for Runtime {
 	type MinimumDeposit = MinimumDeposit;
 
 	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ExternalOrigin = RootOr<HalfOfCouncil>;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type ExternalMajorityOrigin =
+		RootOr<EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollectiveOrigin>>;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
-	type ExternalDefaultOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type ExternalDefaultOrigin = RootOr<AllOfCouncil>;
 
 	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type FastTrackOrigin = RootOr<TwoThirdOfCouncil>;
 
-	type InstantOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type InstantOrigin = RootOr<AllOfCouncil>;
 
 	type InstantAllowed = InstantAllowed;
 
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type CancellationOrigin = RootOr<TwoThirdOfCouncil>;
 
 	type BlacklistOrigin = EnsureRoot<AccountId>;
 
@@ -583,8 +595,9 @@ impl pallet_identity::Config for Runtime {
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
 	type Slashed = ();
-	type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type ForceOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollectiveOrigin>>;
+	type RegistrarOrigin =
+		RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollectiveOrigin>>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
 }
 
@@ -606,7 +619,7 @@ impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
-	type FeeChangeOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type FeeChangeOrigin = RootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
 }
 
@@ -624,7 +637,7 @@ parameter_types! {
 
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = RootOr<HalfOfCouncil>;
 	type Currency = Balances;
 	type Event = Event;
 	type Longevity = Longevity;
