@@ -525,18 +525,25 @@ fn development_genesis(
 	id: ParaId,
 ) -> development_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
-	let balances = match total_issuance {
+	let (balances, token_balances) = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
 				.checked_div(num_endowed_accounts as development_runtime::Balance)
 				.unwrap_or(0 as development_runtime::Balance);
-			endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, balance_per_endowed))
-				.collect()
+			(
+				endowed_accounts
+					.iter()
+					.cloned()
+					.map(|k| (k, balance_per_endowed))
+					.collect(),
+				endowed_accounts
+					.iter()
+					.cloned()
+					.map(|k| (k, development_runtime::CurrencyId::Usd, balance_per_endowed))
+					.collect(),
+			)
 		}
-		None => vec![],
+		None => (vec![], vec![]),
 	};
 
 	development_runtime::GenesisConfig {
@@ -547,6 +554,9 @@ fn development_genesis(
 			changes_trie_config: Default::default(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
+		tokens: development_runtime::TokensConfig {
+			balances: token_balances,
+		},
 		elections: development_runtime::ElectionsConfig { members: vec![] },
 		council: development_runtime::CouncilConfig {
 			members: Default::default(),

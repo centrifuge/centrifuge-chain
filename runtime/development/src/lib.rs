@@ -18,6 +18,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureOneOf, EnsureRoot,
 };
+use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
@@ -45,6 +46,8 @@ use sp_std::prelude::*;
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
+
+pub use primitives_tokens::CurrencyId;
 
 /// common types for the runtime.
 pub use runtime_common::*;
@@ -701,6 +704,21 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_tinlake_investor_pool::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type BalanceRatio = Rate;
+	type PoolId = PoolId;
+	type TrancheId = u8;
+	type EpochId = u32;
+	type CurrencyId = CurrencyId;
+	type Tokens = Tokens;
+	type LoanAmount = Amount;
+	type NAV = Loan;
+	type TrancheToken = TrancheToken<Runtime>;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	pub const MigrationMaxAccounts: u32 = 100;
 	pub const MigrationMaxVestings: u32 = 10;
@@ -749,6 +767,50 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type ClaimTransactionPriority = ClaimTransactionPriority;
 	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
+}
+
+parameter_types! {
+	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const MaxLoansPerPool: u64 = 200;
+}
+
+impl pallet_loan::Config for Runtime {
+	type Event = Event;
+	type ClassId = ClassId;
+	type LoanId = InstanceId;
+	type Rate = Rate;
+	type Amount = Amount;
+	type NonFungible = Uniques;
+	type Time = Timestamp;
+	type LoanPalletId = LoanPalletId;
+	type Pool = InvestorPool;
+	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
+	type MaxLoansPerPool = MaxLoansPerPool;
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		// every currency has a zero existential deposit
+		match currency_id {
+			_ => 0,
+		}
+	};
+}
+
+parameter_types! {
+	pub ORMLMaxLocks: u32 = 2;
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = IBalance;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = ORMLMaxLocks;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
 // admin stuff
@@ -802,6 +864,11 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
+		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 95,
+		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
+
+		// 3rd party pallets
+		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -954,6 +1021,9 @@ impl_runtime_apis! {
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
+			use pallet_loan::benchmarking::Pallet as LoanPallet;
+
+			impl pallet_loan::benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -976,6 +1046,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
+			add_benchmark!(params, batches, pallet_loan, LoanPallet::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -987,6 +1058,7 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
+			use pallet_loan::benchmarking::Pallet as LoanPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -994,6 +1066,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
+			list_benchmark!(list, extra, pallet_loan, LoanPallet::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

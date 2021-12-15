@@ -9,8 +9,8 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # third-party dependencies
+serde = { version = "1.0.102", optional = true }
 smallvec = "1.4.0"
-serde = { version = "1.0.102", optional = true, features = ['derive'] }
 
 # Substrate dependencies
 codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
@@ -27,13 +27,19 @@ sp-core = { git = "https://github.com/paritytech/substrate",  default-features =
 sp-consensus-aura = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 sp-runtime = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 
+# ORML dependencies
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
+
 # Local Dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
+pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 [features]
 default = ["std"]
 std = [
+    "serde/std",
     "codec/std",
     "serde/std",
     "frame-support/std",
@@ -41,15 +47,19 @@ std = [
     "node-primitives/std",
     "pallet-authorship/std",
     "pallet-balances/std",
+    "serde",
+    "sp-core/std",
     "sp-api/std",
     "sp-std/std",
     "sp-arithmetic/std",
     "sp-core/std",
     "sp-consensus-aura/std",
     "sp-runtime/std",
+    "primitives-tokens/std",
     "pallet-anchors/std",
     "common-traits/std"
 ]
+
 on-chain-release-build = [
     "sp-api/disable-logging",
 ]

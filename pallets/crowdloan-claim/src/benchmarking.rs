@@ -1,14 +1,9 @@
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
-use frame_support::Blake2_128Concat;
 use frame_support::StorageHasher;
 use frame_support::Twox128;
-use frame_system::Account;
-use frame_system::AccountInfo;
 use frame_system::RawOrigin;
-use pallet_balances::AccountData;
-use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::Perbill;
 
 const CONTRIBUTION: u128 = 40000000000000000000;
@@ -141,6 +136,7 @@ fn get_contribution<T: Config>(amount: u128) -> T::Balance {
 	}
 }
 
+#[allow(dead_code)]
 fn get_balance<T: Config>(amount: u128) -> T::Balance {
 	match amount.try_into() {
 		Ok(contribution) => contribution,

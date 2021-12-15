@@ -1249,6 +1249,7 @@ dependencies = [
  "frame-support",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
@@ -2018,6 +2019,8 @@ dependencies = [
  "hex-literal 0.2.1",
  "integer-sqrt",
  "node-primitives",
+ "orml-tokens",
+ "orml-traits",
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
@@ -2035,6 +2038,7 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-loan",
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
@@ -2048,6 +2052,7 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
+ "pallet-tinlake-investor-pool",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
@@ -2059,6 +2064,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-runtime-common",
+ "primitives-tokens",
  "runtime-common",
  "rustc-hex",
  "safe-mix",
@@ -5031,6 +5037,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "orml-tokens"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.12#03fe5543968c3774738ab38c64323b1d1c7d58d4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "orml-traits",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "orml-traits"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.12#03fe5543968c3774738ab38c64323b1d1c7d58d4"
+dependencies = [
+ "frame-support",
+ "impl-trait-for-tuples",
+ "num-traits",
+ "orml-utilities",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "xcm",
+]
+
+[[package]]
+name = "orml-utilities"
+version = "0.4.1-dev"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.12#03fe5543968c3774738ab38c64323b1d1c7d58d4"
+dependencies = [
+ "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "owning_ref"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5496,6 +5549,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-loan"
+version = "1.0.0"
+dependencies = [
+ "common-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "pallet-tinlake-investor-pool",
+ "pallet-uniques",
+ "parity-scale-codec",
+ "primitives-tokens",
+ "runtime-common",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-membership"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.12#d76f39995315ec36980908e4b99709bd14927044"
@@ -5821,6 +5900,29 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
+]
+
+[[package]]
+name = "pallet-tinlake-investor-pool"
+version = "3.0.0"
+dependencies = [
+ "common-traits",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "primitives-tokens",
+ "runtime-common",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7428,6 +7530,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "primitives-tokens"
+version = "1.0.0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8106,10 +8217,13 @@ dependencies = [
  "frame-support",
  "frame-system",
  "node-primitives",
+ "orml-traits",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-tinlake-investor-pool",
  "parity-scale-codec",
+ "primitives-tokens",
  "scale-info",
  "serde",
  "smallvec 1.7.0",

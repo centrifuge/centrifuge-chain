@@ -33,15 +33,17 @@ members = [
 	"pallets/claims",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
+	"pallets/tinlake-investor-pool",
 	"pallets/migration",
-    "pallets/bridge",
-    "pallets/nft",
-    "pallets/registry",
+	"pallets/bridge",
+	"pallets/nft",
+	"pallets/registry",
 	"libs/common-traits",
 	"libs/proofs",
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
+	"pallets/loan",
 ]
 
 [dependencies]
