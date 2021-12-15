@@ -37,7 +37,6 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
-	use frame_support::traits::EnsureOrigin;
 	use frame_system::{EnsureOneOf, EnsureRoot};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]

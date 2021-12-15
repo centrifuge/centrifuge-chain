@@ -444,17 +444,17 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
-/// The council origin
-type CouncilCollectiveOrigin = pallet_collective::Instance1;
+/// The council
+type CouncilCollective = pallet_collective::Instance1;
 
 /// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollectiveOrigin>;
+type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
 /// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollectiveOrigin>;
+type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 /// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollectiveOrigin>;
+type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
@@ -609,9 +609,8 @@ impl pallet_identity::Config for Runtime {
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
 	type Slashed = Treasury;
-	type ForceOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollectiveOrigin>>;
-	type RegistrarOrigin =
-		RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollectiveOrigin>>;
+	type ForceOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type RegistrarOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
 }
 
@@ -657,8 +656,7 @@ impl pallet_treasury::Config for Runtime {
 	// either democracy or 66% of council votes
 	type ApproveOrigin = RootOr<TwoThirdOfCouncil>;
 	// either democracy or more than 50% council votes
-	type RejectOrigin =
-		RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollectiveOrigin>>;
+	type RejectOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
