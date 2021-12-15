@@ -89,13 +89,13 @@ pub(crate) fn create_pool<T>(
 		(100_000 * CURRENCY).into(),
 	));
 
-	assert_ok!(PoolPallet::<T>::order_supply(
+	assert_ok!(PoolPallet::<T>::order_invest(
 		RawOrigin::Signed(junior_investor.clone()).into(),
 		pool_id,
 		JuniorTrancheId::get().into(),
 		(500 * CURRENCY).into(),
 	));
-	assert_ok!(PoolPallet::<T>::order_supply(
+	assert_ok!(PoolPallet::<T>::order_invest(
 		RawOrigin::Signed(senior_investor.clone()).into(),
 		pool_id,
 		SeniorTrancheId::get().into(),

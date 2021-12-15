@@ -21,7 +21,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				invest: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -62,22 +62,22 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			epoch_supply: 10,
+			epoch_invest: 10,
 			epoch_redeem: 10,
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 10,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 10,
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 10,
 			..Default::default()
 		};
@@ -88,7 +88,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				invest: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -130,25 +130,25 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_subordination_ratio: Perquintill::from_float(0.4), // Violates constraint here
-			epoch_supply: 100,
+			epoch_invest: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_subordination_ratio: Perquintill::from_float(0.5),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_subordination_ratio: Perquintill::from_float(0.5),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_subordination_ratio: Perquintill::zero(),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
@@ -160,7 +160,7 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				invest: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -202,25 +202,25 @@ fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_subordination_ratio: Perquintill::from_float(0.2),
-			epoch_supply: 100,
+			epoch_invest: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_subordination_ratio: Perquintill::from_float(0.5),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 30,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_subordination_ratio: Perquintill::from_float(0.5),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_subordination_ratio: Perquintill::zero(),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
@@ -232,7 +232,7 @@ fn pool_constraints_pass() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				invest: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -287,13 +287,13 @@ fn epoch() {
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(TinlakeInvestorPool::order_invest(
 			tin_investor.clone(),
 			0,
 			1,
 			500 * CURRENCY
 		));
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(TinlakeInvestorPool::order_invest(
 			drop_investor.clone(),
 			0,
 			0,
