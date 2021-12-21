@@ -141,7 +141,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 					get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(100000000 * AIR),
+				Some(100000000 * CFG),
 				para_id,
 			)
 		},
@@ -324,7 +324,7 @@ pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
 
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenSymbol".into(), "DEVEL".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	DevelopmentChainSpec::from_genesis(
