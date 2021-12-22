@@ -45,7 +45,7 @@ pub mod types {
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 	use sp_std::vec::Vec;
 
-	pub type RootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
+	pub type EnsureRootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;

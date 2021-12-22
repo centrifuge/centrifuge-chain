@@ -547,27 +547,27 @@ impl pallet_democracy::Config for Runtime {
 	type MinimumDeposit = MinimumDeposit;
 
 	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = RootOr<HalfOfCouncil>;
+	type ExternalOrigin = HalfOfCouncil;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = RootOr<HalfOfCouncil>;
+	type ExternalMajorityOrigin = HalfOfCouncil;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
-	type ExternalDefaultOrigin = RootOr<AllOfCouncil>;
+	type ExternalDefaultOrigin = AllOfCouncil;
 
 	/// Half of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = RootOr<HalfOfCouncil>;
+	type FastTrackOrigin = EnsureRootOr<HalfOfCouncil>;
 
-	type InstantOrigin = RootOr<AllOfCouncil>;
+	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
 
 	type InstantAllowed = InstantAllowed;
 
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = RootOr<TwoThirdOfCouncil>;
+	type CancellationOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 
 	type BlacklistOrigin = EnsureRoot<AccountId>;
 
@@ -609,8 +609,9 @@ impl pallet_identity::Config for Runtime {
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
 	type Slashed = Treasury;
-	type ForceOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
-	type RegistrarOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type RegistrarOrigin =
+		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
 }
 
@@ -654,9 +655,10 @@ parameter_types! {
 impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	// either democracy or 66% of council votes
-	type ApproveOrigin = RootOr<TwoThirdOfCouncil>;
+	type ApproveOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	// either democracy or more than 50% council votes
-	type RejectOrigin = RootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type RejectOrigin =
+		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -677,7 +679,7 @@ impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
-	type FeeChangeOrigin = RootOr<HalfOfCouncil>;
+	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
 }
 
@@ -695,7 +697,7 @@ parameter_types! {
 
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for Runtime {
-	type AdminOrigin = RootOr<HalfOfCouncil>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Balances;
 	type Event = Event;
 	type Longevity = Longevity;
@@ -730,7 +732,7 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type AdminOrigin = RootOr<HalfOfCouncil>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
 }
 
@@ -747,7 +749,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
-	type AdminOrigin = RootOr<HalfOfCouncil>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;
