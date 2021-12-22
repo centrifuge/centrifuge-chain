@@ -67,7 +67,7 @@ where
 
 pub fn centrifuge_config() -> CentrifugeChainSpec {
 	CentrifugeChainSpec::from_json_bytes(
-		&include_bytes!("../res/centrifuge-genesis-spec-raw.json")[..],
+		&include_bytes!("../res/genesis/centrifuge-genesis-spec-raw.json")[..],
 	)
 	.unwrap()
 }
@@ -156,8 +156,10 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 }
 
 pub fn altair_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/altair-genesis-spec-raw.json")[..])
-		.unwrap()
+	AltairChainSpec::from_json_bytes(
+		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
+	)
+	.unwrap()
 }
 
 pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
