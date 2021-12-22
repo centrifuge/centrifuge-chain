@@ -42,6 +42,7 @@ start-parachain)
     --rpc-cors all \
     --ws-external \
     --rpc-methods=Unsafe \
+    --state-cache-size 0 \
     --log="main,debug" \
   ;;
 
