@@ -1,0 +1,10 @@
+
+# Bin executables
+bin/
+
+# Statemine-local files
+statemine-local-genesis-state
+statemine-local-genesis-wasm
+
+# Bootnodes files
+bootnodes
