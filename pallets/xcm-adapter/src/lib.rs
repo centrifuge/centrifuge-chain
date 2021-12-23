@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-///! The xcm-chain-adapter Pallet.
+///! The xcm-adapter Pallet.
 ///! This pallet provides means of sending XCMs to another `MultiLocation` and allows
 ///! for other pallets to listen in on receiving responses.
 #![cfg_attr(not(feature = "std"), no_std)]

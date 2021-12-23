@@ -6034,7 +6034,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-xcm-chain-adapter"
+name = "pallet-xcm-adapter"
 version = "0.1.0"
 dependencies = [
  "cumulus-primitives-core",

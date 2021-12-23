@@ -28,7 +28,7 @@ path = "src/main.rs"
 [workspace]
 members = [
 	"pallets/bridge-mapping",
-	"pallets/xcm-chain-adapter",
+	"pallets/xcm-adapter",
 	"pallets/fees",
 	"pallets/anchors",
 	"pallets/claims",
