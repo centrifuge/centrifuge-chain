@@ -69,6 +69,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
+	pub metadata: Vec<u8>,
 }
 
 /// Per-tranche and per-user order details.
@@ -354,6 +355,7 @@ pub mod pallet {
 			tranches: Vec<(u8, u8)>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
+			metadata: Vec<u8>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
@@ -404,6 +406,7 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
+					metadata,
 				},
 			);
 			PoolAdmins::<T>::insert(pool_id, owner.clone(), ());

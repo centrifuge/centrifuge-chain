@@ -771,7 +771,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
-	pub const MaxLoansPerPool: u64 = 200;
+	pub const MaxLoansPerPool: u64 = 10;
 }
 
 impl pallet_loan::Config for Runtime {
