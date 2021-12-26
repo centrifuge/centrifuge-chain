@@ -57,6 +57,7 @@ pub struct Tranche<Balance> {
 	pub last_updated_interest: u64,
 }
 
+// pub metadata: Vec<u8>,
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub owner: AccountId,
@@ -69,7 +70,6 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
-	pub metadata: Vec<u8>,
 }
 
 /// Per-tranche and per-user order details.
@@ -111,6 +111,15 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	price: BalanceRatio,
 	supply: Balance,
 	redeem: Balance,
+}
+
+/// The outstanding collections for an account
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct OutstandingCollections<Balance> {
+	pub payoutCurrencyAmount: Balance,
+	pub payoutTokenAmount: Balance,
+	pub remainingSupplyCurrency: Balance,
+	pub remainingRedeemToken: Balance,
 }
 
 /// The information for a currently executing epoch
@@ -172,6 +181,7 @@ pub mod pallet {
 			+ Zero
 			+ One
 			+ TypeInfo
+			+ PartialOrd
 			+ AddAssign;
 		type CurrencyId: Parameter + Copy;
 		type Tokens: MultiCurrency<
@@ -346,6 +356,7 @@ pub mod pallet {
 		NoPermission,
 	}
 
+	// metadata: Vec<u8>,
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(100)]
@@ -355,7 +366,6 @@ pub mod pallet {
 			tranches: Vec<(u8, u8)>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
-			metadata: Vec<u8>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
@@ -393,6 +403,7 @@ pub mod pallet {
 					}
 				})
 				.collect();
+			// metadata,
 			Pool::<T>::insert(
 				pool_id,
 				PoolDetails {
@@ -406,7 +417,6 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
-					metadata,
 				},
 			);
 			PoolAdmins::<T>::insert(pool_id, owner.clone(), ());
@@ -740,6 +750,61 @@ pub mod pallet {
 				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
 				PoolRole::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
 				PoolRole::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
+			};
+		}
+
+		pub(crate) fn calculate_collect(
+			user: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			end_epoch: T::EpochId
+		) -> OutstandingCollections<T::Balance> {
+			let loc = TrancheLocator {
+				pool_id,
+				tranche_id
+			};
+			let order = Order::<T>::try_get(loc, user).unwrap_or(UserOrder {
+				supply: Zero::zero(),
+				redeem: Zero::zero(),
+				epoch: Zero::zero()
+			});
+			let epoch_idx = order.epoch;
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool).unwrap();
+
+			// No collect possible in this epoch
+			if epoch_idx == pool.current_epoch {
+				return OutstandingCollections {
+					payoutCurrencyAmount: Zero::zero(),
+					payoutTokenAmount: Zero::zero(),
+					remainingSupplyCurrency: order.supply,
+					remainingRedeemToken: order.redeem,
+				}
+			}
+
+			if (end_epoch > pool.last_epoch_executed) {
+					// It is only possible to collect epochs which are already over
+					end_epoch = pool.last_epoch_executed;
+			}
+
+			// TODO: it is only possible to disburse epochs which are already over
+			let mut payoutCurrencyAmount: T::Balance = Zero::zero();
+			let mut payoutTokenAmount: T::Balance = Zero::zero();
+			let mut remainingSupplyCurrency = order.supply;
+			let mut remainingRedeemToken = order.redeem;
+			let mut amount: u32 = 0;
+			while epoch_idx <= end_epoch && (remainingSupplyCurrency != Zero::zero() || remainingRedeemToken != Zero::zero() ) {
+				if remainingSupplyCurrency != Zero::zero() {
+					// let epoch = Epoch::<T>::try_get(loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool);
+					payoutTokenAmount = remainingSupplyCurrency;
+					remainingSupplyCurrency = Zero::zero();
+				}
+			}
+
+			return OutstandingCollections {
+				payoutCurrencyAmount,
+				payoutTokenAmount,
+				remainingSupplyCurrency,
+				remainingRedeemToken
 			};
 		}
 

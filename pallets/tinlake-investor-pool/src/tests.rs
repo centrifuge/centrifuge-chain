@@ -386,6 +386,66 @@ fn epoch() {
 }
 
 #[test]
+fn collect_tranche_tokens() {
+	new_test_ext().execute_with(|| {
+		let tin_investor = Origin::signed(0);
+		let drop_investor = Origin::signed(1);
+		let pool_owner = Origin::signed(2);
+		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
+
+		// Initialize pool with initial investments
+		assert_ok!(TinlakeInvestorPool::create_pool(
+			pool_owner.clone(),
+			0,
+			vec![(10, 10), (0, 0)],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Nothing invested yet
+		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
+			payoutCurrencyAmount: Zero::zero(),
+			payoutTokenAmount: Zero::zero(),
+			remainingSupplyCurrency: Zero::zero(),
+			remainingRedeemToken: Zero::zero(),
+		});
+
+
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			tin_investor.clone(),
+			0,
+			1,
+			500 * CURRENCY
+		));
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			drop_investor.clone(),
+			0,
+			0,
+			500 * CURRENCY
+		));
+
+		// Outstanding orders
+		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
+			payoutCurrencyAmount: Zero::zero(),
+			payoutTokenAmount: Zero::zero(),
+			remainingSupplyCurrency: 500 * CURRENCY,
+			remainingRedeemToken: Zero::zero(),
+		});
+
+		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+
+		// Outstanding collections
+		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
+			payoutCurrencyAmount: Zero::zero(),
+			payoutTokenAmount: 500 * CURRENCY,
+			remainingSupplyCurrency: Zero::zero(),
+			remainingRedeemToken: Zero::zero(),
+		});
+		// assert_ok!(TinlakeInvestorPool::collect(pool_owner.clone(), 0, 1));
+	});
+}
+
+#[test]
 fn test_approve_and_remove_roles() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 1;
