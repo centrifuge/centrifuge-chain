@@ -522,6 +522,42 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
+		pub fn collect(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			end_epoch: T::EpochId
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			// TODO: require(users[usr].orderedInEpoch <= coordinator.lastEpochExecuted(), "epoch-not-executed-yet");
+			let collections = Self::calculate_collect(who.clone(), pool_id, tranche_id, end_epoch);
+			
+			let pool_account = PoolLocator { pool_id }.into_account();
+
+			if collections.payoutCurrencyAmount > Zero::zero() {
+				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+				T::Tokens::transfer(pool.currency, &pool_account, &who, collections.payoutCurrencyAmount)?;
+			}
+
+			if collections.payoutTokenAmount > Zero::zero() {
+				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
+				T::Tokens::transfer(token, &pool_account, &who, collections.payoutTokenAmount)?;
+			}
+
+			let loc = TrancheLocator {
+				pool_id,
+				tranche_id,
+			};
+
+			Order::<T>::try_mutate(loc, &who, |order| -> DispatchResult {
+				order.supply = Zero::zero();
+				order.redeem = Zero::zero();
+				order.epoch = end_epoch;
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
 			ensure_signed(origin)?;
 			Pool::<T>::try_mutate(pool_id, |pool| {
@@ -781,10 +817,8 @@ pub mod pallet {
 				}
 			}
 
-			if (end_epoch > pool.last_epoch_executed) {
-					// It is only possible to collect epochs which are already over
-					end_epoch = pool.last_epoch_executed;
-			}
+			// It is only possible to collect epochs which are already over
+			let parse_until_epoch = if end_epoch > pool.last_epoch_executed { pool.last_epoch_executed } else { end_epoch };
 
 			// TODO: it is only possible to disburse epochs which are already over
 			let mut payoutCurrencyAmount: T::Balance = Zero::zero();
@@ -792,7 +826,7 @@ pub mod pallet {
 			let mut remainingSupplyCurrency = order.supply;
 			let mut remainingRedeemToken = order.redeem;
 			let mut amount: u32 = 0;
-			while epoch_idx <= end_epoch && (remainingSupplyCurrency != Zero::zero() || remainingRedeemToken != Zero::zero() ) {
+			while epoch_idx <= parse_until_epoch && (remainingSupplyCurrency != Zero::zero() || remainingRedeemToken != Zero::zero() ) {
 				if remainingSupplyCurrency != Zero::zero() {
 					// let epoch = Epoch::<T>::try_get(loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool);
 					payoutTokenAmount = remainingSupplyCurrency;

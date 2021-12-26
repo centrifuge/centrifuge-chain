@@ -410,7 +410,7 @@ fn collect_tranche_tokens() {
 			remainingRedeemToken: Zero::zero(),
 		});
 
-
+		// let junior_token = TrancheToken::tranche_token(0, 1);
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			tin_investor.clone(),
 			0,
@@ -441,7 +441,34 @@ fn collect_tranche_tokens() {
 			remainingSupplyCurrency: Zero::zero(),
 			remainingRedeemToken: Zero::zero(),
 		});
-		// assert_ok!(TinlakeInvestorPool::collect(pool_owner.clone(), 0, 1));
+		// assert_eq!(Tokens::free_balance(junior_token, &0), 0);
+		assert_ok!(TinlakeInvestorPool::collect(tin_investor.clone(), 0, 1, 1));
+		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
+
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			drop_investor.clone(),
+			0,
+			0,
+			10 * CURRENCY
+		));
+
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			drop_investor.clone(),
+			0,
+			0,
+			20 * CURRENCY
+		));
+
+		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+
+		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
+			payoutCurrencyAmount: Zero::zero(),
+			payoutTokenAmount: 20 * CURRENCY,
+			remainingSupplyCurrency: Zero::zero(),
+			remainingRedeemToken: Zero::zero(),
+		});
+
+		assert_ok!(TinlakeInvestorPool::collect(tin_investor.clone(), 0, 1, 1));
 	});
 }
 
