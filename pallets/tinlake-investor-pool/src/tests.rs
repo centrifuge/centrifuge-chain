@@ -273,8 +273,8 @@ fn pool_constraints_pass() {
 #[test]
 fn epoch() {
 	new_test_ext().execute_with(|| {
-		let tin_investor = Origin::signed(0);
-		let drop_investor = Origin::signed(1);
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
 		let borrower = 3;
 		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
@@ -288,13 +288,13 @@ fn epoch() {
 			10_000 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			tin_investor.clone(),
+			junior_investor.clone(),
 			0,
 			1,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			drop_investor.clone(),
+			senior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
@@ -351,10 +351,10 @@ fn epoch() {
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
 
-		// DROP investor tries to redeem
+		// Senior investor tries to redeem
 		next_block();
 		assert_ok!(TinlakeInvestorPool::order_redeem(
-			drop_investor.clone(),
+			senior_investor.clone(),
 			0,
 			0,
 			250 * CURRENCY
@@ -362,7 +362,7 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
-		let drop_epoch = TinlakeInvestorPool::epoch(
+		let senior_epoch = TinlakeInvestorPool::epoch(
 			TrancheLocator {
 				pool_id: 0,
 				tranche_id: 0,
@@ -379,7 +379,7 @@ fn epoch() {
 		assert!(pool.total_reserve > 750 * CURRENCY);
 		assert!(pool.total_reserve < 800 * CURRENCY);
 		assert_eq!(
-			pool.total_reserve + drop_epoch.token_price.saturating_mul_int(250 * CURRENCY),
+			pool.total_reserve + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
 		);
 	});
@@ -388,8 +388,8 @@ fn epoch() {
 #[test]
 fn collect_tranche_tokens() {
 	new_test_ext().execute_with(|| {
-		let tin_investor = Origin::signed(0);
-		let drop_investor = Origin::signed(1);
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
 		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
 
@@ -403,54 +403,26 @@ fn collect_tranche_tokens() {
 		));
 
 		// Nothing invested yet
-		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
-			payout_currency_amount: Zero::zero(),
-			payout_token_amount: Zero::zero(),
-			remaining_supply_currency: Zero::zero(),
-			remaining_redeem_token: Zero::zero(),
-		});
-
-		// let junior_token = TrancheToken::tranche_token(0, 1);
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			tin_investor.clone(),
+			junior_investor.clone(),
 			0,
 			1,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			drop_investor.clone(),
+			senior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
 		));
 
 		// Outstanding orders
-		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
-			payout_currency_amount: Zero::zero(),
-			payout_token_amount: Zero::zero(),
-			remaining_supply_currency: 500 * CURRENCY,
-			remaining_redeem_token: Zero::zero(),
-		});
-
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
 
 		// Outstanding collections
-		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
-			payout_currency_amount: Zero::zero(),
-			payout_token_amount: 500 * CURRENCY,
-			remaining_supply_currency: Zero::zero(),
-			remaining_redeem_token: Zero::zero(),
-		});
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 0);
-		assert_ok!(TinlakeInvestorPool::collect(tin_investor.clone(), 0, 1, 1));
+		assert_ok!(TinlakeInvestorPool::collect(junior_investor.clone(), 0, 1, 1));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
-
-		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 1), OutstandingCollections {
-			payout_currency_amount: Zero::zero(),
-			payout_token_amount: Zero::zero(),
-			remaining_supply_currency: Zero::zero(),
-			remaining_redeem_token: Zero::zero(),
-		});
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].epoch_supply, 0);
@@ -458,32 +430,22 @@ fn collect_tranche_tokens() {
 		let order = TinlakeInvestorPool::order(TrancheLocator { pool_id: 0, tranche_id: 0 }, 0);
 		assert_eq!(order.supply, 0);
 
-		// TODO: another order_supply here will fail with Overflow2
-
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			drop_investor.clone(),
+			senior_investor.clone(),
 			0,
 			1,
 			10 * CURRENCY
 		));
 
 		assert_ok!(TinlakeInvestorPool::order_redeem(
-			tin_investor.clone(),
+			junior_investor.clone(),
 			0,
 			1,
 			10 * CURRENCY
 		));
 
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
-
-		assert_eq!(TinlakeInvestorPool::calculate_collect(0, 0, 1, 2), OutstandingCollections {
-			payout_currency_amount: 10 * CURRENCY,
-			payout_token_amount: Zero::zero(),
-			remaining_supply_currency: Zero::zero(),
-			remaining_redeem_token: Zero::zero(),
-		});
-
-		assert_ok!(TinlakeInvestorPool::collect(tin_investor.clone(), 0, 1, 2));
+		assert_ok!(TinlakeInvestorPool::collect(junior_investor.clone(), 0, 1, 2));
 	});
 }
 

@@ -540,11 +540,10 @@ pub mod pallet {
 				redeem: Zero::zero(),
 				epoch: Zero::zero()
 			});
-			let mut epoch_idx = order.epoch;
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool).unwrap();
 			ensure!(order.epoch <= pool.last_epoch_executed, Error::<T>::EpochNotExecutedYet);
 
-			let collections = Self::calculate_collect(who.clone(), pool_id, tranche_id, end_epoch);
+			let collections = Self::calculate_collect(loc, order, pool, who.clone(), end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
@@ -805,23 +804,13 @@ pub mod pallet {
 		}
 
 		pub(crate) fn calculate_collect(
+			loc: TrancheLocator<T::PoolId, T::TrancheId>,
+			order: UserOrder<T::Balance, T::EpochId>,
+			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
 			user: T::AccountId,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
 			end_epoch: T::EpochId
 		) -> OutstandingCollections<T::Balance> {
-			// TODO: these storage lookups should probably be moved to collect() and passed by arg
-			let loc = TrancheLocator {
-				pool_id,
-				tranche_id
-			};
-			let order = Order::<T>::try_get(&loc, user).unwrap_or(UserOrder {
-				supply: Zero::zero(),
-				redeem: Zero::zero(),
-				epoch: Zero::zero()
-			});
 			let mut epoch_idx = order.epoch;
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool).unwrap();
 
 			// No collect possible in this epoch
 			if epoch_idx == pool.current_epoch {
