@@ -57,7 +57,6 @@ pub struct Tranche<Balance> {
 	pub last_updated_interest: u64,
 }
 
-// pub metadata: Vec<u8>,
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub owner: AccountId,
@@ -336,8 +335,6 @@ pub mod pallet {
 		PoolClosing,
 		/// An arithmetic overflow occured
 		Overflow,
-		/// An arithmetic overflow occured
-		Overflow2,
 		/// A Tranche ID cannot be converted to an address
 		TrancheId,
 		/// Closing the epoch now would wipe out the junior tranche
@@ -362,7 +359,6 @@ pub mod pallet {
 		EpochNotExecutedYet,
 	}
 
-	// metadata: Vec<u8>,
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(100)]
@@ -409,7 +405,6 @@ pub mod pallet {
 					}
 				})
 				.collect();
-			// metadata,
 			Pool::<T>::insert(
 				pool_id,
 				PoolDetails {
@@ -468,7 +463,7 @@ pub mod pallet {
 						let epoch_supply = &mut pool.tranches[tranche_id.into()].epoch_supply;
 						*epoch_supply = epoch_supply
 							.checked_sub(&transfer_amount)
-							.ok_or(Error::<T>::Overflow2)?;
+							.ok_or(Error::<T>::Overflow)?;
 						T::Tokens::transfer(currency, &pool_account, &who, transfer_amount)
 					})?;
 				}
