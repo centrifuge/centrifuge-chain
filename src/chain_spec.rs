@@ -66,8 +66,10 @@ where
 }
 
 pub fn centrifuge_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/centrifuge-spec-raw.json")[..])
-		.unwrap()
+	CentrifugeChainSpec::from_json_bytes(
+		&include_bytes!("../res/genesis/centrifuge-genesis-spec-raw.json")[..],
+	)
+	.unwrap()
 }
 
 pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
@@ -141,7 +143,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 					get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(100000000 * AIR),
+				Some(100000000 * CFG),
 				para_id,
 			)
 		},
@@ -154,7 +156,10 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 }
 
 pub fn altair_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/altair-spec-raw.json")[..]).unwrap()
+	AltairChainSpec::from_json_bytes(
+		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
+	)
+	.unwrap()
 }
 
 pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
@@ -324,7 +329,7 @@ pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
 
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenSymbol".into(), "DEVEL".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	DevelopmentChainSpec::from_genesis(
