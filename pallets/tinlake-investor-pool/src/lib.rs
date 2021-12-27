@@ -552,7 +552,7 @@ use sp_std::convert::TryInto;
 			let n_epochs: T::EpochId = collect_n_epochs.into();
 			let end_epoch: T::EpochId = if order.epoch + n_epochs > pool.last_epoch_executed { pool.last_epoch_executed } else { (order.epoch + n_epochs).into() };
 
-			let collections = Self::calculate_collect(loc, order, pool, who.clone(), end_epoch);
+			let collections = Self::calculate_collect(loc.clone(), order, pool, who.clone(), end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
@@ -565,12 +565,7 @@ use sp_std::convert::TryInto;
 				T::Tokens::transfer(token, &pool_account, &who, collections.payout_token_amount)?;
 			}
 
-			let loc = TrancheLocator {
-				pool_id,
-				tranche_id,
-			};
-
-			Order::<T>::try_mutate(loc, &who, |order| -> DispatchResult {
+			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
 				order.supply = collections.remaining_supply_currency;
 				order.redeem = collections.remaining_redeem_token;
 				order.epoch = end_epoch + One::one();
