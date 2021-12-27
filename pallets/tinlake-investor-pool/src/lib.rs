@@ -136,7 +136,7 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 pub mod pallet {
 	use super::*;
 	use frame_support::weights::FunctionOf;
-use sp_std::convert::TryInto;
+	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -317,7 +317,16 @@ use sp_std::convert::TryInto;
 		/// Epoch closed [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
 		/// Fulfilled orders collected [pool, tranche, end_epoch, user, payout_currency_amount, payout_token_amount, remaining_supply_currency, remaining_redeem_token]
-		OrdersCollected(T::PoolId, T::TrancheId, T::EpochId, T::AccountId, T::Balance, T::Balance, T::Balance, T::Balance),
+		OrdersCollected(
+			T::PoolId,
+			T::TrancheId,
+			T::EpochId,
+			T::AccountId,
+			T::Balance,
+			T::Balance,
+			T::Balance,
+			T::Balance,
+		),
 		/// When a role is for some accounts
 		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
 		// When a role was revoked for an account in pool
@@ -533,31 +542,46 @@ use sp_std::convert::TryInto;
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			collect_n_epochs: u32
+			collect_n_epochs: u32,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			let loc = TrancheLocator {
 				pool_id,
-				tranche_id
+				tranche_id,
 			};
 			let order = Order::<T>::try_get(&loc, &who).unwrap_or(UserOrder {
 				supply: Zero::zero(),
 				redeem: Zero::zero(),
-				epoch: Zero::zero()
+				epoch: Zero::zero(),
 			});
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool).unwrap();
-			ensure!(order.epoch <= pool.last_epoch_executed, Error::<T>::EpochNotExecutedYet);
+			let pool = Pool::<T>::try_get(pool_id)
+				.map_err(|_| Error::<T>::NoSuchPool)
+				.unwrap();
+			ensure!(
+				order.epoch <= pool.last_epoch_executed,
+				Error::<T>::EpochNotExecutedYet
+			);
 
 			let n_epochs: T::EpochId = collect_n_epochs.into();
-			let end_epoch: T::EpochId = if order.epoch + n_epochs > pool.last_epoch_executed { pool.last_epoch_executed } else { (order.epoch + n_epochs).into() };
+			let end_epoch: T::EpochId = if order.epoch + n_epochs > pool.last_epoch_executed {
+				pool.last_epoch_executed
+			} else {
+				(order.epoch + n_epochs).into()
+			};
 
-			let collections = Self::calculate_collect(loc.clone(), order, pool, who.clone(), end_epoch);
+			let collections =
+				Self::calculate_collect(loc.clone(), order, pool, who.clone(), end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-				T::Tokens::transfer(pool.currency, &pool_account, &who, collections.payout_currency_amount)?;
+				T::Tokens::transfer(
+					pool.currency,
+					&pool_account,
+					&who,
+					collections.payout_currency_amount,
+				)?;
 			}
 
 			if collections.payout_token_amount > Zero::zero() {
@@ -570,7 +594,16 @@ use sp_std::convert::TryInto;
 				order.redeem = collections.remaining_redeem_token;
 				order.epoch = end_epoch + One::one();
 
-				Self::deposit_event(Event::OrdersCollected(pool_id, tranche_id, end_epoch, who.clone(), collections.payout_currency_amount, collections.payout_token_amount, collections.remaining_supply_currency, collections.remaining_redeem_token));
+				Self::deposit_event(Event::OrdersCollected(
+					pool_id,
+					tranche_id,
+					end_epoch,
+					who.clone(),
+					collections.payout_currency_amount,
+					collections.payout_token_amount,
+					collections.remaining_supply_currency,
+					collections.remaining_redeem_token,
+				));
 				Ok(())
 			})
 		}
@@ -812,7 +845,7 @@ use sp_std::convert::TryInto;
 			order: UserOrder<T::Balance, T::EpochId>,
 			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
 			user: T::AccountId,
-			end_epoch: T::EpochId
+			end_epoch: T::EpochId,
 		) -> OutstandingCollections<T::Balance> {
 			let mut epoch_idx = order.epoch;
 
@@ -823,37 +856,51 @@ use sp_std::convert::TryInto;
 					payout_token_amount: Zero::zero(),
 					remaining_supply_currency: order.supply,
 					remaining_redeem_token: order.redeem,
-				}
+				};
 			}
 
 			// It is only possible to collect epochs which are already over
-			let parse_until_epoch = if end_epoch > pool.last_epoch_executed { pool.last_epoch_executed } else { end_epoch };
+			let parse_until_epoch = if end_epoch > pool.last_epoch_executed {
+				pool.last_epoch_executed
+			} else {
+				end_epoch
+			};
 
 			let mut payout_currency_amount: T::Balance = Zero::zero();
 			let mut payout_token_amount: T::Balance = Zero::zero();
 			let mut remaining_supply_currency = order.supply;
 			let mut remaining_redeem_token = order.redeem;
 			let mut amount: T::Balance = Zero::zero();
-			while epoch_idx <= parse_until_epoch && (remaining_supply_currency != Zero::zero() || remaining_redeem_token != Zero::zero() ) {
+			while epoch_idx <= parse_until_epoch
+				&& (remaining_supply_currency != Zero::zero()
+					|| remaining_redeem_token != Zero::zero())
+			{
 				if remaining_supply_currency != Zero::zero() {
-					let epoch = Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool).unwrap();
+					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
+						.map_err(|_| Error::<T>::NoSuchPool)
+						.unwrap();
 					// amount = epoch.supply_fulfillment.checked_mul(remaining_supply_currency).unwrap();
 					amount = remaining_supply_currency;
 
 					if amount != Zero::zero() {
 						payout_token_amount = payout_token_amount.checked_add(&amount).unwrap(); // TODO: div by token price
-						remaining_supply_currency = remaining_supply_currency.checked_sub(&amount).unwrap();
+						remaining_supply_currency =
+							remaining_supply_currency.checked_sub(&amount).unwrap();
 					}
 				}
 
 				if remaining_redeem_token != Zero::zero() {
-					let epoch = Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool).unwrap();
+					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
+						.map_err(|_| Error::<T>::NoSuchPool)
+						.unwrap();
 					// amount = epoch.redeem_fulfillment.checked_mul(remaining_redeem_token).unwrap();
 					amount = remaining_redeem_token;
 
 					if amount != Zero::zero() {
-						payout_currency_amount = payout_currency_amount.checked_add(&amount).unwrap(); // TODO: div by token price
-						remaining_redeem_token = remaining_redeem_token.checked_sub(&amount).unwrap();
+						payout_currency_amount =
+							payout_currency_amount.checked_add(&amount).unwrap(); // TODO: div by token price
+						remaining_redeem_token =
+							remaining_redeem_token.checked_sub(&amount).unwrap();
 					}
 				}
 
@@ -864,7 +911,7 @@ use sp_std::convert::TryInto;
 				payout_currency_amount,
 				payout_token_amount,
 				remaining_supply_currency,
-				remaining_redeem_token
+				remaining_redeem_token,
 			};
 		}
 

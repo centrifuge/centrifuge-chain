@@ -421,13 +421,24 @@ fn collect_tranche_tokens() {
 
 		// Outstanding collections
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 0);
-		assert_ok!(TinlakeInvestorPool::collect(junior_investor.clone(), 0, 1, 1));
+		assert_ok!(TinlakeInvestorPool::collect(
+			junior_investor.clone(),
+			0,
+			1,
+			1
+		));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].epoch_supply, 0);
 
-		let order = TinlakeInvestorPool::order(TrancheLocator { pool_id: 0, tranche_id: 0 }, 0);
+		let order = TinlakeInvestorPool::order(
+			TrancheLocator {
+				pool_id: 0,
+				tranche_id: 0,
+			},
+			0,
+		);
 		assert_eq!(order.supply, 0);
 
 		assert_ok!(TinlakeInvestorPool::order_supply(
@@ -445,7 +456,12 @@ fn collect_tranche_tokens() {
 		));
 
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
-		assert_ok!(TinlakeInvestorPool::collect(junior_investor.clone(), 0, 1, 2));
+		assert_ok!(TinlakeInvestorPool::collect(
+			junior_investor.clone(),
+			0,
+			1,
+			2
+		));
 	});
 }
 
