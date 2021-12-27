@@ -315,6 +315,8 @@ pub mod pallet {
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
+		/// Fulfilled orders collected [pool, tranche, end_epoch, user, payout_currency_amount, payout_token_amount, remaining_supply_currency, remaining_redeem_token]
+		OrdersCollected(T::PoolId, T::TrancheId, T::EpochId, T::AccountId, T::Balance, T::Balance, T::Balance, T::Balance),
 		/// When a role is for some accounts
 		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
 		// When a role was revoked for an account in pool
@@ -566,9 +568,11 @@ pub mod pallet {
 			};
 
 			Order::<T>::try_mutate(loc, &who, |order| -> DispatchResult {
-				order.supply = Zero::zero();
-				order.redeem = Zero::zero();
-				order.epoch = end_epoch;
+				order.supply = collections.remaining_supply_currency;
+				order.redeem = collections.remaining_redeem_token;
+				order.epoch = end_epoch + One::one();
+
+				Self::deposit_event(Event::OrdersCollected(pool_id, tranche_id, end_epoch, who.clone(), collections.payout_currency_amount, collections.payout_token_amount, collections.remaining_supply_currency, collections.remaining_redeem_token));
 				Ok(())
 			})
 		}
@@ -811,6 +815,7 @@ pub mod pallet {
 			tranche_id: T::TrancheId,
 			end_epoch: T::EpochId
 		) -> OutstandingCollections<T::Balance> {
+			// TODO: these storage lookups should probably be moved to collect() and passed by arg
 			let loc = TrancheLocator {
 				pool_id,
 				tranche_id
@@ -836,7 +841,6 @@ pub mod pallet {
 			// It is only possible to collect epochs which are already over
 			let parse_until_epoch = if end_epoch > pool.last_epoch_executed { pool.last_epoch_executed } else { end_epoch };
 
-			// TODO: it is only possible to disburse epochs which are already over
 			let mut payout_currency_amount: T::Balance = Zero::zero();
 			let mut payout_token_amount: T::Balance = Zero::zero();
 			let mut remaining_supply_currency = order.supply;

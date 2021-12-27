@@ -460,6 +460,13 @@ fn collect_tranche_tokens() {
 
 		// TODO: another order_supply here will fail with Overflow2
 
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			drop_investor.clone(),
+			0,
+			1,
+			10 * CURRENCY
+		));
+
 		assert_ok!(TinlakeInvestorPool::order_redeem(
 			tin_investor.clone(),
 			0,
