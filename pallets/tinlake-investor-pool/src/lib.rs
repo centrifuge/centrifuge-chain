@@ -135,7 +135,8 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use sp_std::convert::TryInto;
+	use frame_support::weights::FunctionOf;
+use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -181,6 +182,7 @@ pub mod pallet {
 			+ One
 			+ TypeInfo
 			+ PartialOrd
+			+ From<u32>
 			+ AddAssign;
 		type CurrencyId: Parameter + Copy;
 		type Tokens: MultiCurrency<
@@ -522,12 +524,16 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(FunctionOf(
+			|args: (&T::PoolId, &T::TrancheId, &u32)| u64::from(args.2.saturating_mul(10_000)),
+			DispatchClass::Normal,
+			Pays::Yes,
+		))]
 		pub fn collect(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			end_epoch: T::EpochId
+			collect_n_epochs: u32
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
@@ -542,6 +548,9 @@ pub mod pallet {
 			});
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool).unwrap();
 			ensure!(order.epoch <= pool.last_epoch_executed, Error::<T>::EpochNotExecutedYet);
+
+			let n_epochs: T::EpochId = collect_n_epochs.into();
+			let end_epoch: T::EpochId = if order.epoch + n_epochs > pool.last_epoch_executed { pool.last_epoch_executed } else { (order.epoch + n_epochs).into() };
 
 			let collections = Self::calculate_collect(loc, order, pool, who.clone(), end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
