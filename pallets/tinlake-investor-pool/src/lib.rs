@@ -135,7 +135,6 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::weights::FunctionOf;
 	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -533,11 +532,8 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(FunctionOf(
-			|args: (&T::PoolId, &T::TrancheId, &u32)| u64::from(args.2.saturating_mul(10_000)),
-			DispatchClass::Normal,
-			Pays::Yes,
-		))]
+		// TODO: this weight should likely scale based on collect_n_epochs
+		#[pallet::weight(100)]
 		pub fn collect(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -571,7 +567,7 @@ pub mod pallet {
 			};
 
 			let collections =
-				Self::calculate_collect(loc.clone(), order, pool, who.clone(), end_epoch);
+				Self::calculate_collect(loc.clone(), order, pool, end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
@@ -844,7 +840,6 @@ pub mod pallet {
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,
 			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
-			user: T::AccountId,
 			end_epoch: T::EpochId,
 		) -> OutstandingCollections<T::Balance> {
 			let mut epoch_idx = order.epoch;
@@ -870,7 +865,6 @@ pub mod pallet {
 			let mut payout_token_amount: T::Balance = Zero::zero();
 			let mut remaining_supply_currency = order.supply;
 			let mut remaining_redeem_token = order.redeem;
-			let mut amount: T::Balance = Zero::zero();
 			while epoch_idx <= parse_until_epoch
 				&& (remaining_supply_currency != Zero::zero()
 					|| remaining_redeem_token != Zero::zero())
@@ -879,11 +873,20 @@ pub mod pallet {
 					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
 						.map_err(|_| Error::<T>::NoSuchPool)
 						.unwrap();
-					// amount = epoch.supply_fulfillment.checked_mul(remaining_supply_currency).unwrap();
-					amount = remaining_supply_currency;
+					
+					// TODO: this should round down, in favor of the system
+					let amount = T::BalanceRatio::checked_from_rational(
+						epoch.supply_fulfillment.deconstruct(),
+						Perquintill::ACCURACY,
+					).unwrap().checked_mul_int(remaining_supply_currency).unwrap();
 
 					if amount != Zero::zero() {
-						payout_token_amount = payout_token_amount.checked_add(&amount).unwrap(); // TODO: div by token price
+						let amount_token = epoch.token_price
+							.reciprocal()
+							.and_then(|inv_price| inv_price.checked_mul_int(amount))
+							.unwrap_or(Zero::zero());
+	
+						payout_token_amount = payout_token_amount.checked_add(&amount_token).unwrap();
 						remaining_supply_currency =
 							remaining_supply_currency.checked_sub(&amount).unwrap();
 					}
@@ -893,12 +896,18 @@ pub mod pallet {
 					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
 						.map_err(|_| Error::<T>::NoSuchPool)
 						.unwrap();
-					// amount = epoch.redeem_fulfillment.checked_mul(remaining_redeem_token).unwrap();
-					amount = remaining_redeem_token;
+
+					// TODO: this should round down, in favor of the system
+					let amount = T::BalanceRatio::checked_from_rational(
+						epoch.redeem_fulfillment.deconstruct(),
+						Perquintill::ACCURACY,
+					).unwrap().checked_mul_int(remaining_redeem_token).unwrap();
 
 					if amount != Zero::zero() {
+						let amount_currency = epoch.token_price.checked_mul_int(amount).unwrap_or(Zero::zero());
+	
 						payout_currency_amount =
-							payout_currency_amount.checked_add(&amount).unwrap(); // TODO: div by token price
+							payout_currency_amount.checked_add(&amount_currency).unwrap();
 						remaining_redeem_token =
 							remaining_redeem_token.checked_sub(&amount).unwrap();
 					}

@@ -391,7 +391,6 @@ fn collect_tranche_tokens() {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
-		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
 
 		// Initialize pool with initial investments
 		assert_ok!(TinlakeInvestorPool::create_pool(
