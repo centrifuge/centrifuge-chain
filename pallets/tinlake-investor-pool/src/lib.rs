@@ -566,8 +566,7 @@ pub mod pallet {
 				(order.epoch + n_epochs).into()
 			};
 
-			let collections =
-				Self::calculate_collect(loc.clone(), order, pool, end_epoch);
+			let collections = Self::calculate_collect(loc.clone(), order, pool, end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
@@ -873,20 +872,25 @@ pub mod pallet {
 					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
 						.map_err(|_| Error::<T>::NoSuchPool)
 						.unwrap();
-					
+
 					// TODO: this should round down, in favor of the system
 					let amount = T::BalanceRatio::checked_from_rational(
 						epoch.supply_fulfillment.deconstruct(),
 						Perquintill::ACCURACY,
-					).unwrap().checked_mul_int(remaining_supply_currency).unwrap();
+					)
+					.unwrap()
+					.checked_mul_int(remaining_supply_currency)
+					.unwrap();
 
 					if amount != Zero::zero() {
-						let amount_token = epoch.token_price
+						let amount_token = epoch
+							.token_price
 							.reciprocal()
 							.and_then(|inv_price| inv_price.checked_mul_int(amount))
 							.unwrap_or(Zero::zero());
-	
-						payout_token_amount = payout_token_amount.checked_add(&amount_token).unwrap();
+
+						payout_token_amount =
+							payout_token_amount.checked_add(&amount_token).unwrap();
 						remaining_supply_currency =
 							remaining_supply_currency.checked_sub(&amount).unwrap();
 					}
@@ -901,13 +905,20 @@ pub mod pallet {
 					let amount = T::BalanceRatio::checked_from_rational(
 						epoch.redeem_fulfillment.deconstruct(),
 						Perquintill::ACCURACY,
-					).unwrap().checked_mul_int(remaining_redeem_token).unwrap();
+					)
+					.unwrap()
+					.checked_mul_int(remaining_redeem_token)
+					.unwrap();
 
 					if amount != Zero::zero() {
-						let amount_currency = epoch.token_price.checked_mul_int(amount).unwrap_or(Zero::zero());
-	
-						payout_currency_amount =
-							payout_currency_amount.checked_add(&amount_currency).unwrap();
+						let amount_currency = epoch
+							.token_price
+							.checked_mul_int(amount)
+							.unwrap_or(Zero::zero());
+
+						payout_currency_amount = payout_currency_amount
+							.checked_add(&amount_currency)
+							.unwrap();
 						remaining_redeem_token =
 							remaining_redeem_token.checked_sub(&amount).unwrap();
 					}
