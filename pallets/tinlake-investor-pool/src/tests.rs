@@ -37,6 +37,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			max_reserve: 40,
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -104,6 +105,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			max_reserve: 5,
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -176,6 +178,7 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -248,6 +251,7 @@ fn pool_constraints_pass() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -286,6 +290,13 @@ fn epoch() {
 			vec![(10, 10), (0, 0)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
+		));
+		assert_ok!(TinlakeInvestorPool::set_pool_metadata(
+			pool_owner.clone(),
+			0,
+			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3"
+				.as_bytes()
+				.to_vec()
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			junior_investor.clone(),

@@ -69,6 +69,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
+	pub metadata: Option<Vec<u8>>,
 }
 
 /// Per-tranche and per-user order details.
@@ -198,6 +199,10 @@ pub mod pallet {
 		type Time: UnixTime;
 	}
 
+	/// The maximum length of pool metadata
+	// #[pallet::constant]
+	// type PoolMetadataLimit: Get<u32>;
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -311,6 +316,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Pool Created. [pool, who]
 		PoolCreated(T::PoolId, T::AccountId),
+		/// Pool metadata updated. [pool, metadata]
+		PoolMetadataSet(T::PoolId, Vec<u8>), // Vec<u8, T::PoolMetadataLimit>
 		/// Epoch executed [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
@@ -428,11 +435,32 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
+					metadata: None,
 				},
 			);
 			PoolAdmins::<T>::insert(pool_id, owner.clone(), ());
 			Self::deposit_event(Event::PoolCreated(pool_id, owner));
 			Ok(())
+		}
+
+		#[pallet::weight(100)]
+		pub fn set_pool_metadata(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			metadata: Vec<u8>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				Error::<T>::NoPermission
+			);
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.metadata = Some(metadata.clone());
+				Self::deposit_event(Event::PoolMetadataSet(pool_id, metadata.clone()));
+				Ok(())
+			})
 		}
 
 		#[pallet::weight(100)]
