@@ -50,7 +50,10 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn identify(&self) -> ChainIdentity {
 		if self.id().starts_with("centrifuge") {
 			ChainIdentity::Centrifuge
-		} else if self.id().starts_with("altair") || self.id().starts_with("charcoal") || self.id().starts_with("antares") {
+		} else if self.id().starts_with("altair")
+			|| self.id().starts_with("charcoal")
+			|| self.id().starts_with("antares")
+		{
 			ChainIdentity::Altair
 		} else {
 			ChainIdentity::Development

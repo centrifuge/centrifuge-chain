@@ -262,21 +262,27 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 				vec![
 					(
 						//kAKHQhXnjqLyv1nsCLEWb7fzPNVxXce3m8befa1tQtv1vxFxn
-						hex!["5e4b3571ca8b591a3a4bbe74ef98c175ded537327eb0fee804b2b4bb9e6a4d17"].into(),
+						hex!["5e4b3571ca8b591a3a4bbe74ef98c175ded537327eb0fee804b2b4bb9e6a4d17"]
+							.into(),
 						//kALq9HKGio1JH3FiP1nBqobG4Uw5ZWruAdisFnYPPV3LnngUq
-						hex!["a2bb652a9722f01408b586aebc14891861809931e523c12e159399b9dd01c150"].unchecked_into(),
+						hex!["a2bb652a9722f01408b586aebc14891861809931e523c12e159399b9dd01c150"]
+							.unchecked_into(),
 					),
 					(
 						//kANowgeZWL2DhEzvcK5fZn9S6zWagoS8VivqSfHkxA1UetiAq
-						hex!["fa499346a1c747b839d8f125e668bdd1342dff00c0c958f790bac11cbb08b51d"].into(),
+						hex!["fa499346a1c747b839d8f125e668bdd1342dff00c0c958f790bac11cbb08b51d"]
+							.into(),
 						//kANbf9tdTos3tjFwTWu8pys2vjRreayx2cyRKRhGnYU8XMXTK
-						hex!["f0eafc07a1b05d926c5edf842752bbc25d8fe048d7aa4847fafc7b6577a51b7f"].unchecked_into(),
+						hex!["f0eafc07a1b05d926c5edf842752bbc25d8fe048d7aa4847fafc7b6577a51b7f"]
+							.unchecked_into(),
 					),
 					(
 						//kAHAYwo51dEmSLPXibTGvyB6gZ94uhEvWrW6jWS2Xay4drscH
-						hex!["0097c8435cd03de1e57045221de04c23fc14a36fc82b50ea35ddc0165a7f8626"].into(),
+						hex!["0097c8435cd03de1e57045221de04c23fc14a36fc82b50ea35ddc0165a7f8626"]
+							.into(),
 						//kAMpz3UFrxHoWsW6JcadsdtZjQenT4yptu4XTMfsnQUJQzyTq
-						hex!["ced887433a5c8c1e0af93bf6c5de96a39fe09be06bc3f747b76fa0cab9ef4a69"].unchecked_into(),
+						hex!["ced887433a5c8c1e0af93bf6c5de96a39fe09be06bc3f747b76fa0cab9ef4a69"]
+							.unchecked_into(),
 					),
 				],
 				endowed_accounts(),
