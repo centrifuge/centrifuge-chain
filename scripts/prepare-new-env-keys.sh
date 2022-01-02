@@ -7,7 +7,7 @@ if [ "$#" -ne 1 ]; then
 	exit 1
 fi
 
-NETWORK=${NETWORK:-altair}
+NETWORK=${NETWORK:-centrifuge}
 
 generate_secret() {
   subkey generate -n $NETWORK | grep "Secret seed" | awk '{ print $3 }'

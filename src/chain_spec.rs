@@ -285,7 +285,9 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 							.unchecked_into(),
 					),
 				],
-				endowed_accounts(),
+				vec![
+					hex!["ce3155fe53b83191a3d50da03b2368d0e596a43c09885cd9de9b0ada82782952"].into(),
+				],
 				Some(10000000 * AIR),
 				para_id,
 			)
