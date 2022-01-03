@@ -135,8 +135,6 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 
 #[frame_support::pallet]
 pub mod pallet {
-	use std::cmp::min;
-
 	use super::*;
 	use sp_std::convert::TryInto;
 
@@ -373,6 +371,8 @@ pub mod pallet {
 		NoPermission,
 		/// Epoch needs to be executed before you can collect
 		EpochNotExecutedYet,
+		/// There's no outstanding order that could be collected
+		NoOutstandingOrder,
 	}
 
 	#[pallet::call]
@@ -576,23 +576,18 @@ pub mod pallet {
 				pool_id,
 				tranche_id,
 			};
-			let order = match Order::<T>::try_get(&loc, &who) {
-				Ok(order) => order,
-				Err(_e) => return Ok(()),
-			};
+			let order =
+				Order::<T>::try_get(&loc, &who).map_err(|_| Error::<T>::NoOutstandingOrder)?;
 			ensure!(
 				order.epoch <= pool.last_epoch_executed,
 				Error::<T>::EpochNotExecutedYet
 			);
 
-			let end_epoch: T::EpochId = min(
-				order
-					.epoch
-					.checked_add(&collect_n_epochs)
-					.ok_or(Error::<T>::Overflow)?,
-				pool.last_epoch_executed,
-			);
-			// let end_epoch: T::EpochId = min(order.epoch + collect_n_epochs, pool.last_epoch_executed);
+			let end_epoch: T::EpochId = order
+				.epoch
+				.checked_add(&collect_n_epochs)
+				.ok_or(Error::<T>::Overflow)?
+				.min(pool.last_epoch_executed);
 
 			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
@@ -883,7 +878,7 @@ pub mod pallet {
 			}
 
 			// It is only possible to collect epochs which are already over
-			let parse_until_epoch = min(end_epoch, pool.last_epoch_executed);
+			let parse_until_epoch = end_epoch.min(pool.last_epoch_executed);
 
 			let mut payout_currency_amount: T::Balance = Zero::zero();
 			let mut payout_token_amount: T::Balance = Zero::zero();
