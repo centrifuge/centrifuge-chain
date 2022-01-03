@@ -322,16 +322,13 @@ pub mod pallet {
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
-		/// Fulfilled orders collected [pool, tranche, end_epoch, user, payout_currency_amount, payout_token_amount, remaining_supply_currency, remaining_redeem_token]
+		/// Fulfilled orders collected [pool, tranche, end_epoch, user, outstanding_collections]
 		OrdersCollected(
 			T::PoolId,
 			T::TrancheId,
 			T::EpochId,
 			T::AccountId,
-			T::Balance,
-			T::Balance,
-			T::Balance,
-			T::Balance,
+			OutstandingCollections<T::Balance>
 		),
 		/// When a role is for some accounts
 		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
