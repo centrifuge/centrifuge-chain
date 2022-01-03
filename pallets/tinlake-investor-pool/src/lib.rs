@@ -341,7 +341,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// A pool with this ID is already in use
 		PoolInUse,
-		/// Attemppted to create a pool without a juniortranche
+		/// Attempted to create a pool without a junior tranche
 		NoJuniorTranche,
 		/// Attempted an operation on a pool which does not exist
 		NoSuchPool,
@@ -373,6 +373,8 @@ pub mod pallet {
 		EpochNotExecutedYet,
 		/// There's no outstanding order that could be collected
 		NoOutstandingOrder,
+		/// User needs to collect before a new order can be submitted
+		CollectRequired,
 	}
 
 	#[pallet::call]
@@ -482,6 +484,14 @@ pub mod pallet {
 			};
 			let pool_account = PoolLocator { pool_id }.into_account();
 
+			if let Ok(order) = Order::<T>::try_get(&tranche, &who) {
+				ensure!(
+					order.supply.saturating_add(order.redeem) == Zero::zero()
+						|| order.epoch == epoch,
+					Error::<T>::CollectRequired
+				)
+			}
+
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
 				if amount > order.supply {
 					let transfer_amount = amount - order.supply;
@@ -530,6 +540,14 @@ pub mod pallet {
 				tranche_id,
 			};
 			let pool_account = PoolLocator { pool_id }.into_account();
+
+			if let Ok(order) = Order::<T>::try_get(&tranche, &who) {
+				ensure!(
+					order.supply.saturating_add(order.redeem) == Zero::zero()
+						|| order.epoch == epoch,
+					Error::<T>::CollectRequired
+				)
+			}
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
 				if amount > order.redeem {
