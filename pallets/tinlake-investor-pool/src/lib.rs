@@ -135,6 +135,8 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 
 #[frame_support::pallet]
 pub mod pallet {
+	use std::cmp::min;
+
 	use super::*;
 	use sp_std::convert::TryInto;
 
@@ -181,8 +183,8 @@ pub mod pallet {
 			+ Zero
 			+ One
 			+ TypeInfo
-			+ PartialOrd
-			+ From<u32>
+			+ Ord
+			+ CheckedAdd
 			+ AddAssign;
 		type CurrencyId: Parameter + Copy;
 		type Tokens: MultiCurrency<
@@ -317,7 +319,7 @@ pub mod pallet {
 		/// Pool Created. [pool, who]
 		PoolCreated(T::PoolId, T::AccountId),
 		/// Pool metadata updated. [pool, metadata]
-		PoolMetadataSet(T::PoolId, Vec<u8>), // Vec<u8, T::PoolMetadataLimit>
+		PoolMetadataSet(T::PoolId, Vec<u8>), // BoundedVec<u8, T::PoolMetadataLimit>
 		/// Epoch executed [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
@@ -328,7 +330,7 @@ pub mod pallet {
 			T::TrancheId,
 			T::EpochId,
 			T::AccountId,
-			OutstandingCollections<T::Balance>
+			OutstandingCollections<T::Balance>,
 		),
 		/// When a role is for some accounts
 		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
@@ -563,39 +565,39 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
-			collect_n_epochs: u32,
+			collect_n_epochs: T::EpochId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			let pool = Pool::<T>::try_get(pool_id)
+				.map_err(|_| Error::<T>::NoSuchPool)
+				.unwrap();
 			let loc = TrancheLocator {
 				pool_id,
 				tranche_id,
 			};
-			let order = Order::<T>::try_get(&loc, &who).unwrap_or(UserOrder {
-				supply: Zero::zero(),
-				redeem: Zero::zero(),
-				epoch: Zero::zero(),
-			});
-			let pool = Pool::<T>::try_get(pool_id)
-				.map_err(|_| Error::<T>::NoSuchPool)
-				.unwrap();
+			let order = match Order::<T>::try_get(&loc, &who) {
+				Ok(order) => order,
+				Err(_e) => return Ok(()),
+			};
 			ensure!(
 				order.epoch <= pool.last_epoch_executed,
 				Error::<T>::EpochNotExecutedYet
 			);
 
-			let n_epochs: T::EpochId = collect_n_epochs.into();
-			let end_epoch: T::EpochId = if order.epoch + n_epochs > pool.last_epoch_executed {
-				pool.last_epoch_executed
-			} else {
-				(order.epoch + n_epochs).into()
-			};
+			let end_epoch: T::EpochId = min(
+				order
+					.epoch
+					.checked_add(&collect_n_epochs)
+					.ok_or(Error::<T>::Overflow)?,
+				pool.last_epoch_executed,
+			);
+			// let end_epoch: T::EpochId = min(order.epoch + collect_n_epochs, pool.last_epoch_executed);
 
-			let collections = Self::calculate_collect(loc.clone(), order, pool, end_epoch);
+			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch);
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
-				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				T::Tokens::transfer(
 					pool.currency,
 					&pool_account,
@@ -619,10 +621,12 @@ pub mod pallet {
 					tranche_id,
 					end_epoch,
 					who.clone(),
-					collections.payout_currency_amount,
-					collections.payout_token_amount,
-					collections.remaining_supply_currency,
-					collections.remaining_redeem_token,
+					OutstandingCollections {
+						payout_currency_amount: collections.payout_currency_amount,
+						payout_token_amount: collections.payout_token_amount,
+						remaining_supply_currency: collections.remaining_supply_currency,
+						remaining_redeem_token: collections.remaining_redeem_token,
+					},
 				));
 				Ok(())
 			})
@@ -879,17 +883,13 @@ pub mod pallet {
 			}
 
 			// It is only possible to collect epochs which are already over
-			let parse_until_epoch = if end_epoch > pool.last_epoch_executed {
-				pool.last_epoch_executed
-			} else {
-				end_epoch
-			};
+			let parse_until_epoch = min(end_epoch, pool.last_epoch_executed);
 
 			let mut payout_currency_amount: T::Balance = Zero::zero();
 			let mut payout_token_amount: T::Balance = Zero::zero();
 			let mut remaining_supply_currency = order.supply;
 			let mut remaining_redeem_token = order.redeem;
-			
+
 			while epoch_idx <= parse_until_epoch
 				&& (remaining_supply_currency != Zero::zero()
 					|| remaining_redeem_token != Zero::zero())

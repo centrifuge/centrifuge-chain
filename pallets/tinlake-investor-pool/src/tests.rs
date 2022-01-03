@@ -294,7 +294,7 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::set_pool_metadata(
 			pool_owner.clone(),
 			0,
-			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3"
+			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
 				.as_bytes()
 				.to_vec()
 		));
