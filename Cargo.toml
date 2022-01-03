@@ -33,7 +33,7 @@ members = [
 	"pallets/claims",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
-	"pallets/tinlake-investor-pool",
+	"pallets/pool",
 	"pallets/migration",
 	"pallets/bridge",
 	"pallets/nft",

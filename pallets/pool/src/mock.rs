@@ -1,4 +1,4 @@
-use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
+use crate::{self as pallet_pool, Config, DispatchResult};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
@@ -71,7 +71,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		TinlakeInvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
+		TinlakeInvestorPool: pallet_pool::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
 	}
 );

@@ -704,7 +704,7 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_tinlake_investor_pool::Config for Runtime {
+impl pallet_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
@@ -864,7 +864,7 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
-		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 95,
+		InvestorPool: pallet_pool::{Pallet, Call, Storage, Event<T>} = 95,
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
 
 		// 3rd party pallets

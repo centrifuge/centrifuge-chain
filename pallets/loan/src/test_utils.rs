@@ -19,8 +19,8 @@ use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use pallet_tinlake_investor_pool::PoolLocator;
-use pallet_tinlake_investor_pool::{Pallet as PoolPallet, Pool as PoolStorage};
+use pallet_pool::PoolLocator;
+use pallet_pool::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::traits::AccountIdConversion;
@@ -71,12 +71,12 @@ pub(crate) fn create_pool<T>(
 	senior_investor: T::AccountId,
 	currency_id: CurrencyId,
 ) where
-	T: pallet_tinlake_investor_pool::Config + frame_system::Config + pallet_loan::Config,
-	<T as pallet_tinlake_investor_pool::Config>::Balance: From<u128>,
-	<T as pallet_tinlake_investor_pool::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_tinlake_investor_pool::Config>::TrancheId: From<u8>,
-	<T as pallet_tinlake_investor_pool::Config>::EpochId: From<u32>,
-	<T as pallet_tinlake_investor_pool::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
+	T: pallet_pool::Config + frame_system::Config + pallet_loan::Config,
+	<T as pallet_pool::Config>::Balance: From<u128>,
+	<T as pallet_pool::Config>::CurrencyId: From<CurrencyId>,
+	<T as pallet_pool::Config>::TrancheId: From<u8>,
+	<T as pallet_pool::Config>::EpochId: From<u32>,
+	<T as pallet_pool::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 
@@ -113,22 +113,18 @@ pub(crate) fn create_pool<T>(
 	assert_eq!(pool.available_reserve, (1000 * CURRENCY).into());
 
 	// TODO(ved) do disbursal manually for now
-	assert_ok!(
-		<T as pallet_tinlake_investor_pool::Config>::Tokens::transfer(
-			CurrencyId::Tranche(pool_id.into(), 1).into(),
-			&pool_account,
-			&junior_investor,
-			(500 * CURRENCY).into(),
-		)
-	);
-	assert_ok!(
-		<T as pallet_tinlake_investor_pool::Config>::Tokens::transfer(
-			CurrencyId::Tranche(pool_id.into(), 0).into(),
-			&pool_account,
-			&senior_investor,
-			(500 * CURRENCY).into(),
-		)
-	);
+	assert_ok!(<T as pallet_pool::Config>::Tokens::transfer(
+		CurrencyId::Tranche(pool_id.into(), 1).into(),
+		&pool_account,
+		&junior_investor,
+		(500 * CURRENCY).into(),
+	));
+	assert_ok!(<T as pallet_pool::Config>::Tokens::transfer(
+		CurrencyId::Tranche(pool_id.into(), 0).into(),
+		&pool_account,
+		&senior_investor,
+		(500 * CURRENCY).into(),
+	));
 }
 
 pub(crate) fn initialise_test_pool<T>(
@@ -155,7 +151,7 @@ where
 
 pub(crate) fn assert_last_event<T, E>(generic_event: E)
 where
-	T: pallet_loan::Config + pallet_tinlake_investor_pool::Config,
+	T: pallet_loan::Config + pallet_pool::Config,
 	E: Into<<T as frame_system::Config>::Event>,
 {
 	let events = frame_system::Pallet::<T>::events();

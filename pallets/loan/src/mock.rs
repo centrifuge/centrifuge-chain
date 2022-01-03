@@ -24,7 +24,7 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use pallet_tinlake_investor_pool::PoolLocator;
+use pallet_pool::PoolLocator;
 use primitives_tokens::CurrencyId;
 use runtime_common::{
 	Amount, Balance, ClassId, InstanceId, PoolId, Rate, TrancheToken, CENTI_CFG as CENTI_CURRENCY,
@@ -50,7 +50,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
+		InvestorPool: pallet_pool::{Pallet, Call, Storage, Event<T>},
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
@@ -137,7 +137,7 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
-impl pallet_tinlake_investor_pool::Config for MockRuntime {
+impl pallet_pool::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;

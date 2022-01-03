@@ -105,7 +105,7 @@ primitives-tokens = { path = "../../primitives/tokens", default-features = false
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
-pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
+pallet-pool = { path = "../../pallets/pool", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }

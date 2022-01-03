@@ -32,7 +32,7 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-fea
 runtime-common = { path = "../../runtime/common", optional = true, default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.12" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false, optional = true, branch = "polkadot-v0.9.12" }
-pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", optional = true, default-features = false}
+pallet-pool = { path = "../pool", optional = true, default-features = false}
 primitives-tokens = { path = "../../primitives/tokens", optional = true, default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.12" }
 
@@ -44,7 +44,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-f
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", default-features = false}
+pallet-pool = { path = "../pool", default-features = false}
 primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 [features]
@@ -57,7 +57,7 @@ runtime-benchmarks = [
     "orml-tokens",
     "orml-traits",
     "pallet-timestamp",
-    "pallet-tinlake-investor-pool",
+    "pallet-pool",
     "primitives-tokens"
 ]
 std = [
