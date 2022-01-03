@@ -1040,7 +1040,7 @@ pub type XcmRouter = (
 );
 
 /// Means for transacting assets on this chain.
-pub type AssetTransactors = (CurrencyTransactor, FungiblesTransactor);
+pub type AssetTransactors = (CurrencyTransactor);
 
 /// Means for transacting the native currency on this chain.
 pub type CurrencyTransactor = xcm_builder::CurrencyAdapter<
@@ -1059,7 +1059,7 @@ pub type CurrencyTransactor = xcm_builder::CurrencyAdapter<
 /// Means for transacting assets besides the native currency on this chain.
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation:
-	Uniques,
+	Balances,
 	// Use this currency when it is a fungible asset matching the given location or name:
 	ConvertedConcreteAssetId<
 		AssetId,
