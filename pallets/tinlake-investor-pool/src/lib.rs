@@ -913,7 +913,9 @@ pub mod pallet {
 						.unwrap();
 
 					// Rounding down in favor of the system
-					let amount = epoch.supply_fulfillment.mul_floor(remaining_supply_currency);
+					let amount = epoch
+						.supply_fulfillment
+						.mul_floor(remaining_supply_currency);
 
 					if amount != Zero::zero() {
 						let amount_token = epoch
