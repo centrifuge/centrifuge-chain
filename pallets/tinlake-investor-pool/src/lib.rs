@@ -889,6 +889,7 @@ pub mod pallet {
 			let mut payout_token_amount: T::Balance = Zero::zero();
 			let mut remaining_supply_currency = order.supply;
 			let mut remaining_redeem_token = order.redeem;
+			
 			while epoch_idx <= parse_until_epoch
 				&& (remaining_supply_currency != Zero::zero()
 					|| remaining_redeem_token != Zero::zero())
