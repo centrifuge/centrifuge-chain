@@ -912,14 +912,8 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoSuchPool)
 						.unwrap();
 
-					// TODO: this should round down, in favor of the system
-					let amount = T::BalanceRatio::checked_from_rational(
-						epoch.supply_fulfillment.deconstruct(),
-						Perquintill::ACCURACY,
-					)
-					.unwrap()
-					.checked_mul_int(remaining_supply_currency)
-					.unwrap();
+					// Rounding down in favor of the system
+					let amount = epoch.supply_fulfillment.mul_floor(remaining_supply_currency);
 
 					if amount != Zero::zero() {
 						let amount_token = epoch
@@ -940,14 +934,8 @@ pub mod pallet {
 						.map_err(|_| Error::<T>::NoSuchPool)
 						.unwrap();
 
-					// TODO: this should round down, in favor of the system
-					let amount = T::BalanceRatio::checked_from_rational(
-						epoch.redeem_fulfillment.deconstruct(),
-						Perquintill::ACCURACY,
-					)
-					.unwrap()
-					.checked_mul_int(remaining_redeem_token)
-					.unwrap();
+					// Rounding down in favor of the system
+					let amount = epoch.redeem_fulfillment.mul_floor(remaining_redeem_token);
 
 					if amount != Zero::zero() {
 						let amount_currency = epoch
