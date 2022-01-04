@@ -110,6 +110,7 @@ pallet-migration-manager = { path = "../../pallets/migration", default-features 
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-loan = { path = "../../pallets/loan", default-features = false }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
@@ -118,6 +119,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 default = ["std"]
 std = [
     "pallet-migration-manager/std",
+    "pallet-permissions/std",
     "pallet-crowdloan-claim/std",
     "pallet-crowdloan-reward/std",
     "sp-authority-discovery/std",

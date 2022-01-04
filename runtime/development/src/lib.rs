@@ -814,8 +814,17 @@ impl pallet_loan::Config for Runtime {
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
 	type Pool = InvestorPool;
+	type Permission = Permissions;
 	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
+}
+
+impl pallet_permissions::Config for Runtime {
+	type Event = Event;
+	type Location = PoolId;
+	type Role = pallet_loan::PoolRole;
+	type Storage = StoragePoolRoles;
+	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
 parameter_type_with_key! {
@@ -896,6 +905,7 @@ construct_runtime!(
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 95,
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 
 		// 3rd party pallets
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,

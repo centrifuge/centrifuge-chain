@@ -111,8 +111,7 @@ pub trait PoolNAV<PoolId, Amount> {
 }
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
-#[derive(Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
-#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PoolRole {
 	PoolAdmin,

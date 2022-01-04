@@ -182,7 +182,7 @@ impl<T: Config> Pallet<T> {
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
-	) -> Result<(), Error<T>> {
+	) -> Result<(), DispatchError> {
 		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
 			{
 				let mut def = T::Storage::default();
@@ -196,7 +196,7 @@ impl<T: Config> Pallet<T> {
 
 					Ok(Permission::<T>::insert(who.clone(), location, roles))
 				} else {
-					Err(Error::<T>::RoleAlreadyGiven)
+					Err(Error::<T>::RoleAlreadyGiven.into())
 				}
 			},
 		)
@@ -206,16 +206,16 @@ impl<T: Config> Pallet<T> {
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
-	) -> Result<(), Error<T>> {
+	) -> Result<(), DispatchError> {
 		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
-			Err(Error::<T>::NoRoles),
+			Err(Error::<T>::NoRoles.into()),
 			|mut roles| {
 				if <<T as Config>::Storage as Properties>::exists(&roles, role.clone()) {
 					<<T as Config>::Storage as Properties>::rm(&mut roles, role);
 
 					Ok(Permission::<T>::insert(who, location, roles))
 				} else {
-					Err(Error::<T>::RoleNotGiven)
+					Err(Error::<T>::RoleNotGiven.into())
 				}
 			},
 		)
@@ -225,7 +225,7 @@ impl<T: Config> Pallet<T> {
 impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Role = T::Role;
 	type Location = T::Location;
-	type Error = Error<T>;
+	type Error = DispatchError;
 
 	fn clearance(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
 		Permission::<T>::get(who, location).map_or(false, |roles| {
@@ -237,7 +237,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
-	) -> Result<(), Error<T>> {
+	) -> Result<(), DispatchError> {
 		Pallet::<T>::do_add_permission(location, who, role)
 	}
 
@@ -245,7 +245,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
-	) -> Result<(), Error<T>> {
+	) -> Result<(), DispatchError> {
 		Pallet::<T>::do_rm_permission(location, who, role)
 	}
 }
