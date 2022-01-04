@@ -29,6 +29,7 @@ use frame_support::{ensure, Parameter};
 use frame_system::pallet_prelude::OriginFor;
 use loan_type::LoanType;
 pub use pallet::*;
+use pallet_permissions::Permissions as PermissionsT;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
@@ -120,6 +121,14 @@ pub mod pallet {
 
 		/// Pool reserve type
 		type Pool: PoolReserve<Self::AccountId>;
+
+		/// Permission type that verifies permissions of users
+		type Permission: PermissionsT<
+			Self::AccountId,
+			Location = PoolIdOf<Self>,
+			Role = PoolRole,
+			Error = DispatchError,
+		>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
@@ -552,7 +561,10 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 macro_rules! ensure_role {
 	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
 		let sender = ensure_signed($origin)?;
-		ensure!(T::Pool::has_role($pool_id, &sender, $role), BadOrigin);
+		ensure!(
+			T::Permission::clearance($pool_id, sender.clone(), $role),
+			BadOrigin
+		);
 		sender
 	}};
 }

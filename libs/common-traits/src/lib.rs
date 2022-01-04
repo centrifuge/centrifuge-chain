@@ -129,9 +129,6 @@ pub trait PoolInspect<AccountId> {
 
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
-
-	/// checks if the given account has the requested role in the given pool.
-	fn has_role(pool_id: Self::PoolId, account: &AccountId, role: PoolRole) -> bool;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
@@ -143,10 +140,4 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
-}
-
-pub enum PermissionError {
-	RoleAlreadyGiven,
-	RoleNotGiven,
-	NoRoles,
 }

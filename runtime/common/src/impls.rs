@@ -11,6 +11,7 @@ use frame_support::weights::{
 use frame_system::pallet::Config as SystemConfig;
 use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
+use pallet_permissions::Properties;
 use pallet_tinlake_investor_pool::Config;
 use primitives_tokens::CurrencyId;
 use scale_info::TypeInfo;
@@ -161,5 +162,22 @@ impl From<u16> for InstanceId {
 impl From<u128> for InstanceId {
 	fn from(v: u128) -> Self {
 		Self(v)
+	}
+}
+
+impl Properties for PoolRole {
+	type Property = Self;
+	type Element = u32;
+
+	fn exists(element: &Self::Element, property: Self::Property) -> bool {
+		todo!()
+	}
+
+	fn rm(element: &mut Self::Element, property: Self::Property) {
+		todo!()
+	}
+
+	fn add(element: &mut Self::Element, property: Self::Property) {
+		todo!()
 	}
 }
