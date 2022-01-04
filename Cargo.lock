@@ -5387,10 +5387,14 @@ dependencies = [
 name = "pallet-crowdloan-reward"
 version = "0.1.0"
 dependencies = [
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log 0.4.14",
+ "pallet-balances",
+ "pallet-indices",
+ "pallet-vesting",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -5555,6 +5559,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-permissions",
  "pallet-timestamp",
  "pallet-tinlake-investor-pool",
  "pallet-uniques",
@@ -5734,15 +5739,10 @@ dependencies = [
 name = "pallet-permissions"
 version = "0.1.0"
 dependencies = [
- "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "orml-tokens",
- "orml-traits",
- "pallet-timestamp",
  "parity-scale-codec",
- "primitives-tokens",
  "runtime-common",
  "scale-info",
  "serde",
@@ -8240,6 +8240,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-permissions",
  "pallet-tinlake-investor-pool",
  "parity-scale-codec",
  "primitives-tokens",

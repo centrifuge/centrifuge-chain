@@ -1481,10 +1481,6 @@ impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
 		Pool::<T>::contains_key(pool_id)
 	}
-
-	fn has_role(pool_id: Self::PoolId, account: &T::AccountId, role: PoolRole) -> bool {
-		Self::has_role_in_pool(pool_id, role, account)
-	}
 }
 
 impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
