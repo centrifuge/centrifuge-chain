@@ -316,7 +316,7 @@ fn epoch() {
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches[0].interest_per_sec,
-			Perquintill::from_parts(000000003170979198)
+			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.tranches[0].debt, 0);
 		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY);
