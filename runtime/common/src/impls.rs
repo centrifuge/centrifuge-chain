@@ -174,38 +174,37 @@ impl Default for StoragePoolRoles {
 
 impl Properties for StoragePoolRoles {
 	type Property = PoolRole;
-	type Element = Self;
 
-	fn exists(element: &StoragePoolRoles, property: Self::Property) -> bool {
+	fn exists(&self, property: Self::Property) -> bool {
 		match property {
-			PoolRole::Borrower => element.contains(StoragePoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => element.contains(StoragePoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => element.contains(StoragePoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => element.contains(StoragePoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => element.contains(StoragePoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => element.contains(StoragePoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.contains(StoragePoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.contains(StoragePoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.contains(StoragePoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.contains(StoragePoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.contains(StoragePoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.contains(StoragePoolRoles::RISK_ADMIN),
 		}
 	}
 
-	fn rm(element: &mut Self::Element, property: Self::Property) {
+	fn rm(&mut self, property: Self::Property) {
 		match property {
-			PoolRole::Borrower => element.remove(StoragePoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => element.remove(StoragePoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => element.remove(StoragePoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => element.remove(StoragePoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => element.remove(StoragePoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => element.remove(StoragePoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.remove(StoragePoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.remove(StoragePoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.remove(StoragePoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.remove(StoragePoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.remove(StoragePoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.remove(StoragePoolRoles::RISK_ADMIN),
 		}
 	}
 
-	fn add(element: &mut Self::Element, property: Self::Property) {
+	fn add(&mut self, property: Self::Property) {
 		match property {
-			PoolRole::Borrower => element.insert(StoragePoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => element.insert(StoragePoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => element.insert(StoragePoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => element.insert(StoragePoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => element.insert(StoragePoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => element.insert(StoragePoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.insert(StoragePoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.insert(StoragePoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.insert(StoragePoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.insert(StoragePoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.insert(StoragePoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.insert(StoragePoolRoles::RISK_ADMIN),
 		}
 	}
 }
