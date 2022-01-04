@@ -24,10 +24,7 @@ use frame_system::pallet_prelude::*;
 
 pub trait Permissions<AccountId> {
 	type Role;
-	type Storage: Properties<Property = Self::Role, Element = Self::Storage>;
 	type Error;
-
-	fn roles(who: AccountId) -> Option<Self::Storage>;
 
 	fn clearance(who: AccountId, role: Self::Role) -> bool;
 
@@ -175,12 +172,7 @@ impl<T: Config> Pallet<T> {
 
 impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Role = T::Role;
-	type Storage = T::Storage;
 	type Error = Error<T>;
-
-	fn roles(who: T::AccountId) -> Option<T::Storage> {
-		Permission::<T>::get(who)
-	}
 
 	fn clearance(who: T::AccountId, role: T::Role) -> bool {
 		Permission::<T>::get(who).map_or(false, |roles| {
