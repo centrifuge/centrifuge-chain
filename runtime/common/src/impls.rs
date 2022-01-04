@@ -2,6 +2,7 @@
 
 use super::*;
 use codec::{Decode, Encode};
+use common_traits::PoolRole;
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
 use frame_support::traits::{Currency, OnUnbalanced};
@@ -165,19 +166,46 @@ impl From<u128> for InstanceId {
 	}
 }
 
-impl Properties for PoolRole {
-	type Property = Self;
-	type Element = u32;
+impl Default for StoragePoolRoles {
+	fn default() -> Self {
+		StoragePoolRoles::empty()
+	}
+}
 
-	fn exists(element: &Self::Element, property: Self::Property) -> bool {
-		todo!()
+impl Properties for StoragePoolRoles {
+	type Property = PoolRole;
+	type Element = Self;
+
+	fn exists(element: &StoragePoolRoles, property: Self::Property) -> bool {
+		match property {
+			PoolRole::Borrower => element.contains(StoragePoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => element.contains(StoragePoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => element.contains(StoragePoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => element.contains(StoragePoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => element.contains(StoragePoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => element.contains(StoragePoolRoles::RISK_ADMIN),
+		}
 	}
 
 	fn rm(element: &mut Self::Element, property: Self::Property) {
-		todo!()
+		match property {
+			PoolRole::Borrower => element.remove(StoragePoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => element.remove(StoragePoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => element.remove(StoragePoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => element.remove(StoragePoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => element.remove(StoragePoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => element.remove(StoragePoolRoles::RISK_ADMIN),
+		}
 	}
 
 	fn add(element: &mut Self::Element, property: Self::Property) {
-		todo!()
+		match property {
+			PoolRole::Borrower => element.insert(StoragePoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => element.insert(StoragePoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => element.insert(StoragePoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => element.insert(StoragePoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => element.insert(StoragePoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => element.insert(StoragePoolRoles::RISK_ADMIN),
+		}
 	}
 }

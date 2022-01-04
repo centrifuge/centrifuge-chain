@@ -147,17 +147,16 @@ pub mod types {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct InstanceId(pub u128);
 
-	/// PoolRole can hold any type of role specific functions a user can do on a given pool.
-	#[derive(codec::Encode, codec::Decode, Clone, Copy, PartialEq, TypeInfo)]
-	#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
-	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub enum PoolRole {
-		PoolAdmin,
-		Borrower,
-		PricingAdmin,
-		LiquidityAdmin,
-		MemberListAdmin,
-		RiskAdmin,
+	bitflags::bitflags! {
+		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
+		pub struct StoragePoolRoles: u32 {
+			const POOL_ADMIN = 0b00000001;
+			const BORROWER  = 0b00000010;
+			const PRICING_ADMIN = 0b00000100;
+			const LIQUIDITY_ADMIN = 0b00001000;
+			const MEMBER_LIST_ADMIN = 0b00010000;
+			const RISK_ADMIN = 0b00100000;
+		}
 	}
 }
 

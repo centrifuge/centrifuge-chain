@@ -17,7 +17,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve, PoolRole};
+pub use common_traits::PoolRole;
+use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};

@@ -2043,6 +2043,7 @@ dependencies = [
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-offences",
+ "pallet-permissions",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -8232,6 +8233,7 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
+ "bitflags",
  "common-traits",
  "frame-support",
  "frame-system",
