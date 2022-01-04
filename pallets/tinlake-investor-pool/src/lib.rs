@@ -20,6 +20,7 @@ use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
+use pallet_permissions::Permissions;
 use scale_info::TypeInfo;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
@@ -29,7 +30,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
-use sp_std::{vec, vec::Vec};
+use sp_std::vec::Vec;
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
@@ -201,6 +202,13 @@ pub mod pallet {
 			CurrencyId = Self::CurrencyId,
 		>;
 
+		type Permission: Permissions<
+			Self::AccountId,
+			Location = Self::PoolId,
+			Role = PoolRole<Self::TrancheId>,
+			Error = DispatchError,
+		>;
+
 		type LoanAmount: Into<Self::Balance>;
 		type NAV: PoolNAV<Self::PoolId, Self::LoanAmount>;
 
@@ -337,9 +345,9 @@ pub mod pallet {
 			OutstandingCollections<T::Balance>,
 		),
 		/// When a role is for some accounts
-		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
+		RoleApproved(T::PoolId, PoolRole<T::TrancheId>, Vec<T::AccountId>),
 		// When a role was revoked for an account in pool
-		RoleRevoked(T::PoolId, PoolRole, T::AccountId),
+		RoleRevoked(T::PoolId, PoolRole<T::TrancheId>, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -395,7 +403,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
-			// TODO: Ensure owner is authorized to create a pool
+			ensure!(
+				T::Permission::clearance(pool_id, owner.clone(), PoolRole::PoolAdmin),
+				Error::<T>::NoPermission
+			);
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -479,7 +490,15 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			// TODO: Ensure this account is authorized for this tranche
+
+			ensure!(
+				T::Permission::clearance(
+					pool_id,
+					who.clone(),
+					PoolRole::TrancheInvestor(tranche_id)
+				),
+				Error::<T>::NoPermission
+			);
 			let (currency, epoch) = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
@@ -535,7 +554,16 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			// TODO: Ensure this account is authorized for this tranche
+
+			ensure!(
+				T::Permission::clearance(
+					pool_id,
+					who.clone(),
+					PoolRole::TrancheInvestor(tranche_id)
+				),
+				Error::<T>::NoPermission
+			);
+
 			let epoch = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
@@ -785,29 +813,27 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
+		#[frame_support::transactional]
 		pub fn approve_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: PoolRole,
+			role: PoolRole<T::TrancheId>,
 			accounts: Vec<LookUpSource<T>>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
+
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
+				T::Permission::clearance(pool_id, pool_admin, PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
-			// look up all the sources through lookup
-			let mut targets = vec![];
+			let mut targets = Vec::new();
 			for source in accounts {
-				let acc: T::AccountId = T::Lookup::lookup(source)?;
-				targets.push(acc);
+				let who = T::Lookup::lookup(source)?;
+				T::Permission::add_permission(pool_id, who.clone(), role)?;
+				targets.push(who)
 			}
 
-			// setup role for each account
-			targets
-				.iter()
-				.for_each(|account| Self::approve_role_in_pool(pool_id, role, account));
 			Self::deposit_event(Event::RoleApproved(pool_id, role, targets));
 			Ok(())
 		}
@@ -816,18 +842,21 @@ pub mod pallet {
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: PoolRole,
+			role: PoolRole<T::TrancheId>,
 			account: LookUpSource<T>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
+
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
+				T::Permission::clearance(pool_id, pool_admin, PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
-			// revoke the role
-			T::Lookup::lookup(account)
-				.and_then(|acc| Ok(Self::revoke_role_in_pool(pool_id, role, &acc)))?;
+			let who = T::Lookup::lookup(account)?;
+
+			T::Permission::rm_permission(pool_id, who.clone(), role.clone())?;
+
+			Self::deposit_event(Event::<T>::RoleRevoked(pool_id, role, who));
 
 			Ok(())
 		}

@@ -51,7 +51,7 @@ pub trait Permissions<AccountId> {
 pub trait Properties {
 	type Property;
 
-	fn exists(&self, property: Self::Property) -> bool;
+	fn exists(&mut self, property: Self::Property) -> bool;
 
 	fn rm(&mut self, property: Self::Property);
 
@@ -228,7 +228,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Error = DispatchError;
 
 	fn clearance(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
-		Permission::<T>::get(who, location).map_or(false, |roles| roles.exists(role))
+		Permission::<T>::get(who, location).map_or(false, |mut roles| roles.exists(role))
 	}
 
 	fn add_permission(

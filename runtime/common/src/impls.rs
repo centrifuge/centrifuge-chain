@@ -166,45 +166,55 @@ impl From<u128> for InstanceId {
 	}
 }
 
-impl Default for StoragePoolRoles {
+impl Default for PermissionRoles {
 	fn default() -> Self {
-		StoragePoolRoles::empty()
+		Self {
+			admin: AdminPoolRoles::empty(),
+			tranches: Vec::new(),
+		}
 	}
 }
 
-impl Properties for StoragePoolRoles {
-	type Property = PoolRole;
+impl Properties for PermissionRoles {
+	type Property = PoolRole<TrancheId>;
 
-	fn exists(&self, property: Self::Property) -> bool {
+	fn exists(&mut self, property: Self::Property) -> bool {
 		match property {
-			PoolRole::Borrower => self.contains(StoragePoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.contains(StoragePoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.contains(StoragePoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.contains(StoragePoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.contains(StoragePoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.contains(StoragePoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.admin.contains(AdminPoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.admin.contains(AdminPoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.admin.contains(AdminPoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.admin.contains(AdminPoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.admin.contains(AdminPoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.admin.contains(AdminPoolRoles::RISK_ADMIN),
+			PoolRole::TrancheInvestor(id) => self.tranches.contains(&id),
 		}
 	}
 
 	fn rm(&mut self, property: Self::Property) {
 		match property {
-			PoolRole::Borrower => self.remove(StoragePoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.remove(StoragePoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.remove(StoragePoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.remove(StoragePoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.remove(StoragePoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.remove(StoragePoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.admin.remove(AdminPoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.admin.remove(AdminPoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.admin.remove(AdminPoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.admin.remove(AdminPoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.admin.remove(AdminPoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.admin.remove(AdminPoolRoles::RISK_ADMIN),
+			PoolRole::TrancheInvestor(id) => self.tranches.retain(|val| *val != id),
 		}
 	}
 
 	fn add(&mut self, property: Self::Property) {
 		match property {
-			PoolRole::Borrower => self.insert(StoragePoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.insert(StoragePoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.insert(StoragePoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.insert(StoragePoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.insert(StoragePoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.insert(StoragePoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.admin.insert(AdminPoolRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.admin.insert(AdminPoolRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.admin.insert(AdminPoolRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.admin.insert(AdminPoolRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.admin.insert(AdminPoolRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.admin.insert(AdminPoolRoles::RISK_ADMIN),
+			PoolRole::TrancheInvestor(id) => {
+				if self.tranches.contains(&id) {
+					self.tranches.push(id)
+				}
+			}
 		}
 	}
 }
