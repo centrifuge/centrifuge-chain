@@ -144,3 +144,9 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }
+
+pub enum PermissionError {
+	RoleAlreadyGiven,
+	RoleNotGiven,
+	NoRoles,
+}
