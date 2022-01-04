@@ -50,13 +50,12 @@ pub trait Permissions<AccountId> {
 
 pub trait Properties {
 	type Property;
-	type Element;
 
-	fn exists(element: &Self::Element, property: Self::Property) -> bool;
+	fn exists(&self, property: Self::Property) -> bool;
 
-	fn rm(element: &mut Self::Element, property: Self::Property);
+	fn rm(&mut self, property: Self::Property);
 
-	fn add(element: &mut Self::Element, property: Self::Property);
+	fn add(&mut self, property: Self::Property);
 }
 
 #[frame_support::pallet]
@@ -73,10 +72,7 @@ pub mod pallet {
 
 		type Role: Member + Parameter;
 
-		type Storage: Member
-			+ Parameter
-			+ Properties<Property = Self::Role, Element = Self::Storage>
-			+ Default;
+		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 	}
@@ -185,14 +181,18 @@ impl<T: Config> Pallet<T> {
 	) -> Result<(), DispatchError> {
 		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
 			{
-				let mut def = T::Storage::default();
-				<<T as Config>::Storage as Properties>::add(&mut def, role.clone());
+				let mut new_role = T::Storage::default();
+				new_role.add(role.clone());
 
-				Ok(Permission::<T>::insert(who.clone(), location.clone(), def))
+				Ok(Permission::<T>::insert(
+					who.clone(),
+					location.clone(),
+					new_role,
+				))
 			},
 			|mut roles| {
-				if !<<T as Config>::Storage as Properties>::exists(&roles, role.clone()) {
-					<<T as Config>::Storage as Properties>::add(&mut roles, role);
+				if !roles.exists(role.clone()) {
+					roles.add(role);
 
 					Ok(Permission::<T>::insert(who.clone(), location, roles))
 				} else {
@@ -210,8 +210,8 @@ impl<T: Config> Pallet<T> {
 		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
 			Err(Error::<T>::NoRoles.into()),
 			|mut roles| {
-				if <<T as Config>::Storage as Properties>::exists(&roles, role.clone()) {
-					<<T as Config>::Storage as Properties>::rm(&mut roles, role);
+				if roles.exists(role.clone()) {
+					roles.rm(role);
 
 					Ok(Permission::<T>::insert(who, location, roles))
 				} else {
@@ -228,9 +228,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Error = DispatchError;
 
 	fn clearance(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
-		Permission::<T>::get(who, location).map_or(false, |roles| {
-			<<T as Config>::Storage as Properties>::exists(&roles, role)
-		})
+		Permission::<T>::get(who, location).map_or(false, |roles| roles.exists(role))
 	}
 
 	fn add_permission(
