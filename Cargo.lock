@@ -5932,6 +5932,7 @@ dependencies = [
  "frame-system",
  "orml-tokens",
  "orml-traits",
+ "pallet-permissions",
  "pallet-timestamp",
  "parity-scale-codec",
  "primitives-tokens",

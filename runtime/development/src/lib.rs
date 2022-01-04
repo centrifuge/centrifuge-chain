@@ -711,13 +711,14 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
 	type PoolId = PoolId;
-	type TrancheId = u8;
+	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<Runtime>;
+	type Permission = Permissions;
 	type Time = Timestamp;
 }
 
@@ -823,7 +824,7 @@ impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Location = PoolId;
 	type Role = pallet_loan::PoolRole;
-	type Storage = StoragePoolRoles;
+	type Storage = PermissionRoles;
 	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 }
 
