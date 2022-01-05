@@ -64,7 +64,7 @@ use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
 	TakeWeightCredit, UsingComponents,
 };
-use xcm_executor::{traits::JustTry, Config, XcmExecutor};
+use xcm_executor::{traits::{JustTry, MatchesFungibles}, Config, XcmExecutor};
 
 
 // Make the WASM binary available.
@@ -1070,7 +1070,7 @@ pub type XcmRouter = (
 );
 
 /// Means for transacting assets on this chain.
-pub type AssetTransactors = (CurrencyTransactor);
+pub type AssetTransactors = (CurrencyTransactor, FungiblesTransactor);
 
 /// Means for transacting the native currency on this chain.
 pub type CurrencyTransactor = xcm_builder::CurrencyAdapter<
@@ -1086,10 +1086,12 @@ pub type CurrencyTransactor = xcm_builder::CurrencyAdapter<
 	(),
 >;
 
+pub type AssetId = u32;
+
 /// Means for transacting assets besides the native currency on this chain.
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation:
-	Balances,
+	Tokens,
 	// Use this currency when it is a fungible asset matching the given location or name:
 	ConvertedConcreteAssetId<
 		AssetId,
@@ -1103,10 +1105,27 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	AccountId,
 	// We only want to allow teleports of known assets. We use non-zero issuance as an indication
 	// that this asset is known.
-	(), //NonZeroIssuance<AccountId, Assets>,
+	NonZeroIssuance<AccountId, Tokens>,
 	// The account to use for tracking teleports.
 	CheckingAccount,
 >;
+
+use sp_std::marker::PhantomData;
+use frame_support::traits::fungibles;
+use sp_runtime::traits::Zero;
+
+/// This is defined in cumulus but it doesn't seem made available to the world so it's copy-pasted here.
+/// Allow checking in assets that have issuance > 0.
+pub struct NonZeroIssuance<AccountId, Assets>(PhantomData<(AccountId, Assets)>);
+impl<AccountId, Assets> Contains<<Assets as fungibles::Inspect<AccountId>>::AssetId>
+for NonZeroIssuance<AccountId, Assets>
+	where
+		Assets: fungibles::Inspect<AccountId>,
+{
+	fn contains(id: &<Assets as fungibles::Inspect<AccountId>>::AssetId) -> bool {
+		!Assets::total_issuance(*id).is_zero()
+	}
+}
 
 // END XCM stuff
 
