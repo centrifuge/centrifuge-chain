@@ -9,3 +9,314 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+///! Tests for the permissions pallet
+use crate as pallet_permissions;
+use crate::{mock::*, Error as PermissionsError};
+
+use frame_support::{assert_noop, assert_ok};
+use pallet_permissions::{Permissions, Properties};
+
+#[test]
+fn add_permission_ext_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::SeniorExeutive
+			));
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1)
+				.unwrap()
+				.exists(DummyRole::HeadOfSaubermaching));
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1)
+				.unwrap()
+				.exists(DummyRole::SeniorExeutive));
+		})
+}
+
+#[test]
+fn add_permission_ext_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::add_permission(
+					Origin::signed(1),
+					2,
+					1u8,
+					DummyRole::HeadOfSaubermaching
+				),
+				PermissionsError::<MockRuntime>::RoleAlreadyGiven
+			);
+		})
+}
+
+#[test]
+fn rm_permission_ext_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::rm_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1).is_none());
+		})
+}
+
+#[test]
+fn rm_permission_ext_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::rm_permission(
+					Origin::signed(1),
+					2,
+					1u8,
+					DummyRole::HeadOfSaubermaching
+				),
+				PermissionsError::<MockRuntime>::NoRoles
+			);
+
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::SeniorExeutive
+			));
+
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::rm_permission(
+					Origin::signed(1),
+					2,
+					1u8,
+					DummyRole::HeadOfSaubermaching
+				),
+				PermissionsError::<MockRuntime>::RoleNotGiven
+			);
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1)
+				.unwrap()
+				.exists(DummyRole::SeniorExeutive));
+		})
+}
+
+#[test]
+fn user_purge_permission_ext_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::SeniorExeutive
+			));
+
+			assert_ok!(
+				pallet_permissions::Pallet::<MockRuntime>::purge_permissions(
+					Origin::signed(2),
+					1u8
+				)
+			);
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1).is_none());
+		})
+}
+
+#[test]
+fn user_purge_permission_ext_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::purge_permissions(
+					Origin::signed(2),
+					1u8
+				),
+				PermissionsError::<MockRuntime>::NoRoles
+			);
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1).is_none());
+		})
+}
+
+#[test]
+fn admin_purge_permission_ext_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				Origin::signed(1),
+				2,
+				1u8,
+				DummyRole::SeniorExeutive
+			));
+
+			assert_ok!(
+				pallet_permissions::Pallet::<MockRuntime>::admin_purge_permissions(
+					Origin::signed(1),
+					2,
+					1u8
+				)
+			);
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1).is_none());
+		})
+}
+
+#[test]
+fn admin_purge_permission_ext_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::admin_purge_permissions(
+					Origin::signed(1),
+					2,
+					1u8
+				),
+				PermissionsError::<MockRuntime>::NoRoles
+			);
+
+			assert!(pallet_permissions::Permission::<MockRuntime>::get(2, 1).is_none());
+		})
+}
+
+#[test]
+fn trait_add_permission_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(1u8, 2, DummyRole::HeadOfSaubermaching));
+
+			assert_noop!(
+				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+					1u8,
+					2,
+					DummyRole::HeadOfSaubermaching
+				),
+				PermissionsError::<MockRuntime>::RoleAlreadyGiven
+			);
+		})
+}
+
+#[test]
+fn trait_add_permission_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(pallet_dummy::Pallet::<MockRuntime>::test_add(
+				Origin::signed(2),
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+
+			assert_noop!(
+				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+					1u8,
+					2,
+					DummyRole::HeadOfSaubermaching
+				),
+				PermissionsError::<MockRuntime>::RoleAlreadyGiven
+			);
+		})
+}
+
+#[test]
+fn trait_rm_permission_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_noop!(
+				pallet_dummy::Pallet::<MockRuntime>::test_rm(
+					Origin::signed(2),
+					1u8,
+					DummyRole::HeadOfSaubermaching
+				),
+				pallet_dummy::Error::<MockRuntime>::NotCleared
+			);
+		})
+}
+
+#[test]
+fn trait_rm_permission_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(1u8, 2, DummyRole::HeadOfSaubermaching));
+
+			assert_ok!(pallet_dummy::Pallet::<MockRuntime>::test_rm(
+				Origin::signed(2),
+				1u8,
+				DummyRole::HeadOfSaubermaching
+			));
+		})
+}
+
+#[test]
+fn trait_clearance_permission_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(1u8, 2, DummyRole::HeadOfSaubermaching));
+
+			assert!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::clearance(1u8, 2, DummyRole::HeadOfSaubermaching));
+
+			assert!(!<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::clearance(1u8, 2, DummyRole::SeniorExeutive));
+		})
+}

@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate frame_support;
 extern crate frame_system;
 
 ///! A crate that defines a simple permissions logic.
@@ -149,6 +148,11 @@ pub mod pallet {
 		pub fn purge_permissions(origin: OriginFor<T>, location: T::Location) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 
+			ensure!(
+				Permission::<T>::try_get(from.clone(), location.clone()).is_ok(),
+				Error::<T>::NoRoles
+			);
+
 			Permission::<T>::remove(from.clone(), location.clone());
 
 			Self::deposit_event(Event::<T>::ClearancePurged(from, location));
@@ -163,6 +167,11 @@ pub mod pallet {
 			location: T::Location,
 		) -> DispatchResult {
 			Self::ensure_admin(origin)?;
+
+			ensure!(
+				Permission::<T>::try_get(from.clone(), location.clone()).is_ok(),
+				Error::<T>::NoRoles
+			);
 
 			Permission::<T>::remove(from.clone(), location.clone());
 

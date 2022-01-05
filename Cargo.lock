@@ -5744,12 +5744,8 @@ dependencies = [
  "frame-support",
  "frame-system",
  "parity-scale-codec",
- "runtime-common",
  "scale-info",
  "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
  "sp-runtime",
  "sp-std",
 ]

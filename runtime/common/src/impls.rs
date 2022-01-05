@@ -178,6 +178,10 @@ impl Default for PermissionRoles {
 impl Properties for PermissionRoles {
 	type Property = PoolRole<TrancheId>;
 
+	fn empty(&self) -> bool {
+		self.admin.is_empty() && self.tranches.is_empty()
+	}
+
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
 			PoolRole::Borrower => self.admin.contains(AdminPoolRoles::BORROWER),
