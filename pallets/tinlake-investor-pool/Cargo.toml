@@ -32,7 +32,7 @@ sp-core = { git = "https://github.com/paritytech/substrate", default-features = 
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
-runtime-common = { path = "../../runtime/common", default-features = false }
+runtime-common = { path = "../../runtime/common", default-features = true }
 
 [features]
 default = ['std']
@@ -44,6 +44,8 @@ std = [
     'pallet-timestamp/std',
     'frame-benchmarking/std',
     'primitives-tokens/std',
+    'pallet-permissions/std',
+    'orml-tokens/std'
 ]
 try-runtime = ['frame-support/try-runtime']
 

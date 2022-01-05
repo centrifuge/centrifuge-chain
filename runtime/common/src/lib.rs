@@ -154,6 +154,7 @@ pub mod types {
 	pub struct InstanceId(pub u128);
 
 	bitflags::bitflags! {
+		/// The current admin roles we support
 		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
 		pub struct AdminRoles: u32 {
 			const POOL_ADMIN = 0b00000001;
@@ -166,6 +167,7 @@ pub mod types {
 	}
 
 	bitflags::bitflags! {
+		/// The Number of tranches we currently support.
 		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
 		pub struct TrancheInvestors: u32 {
 			const TRANCHE_1 = 0b00000001;
@@ -179,6 +181,8 @@ pub mod types {
 		}
 	}
 
+	/// The structure that we store in the pallet-permissions storage
+	/// This here implements trait Properties.
 	#[derive(codec::Encode, codec::Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
 	pub struct PermissionRoles {
 		pub(crate) admin: AdminRoles,

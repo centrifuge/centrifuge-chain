@@ -1,10 +1,15 @@
 use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
+use frame_benchmarking::frame_support::pallet_prelude::{EnsureOrigin, IsType, Member};
+use frame_benchmarking::frame_support::Parameter;
+use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
 };
 use frame_system as system;
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
+use pallet_permissions::Properties;
 use primitives_tokens::CurrencyId;
 use sp_core::H256;
 use sp_runtime::{
@@ -74,8 +79,27 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		TinlakeInvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
 	}
 );
+
+parameter_types! {
+		pub const One: u64 = 1;
+}
+
+impl pallet_permissions::Config for Test {
+	type Event = Event;
+	type Location = u64;
+	type Role = common_traits::PoolRole;
+	type Storage = runtime_common::PermissionRoles;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+}
+
+impl SortedMembers<u64> for One {
+	fn sorted_members() -> Vec<u64> {
+		vec![1]
+	}
+}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -153,6 +177,7 @@ impl Config for Test {
 	type NAV = FakeNav;
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
+	type Permission = Permissions;
 }
 
 impl fake_nav::Config for Test {
