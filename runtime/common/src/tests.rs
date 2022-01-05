@@ -28,6 +28,9 @@ fn permission_roles_work() {
 	roles.add(PoolRole::TrancheInvestor(9));
 	assert!(!roles.exists(PoolRole::TrancheInvestor(9)));
 
+	roles.add(PoolRole::TrancheInvestor(0));
+	assert!(!roles.exists(PoolRole::TrancheInvestor(0)));
+
 	roles.add(PoolRole::TrancheInvestor(200));
 	assert!(!roles.exists(PoolRole::TrancheInvestor(200)));
 
