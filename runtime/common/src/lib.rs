@@ -152,7 +152,7 @@ pub mod types {
 
 	bitflags::bitflags! {
 		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
-		pub struct AdminPoolRoles: u32 {
+		pub struct AdminRoles: u32 {
 			const POOL_ADMIN = 0b00000001;
 			const BORROWER  = 0b00000010;
 			const PRICING_ADMIN = 0b00000100;
@@ -162,10 +162,24 @@ pub mod types {
 		}
 	}
 
+	bitflags::bitflags! {
+		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
+		pub struct TrancheInvestors: u32 {
+			const TRANCHE_1 = 0b00000001;
+			const TRANCHE_2 = 0b00000010;
+			const TRANCHE_3 = 0b00000100;
+			const TRANCHE_4 = 0b00001000;
+			const TRANCHE_5 = 0b00010000;
+			const TRANCHE_6 = 0b00100000;
+			const TRANCHE_7 = 0b01000000;
+			const TRANCHE_8 = 0b10000000;
+		}
+	}
+
 	#[derive(codec::Encode, codec::Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
 	pub struct PermissionRoles {
-		pub(crate) admin: AdminPoolRoles,
-		pub(crate) tranches: Vec<TrancheId>,
+		pub(crate) admin: AdminRoles,
+		pub(crate) tranches: TrancheInvestors,
 	}
 }
 

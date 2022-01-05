@@ -169,8 +169,8 @@ impl From<u128> for InstanceId {
 impl Default for PermissionRoles {
 	fn default() -> Self {
 		Self {
-			admin: AdminPoolRoles::empty(),
-			tranches: Vec::new(),
+			admin: AdminRoles::empty(),
+			tranches: TrancheInvestors::empty(),
 		}
 	}
 }
@@ -184,40 +184,54 @@ impl Properties for PermissionRoles {
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
-			PoolRole::Borrower => self.admin.contains(AdminPoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.admin.contains(AdminPoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.admin.contains(AdminPoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.admin.contains(AdminPoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.admin.contains(AdminPoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.admin.contains(AdminPoolRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranches.contains(&id),
+			PoolRole::Borrower => self.admin.contains(AdminRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.admin.contains(AdminRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.admin.contains(AdminRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.admin.contains(AdminRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
+			PoolRole::TrancheInvestor(id) => {
+				let tranche_id = match TrancheInvestors::from_bits(1 << (id - 1)) {
+					Some(id) => id,
+					None => return false,
+				};
+				self.tranches.contains(tranche_id)
+			}
 		}
 	}
 
 	fn rm(&mut self, property: Self::Property) {
 		match property {
-			PoolRole::Borrower => self.admin.remove(AdminPoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.admin.remove(AdminPoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.admin.remove(AdminPoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.admin.remove(AdminPoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.admin.remove(AdminPoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.admin.remove(AdminPoolRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranches.retain(|val| *val != id),
+			PoolRole::Borrower => self.admin.remove(AdminRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.admin.remove(AdminRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.admin.remove(AdminRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.admin.remove(AdminRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
+			PoolRole::TrancheInvestor(id) => {
+				let tranche_id = match TrancheInvestors::from_bits(1 << (id - 1)) {
+					Some(id) => id,
+					None => return,
+				};
+				self.tranches.remove(tranche_id)
+			}
 		}
 	}
 
 	fn add(&mut self, property: Self::Property) {
 		match property {
-			PoolRole::Borrower => self.admin.insert(AdminPoolRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.admin.insert(AdminPoolRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.admin.insert(AdminPoolRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.admin.insert(AdminPoolRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.admin.insert(AdminPoolRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.admin.insert(AdminPoolRoles::RISK_ADMIN),
+			PoolRole::Borrower => self.admin.insert(AdminRoles::BORROWER),
+			PoolRole::LiquidityAdmin => self.admin.insert(AdminRoles::LIQUIDITY_ADMIN),
+			PoolRole::PoolAdmin => self.admin.insert(AdminRoles::POOL_ADMIN),
+			PoolRole::PricingAdmin => self.admin.insert(AdminRoles::PRICING_ADMIN),
+			PoolRole::MemberListAdmin => self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN),
+			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
-				if self.tranches.contains(&id) {
-					self.tranches.push(id)
-				}
+				let tranche_id = match TrancheInvestors::from_bits(1 << (id - 1)) {
+					Some(id) => id,
+					None => return,
+				};
+				self.tranches.insert(tranche_id)
 			}
 		}
 	}
