@@ -17,6 +17,7 @@ use pallet_tinlake_investor_pool::Config;
 use primitives_tokens::CurrencyId;
 use scale_info::TypeInfo;
 use smallvec::smallvec;
+use sp_arithmetic::traits::Saturating;
 use sp_arithmetic::Perbill;
 use sp_core::H160;
 use sp_std::convert::TryInto;
@@ -192,7 +193,8 @@ impl Properties for PermissionRoles {
 			PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
 				let tranche_id = match TrancheInvestors::from_bits(
-					match 1u32.checked_shl(Into::<u32>::into(id) - 1u32) {
+					// NOTE: One must guarantee an overflow upon unwrap_or
+					match 1u32.checked_shl(Into::<u32>::into(id).checked_sub(1u32).unwrap_or(300)) {
 						Some(shift) => shift,
 						None => return false,
 					},
@@ -215,7 +217,8 @@ impl Properties for PermissionRoles {
 			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
 				let tranche_id = match TrancheInvestors::from_bits(
-					match 1u32.checked_shl(Into::<u32>::into(id) - 1u32) {
+					// NOTE: One must guarantee an overflow upon unwrap_or
+					match 1u32.checked_shl(Into::<u32>::into(id).checked_sub(1u32).unwrap_or(300)) {
 						Some(shift) => shift,
 						None => return,
 					},
@@ -238,7 +241,8 @@ impl Properties for PermissionRoles {
 			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
 				let tranche_id = match TrancheInvestors::from_bits(
-					match 1u32.checked_shl(Into::<u32>::into(id) - 1u32) {
+					// NOTE: One must guarantee an overflow upon unwrap_or
+					match 1u32.checked_shl(Into::<u32>::into(id).checked_sub(1u32).unwrap_or(300)) {
 						Some(shift) => shift,
 						None => return,
 					},
