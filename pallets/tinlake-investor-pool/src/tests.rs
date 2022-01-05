@@ -281,7 +281,6 @@ fn epoch() {
 		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
 		let borrower = 3;
-		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
 
 		// Initialize pool with initial investments
 		assert_ok!(TinlakeInvestorPool::create_pool(
@@ -311,17 +310,11 @@ fn epoch() {
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
-		assert_ok!(Tokens::transfer(
-			pool_account.clone(),
+		assert_ok!(TinlakeInvestorPool::collect(
+			senior_investor.clone(),
 			0,
-			CurrencyId::Tranche(0, 1),
-			500 * CURRENCY
-		));
-		assert_ok!(Tokens::transfer(
-			pool_account.clone(),
-			1,
-			CurrencyId::Tranche(0, 0),
-			500 * CURRENCY
+			0,
+			1
 		));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
