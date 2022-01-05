@@ -47,7 +47,7 @@ pub trait TrancheToken<T: Config> {
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct Tranche<Balance, Rate> {
 	pub interest_per_sec: Rate,
-	pub min_subordination_ratio: Perquintill,
+	pub min_risk_buffer: Perquintill,
 	pub epoch_supply: Balance,
 	pub epoch_redeem: Balance,
 
@@ -345,8 +345,8 @@ pub mod pallet {
 		InsufficientCurrency,
 		/// Insufficient reserve available for desired operation
 		InsufficientReserve,
-		/// Subordination Ratio validation failed
-		SubordinationRatioViolated,
+		/// Risk Buffer validation failed
+		RiskBufferViolated,
 		/// The NAV was not available
 		NoNAV,
 		/// Generic error for invalid input data provided
@@ -384,14 +384,14 @@ pub mod pallet {
 			let now = T::Time::now().as_secs();
 			let tranches = tranches
 				.into_iter()
-				.map(|(interest, sub_percent)| {
+				.map(|(interest, risk_buffer)| {
 					const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 					let interest_per_sec = T::InterestRate::saturating_from_rational(interest, 100)
 						/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR)
 						+ One::one();
 					Tranche {
 						interest_per_sec,
-						min_subordination_ratio: Perquintill::from_percent(sub_percent.into()),
+						min_risk_buffer: Perquintill::from_percent(risk_buffer.into()),
 						epoch_supply: Zero::zero(),
 						epoch_redeem: Zero::zero(),
 
@@ -864,10 +864,10 @@ pub mod pallet {
 				.checked_sub(&acc_redeem)
 				.ok_or(Error::<T>::Overflow)?;
 
-			let tranche_ratios = pool_details
+			let min_risk_buffers = pool_details
 				.tranches
 				.iter()
-				.map(|tranche| tranche.min_subordination_ratio)
+				.map(|tranche| tranche.min_risk_buffer)
 				.collect::<Vec<_>>();
 
 			let tranche_values: Vec<_> = epoch
@@ -885,7 +885,7 @@ pub mod pallet {
 			Self::validate_pool_constraints(
 				new_reserve,
 				pool_details.max_reserve,
-				&tranche_ratios,
+				&min_risk_buffers,
 				&tranche_values,
 			)
 		}
@@ -903,10 +903,10 @@ pub mod pallet {
 		fn validate_pool_constraints(
 			reserve: T::Balance,
 			max_reserve: T::Balance,
-			tranche_ratios: &[Perquintill],
+			min_risk_buffers: &[Perquintill],
 			current_tranche_values: &[T::Balance],
 		) -> DispatchResult {
-			if tranche_ratios.len() != current_tranche_values.len() {
+			if min_risk_buffers.len() != current_tranche_values.len() {
 				Err(Error::<T>::InvalidData)?
 			}
 
@@ -914,17 +914,26 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientReserve)?
 			}
 
-			for (count, tv) in current_tranche_values.iter().enumerate() {
-				let acc_sub_value = current_tranche_values
-					.iter()
-					.skip(count + 1)
-					.fold(Zero::zero(), |sum: T::Balance, tvs| {
-						sum.checked_add(tvs).unwrap()
-					});
-
-				let calc_sub: Perquintill = Perquintill::from_rational(acc_sub_value, *tv);
-				if calc_sub < tranche_ratios[count] {
-					Err(Error::<T>::SubordinationRatioViolated)?
+			let total_value = current_tranche_values
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|sum: Option<T::Balance>, tranche_value| {
+						sum.and_then(|sum| sum.checked_add(tranche_value))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+			let mut buffer_value = total_value;
+			for (tranche_value, min_risk_buffer) in current_tranche_values
+				.iter()
+				.zip(min_risk_buffers.iter().copied())
+			{
+				buffer_value = buffer_value
+					.checked_sub(tranche_value)
+					.ok_or(Error::<T>::Overflow)?;
+				let risk_buffer = Perquintill::from_rational(buffer_value, total_value);
+				if risk_buffer < min_risk_buffer {
+					Err(Error::<T>::RiskBufferViolated)?
 				}
 			}
 
