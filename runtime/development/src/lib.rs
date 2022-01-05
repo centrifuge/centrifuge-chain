@@ -708,6 +708,7 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
+	type InterestRate = Rate;
 	type PoolId = PoolId;
 	type TrancheId = u8;
 	type EpochId = u32;

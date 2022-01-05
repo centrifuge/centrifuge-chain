@@ -131,25 +131,25 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 fn pool_constraints_tranche_violates_sub_ratio() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_subordination_ratio: Perquintill::from_float(0.4), // Violates constraint here
+			min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
 			epoch_supply: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_subordination_ratio: Perquintill::from_float(0.5),
+			min_risk_buffer: Perquintill::from_float(0.2),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			min_subordination_ratio: Perquintill::from_float(0.5),
+			min_risk_buffer: Perquintill::from_float(0.1),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			min_subordination_ratio: Perquintill::zero(),
+			min_risk_buffer: Perquintill::zero(),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
@@ -195,7 +195,7 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 
 		assert_noop!(
 			TinlakeInvestorPool::is_epoch_valid(pool, &epoch, &full_solution),
-			Error::<Test>::SubordinationRatioViolated
+			Error::<Test>::RiskBufferViolated
 		);
 	});
 }
@@ -204,25 +204,25 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_subordination_ratio: Perquintill::from_float(0.2),
+			min_risk_buffer: Perquintill::from_float(0.2),
 			epoch_supply: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_subordination_ratio: Perquintill::from_float(0.5),
+			min_risk_buffer: Perquintill::from_float(0.1),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: 30,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			min_subordination_ratio: Perquintill::from_float(0.5),
+			min_risk_buffer: Perquintill::from_float(0.05),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			min_subordination_ratio: Perquintill::zero(),
+			min_risk_buffer: Perquintill::zero(),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
@@ -327,7 +327,7 @@ fn epoch() {
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches[0].interest_per_sec,
-			Perquintill::from_parts(000000003170979198)
+			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.tranches[0].debt, 0);
 		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY);

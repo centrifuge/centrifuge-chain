@@ -242,6 +242,96 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
+pub fn antares_config() -> AltairChainSpec {
+	AltairChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..]).unwrap()
+}
+
+pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "NAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Antares Testnet",
+		"antares_testnet",
+		ChainType::Live,
+		move || {
+			altair_genesis(
+				// kAMp8Np345RVsnznxHNrsqS3BuNDWqFn5jXNT44vegDF3xcD8
+				hex!["ce3155fe53b83191a3d50da03b2368d0e596a43c09885cd9de9b0ada82782952"].into(),
+				vec![
+					(
+						//kAKHQhXnjqLyv1nsCLEWb7fzPNVxXce3m8befa1tQtv1vxFxn
+						hex!["5e4b3571ca8b591a3a4bbe74ef98c175ded537327eb0fee804b2b4bb9e6a4d17"]
+							.into(),
+						//kALq9HKGio1JH3FiP1nBqobG4Uw5ZWruAdisFnYPPV3LnngUq
+						hex!["a2bb652a9722f01408b586aebc14891861809931e523c12e159399b9dd01c150"]
+							.unchecked_into(),
+					),
+					(
+						//kANowgeZWL2DhEzvcK5fZn9S6zWagoS8VivqSfHkxA1UetiAq
+						hex!["fa499346a1c747b839d8f125e668bdd1342dff00c0c958f790bac11cbb08b51d"]
+							.into(),
+						//kANbf9tdTos3tjFwTWu8pys2vjRreayx2cyRKRhGnYU8XMXTK
+						hex!["f0eafc07a1b05d926c5edf842752bbc25d8fe048d7aa4847fafc7b6577a51b7f"]
+							.unchecked_into(),
+					),
+					(
+						//kAHAYwo51dEmSLPXibTGvyB6gZ94uhEvWrW6jWS2Xay4drscH
+						hex!["0097c8435cd03de1e57045221de04c23fc14a36fc82b50ea35ddc0165a7f8626"]
+							.into(),
+						//kAMpz3UFrxHoWsW6JcadsdtZjQenT4yptu4XTMfsnQUJQzyTq
+						hex!["ced887433a5c8c1e0af93bf6c5de96a39fe09be06bc3f747b76fa0cab9ef4a69"]
+							.unchecked_into(),
+					),
+				],
+				vec![
+					hex!["ce3155fe53b83191a3d50da03b2368d0e596a43c09885cd9de9b0ada82782952"].into(),
+				],
+				Some(10000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		Some(
+			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot telemetry url is valid; qed"),
+		),
+		Some("antares"),
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "NAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Antares Local Testnet",
+		"antares_local_testnet",
+		ChainType::Local,
+		move || {
+			altair_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_from_seed::<altair_runtime::AuraId>("Alice"),
+				)],
+				endowed_accounts(),
+				Some(10000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
 pub fn charcoal_config() -> AltairChainSpec {
 	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
 }

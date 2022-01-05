@@ -6,12 +6,13 @@ use frame_support::{
 use frame_system as system;
 use orml_traits::parameter_type_with_key;
 use primitives_tokens::CurrencyId;
-use runtime_common::Rate;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+
+pub use runtime_common::Rate;
 
 primitives_tokens::impl_tranche_token!();
 
@@ -142,6 +143,7 @@ impl Config for Test {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
+	type InterestRate = Rate;
 	type PoolId = u64;
 	type TrancheId = u8;
 	type EpochId = u32;

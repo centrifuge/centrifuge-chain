@@ -50,7 +50,10 @@ impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn identify(&self) -> ChainIdentity {
 		if self.id().starts_with("centrifuge") {
 			ChainIdentity::Centrifuge
-		} else if self.id().starts_with("altair") || self.id().starts_with("charcoal") {
+		} else if self.id().starts_with("altair")
+			|| self.id().starts_with("charcoal")
+			|| self.id().starts_with("antares")
+		{
 			ChainIdentity::Altair
 		} else {
 			ChainIdentity::Development
@@ -75,6 +78,9 @@ fn load_spec(
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
 		"altair-staging" => Ok(Box::new(chain_spec::altair_staging(para_id))),
 		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
+		"antares" => Ok(Box::new(chain_spec::antares_config())),
+		"antares-staging" => Ok(Box::new(chain_spec::antares_staging(para_id))),
+		"antares-dev" => Ok(Box::new(chain_spec::antares_dev(para_id))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging(para_id))),
 		"charcoal-dev" => Ok(Box::new(chain_spec::charcoal_dev(para_id))),

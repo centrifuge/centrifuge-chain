@@ -27,7 +27,7 @@ use sp_runtime::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
 		Saturating, Zero,
 	},
-	FixedPointNumber, FixedPointOperand, PerThing, Perquintill, TypeId,
+	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
 use sp_std::{vec, vec::Vec};
 
@@ -45,9 +45,9 @@ pub trait TrancheToken<T: Config> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct Tranche<Balance> {
-	pub interest_per_sec: Perquintill,
-	pub min_subordination_ratio: Perquintill,
+pub struct Tranche<Balance, Rate> {
+	pub interest_per_sec: Rate,
+	pub min_risk_buffer: Perquintill,
 	pub epoch_supply: Balance,
 	pub epoch_redeem: Balance,
 
@@ -58,10 +58,10 @@ pub struct Tranche<Balance> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance> {
+pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
 	pub owner: AccountId,
 	pub currency: CurrencyId,
-	pub tranches: Vec<Tranche<Balance>>,
+	pub tranches: Vec<Tranche<Balance, Rate>>,
 	pub current_epoch: EpochId,
 	pub last_epoch_closed: u64,
 	pub last_epoch_executed: EpochId,
@@ -162,6 +162,16 @@ pub mod pallet {
 			+ Copy
 			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>;
+
+		/// A fixed-point number which represents an
+		/// interest rate.
+		type InterestRate: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ TypeInfo
+			+ FixedPointNumber<Inner = Self::Balance>;
+
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 		type TrancheId: Member
 			+ Parameter
@@ -213,7 +223,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::PoolId,
-		PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+		PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::InterestRate>,
 	>;
 
 	#[pallet::storage]
@@ -361,8 +371,8 @@ pub mod pallet {
 		InsufficientCurrency,
 		/// Insufficient reserve available for desired operation
 		InsufficientReserve,
-		/// Subordination Ratio validation failed
-		SubordinationRatioViolated,
+		/// Risk Buffer validation failed
+		RiskBufferViolated,
 		/// The NAV was not available
 		NoNAV,
 		/// Generic error for invalid input data provided
@@ -406,13 +416,14 @@ pub mod pallet {
 			let now = T::Time::now().as_secs();
 			let tranches = tranches
 				.into_iter()
-				.map(|(interest, sub_percent)| {
+				.map(|(interest, risk_buffer)| {
 					const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-					let interest_per_sec =
-						Perquintill::from_percent(interest.into()) / SECS_PER_YEAR;
+					let interest_per_sec = T::InterestRate::saturating_from_rational(interest, 100)
+						/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR)
+						+ One::one();
 					Tranche {
 						interest_per_sec,
-						min_subordination_ratio: Perquintill::from_percent(sub_percent.into()),
+						min_risk_buffer: Perquintill::from_percent(risk_buffer.into()),
 						epoch_supply: Zero::zero(),
 						epoch_redeem: Zero::zero(),
 
@@ -968,7 +979,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_nav: T::Balance,
 			epoch_reserve: T::Balance,
-			tranches: &mut [Tranche<T::Balance>],
+			tranches: &mut [Tranche<T::Balance, T::InterestRate>],
 		) -> Option<Vec<T::BalanceRatio>> {
 			let total_assets = epoch_nav.checked_add(&epoch_reserve).unwrap();
 			let mut remaining_assets = total_assets;
@@ -1001,15 +1012,11 @@ pub mod pallet {
 				.collect()
 		}
 
-		fn update_tranche_debt(tranche: &mut Tranche<T::Balance>) -> Option<()> {
+		fn update_tranche_debt(tranche: &mut Tranche<T::Balance, T::InterestRate>) -> Option<()> {
 			let now = T::Time::now().as_secs();
 			let mut delta = now - tranche.last_updated_interest;
-			let mut interest: T::BalanceRatio = <T::BalanceRatio as One>::one()
-				+ T::BalanceRatio::checked_from_rational(
-					tranche.interest_per_sec.deconstruct(),
-					Perquintill::ACCURACY,
-				)?;
-			let mut total_interest = T::BalanceRatio::checked_from_integer(One::one())?;
+			let mut interest = tranche.interest_per_sec;
+			let mut total_interest: T::InterestRate = One::one();
 			while delta != 0 {
 				if delta & 1 == 1 {
 					total_interest = interest.checked_mul(&total_interest)?;
@@ -1024,7 +1031,7 @@ pub mod pallet {
 
 		pub fn calculate_epoch_transfers(
 			epoch_tranche_prices: &[T::BalanceRatio],
-			tranches: &[Tranche<T::Balance>],
+			tranches: &[Tranche<T::Balance, T::InterestRate>],
 		) -> Option<Vec<(T::Balance, T::Balance)>> {
 			epoch_tranche_prices
 				.iter()
@@ -1038,7 +1045,13 @@ pub mod pallet {
 		}
 
 		pub fn is_epoch_valid(
-			pool_details: &PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+			pool_details: &PoolDetails<
+				T::AccountId,
+				T::CurrencyId,
+				T::EpochId,
+				T::Balance,
+				T::InterestRate,
+			>,
 			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			solution: &[(Perquintill, Perquintill)],
 		) -> DispatchResult {
@@ -1075,10 +1088,10 @@ pub mod pallet {
 				.checked_sub(&acc_redeem)
 				.ok_or(Error::<T>::Overflow)?;
 
-			let tranche_ratios = pool_details
+			let min_risk_buffers = pool_details
 				.tranches
 				.iter()
-				.map(|tranche| tranche.min_subordination_ratio)
+				.map(|tranche| tranche.min_risk_buffer)
 				.collect::<Vec<_>>();
 
 			let tranche_values: Vec<_> = epoch
@@ -1096,7 +1109,7 @@ pub mod pallet {
 			Self::validate_pool_constraints(
 				new_reserve,
 				pool_details.max_reserve,
-				&tranche_ratios,
+				&min_risk_buffers,
 				&tranche_values,
 			)
 		}
@@ -1114,10 +1127,10 @@ pub mod pallet {
 		fn validate_pool_constraints(
 			reserve: T::Balance,
 			max_reserve: T::Balance,
-			tranche_ratios: &[Perquintill],
+			min_risk_buffers: &[Perquintill],
 			current_tranche_values: &[T::Balance],
 		) -> DispatchResult {
-			if tranche_ratios.len() != current_tranche_values.len() {
+			if min_risk_buffers.len() != current_tranche_values.len() {
 				Err(Error::<T>::InvalidData)?
 			}
 
@@ -1125,17 +1138,26 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientReserve)?
 			}
 
-			for (count, tv) in current_tranche_values.iter().enumerate() {
-				let acc_sub_value = current_tranche_values
-					.iter()
-					.skip(count + 1)
-					.fold(Zero::zero(), |sum: T::Balance, tvs| {
-						sum.checked_add(tvs).unwrap()
-					});
-
-				let calc_sub: Perquintill = Perquintill::from_rational(acc_sub_value, *tv);
-				if calc_sub < tranche_ratios[count] {
-					Err(Error::<T>::SubordinationRatioViolated)?
+			let total_value = current_tranche_values
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|sum: Option<T::Balance>, tranche_value| {
+						sum.and_then(|sum| sum.checked_add(tranche_value))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+			let mut buffer_value = total_value;
+			for (tranche_value, min_risk_buffer) in current_tranche_values
+				.iter()
+				.zip(min_risk_buffers.iter().copied())
+			{
+				buffer_value = buffer_value
+					.checked_sub(tranche_value)
+					.ok_or(Error::<T>::Overflow)?;
+				let risk_buffer = Perquintill::from_rational(buffer_value, total_value);
+				if risk_buffer < min_risk_buffer {
+					Err(Error::<T>::RiskBufferViolated)?
 				}
 			}
 
@@ -1144,7 +1166,13 @@ pub mod pallet {
 
 		fn do_execute_epoch(
 			pool_id: T::PoolId,
-			pool: &mut PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+			pool: &mut PoolDetails<
+				T::AccountId,
+				T::CurrencyId,
+				T::EpochId,
+				T::Balance,
+				T::InterestRate,
+			>,
 			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			solution: &[(Perquintill, Perquintill)],
 		) -> DispatchResult {
@@ -1295,7 +1323,7 @@ pub mod pallet {
 		fn update_tranche_for_epoch(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			closing_epoch: T::EpochId,
-			tranche: &mut Tranche<T::Balance>,
+			tranche: &mut Tranche<T::Balance, T::InterestRate>,
 			(supply_sol, redeem_sol): (Perquintill, Perquintill),
 			(currency_supply, _currency_redeem): (T::Balance, T::Balance),
 			price: T::BalanceRatio,
@@ -1350,7 +1378,7 @@ pub mod pallet {
 				let mut remaining_amount = amount;
 				for tranche in &mut pool.tranches {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
-					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
@@ -1392,7 +1420,7 @@ pub mod pallet {
 				let mut remaining_amount = amount;
 				for tranche in &mut pool.tranches {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
-					let tranche_amount = if tranche.interest_per_sec != Perquintill::zero() {
+					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
