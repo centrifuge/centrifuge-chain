@@ -23,10 +23,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 
 [dev-dependencies]
-sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
-runtime-common = { path = "../../runtime/common", default-features = false }
 
 [features]
 default = ['std']
@@ -36,6 +32,8 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',
+    'sp-runtime/std',
+    'sp-std/std',
 ]
 try-runtime = ['frame-support/try-runtime']
 

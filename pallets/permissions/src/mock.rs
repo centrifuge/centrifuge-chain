@@ -12,13 +12,59 @@
 
 ///! Mock environment setup for testing the pallet-permissions
 use crate::{self as pallet_permissions};
+pub use dummy::pallet as pallet_dummy;
+use frame_support::parameter_types;
+use frame_support::sp_io::TestExternalities;
+use frame_support::sp_runtime::testing::{Header, H256};
+use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use frame_support::traits::{Everything, SortedMembers};
+use frame_system::EnsureSignedBy;
+use pallet_permissions::Properties;
+
+#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+pub enum DummyRole {
+	SeniorExeutive,
+	HeadOfSaubermaching,
+}
+
+type DummyLocation = u8;
+
+#[derive(
+	codec::Encode, codec::Decode, scale_info::TypeInfo, Default, Debug, Clone, Eq, PartialEq,
+)]
+pub struct DummyStorage {
+	roles: Vec<DummyRole>,
+}
+
+impl Properties for DummyStorage {
+	type Property = DummyRole;
+
+	fn exists(&self, property: Self::Property) -> bool {
+		self.roles.contains(&property)
+	}
+
+	fn empty(&self) -> bool {
+		self.roles.is_empty()
+	}
+
+	fn rm(&mut self, property: Self::Property) {
+		self.roles.retain(|role| *role != property);
+	}
+
+	fn add(&mut self, property: Self::Property) {
+		if !self.roles.contains(&property) {
+			self.roles.push(property);
+		}
+	}
+}
 
 mod dummy {
 	#[frame_support::pallet]
 	pub mod pallet {
+		use crate::Permissions;
 		use frame_support::pallet_prelude::*;
 		use frame_system::ensure_signed;
-		use Permissions;
+		use frame_system::pallet_prelude::OriginFor;
 
 		/// Configure the pallet by specifying the parameters and types on which it depends.
 		#[pallet::config]
@@ -28,14 +74,14 @@ mod dummy {
 			type Role: Member + Parameter;
 
 			type Permission: Permissions<
-				T::AccountId,
+				Self::AccountId,
 				Location = Self::Location,
 				Role = Self::Role,
 				Error = DispatchError,
 			>;
 		}
 
-		#[pallet::Error]
+		#[pallet::error]
 		pub enum Error<T> {
 			AlreadyCleared,
 			NotCleared,
@@ -53,31 +99,32 @@ mod dummy {
 				location: T::Location,
 				role: T::Role,
 			) -> DispatchResult {
-				let who = ensure_signed(origin);
+				let who = ensure_signed(origin)?;
 
 				ensure!(
-					!Self::Permission::clearance(location, who, role),
+					!T::Permission::clearance(location.clone(), who.clone(), role.clone()),
 					Error::<T>::AlreadyCleared
 				);
 
-				Self::Permission::add_permission(location, who, role)?;
+				T::Permission::add_permission(location, who, role)?;
 
 				Ok(())
 			}
 
+			#[pallet::weight(100)]
 			pub fn test_rm(
 				origin: OriginFor<T>,
 				location: T::Location,
 				role: T::Role,
 			) -> DispatchResult {
-				let who = ensure_signed(origin);
+				let who = ensure_signed(origin)?;
 
 				ensure!(
-					Self::Permission::clearance(location, who, role),
+					T::Permission::clearance(location.clone(), who.clone(), role.clone()),
 					Error::<T>::NotCleared
 				);
 
-				Self::Permission::rm_permission(location, who, role)?;
+				T::Permission::rm_permission(location, who, role)?;
 
 				Ok(())
 			}
@@ -85,15 +132,9 @@ mod dummy {
 	}
 }
 
-use dummy::pallet::Pallet as pallet_dummy;
-use frame_support::sp_io::TestExternalities;
-use frame_support::sp_runtime::testing::{Header, H256};
-use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use frame_support::traits::Everything;
-
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
-type Balance = u128;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
+pub type AccountId = u64;
 
 // Build mock runtime
 frame_support::construct_runtime!(
@@ -103,8 +144,8 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		Permissions: pallet_permissions::{Pallet, Call, Config, Storage, Event<T>}
-		Dummy: pallet_dummy::{Pallet, Call, Config, Event<T>}
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
+		Dummy: pallet_dummy::{Pallet, Call}
 	}
 );
 
@@ -125,7 +166,7 @@ impl frame_system::Config for MockRuntime {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -141,6 +182,30 @@ impl frame_system::Config for MockRuntime {
 	type OnSetCode = ();
 }
 
+parameter_types! {
+	pub const One: u64 = 1;
+}
+
+impl pallet_permissions::Config for MockRuntime {
+	type Event = Event;
+	type Location = DummyLocation;
+	type Role = DummyRole;
+	type Storage = DummyStorage;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+}
+
+impl SortedMembers<u64> for One {
+	fn sorted_members() -> Vec<u64> {
+		vec![1]
+	}
+}
+
+impl pallet_dummy::Config for MockRuntime {
+	type Role = DummyRole;
+	type Location = DummyLocation;
+	type Permission = Permissions;
+}
+
 pub struct TestExternalitiesBuilder;
 
 // Implement default trait for test externalities builder
@@ -152,16 +217,13 @@ impl Default for TestExternalitiesBuilder {
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
-	pub fn build(self, optional: Option<impl FnOnce()>) -> TestExternalities {
-		let mut storage = frame_system::GenesisConfig::default()
+	pub fn build(self, optional: impl FnOnce()) -> TestExternalities {
+		let storage = frame_system::GenesisConfig::default()
 			.build_storage::<MockRuntime>()
 			.unwrap();
 
 		let mut ext = TestExternalities::from(storage);
-
-		if let Some(execute) = optional {
-			ext.execute_with(execute);
-		}
+		ext.execute_with(optional);
 		ext
 	}
 }
