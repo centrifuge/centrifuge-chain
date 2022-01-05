@@ -191,7 +191,12 @@ impl Properties for PermissionRoles {
 			PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
-				let tranche_id = match TrancheInvestors::from_bits(1 << (id - 1)) {
+				let tranche_id = match TrancheInvestors::from_bits(
+					match 1u32.checked_shl(Into::<u32>::into(id) - 1u32) {
+						Some(shift) => shift,
+						None => return false,
+					},
+				) {
 					Some(id) => id,
 					None => return false,
 				};
@@ -209,7 +214,12 @@ impl Properties for PermissionRoles {
 			PoolRole::MemberListAdmin => self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
-				let tranche_id = match TrancheInvestors::from_bits(1 << (id - 1)) {
+				let tranche_id = match TrancheInvestors::from_bits(
+					match 1u32.checked_shl(Into::<u32>::into(id) - 1u32) {
+						Some(shift) => shift,
+						None => return,
+					},
+				) {
 					Some(id) => id,
 					None => return,
 				};
@@ -227,7 +237,12 @@ impl Properties for PermissionRoles {
 			PoolRole::MemberListAdmin => self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
 			PoolRole::TrancheInvestor(id) => {
-				let tranche_id = match TrancheInvestors::from_bits(1 << (id - 1)) {
+				let tranche_id = match TrancheInvestors::from_bits(
+					match 1u32.checked_shl(Into::<u32>::into(id) - 1u32) {
+						Some(shift) => shift,
+						None => return,
+					},
+				) {
 					Some(id) => id,
 					None => return,
 				};
