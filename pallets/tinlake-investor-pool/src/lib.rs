@@ -598,9 +598,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let pool = Pool::<T>::try_get(pool_id)
-				.map_err(|_| Error::<T>::NoSuchPool)
-				.unwrap();
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 			let loc = TrancheLocator {
 				pool_id,
 				tranche_id,
@@ -618,7 +616,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?
 				.min(pool.last_epoch_executed);
 
-			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch);
+			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch)?;
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			if collections.payout_currency_amount > Zero::zero() {
@@ -891,19 +889,19 @@ pub mod pallet {
 		pub(crate) fn calculate_collect(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,
-			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance>,
+			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::InterestRate>,
 			end_epoch: T::EpochId,
-		) -> OutstandingCollections<T::Balance> {
+		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
 			let mut epoch_idx = order.epoch;
 
 			// No collect possible in this epoch
 			if epoch_idx == pool.current_epoch {
-				return OutstandingCollections {
+				return Ok(OutstandingCollections {
 					payout_currency_amount: Zero::zero(),
 					payout_token_amount: Zero::zero(),
 					remaining_supply_currency: order.supply,
 					remaining_redeem_token: order.redeem,
-				};
+				});
 			}
 
 			// It is only possible to collect epochs which are already over
@@ -919,9 +917,8 @@ pub mod pallet {
 					|| remaining_redeem_token != Zero::zero())
 			{
 				if remaining_supply_currency != Zero::zero() {
-					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
-						.map_err(|_| Error::<T>::NoSuchPool)
-						.unwrap();
+					let epoch =
+						Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
 
 					// Rounding down in favor of the system
 					let amount = epoch
@@ -935,17 +932,18 @@ pub mod pallet {
 							.and_then(|inv_price| inv_price.checked_mul_int(amount))
 							.unwrap_or(Zero::zero());
 
-						payout_token_amount =
-							payout_token_amount.checked_add(&amount_token).unwrap();
-						remaining_supply_currency =
-							remaining_supply_currency.checked_sub(&amount).unwrap();
+						payout_token_amount = payout_token_amount
+							.checked_add(&amount_token)
+							.ok_or(Error::<T>::Overflow)?;
+						remaining_supply_currency = remaining_supply_currency
+							.checked_sub(&amount)
+							.ok_or(Error::<T>::Overflow)?;
 					}
 				}
 
 				if remaining_redeem_token != Zero::zero() {
-					let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
-						.map_err(|_| Error::<T>::NoSuchPool)
-						.unwrap();
+					let epoch =
+						Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
 
 					// Rounding down in favor of the system
 					let amount = epoch.redeem_fulfillment.mul_floor(remaining_redeem_token);
@@ -958,21 +956,22 @@ pub mod pallet {
 
 						payout_currency_amount = payout_currency_amount
 							.checked_add(&amount_currency)
-							.unwrap();
-						remaining_redeem_token =
-							remaining_redeem_token.checked_sub(&amount).unwrap();
+							.ok_or(Error::<T>::Overflow)?;
+						remaining_redeem_token = remaining_redeem_token
+							.checked_sub(&amount)
+							.ok_or(Error::<T>::Overflow)?;
 					}
 				}
 
 				epoch_idx = epoch_idx + One::one();
 			}
 
-			return OutstandingCollections {
+			return Ok(OutstandingCollections {
 				payout_currency_amount,
 				payout_token_amount,
 				remaining_supply_currency,
 				remaining_redeem_token,
-			};
+			});
 		}
 
 		fn calculate_tranche_prices(
