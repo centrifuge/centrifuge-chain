@@ -12,6 +12,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate frame_support;
+extern crate frame_system;
 
 ///! A crate that defines a simple permissions logic.
 ///! Users of the create must implement the `Properties` trait on a
