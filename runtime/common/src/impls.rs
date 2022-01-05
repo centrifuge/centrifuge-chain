@@ -17,7 +17,6 @@ use pallet_tinlake_investor_pool::Config;
 use primitives_tokens::CurrencyId;
 use scale_info::TypeInfo;
 use smallvec::smallvec;
-use sp_arithmetic::traits::Saturating;
 use sp_arithmetic::Perbill;
 use sp_core::H160;
 use sp_std::convert::TryInto;
