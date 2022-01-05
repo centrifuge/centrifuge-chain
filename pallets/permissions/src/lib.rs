@@ -11,6 +11,8 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate frame_support;
+
 ///! A crate that defines a simple permissions logic.
 ///! Users of the create must implement the `Properties` trait on a
 ///! type of their choosing in order to use this pallet properly.
@@ -51,7 +53,9 @@ pub trait Permissions<AccountId> {
 pub trait Properties {
 	type Property;
 
-	fn exists(&mut self, property: Self::Property) -> bool;
+	fn exists(&self, property: Self::Property) -> bool;
+
+	fn empty(&self) -> bool;
 
 	fn rm(&mut self, property: Self::Property);
 
@@ -141,7 +145,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn rm_clearance(origin: OriginFor<T>, location: T::Location) -> DispatchResult {
+		pub fn purge_permissions(origin: OriginFor<T>, location: T::Location) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 
 			Permission::<T>::remove(from.clone(), location.clone());
@@ -152,7 +156,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn admin_rm_clearance(
+		pub fn admin_purge_permissions(
 			origin: OriginFor<T>,
 			from: T::AccountId,
 			location: T::Location,
@@ -213,7 +217,11 @@ impl<T: Config> Pallet<T> {
 				if roles.exists(role.clone()) {
 					roles.rm(role);
 
-					Ok(Permission::<T>::insert(who, location, roles))
+					if roles.empty() {
+						Ok(Permission::<T>::remove(who, location))
+					} else {
+						Ok(Permission::<T>::insert(who, location, roles))
+					}
 				} else {
 					Err(Error::<T>::RoleNotGiven.into())
 				}
@@ -228,7 +236,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Error = DispatchError;
 
 	fn clearance(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
-		Permission::<T>::get(who, location).map_or(false, |mut roles| roles.exists(role))
+		Permission::<T>::get(who, location).map_or(false, |roles| roles.exists(role))
 	}
 
 	fn add_permission(

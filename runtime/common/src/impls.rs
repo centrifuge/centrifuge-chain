@@ -178,7 +178,7 @@ impl Default for PermissionRoles {
 impl Properties for PermissionRoles {
 	type Property = PoolRole<TrancheId>;
 
-	fn exists(&mut self, property: Self::Property) -> bool {
+	fn exists(&self, property: Self::Property) -> bool {
 		match property {
 			PoolRole::Borrower => self.admin.contains(AdminPoolRoles::BORROWER),
 			PoolRole::LiquidityAdmin => self.admin.contains(AdminPoolRoles::LIQUIDITY_ADMIN),
