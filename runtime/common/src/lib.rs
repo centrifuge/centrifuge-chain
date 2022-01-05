@@ -23,6 +23,9 @@ pub use types::*;
 mod fixed_point;
 mod impls;
 
+#[cfg(test)]
+mod tests;
+
 pub mod apis {
 	use node_primitives::{BlockNumber, Hash};
 	use pallet_anchors::AnchorData;
