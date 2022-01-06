@@ -1,7 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use core::convert::TryFrom;
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
+
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -11,6 +13,29 @@ use serde::{Deserialize, Serialize};
 pub enum CurrencyId {
 	Usd,
 	Tranche(u64, u8),
+}
+
+
+impl TryFrom<CurrencyId> for u128 {
+	type Error = &'static str;
+
+	fn try_from(value: CurrencyId) -> Result<Self, Self::Error> {
+		match value {
+			CurrencyId::Usd => Ok(0),
+			CurrencyId::Tranche(_,_) => Err("CurrencyId::Tranche cannot be converted")
+		}
+	}
+}
+
+impl TryFrom<u128> for CurrencyId {
+	type Error = &'static str;
+
+	fn try_from(value: u128) -> Result<Self, Self::Error> {
+		match value {
+			0 => Ok(CurrencyId::Usd),
+			_ => Err("Unsupported u128 representation of CurrencyId")
+		}
+	}
 }
 
 #[macro_export]
