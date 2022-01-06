@@ -1056,7 +1056,7 @@ pub type CurrencyTransactor = xcm_builder::CurrencyAdapter<
 	(),
 >;
 
-pub type AssetId = u32;
+// pub type AssetId = u32;
 
 /// Means for transacting assets besides the native currency on this chain.
 pub type FungiblesTransactor = FungiblesAdapter<
@@ -1064,9 +1064,9 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	Tokens,
 	// Use this currency when it is a fungible asset matching the given location or name:
 	ConvertedConcreteAssetId<
-		AssetId,
+		CurrencyId,
 		Balance,
-		AsPrefixedGeneralIndex<Local, AssetId, JustTry>,
+		AsPrefixedGeneralIndex<Local, CurrencyId, JustTry>,
 		JustTry,
 	>,
 	// Convert an XCM MultiLocation into a local account id:
