@@ -209,10 +209,6 @@ pub mod pallet {
 		type Time: UnixTime;
 	}
 
-	/// The maximum length of pool metadata
-	// #[pallet::constant]
-	// type PoolMetadataLimit: Get<u32>;
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -327,7 +323,7 @@ pub mod pallet {
 		/// Pool Created. [pool, who]
 		PoolCreated(T::PoolId, T::AccountId),
 		/// Pool metadata updated. [pool, metadata]
-		PoolMetadataSet(T::PoolId, Vec<u8>), // BoundedVec<u8, T::PoolMetadataLimit>
+		PoolMetadataSet(T::PoolId, Vec<u8>),
 		/// Epoch executed [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
@@ -892,10 +888,8 @@ pub mod pallet {
 			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::InterestRate>,
 			end_epoch: T::EpochId,
 		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			let mut epoch_idx = order.epoch;
-
 			// No collect possible in this epoch
-			if epoch_idx == pool.current_epoch {
+			if order.epoch == pool.current_epoch {
 				return Ok(OutstandingCollections {
 					payout_currency_amount: Zero::zero(),
 					payout_token_amount: Zero::zero(),
@@ -907,71 +901,106 @@ pub mod pallet {
 			// It is only possible to collect epochs which are already over
 			let parse_until_epoch = end_epoch.min(pool.last_epoch_executed);
 
-			let mut payout_currency_amount: T::Balance = Zero::zero();
-			let mut payout_token_amount: T::Balance = Zero::zero();
-			let mut remaining_supply_currency = order.supply;
-			let mut remaining_redeem_token = order.redeem;
+			// We initialize the outstanding collections to the ordered amounts, and then fill the payouts based on executions in the accumulated epochs
+			let mut outstanding = OutstandingCollections {
+				payout_currency_amount: Zero::zero(),
+				payout_token_amount: Zero::zero(),
+				remaining_supply_currency: order.supply,
+				remaining_redeem_token: order.redeem,
+			};
 
-			while epoch_idx <= parse_until_epoch
-				&& (remaining_supply_currency != Zero::zero()
-					|| remaining_redeem_token != Zero::zero())
-			{
-				if remaining_supply_currency != Zero::zero() {
-					let epoch =
-						Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
+			// Parse remaining_supply_currency into payout_token_amount
+			outstanding =
+				Self::parse_invest_executions(&loc, outstanding, order.epoch, parse_until_epoch)?;
 
-					// Rounding down in favor of the system
-					let amount = epoch
-						.supply_fulfillment
-						.mul_floor(remaining_supply_currency);
+			// Parse remaining_redeem_token into payout_currency_amount
+			outstanding =
+				Self::parse_redeem_executions(&loc, outstanding, order.epoch, parse_until_epoch)?;
 
-					if amount != Zero::zero() {
-						let amount_token = epoch
-							.token_price
-							.reciprocal()
-							.and_then(|inv_price| inv_price.checked_mul_int(amount))
-							.unwrap_or(Zero::zero());
+			return Ok(outstanding);
+		}
 
-						payout_token_amount = payout_token_amount
-							.checked_add(&amount_token)
-							.ok_or(Error::<T>::Overflow)?;
-						remaining_supply_currency = remaining_supply_currency
-							.checked_sub(&amount)
-							.ok_or(Error::<T>::Overflow)?;
-					}
-				}
+		fn parse_invest_executions(
+			loc: &TrancheLocator<T::PoolId, T::TrancheId>,
+			mut outstanding: OutstandingCollections<T::Balance>,
+			start_epoch: T::EpochId,
+			end_epoch: T::EpochId,
+		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
+			let mut epoch_idx = start_epoch;
 
-				if remaining_redeem_token != Zero::zero() {
-					let epoch =
-						Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
+			while epoch_idx <= end_epoch && outstanding.remaining_supply_currency != Zero::zero() {
+				let epoch =
+					Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
 
-					// Rounding down in favor of the system
-					let amount = epoch.redeem_fulfillment.mul_floor(remaining_redeem_token);
+				// Multiply invest fulfilment in this epoch with outstanding order amount to get executed amount
+				// Rounding down in favor of the system
+				let amount = epoch
+					.supply_fulfillment
+					.mul_floor(outstanding.remaining_supply_currency);
 
-					if amount != Zero::zero() {
-						let amount_currency = epoch
-							.token_price
-							.checked_mul_int(amount)
-							.unwrap_or(Zero::zero());
+				if amount != Zero::zero() {
+					// Divide by the token price to get the payout in tokens
+					let amount_token = epoch
+						.token_price
+						.reciprocal()
+						.and_then(|inv_price| inv_price.checked_mul_int(amount))
+						.unwrap_or(Zero::zero());
 
-						payout_currency_amount = payout_currency_amount
-							.checked_add(&amount_currency)
-							.ok_or(Error::<T>::Overflow)?;
-						remaining_redeem_token = remaining_redeem_token
-							.checked_sub(&amount)
-							.ok_or(Error::<T>::Overflow)?;
-					}
+					outstanding.payout_token_amount = outstanding
+						.payout_token_amount
+						.checked_add(&amount_token)
+						.ok_or(Error::<T>::Overflow)?;
+					outstanding.remaining_supply_currency = outstanding
+						.remaining_supply_currency
+						.checked_sub(&amount)
+						.ok_or(Error::<T>::Overflow)?;
 				}
 
 				epoch_idx = epoch_idx + One::one();
 			}
 
-			return Ok(OutstandingCollections {
-				payout_currency_amount,
-				payout_token_amount,
-				remaining_supply_currency,
-				remaining_redeem_token,
-			});
+			return Ok(outstanding);
+		}
+
+		fn parse_redeem_executions(
+			loc: &TrancheLocator<T::PoolId, T::TrancheId>,
+			mut outstanding: OutstandingCollections<T::Balance>,
+			start_epoch: T::EpochId,
+			end_epoch: T::EpochId,
+		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
+			let mut epoch_idx = start_epoch;
+
+			while epoch_idx <= end_epoch && outstanding.remaining_redeem_token != Zero::zero() {
+				let epoch =
+					Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
+
+				// Multiply redeem fulfilment in this epoch with outstanding order amount to get executed amount
+				// Rounding down in favor of the system
+				let amount = epoch
+					.redeem_fulfillment
+					.mul_floor(outstanding.remaining_redeem_token);
+
+				if amount != Zero::zero() {
+					// Multiply by the token price to get the payout in currency
+					let amount_currency = epoch
+						.token_price
+						.checked_mul_int(amount)
+						.unwrap_or(Zero::zero());
+
+					outstanding.payout_currency_amount = outstanding
+						.payout_currency_amount
+						.checked_add(&amount_currency)
+						.ok_or(Error::<T>::Overflow)?;
+					outstanding.remaining_redeem_token = outstanding
+						.remaining_redeem_token
+						.checked_sub(&amount)
+						.ok_or(Error::<T>::Overflow)?;
+				}
+
+				epoch_idx = epoch_idx + One::one();
+			}
+
+			return Ok(outstanding);
 		}
 
 		fn calculate_tranche_prices(
