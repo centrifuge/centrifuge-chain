@@ -37,6 +37,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			max_reserve: 40,
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -104,6 +105,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			max_reserve: 5,
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -176,6 +178,7 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -248,6 +251,7 @@ fn pool_constraints_pass() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
+			metadata: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -273,11 +277,10 @@ fn pool_constraints_pass() {
 #[test]
 fn epoch() {
 	new_test_ext().execute_with(|| {
-		let tin_investor = Origin::signed(0);
-		let drop_investor = Origin::signed(1);
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
 		let borrower = 3;
-		let pool_account = Origin::signed(PoolLocator { pool_id: 0 }.into_account());
 
 		// Initialize pool with initial investments
 		assert_ok!(TinlakeInvestorPool::create_pool(
@@ -287,30 +290,31 @@ fn epoch() {
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
+		assert_ok!(TinlakeInvestorPool::set_pool_metadata(
+			pool_owner.clone(),
+			0,
+			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
+				.as_bytes()
+				.to_vec()
+		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			tin_investor.clone(),
+			junior_investor.clone(),
 			0,
 			1,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
-			drop_investor.clone(),
+			senior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
-		assert_ok!(Tokens::transfer(
-			pool_account.clone(),
+		assert_ok!(TinlakeInvestorPool::collect(
+			senior_investor.clone(),
 			0,
-			CurrencyId::Tranche(0, 1),
-			500 * CURRENCY
-		));
-		assert_ok!(Tokens::transfer(
-			pool_account.clone(),
-			1,
-			CurrencyId::Tranche(0, 0),
-			500 * CURRENCY
+			0,
+			1
 		));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
@@ -351,10 +355,10 @@ fn epoch() {
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
 
-		// DROP investor tries to redeem
+		// Senior investor tries to redeem
 		next_block();
 		assert_ok!(TinlakeInvestorPool::order_redeem(
-			drop_investor.clone(),
+			senior_investor.clone(),
 			0,
 			0,
 			250 * CURRENCY
@@ -362,7 +366,7 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
-		let drop_epoch = TinlakeInvestorPool::epoch(
+		let senior_epoch = TinlakeInvestorPool::epoch(
 			TrancheLocator {
 				pool_id: 0,
 				tranche_id: 0,
@@ -379,9 +383,88 @@ fn epoch() {
 		assert!(pool.total_reserve > 750 * CURRENCY);
 		assert!(pool.total_reserve < 800 * CURRENCY);
 		assert_eq!(
-			pool.total_reserve + drop_epoch.token_price.saturating_mul_int(250 * CURRENCY),
+			pool.total_reserve + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
 		);
+	});
+}
+
+#[test]
+fn collect_tranche_tokens() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = Origin::signed(2);
+
+		// Initialize pool with initial investments
+		assert_ok!(TinlakeInvestorPool::create_pool(
+			pool_owner.clone(),
+			0,
+			vec![(10, 10), (0, 0)],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Nothing invested yet
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			junior_investor.clone(),
+			0,
+			1,
+			500 * CURRENCY
+		));
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			senior_investor.clone(),
+			0,
+			0,
+			500 * CURRENCY
+		));
+
+		// Outstanding orders
+		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+
+		// Outstanding collections
+		// assert_eq!(Tokens::free_balance(junior_token, &0), 0);
+		assert_ok!(TinlakeInvestorPool::collect(
+			junior_investor.clone(),
+			0,
+			1,
+			1
+		));
+		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
+
+		let pool = TinlakeInvestorPool::pool(0).unwrap();
+		assert_eq!(pool.tranches[0].epoch_supply, 0);
+
+		let order = TinlakeInvestorPool::order(
+			TrancheLocator {
+				pool_id: 0,
+				tranche_id: 0,
+			},
+			0,
+		);
+		assert_eq!(order.supply, 0);
+
+		assert_ok!(TinlakeInvestorPool::order_supply(
+			senior_investor.clone(),
+			0,
+			1,
+			10 * CURRENCY
+		));
+
+		assert_ok!(TinlakeInvestorPool::order_redeem(
+			junior_investor.clone(),
+			0,
+			1,
+			10 * CURRENCY
+		));
+
+		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(TinlakeInvestorPool::collect(
+			junior_investor.clone(),
+			0,
+			1,
+			2
+		));
 	});
 }
 
