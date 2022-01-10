@@ -708,6 +708,7 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
+	type InterestRate = Rate;
 	type PoolId = PoolId;
 	type TrancheId = u8;
 	type EpochId = u32;
@@ -771,7 +772,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 
 parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
-	pub const MaxLoansPerPool: u64 = 200;
+	pub const MaxLoansPerPool: u64 = 50;
 }
 
 impl pallet_loan::Config for Runtime {
