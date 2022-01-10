@@ -55,6 +55,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
 	}
 );
 
@@ -151,6 +152,7 @@ impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
+	type Permission = Permissions;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
@@ -198,6 +200,14 @@ impl pallet_uniques::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+impl pallet_permissions::Config for MockRuntime {
+	type Event = Event;
+	type Location = u64;
+	type Role = common_traits::PoolRole;
+	type Storage = runtime_common::PermissionRoles;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+}
+
 parameter_types! {
 	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
 	pub const MaxLoansPerPool: u64 = 200;
@@ -215,6 +225,7 @@ impl pallet_loan::Config for MockRuntime {
 	type Pool = InvestorPool;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
+	type Permission = Permissions;
 }
 
 // USD currencyId
