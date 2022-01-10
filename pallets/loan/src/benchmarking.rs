@@ -401,7 +401,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
-		let after_one_year = now + math::seconds_per_year();
+		let after_one_year = now + math::seconds_per_year() * 1000;
 		let amount = Amount::from_inner(40 * CURRENCY).into();
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
@@ -430,7 +430,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
 		let now = TimestampPallet::<T>::get().into();
-		let after_maturity = now + 2 * math::seconds_per_year() + math::seconds_per_day();
+		let after_maturity = now + (2 * math::seconds_per_year() + math::seconds_per_day()) * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
@@ -464,7 +464,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
 		let now = TimestampPallet::<T>::get().into();
-		let after_maturity = now + 2 * math::seconds_per_year() + 130 * math::seconds_per_day();
+		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
@@ -491,7 +491,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
 		let now = TimestampPallet::<T>::get().into();
-		let after_maturity = now + 2 * math::seconds_per_year() + 130 * math::seconds_per_day();
+		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_maturity.into()).expect("timestamp set should not fail");
@@ -518,7 +518,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2 year
 		let now = TimestampPallet::<T>::get().into();
-		let after_two_years = now + 2 * math::seconds_per_year();
+		let after_two_years = now + 2 * math::seconds_per_year() * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
 		// repay all. sent more than current debt
 		let owner_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
@@ -557,7 +557,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2 year
 		let now = TimestampPallet::<T>::get().into();
-		let after_two_years = now + 2 * math::seconds_per_year() + 130 * math::seconds_per_day();
+		let after_two_years = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
@@ -596,7 +596,7 @@ benchmarks! {
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
-		let after_one_year = now + 1 * math::seconds_per_year();
+		let after_one_year = now + 1 * math::seconds_per_year() * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());

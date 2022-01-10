@@ -23,7 +23,7 @@ use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
 use frame_support::storage::types::OptionQuery;
 use frame_support::traits::tokens::nonfungibles::{Inspect, Mutate, Transfer};
-use frame_support::traits::Time;
+use frame_support::traits::UnixTime;
 use frame_support::transactional;
 use frame_support::{ensure, Parameter};
 use frame_system::pallet_prelude::OriginFor;
@@ -34,7 +34,6 @@ use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
 use sp_runtime::traits::{AccountIdConversion, Member};
 use sp_runtime::{DispatchError, FixedPointNumber};
-use sp_std::convert::TryInto;
 use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::fmt::Debug;
@@ -112,7 +111,7 @@ pub mod pallet {
 		type NonFungible: Transfer<Self::AccountId> + Mutate<Self::AccountId>;
 
 		/// A way for use to fetch the time of the current block
-		type Time: frame_support::traits::Time;
+		type Time: UnixTime;
 
 		/// PalletID of this loan module
 		#[pallet::constant]
@@ -239,9 +238,6 @@ pub mod pallet {
 
 		/// Emits when operation is done on an inactive loan
 		ErrLoanNotActive,
-
-		/// Emits when epoch time is overflowed
-		ErrEpochTimeOverflow,
 
 		/// Emits when the NFT owner is not found
 		ErrNFTOwnerNotFound,

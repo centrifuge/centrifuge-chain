@@ -347,7 +347,7 @@ fn test_price_bullet_loan() {
 				1,
 			));
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-			Timestamp::set_timestamp(100);
+			Timestamp::set_timestamp(100 * 1000);
 			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
@@ -407,7 +407,7 @@ fn test_price_credit_line_with_maturity_loan() {
 				1,
 			));
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
-			Timestamp::set_timestamp(100);
+			Timestamp::set_timestamp(100 * 1000);
 			let res = Loan::price_loan(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
 
@@ -524,7 +524,7 @@ macro_rules! test_borrow_loan {
 				let (rate, loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50 first
-				Timestamp::set_timestamp(1);
+				Timestamp::set_timestamp(1 * 1000);
 				let borrow_amount = Amount::from_inner(50 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -532,6 +532,7 @@ macro_rules! test_borrow_loan {
 				// check loan data
 				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanData should be present");
+
 				// accumulated rate is now rate per sec
 				assert_eq!(loan_data.rate_per_sec, rate);
 				assert_eq!(loan_data.accumulated_rate, rate);
@@ -554,7 +555,7 @@ macro_rules! test_borrow_loan {
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// borrow another 20 after 1000 seconds
-				Timestamp::set_timestamp(1001);
+				Timestamp::set_timestamp(1001 * 1000);
 				let borrow_amount = Amount::from_inner(20 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -588,7 +589,7 @@ macro_rules! test_borrow_loan {
 
 				// try to borrow more than ceiling
 				// borrow another 40 after 1000 seconds
-				Timestamp::set_timestamp(2001);
+				Timestamp::set_timestamp(2001 * 1000);
 				let borrow_amount = Amount::from_inner(40 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
@@ -597,7 +598,7 @@ macro_rules! test_borrow_loan {
 				let mut now = 2001;
 				if $maturity_check {
 					now = loan_type.maturity_date().unwrap() + 1;
-					Timestamp::set_timestamp(now);
+					Timestamp::set_timestamp(now * 1000);
 					let res =
 						Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_err!(res, Error::<MockRuntime>::ErrLoanMaturityDatePassed);
@@ -690,7 +691,7 @@ macro_rules! test_repay_loan {
 				assert_ok!(res);
 
 				// borrow 50
-				Timestamp::set_timestamp(1);
+				Timestamp::set_timestamp(1 * 1000);
 				let borrow_amount = Amount::from_inner(50 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
@@ -719,7 +720,7 @@ macro_rules! test_repay_loan {
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 20 after 1000 seconds
-				Timestamp::set_timestamp(1001);
+				Timestamp::set_timestamp(1001 * 1000);
 				let repay_amount = Amount::from_inner(20 * USD);
 				let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
@@ -747,7 +748,7 @@ macro_rules! test_repay_loan {
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 30 more after another 1000 seconds
-				Timestamp::set_timestamp(2001);
+				Timestamp::set_timestamp(2001 * 1000);
 				let repay_amount = Amount::from_inner(30 * USD);
 				let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
@@ -793,7 +794,7 @@ macro_rules! test_repay_loan {
 				assert_eq!(loan_data.principal_debt, p_debt);
 
 				// debt after 3000 seconds
-				Timestamp::set_timestamp(3001);
+				Timestamp::set_timestamp(3001 * 1000);
 				let rate_after_3000 = checked_pow(loan_data.rate_per_sec, 3001).unwrap();
 				let debt = p_debt
 					.checked_mul(&math::convert::<Rate, Amount>(rate_after_3000).unwrap())
@@ -921,7 +922,7 @@ macro_rules! test_pool_nav {
 
 			// pass some time. maybe 200 days
 			let after_200_days = 3600 * 24 * 200;
-			Timestamp::set_timestamp(after_200_days);
+			Timestamp::set_timestamp(after_200_days * 1000);
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
 			let (nav, ..) = res.unwrap();
@@ -954,7 +955,7 @@ macro_rules! test_pool_nav {
 
 				// pass some time. maybe 500 days
 				let after_500_days = 3600 * 24 * 300;
-				Timestamp::set_timestamp(after_500_days);
+				Timestamp::set_timestamp(after_500_days * 1000);
 
 				// you cannot borrow more than 50 since the debt is more than 50 by now
 				let borrow_amount = Amount::from_inner(50 * USD);
@@ -982,7 +983,7 @@ macro_rules! test_pool_nav {
 			let loan_data =
 				LoanInfo::<MockRuntime>::get(pool_id, loan_id).expect("LoanData should be present");
 			let (_acc_rate, debt) = loan_data.accrue(after_2_years).unwrap();
-			Timestamp::set_timestamp(after_2_years);
+			Timestamp::set_timestamp(after_2_years * 1000);
 			let res = Loan::update_nav_of_pool(pool_id);
 			assert_ok!(res);
 			let (pv, ..) = res.unwrap();
@@ -1199,7 +1200,7 @@ macro_rules! test_write_off_maturity_loan {
 			let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50
-			Timestamp::set_timestamp(1);
+			Timestamp::set_timestamp(1 * 1000);
 			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
@@ -1207,13 +1208,13 @@ macro_rules! test_write_off_maturity_loan {
 			// after one year
 			// anyone can trigger the call
 			let caller = 100;
-			Timestamp::set_timestamp(math::seconds_per_year());
+			Timestamp::set_timestamp(math::seconds_per_year() * 1000);
 			let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanHealthy);
 
 			// let the maturity date passes + 1 day
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
-			Timestamp::set_timestamp(t);
+			Timestamp::set_timestamp(t * 1000);
 			let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
 			assert_err!(res, Error::<MockRuntime>::ErrNoValidWriteOffGroup);
 
@@ -1245,7 +1246,7 @@ macro_rules! test_write_off_maturity_loan {
 
 			// same since write off group is missing
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
-			Timestamp::set_timestamp(t);
+			Timestamp::set_timestamp(t * 1000);
 			let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
 			assert_err!(res, Error::<MockRuntime>::ErrNoValidWriteOffGroup);
 
@@ -1253,7 +1254,7 @@ macro_rules! test_write_off_maturity_loan {
 			for days_index in vec![(3, 0), (5, 1), (7, 2), (20, 3)] {
 				// move to more than 3 days
 				let t = math::seconds_per_year() * 2 + math::seconds_per_day() * days_index.0;
-				Timestamp::set_timestamp(t);
+				Timestamp::set_timestamp(t * 1000);
 				let res = Loan::write_off_loan(Origin::signed(caller), pool_id, loan_id);
 				assert_ok!(res);
 
@@ -1307,7 +1308,7 @@ macro_rules! test_admin_write_off_loan_type {
 			let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50
-			Timestamp::set_timestamp(1);
+			Timestamp::set_timestamp(1 * 1000);
 			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
@@ -1328,13 +1329,13 @@ macro_rules! test_admin_write_off_loan_type {
 				)
 			);
 
-			Timestamp::set_timestamp(math::seconds_per_year());
+			Timestamp::set_timestamp(math::seconds_per_year() * 1000);
 			let res = Loan::admin_write_off_loan(Origin::signed(risk_admin), pool_id, loan_id, 0);
 			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroupIndex);
 
 			// let the maturity date passes + 1 day
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
-			Timestamp::set_timestamp(t);
+			Timestamp::set_timestamp(t * 1000);
 			let res = Loan::admin_write_off_loan(Origin::signed(risk_admin), pool_id, loan_id, 0);
 			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroupIndex);
 
@@ -1356,7 +1357,7 @@ macro_rules! test_admin_write_off_loan_type {
 				math::seconds_per_year(),
 				math::seconds_per_year() * 2 + math::seconds_per_day() * 3,
 			] {
-				Timestamp::set_timestamp(time);
+				Timestamp::set_timestamp(time * 1000);
 				for index in vec![0, 3, 2, 1, 0] {
 					let res = Loan::admin_write_off_loan(
 						Origin::signed(risk_admin),
@@ -1427,13 +1428,13 @@ macro_rules! test_close_written_off_loan_type {
 			let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// borrow 50
-			Timestamp::set_timestamp(1);
+			Timestamp::set_timestamp(1 * 1000);
 			let borrow_amount = Amount::from_inner(50 * USD);
 			let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 			assert_ok!(res);
 
 			// let the maturity pass and closing loan should not work
-			Timestamp::set_timestamp(math::seconds_per_year() * 2 + 5 * math::seconds_per_day());
+			Timestamp::set_timestamp((math::seconds_per_year() * 2 + 5 * math::seconds_per_day()) * 1000);
 			let res = Loan::close_loan(Origin::signed(borrower), pool_id, loan_id);
 			assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
 
@@ -1480,7 +1481,7 @@ macro_rules! test_close_written_off_loan_type {
 				assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
 
 				// let it be 120 days beyond maturity, we write off 100% now
-				Timestamp::set_timestamp(math::seconds_per_year() * 2 + 120 * math::seconds_per_day());
+				Timestamp::set_timestamp((math::seconds_per_year() * 2 + 120 * math::seconds_per_day()) * 1000);
 				let res = Loan::write_off_loan(Origin::signed(200), pool_id, loan_id);
 				assert_ok!(res);
 			} else {
