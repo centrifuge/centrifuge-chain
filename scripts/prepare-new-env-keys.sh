@@ -49,12 +49,22 @@ V_NUM=$1
 SECRET=$(generate_secret)
 printf "Secret Seed: $SECRET\n\n"
 
+NODE_KEYS=""
+SESSION_KEYS=""
 AUTHORITIES=""
 for i in $(seq 1 $V_NUM); do
   AUTHORITIES+="(\n"
   AUTHORITIES+="$(generate_address_and_account_id $i stash '-n'$NETWORK )\n"
   AUTHORITIES+="$(generate_address_and_account_id $i aura '-n'$NETWORK true )\n"
   AUTHORITIES+="),\n"
+  NODE_KEYS+="NodeKey $i: $(subkey generate-node-key)\n"
+  SESSION_KEYS+="AuraKey $i: $SECRET//$i//aura\n"
 done
 
 printf "$AUTHORITIES"
+
+printf "DEVOPS SECTION\n"
+printf "$NODE_KEYS"
+printf "$SESSION_KEYS"
+
+
