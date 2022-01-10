@@ -899,9 +899,10 @@ pub mod pallet {
 			}
 
 			// It is only possible to collect epochs which are already over
-			let parse_until_epoch = end_epoch.min(pool.last_epoch_executed);
+			let end_epoch = end_epoch.min(pool.last_epoch_executed);
 
-			// We initialize the outstanding collections to the ordered amounts, and then fill the payouts based on executions in the accumulated epochs
+			// We initialize the outstanding collections to the ordered amounts,
+			// and then fill the payouts based on executions in the accumulated epochs
 			let mut outstanding = OutstandingCollections {
 				payout_currency_amount: Zero::zero(),
 				payout_token_amount: Zero::zero(),
@@ -910,12 +911,13 @@ pub mod pallet {
 			};
 
 			// Parse remaining_supply_currency into payout_token_amount
-			outstanding =
-				Self::parse_invest_executions(&loc, outstanding, order.epoch, parse_until_epoch)?;
+			// TODO: Now we are passing a mutable value, mutate it, and re-assign it.
+			// Once we implement benchmarking for this, we should check if the reference approach
+			// is more efficient, considering that the mutations occur within a loop.
+			outstanding = Self::parse_invest_executions(&loc, outstanding, order.epoch, end_epoch)?;
 
 			// Parse remaining_redeem_token into payout_currency_amount
-			outstanding =
-				Self::parse_redeem_executions(&loc, outstanding, order.epoch, parse_until_epoch)?;
+			outstanding = Self::parse_redeem_executions(&loc, outstanding, order.epoch, end_epoch)?;
 
 			return Ok(outstanding);
 		}
