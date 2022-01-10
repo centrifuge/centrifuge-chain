@@ -190,19 +190,7 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.contains(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => {
-				let tranche_id = match TrancheInvestors::from_bits(
-					// NOTE: One must guarantee an overflow upon unwrap_or
-					match 1u32.checked_shl(Into::<u32>::into(id).checked_sub(1u32).unwrap_or(300)) {
-						Some(shift) => shift,
-						None => return false,
-					},
-				) {
-					Some(id) => id,
-					None => return false,
-				};
-				self.tranches.contains(tranche_id)
-			}
+			PoolRole::TrancheInvestor(id) => self.tranches.contains(id.into()),
 		}
 	}
 
@@ -214,19 +202,7 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.remove(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => {
-				let tranche_id = match TrancheInvestors::from_bits(
-					// NOTE: One must guarantee an overflow upon unwrap_or
-					match 1u32.checked_shl(Into::<u32>::into(id).checked_sub(1u32).unwrap_or(300)) {
-						Some(shift) => shift,
-						None => return,
-					},
-				) {
-					Some(id) => id,
-					None => return,
-				};
-				self.tranches.remove(tranche_id)
-			}
+			PoolRole::TrancheInvestor(id) => self.tranches.remove(id.into()),
 		}
 	}
 
@@ -238,19 +214,7 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.insert(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => {
-				let tranche_id = match TrancheInvestors::from_bits(
-					// NOTE: One must guarantee an overflow upon unwrap_or
-					match 1u32.checked_shl(Into::<u32>::into(id).checked_sub(1u32).unwrap_or(300)) {
-						Some(shift) => shift,
-						None => return,
-					},
-				) {
-					Some(id) => id,
-					None => return,
-				};
-				self.tranches.insert(tranche_id)
-			}
+			PoolRole::TrancheInvestor(id) => self.tranches.insert(id.into()),
 		}
 	}
 }

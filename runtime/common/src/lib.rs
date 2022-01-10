@@ -166,18 +166,40 @@ pub mod types {
 		}
 	}
 
-	bitflags::bitflags! {
-		/// The Number of tranches we currently support.
-		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
-		pub struct TrancheInvestors: u32 {
-			const TRANCHE_1 = 0b00000001;
-			const TRANCHE_2 = 0b00000010;
-			const TRANCHE_3 = 0b00000100;
-			const TRANCHE_4 = 0b00001000;
-			const TRANCHE_5 = 0b00010000;
-			const TRANCHE_6 = 0b00100000;
-			const TRANCHE_7 = 0b01000000;
-			const TRANCHE_8 = 0b10000000;
+	#[derive(codec::Encode, codec::Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
+	pub struct TrancheInvestors(u32);
+
+	impl TrancheInvestors {
+		pub fn empty() -> Self {
+			Self(0)
+		}
+
+		pub fn is_empty(&self) -> bool {
+			self.0 == 0
+		}
+
+		pub fn contains(&self, tranche: u32) -> bool {
+			if tranche >= 32 {
+				return false;
+			}
+			let bit = 1 << tranche;
+			self.0 & bit == bit
+		}
+
+		pub fn remove(&mut self, tranche: u32) {
+			if tranche >= 32 {
+				return;
+			}
+			let mask = !(1 << tranche);
+			self.0 &= mask;
+		}
+
+		pub fn insert(&mut self, tranche: u32) {
+			if tranche >= 32 {
+				return;
+			}
+			let bit = 1 << tranche;
+			self.0 |= bit;
 		}
 	}
 
