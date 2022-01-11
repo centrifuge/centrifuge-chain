@@ -93,21 +93,28 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-fea
 pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
-pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 
+# orml pallets
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
+
 runtime-common = { path = "../common", default-features = false }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
+pallet-loan = { path = "../../pallets/loan", default-features = false }
 
 [build-dependencies]
-substrate-wasm-builder = "3.0.0"
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
 
 [features]
 default = ["std"]
@@ -182,6 +189,10 @@ std = [
     "pallet-society/std",
     "runtime-common/std",
     "pallet-uniques/std",
+    "orml-tokens/std",
+    "pallet-loan/std",
+    "pallet-uniques/std",
+    "primitives-tokens/std",
     "pallet-treasury/std"
 ]
 runtime-benchmarks = [
@@ -198,7 +209,8 @@ runtime-benchmarks = [
     "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
-    'pallet-collator-selection/runtime-benchmarks',
+    "pallet-loan/runtime-benchmarks",
+    'pallet-collator-selection/runtime-benchmarks'
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

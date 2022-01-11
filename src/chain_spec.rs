@@ -43,6 +43,12 @@ pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::
 	altair_runtime::SessionKeys { aura: keys }
 }
 
+pub fn get_centrifuge_session_keys(
+	keys: centrifuge_runtime::AuraId,
+) -> centrifuge_runtime::SessionKeys {
+	centrifuge_runtime::SessionKeys { aura: keys }
+}
+
 pub fn get_development_session_keys(
 	keys: development_runtime::AuraId,
 ) -> development_runtime::SessionKeys {
@@ -59,24 +65,85 @@ where
 	AccountPublic::from(get_from_seed::<TPublic>(seed)).into_account()
 }
 
-pub fn charcoal_local_network(para_id: ParaId) -> AltairChainSpec {
+pub fn centrifuge_config() -> CentrifugeChainSpec {
+	CentrifugeChainSpec::from_json_bytes(
+		&include_bytes!("../res/genesis/centrifuge-genesis-spec-raw.json")[..],
+	)
+	.unwrap()
+}
+
+pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "CAIR".into());
+	properties.insert("tokenSymbol".into(), "CFG".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
-	AltairChainSpec::from_genesis(
-		"Charcoal Local Testnet",
-		"charcoal_local_testnet",
+	CentrifugeChainSpec::from_genesis(
+		"Centrifuge",
+		"centrifuge",
+		ChainType::Live,
+		move || {
+			centrifuge_genesis(
+				// 4fKpoZoBEvw2K48tQf5rMAfexaX9fS9WbsEqWPTaREWBRvhs
+				hex!["b03cd3fb823de75f888ac647105d7820476a6b1943a74af840996d2b28e64017"].into(),
+				vec![
+					(
+						// 4dsemFj9QroJbpP1Zdd18DXVvYeyo6ymvnGTEvEvs5ikPCxF
+						hex!["700a6abbcdbb6595cf48f019a4409c3670c42552d7f4b5bc317af642d91ceb09"]
+							.into(),
+						hex!["7e2a9759dcef70d18fa271026ba1b891391c22f1531055bf687b34fe547c3029"]
+							.unchecked_into(),
+					),
+					(
+						// 4dCqKqsy3VuQzakfQT2XTGTaMSC2jWK1jL8EaNZyvvApjjMG
+						hex!["526f668def3ef79c8087552cfcecf575b89ac48a903379b5b5ec4f657ed6c67b"]
+							.into(),
+						hex!["087e9792a7ea8eb599d3696dbdbd0b1e957a3a29cc78405d7c84f96a6ecab725"]
+							.unchecked_into(),
+					),
+					(
+						// 4deVxTkHqXeueeNS8dF9fwKFiDJEMujCzEzrhm2aFhkELxLA
+						hex!["6602949762bcfc0e52685f01d9723ea9eb92e4102fae739b7f1143cae518ce74"]
+							.into(),
+						hex!["96504d2fe659a6ab6b4d2ded1340de5d995d25d9aad3be37d948bc5259355512"]
+							.unchecked_into(),
+					),
+				],
+				vec![
+					hex!["b03cd3fb823de75f888ac647105d7820476a6b1943a74af840996d2b28e64017"].into(),
+				],
+				Some(1000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		Some(
+			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot telemetry url is valid; qed"),
+		),
+		Some("centrifuge"),
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	CentrifugeChainSpec::from_genesis(
+		"Centrifuge Dev",
+		"centrifuge_dev",
 		ChainType::Local,
 		move || {
-			altair_genesis(
+			centrifuge_genesis(
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
+					get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(10000000 * AIR),
+				Some(100000000 * CFG),
 				para_id,
 			)
 		},
@@ -88,7 +155,14 @@ pub fn charcoal_local_network(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn altair_staging_network(para_id: ParaId) -> AltairChainSpec {
+pub fn altair_config() -> AltairChainSpec {
+	AltairChainSpec::from_json_bytes(
+		&include_bytes!("../res/genesis/altair-genesis-spec-raw.json")[..],
+	)
+	.unwrap()
+}
+
+pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "AIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
@@ -99,7 +173,6 @@ pub fn altair_staging_network(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Live,
 		move || {
 			altair_genesis(
-				hex!["66d97d3816f5906c8a9821fac25afbb76291b12eb51c5a559e44aaafe4e42206"].into(),
 				vec![
 					(
 						//
@@ -139,7 +212,127 @@ pub fn altair_staging_network(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn charcoal_staging_network(para_id: ParaId) -> AltairChainSpec {
+pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Altair Dev",
+		"altair_dev",
+		ChainType::Local,
+		move || {
+			altair_genesis(
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_from_seed::<altair_runtime::AuraId>("Alice"),
+				)],
+				endowed_accounts(),
+				Some(100000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn antares_config() -> AltairChainSpec {
+	AltairChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..]).unwrap()
+}
+
+pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "NAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Antares Testnet",
+		"antares_testnet",
+		ChainType::Live,
+		move || {
+			altair_genesis(
+				// kAMp8Np345RVsnznxHNrsqS3BuNDWqFn5jXNT44vegDF3xcD8
+				vec![
+					(
+						//kAKHQhXnjqLyv1nsCLEWb7fzPNVxXce3m8befa1tQtv1vxFxn
+						hex!["5e4b3571ca8b591a3a4bbe74ef98c175ded537327eb0fee804b2b4bb9e6a4d17"]
+							.into(),
+						//kALq9HKGio1JH3FiP1nBqobG4Uw5ZWruAdisFnYPPV3LnngUq
+						hex!["a2bb652a9722f01408b586aebc14891861809931e523c12e159399b9dd01c150"]
+							.unchecked_into(),
+					),
+					(
+						//kANowgeZWL2DhEzvcK5fZn9S6zWagoS8VivqSfHkxA1UetiAq
+						hex!["fa499346a1c747b839d8f125e668bdd1342dff00c0c958f790bac11cbb08b51d"]
+							.into(),
+						//kANbf9tdTos3tjFwTWu8pys2vjRreayx2cyRKRhGnYU8XMXTK
+						hex!["f0eafc07a1b05d926c5edf842752bbc25d8fe048d7aa4847fafc7b6577a51b7f"]
+							.unchecked_into(),
+					),
+					(
+						//kAHAYwo51dEmSLPXibTGvyB6gZ94uhEvWrW6jWS2Xay4drscH
+						hex!["0097c8435cd03de1e57045221de04c23fc14a36fc82b50ea35ddc0165a7f8626"]
+							.into(),
+						//kAMpz3UFrxHoWsW6JcadsdtZjQenT4yptu4XTMfsnQUJQzyTq
+						hex!["ced887433a5c8c1e0af93bf6c5de96a39fe09be06bc3f747b76fa0cab9ef4a69"]
+							.unchecked_into(),
+					),
+				],
+				vec![
+					hex!["ce3155fe53b83191a3d50da03b2368d0e596a43c09885cd9de9b0ada82782952"].into(),
+				],
+				Some(10000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		Some(
+			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot telemetry url is valid; qed"),
+		),
+		Some("antares"),
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "NAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Antares Local Testnet",
+		"antares_local_testnet",
+		ChainType::Local,
+		move || {
+			altair_genesis(
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_from_seed::<altair_runtime::AuraId>("Alice"),
+				)],
+				endowed_accounts(),
+				Some(10000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn charcoal_config() -> AltairChainSpec {
+	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
+}
+
+pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
@@ -150,8 +343,6 @@ pub fn charcoal_staging_network(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Live,
 		move || {
 			altair_genesis(
-				// kAJSPJQGb1w5Cn4ZTFPokiStQ6sNkYHApjzPBeNPdVwbyLGjs
-				hex!["38e779a7cc9cc462e19ae0c8e76d6135caba7fee745645dbf9b4a1b9f53dbd6e"].into(),
 				vec![
 					(
 						// kALpizfCQweMJjhMpDhfozAtLXrLfbkE7iMFWVt92xXrdcoZg
@@ -191,18 +382,17 @@ pub fn charcoal_staging_network(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn rumba_staging_network(para_id: ParaId) -> AltairChainSpec {
+pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "RCFG".into());
+	properties.insert("tokenSymbol".into(), "CAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	AltairChainSpec::from_genesis(
-		"Rumba Testnet",
-		"rumba_testnet",
-		ChainType::Live,
+		"Charcoal Local Testnet",
+		"charcoal_local_testnet",
+		ChainType::Local,
 		move || {
 			altair_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
@@ -213,58 +403,6 @@ pub fn rumba_staging_network(para_id: ParaId) -> AltairChainSpec {
 			)
 		},
 		vec![],
-		Some(
-			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
-				.expect("Polkadot telemetry url is valid; qed"),
-		),
-		Some("rumba"),
-		Some(properties),
-		Default::default(),
-	)
-}
-
-pub fn cyclone_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..])
-		.unwrap()
-}
-
-pub fn altair_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/altair-spec-raw.json")[..]).unwrap()
-}
-
-pub fn rumba_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/rumba-spec-raw.json")[..]).unwrap()
-}
-
-pub fn charcoal_config() -> AltairChainSpec {
-	AltairChainSpec::from_json_bytes(&include_bytes!("../res/charcoal-spec-raw.json")[..]).unwrap()
-}
-
-pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
-	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
-
-	AltairChainSpec::from_genesis(
-		"Altair Dev",
-		"altair_dev",
-		ChainType::Local,
-		move || {
-			altair_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
-				vec![(
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_from_seed::<altair_runtime::AuraId>("Alice"),
-					//hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833").into(),
-					// hex!("8cf7ef0821d2502301f64fe0a7e729d88dfa0cef81773d246add643668edd833")
-					// 	.unchecked_into(),
-				)],
-				endowed_accounts(),
-				None,
-				para_id,
-			)
-		},
-		vec![],
 		None,
 		None,
 		Some(properties),
@@ -272,9 +410,9 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn devel_local(para_id: ParaId) -> DevelopmentChainSpec {
+pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
-	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenSymbol".into(), "DEVEL".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	DevelopmentChainSpec::from_genesis(
@@ -318,8 +456,81 @@ fn endowed_accounts() -> Vec<AccountId> {
 	]
 }
 
-fn altair_genesis(
+fn centrifuge_genesis(
 	root_key: AccountId,
+	initial_authorities: Vec<(centrifuge_runtime::AccountId, centrifuge_runtime::AuraId)>,
+	endowed_accounts: Vec<centrifuge_runtime::AccountId>,
+	total_issuance: Option<centrifuge_runtime::Balance>,
+	id: ParaId,
+) -> centrifuge_runtime::GenesisConfig {
+	let num_endowed_accounts = endowed_accounts.len();
+	let balances = match total_issuance {
+		Some(total_issuance) => {
+			let balance_per_endowed = total_issuance
+				.checked_div(num_endowed_accounts as centrifuge_runtime::Balance)
+				.unwrap_or(0 as centrifuge_runtime::Balance);
+			endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, balance_per_endowed))
+				.collect()
+		}
+		None => vec![],
+	};
+
+	centrifuge_runtime::GenesisConfig {
+		system: centrifuge_runtime::SystemConfig {
+			code: centrifuge_runtime::WASM_BINARY
+				.expect("WASM binary was not build, please build it!")
+				.to_vec(),
+			changes_trie_config: Default::default(),
+		},
+		balances: centrifuge_runtime::BalancesConfig { balances },
+		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
+		council: centrifuge_runtime::CouncilConfig {
+			members: Default::default(),
+			phantom: Default::default(),
+		},
+		fees: centrifuge_runtime::FeesConfig {
+			initial_fees: vec![(
+				// Anchoring state rent fee per day
+				// pre-image: 0xdb4faa73ca6d2016e53c7156087c176b79b169c409b8a0063a07964f3187f9e9
+				// hash   : 0x11da6d1f761ddf9bdb4c9d6e5303ebd41f61858d0a5647a1a7bfe089bf921be9
+				Hash::from(&[
+					17, 218, 109, 31, 118, 29, 223, 155, 219, 76, 157, 110, 83, 3, 235, 212, 31,
+					97, 133, 141, 10, 86, 71, 161, 167, 191, 224, 137, 191, 146, 27, 233,
+				]),
+				// Daily state rent, defined such that it will amount to 0.00259.. RAD (2_590_000_000_000_040) over
+				// 3 years, which is the expected average anchor duration. The other fee components for anchors amount
+				// to about 0.00041.. RAD (410_000_000_000_000), such that the total anchor price for 3 years will be
+				// 0.003.. RAD
+				2_365_296_803_653,
+			)],
+		},
+		vesting: Default::default(),
+		sudo: centrifuge_runtime::SudoConfig { key: root_key },
+		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
+		session: centrifuge_runtime::SessionConfig {
+			keys: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, aura)| {
+					(
+						acc.clone(),                       // account id
+						acc,                               // validator id
+						get_centrifuge_session_keys(aura), // session keys
+					)
+				})
+				.collect(),
+		},
+		aura_ext: Default::default(),
+		aura: Default::default(),
+		democracy: Default::default(),
+		parachain_system: Default::default(),
+	}
+}
+
+fn altair_genesis(
 	initial_authorities: Vec<(altair_runtime::AccountId, altair_runtime::AuraId)>,
 	endowed_accounts: Vec<altair_runtime::AccountId>,
 	total_issuance: Option<altair_runtime::Balance>,
@@ -370,7 +581,6 @@ fn altair_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: altair_runtime::SudoConfig { key: root_key },
 		parachain_info: altair_runtime::ParachainInfoConfig { parachain_id: id },
 		collator_selection: altair_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities
@@ -389,7 +599,7 @@ fn altair_genesis(
 				.map(|(acc, aura)| {
 					(
 						acc.clone(),                   // account id
-						acc.clone(),                   // validator id
+						acc,                           // validator id
 						get_altair_session_keys(aura), // session keys
 					)
 				})
@@ -411,18 +621,25 @@ fn development_genesis(
 	id: ParaId,
 ) -> development_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
-	let balances = match total_issuance {
+	let (balances, token_balances) = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
 				.checked_div(num_endowed_accounts as development_runtime::Balance)
 				.unwrap_or(0 as development_runtime::Balance);
-			endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, balance_per_endowed))
-				.collect()
+			(
+				endowed_accounts
+					.iter()
+					.cloned()
+					.map(|k| (k, balance_per_endowed))
+					.collect(),
+				endowed_accounts
+					.iter()
+					.cloned()
+					.map(|k| (k, development_runtime::CurrencyId::Usd, balance_per_endowed))
+					.collect(),
+			)
 		}
-		None => vec![],
+		None => (vec![], vec![]),
 	};
 
 	development_runtime::GenesisConfig {
@@ -433,6 +650,9 @@ fn development_genesis(
 			changes_trie_config: Default::default(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
+		tokens: development_runtime::TokensConfig {
+			balances: token_balances,
+		},
 		elections: development_runtime::ElectionsConfig { members: vec![] },
 		council: development_runtime::CouncilConfig {
 			members: Default::default(),
@@ -474,7 +694,7 @@ fn development_genesis(
 				.map(|(acc, aura)| {
 					(
 						acc.clone(),                        // account id
-						acc.clone(),                        // validator id
+						acc,                                // validator id
 						get_development_session_keys(aura), // session keys
 					)
 				})

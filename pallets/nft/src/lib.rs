@@ -146,6 +146,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sp_core::U256;
 	use sp_runtime::SaturatedConversion;
 
 	// NFT pallet type declaration.
@@ -173,12 +174,12 @@ pub mod pallet {
 		+ pallet_anchors::Config
 		+ chainbridge::Config
 	{
-		/// The type used to identify nft registry
-		type RegistryId: Parameter + Member + Debug + Default + Clone + AsRef<[u8]> + From<[u8; 20]>;
+		/// the type used to identify nft registry
+		type RegistryId: Parameter + Member + Debug + Default + Copy + AsRef<[u8]> + From<[u8; 20]>;
 
-		/// Type that represents nft token ID
+		/// type that represents nft token ID
 		/// From should always assume big endian
-		type TokenId: Parameter + Member + Default + Clone + BigEndian<Vec<u8>>;
+		type TokenId: Parameter + Member + Default + Copy + BigEndian<Vec<u8>> + From<U256>;
 
 		/// The data type that is used to describe this type of asset.
 		type AssetInfo: Hashable + Member + Debug + Default + FullCodec + TypeInfo;

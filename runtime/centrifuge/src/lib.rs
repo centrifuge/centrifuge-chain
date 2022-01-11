@@ -103,7 +103,7 @@ parameter_types! {
 		})
 		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
 		.build_or_panic();
-	pub const SS58Prefix: u8 = 136;
+	pub const SS58Prefix: u8 = 36;
 }
 // our base filter
 // allow base system calls needed for block production and runtime upgrade
@@ -116,15 +116,14 @@ impl Contains<Call> for BaseFilter {
 			c,
 			// Calls from Sudo
 			Call::Sudo(..)
-
-				// Calls for runtime upgrade
-				| Call::System(frame_system::Call::set_code{..})
-				| Call::System(frame_system::Call::set_code_without_checks{..})
-
-				// Calls that are present in each block
-				| Call::ParachainSystem(
-					cumulus_pallet_parachain_system::Call::set_validation_data{..}
-				) | Call::Timestamp(pallet_timestamp::Call::set{..})
+			// Calls for runtime upgrade
+			| Call::System(frame_system::Call::set_code{..})
+			| Call::System(frame_system::Call::set_code_without_checks{..})
+			// Calls that are present in each block
+			| Call::ParachainSystem(
+				cumulus_pallet_parachain_system::Call::set_validation_data{..}
+			)
+			| Call::Timestamp(pallet_timestamp::Call::set{..})
 		)
 	}
 }
@@ -348,14 +347,16 @@ pub enum ProxyType {
 	Any,
 	NonTransfer,
 	Governance,
-	// Staking,
-	// Vesting,
+	/// Deprecated ProxyType, that we are keeping due to the migration
+	_Staking,
+	NonProxy,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
 		Self::Any
 	}
 }
+
 impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
@@ -363,30 +364,22 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
 			ProxyType::Governance => matches!(
 				c,
-				// Call::Democracy(..) |
-				Call::Council(..) | Call::Elections(..) | Call::Utility(..)
+				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
 			),
-			// ProxyType::Staking => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			// 	Call::Utility(..)
-			// ),
-			// ProxyType::Vesting => matches!(c,
-			//     Call::Staking(..) |
-			//     Call::Session(..) |
-			//     Call::Democracy(..) |
-			// 	Call::Council(..) |
-			// 	Call::Elections(..) |
-			// 	Call::Vesting(pallet_vesting::Call::vest(..)) |
-			// 	Call::Vesting(pallet_vesting::Call::vest_other(..))
-			// ),
+			ProxyType::_Staking => false,
+			ProxyType::NonProxy => {
+				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
+					|| !matches!(c, Call::Proxy(..))
+			}
 		}
 	}
+
 	fn is_superset(&self, o: &Self) -> bool {
 		match (self, o) {
 			(x, y) if x == y => true,
 			(ProxyType::Any, _) => true,
 			(_, ProxyType::Any) => false,
+			(_, ProxyType::NonProxy) => false,
 			(ProxyType::NonTransfer, _) => true,
 			_ => false,
 		}
@@ -499,7 +492,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 10 * CFG;
+	pub const MinimumDeposit: Balance = 500 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_CFG;
@@ -605,7 +598,7 @@ impl pallet_vesting::Config for Runtime {
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
-	const MAX_VESTING_SCHEDULES: u32 = 28;
+	const MAX_VESTING_SCHEDULES: u32 = 3;
 }
 
 // our pallets
@@ -708,7 +701,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	// disable paying the fees for now.
+	// Disable paying the fees for now
 	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -857,12 +850,10 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			// Pallet fees benchmarks
 			add_benchmark!(params, batches, pallet_fees, Fees);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
-
 		}
 
 		fn benchmark_metadata(extra: bool) -> (

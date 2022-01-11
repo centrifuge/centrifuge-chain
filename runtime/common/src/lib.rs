@@ -20,6 +20,7 @@ pub use constants::*;
 pub use impls::*;
 pub use types::*;
 
+mod fixed_point;
 mod impls;
 
 pub mod apis {
@@ -64,6 +65,9 @@ pub mod types {
 	/// Balance of an account.
 	pub type Balance = u128;
 
+	/// IBalance is the signed version of the Balance for orml tokens
+	pub type IBalance = i128;
+
 	/// Index of a transaction in the chain.
 	pub type Index = u32;
 
@@ -99,15 +103,9 @@ pub mod types {
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RegistryId(pub H160);
 
-	/// A representation of ClassId for Uniques
-	pub type ClassId = u64;
-
-	/// A representation of InstanceId for Uniques
-	pub type InstanceId = u128;
-
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct TokenId(pub U256);
 
@@ -117,6 +115,34 @@ pub mod types {
 	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
+
+	/// Rate with 27 precision fixed point decimal
+	pub type Rate = crate::fixed_point::Rate;
+
+	/// Amount with 18 precision fixed point decimal
+	pub type Amount = crate::fixed_point::Amount;
+
+	/// PoolId type we use.
+	pub type PoolId = u64;
+
+	/// A representation of ClassId for Uniques
+	pub type ClassId = u64;
+
+	/// A representation of InstanceId for Uniques.
+	#[derive(
+		codec::Encode,
+		codec::Decode,
+		Default,
+		Copy,
+		Clone,
+		PartialEq,
+		Eq,
+		codec::CompactAs,
+		Debug,
+		TypeInfo,
+	)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub struct InstanceId(pub u128);
 }
 
 /// Common constants for all runtimes

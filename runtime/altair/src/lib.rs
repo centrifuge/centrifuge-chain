@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -28,7 +28,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
+use sp_core::u32_trait::{_1, _2, _3, _4, _5};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
@@ -72,7 +72,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1007,
+	spec_version: 1008,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -88,7 +88,7 @@ pub fn native_version() -> NativeVersion {
 }
 
 use frame_support::sp_runtime::traits::{Convert, IdentifyAccount, OpaqueKeys, Verify};
-/// Costum runtime upgrades
+/// Custom runtime upgrades
 ///
 /// Migration to include collator-selection in a running chain
 use pallet_collator_selection::CandidateInfo;
@@ -114,7 +114,7 @@ where
 	T::Keys: From<SessionKeys>,
 {
 	fn to_version() -> u32 {
-		1007
+		1008
 	}
 
 	fn inject_invulnerables(invulnerables: &[(T::AccountId, T::Keys)]) -> Weight {
@@ -322,36 +322,10 @@ parameter_types! {
 		.build_or_panic();
 	pub const SS58Prefix: u8 = 136;
 }
-// our base filter
-// allow base system calls needed for block production and runtime upgrade
-// other calls will be disallowed
-pub struct BaseFilter;
-
-impl Contains<Call> for BaseFilter {
-	fn contains(c: &Call) -> bool {
-		matches!(
-			c,
-			// Calls from Sudo
-			Call::Sudo(..)
-			// Calls for runtime upgrade
-			| Call::System(frame_system::Call::set_code{..})
-			| Call::System(frame_system::Call::set_code_without_checks{..})
-			// Calls that are present in each block
-			| Call::ParachainSystem(
-				cumulus_pallet_parachain_system::Call::set_validation_data{..}
-			)
-			| Call::Timestamp(pallet_timestamp::Call::set{..})
-			// Claiming logic is also enabled
-			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
-			// Enable Governance
-			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..} | Call::Utility{..}
-		)
-	}
-}
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = BaseFilter;
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -662,12 +636,12 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 }
 
 parameter_types! {
-	pub const CandidacyBond: Balance = 1000 * AIR;
+	pub const CandidacyBond: Balance = 500 * AIR;
 	pub const VotingBond: Balance = 50 * CENTI_AIR;
 	pub const VotingBondBase: Balance = 50 * CENTI_AIR;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
-	pub const DesiredMembers: u32 = 7;
-	pub const DesiredRunnersUp: u32 = 3;
+	pub const DesiredMembers: u32 = 9;
+	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
@@ -691,8 +665,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 
-	type LoserCandidate = ();
-	type KickedMember = ();
+	type LoserCandidate = Treasury;
+	type KickedMember = Treasury;
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -712,7 +686,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 1000 * AIR;
+	pub const MinimumDeposit: Balance = 500 * AIR;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const PreimageByteDeposit: Balance = 100 * MICRO_AIR;
@@ -744,15 +718,15 @@ impl pallet_democracy::Config for Runtime {
 	type ExternalOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type ExternalMajorityOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
 	type ExternalDefaultOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
-	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
+	/// Half of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type FastTrackOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
 
 	type InstantOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
 
@@ -776,7 +750,7 @@ impl pallet_democracy::Config for Runtime {
 	type PreimageByteDeposit = PreimageByteDeposit;
 	type OperationalPreimageOrigin = EnsureMember<AccountId, CouncilCollective>;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = ();
+	type Slash = Treasury;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MaxVotes = MaxVotes;
@@ -802,7 +776,7 @@ impl pallet_identity::Config for Runtime {
 	type MaxSubAccounts = MaxSubAccounts;
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
-	type Slashed = ();
+	type Slashed = Treasury;
 	type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 	type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
@@ -824,7 +798,7 @@ impl pallet_vesting::Config for Runtime {
 type ApproveOrigin = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>,
 >;
 
 type RejectOrigin = EnsureOneOf<
@@ -842,13 +816,13 @@ parameter_types! {
 	pub const ProposalBondMinimum: Balance = 100 * AIR;
 
 	// periods between treasury spends
-	pub const SpendPeriod: BlockNumber = 30 * DAYS;
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
 
 	// percentage of treasury we burn per Spend period if there is a surplus
 	// If the treasury is able to spend on all the approved proposals and didn't miss any
 	// then we burn % amount of remaining balance
 	// If the treasury couldn't spend on all the approved proposals, then we dont burn any
-	pub const Burn: Permill = Permill::from_percent(1);
+	pub const Burn: Permill = Permill::from_percent(0);
 
 	// treasury pallet account id
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
@@ -859,7 +833,7 @@ parameter_types! {
 
 impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
-	// either democracy or 75% of council votes
+	// either democracy or 66% of council votes
 	type ApproveOrigin = ApproveOrigin;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = RejectOrigin;
@@ -1000,12 +974,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
-// admin stuff
-impl pallet_sudo::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-}
-
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1057,8 +1025,6 @@ construct_runtime!(
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
-		// admin stuff
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
 );
 

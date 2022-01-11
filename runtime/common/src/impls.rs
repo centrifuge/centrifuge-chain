@@ -3,6 +3,7 @@
 use super::*;
 use codec::{Decode, Encode};
 use core::marker::PhantomData;
+use frame_support::sp_runtime::app_crypto::sp_core::U256;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::{
 	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -10,6 +11,8 @@ use frame_support::weights::{
 use frame_system::pallet::Config as SystemConfig;
 use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
+use pallet_tinlake_investor_pool::Config;
+use primitives_tokens::CurrencyId;
 use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
@@ -17,6 +20,8 @@ use sp_core::H160;
 use sp_std::convert::TryInto;
 use sp_std::vec;
 use sp_std::vec::Vec;
+
+primitives_tokens::impl_tranche_token!();
 
 pub struct DealWithFees<Config>(PhantomData<Config>);
 pub type NegativeImbalance<Config> =
@@ -138,5 +143,23 @@ impl common_traits::BigEndian<Vec<u8>> for TokenId {
 		let mut data = vec![0; 32];
 		self.0.to_big_endian(&mut data);
 		data
+	}
+}
+
+impl From<U256> for TokenId {
+	fn from(v: U256) -> Self {
+		Self(v)
+	}
+}
+
+impl From<u16> for InstanceId {
+	fn from(v: u16) -> Self {
+		Self(v as u128)
+	}
+}
+
+impl From<u128> for InstanceId {
+	fn from(v: u128) -> Self {
+		Self(v)
 	}
 }

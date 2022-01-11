@@ -32,7 +32,6 @@ cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", defaul
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-collator-selection = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 
-
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
@@ -91,7 +90,6 @@ pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/parityt
 pallet-identity = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
@@ -175,7 +173,6 @@ std = [
     "pallet-anchors/std",
     "pallet-collator-allowlist/std",
     "pallet-claims/std",
-    "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
     "pallet-migration-manager/std",

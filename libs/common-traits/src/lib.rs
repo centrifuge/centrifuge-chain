@@ -25,13 +25,17 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::{Codec, DispatchResultWithPostInfo};
+use codec::{Decode, Encode};
+use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
 };
+use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
 use sp_std::str::FromStr;
@@ -97,4 +101,46 @@ pub trait Reward {
 /// A trait used to convert a type to BigEndian format
 pub trait BigEndian<T> {
 	fn to_big_endian(&self) -> T;
+}
+
+/// A trait that can be used to fetch the nav and update nav for a given pool
+pub trait PoolNAV<PoolId, Amount> {
+	// nav returns the nav and the last time it was calculated
+	fn nav(pool_id: PoolId) -> Option<(Amount, u64)>;
+	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
+}
+
+/// PoolRole can hold any type of role specific functions a user can do on a given pool.
+#[derive(Encode, Decode, Clone, Copy, PartialEq, TypeInfo)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum PoolRole {
+	PoolAdmin,
+	Borrower,
+	PricingAdmin,
+	LiquidityAdmin,
+	MemberListAdmin,
+	RiskAdmin,
+}
+
+/// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
+pub trait PoolInspect<AccountId> {
+	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo;
+
+	/// check if the pool exists
+	fn pool_exists(pool_id: Self::PoolId) -> bool;
+
+	/// checks if the given account has the requested role in the given pool.
+	fn has_role(pool_id: Self::PoolId, account: &AccountId, role: PoolRole) -> bool;
+}
+
+/// A trait that support pool reserve operations such as withdraw and deposit
+pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
+	type Balance;
+
+	/// Withdraw `amount` from the reserve to the `to` account.
+	fn withdraw(pool_id: Self::PoolId, to: AccountId, amount: Self::Balance) -> DispatchResult;
+
+	/// Deposit `amount` from the `from` account into the reserve.
+	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }

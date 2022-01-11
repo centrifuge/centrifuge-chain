@@ -50,7 +50,7 @@ onboard-parachain)
   genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
   wasm=$(./target/release/centrifuge-chain export-genesis-wasm --chain="${parachain}")
   echo "Genesis state:" $genesis
-  echo "WASM:" "./target/release/wbuild/centrifuge-chain-runtime/centrifuge_chain_runtime.compact.wasm"
+  echo "WASM:" "./target/release/wbuild/centrifuge-runtime/centrifuge_runtime.compact.wasm"
 
   polkadot-js-api \
           --ws ws://0.0.0.0:9944 \

@@ -20,7 +20,9 @@ fi
 if [[ $should_build == "true" ]]; then
   echo "Building Spec for $chain_name"
   $PWD/target/release/centrifuge-chain build-spec --chain $chain_name --disable-default-bootnode > res/$chain_name-spec.json
+  sed -i.bu "s/\"parachainId\": 10001/\"parachainId\": $parachain_id/g" res/$chain_name-spec.json
   $PWD/target/release/centrifuge-chain build-spec --chain res/$chain_name-spec.json --disable-default-bootnode --raw > res/$chain_name-spec-raw.json
+  rm res/$chain_name-spec.json.bu
 fi
 
 echo "Exporting State & Wasm"

@@ -136,6 +136,14 @@ fn get_contribution<T: Config>(amount: u128) -> T::Balance {
 	}
 }
 
+#[allow(dead_code)]
+fn get_balance<T: Config>(amount: u128) -> T::Balance {
+	match amount.try_into() {
+		Ok(contribution) => contribution,
+		Err(_) => panic!(),
+	}
+}
+
 // In order to detangle from sp-core/fullCrypto which seems to be missing some trait implementations
 #[derive(codec::Encode, codec::Decode)]
 struct Signature(pub [u8; 64]);

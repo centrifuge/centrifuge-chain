@@ -28,6 +28,7 @@ use node_primitives::{Block, Hash};
 use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
+use sc_rpc_api::DenyUnsafe;
 use sc_service::{Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
@@ -153,7 +154,7 @@ where
 
 	let (client, backend, keystore_container, task_manager) =
 		sc_service::new_full_parts::<Block, RuntimeApi, _>(
-			&config,
+			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
 		)?;
@@ -228,8 +229,16 @@ where
 	Executor: sc_executor::NativeExecutionDispatch + 'static,
 	RB: Fn(
 			Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
+			Arc<
+				sc_transaction_pool::FullPool<
+					Block,
+					TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>,
+				>,
+			>,
+			DenyUnsafe,
 		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
 		+ Send
+		+ Sync
 		+ 'static,
 	BIQ: FnOnce(
 		Arc<TFullClient<Block, RuntimeApi, NativeElseWasmExecutor<Executor>>>,
@@ -304,7 +313,10 @@ where
 		})?;
 
 	let rpc_client = client.clone();
-	let rpc_extensions_builder = Box::new(move |_, _| rpc_ext_builder(rpc_client.clone()));
+	let pool = transaction_pool.clone();
+	let rpc_extensions_builder = Box::new(move |deny, _subscription_executor| {
+		rpc_ext_builder(rpc_client.clone(), pool.clone(), deny)
+	});
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		on_demand: None,
@@ -418,7 +430,7 @@ pub fn build_altair_import_queue(
 
 			Ok((time, slot))
 		},
-		registry: config.prometheus_registry().clone(),
+		registry: config.prometheus_registry(),
 		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
@@ -445,9 +457,9 @@ pub async fn start_altair_node(
 		parachain_config,
 		polkadot_config,
 		id,
-		|client| {
-			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+		|client, pool, deny_unsafe| {
+			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
 		build_altair_import_queue,
@@ -466,7 +478,7 @@ pub async fn start_altair_node(
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -514,7 +526,7 @@ pub async fn start_altair_node(
 				block_import: client.clone(),
 				relay_chain_client: relay_chain_node.client.clone(),
 				relay_chain_backend: relay_chain_node.backend.clone(),
-				para_client: client.clone(),
+				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
 				keystore,
@@ -578,7 +590,7 @@ pub fn build_centrifuge_import_queue(
 
 			Ok((time, slot))
 		},
-		registry: config.prometheus_registry().clone(),
+		registry: config.prometheus_registry(),
 		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
@@ -605,9 +617,9 @@ pub async fn start_centrifuge_node(
 		parachain_config,
 		polkadot_config,
 		id,
-		|client| {
-			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+		|client, pool, deny_unsafe| {
+			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
 		build_centrifuge_import_queue,
@@ -626,7 +638,7 @@ pub async fn start_centrifuge_node(
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -674,7 +686,7 @@ pub async fn start_centrifuge_node(
 				block_import: client.clone(),
 				relay_chain_client: relay_chain_node.client.clone(),
 				relay_chain_backend: relay_chain_node.backend.clone(),
-				para_client: client.clone(),
+				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
 				keystore,
@@ -738,7 +750,7 @@ pub fn build_development_import_queue(
 
 			Ok((time, slot))
 		},
-		registry: config.prometheus_registry().clone(),
+		registry: config.prometheus_registry(),
 		can_author_with: sp_consensus::CanAuthorWithNativeVersion::new(client.executor().clone()),
 		spawner: &task_manager.spawn_essential_handle(),
 		telemetry,
@@ -765,9 +777,9 @@ pub async fn start_development_node(
 		parachain_config,
 		polkadot_config,
 		id,
-		|client| {
-			let mut io = jsonrpc_core::IoHandler::default();
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+		|client, pool, deny_unsafe| {
+			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
 			Ok(io)
 		},
 		build_development_import_queue,
@@ -786,7 +798,7 @@ pub async fn start_development_node(
 				task_manager.spawn_handle(),
 				client.clone(),
 				transaction_pool,
-				prometheus_registry.clone(),
+				prometheus_registry,
 				telemetry.clone(),
 			);
 
@@ -834,7 +846,7 @@ pub async fn start_development_node(
 				block_import: client.clone(),
 				relay_chain_client: relay_chain_node.client.clone(),
 				relay_chain_backend: relay_chain_node.backend.clone(),
-				para_client: client.clone(),
+				para_client: client,
 				backoff_authoring_blocks: Option::<()>::None,
 				sync_oracle,
 				keystore,
