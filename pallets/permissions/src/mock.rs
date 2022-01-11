@@ -22,38 +22,111 @@ use frame_system::EnsureSignedBy;
 use pallet_permissions::Properties;
 
 #[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
-pub enum DummyRole {
+pub enum OrganisationRole {
 	SeniorExeutive,
 	HeadOfSaubermaching,
 }
 
-type DummyLocation = u8;
-
-#[derive(
-	codec::Encode, codec::Decode, scale_info::TypeInfo, Default, Debug, Clone, Eq, PartialEq,
-)]
-pub struct DummyStorage {
-	roles: Vec<DummyRole>,
+#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+pub enum XcmRole {
+	Sender,
+	Receiver,
 }
 
-impl Properties for DummyStorage {
-	type Property = DummyRole;
+#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+pub enum Role {
+	Organisation(OrganisationRole),
+	Xcm(XcmRole),
+}
+
+bitflags::bitflags! {
+		/// The current admin roles we support
+		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo)]
+		pub struct OrgStorage: u32 {
+			const SENIOR_EXEC = 0b00000001;
+			const HEAD_OF_SAUBERMACHING  = 0b00000010;
+		}
+}
+
+bitflags::bitflags! {
+		/// The current admin roles we support
+		#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo)]
+		pub struct XcmStorage: u32 {
+			const SENDER = 0b00000001;
+			const RECEIVER  = 0b00000010;
+		}
+}
+
+#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+pub struct Storage {
+	org: OrgStorage,
+	xcm: XcmStorage,
+}
+
+impl Default for Storage {
+	fn default() -> Self {
+		Self {
+			org: OrgStorage::empty(),
+			xcm: XcmStorage::empty(),
+		}
+	}
+}
+
+#[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
+pub enum Location {
+	PalletA,
+	PalletB,
+}
+
+impl Properties for Storage {
+	type Property = Role;
 
 	fn exists(&self, property: Self::Property) -> bool {
-		self.roles.contains(&property)
+		match property {
+			Role::Xcm(role) => match role {
+				XcmRole::Receiver => self.xcm.contains(XcmStorage::RECEIVER),
+				XcmRole::Sender => self.xcm.contains(XcmStorage::SENDER),
+			},
+			Role::Organisation(role) => match role {
+				OrganisationRole::SeniorExeutive => self.org.contains(OrgStorage::SENIOR_EXEC),
+				OrganisationRole::HeadOfSaubermaching => {
+					self.org.contains(OrgStorage::HEAD_OF_SAUBERMACHING)
+				}
+			},
+		}
 	}
 
 	fn empty(&self) -> bool {
-		self.roles.is_empty()
+		self.org.is_empty() && self.xcm.is_empty()
 	}
 
 	fn rm(&mut self, property: Self::Property) {
-		self.roles.retain(|role| *role != property);
+		match property {
+			Role::Xcm(role) => match role {
+				XcmRole::Receiver => self.xcm.remove(XcmStorage::RECEIVER),
+				XcmRole::Sender => self.xcm.remove(XcmStorage::SENDER),
+			},
+			Role::Organisation(role) => match role {
+				OrganisationRole::SeniorExeutive => self.org.remove(OrgStorage::SENIOR_EXEC),
+				OrganisationRole::HeadOfSaubermaching => {
+					self.org.remove(OrgStorage::HEAD_OF_SAUBERMACHING)
+				}
+			},
+		}
 	}
 
 	fn add(&mut self, property: Self::Property) {
-		if !self.roles.contains(&property) {
-			self.roles.push(property);
+		match property {
+			Role::Xcm(role) => match role {
+				XcmRole::Receiver => self.xcm.insert(XcmStorage::RECEIVER),
+				XcmRole::Sender => self.xcm.insert(XcmStorage::SENDER),
+			},
+			Role::Organisation(role) => match role {
+				OrganisationRole::SeniorExeutive => self.org.insert(OrgStorage::SENIOR_EXEC),
+				OrganisationRole::HeadOfSaubermaching => {
+					self.org.insert(OrgStorage::HEAD_OF_SAUBERMACHING)
+				}
+			},
 		}
 	}
 }
@@ -102,7 +175,7 @@ mod dummy {
 				let who = ensure_signed(origin)?;
 
 				ensure!(
-					!T::Permission::clearance(location.clone(), who.clone(), role.clone()),
+					!T::Permission::has_permission(location.clone(), who.clone(), role.clone()),
 					Error::<T>::AlreadyCleared
 				);
 
@@ -120,7 +193,7 @@ mod dummy {
 				let who = ensure_signed(origin)?;
 
 				ensure!(
-					T::Permission::clearance(location.clone(), who.clone(), role.clone()),
+					T::Permission::has_permission(location.clone(), who.clone(), role.clone()),
 					Error::<T>::NotCleared
 				);
 
@@ -188,9 +261,9 @@ parameter_types! {
 
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
-	type Location = DummyLocation;
-	type Role = DummyRole;
-	type Storage = DummyStorage;
+	type Location = Location;
+	type Role = Role;
+	type Storage = Storage;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 }
 
@@ -201,8 +274,8 @@ impl SortedMembers<u64> for One {
 }
 
 impl pallet_dummy::Config for MockRuntime {
-	type Role = DummyRole;
-	type Location = DummyLocation;
+	type Role = Role;
+	type Location = Location;
 	type Permission = Permissions;
 }
 

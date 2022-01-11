@@ -404,7 +404,7 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::clearance(pool_id, owner.clone(), PoolRole::PoolAdmin),
+				T::Permission::has_permission(pool_id, owner.clone(), PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -492,7 +492,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::clearance(
+				T::Permission::has_permission(
 					pool_id,
 					who.clone(),
 					PoolRole::TrancheInvestor(tranche_id)
@@ -556,7 +556,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::clearance(
+				T::Permission::has_permission(
 					pool_id,
 					who.clone(),
 					PoolRole::TrancheInvestor(tranche_id)
@@ -823,7 +823,7 @@ pub mod pallet {
 			let pool_admin = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::clearance(pool_id, pool_admin, PoolRole::PoolAdmin),
+				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -848,7 +848,7 @@ pub mod pallet {
 			let pool_admin = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::clearance(pool_id, pool_admin, PoolRole::PoolAdmin),
+				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 

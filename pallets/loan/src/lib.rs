@@ -563,7 +563,7 @@ macro_rules! ensure_role {
 	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
 		let sender = ensure_signed($origin)?;
 		ensure!(
-			T::Permission::clearance($pool_id, sender.clone(), $role),
+			T::Permission::has_permission($pool_id, sender.clone(), $role),
 			BadOrigin
 		);
 		sender
