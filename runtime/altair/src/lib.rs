@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -16,7 +16,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureOneOf, EnsureRoot,
+	EnsureRoot,
 };
 
 use pallet_anchors::AnchorData;
@@ -28,7 +28,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4, _5};
+use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
@@ -623,7 +623,21 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
+/// The council
 type CouncilCollective = pallet_collective::Instance1;
+
+/// All council members must vote yes to create this origin.
+type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+
+/// 1/2 of all council members must vote yes to create this origin.
+type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+
+/// 2/3 of all council members must vote yes to create this origin.
+type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+
+/// 3/4 of all council members must vote yes to create this origin.
+type ThreeFourthOfCouncil = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -715,27 +729,27 @@ impl pallet_democracy::Config for Runtime {
 	type MinimumDeposit = MinimumDeposit;
 
 	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ExternalOrigin = HalfOfCouncil;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ExternalMajorityOrigin = HalfOfCouncil;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
-	type ExternalDefaultOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type ExternalDefaultOrigin = AllOfCouncil;
 
 	/// Half of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type FastTrackOrigin = EnsureRootOr<HalfOfCouncil>;
 
-	type InstantOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
 
 	type InstantAllowed = InstantAllowed;
 
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type CancellationOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 
 	type BlacklistOrigin = EnsureRoot<AccountId>;
 
@@ -777,8 +791,9 @@ impl pallet_identity::Config for Runtime {
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
 	type Slashed = Treasury;
-	type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type RegistrarOrigin =
+		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
 }
 
@@ -794,18 +809,6 @@ impl pallet_vesting::Config for Runtime {
 	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
-
-type ApproveOrigin = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>,
->;
-
-type RejectOrigin = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
->;
 
 parameter_types! {
 	// 5% of the proposal value need to be bonded. This will be returned
@@ -834,9 +837,10 @@ parameter_types! {
 impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	// either democracy or 66% of council votes
-	type ApproveOrigin = ApproveOrigin;
+	type ApproveOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	// either democracy or more than 50% council votes
-	type RejectOrigin = RejectOrigin;
+	type RejectOrigin =
+		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -857,7 +861,7 @@ impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
-	type FeeChangeOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
 }
 
@@ -882,7 +886,7 @@ parameter_types! {
 
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Balances;
 	type Event = Event;
 	type Longevity = Longevity;
@@ -906,6 +910,9 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type FinalizedFilter = Everything;
+	type InactiveFilter = Everything;
+	type OngoingFilter = Everything;
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -917,7 +924,7 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
 }
 
@@ -934,7 +941,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;
@@ -951,17 +958,11 @@ parameter_types! {
 	pub const MaxInvulnerables: u32 = 100;
 }
 
-type CollatorSelectionUpdateOrigin = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
->;
-
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type UpdateOrigin = CollatorSelectionUpdateOrigin;
+	type UpdateOrigin = EnsureRootOr<ThreeFourthOfCouncil>;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
 	type MinCandidates = MinCandidates;
