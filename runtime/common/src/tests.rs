@@ -21,6 +21,13 @@ fn permission_roles_work() {
 
 	let mut roles = PermissionRoles::default();
 
+	// Test zero-tranche handling
+	assert!(!roles.exists(PoolRole::TrancheInvestor(0)));
+	roles.add(PoolRole::TrancheInvestor(0));
+	assert!(roles.exists(PoolRole::TrancheInvestor(0)));
+	roles.rm(PoolRole::TrancheInvestor(0));
+	assert!(!roles.exists(PoolRole::TrancheInvestor(0)));
+
 	roles.add(PoolRole::TrancheInvestor(1));
 	assert!(roles.exists(PoolRole::TrancheInvestor(1)));
 	assert!(!roles.exists(PoolRole::TrancheInvestor(2)));
