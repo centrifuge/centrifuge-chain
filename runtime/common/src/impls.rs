@@ -170,7 +170,7 @@ impl Default for PermissionRoles {
 	fn default() -> Self {
 		Self {
 			admin: AdminRoles::empty(),
-			tranches: TrancheInvestors::empty(),
+			tranche_investor: TrancheInvestors::empty(),
 		}
 	}
 }
@@ -179,7 +179,7 @@ impl Properties for PermissionRoles {
 	type Property = PoolRole<TrancheId>;
 
 	fn empty(&self) -> bool {
-		self.admin.is_empty() && self.tranches.is_empty()
+		self.admin.is_empty() && self.tranche_investor.is_empty()
 	}
 
 	fn exists(&self, property: Self::Property) -> bool {
@@ -190,7 +190,7 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.contains(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranches.contains(id.into()),
+			PoolRole::TrancheInvestor(id) => self.tranche_investor.contains(id.into()),
 		}
 	}
 
@@ -202,7 +202,7 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.remove(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranches.remove(id.into()),
+			PoolRole::TrancheInvestor(id) => self.tranche_investor.remove(id.into()),
 		}
 	}
 
@@ -214,7 +214,41 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.insert(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranches.insert(id.into()),
+			PoolRole::TrancheInvestor(id) => self.tranche_investor.insert(id.into()),
 		}
+	}
+}
+
+impl TrancheInvestors {
+	pub fn empty() -> Self {
+		Self(0)
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.0 == 0
+	}
+
+	pub fn contains(&self, tranche: u32) -> bool {
+		if tranche >= 32 {
+			return false;
+		}
+		let bit = 1 << tranche;
+		self.0 & bit == bit
+	}
+
+	pub fn remove(&mut self, tranche: u32) {
+		if tranche >= 32 {
+			return;
+		}
+		let mask = !(1 << tranche);
+		self.0 &= mask;
+	}
+
+	pub fn insert(&mut self, tranche: u32) {
+		if tranche >= 32 {
+			return;
+		}
+		let bit = 1 << tranche;
+		self.0 |= bit;
 	}
 }

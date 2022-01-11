@@ -167,48 +167,14 @@ pub mod types {
 	}
 
 	#[derive(codec::Encode, codec::Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-	pub struct TrancheInvestors(u32);
-
-	impl TrancheInvestors {
-		pub fn empty() -> Self {
-			Self(0)
-		}
-
-		pub fn is_empty(&self) -> bool {
-			self.0 == 0
-		}
-
-		pub fn contains(&self, tranche: u32) -> bool {
-			if tranche >= 32 {
-				return false;
-			}
-			let bit = 1 << tranche;
-			self.0 & bit == bit
-		}
-
-		pub fn remove(&mut self, tranche: u32) {
-			if tranche >= 32 {
-				return;
-			}
-			let mask = !(1 << tranche);
-			self.0 &= mask;
-		}
-
-		pub fn insert(&mut self, tranche: u32) {
-			if tranche >= 32 {
-				return;
-			}
-			let bit = 1 << tranche;
-			self.0 |= bit;
-		}
-	}
+	pub struct TrancheInvestors(pub(crate) u32);
 
 	/// The structure that we store in the pallet-permissions storage
 	/// This here implements trait Properties.
 	#[derive(codec::Encode, codec::Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
 	pub struct PermissionRoles {
 		pub(crate) admin: AdminRoles,
-		pub(crate) tranches: TrancheInvestors,
+		pub(crate) tranche_investor: TrancheInvestors,
 	}
 }
 
