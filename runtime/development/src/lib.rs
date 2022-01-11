@@ -736,7 +736,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
 	type FinalizedFilter = Everything;
-	type InactiveFilter = BaseFilter;
+	type InactiveFilter = Everything;
 	type OngoingFilter = BaseFilter;
 }
 
