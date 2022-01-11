@@ -330,6 +330,16 @@ impl<T: Config> Pallet<T> {
 					Error::<T>::ErrLoanNotActive
 				);
 
+				let now: u64 = Self::time_now();
+
+				// ensure current time is more than origination time
+				// this is mainly to deal with how we calculate debt while trying to repay
+				// therefore we do not let users repay at same instant origination happened
+				ensure!(
+					now > loan_info.origination_date,
+					Error::<T>::ErrRepayTooEarly
+				);
+
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
@@ -340,7 +350,6 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// calculate new accumulated rate
-				let now: u64 = Self::time_now();
 				let (accumulated_rate, debt) = loan_info
 					.accrue(now)
 					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;

@@ -1532,3 +1532,66 @@ fn test_close_written_off_credit_line_with_maturity_loan() {
 fn test_close_written_off_credit_line_loan() {
 	test_close_written_off_loan_type!(price_credit_line_loan, false)
 }
+
+macro_rules! repay_too_early {
+	($price_loan:ident) => {
+		TestExternalitiesBuilder::default()
+			.build()
+			.execute_with(|| {
+				Timestamp::set_timestamp(1 * 1000);
+				let borrower: u64 = Borrower::get();
+				// successful issue
+				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				assert_eq!(pool_balance, 1000 * USD);
+
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				assert_eq!(owner_balance, Zero::zero());
+
+				let loan_id = loan.1;
+
+				// successful activation
+				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+
+				// borrow amount
+				let borrow_amount = Amount::from_inner(100 * USD);
+				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+				assert_ok!(res);
+
+				// check balances
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				assert_eq!(pool_balance, 900 * USD);
+
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				assert_eq!(owner_balance, 100 * USD);
+
+				// repay in the same instant
+				let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+				assert_err!(res, Error::<MockRuntime>::ErrRepayTooEarly);
+
+				// after origination date
+				Timestamp::set_timestamp(2 * 1000);
+				let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+				assert_ok!(res);
+
+				// check balances
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				assert_eq!(pool_balance, 1000 * USD);
+
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				assert_eq!(owner_balance, Zero::zero());
+
+				// close loan
+				let res = Loan::close_loan(Origin::signed(borrower), pool_id, loan_id);
+				assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid)
+			})
+	};
+}
+
+#[test]
+fn test_repay_too_early() {
+	repay_too_early!(price_bullet_loan);
+	repay_too_early!(price_credit_line_loan);
+	repay_too_early!(price_credit_line_with_maturity_loan);
+}

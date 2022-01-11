@@ -239,6 +239,9 @@ pub mod pallet {
 		/// Emits when operation is done on an inactive loan
 		ErrLoanNotActive,
 
+		// Emits when borrow and repay doesn't happen in the same block
+		ErrRepayTooEarly,
+
 		/// Emits when the NFT owner is not found
 		ErrNFTOwnerNotFound,
 
