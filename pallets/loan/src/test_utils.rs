@@ -14,17 +14,28 @@
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loan;
 use crate::{AssetOf, PoolIdOf};
-use common_traits::PoolNAV;
+use common_traits::{PoolNAV, PoolRole};
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
+use pallet_permissions::Permissions;
 use pallet_tinlake_investor_pool::PoolLocator;
 use pallet_tinlake_investor_pool::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
+
+type PermissionsOf<T> = <T as pallet_tinlake_investor_pool::Config>::Permission;
+pub(crate) fn set_role<T: pallet_tinlake_investor_pool::Config>(
+	location: T::PoolId,
+	who: T::AccountId,
+	role: common_traits::PoolRole<T::TrancheId>,
+) {
+	PermissionsOf::<T>::add_permission(location, who, role)
+		.expect("adding permissions should not fail");
+}
 
 parameter_types! {
 	pub const SeniorTrancheId: u8 = 0;
@@ -79,6 +90,18 @@ pub(crate) fn create_pool<T>(
 	<T as pallet_tinlake_investor_pool::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
+
+	set_role::<T>(pool_id, owner.clone(), PoolRole::PoolAdmin);
+	set_role::<T>(
+		pool_id,
+		junior_investor.clone(),
+		PoolRole::TrancheInvestor(1.into()),
+	);
+	set_role::<T>(
+		pool_id,
+		senior_investor.clone(),
+		PoolRole::TrancheInvestor(0.into()),
+	);
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create_pool(
