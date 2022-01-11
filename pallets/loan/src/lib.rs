@@ -310,6 +310,14 @@ pub mod pallet {
 
 			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
 			LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
+			let now = Self::time_now();
+			PoolNAV::<T>::insert(
+				pool_id,
+				NAVDetails {
+					latest_nav: Default::default(),
+					last_updated: now,
+				},
+			);
 			Self::deposit_event(Event::<T>::PoolInitiated(pool_id));
 			Ok(())
 		}
