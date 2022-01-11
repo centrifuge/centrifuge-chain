@@ -35,7 +35,7 @@ pub trait Permissions<AccountId> {
 	type Role;
 	type Error;
 
-	fn clearance(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
+	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
 
 	fn add_permission(
 		location: Self::Location,
@@ -245,7 +245,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Location = T::Location;
 	type Error = DispatchError;
 
-	fn clearance(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
+	fn has_permission(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
 		Permission::<T>::get(who, location).map_or(false, |roles| roles.exists(role))
 	}
 

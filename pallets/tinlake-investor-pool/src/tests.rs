@@ -509,7 +509,7 @@ fn test_approve_and_remove_roles() {
 		assert!(<TinlakeInvestorPool as PoolInspect<u64>>::pool_exists(
 			pool_id
 		));
-		assert!(<Test as Config>::Permission::clearance(
+		assert!(<Test as Config>::Permission::has_permission(
 			pool_id,
 			pool_owner,
 			PoolRole::PoolAdmin
@@ -533,7 +533,7 @@ fn test_approve_and_remove_roles() {
 				.collect();
 
 			targets.iter().for_each(|acc| {
-				assert!(!<Test as Config>::Permission::clearance(
+				assert!(!<Test as Config>::Permission::has_permission(
 					pool_id, *acc, role
 				))
 			});
@@ -548,7 +548,9 @@ fn test_approve_and_remove_roles() {
 
 			// they should have role now
 			targets.iter().for_each(|acc| {
-				assert!(<Test as Config>::Permission::clearance(pool_id, *acc, role))
+				assert!(<Test as Config>::Permission::has_permission(
+					pool_id, *acc, role
+				))
 			});
 
 			sources.iter().for_each(|source| {
@@ -563,7 +565,7 @@ fn test_approve_and_remove_roles() {
 
 			// they should not have role now
 			targets.iter().for_each(|acc| {
-				assert!(!<Test as Config>::Permission::clearance(
+				assert!(!<Test as Config>::Permission::has_permission(
 					pool_id, *acc, role
 				))
 			});

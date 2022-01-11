@@ -5740,6 +5740,7 @@ dependencies = [
 name = "pallet-permissions"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
