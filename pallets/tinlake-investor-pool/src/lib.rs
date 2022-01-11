@@ -345,7 +345,7 @@ pub mod pallet {
 			OutstandingCollections<T::Balance>,
 		),
 		/// When a role is for some accounts
-		RoleApproved(T::PoolId, PoolRole<T::TrancheId>, Vec<T::AccountId>),
+		RoleApproved(T::PoolId, PoolRole<T::TrancheId>, T::AccountId),
 		// When a role was revoked for an account in pool
 		RoleRevoked(T::PoolId, PoolRole<T::TrancheId>, T::AccountId),
 	}
@@ -470,7 +470,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -827,14 +827,12 @@ pub mod pallet {
 				Error::<T>::NoPermission
 			);
 
-			let mut targets = Vec::new();
 			for source in accounts {
 				let who = T::Lookup::lookup(source)?;
 				T::Permission::add_permission(pool_id, who.clone(), role)?;
-				targets.push(who)
+				Self::deposit_event(Event::RoleApproved(pool_id, role, who));
 			}
 
-			Self::deposit_event(Event::RoleApproved(pool_id, role, targets));
 			Ok(())
 		}
 
@@ -863,54 +861,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn has_role_in_pool(
-			pool_id: T::PoolId,
-			role: PoolRole,
-			account: &T::AccountId,
-		) -> bool {
-			match role {
-				PoolRole::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
-				PoolRole::Borrower | PoolRole::PricingAdmin => {
-					Borrowers::<T>::contains_key(pool_id, account)
-				}
-				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::contains_key(pool_id, account),
-				PoolRole::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
-				PoolRole::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
-			}
-		}
-
-		pub(crate) fn approve_role_in_pool(
-			pool_id: T::PoolId,
-			role: PoolRole,
-			account: &T::AccountId,
-		) {
-			match role {
-				PoolRole::PoolAdmin => PoolAdmins::<T>::insert(pool_id, account, ()),
-				PoolRole::Borrower | PoolRole::PricingAdmin => {
-					Borrowers::<T>::insert(pool_id, account, ())
-				}
-				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::insert(pool_id, account, ()),
-				PoolRole::MemberListAdmin => MemberListAdmins::<T>::insert(pool_id, account, ()),
-				PoolRole::RiskAdmin => RiskAdmins::<T>::insert(pool_id, account, ()),
-			};
-		}
-
-		pub(crate) fn revoke_role_in_pool(
-			pool_id: T::PoolId,
-			role: PoolRole,
-			account: &T::AccountId,
-		) {
-			match role {
-				PoolRole::PoolAdmin => PoolAdmins::<T>::remove(pool_id, account),
-				PoolRole::Borrower | PoolRole::PricingAdmin => {
-					Borrowers::<T>::remove(pool_id, account)
-				}
-				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
-				PoolRole::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
-				PoolRole::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
-			};
-		}
-
 		pub(crate) fn calculate_collect(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,
