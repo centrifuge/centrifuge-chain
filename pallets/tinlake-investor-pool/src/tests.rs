@@ -287,17 +287,22 @@ fn epoch() {
 			0,
 			ensure_signed(pool_owner.clone()).unwrap(),
 			PoolRole::PoolAdmin,
-		);
+		)
+		.unwrap();
+
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
-			ensure_signed(drop_investor.clone()).unwrap(),
+			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(1),
-		);
+		)
+		.unwrap();
+
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
-			ensure_signed(tin_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(2),
-		);
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(0),
+		)
+		.unwrap();
 
 		// Initialize pool with initial investments
 		assert_ok!(TinlakeInvestorPool::create_pool(
@@ -317,13 +322,13 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			junior_investor.clone(),
 			0,
-			2,
+			1,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			senior_investor.clone(),
 			0,
-			1,
+			0,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
@@ -413,6 +418,27 @@ fn collect_tranche_tokens() {
 		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
 
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(pool_owner.clone()).unwrap(),
+			PoolRole::PoolAdmin,
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(1),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(0),
+		)
+		.unwrap();
+
 		// Initialize pool with initial investments
 		assert_ok!(TinlakeInvestorPool::create_pool(
 			pool_owner.clone(),
@@ -461,10 +487,22 @@ fn collect_tranche_tokens() {
 		);
 		assert_eq!(order.supply, 0);
 
+		assert_noop!(
+			TinlakeInvestorPool::order_supply(senior_investor.clone(), 0, 0, 10 * CURRENCY),
+			Error::<Test>::CollectRequired
+		);
+
+		assert_ok!(TinlakeInvestorPool::collect(
+			senior_investor.clone(),
+			0,
+			0,
+			1
+		));
+
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			senior_investor.clone(),
 			0,
-			1,
+			0,
 			10 * CURRENCY
 		));
 
@@ -494,7 +532,8 @@ fn test_approve_and_remove_roles() {
 			0,
 			pool_owner,
 			PoolRole::PoolAdmin,
-		);
+		)
+		.unwrap();
 
 		// Initialize pool with initial investments
 		assert_ok!(TinlakeInvestorPool::create_pool(

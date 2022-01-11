@@ -1,6 +1,4 @@
 use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
-use frame_benchmarking::frame_support::pallet_prelude::{EnsureOrigin, IsType, Member};
-use frame_benchmarking::frame_support::Parameter;
 use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
@@ -9,7 +7,6 @@ use frame_support::{
 use frame_system as system;
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use pallet_permissions::Properties;
 use primitives_tokens::CurrencyId;
 use sp_core::H256;
 use sp_runtime::{
