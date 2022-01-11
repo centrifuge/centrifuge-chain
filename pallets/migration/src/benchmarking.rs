@@ -12,6 +12,15 @@ use sp_runtime::{traits::Zero, AccountId32};
 use sp_std::convert::TryInto;
 
 benchmarks! {
+	finalize{
+		let additional_issuance: <T as pallet_balances::Config>::Balance =
+			codec::Decode::decode(&mut test_data::balances_total_issuance::TOTAL_ISSUANCE.value[..].as_ref()).unwrap();
+
+		Pallet::<T>::migrate_balances_issuance(RawOrigin::Root.into(), additional_issuance).unwrap();
+	}: finalize(RawOrigin::Root)
+	verify {
+		assert!(<Completed<T>>::get() == Status::Complete);
+	}
   migrate_system_account{
 		let n in 1 .. <T as Config>::MigrationMaxAccounts::get();
 		inject_total_issuance();
