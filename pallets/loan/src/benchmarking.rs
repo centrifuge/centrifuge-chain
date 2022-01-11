@@ -370,15 +370,12 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 	}:borrow(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, amount)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanAmountBorrowed(pool_id, loan_id, amount).into());
 		// pool reserve should have 100 USD less = 900 USD
+		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 
@@ -393,10 +390,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(50 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 1 year
@@ -408,6 +401,7 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanAmountBorrowed(pool_id, loan_id, amount).into());
 		// pool reserve should have 100 USD less = 900 USD
+		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (910 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 
@@ -422,10 +416,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
@@ -437,6 +427,7 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanAmountRepaid(pool_id, loan_id, amount).into());
 		// pool reserve should have 1000 USD
+		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 
@@ -456,10 +447,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
@@ -483,10 +470,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
@@ -510,10 +493,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2 year
@@ -529,6 +508,8 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanClosed(pool_id, loan_id, asset).into());
 		// pool reserve should have more 1000 USD. this is with interest
+		let pool_reserve_account = pool_account::<T>(pool_id.into());
+		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
 		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account) > pool_reserve_balance);
 
 		// Loan should be closed
@@ -549,10 +530,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2 year
@@ -567,6 +544,7 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanClosed(pool_id, loan_id, asset).into());
 		// pool reserve should have 900 USD since loan is written off 100%
+		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 
@@ -588,10 +566,6 @@ benchmarks! {
 		LoanPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
-		// add some balance to pool reserve
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
-		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
 		let amount = Amount::from_inner(100 * CURRENCY).into();
 		LoanPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 1 year
@@ -606,7 +580,7 @@ benchmarks! {
 		// pool nav should more than 100 USD(due to interest)
 		assert!(pool_nav.latest_nav > amount);
 		// updated time should be after_one_years
-		assert_eq!(pool_nav.last_updated, after_one_year);
+		assert_eq!(pool_nav.last_updated, after_one_year/1000);
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest_nav).into());
 	}
 }
