@@ -38,15 +38,15 @@ primitives-tokens = { path = "../../primitives/tokens", optional = true, default
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.12" }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
-pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-runtime-common = { path = "../../runtime/common", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features =  false, branch = "polkadot-v0.9.12" }
+pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = true , branch = "polkadot-v0.9.12" }
+runtime-common = { path = "../../runtime/common", default-features = true }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.12" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", default-features = false}
-primitives-tokens = { path = "../../primitives/tokens", default-features = false }
+primitives-tokens = { path = "../../primitives/tokens", default-features = false}
 
 [features]
 default = ['std']
@@ -63,6 +63,7 @@ runtime-benchmarks = [
 ]
 std = [
     'serde/std',
+    'scale-info/std',
     'pallet-permissions/std',
     'codec/std',
     'frame-support/std',
