@@ -685,11 +685,6 @@ macro_rules! test_repay_loan {
 				// successful activation
 				let (rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
-				// try repay without any borrowed
-				let repay_amount = Amount::from_inner(20 * USD);
-				let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
-				assert_ok!(res);
-
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
 				let borrow_amount = Amount::from_inner(50 * USD);
