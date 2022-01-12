@@ -13,9 +13,7 @@
 
 extern crate frame_system;
 
-///! A crate that defines a simple permissions logic.
-///! Users of the create must implement the `Properties` trait on a
-///! type of their choosing in order to use this pallet properly.
+///! A crate that defines a simple permissions logic for our infrastructure.
 pub use pallet::*;
 
 #[cfg(test)]
@@ -38,12 +36,14 @@ pub trait Permissions<AccountId> {
 	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
 
 	fn add_permission(
+		editor: AccountId,
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
 	) -> Result<(), Self::Error>;
 
 	fn rm_permission(
+		editor: AccountId,
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
@@ -65,6 +65,7 @@ pub trait Properties {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use frame_support::traits::Contains;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -77,6 +78,8 @@ pub mod pallet {
 		type Role: Member + Parameter;
 
 		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
+
+		type Editors: Contains<(Self::AccountId, Self::Role)>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 	}
@@ -110,6 +113,7 @@ pub mod pallet {
 		RoleAlreadyGiven,
 		RoleNotGiven,
 		NoRoles,
+		NoEditor,
 	}
 
 	#[pallet::call]

@@ -113,14 +113,14 @@ pub trait PoolNAV<PoolId, Amount> {
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<TrancheId = u8> {
+pub enum PoolRole<Now, TrancheId = u8> {
 	PoolAdmin,
 	Borrower,
 	PricingAdmin,
 	LiquidityAdmin,
 	MemberListAdmin,
 	RiskAdmin,
-	TrancheInvestor(TrancheId),
+	TrancheInvestor(TrancheId, Now),
 }
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
