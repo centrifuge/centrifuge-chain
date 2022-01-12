@@ -704,6 +704,12 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+// Parameterize pools pallet
+parameter_types! {
+	pub const DefaultMinEpochTime: u64 = 24 * 60 * 60; // 1 day
+	pub const DefaultMaxNAVAge: u64 = 5 * 60; // 5 minutes
+}
+
 impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -718,6 +724,8 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<Runtime>;
 	type Time = Timestamp;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 }
 
 parameter_types! {

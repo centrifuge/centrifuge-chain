@@ -70,6 +70,8 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
 	pub metadata: Option<Vec<u8>>,
+	pub min_epoch_time: u64,
+	pub max_nav_age: u64,
 }
 
 /// Per-tranche and per-user order details.
@@ -207,6 +209,12 @@ pub mod pallet {
 		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self>;
 		type Time: UnixTime;
+
+		/// Default min epoch time
+		type DefaultMinEpochTime: Get<u64>;
+
+		/// Default max NAV age
+		type DefaultMaxNAVAge: Get<u64>;
 	}
 
 	#[pallet::pallet]
@@ -322,6 +330,8 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Pool Created. [pool, who]
 		PoolCreated(T::PoolId, T::AccountId),
+		/// Pool updated. [pool]
+		PoolUpdated(T::PoolId),
 		/// Pool metadata updated. [pool, metadata]
 		PoolMetadataSet(T::PoolId, Vec<u8>),
 		/// Epoch executed [pool, epoch]
@@ -351,6 +361,10 @@ pub mod pallet {
 		NoJuniorTranche,
 		/// Attempted an operation on a pool which does not exist
 		NoSuchPool,
+		/// Attempted to close an epoch too early
+		MinEpochTimeHasNotPassed,
+		/// Attempted to close an epoch with an out of date NAV
+		NAVTooOld,
 		/// Attempted an operation while a pool is closing
 		PoolClosing,
 		/// An arithmetic overflow occured
@@ -409,11 +423,11 @@ pub mod pallet {
 				Error::<T>::NoJuniorTranche
 			);
 
+			const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 			let now = T::Time::now().as_secs();
 			let tranches = tranches
 				.into_iter()
 				.map(|(interest, risk_buffer)| {
-					const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 					let interest_per_sec = T::InterestRate::saturating_from_rational(interest, 100)
 						/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR)
 						+ One::one();
@@ -430,6 +444,7 @@ pub mod pallet {
 					}
 				})
 				.collect();
+
 			Pool::<T>::insert(
 				pool_id,
 				PoolDetails {
@@ -443,6 +458,8 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
+					min_epoch_time: T::DefaultMinEpochTime::get(),
+					max_nav_age: T::DefaultMaxNAVAge::get(),
 					metadata: None,
 				},
 			);
@@ -467,6 +484,30 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.metadata = Some(metadata.clone());
 				Self::deposit_event(Event::PoolMetadataSet(pool_id, metadata.clone()));
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn update_pool(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			max_reserve: T::Balance,
+			min_epoch_time: u64,
+			max_nav_age: u64,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				Error::<T>::NoPermission
+			);
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.max_reserve = max_reserve;
+				pool.min_epoch_time = min_epoch_time;
+				pool.max_nav_age = max_nav_age;
+				Self::deposit_event(Event::PoolUpdated(pool_id));
 				Ok(())
 			})
 		}
@@ -653,16 +694,32 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
 			ensure_signed(origin)?;
+
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
+
+				let now = T::Time::now().as_secs();
+				ensure!(
+					now.saturating_sub(pool.last_epoch_closed) >= pool.min_epoch_time,
+					Error::<T>::MinEpochTimeHasNotPassed
+				);
+
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
-				let current_epoch_end = T::Time::now().as_secs();
-				pool.last_epoch_closed = current_epoch_end;
+				pool.last_epoch_closed = now;
+
+				// Set available reserve to 0 to disable originations while the epoch is closed but not executed
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = pool.total_reserve;
-				let nav = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?.0.into();
+
+				let (nav_amount, nav_last_updated) =
+					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+				ensure!(
+					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
+					Error::<T>::NAVTooOld
+				);
+				let nav = nav_amount.into();
 
 				if pool
 					.tranches

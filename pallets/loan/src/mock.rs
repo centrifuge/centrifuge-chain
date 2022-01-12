@@ -137,6 +137,11 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
+	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
+}
+
 impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -151,6 +156,8 @@ impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime

@@ -1,6 +1,6 @@
 use super::*;
 use crate::mock::*;
-use frame_support::{assert_noop, assert_ok};
+use frame_support::{assert_err, assert_noop, assert_ok};
 use primitives_tokens::CurrencyId;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
@@ -37,6 +37,8 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			max_reserve: 40,
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
+			min_epoch_time: 0,
+			max_nav_age: 60,
 			metadata: None,
 		};
 
@@ -105,6 +107,8 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			max_reserve: 5,
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
+			min_epoch_time: 0,
+			max_nav_age: 60,
 			metadata: None,
 		};
 
@@ -178,6 +182,8 @@ fn pool_constraints_tranche_violates_sub_ratio() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
+			min_epoch_time: 0,
+			max_nav_age: 60,
 			metadata: None,
 		};
 
@@ -251,6 +257,8 @@ fn pool_constraints_pass() {
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
+			min_epoch_time: 0,
+			max_nav_age: 60,
 			metadata: None,
 		};
 

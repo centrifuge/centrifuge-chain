@@ -139,6 +139,11 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
+	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
+}
+
 impl Config for Test {
 	type Event = Event;
 	type Balance = Balance;
@@ -153,6 +158,8 @@ impl Config for Test {
 	type NAV = FakeNav;
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 }
 
 impl fake_nav::Config for Test {
