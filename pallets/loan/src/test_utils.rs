@@ -28,8 +28,8 @@ use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
 
 parameter_types! {
-	pub const SeniorTrancheId: u8 = 0;
-	pub const JuniorTrancheId: u8 = 1;
+	pub const JuniorTrancheId: u8 = 0;
+	pub const SeniorTrancheId: u8 = 1;
 }
 
 pub(crate) fn create_nft_class<T>(
@@ -85,7 +85,7 @@ pub(crate) fn create_pool<T>(
 	assert_ok!(PoolPallet::<T>::create_pool(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,
-		vec![(10, 10), (0, 0)],
+		vec![(0, 0), (10, 10)],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
 	));

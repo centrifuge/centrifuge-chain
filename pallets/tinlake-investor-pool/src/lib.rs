@@ -61,7 +61,7 @@ pub struct Tranche<Balance, Rate> {
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
 	pub owner: AccountId,
 	pub currency: CurrencyId,
-	pub tranches: Vec<Tranche<Balance, Rate>>,
+	pub tranches: Vec<Tranche<Balance, Rate>>, // ordered junior => senior
 	pub current_epoch: EpochId,
 	pub last_epoch_closed: u64,
 	pub last_epoch_executed: EpochId,
@@ -397,6 +397,10 @@ pub mod pallet {
 		NoOutstandingOrder,
 		/// User needs to collect before a new order can be submitted
 		CollectRequired,
+		/// Removing tranches is not supported
+		CannotAddOrRemoveTranches,
+		/// Increasing min risk buffer above current risk buffer isn't possible
+		CannotSetMinRiskBufferAboveCurrentValue,
 	}
 
 	#[pallet::call]
@@ -416,14 +420,7 @@ pub mod pallet {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
-			// At least one tranch must exist, and the last
-			// tranche must have an interest rate of 0,
-			// indicating that it recieves all remaining
-			// equity
-			ensure!(
-				tranches.last() == Some(&(0, 0)),
-				Error::<T>::NoJuniorTranche
-			);
+			Self::is_valid_tranche_change(&vec![], &tranches)?;
 
 			const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 			let now = T::Time::now().as_secs();
@@ -525,8 +522,30 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
 				pool.min_epoch_time = min_epoch_time;
 				pool.max_nav_age = max_nav_age;
+				Self::deposit_event(Event::PoolUpdated(pool_id));
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn update_tranches(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			tranches: Vec<(u8, u8)>,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				Error::<T>::NoPermission
+			);
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
+
 				Self::deposit_event(Event::PoolUpdated(pool_id));
 				Ok(())
 			})
@@ -1151,6 +1170,41 @@ pub mod pallet {
 				.collect()
 		}
 
+		pub fn is_valid_tranche_change(
+			old_tranches: &Vec<Tranche<T::Balance, T::InterestRate>>,
+			new_tranches: &Vec<(u8, u8)>,
+		) -> DispatchResult {
+			// At least one tranche must exist, and the first tranche must have an
+			// interest rate of 0, indicating that it receives all remaining equity
+			ensure!(
+				new_tranches.first() == Some(&(0, 0)),
+				Error::<T>::NoJuniorTranche
+			);
+
+			// For now, adding or removing tranches is not allowed, unless it's on pool creation.
+			ensure!(
+				old_tranches.len() == 0 || new_tranches.len() == old_tranches.len(),
+				Error::<T>::CannotAddOrRemoveTranches
+			);
+
+			// The min risk buffer of a tranche can only be set to a value that’s
+			// lower than or equal to the current risk buffer of the tranche.
+			// TODO: this needs to calculate current risk buffers
+			// let non_junior_new_tranches = new_tranches.split_last().unwrap().1;
+			// let tranche_values = pool.tranches.iter().map(|tranche| tranche.debt.checked_add(tranche.reserve).map_err(Error::<T>::Overflow)?).sum();
+			// let current_risk_buffers = Self::get_current_risk_buffers(tranche_values);
+			// ensure!(
+			// 	non_junior_new_tranches.iter().zip(&*current_risk_buffers).all(
+			// 		|((_1, risk_buffer), current_risk_buffer)| Perquintill::from_percent(
+			// 			risk_buffer.clone().into()
+			// 		) <= current_risk_buffer
+			// 	),
+			// 	Error::<T>::CannotSetMinRiskBufferAboveCurrentValue
+			// );
+
+			Ok(())
+		}
+
 		pub fn is_epoch_valid(
 			pool_details: &PoolDetails<
 				T::AccountId,
@@ -1221,6 +1275,31 @@ pub mod pallet {
 			)
 		}
 
+		// fn calculate_risk_buffers(tranche_values: Vec<T::Balance>) -> DispatchResult {
+		// 	let total_value = tranche_values
+		// 		.iter()
+		// 		.fold(
+		// 			Some(Zero::zero()),
+		// 			|sum: Option<T::Balance>, tranche_value| {
+		// 				sum.and_then(|sum| sum.checked_add(tranche_value))
+		// 			},
+		// 		)
+		// 		.ok_or(Error::<T>::Overflow)?;
+
+		// 	let mut current_risk_buffers = vec![];
+		// 	let mut buffer_value = total_value;
+		// 	for tranche_value in tranche_values
+		// 	{
+		// 		buffer_value = buffer_value
+		// 			.checked_sub(tranche_value)
+		// 			.ok_or(Error::<T>::Overflow)?;
+		// 		let risk_buffer = Perquintill::from_rational(buffer_value, total_value);
+		// 		current_risk_buffers.append(risk_buffer);
+		// 	}
+
+		// 	Ok(current_risk_buffers);
+		// }
+
 		fn validate_core_constraints(
 			currency_available: T::Balance,
 			currency_out: T::Balance,
@@ -1257,7 +1336,8 @@ pub mod pallet {
 			let mut buffer_value = total_value;
 			for (tranche_value, min_risk_buffer) in current_tranche_values
 				.iter()
-				.zip(min_risk_buffers.iter().copied())
+				.rev() // reversed to senior => junior
+				.zip(min_risk_buffers.iter().copied().rev())
 			{
 				buffer_value = buffer_value
 					.checked_sub(tranche_value)
@@ -1401,16 +1481,15 @@ pub mod pallet {
 			let nav = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?.0.into();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
-			let last_tranche = pool.tranches.len() - 1;
-			for (((tranche_id, tranche), ratio), value) in pool
-				.tranches
-				.iter_mut()
+			let junior_tranche_id = 0;
+			let tranches_senior_to_junior = pool.tranches.iter_mut().rev();
+			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
 				.enumerate()
-				.zip(&tranche_ratios)
-				.zip(&tranche_assets)
+				.zip(tranche_ratios.iter().rev())
+				.zip(tranche_assets.iter().rev())
 			{
 				tranche.ratio = *ratio;
-				if tranche_id == last_tranche {
+				if tranche_id == junior_tranche_id {
 					tranche.debt = remaining_nav;
 					tranche.reserve = remaining_reserve;
 				} else {
@@ -1478,18 +1557,23 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_add(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+
 				let mut remaining_amount = amount;
-				for tranche in &mut pool.tranches {
+				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
+				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
 					};
+
 					let tranche_amount = if tranche_amount > tranche.debt {
 						tranche.debt
 					} else {
@@ -1501,8 +1585,10 @@ pub mod pallet {
 						.reserve
 						.checked_add(&tranche_amount)
 						.ok_or(Error::<T>::Overflow)?;
+
 					remaining_amount -= tranche_amount;
 				}
+
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
 				Ok(())
 			})
@@ -1516,6 +1602,7 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_sub(&amount)
@@ -1524,14 +1611,18 @@ pub mod pallet {
 					.available_reserve
 					.checked_sub(&amount)
 					.ok_or(Error::<T>::Overflow)?;
+
 				let mut remaining_amount = amount;
-				for tranche in &mut pool.tranches {
+				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
+				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
 					};
+
 					let tranche_amount = if tranche_amount > tranche.reserve {
 						tranche.reserve
 					} else {
@@ -1543,8 +1634,10 @@ pub mod pallet {
 						.debt
 						.checked_add(&tranche_amount)
 						.ok_or(Error::<T>::Overflow)?;
+
 					remaining_amount -= tranche_amount;
 				}
+
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
 				Ok(())
 			})

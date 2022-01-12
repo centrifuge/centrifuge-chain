@@ -219,26 +219,26 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.2),
-			epoch_supply: 100,
+			min_risk_buffer: Perquintill::zero(),
+			epoch_supply: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.1),
-			epoch_supply: Zero::zero(),
-			epoch_redeem: 30,
-			..Default::default()
-		};
-		let tranche_c = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.05),
 			epoch_supply: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
-		let tranche_d = Tranche {
-			min_risk_buffer: Perquintill::zero(),
+		let tranche_c = Tranche {
+			min_risk_buffer: Perquintill::from_float(0.1),
 			epoch_supply: Zero::zero(),
+			epoch_redeem: 30,
+			..Default::default()
+		};
+		let tranche_d = Tranche {
+			min_risk_buffer: Perquintill::from_float(0.2),
+			epoch_supply: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
@@ -246,7 +246,7 @@ fn pool_constraints_pass() {
 
 		let epoch_tranches = tranches
 			.iter()
-			.zip(vec![80, 70, 35, 20]) // no IntoIterator for arrays, so we use a vec here. Meh.
+			.zip(vec![20, 35, 70, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
@@ -303,7 +303,7 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::create_pool(
 			pool_owner.clone(),
 			0,
-			vec![(10, 10), (0, 0)],
+			vec![(0, 0), (10, 10)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -317,13 +317,13 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			junior_investor.clone(),
 			0,
-			1,
+			0,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			senior_investor.clone(),
 			0,
-			0,
+			1,
 			500 * CURRENCY
 		));
 
@@ -351,20 +351,20 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::collect(
 			senior_investor.clone(),
 			0,
-			0,
+			1,
 			1
 		));
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[0].interest_per_sec,
+			pool.tranches[1].interest_per_sec,
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.tranches[0].debt, 0);
 		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY);
-		assert_eq!(pool.tranches[0].ratio, Perquintill::from_float(0.5));
 		assert_eq!(pool.tranches[1].debt, 0);
 		assert_eq!(pool.tranches[1].reserve, 500 * CURRENCY);
+		assert_eq!(pool.tranches[1].ratio, Perquintill::from_float(0.5));
 		assert_eq!(pool.available_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1000 * CURRENCY);
 
@@ -387,9 +387,9 @@ fn epoch() {
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].debt, 0);
-		assert!(pool.tranches[0].reserve > 500 * CURRENCY); // there's interest in here now
+		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY); // not yet rebalanced
 		assert_eq!(pool.tranches[1].debt, 0);
-		assert_eq!(pool.tranches[1].reserve, 500 * CURRENCY); // not yet rebalanced
+		assert!(pool.tranches[1].reserve > 500 * CURRENCY); // there's interest in here now
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
 
@@ -398,7 +398,7 @@ fn epoch() {
 		assert_ok!(TinlakeInvestorPool::order_redeem(
 			senior_investor.clone(),
 			0,
-			0,
+			1,
 			250 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
@@ -407,16 +407,16 @@ fn epoch() {
 		let senior_epoch = TinlakeInvestorPool::epoch(
 			TrancheLocator {
 				pool_id: 0,
-				tranche_id: 0,
+				tranche_id: 1,
 			},
 			pool.last_epoch_executed,
 		)
 		.unwrap();
-		assert_eq!(pool.tranches[0].epoch_redeem, 0);
 		assert_eq!(pool.tranches[0].debt, 0);
-		assert!(pool.tranches[0].reserve > 250 * CURRENCY);
+		assert!(pool.tranches[0].reserve > 500 * CURRENCY);
+		assert_eq!(pool.tranches[1].epoch_redeem, 0);
 		assert_eq!(pool.tranches[1].debt, 0);
-		assert!(pool.tranches[1].reserve > 500 * CURRENCY);
+		assert!(pool.tranches[1].reserve > 250 * CURRENCY);
 		assert_eq!(pool.available_reserve, pool.total_reserve);
 		assert!(pool.total_reserve > 750 * CURRENCY);
 		assert!(pool.total_reserve < 800 * CURRENCY);
@@ -438,7 +438,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(TinlakeInvestorPool::create_pool(
 			pool_owner.clone(),
 			0,
-			vec![(10, 10), (0, 0)],
+			vec![(0, 0), (10, 10)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -447,13 +447,13 @@ fn collect_tranche_tokens() {
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			junior_investor.clone(),
 			0,
-			1,
+			0,
 			500 * CURRENCY
 		));
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			senior_investor.clone(),
 			0,
-			0,
+			1,
 			500 * CURRENCY
 		));
 
@@ -465,18 +465,18 @@ fn collect_tranche_tokens() {
 		assert_ok!(TinlakeInvestorPool::collect(
 			junior_investor.clone(),
 			0,
-			1,
+			0,
 			1
 		));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
 		let pool = TinlakeInvestorPool::pool(0).unwrap();
-		assert_eq!(pool.tranches[0].epoch_supply, 0);
+		assert_eq!(pool.tranches[1].epoch_supply, 0);
 
 		let order = TinlakeInvestorPool::order(
 			TrancheLocator {
 				pool_id: 0,
-				tranche_id: 0,
+				tranche_id: 1,
 			},
 			0,
 		);
@@ -485,14 +485,14 @@ fn collect_tranche_tokens() {
 		assert_ok!(TinlakeInvestorPool::order_supply(
 			senior_investor.clone(),
 			0,
-			1,
+			0,
 			10 * CURRENCY
 		));
 
 		assert_ok!(TinlakeInvestorPool::order_redeem(
 			junior_investor.clone(),
 			0,
-			1,
+			0,
 			10 * CURRENCY
 		));
 
@@ -500,7 +500,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(TinlakeInvestorPool::collect(
 			junior_investor.clone(),
 			0,
-			1,
+			0,
 			2
 		));
 	});
@@ -514,7 +514,7 @@ fn test_approve_and_remove_roles() {
 		assert_ok!(TinlakeInvestorPool::create_pool(
 			Origin::signed(pool_owner),
 			0,
-			vec![(10, 10), (0, 0)],
+			vec![(0, 0), (10, 10)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
