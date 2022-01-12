@@ -707,8 +707,8 @@ impl pallet_claims::Config for Runtime {
 
 // Parameterize pools pallet
 parameter_types! {
-	pub const DefaultMinEpochTime: u64 = 24 * 60 * 60; // 1 day
-	pub const DefaultMaxNAVAge: u64 = 5 * 60; // 5 minutes
+	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
+	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
 }
 
 impl pallet_tinlake_investor_pool::Config for Runtime {
