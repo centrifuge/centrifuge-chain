@@ -128,6 +128,15 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			TinlakeInvestorPool::is_epoch_valid(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientReserve
 		);
+
+		assert_ok!(TinlakeInvestorPool::is_epoch_valid(
+			&PoolDetails {
+				max_reserve: 100,
+				..pool.clone()
+			},
+			&epoch,
+			&full_solution
+		));
 	});
 }
 
@@ -317,7 +326,28 @@ fn epoch() {
 			0,
 			500 * CURRENCY
 		));
+
+		assert_ok!(TinlakeInvestorPool::update_pool(
+			pool_owner.clone(),
+			0,
+			30 * 60,
+			0
+		));
+
+		assert_err!(
+			TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0),
+			Error::<Test>::MinEpochTimeHasNotPassed
+		);
+
+		assert_ok!(TinlakeInvestorPool::update_pool(
+			pool_owner.clone(),
+			0,
+			0,
+			u64::MAX
+		));
+
 		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+
 		assert_ok!(TinlakeInvestorPool::collect(
 			senior_investor.clone(),
 			0,
