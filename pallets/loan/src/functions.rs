@@ -66,7 +66,7 @@ impl<T: Config> Pallet<T> {
 			&instance_id.into(),
 			&loan_pallet_account,
 		)?;
-		let timestamp = Self::time_now()?;
+		let timestamp = Self::time_now();
 
 		// update the next token nonce
 		let next_loan_id = nonce
@@ -111,7 +111,7 @@ impl<T: Config> Pallet<T> {
 			);
 
 			// ensure loan_type is valid
-			let now = Self::time_now()?;
+			let now = Self::time_now();
 			ensure!(loan_type.is_valid(now), Error::<T>::ErrLoanValueInvalid);
 
 			// ensure rate_per_sec >= one
@@ -225,7 +225,7 @@ impl<T: Config> Pallet<T> {
 				);
 
 				// ensure maturity date has not passed if the loan has a maturity date
-				let now: u64 = Self::time_now()?;
+				let now: u64 = Self::time_now();
 				let valid = match loan_info.loan_type.maturity_date() {
 					Some(md) => md > now,
 					None => true,
@@ -330,6 +330,16 @@ impl<T: Config> Pallet<T> {
 					Error::<T>::ErrLoanNotActive
 				);
 
+				let now: u64 = Self::time_now();
+
+				// ensure current time is more than origination time
+				// this is mainly to deal with how we calculate debt while trying to repay
+				// therefore we do not let users repay at same instant origination happened
+				ensure!(
+					now > loan_info.origination_date,
+					Error::<T>::ErrRepayTooEarly
+				);
+
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::ErrLoanValueInvalid);
 
@@ -340,7 +350,6 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::ErrLoanPresentValueFailed)?;
 
 				// calculate new accumulated rate
-				let now: u64 = Self::time_now()?;
 				let (accumulated_rate, debt) = loan_info
 					.accrue(now)
 					.ok_or(Error::<T>::ErrLoanAccrueFailed)?;
@@ -370,9 +379,8 @@ impl<T: Config> Pallet<T> {
 		)
 	}
 
-	pub(crate) fn time_now() -> Result<u64, DispatchError> {
-		let nowt = T::Time::now();
-		TryInto::<u64>::try_into(nowt).map_err(|_| Error::<T>::ErrEpochTimeOverflow.into())
+	pub(crate) fn time_now() -> u64 {
+		T::Time::now().as_secs()
 	}
 
 	/// accrues rate and debt of a given loan and updates it
@@ -412,7 +420,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn update_nav_of_pool(
 		pool_id: PoolIdOf<T>,
 	) -> Result<(T::Amount, u64), DispatchError> {
-		let now = Self::time_now()?;
+		let now = Self::time_now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;
 		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
@@ -482,7 +490,7 @@ impl<T: Config> Pallet<T> {
 					Error::<T>::ErrLoanNotActive
 				);
 
-				let now = Self::time_now()?;
+				let now = Self::time_now();
 
 				// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
