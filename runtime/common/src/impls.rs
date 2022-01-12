@@ -5,7 +5,8 @@ use codec::{Decode, Encode};
 use common_traits::PoolRole;
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
-use frame_support::traits::{Currency, OnUnbalanced};
+use frame_support::sp_runtime::traits::Saturating;
+use frame_support::traits::{Currency, Get, OnUnbalanced};
 use frame_support::weights::{
 	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -166,21 +167,42 @@ impl From<u128> for InstanceId {
 	}
 }
 
-impl Default for PermissionRoles {
+#[derive(codec::Encode, codec::Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
+pub(crate) struct TrancheInvestorInfo {
+	pub(crate) tranche_id: TrancheId,
+	pub(crate) permissioned_at: Moment,
+}
+
+impl<MaxTranches: Get<TrancheId>, MaxHold, MinDelay> Default
+	for TrancheInvestors<MaxHold, MinDelay, MaxTranches>
+{
 	fn default() -> Self {
 		Self {
-			admin: AdminRoles::empty(),
-			tranche_investor: TrancheInvestors::empty(),
+			info: Vec::default(),
+			max_tranches: MaxTranches::get(),
+			_phantom: Default::default(),
 		}
 	}
 }
 
-impl Properties for PermissionRoles {
-	type Property = PoolRole<TrancheId>;
-
-	fn empty(&self) -> bool {
-		self.admin.is_empty() && self.tranche_investor.is_empty()
+impl<MaxTranches: Get<TrancheId>, MaxHold, MinDelay> Default
+	for PermissionRoles<MaxTranches, MaxHold, MinDelay>
+{
+	fn default() -> Self {
+		Self {
+			admin: AdminRoles::empty(),
+			tranche_investor: TrancheInvestors::default(),
+		}
 	}
+}
+
+impl<MaxTranches, MaxHold, MinDelay> Properties for PermissionRoles<MaxTranches, MaxHold, MinDelay>
+where
+	MaxTranches: Get<TrancheId>,
+	MaxHold: Get<Moment>,
+	MinDelay: Get<Moment>,
+{
+	type Property = PoolRole<Moment, TrancheId>;
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -190,8 +212,12 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.contains(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranche_investor.contains(id.into()),
+			PoolRole::TrancheInvestor(id, now) => self.tranche_investor.contains(id, now),
 		}
+	}
+
+	fn empty(&self) -> bool {
+		self.admin.is_empty() && self.tranche_investor.is_empty()
 	}
 
 	fn rm(&mut self, property: Self::Property) {
@@ -202,7 +228,7 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.remove(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranche_investor.remove(id.into()),
+			PoolRole::TrancheInvestor(id, now) => self.tranche_investor.remove(id, now),
 		}
 	}
 
@@ -214,41 +240,65 @@ impl Properties for PermissionRoles {
 			PoolRole::PricingAdmin => self.admin.insert(AdminRoles::PRICING_ADMIN),
 			PoolRole::MemberListAdmin => self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN),
 			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id) => self.tranche_investor.insert(id.into()),
+			PoolRole::TrancheInvestor(id, now) => self.tranche_investor.insert(id, now),
 		}
 	}
 }
 
-impl TrancheInvestors {
+impl<MaxHold, MinDelay, MaxTranches> TrancheInvestors<MaxHold, MinDelay, MaxTranches>
+where
+	MaxTranches: Get<TrancheId>,
+	MaxHold: Get<Moment>,
+	MinDelay: Get<Moment>,
+{
 	pub fn empty() -> Self {
-		Self(0)
+		Self::default()
 	}
 
 	pub fn is_empty(&self) -> bool {
-		self.0 == 0
+		self.info.is_empty()
 	}
 
-	pub fn contains(&self, tranche: u32) -> bool {
-		if tranche >= 32 {
+	pub fn contains(&self, tranche: TrancheId, now: Moment) -> bool {
+		if tranche >= self.max_tranches {
 			return false;
 		}
-		let bit = 1 << tranche;
-		self.0 & bit == bit
+
+		self.info
+			.iter()
+			.position(|info| {
+				info.tranche_id == tranche
+					&& info.permissioned_at.saturating_add(now) <= MaxHold::get()
+			})
+			.is_some()
 	}
 
-	pub fn remove(&mut self, tranche: u32) {
-		if tranche >= 32 {
+	pub fn remove(&mut self, tranche: TrancheId, now: Moment) {
+		if tranche >= self.max_tranches {
 			return;
 		}
-		let mask = !(1 << tranche);
-		self.0 &= mask;
+
+		if let Some(index) = self.info.iter().position(|info| {
+			info.tranche_id == tranche
+				&& info.permissioned_at.saturating_add(now) >= MinDelay::get()
+		}) {
+			self.info.remove(index);
+		};
 	}
 
-	pub fn insert(&mut self, tranche: u32) {
-		if tranche >= 32 {
+	pub fn insert(&mut self, tranche: TrancheId, now: Moment) {
+		if tranche >= self.max_tranches {
 			return;
 		}
-		let bit = 1 << tranche;
-		self.0 |= bit;
+
+		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
+			let info = &mut self.info[index];
+			info.permissioned_at = now;
+		} else {
+			self.info.push(TrancheInvestorInfo {
+				tranche_id: tranche,
+				permissioned_at: now,
+			})
+		}
 	}
 }

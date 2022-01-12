@@ -134,9 +134,13 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio> {
 // type alias for StaticLookup source that resolves to account
 type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
+// Type that indicates a point in time
+type Moment = u64;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use frame_support::PalletId;
 	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -173,6 +177,9 @@ pub mod pallet {
 			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>;
 
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 		type TrancheId: Member
 			+ Parameter
@@ -205,7 +212,7 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Location = Self::PoolId,
-			Role = PoolRole<Self::TrancheId>,
+			Role = PoolRole<u64, Self::TrancheId>,
 			Error = DispatchError,
 		>;
 
@@ -345,9 +352,9 @@ pub mod pallet {
 			OutstandingCollections<T::Balance>,
 		),
 		/// When a role is for some accounts
-		RoleApproved(T::PoolId, PoolRole<T::TrancheId>, T::AccountId),
+		RoleApproved(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 		// When a role was revoked for an account in pool
-		RoleRevoked(T::PoolId, PoolRole<T::TrancheId>, T::AccountId),
+		RoleRevoked(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -495,7 +502,7 @@ pub mod pallet {
 				T::Permission::has_permission(
 					pool_id,
 					who.clone(),
-					PoolRole::TrancheInvestor(tranche_id)
+					PoolRole::TrancheInvestor(tranche_id, T::Time::now().as_secs())
 				),
 				Error::<T>::NoPermission
 			);
@@ -559,7 +566,7 @@ pub mod pallet {
 				T::Permission::has_permission(
 					pool_id,
 					who.clone(),
-					PoolRole::TrancheInvestor(tranche_id)
+					PoolRole::TrancheInvestor(tranche_id, T::Time::now().as_secs())
 				),
 				Error::<T>::NoPermission
 			);
@@ -817,7 +824,7 @@ pub mod pallet {
 		pub fn approve_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: PoolRole<T::TrancheId>,
+			role: PoolRole<Moment, T::TrancheId>,
 			accounts: Vec<LookUpSource<T>>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
@@ -829,7 +836,7 @@ pub mod pallet {
 
 			for source in accounts {
 				let who = T::Lookup::lookup(source)?;
-				T::Permission::add_permission(pool_id, who.clone(), role)?;
+				T::Permission::add_permission(Self::account(), pool_id, who.clone(), role)?;
 				Self::deposit_event(Event::RoleApproved(pool_id, role, who));
 			}
 
@@ -840,19 +847,19 @@ pub mod pallet {
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: PoolRole<T::TrancheId>,
+			role: PoolRole<Moment, T::TrancheId>,
 			account: LookUpSource<T>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin),
+				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin,),
 				Error::<T>::NoPermission
 			);
 
 			let who = T::Lookup::lookup(account)?;
 
-			T::Permission::rm_permission(pool_id, who.clone(), role.clone())?;
+			T::Permission::rm_permission(Self::account(), pool_id, who.clone(), role.clone())?;
 
 			Self::deposit_event(Event::<T>::RoleRevoked(pool_id, role, who));
 
@@ -861,6 +868,14 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub(crate) fn now() -> Moment {
+			T::Time::now().as_secs()
+		}
+
+		pub(crate) fn account() -> T::AccountId {
+			T::PalletId::get().into_account()
+		}
+
 		pub(crate) fn calculate_collect(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,

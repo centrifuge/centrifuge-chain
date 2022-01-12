@@ -25,6 +25,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+use frame_support::traits::Contains;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
 
@@ -65,7 +66,6 @@ pub trait Properties {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::traits::Contains;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -254,18 +254,28 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	}
 
 	fn add_permission(
+		editor: T::AccountId,
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
 	) -> Result<(), DispatchError> {
+		ensure! {
+			T::Editors::contains(&(editor, role.clone())),
+			Error::<T>::NoEditor
+		}
 		Pallet::<T>::do_add_permission(location, who, role)
 	}
 
 	fn rm_permission(
+		editor: T::AccountId,
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
 	) -> Result<(), DispatchError> {
+		ensure! {
+			T::Editors::contains(&(editor, role.clone())),
+			Error::<T>::NoEditor
+		}
 		Pallet::<T>::do_rm_permission(location, who, role)
 	}
 }

@@ -41,12 +41,14 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
+	use crate::TrancheInvestorInfo;
 	use frame_system::{EnsureOneOf, EnsureRoot};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
+	use sp_std::marker::PhantomData;
 	use sp_std::vec::Vec;
 
 	pub type EnsureRootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
@@ -167,14 +169,18 @@ pub mod types {
 	}
 
 	#[derive(codec::Encode, codec::Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-	pub struct TrancheInvestors(pub(crate) u32);
+	pub struct TrancheInvestors<MaxHold, MinDelay, MaxTranches> {
+		pub(crate) info: Vec<TrancheInvestorInfo>,
+		pub(crate) max_tranches: TrancheId,
+		pub(crate) _phantom: PhantomData<(MaxHold, MinDelay, MaxTranches)>,
+	}
 
 	/// The structure that we store in the pallet-permissions storage
 	/// This here implements trait Properties.
 	#[derive(codec::Encode, codec::Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
-	pub struct PermissionRoles {
+	pub struct PermissionRoles<MaxTranches, MaxHold, MinDelay> {
 		pub(crate) admin: AdminRoles,
-		pub(crate) tranche_investor: TrancheInvestors,
+		pub(crate) tranche_investor: TrancheInvestors<MaxHold, MinDelay, MaxTranches>,
 	}
 }
 
