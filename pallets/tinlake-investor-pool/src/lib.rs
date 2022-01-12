@@ -332,6 +332,8 @@ pub mod pallet {
 		PoolCreated(T::PoolId, T::AccountId),
 		/// Pool updated. [pool]
 		PoolUpdated(T::PoolId),
+		/// Max reserve updated. [pool]
+		MaxReserveSet(T::PoolId),
 		/// Pool metadata updated. [pool, metadata]
 		PoolMetadataSet(T::PoolId, Vec<u8>),
 		/// Epoch executed [pool, epoch]
@@ -489,10 +491,29 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn update_pool(
+		pub fn set_max_reserve(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			max_reserve: T::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				Self::has_role_in_pool(pool_id, PoolRole::LiquidityAdmin, &who),
+				Error::<T>::NoPermission
+			);
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.max_reserve = max_reserve;
+				Self::deposit_event(Event::MaxReserveSet(pool_id));
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn update_pool(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
 			min_epoch_time: u64,
 			max_nav_age: u64,
 		) -> DispatchResult {
@@ -504,7 +525,6 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.max_reserve = max_reserve;
 				pool.min_epoch_time = min_epoch_time;
 				pool.max_nav_age = max_nav_age;
 				Self::deposit_event(Event::PoolUpdated(pool_id));

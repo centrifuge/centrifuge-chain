@@ -132,7 +132,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 }
 
 #[test]
-fn pool_constraints_tranche_violates_sub_ratio() {
+fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
