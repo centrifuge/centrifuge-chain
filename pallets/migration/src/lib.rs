@@ -5,9 +5,14 @@
 //! to the exising boundaries that are put onto runtime upgrades from the relay-chain side.  
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::traits::Currency;
-
+use codec::{Decode, Encode};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	traits::{Contains, Currency},
+};
 pub use pallet::*;
+use scale_info::TypeInfo;
 pub use weights::*;
 
 #[cfg(test)]
@@ -26,6 +31,13 @@ mod weights;
 type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
+
+#[derive(Encode, Decode, PartialEq, Clone, TypeInfo)]
+pub enum MigrationStatus {
+	Inactive,
+	Ongoing,
+	Complete,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -76,28 +88,28 @@ pub mod pallet {
 
 		/// WeightInfo
 		type WeightInfo: WeightInfo;
+
+		/// The call filter that will be used when pallet is in an ongoing migration
+		type OngoingFilter: Contains<<Self as frame_system::Config>::Call>;
+
+		/// The call filter that will be used when pallet has finalize the migration
+		type FinalizedFilter: Contains<<Self as frame_system::Config>::Call>;
+
+		/// The call filter that will be used when pallet is inactive
+		type InactiveFilter: Contains<<Self as frame_system::Config>::Call>;
 	}
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
-	/// Pallet genesis configuration type declaration.
-	///
-	/// It allows to build genesis storage.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig {}
-
-	#[cfg(feature = "std")]
-	impl Default for GenesisConfig {
-		fn default() -> Self {
-			Self {}
-		}
+	#[pallet::type_value]
+	pub fn OnStatusEmpty() -> MigrationStatus {
+		MigrationStatus::Inactive
 	}
 
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig {
-		fn build(&self) {}
-	}
+	#[pallet::storage]
+	#[pallet::getter(fn status)]
+	pub(super) type Status<T: Config> = StorageValue<_, MigrationStatus, ValueQuery, OnStatusEmpty>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -144,6 +156,9 @@ pub mod pallet {
 			>>::Balance,
 			u64,
 		),
+
+		/// Indicates that the migration is finished
+		MigrationFinished,
 	}
 
 	#[pallet::error]
@@ -156,6 +171,13 @@ pub mod pallet {
 
 		/// Too many proxies in the vector for the call of `migrate_proxy_proxies`.
 		TooManyProxies,
+
+		/// Indicates that a migration call happened, although the migration is already closed
+		MigrationAlreadyCompleted,
+
+		/// Indicates that a finalize call happened, although the migration pallet is not in an
+		/// ongoing migration
+		OnlyFinalizeOngoing,
 	}
 
 	#[pallet::call]
@@ -174,6 +196,8 @@ pub mod pallet {
 			accounts: Vec<(Vec<u8>, Vec<u8>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
+
+			Self::activate_migration()?;
 
 			let num_accounts = accounts.len();
 			ensure!(
@@ -212,6 +236,8 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			Self::activate_migration()?;
+
 			let current_issuance = pallet_balances::Pallet::<T>::total_issuance();
 			let total_issuance = current_issuance.saturating_add(additional_issuance);
 
@@ -238,6 +264,8 @@ pub mod pallet {
 			vestings: Vec<(T::AccountId, VestingInfo<BalanceOf<T>, T::BlockNumber>)>,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
+
+			Self::activate_migration()?;
 
 			ensure!(
 				vestings.len()
@@ -309,6 +337,8 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 
+			Self::activate_migration()?;
+
 			ensure!(
 				proxies.len()
 					<= <T as Config>::MigrationMaxProxies::get()
@@ -350,6 +380,54 @@ pub mod pallet {
 				))
 				.into(),
 			)
+		}
+
+		/// This extrinsic disables the call-filter. After this has been called the chain will accept
+		/// all calls again.
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::finalize())]
+		#[transactional]
+		pub fn finalize(origin: OriginFor<T>) -> DispatchResult {
+			ensure_root(origin)?;
+
+			ensure!(
+				<Status<T>>::get() == MigrationStatus::Ongoing,
+				Error::<T>::OnlyFinalizeOngoing
+			);
+
+			<Status<T>>::set(MigrationStatus::Complete);
+
+			Self::deposit_event(Event::<T>::MigrationFinished);
+
+			Ok(())
+		}
+	}
+}
+
+impl<T: Config> Pallet<T> {
+	fn activate_migration() -> DispatchResult {
+		let mut status = <Status<T>>::get();
+
+		if status == MigrationStatus::Inactive {
+			<Status<T>>::set(MigrationStatus::Ongoing);
+			status = MigrationStatus::Ongoing;
+		}
+
+		ensure!(
+			status == MigrationStatus::Ongoing,
+			Error::<T>::MigrationAlreadyCompleted
+		);
+
+		Ok(())
+	}
+}
+
+impl<T: Config> Contains<<T as frame_system::Config>::Call> for Pallet<T> {
+	fn contains(c: &<T as frame_system::Config>::Call) -> bool {
+		let status = <Status<T>>::get();
+		match status {
+			MigrationStatus::Inactive => T::InactiveFilter::contains(c),
+			MigrationStatus::Ongoing => T::OngoingFilter::contains(c),
+			MigrationStatus::Complete => T::FinalizedFilter::contains(c),
 		}
 	}
 }
