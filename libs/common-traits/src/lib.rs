@@ -130,6 +130,7 @@ pub trait Permissions<AccountId> {
 	type Location;
 	type Role;
 	type Error;
+	type Ok;
 
 	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
 
@@ -137,23 +138,25 @@ pub trait Permissions<AccountId> {
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
-	) -> Result<(), Self::Error>;
+	) -> Result<Self::Ok, Self::Error>;
 
 	fn rm_permission(
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
-	) -> Result<(), Self::Error>;
+	) -> Result<Self::Ok, Self::Error>;
 }
 
 pub trait Properties {
 	type Property;
+	type Error;
+	type Ok;
 
 	fn exists(&self, property: Self::Property) -> bool;
 
 	fn empty(&self) -> bool;
 
-	fn rm(&mut self, property: Self::Property);
+	fn rm(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 
-	fn add(&mut self, property: Self::Property);
+	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 }

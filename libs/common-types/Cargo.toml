@@ -21,6 +21,7 @@ sp-std = { git = "https://github.com/paritytech/substrate",  default-features = 
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 
+
 # local dependencies
 common-traits = { path = '../common-traits', default-features = false }
 

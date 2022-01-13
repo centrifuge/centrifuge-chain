@@ -26,7 +26,6 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 ///! Common-types of the Centrifuge chain.
 use sp_arithmetic::traits::AtLeast32Bit;
-use sp_std::cmp::max;
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -127,6 +126,8 @@ where
 	TrancheId: PartialEq + PartialOrd,
 {
 	type Property = PoolRole<Moment, TrancheId>;
+	type Error = ();
+	type Ok = ();
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -144,27 +145,27 @@ where
 		self.admin.is_empty() && self.tranche_investor.is_empty()
 	}
 
-	fn rm(&mut self, property: Self::Property) {
+	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
 		match property {
-			PoolRole::Borrower => self.admin.remove(AdminRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.admin.remove(AdminRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.admin.remove(AdminRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.admin.remove(AdminRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.admin.remove(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
+			PoolRole::Borrower => Ok(self.admin.remove(AdminRoles::BORROWER)),
+			PoolRole::LiquidityAdmin => Ok(self.admin.remove(AdminRoles::LIQUIDITY_ADMIN)),
+			PoolRole::PoolAdmin => Ok(self.admin.remove(AdminRoles::POOL_ADMIN)),
+			PoolRole::PricingAdmin => Ok(self.admin.remove(AdminRoles::PRICING_ADMIN)),
+			PoolRole::MemberListAdmin => Ok(self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN)),
+			PoolRole::RiskAdmin => Ok(self.admin.remove(AdminRoles::RISK_ADMIN)),
+			PoolRole::TrancheInvestor(id, new) => self.tranche_investor.update(id, new),
 		}
 	}
 
-	fn add(&mut self, property: Self::Property) {
+	fn add(&mut self, property: Self::Property) -> Result<(), ()> {
 		match property {
-			PoolRole::Borrower => self.admin.insert(AdminRoles::BORROWER),
-			PoolRole::LiquidityAdmin => self.admin.insert(AdminRoles::LIQUIDITY_ADMIN),
-			PoolRole::PoolAdmin => self.admin.insert(AdminRoles::POOL_ADMIN),
-			PoolRole::PricingAdmin => self.admin.insert(AdminRoles::PRICING_ADMIN),
-			PoolRole::MemberListAdmin => self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN),
-			PoolRole::RiskAdmin => self.admin.insert(AdminRoles::RISK_ADMIN),
-			PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
+			PoolRole::Borrower => Ok(self.admin.insert(AdminRoles::BORROWER)),
+			PoolRole::LiquidityAdmin => Ok(self.admin.insert(AdminRoles::LIQUIDITY_ADMIN)),
+			PoolRole::PoolAdmin => Ok(self.admin.insert(AdminRoles::POOL_ADMIN)),
+			PoolRole::PricingAdmin => Ok(self.admin.insert(AdminRoles::PRICING_ADMIN)),
+			PoolRole::MemberListAdmin => Ok(self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN)),
+			PoolRole::RiskAdmin => Ok(self.admin.insert(AdminRoles::RISK_ADMIN)),
+			PoolRole::TrancheInvestor(id, new) => self.tranche_investor.insert(id, new),
 		}
 	}
 }
@@ -186,11 +187,15 @@ where
 		self.info.is_empty()
 	}
 
-	fn validity(&self, delta: Moment) -> Moment {
+	fn validity(&self, req_validity: Moment) -> Result<Moment, ()> {
 		let now = Now::now();
 		let min_validity = now.saturating_add(MinDelay::get());
-		let req_validity = now.saturating_add(delta);
-		max(min_validity, req_validity)
+
+		if req_validity < min_validity {
+			Err(())
+		} else {
+			Ok(req_validity)
+		}
 	}
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
@@ -204,9 +209,9 @@ where
 			.is_some()
 	}
 
-	pub fn remove(&mut self, tranche: TrancheId, delta: Moment) {
+	pub fn update(&mut self, tranche: TrancheId, new: Moment) -> Result<(), ()> {
 		if tranche >= self.max_tranches {
-			return;
+			return Err(());
 		}
 
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
@@ -215,29 +220,33 @@ where
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
-				return;
+				Err(())
 			} else {
 				// Ensure that permissioned_till is at least now + min_delay.
-				self.info[index].permissioned_till = self.validity(delta);
+				Ok(self.info[index].permissioned_till = self.validity(new)?)
 			}
-		};
+		} else {
+			Err(())
+		}
 	}
 
-	pub fn insert(&mut self, tranche: TrancheId, delta: Moment) {
+	pub fn insert(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
 		if tranche >= self.max_tranches {
-			return;
+			return Err(());
 		}
 
-		let validity = self.validity(delta);
+		let validity = self.validity(delta)?;
 
-		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
-			self.info[index].permissioned_till = validity;
-		} else {
-			self.info.push(TrancheInvestorInfo {
-				tranche_id: tranche,
-				permissioned_till: validity,
-			})
-		}
+		Ok(
+			if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
+				self.info[index].permissioned_till = validity;
+			} else {
+				self.info.push(TrancheInvestorInfo {
+					tranche_id: tranche,
+					permissioned_till: validity,
+				})
+			},
+		)
 	}
 }
 
