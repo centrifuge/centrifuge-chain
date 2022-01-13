@@ -22,7 +22,7 @@ stop-relay-chain)
   ;;
 
 start-parachain)
-  echo "Building parachain..."
+  echo "Building parachain $parachain ..."
   cargo build --release
   if [ "$2" == "purge" ]; then
     echo "purging parachain..."

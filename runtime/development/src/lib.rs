@@ -53,7 +53,7 @@ pub use primitives_tokens::CurrencyId;
 pub use runtime_common::{*, Index};
 
 // XCM imports
-use pallet_xcm::{EnsureXcm, IsMajorityOfBody, XcmPassthrough};
+use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use xcm::latest::prelude::*;
 use xcm_builder::{
@@ -64,7 +64,7 @@ use xcm_builder::{
 	SiblingParachainConvertsVia, SignedAccountId32AsNative, SovereignSignedViaLocation,
 	TakeWeightCredit, UsingComponents,
 };
-use xcm_executor::{traits::{JustTry, MatchesFungibles}, Config, XcmExecutor};
+use xcm_executor::{traits::{JustTry}, XcmExecutor};
 
 
 // Make the WASM binary available.
@@ -169,6 +169,7 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
+		pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
 	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
 }
 
@@ -176,12 +177,24 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnValidationData = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type OutboundXcmpMessageSource = ();
-	type DmpMessageHandler = ();
+	type DmpMessageHandler = DmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
-	type XcmpMessageHandler = ();
-	type ReservedXcmpWeight = ();
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type XcmpMessageHandler = XcmpQueue;
+	type ReservedXcmpWeight = ReservedXcmpWeight;
 }
+
+// impl cumulus_pallet_parachain_system::Config for Runtime {
+// 	type Event = Event;
+// 	type OnValidationData = ();
+// 	type SelfParaId = parachain_info::Pallet<Runtime>;
+// 	type DmpMessageHandler = DmpQueue;
+// 	type ReservedDmpWeight = ReservedDmpWeight;
+// 	type OutboundXcmpMessageSource = XcmpQueue;
+// 	type XcmpMessageHandler = XcmpQueue;
+// 	type ReservedXcmpWeight = ReservedXcmpWeight;
+// }
+
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
@@ -925,14 +938,21 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
+		Spambot: cumulus_ping::{Pallet, Call, Storage, Event<T>} = 201,
 	}
 );
 
+impl cumulus_ping::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Call = Call;
+	type XcmSender = XcmRouter;
+}
 
 // XCM stuff
 
 pub struct XcmConfig;
-impl Config for XcmConfig {
+impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
 	type XcmSender = XcmRouter;
 	// How to withdraw and deposit an asset.
@@ -953,9 +973,17 @@ impl Config for XcmConfig {
 pub type Barrier = (
 	TakeWeightCredit,
 	AllowTopLevelPaidExecutionFrom<Everything>,
-	AllowUnpaidExecutionFrom<ParentOrParentsExecutivePlurality>,
+	AllowUnpaidExecutionFrom<Everything>,
+	// AllowUnpaidExecutionFrom<SpecParachain>,
 	// ^^^ Parent and its exec plurality get free execution
 );
+
+match_type! {
+	pub type SpecParachain: impl Contains<MultiLocation> = {
+		MultiLocation { parents: 1, interior: Here } |
+		  MultiLocation { parents: 1, interior: X1(Parachain(42)) }
+	};
+}
 
 impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type Event = Event;
