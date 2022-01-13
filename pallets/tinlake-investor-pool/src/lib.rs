@@ -427,7 +427,7 @@ pub mod pallet {
 				Error::<T>::NoJuniorTranche
 			);
 
-			let now = T::Time::now().as_secs();
+			let now = Self::now();
 			let tranches = tranches
 				.into_iter()
 				.map(|(interest, risk_buffer)| {
@@ -502,7 +502,7 @@ pub mod pallet {
 				T::Permission::has_permission(
 					pool_id,
 					who.clone(),
-					PoolRole::TrancheInvestor(tranche_id, T::Time::now().as_secs())
+					PoolRole::TrancheInvestor(tranche_id, Self::now())
 				),
 				Error::<T>::NoPermission
 			);
@@ -566,7 +566,7 @@ pub mod pallet {
 				T::Permission::has_permission(
 					pool_id,
 					who.clone(),
-					PoolRole::TrancheInvestor(tranche_id, T::Time::now().as_secs())
+					PoolRole::TrancheInvestor(tranche_id, Self::now())
 				),
 				Error::<T>::NoPermission
 			);
@@ -693,7 +693,7 @@ pub mod pallet {
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
 				let closing_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
-				let current_epoch_end = T::Time::now().as_secs();
+				let current_epoch_end = Self::now();
 				pool.last_epoch_closed = current_epoch_end;
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = pool.total_reserve;
@@ -1037,7 +1037,7 @@ pub mod pallet {
 		}
 
 		fn update_tranche_debt(tranche: &mut Tranche<T::Balance, T::InterestRate>) -> Option<()> {
-			let now = T::Time::now().as_secs();
+			let now = Self::now();
 			let mut delta = now - tranche.last_updated_interest;
 			let mut interest = tranche.interest_per_sec;
 			let mut total_interest: T::InterestRate = One::one();

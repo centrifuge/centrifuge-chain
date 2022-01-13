@@ -20,7 +20,8 @@ primitives_tokens::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-
+type TrancheId = u8;
+type Moment = u64;
 mod fake_nav {
 	use super::Balance;
 	use codec::HasCompact;
@@ -81,15 +82,21 @@ frame_support::construct_runtime!(
 );
 
 parameter_types! {
-		pub const One: u64 = 1;
+	pub const One: u64 = 1;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxHold : Moment = 3000;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 0;
 }
-
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Location = u64;
-	type Role = common_traits::PoolRole;
-	type Storage = runtime_common::PermissionRoles;
+	type Role = common_traits::PoolRole<Moment, TrancheId>;
+	type Storage = runtime_common::PermissionRoles<MaxTranches, MaxHold, MinDelay>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type Editors = frame_support::traits::Everything;
 }
 
 impl SortedMembers<u64> for One {
@@ -130,7 +137,7 @@ impl system::Config for Test {
 }
 
 impl pallet_timestamp::Config for Test {
-	type Moment = u64;
+	type Moment = Moment;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ();
 	type WeightInfo = ();
@@ -160,13 +167,16 @@ impl orml_tokens::Config for Test {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+}
 impl Config for Test {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
 	type PoolId = u64;
-	type TrancheId = u8;
+	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
@@ -175,6 +185,7 @@ impl Config for Test {
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
 	type Permission = Permissions;
+	type PalletId = PoolPalletId;
 }
 
 impl fake_nav::Config for Test {

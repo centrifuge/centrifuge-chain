@@ -284,6 +284,7 @@ fn epoch() {
 		let borrower = 3;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			ensure_signed(pool_owner.clone()).unwrap(),
 			PoolRole::PoolAdmin,
@@ -291,16 +292,18 @@ fn epoch() {
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1),
+			PoolRole::TrancheInvestor(1, 0),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0),
+			PoolRole::TrancheInvestor(0, 0),
 		)
 		.unwrap();
 
@@ -419,6 +422,7 @@ fn collect_tranche_tokens() {
 		let pool_owner = Origin::signed(2);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			ensure_signed(pool_owner.clone()).unwrap(),
 			PoolRole::PoolAdmin,
@@ -426,16 +430,18 @@ fn collect_tranche_tokens() {
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1),
+			PoolRole::TrancheInvestor(1, 0),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0),
+			PoolRole::TrancheInvestor(0, 0),
 		)
 		.unwrap();
 
@@ -529,6 +535,7 @@ fn test_approve_and_remove_roles() {
 		let pool_owner = 1;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			1, // anybody can change permissions in the test
 			0,
 			pool_owner,
 			PoolRole::PoolAdmin,
