@@ -40,6 +40,7 @@ members = [
 	"pallets/registry",
 	"pallets/permissions",
 	"libs/common-traits",
+	"libs/common-types",
 	"libs/proofs",
 	"runtime/altair",
 	"runtime/centrifuge",

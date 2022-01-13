@@ -25,43 +25,10 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+use common_traits::{Permissions, Properties};
 use frame_support::traits::Contains;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
-
-pub trait Permissions<AccountId> {
-	type Location;
-	type Role;
-	type Error;
-
-	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
-
-	fn add_permission(
-		editor: AccountId,
-		location: Self::Location,
-		who: AccountId,
-		role: Self::Role,
-	) -> Result<(), Self::Error>;
-
-	fn rm_permission(
-		editor: AccountId,
-		location: Self::Location,
-		who: AccountId,
-		role: Self::Role,
-	) -> Result<(), Self::Error>;
-}
-
-pub trait Properties {
-	type Property;
-
-	fn exists(&self, property: Self::Property) -> bool;
-
-	fn empty(&self) -> bool;
-
-	fn rm(&mut self, property: Self::Property);
-
-	fn add(&mut self, property: Self::Property);
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -79,7 +46,7 @@ pub mod pallet {
 
 		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
 
-		type Editors: Contains<(Self::AccountId, Self::Location, Self::Role)>;
+		type Editors: Contains<(Self::AccountId, Self::Role, Self::Location, Self::Role)>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 	}
@@ -121,11 +88,12 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn add_permission(
 			origin: OriginFor<T>,
+			with_role: T::Role,
 			to: T::AccountId,
 			location: T::Location,
 			role: T::Role,
 		) -> DispatchResult {
-			Self::ensure_admin_or_editor(origin, location.clone(), role.clone())?;
+			Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
 
 			Pallet::<T>::do_add_permission(location.clone(), to.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::RoleAdded(to, location, role)))?;
@@ -136,11 +104,12 @@ pub mod pallet {
 		#[pallet::weight(100)]
 		pub fn rm_permission(
 			origin: OriginFor<T>,
+			with_role: T::Role,
 			from: T::AccountId,
 			location: T::Location,
 			role: T::Role,
 		) -> DispatchResult {
-			Self::ensure_admin_or_editor(origin, location.clone(), role.clone())?;
+			Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
 
 			Pallet::<T>::do_rm_permission(location.clone(), from.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::RoleRemoved(from, location, role)))?;
@@ -189,12 +158,13 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	fn ensure_admin_or_editor(
 		origin: OriginFor<T>,
+		with_role: T::Role,
 		location: T::Location,
 		role: T::Role,
 	) -> DispatchResult {
 		let signed = ensure_signed(origin.clone());
 		if let Ok(who) = signed {
-			if T::Editors::contains(&(who, location, role)) {
+			if T::Editors::contains(&(who, with_role, location, role)) {
 				return Ok(());
 			}
 		}
@@ -269,28 +239,18 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	}
 
 	fn add_permission(
-		editor: T::AccountId,
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
 	) -> Result<(), DispatchError> {
-		ensure! {
-			T::Editors::contains(&(editor, location.clone(), role.clone())),
-			Error::<T>::NoEditor
-		}
 		Pallet::<T>::do_add_permission(location, who, role)
 	}
 
 	fn rm_permission(
-		editor: T::AccountId,
 		location: T::Location,
 		who: T::AccountId,
 		role: T::Role,
 	) -> Result<(), DispatchError> {
-		ensure! {
-			T::Editors::contains(&(editor, location.clone(), role.clone())),
-			Error::<T>::NoEditor
-		}
 		Pallet::<T>::do_rm_permission(location, who, role)
 	}
 }

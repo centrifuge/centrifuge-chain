@@ -23,9 +23,6 @@ pub use types::*;
 mod fixed_point;
 mod impls;
 
-#[cfg(test)]
-mod tests;
-
 pub mod apis {
 	use node_primitives::{BlockNumber, Hash};
 	use pallet_anchors::AnchorData;
@@ -41,14 +38,12 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
-	use crate::TrancheInvestorInfo;
 	use frame_system::{EnsureOneOf, EnsureRoot};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
-	use sp_std::marker::PhantomData;
 	use sp_std::vec::Vec;
 
 	pub type EnsureRootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
@@ -154,34 +149,6 @@ pub mod types {
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct InstanceId(pub u128);
-
-	bitflags::bitflags! {
-		/// The current admin roles we support
-		#[derive(codec::Encode, codec::Decode,  TypeInfo)]
-		pub struct AdminRoles: u32 {
-			const POOL_ADMIN = 0b00000001;
-			const BORROWER  = 0b00000010;
-			const PRICING_ADMIN = 0b00000100;
-			const LIQUIDITY_ADMIN = 0b00001000;
-			const MEMBER_LIST_ADMIN = 0b00010000;
-			const RISK_ADMIN = 0b00100000;
-		}
-	}
-
-	#[derive(codec::Encode, codec::Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-	pub struct TrancheInvestors<MaxHold, MinDelay, MaxTranches> {
-		pub(crate) info: Vec<TrancheInvestorInfo>,
-		pub(crate) max_tranches: TrancheId,
-		pub(crate) _phantom: PhantomData<(MaxHold, MinDelay, MaxTranches)>,
-	}
-
-	/// The structure that we store in the pallet-permissions storage
-	/// This here implements trait Properties.
-	#[derive(codec::Encode, codec::Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
-	pub struct PermissionRoles<MaxTranches, MaxHold, MinDelay> {
-		pub(crate) admin: AdminRoles,
-		pub(crate) tranche_investor: TrancheInvestors<MaxHold, MinDelay, MaxTranches>,
-	}
 }
 
 /// Common constants for all runtimes

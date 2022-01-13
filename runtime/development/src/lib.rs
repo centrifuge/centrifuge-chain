@@ -5,6 +5,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use common_types::{PermissionRoles, TimeProvider};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -32,7 +33,6 @@ use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
-use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
@@ -832,8 +832,6 @@ parameter_types! {
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: TrancheId = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxHold : Moment = 1 * SECONDS_PER_YEAR;
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
 }
 
@@ -841,33 +839,36 @@ impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Location = PoolId;
 	type Role = PoolRole<Moment, TrancheId>;
-	type Storage = PermissionRoles<MaxTranches, MaxHold, MinDelay>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp, Moment>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 }
 
 pub struct Editors;
-impl Contains<(AccountId, PoolId, PoolRole<Moment, TrancheId>)> for Editors {
-	fn contains(t: &(AccountId, PoolId, PoolRole<Moment, TrancheId>)) -> bool {
-		let (editor, _pool, role) = t;
-		let loan_pallet_account: AccountId = LoanPalletId::get().into_account();
-		let pool_pallet_account: AccountId = PoolPalletId::get().into_account();
-
-		match editor {
-			_x if loan_pallet_account == *editor => match role {
+impl
+	Contains<(
+		AccountId,
+		PoolRole<Moment, TrancheId>,
+		PoolId,
+		PoolRole<Moment, TrancheId>,
+	)> for Editors
+{
+	fn contains(
+		t: &(
+			AccountId,
+			PoolRole<Moment, TrancheId>,
+			PoolId,
+			PoolRole<Moment, TrancheId>,
+		),
+	) -> bool {
+		let (_editor, with_role, _pool, role) = t;
+		match *with_role {
+			PoolRole::PoolAdmin => true,
+			PoolRole::MemberListAdmin => match *role {
 				PoolRole::TrancheInvestor(_, _) => true,
 				_ => false,
 			},
-			_x if pool_pallet_account == *editor => {
-				matches!(
-					role,
-					PoolRole::PoolAdmin
-						| PoolRole::LiquidityAdmin
-						| PoolRole::MemberListAdmin
-						| PoolRole::PricingAdmin | PoolRole::Borrower
-						| PoolRole::RiskAdmin
-				)
-			}
 			_ => false,
 		}
 	}

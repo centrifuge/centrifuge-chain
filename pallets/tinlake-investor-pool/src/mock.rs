@@ -93,7 +93,7 @@ parameter_types! {
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Location = u64;
-	type Role = common_traits::PoolRole<Moment, TrancheId>;
+	type Role = runtime_common::PoolRole<Moment, TrancheId>;
 	type Storage = runtime_common::PermissionRoles<MaxTranches, MaxHold, MinDelay>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;

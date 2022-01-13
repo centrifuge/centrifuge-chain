@@ -215,7 +215,7 @@ parameter_types! {
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Location = u64;
-	type Role = common_traits::PoolRole<Moment>;
+	type Role = runtime_common::PoolRole<Moment>;
 	type Storage = runtime_common::PermissionRoles<MaxTranches, MaxHold, MinDelay>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;

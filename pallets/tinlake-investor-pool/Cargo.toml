@@ -24,6 +24,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 common-traits = { path = "../../libs/common-traits", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false}
 
 [dev-dependencies]
@@ -48,7 +49,9 @@ std = [
     'orml-traits/std',
     'common-traits/std',
     'sp-runtime/std',
-    'sp-std/std'
+    'sp-std/std',
+    'runtime-common/std',
+    'common-types/std'
 ]
 try-runtime = ['frame-support/try-runtime']
 

@@ -15,12 +15,13 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, PoolRole};
+use common_traits::Permissions;
+use common_traits::{PoolInspect, PoolNAV, PoolReserve};
+use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
-use pallet_permissions::Permissions;
 use scale_info::TypeInfo;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
@@ -836,7 +837,7 @@ pub mod pallet {
 
 			for source in accounts {
 				let who = T::Lookup::lookup(source)?;
-				T::Permission::add_permission(Self::account(), pool_id, who.clone(), role)?;
+				T::Permission::add_permission(pool_id, who.clone(), role)?;
 				Self::deposit_event(Event::RoleApproved(pool_id, role, who));
 			}
 
@@ -859,7 +860,7 @@ pub mod pallet {
 
 			let who = T::Lookup::lookup(account)?;
 
-			T::Permission::rm_permission(Self::account(), pool_id, who.clone(), role.clone())?;
+			T::Permission::rm_permission(pool_id, who.clone(), role.clone())?;
 
 			Self::deposit_event(Event::<T>::RoleRevoked(pool_id, role, who));
 
@@ -870,10 +871,6 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
-		}
-
-		pub(crate) fn account() -> T::AccountId {
-			T::PalletId::get().into_account()
 		}
 
 		pub(crate) fn calculate_collect(

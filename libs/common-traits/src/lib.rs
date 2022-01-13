@@ -25,12 +25,9 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
@@ -110,19 +107,6 @@ pub trait PoolNAV<PoolId, Amount> {
 	fn update_nav(pool_id: PoolId) -> Result<Amount, DispatchError>;
 }
 
-/// PoolRole can hold any type of role specific functions a user can do on a given pool.
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<Now, TrancheId = u8> {
-	PoolAdmin,
-	Borrower,
-	PricingAdmin,
-	LiquidityAdmin,
-	MemberListAdmin,
-	RiskAdmin,
-	TrancheInvestor(TrancheId, Now),
-}
-
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId> {
 	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo;
@@ -140,4 +124,36 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
+}
+
+pub trait Permissions<AccountId> {
+	type Location;
+	type Role;
+	type Error;
+
+	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
+
+	fn add_permission(
+		location: Self::Location,
+		who: AccountId,
+		role: Self::Role,
+	) -> Result<(), Self::Error>;
+
+	fn rm_permission(
+		location: Self::Location,
+		who: AccountId,
+		role: Self::Role,
+	) -> Result<(), Self::Error>;
+}
+
+pub trait Properties {
+	type Property;
+
+	fn exists(&self, property: Self::Property) -> bool;
+
+	fn empty(&self) -> bool;
+
+	fn rm(&mut self, property: Self::Property);
+
+	fn add(&mut self, property: Self::Property);
 }

@@ -14,7 +14,7 @@
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loan;
 use crate::{AssetOf, PoolIdOf};
-use common_traits::{PoolNAV, PoolRole};
+use common_traits::PoolNAV;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
@@ -23,7 +23,7 @@ use pallet_permissions::Permissions;
 use pallet_tinlake_investor_pool::PoolLocator;
 use pallet_tinlake_investor_pool::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
-use runtime_common::CFG as CURRENCY;
+use runtime_common::{PoolRole, CFG as CURRENCY};
 use sp_arithmetic::traits::Zero;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
@@ -32,7 +32,7 @@ type PermissionsOf<T> = <T as pallet_loan::Config>::Permission;
 pub(crate) fn set_role<T: pallet_loan::Config>(
 	location: <T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 	who: T::AccountId,
-	role: common_traits::PoolRole<<T::Time as frame_support::traits::Time>::Moment>,
+	role: runtime_common::PoolRole<<T::Time as frame_support::traits::Time>::Moment>,
 ) where
 	T::AccountId: From<u32>,
 {

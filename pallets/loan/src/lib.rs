@@ -17,8 +17,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-pub use common_traits::PoolRole;
+use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
+pub use common_types::PoolRole;
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -30,7 +31,6 @@ use frame_support::{ensure, Parameter};
 use frame_system::pallet_prelude::OriginFor;
 use loan_type::LoanType;
 pub use pallet::*;
-use pallet_permissions::Permissions as PermissionsT;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{CheckedAdd, CheckedSub};

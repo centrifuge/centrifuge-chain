@@ -1243,6 +1243,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "common-types"
+version = "2.0.0"
+dependencies = [
+ "bitflags",
+ "common-traits",
+ "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-std",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1991,6 +2005,7 @@ dependencies = [
 name = "development-runtime"
 version = "2.0.0"
 dependencies = [
+ "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -5554,6 +5569,7 @@ name = "pallet-loan"
 version = "1.0.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5741,6 +5757,7 @@ name = "pallet-permissions"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "common-traits",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -5924,6 +5941,7 @@ name = "pallet-tinlake-investor-pool"
 version = "3.0.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8193,7 +8211,6 @@ dependencies = [
 name = "runtime-common"
 version = "1.0.0"
 dependencies = [
- "bitflags",
  "common-traits",
  "frame-support",
  "frame-system",
