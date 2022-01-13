@@ -96,7 +96,17 @@ use pallet_collator_selection::CandidateInfo;
 pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
 
 const CANDIDATES: [[u8; 32]; 0] = [];
-const INVULNERABLES: [[u8; 32]; 1] = [[0u8; 32]];
+const INVULNERABLES: [[u8; 32]; 3] = [
+	// b24fb587438bbe05034606dac98162d80be1d21ac6dd6edc989887fa53a8d503
+	[178, 79, 181, 135, 67, 139, 190, 5, 3, 70, 6, 218, 201, 129, 98, 216, 11, 225, 210, 26, 198,
+		221, 110, 220, 152, 152, 135, 250, 83, 168, 213, 3],
+	// d46783c911c4d8fb42f8239eb8925857e27ee3bdd121feb43e450241891a5f1e
+	[212, 103, 131, 201, 17, 196, 216, 251, 66, 248, 35, 158, 184, 146, 88, 87, 226, 126, 227, 189,
+		209, 33, 254, 180, 62, 69, 2, 65, 137, 26, 95, 30],
+	// f02099f295f6ccd935646f50c6280f4054b7d1f9b126471668f4ac6175677c26
+	[240, 32, 153, 242, 149, 246, 204, 217, 53, 100, 111, 80, 198, 40, 15, 64, 84, 183, 209, 249,
+		177, 38, 71, 22, 104, 244, 172, 97, 117, 103, 124, 38],
+];
 
 const DESIRED_CANDIDATES: u32 = 0;
 const CANDIDACY_BOND: Balance = 1 * CFG;
