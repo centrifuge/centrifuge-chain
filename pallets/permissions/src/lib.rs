@@ -162,8 +162,13 @@ impl<T: Config> Pallet<T> {
 		location: T::Location,
 		role: T::Role,
 	) -> DispatchResult {
-		let signed = ensure_signed(origin.clone());
-		if let Ok(who) = signed {
+		if let Ok(who) = ensure_signed(origin.clone()) {
+			ensure!(
+				Permission::<T>::get(who.clone(), location.clone())
+					.map_or(false, |roles| roles.exists(role.clone())),
+				Error::<T>::NoEditor
+			);
+
 			if T::Editors::contains(&(who, with_role, location, role)) {
 				return Ok(());
 			}
@@ -174,7 +179,7 @@ impl<T: Config> Pallet<T> {
 
 	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
 		T::AdminOrigin::ensure_origin(origin)
-			.map_or(Err(DispatchError::BadOrigin), |_| Ok(().into()))
+			.map_or(Err(Error::<T>::NoEditor.into()), |_| Ok(().into()))
 	}
 
 	fn do_add_permission(
