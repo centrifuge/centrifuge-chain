@@ -28,13 +28,15 @@ use sp_arithmetic::traits::Zero;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
 
-type PermissionsOf<T> = <T as pallet_tinlake_investor_pool::Config>::Permission;
-pub(crate) fn set_role<T: pallet_tinlake_investor_pool::Config>(
-	location: T::PoolId,
+type PermissionsOf<T> = <T as pallet_loan::Config>::Permission;
+pub(crate) fn set_role<T: pallet_loan::Config>(
+	location: <T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 	who: T::AccountId,
-	role: common_traits::PoolRole<T::TrancheId>,
-) {
-	PermissionsOf::<T>::add_permission(location, who, role)
+	role: common_traits::PoolRole<<T::Time as frame_support::traits::Time>::Moment>,
+) where
+	T::AccountId: From<u32>,
+{
+	PermissionsOf::<T>::add_permission(1u32.into(), location, who, role)
 		.expect("adding permissions should not fail");
 }
 
@@ -89,19 +91,21 @@ pub(crate) fn create_pool<T>(
 	<T as pallet_tinlake_investor_pool::Config>::TrancheId: From<u8>,
 	<T as pallet_tinlake_investor_pool::Config>::EpochId: From<u32>,
 	<T as pallet_tinlake_investor_pool::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
+	<T as frame_system::Config>::AccountId: From<u32>,
+	<<T as pallet_loan::Config>::Time as frame_support::traits::Time>::Moment: From<u32>,
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 
-	set_role::<T>(pool_id, owner.clone(), PoolRole::PoolAdmin);
+	set_role::<T>(pool_id.into(), owner.clone(), PoolRole::PoolAdmin);
 	set_role::<T>(
-		pool_id,
+		pool_id.into(),
 		junior_investor.clone(),
-		PoolRole::TrancheInvestor(1.into()),
+		PoolRole::TrancheInvestor(1.into(), 0u32.into()),
 	);
 	set_role::<T>(
-		pool_id,
+		pool_id.into(),
 		senior_investor.clone(),
-		PoolRole::TrancheInvestor(0.into()),
+		PoolRole::TrancheInvestor(0.into(), 0u32.into()),
 	);
 
 	// Initialize pool with initial investments

@@ -126,7 +126,7 @@ pub mod pallet {
 		type Permission: PermissionsT<
 			Self::AccountId,
 			Location = PoolIdOf<Self>,
-			Role = PoolRole,
+			Role = PoolRole<<Self::Time as frame_support::traits::Time>::Moment>,
 			Error = DispatchError,
 		>;
 

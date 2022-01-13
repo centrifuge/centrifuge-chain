@@ -27,8 +27,8 @@ use orml_traits::parameter_type_with_key;
 use pallet_tinlake_investor_pool::PoolLocator;
 use primitives_tokens::CurrencyId;
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, PoolId, Rate, TrancheToken, CENTI_CFG as CENTI_CURRENCY,
-	CFG as CURRENCY,
+	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
+	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -138,6 +138,9 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const PoolPalletId: PalletId = PalletId(*b"roc/pool");
+}
 impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -152,6 +155,7 @@ impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
+	type PalletId = PoolPalletId;
 	type Permission = Permissions;
 }
 
@@ -200,16 +204,25 @@ impl pallet_uniques::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxHold : Moment = 10;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 0;
+}
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Location = u64;
-	type Role = common_traits::PoolRole;
-	type Storage = runtime_common::PermissionRoles;
+	type Role = common_traits::PoolRole<Moment>;
+	type Storage = runtime_common::PermissionRoles<MaxTranches, MaxHold, MinDelay>;
+	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 }
 
 parameter_types! {
-	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const LoanPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 200;
 }
 
