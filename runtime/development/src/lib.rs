@@ -22,6 +22,7 @@ use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
+use pallet_loan::PoolRole;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -31,10 +32,12 @@ use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
+use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
+
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -705,6 +708,10 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+}
+
 impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -720,6 +727,7 @@ impl pallet_tinlake_investor_pool::Config for Runtime {
 	type TrancheToken = TrancheToken<Runtime>;
 	type Permission = Permissions;
 	type Time = Timestamp;
+	type PalletId = PoolPalletId;
 }
 
 parameter_types! {
@@ -801,7 +809,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const LoanPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 50;
 }
 
@@ -820,12 +828,49 @@ impl pallet_loan::Config for Runtime {
 	type MaxLoansPerPool = MaxLoansPerPool;
 }
 
+parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxHold : Moment = 1 * SECONDS_PER_YEAR;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
+}
+
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Location = PoolId;
-	type Role = pallet_loan::PoolRole;
-	type Storage = PermissionRoles;
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type Role = PoolRole<Moment, TrancheId>;
+	type Storage = PermissionRoles<MaxTranches, MaxHold, MinDelay>;
+	type Editors = Editors;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+}
+
+pub struct Editors;
+impl Contains<(AccountId, PoolId, PoolRole<Moment, TrancheId>)> for Editors {
+	fn contains(t: &(AccountId, PoolId, PoolRole<Moment, TrancheId>)) -> bool {
+		let (editor, _pool, role) = t;
+		let loan_pallet_account: AccountId = LoanPalletId::get().into_account();
+		let pool_pallet_account: AccountId = PoolPalletId::get().into_account();
+
+		match editor {
+			_x if loan_pallet_account == *editor => match role {
+				PoolRole::TrancheInvestor(_, _) => true,
+				_ => false,
+			},
+			_x if pool_pallet_account == *editor => {
+				matches!(
+					role,
+					PoolRole::PoolAdmin
+						| PoolRole::LiquidityAdmin
+						| PoolRole::MemberListAdmin
+						| PoolRole::PricingAdmin | PoolRole::Borrower
+						| PoolRole::RiskAdmin
+				)
+			}
+			_ => false,
+		}
+	}
 }
 
 parameter_type_with_key! {

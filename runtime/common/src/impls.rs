@@ -5,7 +5,6 @@ use codec::{Decode, Encode};
 use common_traits::PoolRole;
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
-use frame_support::sp_runtime::traits::Saturating;
 use frame_support::traits::{Currency, Get, OnUnbalanced};
 use frame_support::weights::{
 	WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,

@@ -208,6 +208,11 @@ pub mod constants {
 	/// Milliseconds per day
 	pub const MILLISECS_PER_DAY: u64 = 86400000;
 
+	pub const SECONDS_PER_MINUTE: u64 = 60;
+	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
+	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
+	pub const SECONDS_PER_YEAR: u64 = SECONDS_PER_DAY * 365;
+
 	/// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
 	/// used to limit the maximal weight of a single extrinsic.
 	pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
