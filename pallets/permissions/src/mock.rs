@@ -12,14 +12,16 @@
 
 ///! Mock environment setup for testing the pallet-permissions
 use crate::{self as pallet_permissions};
+use codec::{Decode, Encode};
 pub use dummy::pallet as pallet_dummy;
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::testing::{Header, H256};
 use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use frame_support::traits::{Everything, SortedMembers};
+use frame_support::traits::{Contains, Everything, SortedMembers};
 use frame_system::EnsureSignedBy;
 use pallet_permissions::Properties;
+use sp_runtime::traits::AccountIdConversion;
 
 #[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
 pub enum OrganisationRole {
@@ -152,6 +154,9 @@ mod dummy {
 				Role = Self::Role,
 				Error = DispatchError,
 			>;
+
+			#[pallet::constant]
+			type PalletId: Get<Self::AccountId>;
 		}
 
 		#[pallet::error]
@@ -179,7 +184,7 @@ mod dummy {
 					Error::<T>::AlreadyCleared
 				);
 
-				T::Permission::add_permission(location, who, role)?;
+				T::Permission::add_permission(T::PalletId::get(), location, who, role)?;
 
 				Ok(())
 			}
@@ -197,7 +202,7 @@ mod dummy {
 					Error::<T>::NotCleared
 				);
 
-				T::Permission::rm_permission(location, who, role)?;
+				T::Permission::rm_permission(T::PalletId::get(), location, who, role)?;
 
 				Ok(())
 			}
@@ -265,6 +270,43 @@ impl pallet_permissions::Config for MockRuntime {
 	type Role = Role;
 	type Storage = Storage;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type Editors = Editors;
+}
+
+parameter_types! {
+	pub const DummyAccount: AccountId = 100;
+	pub const FailingDummy: AccountId = 200;
+}
+
+pub struct WrapperAccount(u64);
+impl AccountIdConversion<AccountId> for WrapperAccount {
+	fn into_sub_account<S: Encode>(&self, _sub: S) -> AccountId {
+		self.0
+	}
+
+	fn try_from_sub_account<S: Decode>(_x: &AccountId) -> Option<(Self, S)> {
+		None
+	}
+}
+
+pub struct Editors;
+impl Contains<(AccountId, Location, Role)> for Editors {
+	fn contains(t: &(AccountId, Location, Role)) -> bool {
+		let (account, _location, role) = t;
+		let dummy = DummyAccount::get();
+
+		match account {
+			1 => true,
+			_x if dummy == *account => match role {
+				Role::Xcm(xcm) => match xcm {
+					XcmRole::Receiver => true,
+					XcmRole::Sender => false,
+				},
+				Role::Organisation(_) => true,
+			},
+			_ => false,
+		}
+	}
 }
 
 impl SortedMembers<u64> for One {
@@ -277,6 +319,7 @@ impl pallet_dummy::Config for MockRuntime {
 	type Role = Role;
 	type Location = Location;
 	type Permission = Permissions;
+	type PalletId = DummyAccount;
 }
 
 pub struct TestExternalitiesBuilder;

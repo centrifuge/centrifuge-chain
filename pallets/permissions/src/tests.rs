@@ -258,6 +258,7 @@ fn trait_add_permission_fails() {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add_permission(
+				1,
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -265,6 +266,7 @@ fn trait_add_permission_fails() {
 
 			assert_noop!(
 				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+					1,
 					Location::PalletA,
 					2,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -287,6 +289,7 @@ fn trait_add_permission_works() {
 
 			assert_noop!(
 				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+					1,
 					Location::PalletA,
 					2,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -320,6 +323,7 @@ fn trait_rm_permission_works() {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add_permission(
+				1,
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -334,13 +338,14 @@ fn trait_rm_permission_works() {
 }
 
 #[test]
-fn trait_clearance_permission_works() {
+fn trait_has_permission_permission_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add_permission(
+				1,
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -362,4 +367,54 @@ fn trait_clearance_permission_works() {
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 		})
+}
+
+#[test]
+fn no_editor_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_noop!(
+				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+					DummyAccount::get(),
+					Location::PalletA,
+					2,
+					Role::Xcm(XcmRole::Sender)
+				),
+				PermissionsError::<MockRuntime>::NoEditor
+			);
+		});
+}
+
+#[test]
+fn editor_works() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(
+				DummyAccount::get(),
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+		});
+}
+
+#[test]
+fn editor_fails_2() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert_noop!(
+				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+					FailingDummy::get(),
+					Location::PalletA,
+					2,
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+				),
+				PermissionsError::<MockRuntime>::NoEditor
+			);
+		});
 }
