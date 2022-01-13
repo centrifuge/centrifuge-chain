@@ -79,7 +79,7 @@ pub mod pallet {
 
 		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
 
-		type Editors: Contains<(Self::AccountId, Self::Role)>;
+		type Editors: Contains<(Self::AccountId, Self::Location, Self::Role)>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 	}
@@ -125,7 +125,7 @@ pub mod pallet {
 			location: T::Location,
 			role: T::Role,
 		) -> DispatchResult {
-			Self::ensure_admin(origin)?;
+			Self::ensure_admin_or_editor(origin, location.clone(), role.clone())?;
 
 			Pallet::<T>::do_add_permission(location.clone(), to.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::RoleAdded(to, location, role)))?;
@@ -140,7 +140,7 @@ pub mod pallet {
 			location: T::Location,
 			role: T::Role,
 		) -> DispatchResult {
-			Self::ensure_admin(origin)?;
+			Self::ensure_admin_or_editor(origin, location.clone(), role.clone())?;
 
 			Pallet::<T>::do_rm_permission(location.clone(), from.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::RoleRemoved(from, location, role)))?;
@@ -187,6 +187,21 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
+	fn ensure_admin_or_editor(
+		origin: OriginFor<T>,
+		location: T::Location,
+		role: T::Role,
+	) -> DispatchResult {
+		let signed = ensure_signed(origin.clone());
+		if let Ok(who) = signed {
+			if T::Editors::contains(&(who, location, role)) {
+				return Ok(());
+			}
+		}
+
+		Self::ensure_admin(origin)
+	}
+
 	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
 		T::AdminOrigin::ensure_origin(origin)
 			.map_or(Err(DispatchError::BadOrigin), |_| Ok(().into()))
@@ -260,7 +275,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 		role: T::Role,
 	) -> Result<(), DispatchError> {
 		ensure! {
-			T::Editors::contains(&(editor, role.clone())),
+			T::Editors::contains(&(editor, location.clone(), role.clone())),
 			Error::<T>::NoEditor
 		}
 		Pallet::<T>::do_add_permission(location, who, role)
@@ -273,7 +288,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 		role: T::Role,
 	) -> Result<(), DispatchError> {
 		ensure! {
-			T::Editors::contains(&(editor, role.clone())),
+			T::Editors::contains(&(editor, location.clone(), role.clone())),
 			Error::<T>::NoEditor
 		}
 		Pallet::<T>::do_rm_permission(location, who, role)
