@@ -1,4 +1,5 @@
 use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
+use common_types::{PermissionRoles, PoolRole, TimeProvider};
 use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
@@ -86,15 +87,14 @@ parameter_types! {
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: TrancheId = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxHold : Moment = 3000;
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
 }
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Location = u64;
-	type Role = runtime_common::PoolRole<Moment, TrancheId>;
-	type Storage = runtime_common::PermissionRoles<MaxTranches, MaxHold, MinDelay>;
+	type Role = PoolRole<Moment, TrancheId>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp, Moment>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 }
