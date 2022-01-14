@@ -49,6 +49,11 @@ pub enum PoolRole<Moment = u64, TrancheId = u8> {
 	TrancheInvestor(TrancheId, Moment),
 }
 
+/// Usable for Permissions::has_permissions(_, _ , PoolRole::TrancheInvestor(id, UNION)).
+/// The implementation of our PermissionRoles does not care about the Moment in
+/// TrancheInvestor. So this should be used everywhere for this to ease understanding.
+pub const UNION: u64 = 0u64;
+
 bitflags::bitflags! {
 	/// The current admin roles we support
 	#[derive(codec::Encode, codec::Decode,  TypeInfo)]

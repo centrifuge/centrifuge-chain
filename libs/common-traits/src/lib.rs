@@ -160,3 +160,10 @@ pub trait Properties {
 
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 }
+
+pub trait GetProperties {
+	type From;
+	type Property;
+
+	fn property(from: Self::From) -> Option<Property>;
+}
