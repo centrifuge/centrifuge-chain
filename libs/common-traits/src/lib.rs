@@ -17,10 +17,6 @@
 //! # A common trait for centrifuge
 //!
 //! This crate provides some common traits used by centrifuge.
-//! # Reward trait
-//! The trait does assume, that any call of reward has been
-//! checked for validity. I.e. there are not validation checks
-//! provided by the trait.
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]

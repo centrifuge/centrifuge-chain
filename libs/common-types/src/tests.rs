@@ -24,22 +24,22 @@ struct Now(core::time::Duration);
 impl Now {
 	fn pass(delta: u64) {
 		unsafe {
-			let current = NOW_HOLDER.0;
-			NOW_HOLDER = Now(current.checked_add(Duration::new(delta, 0)).unwrap());
+			let current = NOW_HOLDER;
+			NOW_HOLDER = current + delta;
 		};
 	}
 
 	fn set(now: u64) {
 		unsafe {
-			NOW_HOLDER = Now(Duration::new(now, 0));
+			NOW_HOLDER = now;
 		};
 	}
 }
 
-static mut NOW_HOLDER: Now = Now(Duration::new(0, 0));
+static mut NOW_HOLDER: u64 = 0;
 impl UnixTime for Now {
 	fn now() -> Duration {
-		unsafe { NOW_HOLDER.0 }
+		unsafe { Duration::new(NOW_HOLDER, 0) }
 	}
 }
 
