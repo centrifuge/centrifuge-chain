@@ -1236,6 +1236,7 @@ name = "common-traits"
 version = "0.1.0"
 dependencies = [
  "frame-support",
+ "impl-trait-for-tuples",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -2005,6 +2006,7 @@ dependencies = [
 name = "development-runtime"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -2052,6 +2054,7 @@ dependencies = [
  "pallet-pools",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
+ "pallet-restricted-tokens",
  "pallet-scheduler",
  "pallet-session",
  "pallet-society",
@@ -5883,6 +5886,23 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "unique-assets",
+]
+
+[[package]]
+name = "pallet-restricted-tokens"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "common-traits",
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

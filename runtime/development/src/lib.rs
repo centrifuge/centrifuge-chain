@@ -927,6 +927,40 @@ impl
 	}
 }
 
+pub struct RestrictedTokens<P>(PhantomData<P>);
+impl<P: PermissionsT<AccountId>> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>>
+	for RestrictedTokens<P>
+{
+	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+		let TransferDetails {
+			send,
+			recv,
+			id,
+			amount: _amount,
+		} = details;
+
+		match id {
+			CurrencyId::Usd => true,
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has_permission(
+						pool_id,
+						recv,
+						PoolRole::TrancheInvestor(tranche_id, UNION),
+					)
+			}
+		}
+	}
+}
+
+impl pallet_restricted_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PreConditions = RestrictedTokens<Permissions>;
+	type Fungibles = Tokens;
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		// every currency has a zero existential deposit
@@ -1009,9 +1043,10 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
+		Tokens: pallet-restricted-tokens::{Pallet, Call, Event<T>}
 
 		// 3rd party pallets
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
