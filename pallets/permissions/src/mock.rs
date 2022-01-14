@@ -82,6 +82,8 @@ pub enum Location {
 
 impl Properties for Storage {
 	type Property = Role;
+	type Ok = ();
+	type Error = ();
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -102,8 +104,8 @@ impl Properties for Storage {
 		self.org.is_empty() && self.xcm.is_empty()
 	}
 
-	fn rm(&mut self, property: Self::Property) {
-		match property {
+	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
+		Ok(match property {
 			Role::Xcm(role) => match role {
 				XcmRole::Receiver => self.xcm.remove(XcmStorage::RECEIVER),
 				XcmRole::Sender => self.xcm.remove(XcmStorage::SENDER),
@@ -114,11 +116,11 @@ impl Properties for Storage {
 					self.org.remove(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
 			},
-		}
+		})
 	}
 
-	fn add(&mut self, property: Self::Property) {
-		match property {
+	fn add(&mut self, property: Self::Property) -> Result<(), ()> {
+		Ok(match property {
 			Role::Xcm(role) => match role {
 				XcmRole::Receiver => self.xcm.insert(XcmStorage::RECEIVER),
 				XcmRole::Sender => self.xcm.insert(XcmStorage::SENDER),
@@ -129,7 +131,7 @@ impl Properties for Storage {
 					self.org.insert(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
 			},
-		}
+		})
 	}
 }
 
@@ -184,7 +186,7 @@ mod dummy {
 					Error::<T>::AlreadyCleared
 				);
 
-				T::Permission::add_permission(T::PalletId::get(), location, who, role)?;
+				T::Permission::add_permission(location, who, role)?;
 
 				Ok(())
 			}
@@ -202,7 +204,7 @@ mod dummy {
 					Error::<T>::NotCleared
 				);
 
-				T::Permission::rm_permission(T::PalletId::get(), location, who, role)?;
+				T::Permission::rm_permission(location, who, role)?;
 
 				Ok(())
 			}
@@ -290,9 +292,9 @@ impl AccountIdConversion<AccountId> for WrapperAccount {
 }
 
 pub struct Editors;
-impl Contains<(AccountId, Location, Role)> for Editors {
-	fn contains(t: &(AccountId, Location, Role)) -> bool {
-		let (account, _location, role) = t;
+impl Contains<(AccountId, Option<Role>, Location, Role)> for Editors {
+	fn contains(t: &(AccountId, Option<Role>, Location, Role)) -> bool {
+		let (account, _maybe_role, _location, role) = t;
 		let dummy = DummyAccount::get();
 
 		match account {

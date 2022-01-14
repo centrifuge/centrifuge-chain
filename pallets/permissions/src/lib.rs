@@ -46,7 +46,12 @@ pub mod pallet {
 
 		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
 
-		type Editors: Contains<(Self::AccountId, Self::Role, Self::Location, Self::Role)>;
+		type Editors: Contains<(
+			Self::AccountId,
+			Option<Self::Role>,
+			Self::Location,
+			Self::Role,
+		)>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 	}
@@ -81,6 +86,7 @@ pub mod pallet {
 		RoleNotGiven,
 		NoRoles,
 		NoEditor,
+		WrongParameters,
 	}
 
 	#[pallet::call]
@@ -163,13 +169,16 @@ impl<T: Config> Pallet<T> {
 		role: T::Role,
 	) -> DispatchResult {
 		if let Ok(who) = ensure_signed(origin.clone()) {
-			ensure!(
-				Permission::<T>::get(who.clone(), location.clone())
-					.map_or(false, |roles| roles.exists(role.clone())),
-				Error::<T>::NoEditor
-			);
+			let has_role =
+				Permission::<T>::get(who.clone(), location.clone()).map_or(None, |roles| {
+					if roles.exists(role.clone()) {
+						Some(with_role)
+					} else {
+						None
+					}
+				});
 
-			if T::Editors::contains(&(who, with_role, location, role)) {
+			if T::Editors::contains(&(who, has_role, location, role)) {
 				return Ok(());
 			}
 		}
@@ -190,7 +199,9 @@ impl<T: Config> Pallet<T> {
 		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
 			{
 				let mut new_role = T::Storage::default();
-				new_role.add(role.clone());
+				new_role
+					.add(role.clone())
+					.map_err(|_| Error::<T>::WrongParameters)?;
 
 				Ok(Permission::<T>::insert(
 					who.clone(),
@@ -200,7 +211,7 @@ impl<T: Config> Pallet<T> {
 			},
 			|mut roles| {
 				if !roles.exists(role.clone()) {
-					roles.add(role);
+					roles.add(role).map_err(|_| Error::<T>::WrongParameters)?;
 
 					Ok(Permission::<T>::insert(who.clone(), location, roles))
 				} else {
@@ -219,7 +230,7 @@ impl<T: Config> Pallet<T> {
 			Err(Error::<T>::NoRoles.into()),
 			|mut roles| {
 				if roles.exists(role.clone()) {
-					roles.rm(role);
+					roles.rm(role).map_err(|_| Error::<T>::WrongParameters)?;
 
 					if roles.empty() {
 						Ok(Permission::<T>::remove(who, location))
@@ -238,6 +249,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 	type Role = T::Role;
 	type Location = T::Location;
 	type Error = DispatchError;
+	type Ok = ();
 
 	fn has_permission(location: T::Location, who: T::AccountId, role: T::Role) -> bool {
 		Permission::<T>::get(who, location).map_or(false, |roles| roles.exists(role))
