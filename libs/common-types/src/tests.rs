@@ -12,6 +12,7 @@
 
 ///! Tests for some types in the common section for our runtimes
 use super::*;
+use core::time::Duration;
 use frame_support::parameter_types;
 
 parameter_types! {
@@ -19,27 +20,25 @@ parameter_types! {
 	pub const MinDelay: u64 = 4;
 }
 
-struct Now(u64);
+struct Now(core::time::Duration);
 impl Now {
 	fn pass(delta: u64) {
 		unsafe {
 			let current = NOW_HOLDER.0;
-			NOW_HOLDER = Now(current + delta);
+			NOW_HOLDER = Now(current.checked_add(Duration::new(delta, 0)).unwrap());
 		};
 	}
 
 	fn set(now: u64) {
 		unsafe {
-			NOW_HOLDER = Now(now);
+			NOW_HOLDER = Now(Duration::new(now, 0));
 		};
 	}
 }
 
-static mut NOW_HOLDER: Now = Now(0);
-impl Time for Now {
-	type Moment = u64;
-
-	fn now() -> Self::Moment {
+static mut NOW_HOLDER: Now = Now(Duration::new(0, 0));
+impl UnixTime for Now {
+	fn now() -> Duration {
 		unsafe { NOW_HOLDER.0 }
 	}
 }

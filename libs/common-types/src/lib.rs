@@ -12,6 +12,8 @@
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(test)]
+#![feature(duration_consts_2)]
 
 use codec::{Decode, Encode};
 use common_traits::Properties;
@@ -19,13 +21,11 @@ use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
 use frame_support::sp_runtime::traits::Saturating;
-use frame_support::traits::{Get, Time};
-use frame_support::Parameter;
+use frame_support::traits::{Get, UnixTime};
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 ///! Common-types of the Centrifuge chain.
-use sp_arithmetic::traits::AtLeast32Bit;
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
@@ -84,9 +84,9 @@ impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Default
 	for TrancheInvestors<Now, MaxTranches, MinDelay, TrancheId, Moment>
 where
 	MaxTranches: Get<TrancheId>,
-	Now: Time<Moment = Moment>,
+	Now: UnixTime,
 	MinDelay: Get<Moment>,
-	Moment: PartialEq + PartialOrd + Saturating + Ord,
+	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
 	TrancheId: PartialEq + PartialOrd,
 {
 	fn default() -> Self {
@@ -102,9 +102,9 @@ impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Default
 	for PermissionRoles<Now, MaxTranches, MinDelay, TrancheId, Moment>
 where
 	MaxTranches: Get<TrancheId>,
-	Now: Time<Moment = Moment>,
+	Now: UnixTime,
 	MinDelay: Get<Moment>,
-	Moment: PartialEq + PartialOrd + Saturating + Ord,
+	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
 	TrancheId: PartialEq + PartialOrd,
 {
 	fn default() -> Self {
@@ -120,9 +120,9 @@ impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Properties
 	for PermissionRoles<Now, MaxTranches, MinDelay, TrancheId, Moment>
 where
 	MaxTranches: Get<TrancheId>,
-	Now: Time<Moment = Moment>,
+	Now: UnixTime,
 	MinDelay: Get<Moment>,
-	Moment: PartialEq + PartialOrd + Saturating + Ord + Copy,
+	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	TrancheId: PartialEq + PartialOrd,
 {
 	type Property = PoolRole<Moment, TrancheId>;
@@ -174,9 +174,9 @@ impl<Now, MaxTranches, MinDelay, TrancheId, Moment>
 	TrancheInvestors<Now, MaxTranches, MinDelay, TrancheId, Moment>
 where
 	MaxTranches: Get<TrancheId>,
-	Now: Time<Moment = Moment>,
+	Now: UnixTime,
 	MinDelay: Get<Moment>,
-	Moment: PartialEq + PartialOrd + Saturating + Ord + Copy,
+	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	TrancheId: PartialEq + PartialOrd,
 {
 	pub fn empty() -> Self {
@@ -188,7 +188,7 @@ where
 	}
 
 	fn validity(&self, delta: Moment) -> Result<Moment, ()> {
-		let now = Now::now();
+		let now: Moment = Now::now().as_secs().into();
 		let min_validity = now.saturating_add(MinDelay::get());
 		let req_validity = now.saturating_add(delta);
 
@@ -206,7 +206,9 @@ where
 
 		self.info
 			.iter()
-			.position(|info| info.tranche_id == tranche && info.permissioned_till >= Now::now())
+			.position(|info| {
+				info.tranche_id == tranche && info.permissioned_till >= Now::now().as_secs().into()
+			})
 			.is_some()
 	}
 
@@ -217,7 +219,7 @@ where
 
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
 			let valid_till = &self.info[index].permissioned_till;
-			let now = Now::now();
+			let now = Now::now().as_secs().into();
 
 			if *valid_till <= now {
 				// The account is already invalid. Hence no more grace period
@@ -254,21 +256,18 @@ where
 /// A struct we need as the pallets implementing trait Time
 /// do not implement TypeInfo. This wraps this and implements everything manually.
 #[derive(Encode, Decode, Eq, PartialEq, Debug, Clone)]
-pub struct TimeProvider<T, M>(PhantomData<(T, M)>);
+pub struct TimeProvider<T>(PhantomData<T>);
 
-impl<T, Moment> Time for TimeProvider<T, Moment>
+impl<T> UnixTime for TimeProvider<T>
 where
-	T: Time<Moment = Moment>,
-	Moment: AtLeast32Bit + Parameter + Default + Copy,
+	T: UnixTime,
 {
-	type Moment = Moment;
-
-	fn now() -> Self::Moment {
-		<T as Time>::now()
+	fn now() -> core::time::Duration {
+		<T as UnixTime>::now()
 	}
 }
 
-impl<T, M> TypeInfo for TimeProvider<T, M> {
+impl<T> TypeInfo for TimeProvider<T> {
 	type Identity = ();
 
 	fn type_info() -> Type {

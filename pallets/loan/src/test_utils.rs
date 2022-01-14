@@ -23,7 +23,7 @@ use orml_traits::MultiCurrency;
 use pallet_tinlake_investor_pool::PoolLocator;
 use pallet_tinlake_investor_pool::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
-use runtime_common::{PoolRole, CFG as CURRENCY};
+use runtime_common::CFG as CURRENCY;
 use sp_arithmetic::traits::Zero;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
