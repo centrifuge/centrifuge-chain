@@ -1182,6 +1182,7 @@ pub mod pallet {
 			);
 
 			// For now, adding or removing tranches is not allowed, unless it's on pool creation.
+			// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
 			ensure!(
 				old_tranches.len() == 0 || new_tranches.len() == old_tranches.len(),
 				Error::<T>::CannotAddOrRemoveTranches
@@ -1437,7 +1438,8 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 			let tranche_ratios: Vec<_> = execution
 				.iter()
-				.zip(&epoch.tranches)
+				.zip(&mut epoch.tranches.iter())
+				.rev()
 				.map(|((supply, redeem), tranche)| {
 					tranche
 						.value
@@ -1456,6 +1458,7 @@ pub mod pallet {
 			let tranche_assets = execution
 				.iter()
 				.zip(&mut pool.tranches)
+				.rev()
 				.map(|((supply, redeem), tranche)| {
 					Self::update_tranche_debt(tranche)?;
 					tranche
@@ -1485,8 +1488,8 @@ pub mod pallet {
 			let tranches_senior_to_junior = pool.tranches.iter_mut().rev();
 			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
 				.enumerate()
-				.zip(tranche_ratios.iter().rev())
-				.zip(tranche_assets.iter().rev())
+				.zip(tranche_ratios.iter())
+				.zip(tranche_assets.iter())
 			{
 				tranche.ratio = *ratio;
 				if tranche_id == junior_tranche_id {
