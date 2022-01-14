@@ -840,7 +840,7 @@ impl pallet_permissions::Config for Runtime {
 	type Location = PoolId;
 	type Role = PoolRole<Moment, TrancheId>;
 	type Storage =
-		PermissionRoles<TimeProvider<Timestamp, Moment>, MaxTranches, MinDelay, TrancheId, Moment>;
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 }

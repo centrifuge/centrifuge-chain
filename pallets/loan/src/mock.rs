@@ -216,7 +216,7 @@ impl pallet_permissions::Config for MockRuntime {
 	type Location = u64;
 	type Role = PoolRole<Moment>;
 	type Storage =
-		PermissionRoles<TimeProvider<Timestamp, Moment>, MaxTranches, MinDelay, TrancheId, Moment>;
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 }

@@ -12,7 +12,7 @@
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg(test)]
+// We need this for the tests.
 #![feature(duration_consts_2)]
 
 use codec::{Decode, Encode};
@@ -34,9 +34,12 @@ use sp_std::vec::Vec;
 mod tests;
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
+// NOTE: In order to not carry around the Moment and TranchId all the time, we give it defaults.
+//       In case the PoolRole we provide does not match what we expect. I.e. if we change the Moment
+//       and/or the TrancheId type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<Moment, TrancheId = u8> {
+pub enum PoolRole<Moment = u64, TrancheId = u8> {
 	PoolAdmin,
 	Borrower,
 	PricingAdmin,

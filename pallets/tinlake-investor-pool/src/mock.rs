@@ -94,7 +94,7 @@ impl pallet_permissions::Config for Test {
 	type Location = u64;
 	type Role = PoolRole<Moment, TrancheId>;
 	type Storage =
-		PermissionRoles<TimeProvider<Timestamp, Moment>, MaxTranches, MinDelay, TrancheId, Moment>;
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 }
