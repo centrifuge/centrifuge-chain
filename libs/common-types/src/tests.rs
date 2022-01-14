@@ -65,13 +65,15 @@ fn permission_roles_work() {
 	Now::pass(1);
 	assert!(roles.exists(PoolRole::TrancheInvestor(0, UNION)));
 	assert!(roles
-		.rm(PoolRole::TrancheInvestor(0, MinDelay::get()))
+		.rm(PoolRole::TrancheInvestor(0, MinDelay::get() - 1))
 		.is_err());
 	assert!(roles.exists(PoolRole::TrancheInvestor(0, UNION)));
 	Now::set(0);
 
-	// Removing after MinDelay works
-	assert!(roles.rm(PoolRole::TrancheInvestor(0, 5)).is_ok());
+	// Removing after MinDelay works (i.e. this is after min_delay the account will be invalid)
+	assert!(roles
+		.rm(PoolRole::TrancheInvestor(0, MinDelay::get()))
+		.is_ok());
 	Now::pass(6);
 	assert!(!roles.exists(PoolRole::TrancheInvestor(0, UNION)));
 	Now::set(0);

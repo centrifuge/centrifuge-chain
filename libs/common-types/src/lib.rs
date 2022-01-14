@@ -153,7 +153,7 @@ where
 			PoolRole::PricingAdmin => Ok(self.admin.remove(AdminRoles::PRICING_ADMIN)),
 			PoolRole::MemberListAdmin => Ok(self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN)),
 			PoolRole::RiskAdmin => Ok(self.admin.remove(AdminRoles::RISK_ADMIN)),
-			PoolRole::TrancheInvestor(id, new) => self.tranche_investor.update(id, new),
+			PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
 		}
 	}
 
@@ -165,7 +165,7 @@ where
 			PoolRole::PricingAdmin => Ok(self.admin.insert(AdminRoles::PRICING_ADMIN)),
 			PoolRole::MemberListAdmin => Ok(self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN)),
 			PoolRole::RiskAdmin => Ok(self.admin.insert(AdminRoles::RISK_ADMIN)),
-			PoolRole::TrancheInvestor(id, new) => self.tranche_investor.insert(id, new),
+			PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
 		}
 	}
 }
@@ -187,9 +187,10 @@ where
 		self.info.is_empty()
 	}
 
-	fn validity(&self, req_validity: Moment) -> Result<Moment, ()> {
+	fn validity(&self, delta: Moment) -> Result<Moment, ()> {
 		let now = Now::now();
 		let min_validity = now.saturating_add(MinDelay::get());
+		let req_validity = now.saturating_add(delta);
 
 		if req_validity < min_validity {
 			Err(())
@@ -209,7 +210,7 @@ where
 			.is_some()
 	}
 
-	pub fn update(&mut self, tranche: TrancheId, new: Moment) -> Result<(), ()> {
+	pub fn remove(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
 		if tranche >= self.max_tranches {
 			return Err(());
 		}
@@ -223,7 +224,7 @@ where
 				Err(())
 			} else {
 				// Ensure that permissioned_till is at least now + min_delay.
-				Ok(self.info[index].permissioned_till = self.validity(new)?)
+				Ok(self.info[index].permissioned_till = self.validity(delta)?)
 			}
 		} else {
 			Err(())
