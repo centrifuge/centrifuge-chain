@@ -96,23 +96,6 @@ use pallet_collator_selection::CandidateInfo;
 pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
 
 const CANDIDATES: [[u8; 32]; 0] = [];
-const INVULNERABLES: [[u8; 32]; 3] = [
-	// b24fb587438bbe05034606dac98162d80be1d21ac6dd6edc989887fa53a8d503
-	[
-		178, 79, 181, 135, 67, 139, 190, 5, 3, 70, 6, 218, 201, 129, 98, 216, 11, 225, 210, 26,
-		198, 221, 110, 220, 152, 152, 135, 250, 83, 168, 213, 3,
-	],
-	// d46783c911c4d8fb42f8239eb8925857e27ee3bdd121feb43e450241891a5f1e
-	[
-		212, 103, 131, 201, 17, 196, 216, 251, 66, 248, 35, 158, 184, 146, 88, 87, 226, 126, 227,
-		189, 209, 33, 254, 180, 62, 69, 2, 65, 137, 26, 95, 30,
-	],
-	// f02099f295f6ccd935646f50c6280f4054b7d1f9b126471668f4ac6175677c26
-	[
-		240, 32, 153, 242, 149, 246, 204, 217, 53, 100, 111, 80, 198, 40, 15, 64, 84, 183, 209,
-		249, 177, 38, 71, 22, 104, 244, 172, 97, 117, 103, 124, 38,
-	],
-];
 
 const DESIRED_CANDIDATES: u32 = 0;
 const CANDIDACY_BOND: Balance = 1 * CFG;
@@ -262,7 +245,7 @@ where
 	}
 
 	#[allow(non_snake_case)]
-	fn into_T_tuple(raw_ids: &[[u8; 32]]) -> Vec<(T::AccountId, T::Keys)> {
+	fn into_T_tuple(raw_ids: Vec<[u8; 32]>) -> Vec<(T::AccountId, T::Keys)> {
 		raw_ids
 			.to_vec()
 			.into_iter()
@@ -289,12 +272,21 @@ where
 	BalanceOfCollatorSelection<T>: From<u128>,
 	T::AccountId: From<sp_runtime::AccountId32>,
 	T::Keys: From<SessionKeys>,
+	[u8; 32]: From<<T as pallet_session::Config>::ValidatorId>,
 {
 	fn on_runtime_upgrade() -> Weight {
 		let mut consumed: Weight = 0;
 
-		let invulnerables = Self::into_T_tuple(&INVULNERABLES);
-		let candidates = Self::into_T_tuple(&CANDIDATES);
+		let current_validators_ids: Vec<[u8; 32]> = <pallet_session::Validators<T>>::get()
+			.into_iter()
+			.map(|who| {
+				let aux: [u8; 32] = who.into();
+				aux
+			})
+			.collect();
+
+		let invulnerables = Self::into_T_tuple(current_validators_ids);
+		let candidates = Self::into_T_tuple(CANDIDATES.to_vec());
 
 		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
 			consumed +=
@@ -473,7 +465,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
+	pub const Period: u32 = 2 * MINUTES;
 	pub const Offset: u32 = 0;
 }
 
