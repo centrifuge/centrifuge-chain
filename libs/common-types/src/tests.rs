@@ -52,6 +52,11 @@ fn permission_roles_work() {
 
 	let mut roles = PermissionRoles::<Now, MaxTranches, MinDelay>::default();
 
+	// Updating works only when increasing permissions
+	assert!(roles.add(PoolRole::TrancheInvestor(30, 10)).is_ok());
+	assert!(roles.add(PoolRole::TrancheInvestor(30, 9)).is_err());
+	assert!(roles.add(PoolRole::TrancheInvestor(30, 11)).is_ok());
+
 	// Test zero-tranche handling
 	assert!(!roles.exists(PoolRole::TrancheInvestor(0, UNION)));
 	assert!(roles

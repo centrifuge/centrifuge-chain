@@ -243,16 +243,18 @@ where
 
 		let validity = self.validity(delta)?;
 
-		Ok(
-			if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
-				self.info[index].permissioned_till = validity;
+		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
+			if self.info[index].permissioned_till > validity {
+				Err(())
 			} else {
-				self.info.push(TrancheInvestorInfo {
-					tranche_id: tranche,
-					permissioned_till: validity,
-				})
-			},
-		)
+				Ok(self.info[index].permissioned_till = validity)
+			}
+		} else {
+			Ok(self.info.push(TrancheInvestorInfo {
+				tranche_id: tranche,
+				permissioned_till: validity,
+			}))
+		}
 	}
 }
 
