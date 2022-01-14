@@ -17,6 +17,7 @@
 //! and some helper functions.
 use crate as pallet_loan;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+use common_types::{PermissionRoles, PoolRole, TimeProvider};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -27,8 +28,8 @@ use orml_traits::parameter_type_with_key;
 use pallet_tinlake_investor_pool::PoolLocator;
 use primitives_tokens::CurrencyId;
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, PoolId, Rate, TrancheToken, CENTI_CFG as CENTI_CURRENCY,
-	CFG as CURRENCY,
+	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
+	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -55,6 +56,7 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
 	}
 );
 
@@ -137,6 +139,9 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const PoolPalletId: PalletId = PalletId(*b"roc/pool");
+}
 impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -151,6 +156,8 @@ impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
+	type PalletId = PoolPalletId;
+	type Permission = Permissions;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
@@ -199,7 +206,23 @@ impl pallet_uniques::Config for MockRuntime {
 }
 
 parameter_types! {
-	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 0;
+}
+impl pallet_permissions::Config for MockRuntime {
+	type Event = Event;
+	type Location = u64;
+	type Role = PoolRole<Moment>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Editors = frame_support::traits::Everything;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+}
+
+parameter_types! {
+	pub const LoanPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 200;
 }
 
@@ -215,6 +238,7 @@ impl pallet_loan::Config for MockRuntime {
 	type Pool = InvestorPool;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
+	type Permission = Permissions;
 }
 
 // USD currencyId

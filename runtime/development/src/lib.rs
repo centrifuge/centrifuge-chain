@@ -5,6 +5,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use common_types::{PermissionRoles, TimeProvider};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -16,12 +17,13 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureOneOf, EnsureRoot,
+	EnsureRoot,
 };
 use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
-use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
+use pallet_loan::PoolRole;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -35,6 +37,7 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
+
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -705,20 +708,26 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+}
+
 impl pallet_tinlake_investor_pool::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
 	type PoolId = PoolId;
-	type TrancheId = u8;
+	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
 	type NAV = Loan;
 	type TrancheToken = TrancheToken<Runtime>;
+	type Permission = Permissions;
 	type Time = Timestamp;
+	type PalletId = PoolPalletId;
 }
 
 parameter_types! {
@@ -800,7 +809,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const LoanPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 50;
 }
 
@@ -814,8 +823,59 @@ impl pallet_loan::Config for Runtime {
 	type Time = Timestamp;
 	type LoanPalletId = LoanPalletId;
 	type Pool = InvestorPool;
+	type Permission = Permissions;
 	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
+}
+
+parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
+}
+
+impl pallet_permissions::Config for Runtime {
+	type Event = Event;
+	type Location = PoolId;
+	type Role = PoolRole<Moment, TrancheId>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Editors = Editors;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+}
+
+pub struct Editors;
+impl
+	Contains<(
+		AccountId,
+		Option<PoolRole<Moment, TrancheId>>,
+		PoolId,
+		PoolRole<Moment, TrancheId>,
+	)> for Editors
+{
+	fn contains(
+		t: &(
+			AccountId,
+			Option<PoolRole<Moment, TrancheId>>,
+			PoolId,
+			PoolRole<Moment, TrancheId>,
+		),
+	) -> bool {
+		let (_editor, maybe_role, _pool, role) = t;
+		if let Some(with_role) = maybe_role {
+			match *with_role {
+				PoolRole::PoolAdmin => true,
+				PoolRole::MemberListAdmin => match *role {
+					PoolRole::TrancheInvestor(_, _) => true,
+					_ => false,
+				},
+				_ => false,
+			}
+		} else {
+			false
+		}
+	}
 }
 
 parameter_type_with_key! {
@@ -896,6 +956,7 @@ construct_runtime!(
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 95,
 		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 
 		// 3rd party pallets
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,

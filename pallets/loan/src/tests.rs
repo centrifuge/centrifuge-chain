@@ -74,6 +74,7 @@ where
 	PoolIdOf<T>: From<<T as pallet_tinlake_investor_pool::Config>::PoolId>,
 {
 	let pool_admin = PoolAdmin::get();
+
 	create_pool::<T>(
 		pool_id,
 		pool_admin,
