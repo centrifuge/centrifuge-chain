@@ -279,10 +279,7 @@ where
 
 		let current_validators_ids: Vec<[u8; 32]> = <pallet_session::Validators<T>>::get()
 			.into_iter()
-			.map(|who| {
-				let aux: [u8; 32] = who.into();
-				aux
-			})
+			.map(|who| { Into::<[u8;32]>::into(who) })
 			.collect();
 
 		let invulnerables = Self::into_T_tuple(current_validators_ids);

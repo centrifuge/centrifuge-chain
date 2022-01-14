@@ -101,6 +101,7 @@ orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 
 runtime-common = { path = "../common", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = false }
 primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
@@ -112,6 +113,7 @@ pallet-migration-manager = { path = "../../pallets/migration", default-features 
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-loan = { path = "../../pallets/loan", default-features = false }
+pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.12" }
@@ -119,7 +121,9 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [features]
 default = ["std"]
 std = [
+    "common-types/std",
     "pallet-migration-manager/std",
+    "pallet-permissions/std",
     "pallet-crowdloan-claim/std",
     "pallet-crowdloan-reward/std",
     "sp-authority-discovery/std",
