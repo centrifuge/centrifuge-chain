@@ -32,7 +32,7 @@ type PermissionsOf<T> = <T as pallet_loan::Config>::Permission;
 pub(crate) fn set_role<T: pallet_loan::Config>(
 	location: <T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 	who: T::AccountId,
-	role: PoolRole<<T::Time as frame_support::traits::Time>::Moment>,
+	role: PoolRole,
 ) where
 	T::AccountId: From<u32>,
 {
@@ -92,7 +92,6 @@ pub(crate) fn create_pool<T>(
 	<T as pallet_tinlake_investor_pool::Config>::EpochId: From<u32>,
 	<T as pallet_tinlake_investor_pool::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 	<T as frame_system::Config>::AccountId: From<u32>,
-	<<T as pallet_loan::Config>::Time as frame_support::traits::Time>::Moment: From<u32>,
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 
