@@ -173,8 +173,9 @@ pub mod constants {
 	pub const DAYS: BlockNumber = HOURS * 24;
 
 	/// Milliseconds per day
-	pub const MILLISECS_PER_DAY: u64 = 86400000;
+	pub const MILLISECS_PER_DAY: u64 = SECONDS_PER_DAY * 1000;
 
+	// Seconds units
 	pub const SECONDS_PER_MINUTE: u64 = 60;
 	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
 	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
