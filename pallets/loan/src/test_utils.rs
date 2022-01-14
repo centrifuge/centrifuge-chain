@@ -14,12 +14,12 @@
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loan;
 use crate::{AssetOf, PoolIdOf};
-use common_traits::PoolNAV;
+use common_traits::{Permissions, PoolNAV};
+use common_types::PoolRole;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
-use pallet_permissions::Permissions;
 use pallet_tinlake_investor_pool::PoolLocator;
 use pallet_tinlake_investor_pool::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
@@ -32,11 +32,11 @@ type PermissionsOf<T> = <T as pallet_loan::Config>::Permission;
 pub(crate) fn set_role<T: pallet_loan::Config>(
 	location: <T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 	who: T::AccountId,
-	role: runtime_common::PoolRole<<T::Time as frame_support::traits::Time>::Moment>,
+	role: PoolRole<<T::Time as frame_support::traits::Time>::Moment>,
 ) where
 	T::AccountId: From<u32>,
 {
-	PermissionsOf::<T>::add_permission(1u32.into(), location, who, role)
+	PermissionsOf::<T>::add_permission(location, who, role)
 		.expect("adding permissions should not fail");
 }
 
