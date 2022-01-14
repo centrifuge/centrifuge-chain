@@ -31,6 +31,7 @@ members = [
 	"pallets/fees",
 	"pallets/anchors",
 	"pallets/claims",
+	"pallets/collator-allowlist",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
 	"pallets/tinlake-investor-pool",

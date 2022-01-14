@@ -9,7 +9,7 @@ on:
         required: true
         default: ''
 env:
-  RUST_TOOLCHAIN: "nightly-2021-09-28"
+  RUST_TOOLCHAIN: "nightly-2021-11-07"
 jobs:
   docker:
     runs-on: ubuntu-latest

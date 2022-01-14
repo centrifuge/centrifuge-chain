@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -18,6 +18,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
@@ -27,7 +28,7 @@ use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3};
+use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
@@ -50,8 +51,10 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
+use frame_support::traits::{Currency, Get, OnRuntimeUpgrade};
 /// common types for the runtime.
 pub use runtime_common::*;
+use sp_std::marker::PhantomData;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -69,7 +72,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1007,
+	spec_version: 1008,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -81,6 +84,221 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
+	}
+}
+
+use frame_support::sp_runtime::traits::{Convert, IdentifyAccount, OpaqueKeys, Verify};
+/// Custom runtime upgrades
+///
+/// Migration to include collator-selection in a running chain
+use pallet_collator_selection::CandidateInfo;
+
+pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
+
+const CANDIDATES: [[u8; 32]; 0] = [];
+
+const DESIRED_CANDIDATES: u32 = 0;
+const CANDIDACY_BOND: Balance = 1 * CFG;
+
+type AccountPublic = <Signature as Verify>::Signer;
+type BalanceOfCollatorSelection<T> =
+	<<T as pallet_collator_selection::Config>::Currency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
+
+impl<T> IntegrateCollatorSelection<T>
+where
+	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+	T::AccountId: From<sp_runtime::AccountId32>,
+	T::Keys: From<SessionKeys>,
+{
+	fn to_version() -> u32 {
+		1008
+	}
+
+	fn inject_invulnerables(invulnerables: &[(T::AccountId, T::Keys)]) -> Weight {
+		// Store the keys of any additional invulnerables in the `NextKeys` storage
+		let consumed = Self::set_keys(invulnerables);
+
+		let session_validators = invulnerables
+			.iter()
+			.map(|(who, _keys)| who.clone())
+			.collect();
+
+		<pallet_collator_selection::Invulnerables<T>>::set(session_validators);
+
+		let queued_validators: Vec<(<T as pallet_session::Config>::ValidatorId, T::Keys)> =
+			invulnerables
+				.iter()
+				.map(|(who, keys)| {
+					(
+						// TODO(frederik): Take care of handling this unwrap()
+						<<T as pallet_session::Config>::ValidatorIdOf>::convert(who.clone())
+							.unwrap(),
+						keys.clone(),
+					)
+				})
+				.collect();
+
+		<pallet_session::QueuedKeys<T>>::set(queued_validators);
+
+		consumed + Self::db_access_weights(Some(1), Some(2))
+	}
+
+	fn inject_desired_candidates(max: u32) -> Weight {
+		<pallet_collator_selection::DesiredCandidates<T>>::set(max);
+
+		Self::db_access_weights(None, Some(1))
+	}
+
+	fn inject_candidates(
+		candidates: &[(T::AccountId, T::Keys)],
+		deposit: BalanceOfCollatorSelection<T>,
+	) -> Weight {
+		// Store the keys of any additional candidates in the `NextKeys` storage
+		let consumed = Self::set_keys(candidates);
+		let threshold = T::KickThreshold::get();
+		let now = frame_system::Pallet::<T>::block_number();
+
+		let infos = candidates
+			.iter()
+			.map(|(who, _key)| {
+				<pallet_collator_selection::LastAuthoredBlock<T>>::insert(
+					who.clone(),
+					now + threshold,
+				);
+
+				CandidateInfo {
+					who: who.clone(),
+					deposit,
+				}
+			})
+			.collect();
+
+		<pallet_collator_selection::Candidates<T>>::set(infos);
+
+		consumed + Self::db_access_weights(Some(2), Some(1 + 1 * (candidates.len() as u64)))
+	}
+
+	fn inject_candidacy_bond(bond: BalanceOfCollatorSelection<T>) -> Weight {
+		<pallet_collator_selection::CandidacyBond<T>>::set(bond);
+
+		Self::db_access_weights(None, Some(1))
+	}
+
+	fn db_access_weights(reads: Option<u64>, writes: Option<u64>) -> Weight {
+		let mut weight: Weight = 0u32 as Weight;
+
+		if let Some(num_reads) = reads {
+			weight += T::DbWeight::get()
+				.reads(1 as Weight)
+				.saturating_mul(num_reads);
+		}
+
+		if let Some(num_writes) = writes {
+			weight += T::DbWeight::get()
+				.writes(1 as Weight)
+				.saturating_mul(num_writes);
+		}
+
+		weight
+	}
+
+	fn set_keys(from: &[(T::AccountId, T::Keys)]) -> Weight {
+		let inner_set_keys = |who, keys: T::Keys| {
+			let old_keys = <pallet_session::NextKeys<T>>::get(&who);
+
+			for id in T::Keys::key_ids() {
+				let _key = keys.get_raw(*id);
+
+				// TODO(frederik): Do we need this
+				// ensure keys are without duplication.
+				// let is_owner = <pallet_session::KeyOwner<T>>::get((id, key).map_or(true, |owner| &owner == who);
+			}
+
+			for id in T::Keys::key_ids() {
+				let key = keys.get_raw(*id);
+
+				if let Some(old) = old_keys.as_ref().map(|k| k.get_raw(*id)) {
+					if key == old {
+						continue;
+					}
+
+					<pallet_session::KeyOwner<T>>::remove((*id, old));
+				}
+
+				<pallet_session::KeyOwner<T>>::insert((*id, key), &who);
+			}
+
+			<pallet_session::NextKeys<T>>::insert(&who, &keys);
+		};
+
+		from.iter().for_each(|(who, keys)| {
+			inner_set_keys(
+				// TODO(frederik): think of something to recover from the convert...
+				<T as pallet_session::Config>::ValidatorIdOf::convert(who.clone()).unwrap(),
+				keys.clone(),
+			)
+		});
+
+		Self::db_access_weights(Some(3 * (from.len() as u64)), Some(2 * (from.len() as u64)))
+	}
+
+	#[allow(non_snake_case)]
+	fn into_T_tuple(raw_ids: Vec<[u8; 32]>) -> Vec<(T::AccountId, T::Keys)> {
+		raw_ids
+			.to_vec()
+			.into_iter()
+			.map::<(T::AccountId, T::Keys), _>(|bytes| {
+				(
+					AccountPublic::from(sp_core::sr25519::Public(bytes))
+						.into_account()
+						.into(),
+					SessionKeys {
+						aura: sp_consensus_aura::sr25519::AuthorityId::from(
+							sp_core::sr25519::Public(bytes),
+						),
+					}
+					.into(),
+				)
+			})
+			.collect::<Vec<(T::AccountId, T::Keys)>>()
+	}
+}
+
+impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
+where
+	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
+	BalanceOfCollatorSelection<T>: From<u128>,
+	T::AccountId: From<sp_runtime::AccountId32>,
+	T::Keys: From<SessionKeys>,
+	[u8; 32]: From<<T as pallet_session::Config>::ValidatorId>,
+{
+	fn on_runtime_upgrade() -> Weight {
+		let mut consumed: Weight = 0;
+
+		let current_validators_ids: Vec<[u8; 32]> = <pallet_session::Validators<T>>::get()
+			.into_iter()
+			.map(|who| Into::<[u8; 32]>::into(who))
+			.collect();
+
+		let invulnerables = Self::into_T_tuple(current_validators_ids);
+		let candidates = Self::into_T_tuple(CANDIDATES.to_vec());
+
+		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
+			consumed +=
+				IntegrateCollatorSelection::<T>::inject_invulnerables(invulnerables.as_slice());
+			consumed +=
+				IntegrateCollatorSelection::<T>::inject_desired_candidates(DESIRED_CANDIDATES);
+			consumed += IntegrateCollatorSelection::<T>::inject_candidates(
+				candidates.as_slice(),
+				CANDIDACY_BOND.into(),
+			);
+			consumed +=
+				IntegrateCollatorSelection::<T>::inject_candidacy_bond(CANDIDACY_BOND.into());
+		}
+
+		return consumed;
 	}
 }
 
@@ -109,44 +327,10 @@ parameter_types! {
 		.build_or_panic();
 	pub const SS58Prefix: u8 = 136;
 }
-// our base filter
-// allow base system calls needed for block production and runtime upgrade
-// other calls will be disallowed
-pub struct BaseFilter;
-
-impl Contains<Call> for BaseFilter {
-	fn contains(c: &Call) -> bool {
-		matches!(
-			c,
-			// Calls from Sudo
-			Call::Sudo(..)
-			// Calls for runtime upgrade
-			| Call::System(frame_system::Call::set_code{..})
-			| Call::System(frame_system::Call::set_code_without_checks{..})
-			// Calls that are present in each block
-			| Call::ParachainSystem(
-				cumulus_pallet_parachain_system::Call::set_validation_data{..}
-			)
-			| Call::Timestamp(pallet_timestamp::Call::set{..})
-			// Claiming logic is also enabled
-			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
-			// Enable Governance
-			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..}
-			// Enable Treasury
-			| Call::Treasury{..}
-			// Enable Identity
-			| Call::Identity{..}
-			// Enable Proxy
-			| Call::Proxy{..}
-			// Enable Utility
-			| Call::Utility{..}
-		)
-	}
-}
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = BaseFilter;
+	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -274,7 +458,7 @@ impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = (CollatorSelection,);
 }
 
 parameter_types! {
@@ -293,10 +477,10 @@ impl pallet_session::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
-	type ValidatorIdOf = ValidatorOf;
+	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type SessionManager = ();
+	type SessionManager = CollatorSelection;
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
@@ -455,6 +639,9 @@ type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollectiv
 
 /// 2/3 of all council members must vote yes to create this origin.
 type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+
+/// 3/4 of all council members must vote yes to create this origin.
+type ThreeFourthOfCouncil = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
@@ -687,6 +874,13 @@ impl pallet_anchors::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_collator_allowlist::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type ValidatorId = AccountId;
+	type ValidatorRegistration = Session;
+}
+
 // Parameterize claims pallet
 parameter_types! {
 	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
@@ -760,10 +954,30 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type RewardMechanism = CrowdloanReward;
 }
 
-// admin stuff
-impl pallet_sudo::Config for Runtime {
+// Parameterize collator selection pallet
+parameter_types! {
+	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const MaxCandidates: u32 = 1000;
+	pub const MinCandidates: u32 = 5;
+	pub const SessionLength: BlockNumber = 6 * HOURS;
+	pub const MaxInvulnerables: u32 = 100;
+}
+
+// Implement Collator Selection pallet configuration trait for the runtime
+impl pallet_collator_selection::Config for Runtime {
 	type Event = Event;
-	type Call = Call;
+	type Currency = Balances;
+	type UpdateOrigin = EnsureRootOr<ThreeFourthOfCouncil>;
+	type PotId = PotId;
+	type MaxCandidates = MaxCandidates;
+	type MinCandidates = MinCandidates;
+	type MaxInvulnerables = MaxInvulnerables;
+	// should be a multiple of session or things will get inconsistent
+	type KickThreshold = Period;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
+	type ValidatorRegistration = CollatorAllowlist;
+	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -787,6 +1001,8 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
 
 		// authoring stuff
+		// collator_selection must go here in order for the storage to be available to pallet_session
+		CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
@@ -811,11 +1027,10 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
+		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
-		// admin stuff
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
 );
 
@@ -847,7 +1062,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPallets,
-	(),
+	IntegrateCollatorSelection<Runtime>,
 >;
 
 impl_runtime_apis! {
@@ -985,6 +1200,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
+			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
+			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1003,6 +1220,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
+			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
+			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
