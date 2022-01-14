@@ -15,7 +15,9 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, PoolRole};
+use common_traits::Permissions;
+use common_traits::{PoolInspect, PoolNAV, PoolReserve};
+use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
@@ -29,7 +31,7 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
-use sp_std::{vec, vec::Vec};
+use sp_std::vec::Vec;
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
@@ -135,9 +137,13 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio> {
 // type alias for StaticLookup source that resolves to account
 type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 
+// Type that indicates a point in time
+type Moment = u64;
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use frame_support::PalletId;
 	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -174,6 +180,9 @@ pub mod pallet {
 			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>;
 
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
+
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
 		type TrancheId: Member
 			+ Parameter
@@ -201,6 +210,13 @@ pub mod pallet {
 			Self::AccountId,
 			Balance = Self::Balance,
 			CurrencyId = Self::CurrencyId,
+		>;
+
+		type Permission: Permissions<
+			Self::AccountId,
+			Location = Self::PoolId,
+			Role = PoolRole<u64, Self::TrancheId>,
+			Error = DispatchError,
 		>;
 
 		type LoanAmount: Into<Self::Balance>;
@@ -349,9 +365,9 @@ pub mod pallet {
 			OutstandingCollections<T::Balance>,
 		),
 		/// When a role is for some accounts
-		RoleApproved(T::PoolId, PoolRole, Vec<T::AccountId>),
+		RoleApproved(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 		// When a role was revoked for an account in pool
-		RoleRevoked(T::PoolId, PoolRole, T::AccountId),
+		RoleRevoked(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -415,7 +431,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
-			// TODO: Ensure owner is authorized to create a pool
+			ensure!(
+				T::Permission::has_permission(pool_id, owner.clone(), PoolRole::PoolAdmin),
+				Error::<T>::NoPermission
+			);
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -475,7 +494,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -559,7 +578,15 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			// TODO: Ensure this account is authorized for this tranche
+
+			ensure!(
+				T::Permission::has_permission(
+					pool_id,
+					who.clone(),
+					PoolRole::TrancheInvestor(tranche_id, Self::now())
+				),
+				Error::<T>::NoPermission
+			);
 			let (currency, epoch) = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
@@ -615,7 +642,16 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			// TODO: Ensure this account is authorized for this tranche
+
+			ensure!(
+				T::Permission::has_permission(
+					pool_id,
+					who.clone(),
+					PoolRole::TrancheInvestor(tranche_id, Self::now())
+				),
+				Error::<T>::NoPermission
+			);
+
 			let epoch = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 				ensure!(pool.closing_epoch.is_none(), Error::<T>::PoolClosing);
@@ -749,15 +785,8 @@ pub mod pallet {
 				pool.last_epoch_closed = now;
 
 				// Set available reserve to 0 to disable originations while the epoch is closed but not executed
-				pool.available_reserve = Zero::zero();
-				let epoch_reserve = pool.total_reserve;
-
-				let (nav_amount, nav_last_updated) =
+				pool.last_epoch_closed = current_epoch_end;
 					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
-				ensure!(
-					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
-					Error::<T>::NAVTooOld
-				);
 				let nav = nav_amount.into();
 
 				if pool
@@ -881,30 +910,26 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
+		#[frame_support::transactional]
 		pub fn approve_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: PoolRole,
+			role: PoolRole<Moment, T::TrancheId>,
 			accounts: Vec<LookUpSource<T>>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
+
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
+				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
-			// look up all the sources through lookup
-			let mut targets = vec![];
 			for source in accounts {
-				let acc: T::AccountId = T::Lookup::lookup(source)?;
-				targets.push(acc);
+				let who = T::Lookup::lookup(source)?;
+				T::Permission::add_permission(pool_id, who.clone(), role)?;
+				Self::deposit_event(Event::RoleApproved(pool_id, role, who));
 			}
 
-			// setup role for each account
-			targets
-				.iter()
-				.for_each(|account| Self::approve_role_in_pool(pool_id, role, account));
-			Self::deposit_event(Event::RoleApproved(pool_id, role, targets));
 			Ok(())
 		}
 
@@ -912,70 +937,29 @@ pub mod pallet {
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			role: PoolRole,
+			role: PoolRole<Moment, T::TrancheId>,
 			account: LookUpSource<T>,
 		) -> DispatchResult {
 			let pool_admin = ensure_signed(origin)?;
+
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &pool_admin),
+				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin,),
 				Error::<T>::NoPermission
 			);
 
-			// revoke the role
-			T::Lookup::lookup(account)
-				.and_then(|acc| Ok(Self::revoke_role_in_pool(pool_id, role, &acc)))?;
+			let who = T::Lookup::lookup(account)?;
+
+			T::Permission::rm_permission(pool_id, who.clone(), role.clone())?;
+
+			Self::deposit_event(Event::<T>::RoleRevoked(pool_id, role, who));
 
 			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		pub(crate) fn has_role_in_pool(
-			pool_id: T::PoolId,
-			role: PoolRole,
-			account: &T::AccountId,
-		) -> bool {
-			match role {
-				PoolRole::PoolAdmin => PoolAdmins::<T>::contains_key(pool_id, account),
-				PoolRole::Borrower | PoolRole::PricingAdmin => {
-					Borrowers::<T>::contains_key(pool_id, account)
-				}
-				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::contains_key(pool_id, account),
-				PoolRole::MemberListAdmin => MemberListAdmins::<T>::contains_key(pool_id, account),
-				PoolRole::RiskAdmin => RiskAdmins::<T>::contains_key(pool_id, account),
-			}
-		}
-
-		pub(crate) fn approve_role_in_pool(
-			pool_id: T::PoolId,
-			role: PoolRole,
-			account: &T::AccountId,
-		) {
-			match role {
-				PoolRole::PoolAdmin => PoolAdmins::<T>::insert(pool_id, account, ()),
-				PoolRole::Borrower | PoolRole::PricingAdmin => {
-					Borrowers::<T>::insert(pool_id, account, ())
-				}
-				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::insert(pool_id, account, ()),
-				PoolRole::MemberListAdmin => MemberListAdmins::<T>::insert(pool_id, account, ()),
-				PoolRole::RiskAdmin => RiskAdmins::<T>::insert(pool_id, account, ()),
-			};
-		}
-
-		pub(crate) fn revoke_role_in_pool(
-			pool_id: T::PoolId,
-			role: PoolRole,
-			account: &T::AccountId,
-		) {
-			match role {
-				PoolRole::PoolAdmin => PoolAdmins::<T>::remove(pool_id, account),
-				PoolRole::Borrower | PoolRole::PricingAdmin => {
-					Borrowers::<T>::remove(pool_id, account)
-				}
-				PoolRole::LiquidityAdmin => LiquidityAdmins::<T>::remove(pool_id, account),
-				PoolRole::MemberListAdmin => MemberListAdmins::<T>::remove(pool_id, account),
-				PoolRole::RiskAdmin => RiskAdmins::<T>::remove(pool_id, account),
-			};
+		pub(crate) fn now() -> Moment {
+			T::Time::now().as_secs()
 		}
 
 		pub(crate) fn calculate_collect(
@@ -1139,7 +1123,7 @@ pub mod pallet {
 		}
 
 		fn update_tranche_debt(tranche: &mut Tranche<T::Balance, T::InterestRate>) -> Option<()> {
-			let now = T::Time::now().as_secs();
+			let now = Self::now();
 			let mut delta = now - tranche.last_updated_interest;
 			let mut interest = tranche.interest_per_sec;
 			let mut total_interest: T::InterestRate = One::one();
@@ -1653,10 +1637,6 @@ impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
 		Pool::<T>::contains_key(pool_id)
-	}
-
-	fn has_role(pool_id: Self::PoolId, account: &T::AccountId, role: PoolRole) -> bool {
-		Self::has_role_in_pool(pool_id, role, account)
 	}
 }
 

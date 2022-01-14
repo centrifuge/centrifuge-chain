@@ -1,9 +1,12 @@
 use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
+use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
 };
 use frame_system as system;
+use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use primitives_tokens::CurrencyId;
 use sp_core::H256;
@@ -18,7 +21,8 @@ primitives_tokens::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-
+type TrancheId = u8;
+type Moment = u64;
 mod fake_nav {
 	use super::Balance;
 	use codec::HasCompact;
@@ -74,8 +78,32 @@ frame_support::construct_runtime!(
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		TinlakeInvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
 	}
 );
+
+parameter_types! {
+	pub const One: u64 = 1;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 0;
+}
+impl pallet_permissions::Config for Test {
+	type Event = Event;
+	type Location = u64;
+	type Role = PoolRole<Moment, TrancheId>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type Editors = frame_support::traits::Everything;
+}
+
+impl SortedMembers<u64> for One {
+	fn sorted_members() -> Vec<u64> {
+		vec![1]
+	}
+}
 
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
@@ -109,7 +137,7 @@ impl system::Config for Test {
 }
 
 impl pallet_timestamp::Config for Test {
-	type Moment = u64;
+	type Moment = Moment;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ();
 	type WeightInfo = ();
@@ -142,6 +170,7 @@ impl orml_tokens::Config for Test {
 parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 }
 
 impl Config for Test {
@@ -150,7 +179,7 @@ impl Config for Test {
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
 	type PoolId = u64;
-	type TrancheId = u8;
+	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
@@ -160,6 +189,8 @@ impl Config for Test {
 	type Time = Timestamp;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type Permission = Permissions;
+	type PalletId = PoolPalletId;
 }
 
 impl fake_nav::Config for Test {
