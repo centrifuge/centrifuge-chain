@@ -162,7 +162,13 @@ pub trait Properties {
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 }
 
-#[impl_for_tuples(30)]
 pub trait PreConditions<T> {
 	fn check(t: &T) -> bool;
+}
+
+#[impl_for_tuples(10)]
+impl<T> PreConditions<T> for Tuple {
+	fn check(t: &T) -> bool {
+		for_tuples!( #( Tuple::check(t) )&* )
+	}
 }

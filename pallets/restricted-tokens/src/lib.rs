@@ -131,12 +131,12 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			ensure!(
-				T::PreConditions::check(TransferDetails::new(TransferDetails::new(
+				T::PreConditions::check(TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
 					amount
-				))),
+				)),
 				Error::<T>::PreConditionsNotMet
 			);
 
@@ -163,12 +163,12 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			ensure!(
-				T::PreConditions::check(TransferDetails::new(TransferDetails::new(
+				T::PreConditions::check(TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
 					amount
-				))),
+				)),
 				Error::<T>::PreConditionsNotMet
 			);
 
@@ -197,12 +197,12 @@ pub mod pallet {
 			let reducible_balance = T::Fungibles::reducible_balance(currency_id, &from, keep_alive);
 
 			ensure!(
-				T::PreConditions::check(TransferDetails::new(TransferDetails::new(
+				T::PreConditions::check(TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
 					amount
-				))),
+				)),
 				Error::<T>::PreConditionsNotMet
 			);
 
