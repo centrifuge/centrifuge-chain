@@ -849,7 +849,7 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		PoolRole<Moment, TrancheId>,
+		Option<PoolRole<Moment, TrancheId>>,
 		PoolId,
 		PoolRole<Moment, TrancheId>,
 	)> for Editors
@@ -857,19 +857,23 @@ impl
 	fn contains(
 		t: &(
 			AccountId,
-			PoolRole<Moment, TrancheId>,
+			Option<PoolRole<Moment, TrancheId>>,
 			PoolId,
 			PoolRole<Moment, TrancheId>,
 		),
 	) -> bool {
-		let (_editor, with_role, _pool, role) = t;
-		match *with_role {
-			PoolRole::PoolAdmin => true,
-			PoolRole::MemberListAdmin => match *role {
-				PoolRole::TrancheInvestor(_, _) => true,
+		let (_editor, maybe_role, _pool, role) = t;
+		if let Some(with_role) = maybe_role {
+			match *with_role {
+				PoolRole::PoolAdmin => true,
+				PoolRole::MemberListAdmin => match *role {
+					PoolRole::TrancheInvestor(_, _) => true,
+					_ => false,
+				},
 				_ => false,
-			},
-			_ => false,
+			}
+		} else {
+			false
 		}
 	}
 }
