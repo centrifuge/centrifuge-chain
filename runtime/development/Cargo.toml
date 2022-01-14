@@ -101,6 +101,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 
 runtime-common = { path = "../common", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = false }
+common-traits = { path = "../../libs/common-traits", default-features = false }
 primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }

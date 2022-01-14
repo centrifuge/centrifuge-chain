@@ -5,7 +5,9 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use common_types::{PermissionRoles, TimeProvider};
+use common_traits::{Permissions as PermissionsT, PreConditions};
+use common_types::{PermissionRoles, TimeProvider, UNION};
+use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -38,6 +40,7 @@ use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
 
+use pallet_restricted_tokens::TransferDetails;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -878,37 +881,38 @@ impl
 	}
 }
 
-pub struct RestrictedTokens;
-impl Contains<CurrencyId> for RestrictedTokens {
-	fn contains(currency: &CurrencyId) -> bool {
-		match currency {
-			CurrencyId::Tranche(_, _) => true,
-			CurrencyId::Usd => false,
-		}
-	}
-}
+pub struct RestrictedTokens<P>(PhantomData<P>);
+impl<P: PermissionsT<AccountId>> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>>
+	for RestrictedTokens<P>
+{
+	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+		let TransferDetails {
+			send,
+			recv,
+			id,
+			amount: _amount,
+		} = details;
 
-impl GetProperties for RestrictedTokens {
-	type From = CurrencyId;
-	type Property = (PoolId, TrancheId);
-
-	fn property(from: Self::From) -> Option<Self::Property> {
-		match from {
-			CurrencyId::Usd => None,
-			CurrencyId::Tranche(pool_id, tranche_id) => Some((pool_id, tranche_id)),
+		match id {
+			CurrencyId::Usd => true,
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has_permission(
+						pool_id,
+						recv,
+						PoolRole::TrancheInvestor(tranche_id, UNION),
+					)
+			}
 		}
 	}
 }
 
 impl pallet_restricted_tokens::Config for Runtime {
 	type Event = Event;
-	type PoolId = PoolId;
-	type TrancheId = TrancheId;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type Restricted = RestrictedTokens;
+	type PreConditions = RestrictedTokens<Permissions>;
 	type Fungibles = Tokens;
-	type Permissions = Permissions;
 }
 
 parameter_type_with_key! {

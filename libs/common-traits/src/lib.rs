@@ -28,6 +28,7 @@
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
+use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
@@ -161,9 +162,7 @@ pub trait Properties {
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 }
 
-pub trait GetProperties {
-	type From;
-	type Property;
-
-	fn property(from: Self::From) -> Option<Property>;
+#[impl_for_tuples(30)]
+pub trait PreConditions<T> {
+	fn check(t: &T) -> bool;
 }

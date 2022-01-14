@@ -1235,6 +1235,7 @@ name = "common-traits"
 version = "0.1.0"
 dependencies = [
  "frame-support",
+ "impl-trait-for-tuples",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -2004,6 +2005,7 @@ dependencies = [
 name = "development-runtime"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",

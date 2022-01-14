@@ -29,6 +29,25 @@ use common_traits::Permissions;
 use frame_support::traits::fungibles;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, MaxEncodedLen, RuntimeDebug, TypeInfo)]
+pub struct TransferDetails<AccountId, CurrencyId, Balance> {
+	send: AccountId,
+	recv: AccountId,
+	id: CurrencyId,
+	amount: Balance,
+}
+
+impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Balance> {
+	pub fn new(send: AccountId, recv: AccountId, id: CurrencyId, amount: Balance) -> Self {
+		TransferDetails {
+			send,
+			recv,
+			id,
+			amount,
+		}
+	}
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -47,11 +66,10 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// PoolId
-		type PoolId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
-
-		/// PoolId
-		type TrancheId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
+		/// Checks the pre conditions for every transfer
+		type PreConditions: PreConditions<
+			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
+		>;
 
 		/// The balance type
 		type Balance: Parameter
@@ -64,21 +82,11 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
-		type Restricted: Contains<CurrencyId>
-			+ GetProperties<From = Self::CurrencyId, Property = (Self::PoolId, Self::TranchId)>;
-
 		type Fungibles: fungibles::Mutate<Self::AccountId>
 			+ fungibles::Transfer<Self::AccountId>
 			+ fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ fungibles::Unbalanced<Self::AccountId>
 			+ fungibles::MutateHold<Self::AccountId>;
-
-		type Permissions: Permissions<
-			Self::AccountId,
-			Location = Self::PoolId,
-			Role = PoolRole,
-			Error = DispatchError,
-		>;
 	}
 
 	#[pallet::pallet]
@@ -107,8 +115,7 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		NoPermissionForRestrictedToken,
-		PropertiesOfCurrencyIdNotFound,
+		PreConditionsNotMet,
 	}
 
 	#[pallet::call]
@@ -119,31 +126,21 @@ pub mod pallet {
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] amount: T::Balance,
-			keep_alive: bool,
 		) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
-			if T::Restricted::contains(currency_id) {
-				if let Some((pool_id, tranche_id)) = T::Restricted::property(currency_id) {
-					ensure!(
-						T::Permissions::has_permission(
-							pool_id,
-							from.clone(),
-							PoolRole::TrancheInvestor(tranche_id, UNION)
-						) && T::Permissions::has_permission(
-							pool_id,
-							to.clone(),
-							PoolRole::TrancheInvestor(tranche_id, UNION)
-						),
-						Error::<T>::NoPermissionForRestrictedToken
-					);
-				} else {
-					Error::<T>::PropertiesOfCurrencyIdNotFound
-				}
-			}
+			ensure!(
+				T::PreConditions::check(TransferDetails::new(TransferDetails::new(
+					from.clone(),
+					to.clone(),
+					currency_id,
+					amount
+				))),
+				Error::<T>::PreConditionsNotMet
+			);
 
-			T::Fungibles::transfer(currency_id, from, to, amount, keep_alive)?;
+			T::Fungibles::transfer(currency_id, from, to, amount, false)?;
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -152,6 +149,71 @@ pub mod pallet {
 				amount,
 			});
 
+			Ok(())
+		}
+
+		#[pallet::weight(T::WeightInfo::transfer_keep_alive())]
+		pub fn transfer_keep_alive(
+			origin: OriginFor<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+			currency_id: T::CurrencyId,
+			#[pallet::compact] amount: T::Balance,
+		) -> DispatchResultWithPostInfo {
+			let from = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(dest)?;
+
+			ensure!(
+				T::PreConditions::check(TransferDetails::new(TransferDetails::new(
+					from.clone(),
+					to.clone(),
+					currency_id,
+					amount
+				))),
+				Error::<T>::PreConditionsNotMet
+			);
+
+			T::Fungibles::transfer(currency_id, from, to, amount, true)?;
+
+			Self::deposit_event(Event::Transfer {
+				currency_id,
+				from,
+				to,
+				amount,
+			});
+
+			Ok(().into())
+		}
+
+		#[pallet::weight(100)]
+		pub fn transfer_all(
+			origin: OriginFor<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+			currency_id: T::CurrencyId,
+			keep_alive: bool,
+		) -> DispatchResult {
+			let from = ensure_signed(origin)?;
+			let to = T::Lookup::lookup(dest)?;
+
+			let reducible_balance = T::Fungibles::reducible_balance(currency_id, &from, keep_alive);
+
+			ensure!(
+				T::PreConditions::check(TransferDetails::new(TransferDetails::new(
+					from.clone(),
+					to.clone(),
+					currency_id,
+					amount
+				))),
+				Error::<T>::PreConditionsNotMet
+			);
+
+			T::Fungibles::transfer(currency_id, &from, &to, reducible_balance, keep_alive)?;
+
+			Self::deposit_event(Event::Transfer {
+				currency_id,
+				from,
+				to,
+				amount: reducible_balance,
+			});
 			Ok(())
 		}
 
@@ -193,7 +255,8 @@ pub mod pallet {
 				.checked_add(new_reserved)
 				.ok_or(Err(ArithmeticError::Overflow))?;
 
-			T::Fungibles::set_balance(currency_id, who.clone(), 0)?;
+			let old_reserved = T::Fungibles::balance_on_hold(currency_id, who.clone());
+			T::Fungibles::release(currency_id, who.clone(), old_reserved, false)?;
 			T::Fungibles::set_balance(currency_id, who.clone(), new_total)?;
 			T::Fungibles::hold(currency_id, who.clone(), new_reserved)?;
 

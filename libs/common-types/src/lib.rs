@@ -16,7 +16,7 @@
 #![feature(duration_consts_2)]
 
 use codec::{Decode, Encode};
-use common_traits::Properties;
+use common_traits::{PreConditions, Properties};
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
@@ -285,5 +285,21 @@ impl<T> TypeInfo for TimeProvider<T> {
 			.path(Path::new("TimeProvider", module_path!()))
 			.docs(&["A wrapper around a T that provides a trait Time implementation. Should be filtered out."])
 			.composite(Fields::unit())
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Always;
+impl PreConditions<T> for Always {
+	fn check(t: &T) -> bool {
+		true
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Never;
+impl PreConditions<T> for Never {
+	fn check(t: &T) -> bool {
+		false
 	}
 }
