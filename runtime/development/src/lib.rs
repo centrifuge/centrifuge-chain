@@ -878,6 +878,39 @@ impl
 	}
 }
 
+pub struct RestrictedTokens;
+impl Contains<CurrencyId> for RestrictedTokens {
+	fn contains(currency: &CurrencyId) -> bool {
+		match currency {
+			CurrencyId::Tranche(_, _) => true,
+			CurrencyId::Usd => false,
+		}
+	}
+}
+
+impl GetProperties for RestrictedTokens {
+	type From = CurrencyId;
+	type Property = (PoolId, TrancheId);
+
+	fn property(from: Self::From) -> Option<Self::Property> {
+		match from {
+			CurrencyId::Usd => None,
+			CurrencyId::Tranche(pool_id, tranche_id) => Some((pool_id, tranche_id)),
+		}
+	}
+}
+
+impl pallet_restricted_tokens::Config for Runtime {
+	type Event = Event;
+	type PoolId = PoolId;
+	type TrancheId = TrancheId;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type Restricted = RestrictedTokens;
+	type Fungibles = Tokens;
+	type Permissions = Permissions;
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		// every currency has a zero existential deposit

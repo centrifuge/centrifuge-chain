@@ -14,8 +14,11 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 serde = { version = "1.0.102", optional = true }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
 
+common-traits = { path = "../../libs/common-traits", default-features = false }
+
 [features]
 default = ["std"]
 std = [
     "serde",
+    "common-traits/std"
 ]

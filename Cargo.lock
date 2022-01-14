@@ -2048,6 +2048,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
+ "pallet-restricted-tokens",
  "pallet-scheduler",
  "pallet-session",
  "pallet-society",
@@ -7585,6 +7586,7 @@ dependencies = [
 name = "primitives-tokens"
 version = "1.0.0"
 dependencies = [
+ "common-traits",
  "parity-scale-codec",
  "scale-info",
  "serde",
