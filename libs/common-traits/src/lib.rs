@@ -21,9 +21,12 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
+use frame_support::RuntimeDebug;
+use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
@@ -161,9 +164,25 @@ pub trait PreConditions<T> {
 	fn check(t: &T) -> bool;
 }
 
-#[impl_for_tuples(10)]
+#[impl_for_tuples(1, 10)]
 impl<T> PreConditions<T> for Tuple {
 	fn check(t: &T) -> bool {
 		for_tuples!( #( Tuple::check(t) )&* )
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Always;
+impl<T> PreConditions<T> for Always {
+	fn check(_t: &T) -> bool {
+		true
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Never;
+impl<T> PreConditions<T> for Never {
+	fn check(_t: &T) -> bool {
+		false
 	}
 }

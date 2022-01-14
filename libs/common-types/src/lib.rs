@@ -117,6 +117,11 @@ where
 	}
 }
 
+/// The implementation of trait Properties for our PermissionsRoles does not care which Moment
+/// is passed to the PoolRole::TrancheInvestor(TrancheId, Moment) variant.
+/// This UNION shall reflect that and explain to the reader why it is passed here.
+pub const UNION: u64 = 0;
+
 impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Properties
 	for PermissionRoles<Now, MaxTranches, MinDelay, TrancheId, Moment>
 where

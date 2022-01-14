@@ -11,9 +11,8 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate frame_system;
-
-///! A crate that defines a simple permissions logic for our infrastructure.
+///! A crate that allows for checking of preconditions before sending tokens.
+///! Mimics ORML-tokens Call-Api.
 pub use pallet::*;
 
 #[cfg(test)]
@@ -25,16 +24,18 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-use common_traits::Permissions;
-use frame_support::traits::fungibles;
+use frame_support::traits::fungibles::{
+	Inspect, InspectHold, Mutate, MutateHold, Transfer, Unbalanced,
+};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+use scale_info::TypeInfo;
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, MaxEncodedLen, RuntimeDebug, TypeInfo)]
 pub struct TransferDetails<AccountId, CurrencyId, Balance> {
-	send: AccountId,
-	recv: AccountId,
-	id: CurrencyId,
-	amount: Balance,
+	pub send: AccountId,
+	pub recv: AccountId,
+	pub id: CurrencyId,
+	pub amount: Balance,
 }
 
 impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Balance> {
@@ -51,13 +52,10 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use common_traits::GetProperties;
-	use common_types::{PoolRole, UNION};
-	use frame_benchmarking::BenchmarkParameter::k;
+	use common_traits::PreConditions;
 	use frame_support::scale_info::TypeInfo;
-	use frame_support::sp_runtime::traits::AtLeast32BitUnsigned;
+	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup};
 	use frame_support::sp_runtime::ArithmeticError;
-	use frame_support::traits::Contains;
 	use frame_system::pallet_prelude::*;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -82,11 +80,11 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
-		type Fungibles: fungibles::Mutate<Self::AccountId>
-			+ fungibles::Transfer<Self::AccountId>
-			+ fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ fungibles::Unbalanced<Self::AccountId>
-			+ fungibles::MutateHold<Self::AccountId>;
+		type Fungibles: Mutate<Self::AccountId>
+			+ Transfer<Self::AccountId>
+			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ Unbalanced<Self::AccountId>
+			+ MutateHold<Self::AccountId>;
 	}
 
 	#[pallet::pallet]
@@ -131,7 +129,7 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			ensure!(
-				T::PreConditions::check(TransferDetails::new(
+				T::PreConditions::check(&TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
@@ -140,7 +138,7 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			T::Fungibles::transfer(currency_id, from, to, amount, false)?;
+			T::Fungibles::transfer(currency_id, &from, &to, amount, false)?;
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -152,7 +150,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(T::WeightInfo::transfer_keep_alive())]
+		#[pallet::weight(100)]
 		pub fn transfer_keep_alive(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -163,7 +161,7 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			ensure!(
-				T::PreConditions::check(TransferDetails::new(
+				T::PreConditions::check(&TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
@@ -172,7 +170,7 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			T::Fungibles::transfer(currency_id, from, to, amount, true)?;
+			T::Fungibles::transfer(currency_id, &from, &to, amount, false)?;
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -197,11 +195,11 @@ pub mod pallet {
 			let reducible_balance = T::Fungibles::reducible_balance(currency_id, &from, keep_alive);
 
 			ensure!(
-				T::PreConditions::check(TransferDetails::new(
+				T::PreConditions::check(&TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
-					amount
+					reducible_balance
 				)),
 				Error::<T>::PreConditionsNotMet
 			);
@@ -217,8 +215,9 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(100)]
 		pub fn force_transfer(
-			#[pallet::weight(100)] origin: OriginFor<T>,
+			origin: OriginFor<T>,
 			source: <T::Lookup as StaticLookup>::Source,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
@@ -228,7 +227,7 @@ pub mod pallet {
 			let from = T::Lookup::lookup(source)?;
 			let to = T::Lookup::lookup(dest)?;
 
-			T::Fungibles::transfer(currency_id, from, to, amount, false)?;
+			T::Fungibles::transfer(currency_id, &from, &to, amount, false)?;
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -252,13 +251,13 @@ pub mod pallet {
 			let who = T::Lookup::lookup(who)?;
 
 			let new_total = new_free
-				.checked_add(new_reserved)
-				.ok_or(Err(ArithmeticError::Overflow))?;
+				.checked_add(&new_reserved)
+				.ok_or(ArithmeticError::Overflow)?;
 
-			let old_reserved = T::Fungibles::balance_on_hold(currency_id, who.clone());
-			T::Fungibles::release(currency_id, who.clone(), old_reserved, false)?;
-			T::Fungibles::set_balance(currency_id, who.clone(), new_total)?;
-			T::Fungibles::hold(currency_id, who.clone(), new_reserved)?;
+			let old_reserved = T::Fungibles::balance_on_hold(currency_id, &who);
+			T::Fungibles::release(currency_id, &who, old_reserved, false)?;
+			T::Fungibles::set_balance(currency_id, &who, new_total)?;
+			T::Fungibles::hold(currency_id, &who, new_reserved)?;
 
 			Self::deposit_event(Event::BalanceSet {
 				currency_id,

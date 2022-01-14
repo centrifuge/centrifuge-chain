@@ -5,7 +5,9 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use common_types::{PermissionRoles, TimeProvider};
+use common_traits::Permissions as PermissionsT;
+use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -23,7 +25,6 @@ use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
-use pallet_loans::PoolRole;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -38,6 +39,8 @@ use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
 
+use common_traits::PreConditions;
+use pallet_restricted_tokens::TransferDetails;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -734,7 +737,7 @@ impl pallet_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
-	type Tokens = Tokens;
+	type Tokens = OrmlTokens;
 	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
@@ -928,16 +931,17 @@ impl
 }
 
 pub struct RestrictedTokens<P>(PhantomData<P>);
-impl<P: PermissionsT<AccountId>> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>>
-	for RestrictedTokens<P>
+impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
+where
+	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
 {
-	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+	fn check(details: &TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		let TransferDetails {
 			send,
 			recv,
 			id,
 			amount: _amount,
-		} = details;
+		} = details.clone();
 
 		match id {
 			CurrencyId::Usd => true,
@@ -958,7 +962,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreConditions = RestrictedTokens<Permissions>;
-	type Fungibles = Tokens;
+	type Fungibles = OrmlTokens;
 }
 
 parameter_type_with_key! {
@@ -1043,7 +1047,7 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
-		Tokens: pallet-restricted-tokens::{Pallet, Call, Event<T>}
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
