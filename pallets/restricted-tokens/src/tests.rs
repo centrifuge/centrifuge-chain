@@ -9,3 +9,36 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+use super::*;
+use crate::mock::*;
+
+#[test]
+fn transfer_works() {}
+
+#[test]
+fn transfer_fails() {}
+
+#[test]
+fn transfer_keep_alive_works() {}
+
+#[test]
+fn transfer_keep_alive_fails() {}
+
+#[test]
+fn transfer_all_works() {}
+
+#[test]
+fn transfer_all_fails() {}
+
+#[test]
+fn force_transfer_works() {}
+
+#[test]
+fn force_transfer_fails() {}
+
+#[test]
+fn set_balance_works() {}
+
+#[test]
+fn set_balance_fails() {}
