@@ -514,7 +514,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::LiquidityAdmin, &who),
+				T::Permission::has_permission(pool_id, who.clone(), PoolRole::LiquidityAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -535,7 +535,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -557,7 +557,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				Self::has_role_in_pool(pool_id, PoolRole::PoolAdmin, &who),
+				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
 
@@ -785,8 +785,15 @@ pub mod pallet {
 				pool.last_epoch_closed = now;
 
 				// Set available reserve to 0 to disable originations while the epoch is closed but not executed
-				pool.last_epoch_closed = current_epoch_end;
+				pool.available_reserve = Zero::zero();
+				let epoch_reserve = pool.total_reserve;
+
+				let (nav_amount, nav_last_updated) =
 					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+				ensure!(
+					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
+					Error::<T>::NAVTooOld
+				);
 				let nav = nav_amount.into();
 
 				if pool
