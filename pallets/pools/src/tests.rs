@@ -52,7 +52,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let full_solution = pool
 			.tranches
 			.iter()
-			.map(|_| (Perquintill::one(), Perquintill::one()))
+			.map(|_| TrancheSolution { invest_fulfillment: Perquintill::one(), redeem_fulfillment: Perquintill::one() })
 			.collect::<Vec<_>>();
 
 		assert_noop!(
@@ -122,7 +122,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let full_solution = pool
 			.tranches
 			.iter()
-			.map(|_| (Perquintill::one(), Perquintill::one()))
+			.map(|_| TrancheSolution { invest_fulfillment: Perquintill::one(), redeem_fulfillment: Perquintill::one() })
 			.collect::<Vec<_>>();
 
 		assert_noop!(
@@ -206,7 +206,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		let full_solution = pool
 			.tranches
 			.iter()
-			.map(|_| (Perquintill::one(), Perquintill::one()))
+			.map(|_| TrancheSolution { invest_fulfillment: Perquintill::one(), redeem_fulfillment: Perquintill::one() })
 			.collect::<Vec<_>>();
 
 		assert_noop!(
@@ -281,7 +281,7 @@ fn pool_constraints_pass() {
 		let full_solution = pool
 			.tranches
 			.iter()
-			.map(|_| (Perquintill::one(), Perquintill::one()))
+			.map(|_| TrancheSolution { invest_fulfillment: Perquintill::one(), redeem_fulfillment: Perquintill::one() })
 			.collect::<Vec<_>>();
 
 		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
@@ -317,11 +317,27 @@ fn epoch() {
 		)
 		.unwrap();
 
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
 		// Initialize pool with initial investments
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
 		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
 			0,
-			vec![(10, 10), (0, 0)],
+			vec![TrancheInput {
+				interest_per_sec: senior_interest_rate,
+				min_risk_buffer: Perquintill::from_percent(10),
+				seniority: None,
+			}, TrancheInput {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_percent(0),
+				seniority: None,
+			}],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -495,10 +511,22 @@ fn collect_tranche_tokens() {
 		.unwrap();
 
 		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
 		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
 			0,
-			vec![(10, 10), (0, 0)],
+			vec![TrancheInput {
+				interest_per_sec: senior_interest_rate,
+				min_risk_buffer: Perquintill::from_percent(10),
+				seniority: None,
+			}, TrancheInput {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_percent(0),
+				seniority: None,
+			}],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));

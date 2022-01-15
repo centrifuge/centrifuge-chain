@@ -27,6 +27,7 @@ use runtime_common::CFG as CURRENCY;
 use sp_arithmetic::traits::Zero;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::vec;
+use pallet_pools::TrancheInput;
 
 type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
 pub(crate) fn set_role<T: pallet_loans::Config>(
@@ -111,7 +112,15 @@ pub(crate) fn create_pool<T>(
 	assert_ok!(PoolPallet::<T>::create_pool(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,
-		vec![(10, 10), (0, 0)],
+		vec![TrancheInput {
+			interest_per_sec: 0,
+			min_risk_buffer: 0,
+			seniority: None,
+		}, TrancheInput {
+			interest_per_sec: 0,
+			min_risk_buffer: 0,
+			seniority: None,
+		}],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
 	));
