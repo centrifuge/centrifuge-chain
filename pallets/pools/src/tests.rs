@@ -10,7 +10,7 @@ use sp_runtime::Perquintill;
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
 		let tranches: Vec<_> = std::iter::repeat(Tranche {
-			epoch_redeem: 10,
+			outstanding_redeem_orders: 10,
 			..Default::default()
 		})
 		.take(4)
@@ -22,8 +22,8 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_invest,
-				redeem: tranche.epoch_redeem,
+				supply: tranche.outstanding_invest_orders,
+				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
 
@@ -34,7 +34,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			closing_epoch: None,
+			submission_period_epoch: None,
 			max_reserve: 40,
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
@@ -66,23 +66,23 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			epoch_invest: 10,
-			epoch_redeem: 10,
+			outstanding_invest_orders: 10,
+			outstanding_redeem_orders: 10,
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			epoch_invest: Zero::zero(),
-			epoch_redeem: 10,
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: 10,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			epoch_invest: Zero::zero(),
-			epoch_redeem: 10,
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: 10,
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			epoch_invest: Zero::zero(),
-			epoch_redeem: 10,
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: 10,
 			..Default::default()
 		};
 		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
@@ -92,8 +92,8 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_invest,
-				redeem: tranche.epoch_redeem,
+				supply: tranche.outstanding_invest_orders,
+				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
 
@@ -104,7 +104,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			closing_epoch: None,
+			submission_period_epoch: None,
 			max_reserve: 5,
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
@@ -146,26 +146,26 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
-			epoch_invest: 100,
-			epoch_redeem: Zero::zero(),
+			outstanding_invest_orders: 100,
+			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.2),
-			epoch_invest: Zero::zero(),
-			epoch_redeem: 20,
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.1),
-			epoch_invest: Zero::zero(),
-			epoch_redeem: Zero::zero(),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_risk_buffer: Perquintill::zero(),
-			epoch_invest: Zero::zero(),
-			epoch_redeem: Zero::zero(),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
@@ -176,8 +176,8 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_invest,
-				redeem: tranche.epoch_redeem,
+				supply: tranche.outstanding_invest_orders,
+				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
 
@@ -188,7 +188,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			closing_epoch: None,
+			submission_period_epoch: None,
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
@@ -221,26 +221,26 @@ fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_risk_buffer: Perquintill::zero(),
-			epoch_invest: Zero::zero(),
-			epoch_redeem: Zero::zero(),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.05),
-			epoch_invest: Zero::zero(),
-			epoch_redeem: Zero::zero(),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.1),
-			epoch_invest: Zero::zero(),
-			epoch_redeem: 30,
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: 30,
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.2),
-			epoch_invest: 100,
-			epoch_redeem: Zero::zero(),
+			outstanding_invest_orders: 100,
+			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
@@ -251,8 +251,8 @@ fn pool_constraints_pass() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_invest,
-				redeem: tranche.epoch_redeem,
+				supply: tranche.outstanding_invest_orders,
+				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
 
@@ -263,7 +263,7 @@ fn pool_constraints_pass() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			closing_epoch: None,
+			submission_period_epoch: None,
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
@@ -336,13 +336,13 @@ fn epoch() {
 				.as_bytes()
 				.to_vec()
 		));
-		assert_ok!(Pools::order_supply(
+		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
 		));
-		assert_ok!(Pools::order_supply(
+		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
 			1,
@@ -417,7 +417,7 @@ fn epoch() {
 
 		// Senior investor tries to redeem
 		next_block();
-		assert_ok!(Pools::order_redeem(
+		assert_ok!(Pools::update_redeem_order(
 			senior_investor.clone(),
 			0,
 			1,
@@ -436,7 +436,7 @@ fn epoch() {
 		.unwrap();
 		assert_eq!(pool.tranches[0].debt, 0);
 		assert!(pool.tranches[0].reserve > 500 * CURRENCY);
-		assert_eq!(pool.tranches[1].epoch_redeem, 0);
+		assert_eq!(pool.tranches[1].outstanding_redeem_orders, 0);
 		assert_eq!(pool.tranches[1].debt, 0);
 		assert!(pool.tranches[1].reserve > 250 * CURRENCY);
 		assert_eq!(pool.available_reserve, pool.total_reserve);
@@ -487,13 +487,13 @@ fn collect_tranche_tokens() {
 		));
 
 		// Nothing invested yet
-		assert_ok!(Pools::order_supply(
+		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
 		));
-		assert_ok!(Pools::order_supply(
+		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
 			1,
@@ -514,7 +514,7 @@ fn collect_tranche_tokens() {
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[1].epoch_invest, 0);
+		assert_eq!(pool.tranches[1].outstanding_invest_orders, 0);
 
 		let order = Pools::order(
 			TrancheLocator {
@@ -526,7 +526,7 @@ fn collect_tranche_tokens() {
 		assert_eq!(order.supply, 0);
 
 		assert_noop!(
-			Pools::order_supply(senior_investor.clone(), 0, 0, 10 * CURRENCY),
+			Pools::update_invest_order(senior_investor.clone(), 0, 0, 10 * CURRENCY),
 			Error::<Test>::CollectRequired
 		);
 
@@ -537,14 +537,14 @@ fn collect_tranche_tokens() {
 			1
 		));
 
-		assert_ok!(Pools::order_supply(
+		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
 			0,
 			10 * CURRENCY
 		));
 
-		assert_ok!(Pools::order_redeem(
+		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
 			0,
