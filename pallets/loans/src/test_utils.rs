@@ -41,8 +41,8 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 }
 
 parameter_types! {
-	pub const JuniorTrancheId: u8 = 0;
-	pub const SeniorTrancheId: u8 = 1;
+	pub const JuniorTrancheId: u8 = 1;
+	pub const SeniorTrancheId: u8 = 0;
 }
 
 pub(crate) fn create_nft_class<T>(
@@ -111,7 +111,7 @@ pub(crate) fn create_pool<T>(
 	assert_ok!(PoolPallet::<T>::create_pool(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,
-		vec![(0, 0), (10, 10)],
+		vec![(10, 10), (0, 0)],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
 	));

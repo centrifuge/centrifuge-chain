@@ -1176,7 +1176,7 @@ pub mod pallet {
 			// At least one tranche must exist, and the first tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(
-				new_tranches.first() == Some(&(0, 0)),
+				new_tranches.last() == Some(&(0, 0)),
 				Error::<T>::NoJuniorTranche
 			);
 
@@ -1336,8 +1336,7 @@ pub mod pallet {
 			let mut buffer_value = total_value;
 			for (tranche_value, min_risk_buffer) in current_tranche_values
 				.iter()
-				.rev() // reversed to senior => junior
-				.zip(min_risk_buffers.iter().copied().rev())
+				.zip(min_risk_buffers.iter().copied())
 			{
 				buffer_value = buffer_value
 					.checked_sub(tranche_value)
@@ -1438,7 +1437,6 @@ pub mod pallet {
 			let tranche_ratios: Vec<_> = execution
 				.iter()
 				.zip(&mut epoch.tranches.iter())
-				.rev()
 				.map(|((invest, redeem), tranche)| {
 					tranche
 						.value
@@ -1457,7 +1455,6 @@ pub mod pallet {
 			let tranche_assets = execution
 				.iter()
 				.zip(&mut pool.tranches)
-				.rev()
 				.map(|((invest, redeem), tranche)| {
 					Self::update_tranche_debt(tranche)?;
 					tranche
@@ -1483,15 +1480,15 @@ pub mod pallet {
 			let nav = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?.0.into();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
-			let junior_tranche_id = 0;
-			let tranches_senior_to_junior = pool.tranches.iter_mut().rev();
-			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
+			let last_tranche_id = pool.tranches.len() - 1;
+			let tranches_junior_to_senior = pool.tranches.iter_mut();
+			for (((tranche_id, tranche), ratio), value) in tranches_junior_to_senior
 				.enumerate()
 				.zip(tranche_ratios.iter())
 				.zip(tranche_assets.iter())
 			{
 				tranche.ratio = *ratio;
-				if tranche_id == junior_tranche_id {
+				if tranche_id == last_tranche_id { // junior tranche
 					tranche.debt = remaining_nav;
 					tranche.reserve = remaining_reserve;
 				} else {
@@ -1566,8 +1563,8 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
-				for tranche in tranches_senior_to_junior {
+				let tranches_junior_to_senior = &mut pool.tranches.iter_mut();
+				for tranche in tranches_junior_to_senior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
 
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
@@ -1615,7 +1612,7 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
+				let tranches_senior_to_junior = &mut pool.tranches.iter_mut();
 				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
 

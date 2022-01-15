@@ -243,7 +243,7 @@ fn pool_constraints_pass() {
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
-		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
+		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
 
 		let epoch_tranches = tranches
 			.iter()
@@ -310,14 +310,14 @@ fn epoch() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0, u64::MAX),
+			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1, u64::MAX),
+			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
@@ -325,7 +325,7 @@ fn epoch() {
 		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
 			0,
-			vec![(0, 0), (10, 10)],
+			vec![(10, 10), (0, 0)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -339,13 +339,13 @@ fn epoch() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			0,
+			JUNIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			1,
+			SENIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
 
@@ -373,32 +373,33 @@ fn epoch() {
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			1,
+		  SENIOR_TRANCHE_ID,
 			1
 		));
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[1].interest_per_sec,
+			pool.tranches[SENIOR_TRANCHE_ID as usize].interest_per_sec,
 			Rate::from_inner(1_000000003170979198376458650)
 		);
-		assert_eq!(pool.tranches[0].debt, 0);
-		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY);
-		assert_eq!(pool.tranches[1].debt, 0);
-		assert_eq!(pool.tranches[1].reserve, 500 * CURRENCY);
-		assert_eq!(pool.tranches[1].ratio, Perquintill::from_float(0.5));
 		assert_eq!(pool.available_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1000 * CURRENCY);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve, 500 * CURRENCY);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].ratio, Perquintill::from_float(0.5));
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].ratio, Perquintill::from_float(0.5));
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve, 500 * CURRENCY);
 
 		// Borrow some money
 		next_block();
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[0].debt, 250 * CURRENCY);
-		assert_eq!(pool.tranches[0].reserve, 250 * CURRENCY);
-		assert_eq!(pool.tranches[1].debt, 250 * CURRENCY);
-		assert_eq!(pool.tranches[1].reserve, 250 * CURRENCY);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 250 * CURRENCY);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve, 250 * CURRENCY);
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 250 * CURRENCY);
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve, 250 * CURRENCY);
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 500 * CURRENCY);
 
@@ -408,10 +409,10 @@ fn epoch() {
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[0].debt, 0);
-		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY); // not yet rebalanced
-		assert_eq!(pool.tranches[1].debt, 0);
-		assert!(pool.tranches[1].reserve > 500 * CURRENCY); // there's interest in here now
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve, 500 * CURRENCY); // not yet rebalanced
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
+		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY); // there's interest in here now
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
 
@@ -420,7 +421,7 @@ fn epoch() {
 		assert_ok!(Pools::update_redeem_order(
 			senior_investor.clone(),
 			0,
-			1,
+			SENIOR_TRANCHE_ID,
 			250 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
@@ -429,19 +430,19 @@ fn epoch() {
 		let senior_epoch = Pools::epoch(
 			TrancheLocator {
 				pool_id: 0,
-				tranche_id: 1,
+				tranche_id: SENIOR_TRANCHE_ID,
 			},
 			pool.last_epoch_executed,
 		)
 		.unwrap();
-		assert_eq!(pool.tranches[0].debt, 0);
-		assert!(pool.tranches[0].reserve > 500 * CURRENCY);
-		assert_eq!(pool.tranches[1].outstanding_redeem_orders, 0);
-		assert_eq!(pool.tranches[1].debt, 0);
-		assert!(pool.tranches[1].reserve > 250 * CURRENCY);
+		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
+		assert!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY);
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_redeem_orders, 0);
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
 		assert_eq!(pool.available_reserve, pool.total_reserve);
 		assert!(pool.total_reserve > 750 * CURRENCY);
 		assert!(pool.total_reserve < 800 * CURRENCY);
+		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY);
 		assert_eq!(
 			pool.total_reserve + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
@@ -466,14 +467,14 @@ fn collect_tranche_tokens() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0, u64::MAX),
+			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1, u64::MAX),
+			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
@@ -481,7 +482,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
 			0,
-			vec![(0, 0), (10, 10)],
+			vec![(10, 10), (0, 0)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -490,13 +491,13 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			0,
+			JUNIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			1,
+			SENIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
 
@@ -508,46 +509,46 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			0,
+			JUNIOR_TRANCHE_ID,
 			1
 		));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[1].outstanding_invest_orders, 0);
+		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_invest_orders, 0);
 
 		let order = Pools::order(
 			TrancheLocator {
 				pool_id: 0,
-				tranche_id: 1,
+				tranche_id: SENIOR_TRANCHE_ID,
 			},
 			0,
 		);
 		assert_eq!(order.invest, 0);
 
 		assert_noop!(
-			Pools::update_invest_order(senior_investor.clone(), 0, 0, 10 * CURRENCY),
+			Pools::update_invest_order(senior_investor.clone(), 0, SENIOR_TRANCHE_ID, 10 * CURRENCY),
 			Error::<Test>::CollectRequired
 		);
 
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			0,
+			SENIOR_TRANCHE_ID,
 			1
 		));
 
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			0,
+			SENIOR_TRANCHE_ID,
 			10 * CURRENCY
 		));
 
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			0,
+			JUNIOR_TRANCHE_ID,
 			10 * CURRENCY
 		));
 
@@ -555,7 +556,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			0,
+			JUNIOR_TRANCHE_ID,
 			2
 		));
 	});
@@ -577,7 +578,7 @@ fn test_approve_and_remove_roles() {
 		assert_ok!(Pools::create_pool(
 			Origin::signed(pool_owner),
 			0,
-			vec![(0, 0), (10, 10)],
+			vec![(10, 10), (0, 0)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
