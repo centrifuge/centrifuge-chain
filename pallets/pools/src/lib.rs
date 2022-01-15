@@ -885,7 +885,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn solve_epoch(
+		pub fn submit_solution(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			solution: Vec<(Perquintill, Perquintill)>,

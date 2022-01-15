@@ -190,16 +190,16 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Emits when a pool is initiated
-		PoolInitiated(PoolIdOf<T>),
+		PoolInitialised(PoolIdOf<T>),
 
 		/// emits when a new loan is issued for a given
-		LoanIssued(PoolIdOf<T>, T::LoanId, AssetOf<T>),
+		LoanCreated(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when a loan is closed
 		LoanClosed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
-		/// emits when the loan is activated
-		LoanPriceSet(PoolIdOf<T>, T::LoanId),
+		/// emits when the loan is priced
+		LoanPriced(PoolIdOf<T>, T::LoanId),
 
 		/// emits when some amount is borrowed
 		LoanAmountBorrowed(PoolIdOf<T>, T::LoanId, T::Amount),
@@ -331,20 +331,20 @@ pub mod pallet {
 					last_updated: now,
 				},
 			);
-			Self::deposit_event(Event::<T>::PoolInitiated(pool_id));
+			Self::deposit_event(Event::<T>::PoolInitialised(pool_id));
 			Ok(())
 		}
 
-		/// Issues a new loan against the asset provided
+		/// Create a new loan against the asset provided
 		///
-		/// `issue_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
+		/// `create_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
 		/// caller *must* be the owner of the asset.
 		/// LoanStatus is set to issued and needs to be activated by an admin origin to start borrowing.
 		/// Loan cannot be closed until the status has changed to Active.
 		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
-		#[pallet::weight(<T as Config>::WeightInfo::issue_loan())]
+		#[pallet::weight(<T as Config>::WeightInfo::create_loan())]
 		#[transactional]
-		pub fn issue_loan(
+		pub fn create_loan(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			asset: AssetOf<T>,
@@ -352,7 +352,7 @@ pub mod pallet {
 			// ensure borrower is whitelisted.
 			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
 			let loan_id = Self::issue(pool_id, owner, asset)?;
-			Self::deposit_event(Event::<T>::LoanIssued(pool_id, loan_id, asset));
+			Self::deposit_event(Event::<T>::LoanCreated(pool_id, loan_id, asset));
 			Ok(())
 		}
 
@@ -454,7 +454,7 @@ pub mod pallet {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			Self::price(pool_id, loan_id, rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::LoanPriceSet(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::LoanPriced(pool_id, loan_id));
 			Ok(())
 		}
 
@@ -494,15 +494,15 @@ pub mod pallet {
 		/// Since written off loans keep written off group index,
 		/// we only allow adding new write off groups.
 		/// Overdue days doesn't need to be in the sorted order.
-		#[pallet::weight(<T as Config>::WeightInfo::add_write_off_group_to_pool())]
-		pub fn add_write_off_group_to_pool(
+		#[pallet::weight(<T as Config>::WeightInfo::add_write_off_group())]
+		pub fn add_write_off_group(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
-			let index = Self::add_write_off_group(pool_id, group)?;
+			let index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
 		}

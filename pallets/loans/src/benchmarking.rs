@@ -261,7 +261,7 @@ where
 	<T as LoanConfig>::Rate: From<Rate>,
 {
 	for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
-		LoansPallet::<T>::add_write_off_group_to_pool(
+		LoansPallet::<T>::add_write_off_group(
 			RawOrigin::Signed(risk_admin.clone()).into(),
 			pool_id,
 			WriteOffGroup {
@@ -304,14 +304,14 @@ benchmarks! {
 		assert_eq!(pool_id, got_pool_id);
 	}
 
-	issue_loan {
+	create_loan {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, asset)
 	verify {
 		// assert loan issue event
 		let loan_id: T::LoanId = 1u128.into();
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanIssued(pool_id, loan_id, asset).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanCreated(pool_id, loan_id, asset).into());
 
 		// asset owner must be loan account
 		expect_asset_owner::<T>(asset, loan_account);
@@ -324,7 +324,7 @@ benchmarks! {
 	price_loan {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_type = LoanType::BulletLoan(BulletLoan::new(
 			// advance rate 80%
 			Rate::saturating_from_rational(80, 100).into(),
@@ -344,14 +344,14 @@ benchmarks! {
 		let loan_id: T::LoanId = 1u128.into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanPriceSet(pool_id, loan_id).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::LoanPriced(pool_id, loan_id).into());
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan_info.loan_type, loan_type);
 		assert_eq!(loan_info.status, LoanStatus::Active);
 		assert_eq!(loan_info.rate_per_sec, rp);
 	}
 
-	add_write_off_group_to_pool {
+	add_write_off_group {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let write_off_group = WriteOffGroup {
 			// 10%
@@ -367,7 +367,7 @@ benchmarks! {
 	initial_borrow {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
@@ -387,7 +387,7 @@ benchmarks! {
 	further_borrows {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(50 * CURRENCY).into();
@@ -413,7 +413,7 @@ benchmarks! {
 	repay {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
@@ -444,7 +444,7 @@ benchmarks! {
 	write_off_loan {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
@@ -467,7 +467,7 @@ benchmarks! {
 	admin_write_off_loan {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
@@ -490,7 +490,7 @@ benchmarks! {
 	repay_and_close {
 		let (_pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
@@ -527,7 +527,7 @@ benchmarks! {
 	write_off_and_close {
 		let (_pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
@@ -563,7 +563,7 @@ benchmarks! {
 	nav_update_single_loan {
 		let (_pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
-		LoansPallet::<T>::issue_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+		LoansPallet::<T>::create_loan(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();

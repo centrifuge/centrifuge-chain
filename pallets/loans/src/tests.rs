@@ -101,7 +101,7 @@ where
 	let asset_class = create_nft_class::<T>(2, borrower.clone(), None);
 	let instance_id = mint_nft::<T>(borrower.clone(), asset_class);
 	let asset = Asset(asset_class, instance_id);
-	let res = Loan::issue_loan(Origin::signed(borrower), pool_id, asset);
+	let res = Loan::create_loan(Origin::signed(borrower), pool_id, asset);
 	assert_ok!(res);
 
 	// post issue checks
@@ -113,7 +113,7 @@ where
 
 	// event should be emitted
 	assert_last_event::<MockRuntime, <MockRuntime as pallet_loans::Config>::Event>(
-		LoanEvent::LoanIssued(pool_id, loan_id, asset).into(),
+		LoanEvent::LoanCreated(pool_id, loan_id, asset).into(),
 	);
 	let loan_data = Loan::get_loan_info(pool_id, loan_id).expect("LoanData should be present");
 
@@ -190,7 +190,7 @@ fn price_test_loan<T>(
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
-		LoanEvent::LoanPriceSet(pool_id, loan_id) => Some((pool_id, loan_id)),
+		LoanEvent::LoanPriced(pool_id, loan_id) => Some((pool_id, loan_id)),
 		_ => None,
 	}
 	.expect("must be a Loan issue activated event");
@@ -294,7 +294,7 @@ where
 }
 
 #[test]
-fn test_issue_loan() {
+fn test_create_loan() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
@@ -305,17 +305,17 @@ fn test_issue_loan() {
 
 			// wrong owner
 			let owner2 = 2;
-			let res = Loan::issue_loan(Origin::signed(owner2), pool_id, asset);
+			let res = Loan::create_loan(Origin::signed(owner2), pool_id, asset);
 			assert_err!(res, Error::<MockRuntime>::ErrNotAssetOwner);
 
 			// missing owner
 			let instance_id = 100u128.into();
 			let res =
-				Loan::issue_loan(Origin::signed(owner2), pool_id, Asset(asset.0, instance_id));
+				Loan::create_loan(Origin::signed(owner2), pool_id, Asset(asset.0, instance_id));
 			assert_err!(res, Error::<MockRuntime>::ErrNFTOwnerNotFound);
 
 			// trying to issue a loan with loan nft
-			let res = Loan::issue_loan(Origin::signed(borrower), pool_id, loan);
+			let res = Loan::create_loan(Origin::signed(borrower), pool_id, loan);
 			assert_err!(res, Error::<MockRuntime>::ErrNotAValidAsset)
 		});
 }
@@ -621,7 +621,7 @@ macro_rules! test_borrow_loan {
 					)
 				);
 				for group in vec![(3, 0), (5, 15), (7, 20), (20, 30), (120, 100)] {
-					let res = Loan::add_write_off_group_to_pool(
+					let res = Loan::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
@@ -1020,7 +1020,7 @@ macro_rules! test_pool_nav {
 					overdue_days: group.0,
 				};
 				let res =
-					Loan::add_write_off_group_to_pool(Origin::signed(risk_admin), pool_id, group);
+					Loan::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 				assert_ok!(res);
 			}
 
@@ -1150,7 +1150,7 @@ fn test_add_write_off_groups() {
 					overdue_days: 3,
 				};
 				let res =
-					Loan::add_write_off_group_to_pool(Origin::signed(risk_admin), pool_id, group);
+					Loan::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, index) = match loan_event {
@@ -1170,7 +1170,7 @@ fn test_add_write_off_groups() {
 				percentage: Rate::saturating_from_rational(110, 100),
 				overdue_days: 3,
 			};
-			let res = Loan::add_write_off_group_to_pool(Origin::signed(risk_admin), pool_id, group);
+			let res = Loan::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroup);
 		})
 }
@@ -1229,7 +1229,7 @@ macro_rules! test_write_off_maturity_loan {
 				)
 			);
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
-				let res = Loan::add_write_off_group_to_pool(
+				let res = Loan::add_write_off_group(
 					Origin::signed(risk_admin),
 					pool_id,
 					WriteOffGroup {
@@ -1337,7 +1337,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 			// add write off groups
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
-				let res = Loan::add_write_off_group_to_pool(
+				let res = Loan::add_write_off_group(
 					Origin::signed(risk_admin),
 					pool_id,
 					WriteOffGroup {
@@ -1449,7 +1449,7 @@ macro_rules! test_close_written_off_loan_type {
 				)
 			);
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
-				let res = Loan::add_write_off_group_to_pool(
+				let res = Loan::add_write_off_group(
 					Origin::signed(risk_admin),
 					pool_id,
 					WriteOffGroup {

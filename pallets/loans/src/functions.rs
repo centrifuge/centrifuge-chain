@@ -442,7 +442,7 @@ impl<T: Config> Pallet<T> {
 		Ok((nav, updated_loans))
 	}
 
-	pub(crate) fn add_write_off_group(
+	pub(crate) fn add_write_off_group_to_pool(
 		pool_id: PoolIdOf<T>,
 		group: WriteOffGroup<T::Rate>,
 	) -> Result<u32, DispatchError> {
