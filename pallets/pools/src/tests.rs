@@ -56,7 +56,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			Pools::is_epoch_valid(pool, &epoch, &full_solution),
+			Pools::is_valid_solution(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientCurrency
 		);
 	});
@@ -126,11 +126,11 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			Pools::is_epoch_valid(pool, &epoch, &full_solution),
+			Pools::is_valid_solution(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientReserve
 		);
 
-		assert_ok!(Pools::is_epoch_valid(
+		assert_ok!(Pools::is_valid_solution(
 			&PoolDetails {
 				max_reserve: 100,
 				..pool.clone()
@@ -210,7 +210,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			Pools::is_epoch_valid(pool, &epoch, &full_solution),
+			Pools::is_valid_solution(pool, &epoch, &full_solution),
 			Error::<Test>::RiskBufferViolated
 		);
 	});
@@ -284,7 +284,7 @@ fn pool_constraints_pass() {
 			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
-		assert_ok!(Pools::is_epoch_valid(
+		assert_ok!(Pools::is_valid_solution(
 			pool,
 			&epoch,
 			&full_solution
