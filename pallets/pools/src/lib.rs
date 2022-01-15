@@ -804,13 +804,17 @@ pub mod pallet {
 				);
 				let nav = nav_amount.into();
 
+				let epoch_tranche_prices =
+					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
+						.ok_or(Error::<T>::Overflow)?;
+
 				if pool
 					.tranches
 					.iter()
 					.all(|tranche| tranche.outstanding_invest_orders.is_zero() && tranche.outstanding_redeem_orders.is_zero())
 				{
 					// This epoch is a no-op. Finish executing it.
-					for (tranche_id, tranche) in pool.tranches.iter_mut().enumerate() {
+					for (tranche_id, (tranche, price)) in pool.tranches.iter_mut().zip(&epoch_tranche_prices).enumerate() {
 						let loc = TrancheLocator {
 							pool_id,
 							tranche_id: T::TrancheId::try_from(tranche_id)
@@ -822,7 +826,7 @@ pub mod pallet {
 							tranche,
 							(Perquintill::zero(), Perquintill::zero()),
 							(Zero::zero(), Zero::zero()),
-							Zero::zero(),
+							price.clone(),
 						)?;
 					}
 					pool.available_reserve = epoch_reserve;
@@ -830,10 +834,6 @@ pub mod pallet {
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 					return Ok(());
 				}
-
-				let epoch_tranche_prices =
-					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
-						.ok_or(Error::<T>::Overflow)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
 				// TODO: This should instead put the pool into an error state
@@ -846,25 +846,25 @@ pub mod pallet {
 
 				// Redeem orders are denominated in tranche tokens, not in the pool currency.
 				// Convert redeem orders to the pool currency and return a list of (invest, redeem) pairs.
-				let epoch_targets =
+				let orders =
 					Self::convert_orders_to_currency(&epoch_tranche_prices, &pool.tranches)
 						.ok_or(Error::<T>::Overflow)?;
 
-				let full_epoch = epoch_targets
+				let full_execution_solution = orders
 					.iter()
 					.map(|_| (Perquintill::one(), Perquintill::one()))
 					.collect::<Vec<_>>();
 
-				let current_tranche_values = pool
+				let tranche_values = pool
 					.tranches
 					.iter()
 					.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
 					.collect::<Option<Vec<_>>>()
 					.ok_or(Error::<T>::Overflow)?;
 
-				let epoch_tranches: Vec<_> = epoch_targets
+				let epoch_tranches: Vec<_> = orders
 					.iter()
-					.zip(&current_tranche_values)
+					.zip(&tranche_values)
 					.zip(&epoch_tranche_prices)
 					.map(|(((invest, redeem), value), price)| EpochExecutionTranche {
 						value: *value,
@@ -880,14 +880,16 @@ pub mod pallet {
 					tranches: epoch_tranches,
 				};
 
-				if Self::is_valid_solution(pool, &epoch, &full_epoch).is_ok() {
-					Self::do_execute_epoch(pool_id, pool, &epoch, &full_epoch)?;
+				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
+
+				if Self::is_valid_solution(pool, &epoch, &full_execution_solution).is_ok() {
+					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 				} else {
 					pool.submission_period_epoch = Some(submission_period_epoch);
 					EpochExecution::<T>::insert(pool_id, epoch);
-					Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
 				}
+
 				Ok(())
 			})
 		}
@@ -1109,7 +1111,7 @@ pub mod pallet {
 			let total_assets = epoch_nav.checked_add(&epoch_reserve).unwrap();
 			let mut remaining_assets = total_assets;
 			let pool_is_zero = total_assets == Zero::zero();
-			let last_tranche = tranches.len() - 1;
+			let junior_tranche_id = tranches.len() - 1;
 			tranches
 				.iter_mut()
 				.enumerate()
@@ -1119,7 +1121,7 @@ pub mod pallet {
 					let total_issuance = T::Tokens::total_issuance(currency);
 					if pool_is_zero || total_issuance == Zero::zero() {
 						Some(One::one())
-					} else if tranche_id == last_tranche {
+					} else if tranche_id == junior_tranche_id {
 						T::BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
 					} else {
 						Self::update_tranche_debt(tranche)?;
