@@ -33,7 +33,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 # Local Dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
-pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
+pallet-pools = { path = "../../pallets/pools", default-features = false }
 primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 

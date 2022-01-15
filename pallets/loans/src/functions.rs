@@ -17,7 +17,7 @@ use super::*;
 impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
-		T::LoanPalletId::get().into_account()
+		T::LoansPalletId::get().into_account()
 	}
 
 	/// check if the given loan belongs to the owner provided
@@ -53,7 +53,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// create new loan nft
-		let loan_pallet_account: T::AccountId = T::LoanPalletId::get().into_account();
+		let loan_pallet_account: T::AccountId = T::LoansPalletId::get().into_account();
 		let nonce = NextLoanId::<T>::get();
 		let loan_id: T::LoanId = nonce.into();
 		let loan_class_id =

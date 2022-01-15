@@ -1,4 +1,4 @@
-use crate::{self as pallet_tinlake_investor_pool, Config, DispatchResult};
+use crate::{self as pallet_pools, Config, DispatchResult};
 use common_types::{PermissionRoles, PoolRole, TimeProvider};
 use frame_support::traits::SortedMembers;
 use frame_support::{
@@ -76,7 +76,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
-		TinlakeInvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
+		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
 	}
@@ -238,12 +238,12 @@ pub fn next_block_after(seconds: u64) {
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
-	TinlakeInvestorPool::do_borrow(borrower, pool_id, amount)
+	Pools::do_borrow(borrower, pool_id, amount)
 }
 
 pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
-	TinlakeInvestorPool::do_payback(borrower, pool_id, amount)
+	Pools::do_payback(borrower, pool_id, amount)
 }
 
 pub fn test_nav_up(pool_id: u64, amount: Balance) {

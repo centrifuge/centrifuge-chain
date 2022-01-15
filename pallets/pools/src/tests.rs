@@ -22,7 +22,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				supply: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -56,7 +56,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			TinlakeInvestorPool::is_epoch_valid(pool, &epoch, &full_solution),
+			Pools::is_epoch_valid(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientCurrency
 		);
 	});
@@ -66,22 +66,22 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 fn pool_constraints_pool_reserve_above_max_reserve() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			epoch_supply: 10,
+			epoch_invest: 10,
 			epoch_redeem: 10,
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 10,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 10,
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 10,
 			..Default::default()
 		};
@@ -92,7 +92,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				supply: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -126,11 +126,11 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			TinlakeInvestorPool::is_epoch_valid(pool, &epoch, &full_solution),
+			Pools::is_epoch_valid(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientReserve
 		);
 
-		assert_ok!(TinlakeInvestorPool::is_epoch_valid(
+		assert_ok!(Pools::is_epoch_valid(
 			&PoolDetails {
 				max_reserve: 100,
 				..pool.clone()
@@ -146,25 +146,25 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
-			epoch_supply: 100,
+			epoch_invest: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.2),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.1),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_risk_buffer: Perquintill::zero(),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
@@ -176,7 +176,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				supply: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -210,7 +210,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			TinlakeInvestorPool::is_epoch_valid(pool, &epoch, &full_solution),
+			Pools::is_epoch_valid(pool, &epoch, &full_solution),
 			Error::<Test>::RiskBufferViolated
 		);
 	});
@@ -221,25 +221,25 @@ fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			min_risk_buffer: Perquintill::zero(),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.05),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.1),
-			epoch_supply: Zero::zero(),
+			epoch_invest: Zero::zero(),
 			epoch_redeem: 30,
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.2),
-			epoch_supply: 100,
+			epoch_invest: 100,
 			epoch_redeem: Zero::zero(),
 			..Default::default()
 		};
@@ -251,7 +251,7 @@ fn pool_constraints_pass() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.epoch_supply,
+				supply: tranche.epoch_invest,
 				redeem: tranche.epoch_redeem,
 			})
 			.collect();
@@ -284,7 +284,7 @@ fn pool_constraints_pass() {
 			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
-		assert_ok!(TinlakeInvestorPool::is_epoch_valid(
+		assert_ok!(Pools::is_epoch_valid(
 			pool,
 			&epoch,
 			&full_solution
@@ -322,34 +322,34 @@ fn epoch() {
 		.unwrap();
 
 		// Initialize pool with initial investments
-		assert_ok!(TinlakeInvestorPool::create_pool(
+		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
 			0,
 			vec![(0, 0), (10, 10)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
-		assert_ok!(TinlakeInvestorPool::set_pool_metadata(
+		assert_ok!(Pools::set_pool_metadata(
 			pool_owner.clone(),
 			0,
 			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
 				.as_bytes()
 				.to_vec()
 		));
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(Pools::order_supply(
 			junior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
 		));
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(Pools::order_supply(
 			senior_investor.clone(),
 			0,
 			1,
 			500 * CURRENCY
 		));
 
-		assert_ok!(TinlakeInvestorPool::update_pool(
+		assert_ok!(Pools::update_pool(
 			pool_owner.clone(),
 			0,
 			30 * 60,
@@ -357,27 +357,27 @@ fn epoch() {
 		));
 
 		assert_err!(
-			TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0),
+			Pools::close_epoch(pool_owner.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
-		assert_ok!(TinlakeInvestorPool::update_pool(
+		assert_ok!(Pools::update_pool(
 			pool_owner.clone(),
 			0,
 			0,
 			u64::MAX
 		));
 
-		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
-		assert_ok!(TinlakeInvestorPool::collect(
+		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
 			1,
 			1
 		));
 
-		let pool = TinlakeInvestorPool::pool(0).unwrap();
+		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
 			pool.tranches[1].interest_per_sec,
 			Rate::from_inner(1_000000003170979198376458650)
@@ -394,7 +394,7 @@ fn epoch() {
 		next_block();
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
-		let pool = TinlakeInvestorPool::pool(0).unwrap();
+		let pool = Pools::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].debt, 250 * CURRENCY);
 		assert_eq!(pool.tranches[0].reserve, 250 * CURRENCY);
 		assert_eq!(pool.tranches[1].debt, 250 * CURRENCY);
@@ -407,7 +407,7 @@ fn epoch() {
 		test_nav_up(0, 10 * CURRENCY);
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
-		let pool = TinlakeInvestorPool::pool(0).unwrap();
+		let pool = Pools::pool(0).unwrap();
 		assert_eq!(pool.tranches[0].debt, 0);
 		assert_eq!(pool.tranches[0].reserve, 500 * CURRENCY); // not yet rebalanced
 		assert_eq!(pool.tranches[1].debt, 0);
@@ -417,16 +417,16 @@ fn epoch() {
 
 		// Senior investor tries to redeem
 		next_block();
-		assert_ok!(TinlakeInvestorPool::order_redeem(
+		assert_ok!(Pools::order_redeem(
 			senior_investor.clone(),
 			0,
 			1,
 			250 * CURRENCY
 		));
-		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
-		let pool = TinlakeInvestorPool::pool(0).unwrap();
-		let senior_epoch = TinlakeInvestorPool::epoch(
+		let pool = Pools::pool(0).unwrap();
+		let senior_epoch = Pools::epoch(
 			TrancheLocator {
 				pool_id: 0,
 				tranche_id: 1,
@@ -478,7 +478,7 @@ fn collect_tranche_tokens() {
 		.unwrap();
 
 		// Initialize pool with initial investments
-		assert_ok!(TinlakeInvestorPool::create_pool(
+		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
 			0,
 			vec![(0, 0), (10, 10)],
@@ -487,13 +487,13 @@ fn collect_tranche_tokens() {
 		));
 
 		// Nothing invested yet
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(Pools::order_supply(
 			junior_investor.clone(),
 			0,
 			0,
 			500 * CURRENCY
 		));
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(Pools::order_supply(
 			senior_investor.clone(),
 			0,
 			1,
@@ -501,11 +501,11 @@ fn collect_tranche_tokens() {
 		));
 
 		// Outstanding orders
-		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
 		// Outstanding collections
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 0);
-		assert_ok!(TinlakeInvestorPool::collect(
+		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
 			0,
@@ -513,10 +513,10 @@ fn collect_tranche_tokens() {
 		));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
-		let pool = TinlakeInvestorPool::pool(0).unwrap();
-		assert_eq!(pool.tranches[1].epoch_supply, 0);
+		let pool = Pools::pool(0).unwrap();
+		assert_eq!(pool.tranches[1].epoch_invest, 0);
 
-		let order = TinlakeInvestorPool::order(
+		let order = Pools::order(
 			TrancheLocator {
 				pool_id: 0,
 				tranche_id: 1,
@@ -526,33 +526,33 @@ fn collect_tranche_tokens() {
 		assert_eq!(order.supply, 0);
 
 		assert_noop!(
-			TinlakeInvestorPool::order_supply(senior_investor.clone(), 0, 0, 10 * CURRENCY),
+			Pools::order_supply(senior_investor.clone(), 0, 0, 10 * CURRENCY),
 			Error::<Test>::CollectRequired
 		);
 
-		assert_ok!(TinlakeInvestorPool::collect(
+		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
 			0,
 			1
 		));
 
-		assert_ok!(TinlakeInvestorPool::order_supply(
+		assert_ok!(Pools::order_supply(
 			senior_investor.clone(),
 			0,
 			0,
 			10 * CURRENCY
 		));
 
-		assert_ok!(TinlakeInvestorPool::order_redeem(
+		assert_ok!(Pools::order_redeem(
 			junior_investor.clone(),
 			0,
 			0,
 			10 * CURRENCY
 		));
 
-		assert_ok!(TinlakeInvestorPool::close_epoch(pool_owner.clone(), 0));
-		assert_ok!(TinlakeInvestorPool::collect(
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
 			0,
@@ -574,7 +574,7 @@ fn test_approve_and_remove_roles() {
 		.unwrap();
 
 		// Initialize pool with initial investments
-		assert_ok!(TinlakeInvestorPool::create_pool(
+		assert_ok!(Pools::create_pool(
 			Origin::signed(pool_owner),
 			0,
 			vec![(0, 0), (10, 10)],
@@ -583,7 +583,7 @@ fn test_approve_and_remove_roles() {
 		));
 
 		let pool_id = 0;
-		assert!(<TinlakeInvestorPool as PoolInspect<u64>>::pool_exists(
+		assert!(<Pools as PoolInspect<u64>>::pool_exists(
 			pool_id
 		));
 		assert!(<Test as Config>::Permission::has_permission(
@@ -616,7 +616,7 @@ fn test_approve_and_remove_roles() {
 			});
 
 			// approve role for all the accounts
-			assert_ok!(TinlakeInvestorPool::approve_role_for(
+			assert_ok!(Pools::approve_role_for(
 				Origin::signed(pool_owner),
 				pool_id,
 				role,
@@ -632,7 +632,7 @@ fn test_approve_and_remove_roles() {
 
 			sources.iter().for_each(|source| {
 				// revoke roles
-				assert_ok!(TinlakeInvestorPool::revoke_role_for(
+				assert_ok!(Pools::revoke_role_for(
 					Origin::signed(pool_owner),
 					pool_id,
 					role,

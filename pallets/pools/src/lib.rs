@@ -50,7 +50,7 @@ pub trait TrancheToken<T: Config> {
 pub struct Tranche<Balance, Rate> {
 	pub interest_per_sec: Rate,
 	pub min_risk_buffer: Perquintill,
-	pub epoch_supply: Balance,
+	pub epoch_invest: Balance,
 	pub epoch_redeem: Balance,
 
 	pub debt: Balance,
@@ -104,7 +104,7 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 /// The result of epoch execution of a given tranch within a pool
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochDetails<BalanceRatio> {
-	pub supply_fulfillment: Perquintill,
+	pub invest_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
 	pub token_price: BalanceRatio,
 }
@@ -452,7 +452,7 @@ pub mod pallet {
 					Tranche {
 						interest_per_sec,
 						min_risk_buffer: Perquintill::from_percent(risk_buffer.into()),
-						epoch_supply: Zero::zero(),
+						epoch_invest: Zero::zero(),
 						epoch_redeem: Zero::zero(),
 
 						debt: Zero::zero(),
@@ -611,8 +611,8 @@ pub mod pallet {
 					let transfer_amount = amount - order.supply;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let epoch_supply = &mut pool.tranches[tranche_id.into()].epoch_supply;
-						*epoch_supply = epoch_supply
+						let epoch_invest = &mut pool.tranches[tranche_id.into()].epoch_invest;
+						*epoch_invest = epoch_invest
 							.checked_add(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
 						T::Tokens::transfer(currency, &who, &pool_account, transfer_amount)
@@ -621,8 +621,8 @@ pub mod pallet {
 					let transfer_amount = order.supply - amount;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let epoch_supply = &mut pool.tranches[tranche_id.into()].epoch_supply;
-						*epoch_supply = epoch_supply
+						let epoch_invest = &mut pool.tranches[tranche_id.into()].epoch_invest;
+						*epoch_invest = epoch_invest
 							.checked_sub(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
 						T::Tokens::transfer(currency, &pool_account, &who, transfer_amount)
@@ -799,7 +799,7 @@ pub mod pallet {
 				if pool
 					.tranches
 					.iter()
-					.all(|tranche| tranche.epoch_supply.is_zero() && tranche.epoch_redeem.is_zero())
+					.all(|tranche| tranche.epoch_invest.is_zero() && tranche.epoch_redeem.is_zero())
 				{
 					// This epoch is a no-op. Finish executing it.
 					for (tranche_id, tranche) in pool.tranches.iter_mut().enumerate() {
@@ -1024,7 +1024,7 @@ pub mod pallet {
 				// Multiply invest fulfilment in this epoch with outstanding order amount to get executed amount
 				// Rounding down in favor of the system
 				let amount = epoch
-					.supply_fulfillment
+					.invest_fulfillment
 					.mul_floor(outstanding.remaining_supply_currency);
 
 				if amount != Zero::zero() {
@@ -1156,7 +1156,7 @@ pub mod pallet {
 				.map(|(price, tranche)| {
 					price
 						.checked_mul_int(tranche.epoch_redeem)
-						.map(|redeem| (tranche.epoch_supply, redeem))
+						.map(|redeem| (tranche.epoch_invest, redeem))
 				})
 				.collect()
 		}
@@ -1511,12 +1511,12 @@ pub mod pallet {
 			// Update supply/redeem orders for the next epoch based on our execution
 			let token_supply = price
 				.reciprocal()
-				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_supply))
+				.and_then(|inv_price| inv_price.checked_mul_int(tranche.epoch_invest))
 				.map(|supply| supply_sol.mul_ceil(supply))
 				.unwrap_or(Zero::zero());
 			let token_redeem = supply_sol.mul_floor(tranche.epoch_redeem);
 
-			tranche.epoch_supply -= currency_supply;
+			tranche.epoch_invest -= currency_supply;
 			tranche.epoch_redeem -= token_redeem;
 
 			// Compute the tranche tokens that need to be minted or burned based on the execution
@@ -1535,7 +1535,7 @@ pub mod pallet {
 
 			// Insert epoch closing information on supply/redeem fulfillment
 			let epoch = EpochDetails::<T::BalanceRatio> {
-				supply_fulfillment: supply_sol,
+				invest_fulfillment: supply_sol,
 				redeem_fulfillment: redeem_sol,
 				token_price: price,
 			};

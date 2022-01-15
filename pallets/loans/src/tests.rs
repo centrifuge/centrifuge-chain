@@ -13,7 +13,7 @@
 
 //! Unit test cases for Loan pallet
 use super::*;
-use crate as pallet_loan;
+use crate as pallet_loans;
 use crate::loan_type::{CreditLine, CreditLineWithMaturity};
 use crate::mock::{
 	Borrower, Event, JuniorInvestor, Loan, MockRuntime, Origin, RiskAdmin, SeniorInvestor,
@@ -28,8 +28,8 @@ use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use loan_type::{BulletLoan, LoanType};
 use orml_traits::MultiCurrency;
-use pallet_loan::Event as LoanEvent;
-use pallet_tinlake_investor_pool::PoolLocator;
+use pallet_loans::Event as LoanEvent;
+use pallet_pools::PoolLocator;
 use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
@@ -51,27 +51,27 @@ fn fetch_loan_event(event: Event) -> Option<LoanEvent<MockRuntime>> {
 	}
 }
 
-type MultiCurrencyBalanceOf<T> = <T as pallet_tinlake_investor_pool::Config>::Balance;
+type MultiCurrencyBalanceOf<T> = <T as pallet_pools::Config>::Balance;
 
 fn balance_of<T>(currency_id: T::CurrencyId, account: &T::AccountId) -> MultiCurrencyBalanceOf<T>
 where
-	T: pallet_tinlake_investor_pool::Config + frame_system::Config,
+	T: pallet_pools::Config + frame_system::Config,
 {
-	<T as pallet_tinlake_investor_pool::Config>::Tokens::total_balance(currency_id, account)
+	<T as pallet_pools::Config>::Tokens::total_balance(currency_id, account)
 }
 
 fn issue_test_loan<T>(pool_id: u64, borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)
 where
-	T: pallet_tinlake_investor_pool::Config<
+	T: pallet_pools::Config<
 			CurrencyId = CurrencyId,
 			Balance = u128,
 			PoolId = PoolId,
 			TrancheId = u8,
 			EpochId = u32,
-		> + pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>
 		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>,
-	PoolIdOf<T>: From<<T as pallet_tinlake_investor_pool::Config>::PoolId>,
+	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
 {
 	let pool_admin = PoolAdmin::get();
 
@@ -83,13 +83,13 @@ where
 		CurrencyId::Usd,
 	);
 	// add borrower role and price admin role
-	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
+	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_admin).into(),
 		pool_id,
 		PoolRole::Borrower,
 		vec![<T::Lookup as StaticLookup>::unlookup(borrower)]
 	));
-	assert_ok!(pallet_tinlake_investor_pool::Pallet::<T>::approve_role_for(
+	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
 		RawOrigin::Signed(pool_admin).into(),
 		pool_id,
 		PoolRole::PricingAdmin,
@@ -112,7 +112,7 @@ where
 	let loan_id = 1u128.into();
 
 	// event should be emitted
-	assert_last_event::<MockRuntime, <MockRuntime as pallet_loan::Config>::Event>(
+	assert_last_event::<MockRuntime, <MockRuntime as pallet_loans::Config>::Event>(
 		LoanEvent::LoanIssued(pool_id, loan_id, asset).into(),
 	);
 	let loan_data = Loan::get_loan_info(pool_id, loan_id).expect("LoanData should be present");
@@ -182,8 +182,8 @@ fn price_test_loan<T>(
 	rp: Rate,
 	loan_type: LoanType<Rate, Amount>,
 ) where
-	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
-		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+	T: pallet_pools::Config<PoolId = PoolId>
+		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let res = Loan::price_loan(Origin::signed(admin), pool_id, loan_id, rp, loan_type);
@@ -214,8 +214,8 @@ fn price_bullet_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, LoanType<Rate, Amount>)
 where
-	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
-		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+	T: pallet_pools::Config<PoolId = PoolId>
+		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_bullet_loan_params();
@@ -231,8 +231,8 @@ fn price_credit_line_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, LoanType<Rate, Amount>)
 where
-	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
-		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+	T: pallet_pools::Config<PoolId = PoolId>
+		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_credit_line_params();
@@ -248,8 +248,8 @@ fn price_credit_line_with_maturity_loan<T>(
 	loan_id: T::LoanId,
 ) -> (Rate, LoanType<Rate, Amount>)
 where
-	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
-		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+	T: pallet_pools::Config<PoolId = PoolId>
+		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_credit_line_with_maturity_params();
@@ -261,8 +261,8 @@ where
 
 fn close_test_loan<T>(owner: T::AccountId, pool_id: T::PoolId, loan: AssetOf<T>, asset: AssetOf<T>)
 where
-	T: pallet_tinlake_investor_pool::Config<PoolId = PoolId>
-		+ pallet_loan::Config<ClassId = ClassId, LoanId = InstanceId>
+	T: pallet_pools::Config<PoolId = PoolId>
+		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_id = loan.1;
@@ -609,7 +609,7 @@ macro_rules! test_borrow_loan {
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(
-					pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+					pallet_pools::Pallet::<MockRuntime>::approve_role_for(
 						RawOrigin::Signed(PoolAdmin::get()).into(),
 						pool_id,
 						PoolRole::RiskAdmin,
@@ -1002,7 +1002,7 @@ macro_rules! test_pool_nav {
 
 			let risk_admin = RiskAdmin::get();
 			assert_ok!(
-				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+				pallet_pools::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(PoolAdmin::get()).into(),
 					pool_id,
 					PoolRole::RiskAdmin,
@@ -1127,7 +1127,7 @@ fn test_add_write_off_groups() {
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
 			assert_ok!(
-				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+				pallet_pools::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
 					PoolRole::RiskAdmin,
@@ -1217,7 +1217,7 @@ macro_rules! test_write_off_maturity_loan {
 			// add write off groups
 			let risk_admin = RiskAdmin::get();
 			assert_ok!(
-				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+				pallet_pools::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
 					PoolRole::RiskAdmin,
@@ -1313,7 +1313,7 @@ macro_rules! test_admin_write_off_loan_type {
 			// caller should be admin, can write off before maturity
 			let risk_admin = RiskAdmin::get();
 			assert_ok!(
-				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+				pallet_pools::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
 					PoolRole::RiskAdmin,
@@ -1437,7 +1437,7 @@ macro_rules! test_close_written_off_loan_type {
 			// add write off groups
 			let risk_admin = RiskAdmin::get();
 			assert_ok!(
-				pallet_tinlake_investor_pool::Pallet::<MockRuntime>::approve_role_for(
+				pallet_pools::Pallet::<MockRuntime>::approve_role_for(
 					RawOrigin::Signed(pool_admin).into(),
 					pool_id,
 					PoolRole::RiskAdmin,
