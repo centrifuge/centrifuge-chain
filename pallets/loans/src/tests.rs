@@ -306,17 +306,17 @@ fn test_create() {
 			// wrong owner
 			let owner2 = 2;
 			let res = Loan::create(Origin::signed(owner2), pool_id, asset);
-			assert_err!(res, Error::<MockRuntime>::ErrNotAssetOwner);
+			assert_err!(res, Error::<MockRuntime>::NotAssetOwner);
 
 			// missing owner
 			let instance_id = 100u128.into();
 			let res =
 				Loan::create(Origin::signed(owner2), pool_id, Asset(asset.0, instance_id));
-			assert_err!(res, Error::<MockRuntime>::ErrNFTOwnerNotFound);
+			assert_err!(res, Error::<MockRuntime>::NFTOwnerNotFound);
 
 			// trying to issue a loan with loan nft
 			let res = Loan::create(Origin::signed(borrower), pool_id, loan);
-			assert_err!(res, Error::<MockRuntime>::ErrNotAValidAsset)
+			assert_err!(res, Error::<MockRuntime>::NotAValidAsset)
 		});
 }
 
@@ -350,7 +350,7 @@ fn test_price_bullet_loan() {
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100 * 1000);
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
 			// rate_per_sec is invalid
 			let loan_type = LoanType::BulletLoan(BulletLoan::new(
@@ -369,14 +369,14 @@ fn test_price_bullet_loan() {
 			));
 			let rp = Zero::zero();
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
 			// successful activation
 			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// cannot activate an already activated loan
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
+			assert_err!(res, Error::<MockRuntime>::LoanIsActive);
 		})
 }
 
@@ -410,7 +410,7 @@ fn test_price_credit_line_with_maturity_loan() {
 			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100 * 1000);
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
 			// rate_per_sec is invalid
 			let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
@@ -429,14 +429,14 @@ fn test_price_credit_line_with_maturity_loan() {
 			));
 			let rp = Zero::zero();
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
 			// successful activation
 			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// cannot activate an already activated loan
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
+			assert_err!(res, Error::<MockRuntime>::LoanIsActive);
 		})
 }
 
@@ -461,14 +461,14 @@ fn test_price_credit_line_loan() {
 			));
 			let rp = Zero::zero();
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanValueInvalid);
+			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
 			// successful activation
 			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 			// cannot activate an already activated loan
 			let res = Loan::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanIsActive);
+			assert_err!(res, Error::<MockRuntime>::LoanIsActive);
 		})
 }
 
@@ -593,7 +593,7 @@ macro_rules! test_borrow_loan {
 				Timestamp::set_timestamp(2001 * 1000);
 				let borrow_amount = Amount::from_inner(40 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+				assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
 
 				// try to borrow after maturity date
 				let mut now = 2001;
@@ -602,7 +602,7 @@ macro_rules! test_borrow_loan {
 					Timestamp::set_timestamp(now * 1000);
 					let res =
 						Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::ErrLoanMaturityDatePassed);
+					assert_err!(res, Error::<MockRuntime>::LoanMaturityDatePassed);
 				}
 
 				// written off loan cannot borrow
@@ -636,7 +636,7 @@ macro_rules! test_borrow_loan {
 				assert_ok!(res);
 
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanWrittenOffByAdmin);
+				assert_err!(res, Error::<MockRuntime>::LoanWrittenOffByAdmin);
 
 				// update nav
 				let updated_nav = <Loan as TPoolNav<PoolId, Amount>>::update_nav(pool_id).unwrap();
@@ -751,7 +751,7 @@ macro_rules! test_repay_loan {
 
 				// try and close the loan
 				let res = Loan::close(Origin::signed(borrower), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
+				assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
 				// check loan data
 				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
@@ -942,7 +942,7 @@ macro_rules! test_pool_nav {
 				// cannot borrow more than ceiling, 1
 				let borrow_amount = Amount::from_inner(1 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+				assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
 
 				// payback 50 and borrow more later
 				let repay_amount = Amount::from_inner(50 * USD);
@@ -956,7 +956,7 @@ macro_rules! test_pool_nav {
 				// you cannot borrow more than 50 since the debt is more than 50 by now
 				let borrow_amount = Amount::from_inner(50 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+				assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
 
 				// borrow 40 maybe
 				let borrow_amount = Amount::from_inner(40 * USD);
@@ -971,7 +971,7 @@ macro_rules! test_pool_nav {
 				// cannot borrow more than ceiling, 1
 				let borrow_amount = Amount::from_inner(1 * USD);
 				let res = Loan::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanCeilingReached);
+				assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
 			}
 
 			// let the maturity has passed 2 years + 10 day
@@ -1171,7 +1171,7 @@ fn test_add_write_off_groups() {
 				overdue_days: 3,
 			};
 			let res = Loan::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
-			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroup);
+			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroup);
 		})
 }
 
@@ -1206,13 +1206,13 @@ macro_rules! test_write_off_maturity_loan {
 			let caller = 100;
 			Timestamp::set_timestamp(math::seconds_per_year() * 1000);
 			let res = Loan::write_off(Origin::signed(caller), pool_id, loan_id);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanHealthy);
+			assert_err!(res, Error::<MockRuntime>::LoanHealthy);
 
 			// let the maturity date passes + 1 day
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
 			Timestamp::set_timestamp(t * 1000);
 			let res = Loan::write_off(Origin::signed(caller), pool_id, loan_id);
-			assert_err!(res, Error::<MockRuntime>::ErrNoValidWriteOffGroup);
+			assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
 
 			// add write off groups
 			let risk_admin = RiskAdmin::get();
@@ -1244,7 +1244,7 @@ macro_rules! test_write_off_maturity_loan {
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
 			Timestamp::set_timestamp(t * 1000);
 			let res = Loan::write_off(Origin::signed(caller), pool_id, loan_id);
-			assert_err!(res, Error::<MockRuntime>::ErrNoValidWriteOffGroup);
+			assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
 
 			// days, index
 			for days_index in vec![(3, 0), (5, 1), (7, 2), (20, 3)] {
@@ -1327,13 +1327,13 @@ macro_rules! test_admin_write_off_loan_type {
 
 			Timestamp::set_timestamp(math::seconds_per_year() * 1000);
 			let res = Loan::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
-			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroupIndex);
+			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroupIndex);
 
 			// let the maturity date passes + 1 day
 			let t = math::seconds_per_year() * 2 + math::seconds_per_day();
 			Timestamp::set_timestamp(t * 1000);
 			let res = Loan::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
-			assert_err!(res, Error::<MockRuntime>::ErrInvalidWriteOffGroupIndex);
+			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroupIndex);
 
 			// add write off groups
 			for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
@@ -1382,7 +1382,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 			// permission less write off should not work once written off by admin
 			let res = Loan::write_off(Origin::signed(100), pool_id, loan_id);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanWrittenOffByAdmin)
+			assert_err!(res, Error::<MockRuntime>::LoanWrittenOffByAdmin)
 		})
 	};
 }
@@ -1432,7 +1432,7 @@ macro_rules! test_close_written_off_loan_type {
 			// let the maturity pass and closing loan should not work
 			Timestamp::set_timestamp((math::seconds_per_year() * 2 + 5 * math::seconds_per_day()) * 1000);
 			let res = Loan::close(Origin::signed(borrower), pool_id, loan_id);
-			assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
+			assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
 			// add write off groups
 			let risk_admin = RiskAdmin::get();
@@ -1474,7 +1474,7 @@ macro_rules! test_close_written_off_loan_type {
 				.expect("must be a Loan issue event");
 				assert_eq!(write_off_index, 1);
 				let res = Loan::close(Origin::signed(borrower), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid);
+				assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
 				// let it be 120 days beyond maturity, we write off 100% now
 				Timestamp::set_timestamp((math::seconds_per_year() * 2 + 120 * math::seconds_per_day()) * 1000);
@@ -1564,7 +1564,7 @@ macro_rules! repay_too_early {
 
 				// repay in the same instant
 				let res = Loan::repay(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::ErrRepayTooEarly);
+				assert_err!(res, Error::<MockRuntime>::RepayTooEarly);
 
 				// after origination date
 				Timestamp::set_timestamp(2 * 1000);
@@ -1580,7 +1580,7 @@ macro_rules! repay_too_early {
 
 				// close loan
 				let res = Loan::close(Origin::signed(borrower), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::ErrLoanNotRepaid)
+				assert_err!(res, Error::<MockRuntime>::LoanNotRepaid)
 			})
 	};
 }

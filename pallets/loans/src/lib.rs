@@ -220,79 +220,79 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		/// Emits when pool doesn't exist
-		ErrPoolMissing,
+		PoolMissing,
 
 		/// Emits when pool is not initialised
-		ErrPoolNotInitialised,
+		PoolNotInitialised,
 
 		/// Emits when pool is already initialised
-		ErrPoolAlreadyInitialised,
+		PoolAlreadyInitialised,
 
 		/// Emits when loan doesn't exist.
-		ErrMissingLoan,
+		MissingLoan,
 
 		/// Emits when the borrowed amount is more than ceiling
-		ErrLoanCeilingReached,
+		LoanCeilingReached,
 
 		/// Emits when the addition of borrowed amount overflowed
-		ErrAddAmountOverflow,
+		AddAmountOverflow,
 
 		/// Emits when principal debt calculation failed due to overflow
-		ErrPrincipalDebtOverflow,
+		PrincipalDebtOverflow,
 
 		/// Emits when tries to update an active loan
-		ErrLoanIsActive,
+		LoanIsActive,
 
 		/// Emits when loan type given is not valid
-		ErrLoanTypeInvalid,
+		LoanTypeInvalid,
 
 		/// Emits when operation is done on an inactive loan
-		ErrLoanNotActive,
+		LoanNotActive,
 
 		// Emits when borrow and repay happens in the same block
-		ErrRepayTooEarly,
+		RepayTooEarly,
 
 		/// Emits when the NFT owner is not found
-		ErrNFTOwnerNotFound,
+		NFTOwnerNotFound,
 
 		/// Emits when nft owner doesn't match the expected owner
-		ErrNotAssetOwner,
+		NotAssetOwner,
 
 		/// Emits when the nft is not an acceptable asset
-		ErrNotAValidAsset,
+		NotAValidAsset,
 
 		/// Emits when the nft token nonce is overflowed
-		ErrNftTokenNonceOverflowed,
+		NftTokenNonceOverflowed,
 
 		/// Emits when loan amount not repaid but trying to close loan
-		ErrLoanNotRepaid,
+		LoanNotRepaid,
 
 		/// Emits when maturity has passed and borrower tried to borrow more
-		ErrLoanMaturityDatePassed,
+		LoanMaturityDatePassed,
 
 		/// Emits when a loan data value is invalid
-		ErrLoanValueInvalid,
+		LoanValueInvalid,
 
 		/// Emits when loan accrue calculation failed
-		ErrLoanAccrueFailed,
+		LoanAccrueFailed,
 
 		/// Emits when loan present value calculation failed
-		ErrLoanPresentValueFailed,
+		LoanPresentValueFailed,
 
 		/// Emits when trying to write off of a healthy loan
-		ErrLoanHealthy,
+		LoanHealthy,
 
 		/// Emits when trying to write off loan that was written off by admin already
-		ErrLoanWrittenOffByAdmin,
+		LoanWrittenOffByAdmin,
 
 		/// Emits when there is no valid write off group available for unhealthy loan
-		ErrNoValidWriteOffGroup,
+		NoValidWriteOffGroup,
 
 		/// Emits when there is no valid write off groups associated with given index
-		ErrInvalidWriteOffGroupIndex,
+		InvalidWriteOffGroupIndex,
 
 		/// Emits when new write off group is invalid
-		ErrInvalidWriteOffGroup,
+		InvalidWriteOffGroup,
 	}
 
 	#[pallet::call]
@@ -313,12 +313,12 @@ pub mod pallet {
 			ensure_role!(pool_id, origin, PoolRole::PoolAdmin);
 
 			// ensure pool exists
-			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::ErrPoolMissing);
+			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolMissing);
 
 			// ensure pool is not initialised yet
 			ensure!(
 				!PoolToLoanNftClass::<T>::contains_key(pool_id),
-				Error::<T>::ErrPoolAlreadyInitialised
+				Error::<T>::PoolAlreadyInitialised
 			);
 
 			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
