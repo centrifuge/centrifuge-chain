@@ -79,7 +79,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
 /// Per-tranche and per-user order details.
 #[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct UserOrder<Balance, EpochId> {
-	pub supply: Balance,
+	pub invest: Balance,
 	pub redeem: Balance,
 	pub epoch: EpochId,
 }
@@ -113,7 +113,7 @@ pub struct EpochDetails<BalanceRatio> {
 pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	value: Balance,
 	price: BalanceRatio,
-	supply: Balance,
+	invest: Balance,
 	redeem: Balance,
 }
 
@@ -122,7 +122,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 pub struct OutstandingCollections<Balance> {
 	pub payout_currency_amount: Balance,
 	pub payout_token_amount: Balance,
-	pub remaining_supply_currency: Balance,
+	pub remaining_invest_currency: Balance,
 	pub remaining_redeem_token: Balance,
 }
 
@@ -364,6 +364,10 @@ pub mod pallet {
 			T::AccountId,
 			OutstandingCollections<T::Balance>,
 		),
+		/// An invest order was updated
+		InvestOrderUpdated(T::PoolId, T::AccountId),
+		/// A redeem order was updated
+		RedeemOrderUpdated(T::PoolId, T::AccountId),
 		/// When a role is for some accounts
 		RoleApproved(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 		// When a role was revoked for an account in pool
@@ -600,15 +604,15 @@ pub mod pallet {
 
 			if let Ok(order) = Order::<T>::try_get(&tranche, &who) {
 				ensure!(
-					order.supply.saturating_add(order.redeem) == Zero::zero()
+					order.invest.saturating_add(order.redeem) == Zero::zero()
 						|| order.epoch == epoch,
 					Error::<T>::CollectRequired
 				)
 			}
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
-				if amount > order.supply {
-					let transfer_amount = amount - order.supply;
+				if amount > order.invest {
+					let transfer_amount = amount - order.invest;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 						let outstanding_invest_orders = &mut pool.tranches[tranche_id.into()].outstanding_invest_orders;
@@ -617,8 +621,8 @@ pub mod pallet {
 							.ok_or(Error::<T>::Overflow)?;
 						T::Tokens::transfer(currency, &who, &pool_account, transfer_amount)
 					})?;
-				} else if amount < order.supply {
-					let transfer_amount = order.supply - amount;
+				} else if amount < order.invest {
+					let transfer_amount = order.invest - amount;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 						let outstanding_invest_orders = &mut pool.tranches[tranche_id.into()].outstanding_invest_orders;
@@ -628,8 +632,10 @@ pub mod pallet {
 						T::Tokens::transfer(currency, &pool_account, &who, transfer_amount)
 					})?;
 				}
-				order.supply = amount;
+				order.invest = amount;
 				order.epoch = epoch;
+
+				Self::deposit_event(Event::InvestOrderUpdated(pool_id, who.clone()));
 				Ok(())
 			})
 		}
@@ -666,7 +672,7 @@ pub mod pallet {
 
 			if let Ok(order) = Order::<T>::try_get(&tranche, &who) {
 				ensure!(
-					order.supply.saturating_add(order.redeem) == Zero::zero()
+					order.invest.saturating_add(order.redeem) == Zero::zero()
 						|| order.epoch == epoch,
 					Error::<T>::CollectRequired
 				)
@@ -696,6 +702,8 @@ pub mod pallet {
 				}
 				order.redeem = amount;
 				order.epoch = epoch;
+
+				Self::deposit_event(Event::InvestOrderUpdated(pool_id, who.clone()));
 				Ok(())
 			})
 		}
@@ -746,7 +754,7 @@ pub mod pallet {
 			}
 
 			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
-				order.supply = collections.remaining_supply_currency;
+				order.invest = collections.remaining_invest_currency;
 				order.redeem = collections.remaining_redeem_token;
 				order.epoch = end_epoch + One::one();
 
@@ -758,7 +766,7 @@ pub mod pallet {
 					OutstandingCollections {
 						payout_currency_amount: collections.payout_currency_amount,
 						payout_token_amount: collections.payout_token_amount,
-						remaining_supply_currency: collections.remaining_supply_currency,
+						remaining_invest_currency: collections.remaining_invest_currency,
 						remaining_redeem_token: collections.remaining_redeem_token,
 					},
 				));
@@ -837,7 +845,7 @@ pub mod pallet {
 				);
 
 				// Redeem orders are denominated in tranche tokens, not in the pool currency.
-				// Convert redeem orders to the pool currency and return a list of (supply, redeem) pairs.
+				// Convert redeem orders to the pool currency and return a list of (invest, redeem) pairs.
 				let epoch_targets =
 					Self::convert_orders_to_currency(&epoch_tranche_prices, &pool.tranches)
 						.ok_or(Error::<T>::Overflow)?;
@@ -858,10 +866,10 @@ pub mod pallet {
 					.iter()
 					.zip(&current_tranche_values)
 					.zip(&epoch_tranche_prices)
-					.map(|(((supply, redeem), value), price)| EpochExecutionTranche {
+					.map(|(((invest, redeem), value), price)| EpochExecutionTranche {
 						value: *value,
 						price: *price,
-						supply: *supply,
+						invest: *invest,
 						redeem: *redeem,
 					})
 					.collect();
@@ -980,7 +988,7 @@ pub mod pallet {
 				return Ok(OutstandingCollections {
 					payout_currency_amount: Zero::zero(),
 					payout_token_amount: Zero::zero(),
-					remaining_supply_currency: order.supply,
+					remaining_invest_currency: order.invest,
 					remaining_redeem_token: order.redeem,
 				});
 			}
@@ -993,11 +1001,11 @@ pub mod pallet {
 			let mut outstanding = OutstandingCollections {
 				payout_currency_amount: Zero::zero(),
 				payout_token_amount: Zero::zero(),
-				remaining_supply_currency: order.supply,
+				remaining_invest_currency: order.invest,
 				remaining_redeem_token: order.redeem,
 			};
 
-			// Parse remaining_supply_currency into payout_token_amount
+			// Parse remaining_invest_currency into payout_token_amount
 			// TODO: Now we are passing a mutable value, mutate it, and re-assign it.
 			// Once we implement benchmarking for this, we should check if the reference approach
 			// is more efficient, considering that the mutations occur within a loop.
@@ -1017,7 +1025,7 @@ pub mod pallet {
 		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
 			let mut epoch_idx = start_epoch;
 
-			while epoch_idx <= end_epoch && outstanding.remaining_supply_currency != Zero::zero() {
+			while epoch_idx <= end_epoch && outstanding.remaining_invest_currency != Zero::zero() {
 				let epoch =
 					Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
 
@@ -1025,7 +1033,7 @@ pub mod pallet {
 				// Rounding down in favor of the system
 				let amount = epoch
 					.invest_fulfillment
-					.mul_floor(outstanding.remaining_supply_currency);
+					.mul_floor(outstanding.remaining_invest_currency);
 
 				if amount != Zero::zero() {
 					// Divide by the token price to get the payout in tokens
@@ -1039,8 +1047,8 @@ pub mod pallet {
 						.payout_token_amount
 						.checked_add(&amount_token)
 						.ok_or(Error::<T>::Overflow)?;
-					outstanding.remaining_supply_currency = outstanding
-						.remaining_supply_currency
+					outstanding.remaining_invest_currency = outstanding
+						.remaining_invest_currency
 						.checked_sub(&amount)
 						.ok_or(Error::<T>::Overflow)?;
 				}
@@ -1208,14 +1216,14 @@ pub mod pallet {
 			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			solution: &[(Perquintill, Perquintill)],
 		) -> DispatchResult {
-			let acc_supply: T::Balance = epoch
+			let acc_invest: T::Balance = epoch
 				.tranches
 				.iter()
 				.zip(solution)
 				.fold(
 					Some(Zero::zero()),
 					|sum: Option<T::Balance>, (tranche, sol)| {
-						sum.and_then(|sum| sum.checked_add(&sol.0.mul_floor(tranche.supply)))
+						sum.and_then(|sum| sum.checked_add(&sol.0.mul_floor(tranche.invest)))
 					},
 				)
 				.ok_or(Error::<T>::Overflow)?;
@@ -1232,7 +1240,7 @@ pub mod pallet {
 				)
 				.ok_or(Error::<T>::Overflow)?;
 
-			let currency_available: T::Balance = acc_supply
+			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
 				.ok_or(Error::<T>::Overflow)?;
 			Self::validate_core_constraints(currency_available, acc_redeem)?;
@@ -1254,7 +1262,7 @@ pub mod pallet {
 				.map(|(tranche, sol)| {
 					tranche
 						.value
-						.checked_add(&sol.0.mul_floor(tranche.supply))
+						.checked_add(&sol.0.mul_floor(tranche.invest))
 						.and_then(|value| value.checked_sub(&sol.1.mul_floor(tranche.redeem)))
 				})
 				.collect::<Option<Vec<_>>>()
@@ -1361,20 +1369,20 @@ pub mod pallet {
 				.tranches
 				.iter()
 				.zip(solution.iter())
-				.map(|(tranche, (s_supply, s_redeem))| {
+				.map(|(tranche, (s_invest, s_redeem))| {
 					(
-						s_supply.mul_floor(tranche.supply),
+						s_invest.mul_floor(tranche.invest),
 						s_redeem.mul_floor(tranche.redeem),
 					)
 				})
 				.collect();
 
-			let total_supply = execution
+			let total_invest = execution
 				.iter()
 				.fold(
 					Some(Zero::zero()),
-					|acc: Option<T::Balance>, (supply, _)| {
-						acc.and_then(|acc| acc.checked_add(supply))
+					|acc: Option<T::Balance>, (invest, _)| {
+						acc.and_then(|acc| acc.checked_add(invest))
 					},
 				)
 				.ok_or(Error::<T>::Overflow)?;
@@ -1416,7 +1424,7 @@ pub mod pallet {
 			// Update the total/available reserve for the new total value of the pool
 			pool.total_reserve = pool
 				.total_reserve
-				.checked_add(&total_supply)
+				.checked_add(&total_invest)
 				.and_then(|res| res.checked_sub(&total_redeem))
 				.ok_or(Error::<T>::Overflow)?;
 			pool.available_reserve = pool.total_reserve;
@@ -1431,10 +1439,10 @@ pub mod pallet {
 				.iter()
 				.zip(&mut epoch.tranches.iter())
 				.rev()
-				.map(|((supply, redeem), tranche)| {
+				.map(|((invest, redeem), tranche)| {
 					tranche
 						.value
-						.checked_add(supply)
+						.checked_add(invest)
 						.and_then(|value| value.checked_sub(redeem))
 						.map(|tranche_asset| {
 							Perquintill::from_rational(tranche_asset, total_assets)
@@ -1450,12 +1458,12 @@ pub mod pallet {
 				.iter()
 				.zip(&mut pool.tranches)
 				.rev()
-				.map(|((supply, redeem), tranche)| {
+				.map(|((invest, redeem), tranche)| {
 					Self::update_tranche_debt(tranche)?;
 					tranche
 						.debt
 						.checked_add(&tranche.reserve)
-						.and_then(|value| value.checked_add(supply))
+						.and_then(|value| value.checked_add(invest))
 						.and_then(|value| value.checked_sub(redeem))
 						.map(|value| {
 							if value > total_assets {
@@ -1504,19 +1512,19 @@ pub mod pallet {
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			submission_period_epoch: T::EpochId,
 			tranche: &mut Tranche<T::Balance, T::InterestRate>,
-			(supply_sol, redeem_sol): (Perquintill, Perquintill),
-			(currency_supply, _currency_redeem): (T::Balance, T::Balance),
+			(invest_sol, redeem_sol): (Perquintill, Perquintill),
+			(currency_invest, _currency_redeem): (T::Balance, T::Balance),
 			price: T::BalanceRatio,
 		) -> DispatchResult {
-			// Update supply/redeem orders for the next epoch based on our execution
-			let token_supply = price
+			// Update invest/redeem orders for the next epoch based on our execution
+			let token_invest = price
 				.reciprocal()
 				.and_then(|inv_price| inv_price.checked_mul_int(tranche.outstanding_invest_orders))
-				.map(|supply| supply_sol.mul_ceil(supply))
+				.map(|invest| invest_sol.mul_ceil(invest))
 				.unwrap_or(Zero::zero());
-			let token_redeem = supply_sol.mul_floor(tranche.outstanding_redeem_orders);
+			let token_redeem = invest_sol.mul_floor(tranche.outstanding_redeem_orders);
 
-			tranche.outstanding_invest_orders -= currency_supply;
+			tranche.outstanding_invest_orders -= currency_invest;
 			tranche.outstanding_redeem_orders -= token_redeem;
 
 			// Compute the tranche tokens that need to be minted or burned based on the execution
@@ -1525,17 +1533,17 @@ pub mod pallet {
 			}
 			.into_account();
 			let token = T::TrancheToken::tranche_token(loc.pool_id, loc.tranche_id);
-			if token_supply > token_redeem {
-				let tokens_to_mint = token_supply - token_redeem;
+			if token_invest > token_redeem {
+				let tokens_to_mint = token_invest - token_redeem;
 				T::Tokens::deposit(token, &pool_address, tokens_to_mint)?;
-			} else if token_redeem > token_supply {
-				let tokens_to_burn = token_redeem - token_supply;
+			} else if token_redeem > token_invest {
+				let tokens_to_burn = token_redeem - token_invest;
 				T::Tokens::withdraw(token, &pool_address, tokens_to_burn)?;
 			}
 
-			// Insert epoch closing information on supply/redeem fulfillment
+			// Insert epoch closing information on invest/redeem fulfillment
 			let epoch = EpochDetails::<T::BalanceRatio> {
-				invest_fulfillment: supply_sol,
+				invest_fulfillment: invest_sol,
 				redeem_fulfillment: redeem_sol,
 				token_price: price,
 			};

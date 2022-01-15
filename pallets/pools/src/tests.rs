@@ -22,7 +22,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.outstanding_invest_orders,
+				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
@@ -92,7 +92,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.outstanding_invest_orders,
+				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
@@ -176,7 +176,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.outstanding_invest_orders,
+				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
@@ -251,7 +251,7 @@ fn pool_constraints_pass() {
 			.map(|(tranche, value)| EpochExecutionTranche {
 				value,
 				price: One::one(),
-				supply: tranche.outstanding_invest_orders,
+				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
 			})
 			.collect();
@@ -523,7 +523,7 @@ fn collect_tranche_tokens() {
 			},
 			0,
 		);
-		assert_eq!(order.supply, 0);
+		assert_eq!(order.invest, 0);
 
 		assert_noop!(
 			Pools::update_invest_order(senior_investor.clone(), 0, 0, 10 * CURRENCY),
