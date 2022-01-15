@@ -419,8 +419,6 @@ pub mod pallet {
 		CollectRequired,
 		/// Removing tranches is not supported
 		CannotAddOrRemoveTranches,
-		/// Increasing min risk buffer above current risk buffer isn't possible
-		CannotSetMinRiskBufferAboveCurrentValue,
 	}
 
 	#[pallet::call]
@@ -1207,21 +1205,6 @@ pub mod pallet {
 				Error::<T>::CannotAddOrRemoveTranches
 			);
 
-			// The min risk buffer of a tranche can only be set to a value that’s
-			// lower than or equal to the current risk buffer of the tranche.
-			// TODO: this needs to calculate current risk buffers
-			// let non_junior_new_tranches = new_tranches.split_last().unwrap().1;
-			// let tranche_values = pool.tranches.iter().map(|tranche| tranche.debt.checked_add(tranche.reserve).map_err(Error::<T>::Overflow)?).sum();
-			// let current_risk_buffers = Self::get_current_risk_buffers(tranche_values);
-			// ensure!(
-			// 	non_junior_new_tranches.iter().zip(&*current_risk_buffers).all(
-			// 		|((_1, risk_buffer), current_risk_buffer)| Perquintill::from_percent(
-			// 			risk_buffer.clone().into()
-			// 		) <= current_risk_buffer
-			// 	),
-			// 	Error::<T>::CannotSetMinRiskBufferAboveCurrentValue
-			// );
-
 			Ok(())
 		}
 
@@ -1295,31 +1278,6 @@ pub mod pallet {
 				&tranche_values,
 			)
 		}
-
-		// fn calculate_risk_buffers(tranche_values: Vec<T::Balance>) -> DispatchResult {
-		// 	let total_value = tranche_values
-		// 		.iter()
-		// 		.fold(
-		// 			Some(Zero::zero()),
-		// 			|sum: Option<T::Balance>, tranche_value| {
-		// 				sum.and_then(|sum| sum.checked_add(tranche_value))
-		// 			},
-		// 		)
-		// 		.ok_or(Error::<T>::Overflow)?;
-
-		// 	let mut current_risk_buffers = vec![];
-		// 	let mut buffer_value = total_value;
-		// 	for tranche_value in tranche_values
-		// 	{
-		// 		buffer_value = buffer_value
-		// 			.checked_sub(tranche_value)
-		// 			.ok_or(Error::<T>::Overflow)?;
-		// 		let risk_buffer = Perquintill::from_rational(buffer_value, total_value);
-		// 		current_risk_buffers.append(risk_buffer);
-		// 	}
-
-		// 	Ok(current_risk_buffers);
-		// }
 
 		fn validate_core_constraints(
 			currency_available: T::Balance,
