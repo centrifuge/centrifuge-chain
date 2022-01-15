@@ -35,7 +35,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// issues a new loan nft and returns the LoanID
-	pub(crate) fn issue(
+	pub(crate) fn create_loan(
 		pool_id: PoolIdOf<T>,
 		asset_owner: T::AccountId,
 		asset: AssetOf<T>,
@@ -95,7 +95,7 @@ impl<T: Config> Pallet<T> {
 		Ok(loan_id)
 	}
 
-	pub(crate) fn price(
+	pub(crate) fn price_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		rate_per_sec: T::Rate,
@@ -129,7 +129,7 @@ impl<T: Config> Pallet<T> {
 
 	// try to close a given loan.
 	// returns the asset/collateral loan is associated with along with bool that says whether loan was completely written off.
-	pub(crate) fn close(
+	pub(crate) fn close_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
@@ -474,7 +474,7 @@ impl<T: Config> Pallet<T> {
 	/// if loan is still healthy, we return an error
 	/// loan is accrued and nav is updated accordingly
 	/// returns new write off index applied to loan
-	pub(crate) fn write_off(
+	pub(crate) fn write_off_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		override_write_off_index: Option<u32>,

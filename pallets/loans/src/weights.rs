@@ -30,14 +30,14 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for pallet_loans.
 pub trait WeightInfo {
 	fn initialise_pool() -> Weight;
-	fn create_loan() -> Weight;
-	fn price_loan() -> Weight;
+	fn create() -> Weight;
+	fn price() -> Weight;
 	fn add_write_off_group() -> Weight;
 	fn initial_borrow() -> Weight;
 	fn further_borrows() -> Weight;
 	fn repay() -> Weight;
-	fn write_off_loan() -> Weight;
-	fn admin_write_off_loan() -> Weight;
+	fn write_off() -> Weight;
+	fn admin_write_off() -> Weight;
 	fn repay_and_close() -> Weight;
 	fn write_off_and_close() -> Weight;
 	fn nav_update_single_loan() -> Weight;
@@ -51,12 +51,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn create_loan() -> Weight {
+	fn create() -> Weight {
 		(180_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(8 as Weight))
 	}
-	fn price_loan() -> Weight {
+	fn price() -> Weight {
 		(50_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -81,12 +81,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(9 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
-	fn write_off_loan() -> Weight {
+	fn write_off() -> Weight {
 		(946_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn admin_write_off_loan() -> Weight {
+	fn admin_write_off() -> Weight {
 		(972_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
@@ -115,12 +115,12 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn create_loan() -> Weight {
+	fn create() -> Weight {
 		(180_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(8 as Weight))
 	}
-	fn price_loan() -> Weight {
+	fn price() -> Weight {
 		(50_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
@@ -145,12 +145,12 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(9 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
-	fn write_off_loan() -> Weight {
+	fn write_off() -> Weight {
 		(946_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
 	}
-	fn admin_write_off_loan() -> Weight {
+	fn admin_write_off() -> Weight {
 		(972_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(5 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(2 as Weight))

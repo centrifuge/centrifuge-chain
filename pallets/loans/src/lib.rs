@@ -342,16 +342,16 @@ pub mod pallet {
 		/// LoanStatus is set to issued and needs to be activated by an admin origin to start borrowing.
 		/// Loan cannot be closed until the status has changed to Active.
 		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
-		#[pallet::weight(<T as Config>::WeightInfo::create_loan())]
+		#[pallet::weight(<T as Config>::WeightInfo::create())]
 		#[transactional]
-		pub fn create_loan(
+		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			asset: AssetOf<T>,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
-			let loan_id = Self::issue(pool_id, owner, asset)?;
+			let loan_id = Self::create_loan(pool_id, owner, asset)?;
 			Self::deposit_event(Event::<T>::LoanCreated(pool_id, loan_id, asset));
 			Ok(())
 		}
@@ -370,13 +370,13 @@ pub mod pallet {
 			)
 		)]
 		#[transactional]
-		pub fn close_loan(
+		pub fn close(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let ClosedLoan { asset, written_off } = Self::close(pool_id, loan_id, owner)?;
+			let ClosedLoan { asset, written_off } = Self::close_loan(pool_id, loan_id, owner)?;
 			Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
 			match written_off {
 				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
@@ -443,8 +443,8 @@ pub mod pallet {
 		///
 		/// LoanStatus must be in Issued state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
-		#[pallet::weight(<T as Config>::WeightInfo::price_loan())]
-		pub fn price_loan(
+		#[pallet::weight(<T as Config>::WeightInfo::price())]
+		pub fn price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -453,7 +453,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
-			Self::price(pool_id, loan_id, rate_per_sec, loan_type)?;
+			Self::price_loan(pool_id, loan_id, rate_per_sec, loan_type)?;
 			Self::deposit_event(Event::<T>::LoanPriced(pool_id, loan_id));
 			Ok(())
 		}
@@ -513,8 +513,8 @@ pub mod pallet {
 		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
 		/// Cannot update a loan that was written off by admin.
 		/// Cannot write off a healthy loan or loan type that do not have maturity date.
-		#[pallet::weight(<T as Config>::WeightInfo::write_off_loan())]
-		pub fn write_off_loan(
+		#[pallet::weight(<T as Config>::WeightInfo::write_off())]
+		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -523,7 +523,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			// try to write off
-			let index = Self::write_off(pool_id, loan_id, None)?;
+			let index = Self::write_off_loan(pool_id, loan_id, None)?;
 			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
 			Ok(())
 		}
@@ -535,8 +535,8 @@ pub mod pallet {
 		/// AdminOrigin can write off a healthy loan as well.
 		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
 		/// Admin can write off loan with any index potentially going up the index or down.
-		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off_loan())]
-		pub fn admin_write_off_loan(
+		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off())]
+		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
@@ -546,7 +546,7 @@ pub mod pallet {
 			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
 
 			// try to write off
-			let index = Self::write_off(pool_id, loan_id, Some(write_off_index))?;
+			let index = Self::write_off_loan(pool_id, loan_id, Some(write_off_index))?;
 			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
 			Ok(())
 		}
