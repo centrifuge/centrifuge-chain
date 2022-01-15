@@ -1397,26 +1397,6 @@ pub mod pallet {
 				})
 				.collect();
 
-			let total_invest = executed_amounts
-				.iter()
-				.fold(
-					Some(Zero::zero()),
-					|acc: Option<T::Balance>, (invest, _)| {
-						acc.and_then(|acc| acc.checked_add(invest))
-					},
-				)
-				.ok_or(Error::<T>::Overflow)?;
-
-			let total_redeem = executed_amounts
-				.iter()
-				.fold(
-					Some(Zero::zero()),
-					|acc: Option<T::Balance>, (_, redeem)| {
-						acc.and_then(|acc| acc.checked_add(redeem))
-					},
-				)
-				.ok_or(Error::<T>::Overflow)?;
-
 			// Update tranche orders and add epoch solution state
 			for ((((tranche_id, tranche), solution), executed_amounts), epoch_tranche) in pool
 				.tranches
@@ -1442,11 +1422,19 @@ pub mod pallet {
 			}
 
 			// Update the total/available reserve for the new total value of the pool
-			pool.total_reserve = pool
-				.total_reserve
-				.checked_add(&total_invest)
-				.and_then(|res| res.checked_sub(&total_redeem))
+			pool.total_reserve = executed_amounts
+				.iter()
+				.fold(
+					Some(pool.total_reserve),
+					|acc: Option<T::Balance>, (investments, redemptions)| {
+						acc.and_then(|acc| {
+							acc.checked_add(investments)
+								.and_then(|res| res.checked_sub(redemptions))
+						})
+					},
+				)
 				.ok_or(Error::<T>::Overflow)?;
+
 			pool.available_reserve = pool.total_reserve;
 
 			Self::rebalance_tranches(pool, &epoch, &executed_amounts)?;
@@ -1517,7 +1505,7 @@ pub mod pallet {
 			let nav = epoch.nav.clone();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
-			let last_tranche_id = pool.tranches.len() - 1;
+			let junior_tranche_id = pool.tranches.len() - 1;
 			let tranches_junior_to_senior = pool.tranches.iter_mut();
 			for (((tranche_id, tranche), ratio), value) in tranches_junior_to_senior
 				.enumerate()
@@ -1525,8 +1513,7 @@ pub mod pallet {
 				.zip(tranche_assets.iter())
 			{
 				tranche.ratio = *ratio;
-				if tranche_id == last_tranche_id {
-					// junior tranche
+				if tranche_id == junior_tranche_id {
 					tranche.debt = remaining_nav;
 					tranche.reserve = remaining_reserve;
 				} else {
