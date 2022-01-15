@@ -593,7 +593,10 @@ pub mod pallet {
 			);
 			let (currency, epoch) = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-				ensure!(pool.submission_period_epoch.is_none(), Error::<T>::PoolClosing);
+				ensure!(
+					pool.submission_period_epoch.is_none(),
+					Error::<T>::PoolClosing
+				);
 				(pool.currency, pool.current_epoch)
 			};
 			let tranche = TrancheLocator {
@@ -615,7 +618,8 @@ pub mod pallet {
 					let transfer_amount = amount - order.invest;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let outstanding_invest_orders = &mut pool.tranches[tranche_id.into()].outstanding_invest_orders;
+						let outstanding_invest_orders =
+							&mut pool.tranches[tranche_id.into()].outstanding_invest_orders;
 						*outstanding_invest_orders = outstanding_invest_orders
 							.checked_add(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -625,7 +629,8 @@ pub mod pallet {
 					let transfer_amount = order.invest - amount;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let outstanding_invest_orders = &mut pool.tranches[tranche_id.into()].outstanding_invest_orders;
+						let outstanding_invest_orders =
+							&mut pool.tranches[tranche_id.into()].outstanding_invest_orders;
 						*outstanding_invest_orders = outstanding_invest_orders
 							.checked_sub(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -660,7 +665,10 @@ pub mod pallet {
 
 			let epoch = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-				ensure!(pool.submission_period_epoch.is_none(), Error::<T>::PoolClosing);
+				ensure!(
+					pool.submission_period_epoch.is_none(),
+					Error::<T>::PoolClosing
+				);
 				pool.current_epoch
 			};
 			let currency = T::TrancheToken::tranche_token(pool_id, tranche_id);
@@ -683,7 +691,8 @@ pub mod pallet {
 					let transfer_amount = amount - order.redeem;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let outstanding_redeem_orders = &mut pool.tranches[tranche_id.into()].outstanding_redeem_orders;
+						let outstanding_redeem_orders =
+							&mut pool.tranches[tranche_id.into()].outstanding_redeem_orders;
 						*outstanding_redeem_orders = outstanding_redeem_orders
 							.checked_add(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -693,7 +702,8 @@ pub mod pallet {
 					let transfer_amount = order.redeem - amount;
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-						let outstanding_redeem_orders = &mut pool.tranches[tranche_id.into()].outstanding_redeem_orders;
+						let outstanding_redeem_orders =
+							&mut pool.tranches[tranche_id.into()].outstanding_redeem_orders;
 						*outstanding_redeem_orders = outstanding_redeem_orders
 							.checked_sub(&transfer_amount)
 							.ok_or(Error::<T>::Overflow)?;
@@ -780,7 +790,10 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				ensure!(pool.submission_period_epoch.is_none(), Error::<T>::PoolClosing);
+				ensure!(
+					pool.submission_period_epoch.is_none(),
+					Error::<T>::PoolClosing
+				);
 
 				let now = T::Time::now().as_secs();
 				ensure!(
@@ -808,13 +821,17 @@ pub mod pallet {
 					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
 						.ok_or(Error::<T>::Overflow)?;
 
-				if pool
-					.tranches
-					.iter()
-					.all(|tranche| tranche.outstanding_invest_orders.is_zero() && tranche.outstanding_redeem_orders.is_zero())
-				{
+				if pool.tranches.iter().all(|tranche| {
+					tranche.outstanding_invest_orders.is_zero()
+						&& tranche.outstanding_redeem_orders.is_zero()
+				}) {
 					// This epoch is a no-op. Finish executing it.
-					for (tranche_id, (tranche, price)) in pool.tranches.iter_mut().zip(&epoch_tranche_prices).enumerate() {
+					for (tranche_id, (tranche, price)) in pool
+						.tranches
+						.iter_mut()
+						.zip(&epoch_tranche_prices)
+						.enumerate()
+					{
 						let loc = TrancheLocator {
 							pool_id,
 							tranche_id: T::TrancheId::try_from(tranche_id)
@@ -906,7 +923,8 @@ pub mod pallet {
 				EpochExecution::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let submission_period_epoch = pool.submission_period_epoch.ok_or(Error::<T>::NotClosing)?;
+				let submission_period_epoch =
+					pool.submission_period_epoch.ok_or(Error::<T>::NotClosing)?;
 
 				let epoch_validation_result = Self::is_valid_solution(pool, &epoch, &solution);
 
@@ -1269,6 +1287,7 @@ pub mod pallet {
 				})
 				.collect::<Option<Vec<_>>>()
 				.ok_or(Error::<T>::Overflow)?;
+
 			Self::validate_pool_constraints(
 				new_reserve,
 				pool_details.max_reserve,
@@ -1366,19 +1385,19 @@ pub mod pallet {
 		) -> DispatchResult {
 			pool.last_epoch_executed += One::one();
 
-			let execution: Vec<_> = epoch
+			let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch
 				.tranches
 				.iter()
 				.zip(solution.iter())
-				.map(|(tranche, (s_invest, s_redeem))| {
+				.map(|(tranche, (invest_fulfillment, redeem_fulfillment))| {
 					(
-						s_invest.mul_floor(tranche.invest),
-						s_redeem.mul_floor(tranche.redeem),
+						invest_fulfillment.mul_floor(tranche.invest),
+						redeem_fulfillment.mul_floor(tranche.redeem),
 					)
 				})
 				.collect();
 
-			let total_invest = execution
+			let total_invest = executed_amounts
 				.iter()
 				.fold(
 					Some(Zero::zero()),
@@ -1388,7 +1407,7 @@ pub mod pallet {
 				)
 				.ok_or(Error::<T>::Overflow)?;
 
-			let total_redeem = execution
+			let total_redeem = executed_amounts
 				.iter()
 				.fold(
 					Some(Zero::zero()),
@@ -1399,12 +1418,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 
 			// Update tranche orders and add epoch solution state
-			for ((((tranche_id, tranche), solution), execution), epoch_tranche) in pool
+			for ((((tranche_id, tranche), solution), executed_amounts), epoch_tranche) in pool
 				.tranches
 				.iter_mut()
 				.enumerate()
 				.zip(solution.iter().copied())
-				.zip(execution.iter().copied())
+				.zip(executed_amounts.iter().copied())
 				.zip(&epoch.tranches)
 			{
 				let loc = TrancheLocator {
@@ -1417,7 +1436,7 @@ pub mod pallet {
 					pool.last_epoch_executed,
 					tranche,
 					solution,
-					execution,
+					executed_amounts,
 					epoch_tranche.price,
 				)?;
 			}
@@ -1430,13 +1449,29 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 			pool.available_reserve = pool.total_reserve;
 
+			Self::rebalance_tranches(pool, &epoch, &executed_amounts)?;
+
+			Ok(())
+		}
+
+		fn rebalance_tranches(
+			pool: &mut PoolDetails<
+				T::AccountId,
+				T::CurrencyId,
+				T::EpochId,
+				T::Balance,
+				T::InterestRate,
+			>,
+			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
+			executed_amounts: &Vec<(T::Balance, T::Balance)>,
+		) -> DispatchResult {
 			// Calculate the new fraction of the total pool value that each tranche contains
 			// This is based on the tranche values at time of epoch close.
 			let total_assets = pool
 				.total_reserve
 				.checked_add(&epoch.nav)
 				.ok_or(Error::<T>::Overflow)?;
-			let tranche_ratios: Vec<_> = execution
+			let tranche_ratios: Vec<_> = executed_amounts
 				.iter()
 				.zip(&mut epoch.tranches.iter())
 				.map(|((invest, redeem), tranche)| {
@@ -1454,7 +1489,7 @@ pub mod pallet {
 			// Calculate the new total asset value for each tranche
 			// This uses the current state of the tranches, rather than the cached epoch-close-time values.
 			let mut total_assets = total_assets;
-			let tranche_assets = execution
+			let tranche_assets = executed_amounts
 				.iter()
 				.zip(&mut pool.tranches)
 				.map(|((invest, redeem), tranche)| {
@@ -1479,7 +1514,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 
 			// Rebalance tranches based on the new tranche asset values and ratios
-			let nav = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?.0.into();
+			let nav = epoch.nav.clone();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
 			let last_tranche_id = pool.tranches.len() - 1;
@@ -1490,7 +1525,8 @@ pub mod pallet {
 				.zip(tranche_assets.iter())
 			{
 				tranche.ratio = *ratio;
-				if tranche_id == last_tranche_id { // junior tranche
+				if tranche_id == last_tranche_id {
+					// junior tranche
 					tranche.debt = remaining_nav;
 					tranche.reserve = remaining_reserve;
 				} else {

@@ -140,22 +140,18 @@ pub(crate) fn create_pool<T>(
 	assert_eq!(pool.available_reserve, (1000 * CURRENCY).into());
 
 	// TODO(ved) do disbursal manually for now
-	assert_ok!(
-		<T as pallet_pools::Config>::Tokens::transfer(
-			CurrencyId::Tranche(pool_id.into(), 1).into(),
-			&pool_account,
-			&junior_investor,
-			(500 * CURRENCY).into(),
-		)
-	);
-	assert_ok!(
-		<T as pallet_pools::Config>::Tokens::transfer(
-			CurrencyId::Tranche(pool_id.into(), 0).into(),
-			&pool_account,
-			&senior_investor,
-			(500 * CURRENCY).into(),
-		)
-	);
+	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
+		CurrencyId::Tranche(pool_id.into(), 1).into(),
+		&pool_account,
+		&junior_investor,
+		(500 * CURRENCY).into(),
+	));
+	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
+		CurrencyId::Tranche(pool_id.into(), 0).into(),
+		&pool_account,
+		&senior_investor,
+		(500 * CURRENCY).into(),
+	));
 }
 
 pub(crate) fn initialise_test_pool<T>(

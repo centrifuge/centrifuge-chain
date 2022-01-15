@@ -247,9 +247,8 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate accumulated rate and outstanding debt
-				let (accumulated_rate, debt) = loan_info
-					.accrue(now)
-					.ok_or(Error::<T>::LoanAccrueFailed)?;
+				let (accumulated_rate, debt) =
+					loan_info.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
 				let new_borrowed_amount = loan_info
 					.borrowed_amount
@@ -335,10 +334,7 @@ impl<T: Config> Pallet<T> {
 				// ensure current time is more than origination time
 				// this is mainly to deal with how we calculate debt while trying to repay
 				// therefore we do not let users repay at same instant origination happened
-				ensure!(
-					now > loan_info.origination_date,
-					Error::<T>::RepayTooEarly
-				);
+				ensure!(now > loan_info.origination_date, Error::<T>::RepayTooEarly);
 
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
@@ -350,9 +346,8 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate new accumulated rate
-				let (accumulated_rate, debt) = loan_info
-					.accrue(now)
-					.ok_or(Error::<T>::LoanAccrueFailed)?;
+				let (accumulated_rate, debt) =
+					loan_info.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
 				// ensure amount is not more than current debt
 				let repay_amount = amount.min(debt);
@@ -402,9 +397,8 @@ impl<T: Config> Pallet<T> {
 					return Ok(Zero::zero());
 				}
 
-				let (acc_rate, _debt) = loan_data
-					.accrue(now)
-					.ok_or(Error::<T>::LoanAccrueFailed)?;
+				let (acc_rate, _debt) =
+					loan_data.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 				loan_data.last_updated = now;
 				loan_data.accumulated_rate = acc_rate;
 				let present_value = loan_data
@@ -531,9 +525,8 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// accrue and calculate the new present value with current chosen write off
-				let (accumulated_rate, _current_debt) = loan_data
-					.accrue(now)
-					.ok_or(Error::<T>::LoanAccrueFailed)?;
+				let (accumulated_rate, _current_debt) =
+					loan_data.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
 				loan_data.accumulated_rate = accumulated_rate;
 				loan_data.last_updated = now;

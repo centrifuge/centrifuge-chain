@@ -284,11 +284,7 @@ fn pool_constraints_pass() {
 			.map(|_| (Perquintill::one(), Perquintill::one()))
 			.collect::<Vec<_>>();
 
-		assert_ok!(Pools::is_valid_solution(
-			pool,
-			&epoch,
-			&full_solution
-		));
+		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
 	});
 }
 
@@ -349,31 +345,21 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update_pool(
-			pool_owner.clone(),
-			0,
-			30 * 60,
-			0
-		));
+		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 30 * 60, 0));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
-		assert_ok!(Pools::update_pool(
-			pool_owner.clone(),
-			0,
-			0,
-			u64::MAX
-		));
+		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 0, u64::MAX));
 
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-		  SENIOR_TRANCHE_ID,
+			SENIOR_TRANCHE_ID,
 			1
 		));
 
@@ -385,21 +371,45 @@ fn epoch() {
 		assert_eq!(pool.available_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve, 500 * CURRENCY);
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].ratio, Perquintill::from_float(0.5));
+		assert_eq!(
+			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			500 * CURRENCY
+		);
+		assert_eq!(
+			pool.tranches[JUNIOR_TRANCHE_ID as usize].ratio,
+			Perquintill::from_float(0.5)
+		);
 		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].ratio, Perquintill::from_float(0.5));
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve, 500 * CURRENCY);
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].ratio,
+			Perquintill::from_float(0.5)
+		);
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].reserve,
+			500 * CURRENCY
+		);
 
 		// Borrow some money
 		next_block();
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 250 * CURRENCY);
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve, 250 * CURRENCY);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 250 * CURRENCY);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve, 250 * CURRENCY);
+		assert_eq!(
+			pool.tranches[JUNIOR_TRANCHE_ID as usize].debt,
+			250 * CURRENCY
+		);
+		assert_eq!(
+			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			250 * CURRENCY
+		);
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].debt,
+			250 * CURRENCY
+		);
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].reserve,
+			250 * CURRENCY
+		);
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 500 * CURRENCY);
 
@@ -410,7 +420,10 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve, 500 * CURRENCY); // not yet rebalanced
+		assert_eq!(
+			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			500 * CURRENCY
+		); // not yet rebalanced
 		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
 		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY); // there's interest in here now
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
@@ -437,7 +450,10 @@ fn epoch() {
 		.unwrap();
 		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
 		assert!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_redeem_orders, 0);
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_redeem_orders,
+			0
+		);
 		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
 		assert_eq!(pool.available_reserve, pool.total_reserve);
 		assert!(pool.total_reserve > 750 * CURRENCY);
@@ -515,7 +531,10 @@ fn collect_tranche_tokens() {
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_invest_orders, 0);
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_invest_orders,
+			0
+		);
 
 		let order = Pools::order(
 			TrancheLocator {
@@ -527,7 +546,12 @@ fn collect_tranche_tokens() {
 		assert_eq!(order.invest, 0);
 
 		assert_noop!(
-			Pools::update_invest_order(senior_investor.clone(), 0, SENIOR_TRANCHE_ID, 10 * CURRENCY),
+			Pools::update_invest_order(
+				senior_investor.clone(),
+				0,
+				SENIOR_TRANCHE_ID,
+				10 * CURRENCY
+			),
 			Error::<Test>::CollectRequired
 		);
 
@@ -584,9 +608,7 @@ fn test_approve_and_remove_roles() {
 		));
 
 		let pool_id = 0;
-		assert!(<Pools as PoolInspect<u64>>::pool_exists(
-			pool_id
-		));
+		assert!(<Pools as PoolInspect<u64>>::pool_exists(pool_id));
 		assert!(<Test as Config>::Permission::has_permission(
 			pool_id,
 			pool_owner,
