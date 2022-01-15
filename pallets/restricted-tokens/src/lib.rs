@@ -170,7 +170,7 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			T::Fungibles::transfer(currency_id, &from, &to, amount, false)?;
+			T::Fungibles::transfer(currency_id, &from, &to, amount, true)?;
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,

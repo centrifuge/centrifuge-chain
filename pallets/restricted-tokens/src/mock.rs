@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate as pallet_restricted_tokens;
+pub use crate as pallet_restricted_tokens;
 use common_traits::PreConditions;
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
@@ -29,6 +29,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
+pub const DISTR_PER_ACCOUNT: u64 = 1000;
 type AccountId = u64;
 type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
@@ -103,7 +104,7 @@ parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		// every currency has a zero existential deposit
 		match currency_id {
-			_ => 0,
+			_ => 1,
 		}
 	};
 }
@@ -138,7 +139,7 @@ impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restrict
 	fn check(t: &TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		match t.id {
 			CurrencyId::KUSD | CurrencyId::USDT => true,
-			CurrencyId::RestrictedCoin => t.recv > 100 && t.send > 100,
+			CurrencyId::RestrictedCoin => t.recv >= 100 && t.send >= 100,
 		}
 	}
 }
@@ -160,19 +161,19 @@ impl TestExternalitiesBuilder {
 
 		let kusd = (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::KUSD, 1000))
+			.map(|idx| (idx, CurrencyId::KUSD, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 		let usdt = (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::USDT, 1000))
+			.map(|idx| (idx, CurrencyId::USDT, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 		let restric_1 = (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::RestrictedCoin, 1000))
+			.map(|idx| (idx, CurrencyId::RestrictedCoin, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 		let restric_2 = (100..200)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::RestrictedCoin, 1000))
+			.map(|idx| (idx, CurrencyId::RestrictedCoin, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 
 		let mut balances = vec![];
