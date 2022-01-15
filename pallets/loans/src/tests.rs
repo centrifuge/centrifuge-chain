@@ -119,7 +119,7 @@ where
 
 	// asset is same as we sent before
 	assert_eq!(loan_data.asset, asset);
-	assert_eq!(loan_data.status, LoanStatus::Issued);
+	assert_eq!(loan_data.status, LoanStatus::Created);
 
 	// asset owner is loan pallet
 	expect_asset_owner::<T>(asset, Loan::account_id());

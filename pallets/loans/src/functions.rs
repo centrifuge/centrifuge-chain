@@ -84,7 +84,7 @@ impl<T: Config> Pallet<T> {
 				accumulated_rate: One::one(),
 				principal_debt: Zero::zero(),
 				last_updated: timestamp,
-				status: LoanStatus::Issued,
+				status: LoanStatus::Created,
 				loan_type: Default::default(),
 				admin_written_off: false,
 				write_off_index: None,
@@ -104,9 +104,9 @@ impl<T: Config> Pallet<T> {
 		LoanInfo::<T>::try_mutate(pool_id, loan_id, |maybe_loan_info| -> DispatchResult {
 			let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
 
-			// ensure loan is issued
+			// ensure loan is created
 			ensure!(
-				loan_info.status == LoanStatus::Issued,
+				loan_info.status == LoanStatus::Created,
 				Error::<T>::LoanIsActive
 			);
 

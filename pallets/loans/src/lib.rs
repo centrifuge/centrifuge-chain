@@ -156,7 +156,7 @@ pub mod pallet {
 		1
 	}
 
-	/// Stores the next loan tokenID to be issued
+	/// Stores the next loan tokenID to be created
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_id)]
 	pub(crate) type NextLoanId<T: Config> = StorageValue<_, u128, ValueQuery, OnNextLoanIdEmpty>;
@@ -192,7 +192,7 @@ pub mod pallet {
 		/// Emits when a pool is initiated
 		PoolInitialised(PoolIdOf<T>),
 
-		/// emits when a new loan is issued for a given
+		/// emits when a new loan is created for a given
 		LoanCreated(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when a loan is closed
@@ -339,7 +339,7 @@ pub mod pallet {
 		///
 		/// `create_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
 		/// caller *must* be the owner of the asset.
-		/// LoanStatus is set to issued and needs to be activated by an admin origin to start borrowing.
+		/// LoanStatus is set to created and needs to be activated by an admin origin to start borrowing.
 		/// Loan cannot be closed until the status has changed to Active.
 		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
 		#[pallet::weight(<T as Config>::WeightInfo::create())]
@@ -441,7 +441,7 @@ pub mod pallet {
 
 		/// Set pricing for the loan with loan specific details like Rate, Loan type
 		///
-		/// LoanStatus must be in Issued state.
+		/// LoanStatus must be in Created state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
 		#[pallet::weight(<T as Config>::WeightInfo::price())]
 		pub fn price(
