@@ -310,14 +310,14 @@ fn epoch() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1, u64::MAX),
+			PoolRole::TrancheInvestor(0, u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0, u64::MAX),
+			PoolRole::TrancheInvestor(1, u64::MAX),
 		)
 		.unwrap();
 
@@ -466,14 +466,14 @@ fn collect_tranche_tokens() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1, 0),
+			PoolRole::TrancheInvestor(0, u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0, 0),
+			PoolRole::TrancheInvestor(1, u64::MAX),
 		)
 		.unwrap();
 

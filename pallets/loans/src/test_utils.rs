@@ -99,12 +99,12 @@ pub(crate) fn create_pool<T>(
 	set_role::<T>(
 		pool_id.into(),
 		junior_investor.clone(),
-		PoolRole::TrancheInvestor(1.into(), 0u32.into()),
+		PoolRole::TrancheInvestor(JuniorTrancheId::get().into(), 0u32.into()),
 	);
 	set_role::<T>(
 		pool_id.into(),
 		senior_investor.clone(),
-		PoolRole::TrancheInvestor(0.into(), 0u32.into()),
+		PoolRole::TrancheInvestor(SeniorTrancheId::get().into(), 0u32.into()),
 	);
 
 	// Initialize pool with initial investments
