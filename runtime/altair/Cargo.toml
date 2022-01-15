@@ -30,6 +30,7 @@ cumulus-pallet-xcmp-queue = {git = "https://github.com/paritytech/cumulus", defa
 cumulus-pallet-dmp-queue = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-collator-selection = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
@@ -89,7 +90,6 @@ pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/parityt
 pallet-identity = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.12" }
@@ -97,6 +97,7 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate", default-fea
 runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
@@ -159,6 +160,7 @@ std = [
     "cumulus-pallet-parachain-system/std",
     "cumulus-primitives-timestamp/std",
     "cumulus-pallet-xcmp-queue/std",
+    "pallet-collator-selection/std",
     "parachain-info/std",
     "xcm/std",
     "xcm-executor/std",
@@ -169,8 +171,8 @@ std = [
     "sp-consensus-aura/std",
     "pallet-fees/std",
     "pallet-anchors/std",
+    "pallet-collator-allowlist/std",
     "pallet-claims/std",
-    "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
     "pallet-migration-manager/std",
@@ -186,11 +188,13 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
+    "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
+    'pallet-collator-selection/runtime-benchmarks',
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

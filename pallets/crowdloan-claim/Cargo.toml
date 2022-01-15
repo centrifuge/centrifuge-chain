@@ -22,13 +22,13 @@ scale-info = { version = "1.0", default-features = false, features = ["derive"] 
 # Substrate dependencies
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false , optional = true , branch = "polkadot-v0.9.12" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 
-# Benchmarking dependencies
+# optional dependencies for benchmarking
+frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.12" }
 schnorrkel = { version = "0.10.2", features = ["u64_backend"], default-features = false, optional = true }
 getrandom = { version = "0.2", default-features = false, optional = true }
 rand_core = { version = "0.6.2", default-features = false, optional = true}

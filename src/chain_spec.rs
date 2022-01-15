@@ -173,7 +173,6 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Live,
 		move || {
 			altair_genesis(
-				hex!["66d97d3816f5906c8a9821fac25afbb76291b12eb51c5a559e44aaafe4e42206"].into(),
 				vec![
 					(
 						//
@@ -224,7 +223,6 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Local,
 		move || {
 			altair_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
@@ -258,7 +256,6 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 		move || {
 			altair_genesis(
 				// kAMp8Np345RVsnznxHNrsqS3BuNDWqFn5jXNT44vegDF3xcD8
-				hex!["ce3155fe53b83191a3d50da03b2368d0e596a43c09885cd9de9b0ada82782952"].into(),
 				vec![
 					(
 						//kAKHQhXnjqLyv1nsCLEWb7fzPNVxXce3m8befa1tQtv1vxFxn
@@ -314,7 +311,6 @@ pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Local,
 		move || {
 			altair_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
@@ -347,8 +343,6 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Live,
 		move || {
 			altair_genesis(
-				// kAJSPJQGb1w5Cn4ZTFPokiStQ6sNkYHApjzPBeNPdVwbyLGjs
-				hex!["38e779a7cc9cc462e19ae0c8e76d6135caba7fee745645dbf9b4a1b9f53dbd6e"].into(),
 				vec![
 					(
 						// kALpizfCQweMJjhMpDhfozAtLXrLfbkE7iMFWVt92xXrdcoZg
@@ -399,7 +393,6 @@ pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
 		ChainType::Local,
 		move || {
 			altair_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
@@ -538,7 +531,6 @@ fn centrifuge_genesis(
 }
 
 fn altair_genesis(
-	root_key: AccountId,
 	initial_authorities: Vec<(altair_runtime::AccountId, altair_runtime::AuraId)>,
 	endowed_accounts: Vec<altair_runtime::AccountId>,
 	total_issuance: Option<altair_runtime::Balance>,
@@ -589,8 +581,17 @@ fn altair_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: altair_runtime::SudoConfig { key: root_key },
 		parachain_info: altair_runtime::ParachainInfoConfig { parachain_id: id },
+		collator_selection: altair_runtime::CollatorSelectionConfig {
+			invulnerables: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			candidacy_bond: 1 * AIR,
+			..Default::default()
+		},
+		collator_allowlist: Default::default(),
 		session: altair_runtime::SessionConfig {
 			keys: initial_authorities
 				.iter()
@@ -676,6 +677,16 @@ fn development_genesis(
 		vesting: Default::default(),
 		sudo: development_runtime::SudoConfig { key: root_key },
 		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
+		collator_selection: development_runtime::CollatorSelectionConfig {
+			invulnerables: initial_authorities
+				.iter()
+				.cloned()
+				.map(|(acc, _)| acc)
+				.collect(),
+			candidacy_bond: 1 * CFG,
+			..Default::default()
+		},
+		collator_allowlist: Default::default(),
 		session: development_runtime::SessionConfig {
 			keys: initial_authorities
 				.iter()

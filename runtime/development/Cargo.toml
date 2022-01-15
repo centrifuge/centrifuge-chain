@@ -30,6 +30,7 @@ cumulus-pallet-xcmp-queue = {git = "https://github.com/paritytech/cumulus", defa
 cumulus-pallet-dmp-queue = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
+pallet-collator-selection = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.12" }
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.12" }
@@ -105,6 +106,7 @@ primitives-tokens = { path = "../../primitives/tokens", default-features = false
 
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
+pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-pools = { path = "../../pallets/pools", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
@@ -175,6 +177,7 @@ std = [
     "cumulus-pallet-parachain-system/std",
     "cumulus-primitives-timestamp/std",
     "cumulus-pallet-xcmp-queue/std",
+    "pallet-collator-selection/std",
     "parachain-info/std",
     "xcm/std",
     "xcm-executor/std",
@@ -183,7 +186,6 @@ std = [
     "cumulus-pallet-aura-ext/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
-    "orml-tokens/std",
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-claims/std",
@@ -193,6 +195,7 @@ std = [
     "pallet-uniques/std",
     "orml-tokens/std",
     "pallet-loans/std",
+    "pallet-uniques/std",
     "primitives-tokens/std",
     "pallet-treasury/std"
 ]
@@ -207,9 +210,11 @@ runtime-benchmarks = [
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
+    "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
     "pallet-loans/runtime-benchmarks"
+    'pallet-collator-selection/runtime-benchmarks'
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
