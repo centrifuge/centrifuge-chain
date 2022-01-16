@@ -160,6 +160,7 @@ type Moment = u64;
 pub mod pallet {
 	use super::*;
 	use frame_support::PalletId;
+	use sp_runtime::traits::BadOrigin;
 	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -298,21 +299,21 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Pool created. [pool, who]
+		/// A pool was created. [pool, who]
 		Created(T::PoolId, T::AccountId),
-		/// Pool updated. [pool]
+		/// A pool was updated. [pool]
 		Updated(T::PoolId),
-		/// Tranches updated. [pool]
+		/// Tranches were updated. [pool]
 		TranchesUpdated(T::PoolId),
-		/// Max reserve updated. [pool]
+		/// The max reserve was updated. [pool]
 		MaxReserveSet(T::PoolId),
-		/// Pool metadata updated. [pool, metadata]
+		/// Pool metadata was set. [pool, metadata]
 		MetadataSet(T::PoolId, Vec<u8>),
-		/// Epoch executed [pool, epoch]
-		EpochExecuted(T::PoolId, T::EpochId),
-		/// Epoch closed [pool, epoch]
+		/// An epoch was closed. [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
-		/// Fulfilled orders collected [pool, tranche, end_epoch, user, outstanding_collections]
+		/// An epoch was executed. [pool, epoch]
+		EpochExecuted(T::PoolId, T::EpochId),
+		/// Fulfilled orders were collected. [pool, tranche, end_epoch, user, outstanding_collections]
 		OrdersCollected(
 			T::PoolId,
 			T::TrancheId,
@@ -320,13 +321,13 @@ pub mod pallet {
 			T::AccountId,
 			OutstandingCollections<T::Balance>,
 		),
-		/// An invest order was updated
+		/// An invest order was updated. [pool, account]
 		InvestOrderUpdated(T::PoolId, T::AccountId),
-		/// A redeem order was updated
+		/// A redeem order was updated. [pool, account]
 		RedeemOrderUpdated(T::PoolId, T::AccountId),
-		/// When a role is for some accounts
+		/// A role was approved for an account in a pool. [pool, role, account]
 		RoleApproved(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
-		// When a role was revoked for an account in pool
+		// A role was revoked for an account in a pool. [pool, role, account]
 		RoleRevoked(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 	}
 
@@ -367,8 +368,6 @@ pub mod pallet {
 		NoNAV,
 		/// Generic error for invalid input data provided
 		InvalidData,
-		/// No permission to do a specific action
-		NoPermission,
 		/// Epoch needs to be executed before you can collect
 		EpochNotExecutedYet,
 		/// There's no outstanding order that could be collected
@@ -454,7 +453,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
@@ -477,7 +476,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
@@ -497,7 +496,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has_permission(pool_id, who.clone(), PoolRole::LiquidityAdmin),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
@@ -517,7 +516,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
@@ -559,7 +558,7 @@ pub mod pallet {
 					who.clone(),
 					PoolRole::TrancheInvestor(tranche_id, Self::now())
 				),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 			let (currency, epoch) = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
@@ -626,7 +625,7 @@ pub mod pallet {
 					who.clone(),
 					PoolRole::TrancheInvestor(tranche_id, Self::now())
 				),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			let epoch = {
@@ -924,7 +923,7 @@ pub mod pallet {
 
 			ensure!(
 				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			for source in accounts {
@@ -947,7 +946,7 @@ pub mod pallet {
 
 			ensure!(
 				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin,),
-				Error::<T>::NoPermission
+				BadOrigin
 			);
 
 			let who = T::Lookup::lookup(account)?;

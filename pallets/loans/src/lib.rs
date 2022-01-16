@@ -189,31 +189,31 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Emits when a pool is initiated
+		/// A pool was initialised. [pool]
 		PoolInitialised(PoolIdOf<T>),
 
-		/// emits when a new loan is created for a given
+		/// A loan was created for an asset [pool, loan, asset]
 		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
-		/// emits when a loan is closed
+		/// A loan was closed. [pool, loan, asset]
 		Closed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
-		/// emits when the loan is priced
+		/// A loan was priced. [pool, loan]
 		Priced(PoolIdOf<T>, T::LoanId),
 
-		/// emits when some amount is borrowed
+		/// An amount was borrowed for a loan. [pool, loan, amount]
 		Borrowed(PoolIdOf<T>, T::LoanId, T::Amount),
 
-		/// emits when some amount is repaid
+		/// An amount was repaid for a loan. [pool, loan, amount]
 		Repaid(PoolIdOf<T>, T::LoanId, T::Amount),
 
-		/// Emits when NAV is updated for a given pool
+		/// The NAV for a pool was updated. [pool, nav]
 		NAVUpdated(PoolIdOf<T>, T::Amount),
 
-		/// Emits when a write off group is added to the given pool with its index
+		/// A write-off group was added to a pool. [pool, write_off_group]
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
 
-		/// Emits when a loan is written off
+		/// A loan was written off. [pool, loan, write_off_group]
 		WrittenOff(PoolIdOf<T>, T::LoanId, u32),
 	}
 
