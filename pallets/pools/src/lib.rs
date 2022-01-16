@@ -1230,10 +1230,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			// At least one tranche must exist, and the first tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
-			// ensure!(
-			// 	new_tranches.last().min_risk_buffer == Zero::zero() && new_tranches.last().interest_per_sec == One::one(),
-			// 	Error::<T>::NoJuniorTranche
-			// );
+			ensure!(
+				match new_tranches.last() {
+					None => false,
+					Some(tranche) =>
+						tranche.min_risk_buffer == Perquintill::zero()
+							&& tranche.interest_per_sec == One::one(),
+				},
+				Error::<T>::NoJuniorTranche
+			);
 
 			// For now, adding or removing tranches is not allowed, unless it's on pool creation.
 			// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
@@ -1242,7 +1247,7 @@ pub mod pallet {
 				Error::<T>::CannotAddOrRemoveTranches
 			);
 
-			// The seniority value should not be higher than
+			// The seniority value should not be higher than the number of tranches (otherwise you would have unnecessary gaps)
 			ensure!(
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
