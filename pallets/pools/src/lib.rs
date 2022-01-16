@@ -461,14 +461,16 @@ pub mod pallet {
 			Self::is_valid_tranche_change(&vec![], &tranches)?;
 
 			let now = T::Time::now().as_secs();
+			let n_tranches = tranches.clone().len() as u32;
 			let tranches = tranches
 				.into_iter()
-				.rev() // reversing so the tranche_id represents the seniority
 				.enumerate()
 				.map(|(tranche_id, tranche)| Tranche {
 					interest_per_sec: tranche.interest_per_sec,
 					min_risk_buffer: tranche.min_risk_buffer,
-					seniority: tranche.seniority.unwrap_or(tranche_id as u32),
+					seniority: tranche
+						.seniority
+						.unwrap_or(n_tranches - 1 - tranche_id as u32),
 					outstanding_invest_orders: Zero::zero(),
 					outstanding_redeem_orders: Zero::zero(),
 

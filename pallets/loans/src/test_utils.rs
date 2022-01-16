@@ -118,7 +118,7 @@ pub(crate) fn create_pool<T>(
 		vec![
 			TrancheInput {
 				interest_per_sec: One::one(),
-				min_risk_buffer: Perquintill::from_percent(0),
+				min_risk_buffer: Perquintill::from_percent(10),
 				seniority: None,
 			},
 			TrancheInput {
