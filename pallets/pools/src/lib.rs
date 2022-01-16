@@ -1229,7 +1229,7 @@ pub mod pallet {
 				Error::<T>::CannotAddOrRemoveTranches
 			);
 
-			// The seniority value should not be higher than 
+			// The seniority value should not be higher than
 			ensure!(
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
@@ -1331,12 +1331,17 @@ pub mod pallet {
 				T::EpochId,
 				T::Balance,
 				T::InterestRate,
-			>
+			>,
 		) -> Vec<(u128, u128)> {
 			let redeem_start = 10u128.pow(pool.tranches.len() as u32 + 1);
 			pool.tranches
 				.iter()
-				.map(|tranche| (10u128.pow(tranche.seniority + 1), redeem_start * 10u128.pow(tranche.seniority + 1)))
+				.map(|tranche| {
+					(
+						10u128.pow(tranche.seniority + 1),
+						redeem_start * 10u128.pow(tranche.seniority + 1),
+					)
+				})
 				.collect::<Vec<_>>()
 		}
 
