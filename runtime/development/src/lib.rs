@@ -718,6 +718,7 @@ impl pallet_claims::Config for Runtime {
 // Parameterize pools pallet
 parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
+	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
 	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 }
@@ -738,6 +739,7 @@ impl pallet_pools::Config for Runtime {
 	type Permission = Permissions;
 	type Time = Timestamp;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type PalletId = PoolPalletId;
 }

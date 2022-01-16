@@ -39,6 +39,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
 			min_epoch_time: 0,
+			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
 		};
@@ -112,6 +113,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
 			min_epoch_time: 0,
+			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
 		};
@@ -199,6 +201,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
 			min_epoch_time: 0,
+			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
 		};
@@ -281,6 +284,7 @@ fn pool_constraints_pass() {
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
 			min_epoch_time: 0,
+			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
 		};
@@ -386,14 +390,14 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 30 * 60, 0));
+		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 30 * 60, 0, 0));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
-		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 0, u64::MAX));
+		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 0, 0, u64::MAX));
 
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 

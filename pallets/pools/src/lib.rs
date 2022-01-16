@@ -82,6 +82,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
 	pub total_reserve: Balance,
 	pub metadata: Option<Vec<u8>>,
 	pub min_epoch_time: u64,
+	pub challenge_time: u64,
 	pub max_nav_age: u64,
 }
 
@@ -244,6 +245,9 @@ pub mod pallet {
 		/// Default min epoch time
 		type DefaultMinEpochTime: Get<u64>;
 
+		/// Default challenge time
+		type DefaultChallengeTime: Get<u64>;
+
 		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
 	}
@@ -400,6 +404,8 @@ pub mod pallet {
 		NoSuchPool,
 		/// Attempted to close an epoch too early
 		MinEpochTimeHasNotPassed,
+		/// Cannot be called while the pool is in a submission period
+		InSubmissionPeriod,
 		/// Attempted to close an epoch with an out of date NAV
 		NAVTooOld,
 		/// Attempted an operation while a pool is closing
@@ -495,6 +501,7 @@ pub mod pallet {
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
 					min_epoch_time: T::DefaultMinEpochTime::get(),
+					challenge_time: T::DefaultChallengeTime::get(),
 					max_nav_age: T::DefaultMaxNAVAge::get(),
 					metadata: None,
 				},
@@ -549,6 +556,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			min_epoch_time: u64,
+			challenge_time: u64,
 			max_nav_age: u64,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -561,6 +569,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				pool.min_epoch_time = min_epoch_time;
+				pool.challenge_time = challenge_time;
 				pool.max_nav_age = max_nav_age;
 				Self::deposit_event(Event::PoolUpdated(pool_id));
 				Ok(())
@@ -579,10 +588,14 @@ pub mod pallet {
 				Error::<T>::NoPermission
 			);
 
-			// TODO: this probably shouldn't be calleable during a submission period
-
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				ensure!(
+					pool.submission_period_epoch.is_none(),
+					Error::<T>::InSubmissionPeriod
+				);
+
 				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
 
 				// TODO: actually update tranches

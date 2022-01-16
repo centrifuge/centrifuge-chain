@@ -169,6 +169,7 @@ impl orml_tokens::Config for Test {
 
 parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
+	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 }
@@ -188,6 +189,7 @@ impl Config for Test {
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
