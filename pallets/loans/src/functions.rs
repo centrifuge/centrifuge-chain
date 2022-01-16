@@ -221,7 +221,7 @@ impl<T: Config> Pallet<T> {
 				// ensure loan is not written off
 				ensure!(
 					loan_info.write_off_index.is_none(),
-					Error::<T>::LoanWrittenOffByAdmin
+					Error::<T>::WrittenOffByAdmin
 				);
 
 				// ensure maturity date has not passed if the loan has a maturity date
@@ -501,7 +501,7 @@ impl<T: Config> Pallet<T> {
 					None => {
 						// non-admin is trying to write off but admin already did. So error out
 						if loan_data.admin_written_off {
-							return Err(Error::<T>::LoanWrittenOffByAdmin.into());
+							return Err(Error::<T>::WrittenOffByAdmin.into());
 						}
 
 						let maturity_date = loan_data

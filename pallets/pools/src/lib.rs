@@ -293,86 +293,21 @@ pub mod pallet {
 	pub type EpochExecution<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfo<T::Balance, T::BalanceRatio>>;
 
-	// storage for pool admins
-	#[pallet::storage]
-	#[pallet::getter(fn get_pool_admins)]
-	pub type PoolAdmins<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		Blake2_128Concat,
-		T::AccountId,
-		(),
-		OptionQuery,
-	>;
-
-	// storage for borrowers of the pool
-	#[pallet::storage]
-	#[pallet::getter(fn get_pool_borrowers)]
-	pub type Borrowers<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		Blake2_128Concat,
-		T::AccountId,
-		(),
-		OptionQuery,
-	>;
-
-	// storage for liquidity admins of the pool
-	#[pallet::storage]
-	#[pallet::getter(fn get_pool_liquidity_admins)]
-	pub type LiquidityAdmins<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		Blake2_128Concat,
-		T::AccountId,
-		(),
-		OptionQuery,
-	>;
-
-	// storage for member list admins of the pool
-	#[pallet::storage]
-	#[pallet::getter(fn get_pool_member_list_admins)]
-	pub type MemberListAdmins<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		Blake2_128Concat,
-		T::AccountId,
-		(),
-		OptionQuery,
-	>;
-
-	// storage for risk admins of the pool
-	#[pallet::storage]
-	#[pallet::getter(fn get_pool_risk_admins)]
-	pub type RiskAdmins<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		Blake2_128Concat,
-		T::AccountId,
-		(),
-		OptionQuery,
-	>;
-
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Pool Created. [pool, who]
-		PoolCreated(T::PoolId, T::AccountId),
+		/// Pool created. [pool, who]
+		Created(T::PoolId, T::AccountId),
 		/// Pool updated. [pool]
-		PoolUpdated(T::PoolId),
+		Updated(T::PoolId),
 		/// Tranches updated. [pool]
 		TranchesUpdated(T::PoolId),
 		/// Max reserve updated. [pool]
 		MaxReserveSet(T::PoolId),
 		/// Pool metadata updated. [pool, metadata]
-		PoolMetadataSet(T::PoolId, Vec<u8>),
+		MetadataSet(T::PoolId, Vec<u8>),
 		/// Epoch executed [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Epoch closed [pool, epoch]
@@ -503,8 +438,8 @@ pub mod pallet {
 					metadata: None,
 				},
 			);
-			PoolAdmins::<T>::insert(pool_id, owner.clone(), ());
-			Self::deposit_event(Event::PoolCreated(pool_id, owner));
+			T::Permission::add_permission(pool_id, owner.clone(), PoolRole::PoolAdmin)?;
+			Self::deposit_event(Event::Created(pool_id, owner));
 			Ok(())
 		}
 
@@ -528,7 +463,7 @@ pub mod pallet {
 				pool.min_epoch_time = min_epoch_time;
 				pool.challenge_time = challenge_time;
 				pool.max_nav_age = max_nav_age;
-				Self::deposit_event(Event::PoolUpdated(pool_id));
+				Self::deposit_event(Event::Updated(pool_id));
 				Ok(())
 			})
 		}
@@ -548,7 +483,7 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.metadata = Some(metadata.clone());
-				Self::deposit_event(Event::PoolMetadataSet(pool_id, metadata.clone()));
+				Self::deposit_event(Event::MetadataSet(pool_id, metadata.clone()));
 				Ok(())
 			})
 		}

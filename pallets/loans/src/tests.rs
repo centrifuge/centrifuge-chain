@@ -112,7 +112,7 @@ where
 
 	// event should be emitted
 	assert_last_event::<MockRuntime, <MockRuntime as pallet_loans::Config>::Event>(
-		LoanEvent::LoanCreated(pool_id, loan_id, asset).into(),
+		LoanEvent::Created(pool_id, loan_id, asset).into(),
 	);
 	let loan_data = Loans::get_loan_info(pool_id, loan_id).expect("LoanData should be present");
 
@@ -189,7 +189,7 @@ fn price_test_loan<T>(
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
-		LoanEvent::LoanPriced(pool_id, loan_id) => Some((pool_id, loan_id)),
+		LoanEvent::Priced(pool_id, loan_id) => Some((pool_id, loan_id)),
 		_ => None,
 	}
 	.expect("must be a Loan issue activated event");
@@ -272,7 +272,7 @@ where
 
 	let (got_pool_id, got_loan_id, got_asset) =
 		match fetch_loan_event(last_event()).expect("should be a loan event") {
-			LoanEvent::LoanClosed(pool_id, loan_id, asset) => Some((pool_id, loan_id, asset)),
+			LoanEvent::Closed(pool_id, loan_id, asset) => Some((pool_id, loan_id, asset)),
 			_ => None,
 		}
 		.expect("must be a Loan close event");
@@ -632,7 +632,7 @@ macro_rules! test_borrow_loan {
 				assert_ok!(res);
 
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::LoanWrittenOffByAdmin);
+				assert_err!(res, Error::<MockRuntime>::WrittenOffByAdmin);
 
 				// update nav
 				let updated_nav = <Loans as TPoolNav<PoolId, Amount>>::update_nav(pool_id).unwrap();
@@ -1030,7 +1030,7 @@ macro_rules! test_pool_nav {
 				}
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+					LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
 						Some((pool_id, loan_id, write_off_index))
 					}
 					_ => None,
@@ -1248,7 +1248,7 @@ macro_rules! test_write_off_maturity_loan {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+						LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
 							Some((pool_id, loan_id, write_off_index))
 						}
 						_ => None,
@@ -1356,7 +1356,7 @@ macro_rules! test_admin_write_off_loan_type {
 						let loan_event =
 							fetch_loan_event(last_event()).expect("should be a loan event");
 						let (_pool_id, _loan_id, write_off_index) = match loan_event {
-							LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+							LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
 								Some((pool_id, loan_id, write_off_index))
 							}
 							_ => None,
@@ -1372,7 +1372,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 				// permission less write off should not work once written off by admin
 				let res = Loans::write_off(Origin::signed(100), pool_id, loan_id);
-				assert_err!(res, Error::<MockRuntime>::LoanWrittenOffByAdmin)
+				assert_err!(res, Error::<MockRuntime>::WrittenOffByAdmin)
 			})
 	};
 }
@@ -1457,7 +1457,7 @@ macro_rules! test_close_written_off_loan_type {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+						LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
 							Some((pool_id, loan_id, write_off_index))
 						}
 						_ => None,
@@ -1482,7 +1482,7 @@ macro_rules! test_close_written_off_loan_type {
 
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::LoanWrittenOff(pool_id, loan_id, write_off_index) => {
+					LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
 						Some((pool_id, loan_id, write_off_index))
 					}
 					_ => None,

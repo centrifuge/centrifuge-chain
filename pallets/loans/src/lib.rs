@@ -193,19 +193,19 @@ pub mod pallet {
 		PoolInitialised(PoolIdOf<T>),
 
 		/// emits when a new loan is created for a given
-		LoanCreated(PoolIdOf<T>, T::LoanId, AssetOf<T>),
+		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when a loan is closed
-		LoanClosed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
+		Closed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// emits when the loan is priced
-		LoanPriced(PoolIdOf<T>, T::LoanId),
+		Priced(PoolIdOf<T>, T::LoanId),
 
 		/// emits when some amount is borrowed
-		LoanAmountBorrowed(PoolIdOf<T>, T::LoanId, T::Amount),
+		Borrowed(PoolIdOf<T>, T::LoanId, T::Amount),
 
 		/// emits when some amount is repaid
-		LoanAmountRepaid(PoolIdOf<T>, T::LoanId, T::Amount),
+		Repaid(PoolIdOf<T>, T::LoanId, T::Amount),
 
 		/// Emits when NAV is updated for a given pool
 		NAVUpdated(PoolIdOf<T>, T::Amount),
@@ -214,7 +214,7 @@ pub mod pallet {
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
 
 		/// Emits when a loan is written off
-		LoanWrittenOff(PoolIdOf<T>, T::LoanId, u32),
+		WrittenOff(PoolIdOf<T>, T::LoanId, u32),
 	}
 
 	#[pallet::error]
@@ -283,7 +283,7 @@ pub mod pallet {
 		LoanHealthy,
 
 		/// Emits when trying to write off loan that was written off by admin already
-		LoanWrittenOffByAdmin,
+		WrittenOffByAdmin,
 
 		/// Emits when there is no valid write off group available for unhealthy loan
 		NoValidWriteOffGroup,
@@ -352,7 +352,7 @@ pub mod pallet {
 			// ensure borrower is whitelisted.
 			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
 			let loan_id = Self::create_loan(pool_id, owner, asset)?;
-			Self::deposit_event(Event::<T>::LoanCreated(pool_id, loan_id, asset));
+			Self::deposit_event(Event::<T>::Created(pool_id, loan_id, asset));
 			Ok(())
 		}
 
@@ -377,7 +377,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let ClosedLoan { asset, written_off } = Self::close_loan(pool_id, loan_id, owner)?;
-			Self::deposit_event(Event::<T>::LoanClosed(pool_id, loan_id, asset));
+			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, asset));
 			match written_off {
 				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
 				false => Ok(Some(T::WeightInfo::repay_and_close()).into()),
@@ -408,7 +408,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let first_borrow = Self::borrow_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::LoanAmountBorrowed(pool_id, loan_id, amount));
+			Self::deposit_event(Event::<T>::Borrowed(pool_id, loan_id, amount));
 			match first_borrow {
 				true => Ok(Some(T::WeightInfo::initial_borrow()).into()),
 				false => Ok(Some(T::WeightInfo::further_borrows()).into()),
@@ -431,11 +431,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			let repaid_amount = Self::repay_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::LoanAmountRepaid(
-				pool_id,
-				loan_id,
-				repaid_amount,
-			));
+			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, repaid_amount));
 			Ok(())
 		}
 
@@ -454,7 +450,7 @@ pub mod pallet {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			Self::price_loan(pool_id, loan_id, rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::LoanPriced(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::Priced(pool_id, loan_id));
 			Ok(())
 		}
 
@@ -524,7 +520,7 @@ pub mod pallet {
 
 			// try to write off
 			let index = Self::write_off_loan(pool_id, loan_id, None)?;
-			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
+			Self::deposit_event(Event::<T>::WrittenOff(pool_id, loan_id, index));
 			Ok(())
 		}
 
@@ -547,7 +543,7 @@ pub mod pallet {
 
 			// try to write off
 			let index = Self::write_off_loan(pool_id, loan_id, Some(write_off_index))?;
-			Self::deposit_event(Event::<T>::LoanWrittenOff(pool_id, loan_id, index));
+			Self::deposit_event(Event::<T>::WrittenOff(pool_id, loan_id, index));
 			Ok(())
 		}
 	}
