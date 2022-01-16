@@ -357,13 +357,13 @@ fn epoch() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: senior_interest_rate,
-					min_risk_buffer: Perquintill::from_percent(10),
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
 					seniority: None,
 				},
 				TrancheInput {
-					interest_per_sec: One::one(),
-					min_risk_buffer: Perquintill::from_percent(0),
+					interest_per_sec: None,
+					min_risk_buffer: None,
 					seniority: None,
 				}
 			],
@@ -549,13 +549,13 @@ fn collect_tranche_tokens() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: senior_interest_rate,
-					min_risk_buffer: Perquintill::from_percent(10),
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
 					seniority: None,
 				},
 				TrancheInput {
-					interest_per_sec: One::one(),
-					min_risk_buffer: Perquintill::from_percent(0),
+					interest_per_sec: None,
+					min_risk_buffer: None,
 					seniority: None,
 				}
 			],
@@ -668,13 +668,13 @@ fn test_approve_and_remove_roles() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: senior_interest_rate,
-					min_risk_buffer: Perquintill::from_percent(10),
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
 					seniority: None,
 				},
 				TrancheInput {
-					interest_per_sec: One::one(),
-					min_risk_buffer: Perquintill::from_percent(0),
+					interest_per_sec: None,
+					min_risk_buffer: None,
 					seniority: None,
 				}
 			],

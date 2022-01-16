@@ -48,8 +48,8 @@ pub trait TrancheToken<T: Config> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct TrancheInput<Rate> {
-	pub interest_per_sec: Rate,
-	pub min_risk_buffer: Perquintill,
+	pub interest_per_sec: Option<Rate>,
+	pub min_risk_buffer: Option<Perquintill>,
 	pub seniority: Option<u32>,
 }
 
@@ -401,7 +401,9 @@ pub mod pallet {
 		/// A pool with this ID is already in use
 		PoolInUse,
 		/// Attempted to create a pool without a junior tranche
-		NoJuniorTranche,
+		InvalidJuniorTranche,
+		/// Attempted to create a pool with missing tranche inputs
+		MissingTrancheValues,
 		/// Attempted an operation on a pool which does not exist
 		NoSuchPool,
 		/// Attempted to close an epoch too early
@@ -456,11 +458,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 
-			ensure!(
-				T::Permission::has_permission(pool_id, owner.clone(), PoolRole::PoolAdmin),
-				Error::<T>::NoPermission
-			);
-
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
@@ -472,8 +469,8 @@ pub mod pallet {
 				.into_iter()
 				.enumerate()
 				.map(|(tranche_id, tranche)| Tranche {
-					interest_per_sec: tranche.interest_per_sec,
-					min_risk_buffer: tranche.min_risk_buffer,
+					interest_per_sec: tranche.interest_per_sec.unwrap_or(One::one()),
+					min_risk_buffer: tranche.min_risk_buffer.unwrap_or(Perquintill::zero()),
 					seniority: tranche
 						.seniority
 						.unwrap_or(n_tranches - 1 - tranche_id as u32),
@@ -599,8 +596,9 @@ pub mod pallet {
 				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
 
 				for (tranche, new_tranche) in &mut pool.tranches.iter_mut().zip(tranches) {
-					tranche.min_risk_buffer = new_tranche.min_risk_buffer;
-					tranche.interest_per_sec = new_tranche.interest_per_sec;
+					tranche.min_risk_buffer =
+						new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
+					tranche.interest_per_sec = new_tranche.interest_per_sec.unwrap_or(One::one());
 					if new_tranche.seniority.is_some() {
 						tranche.seniority = new_tranche.seniority.unwrap();
 					}
@@ -1234,10 +1232,17 @@ pub mod pallet {
 				match new_tranches.last() {
 					None => false,
 					Some(tranche) =>
-						tranche.min_risk_buffer == Perquintill::zero()
-							&& tranche.interest_per_sec == One::one(),
+						tranche.min_risk_buffer.is_none() && tranche.interest_per_sec.is_none(),
 				},
-				Error::<T>::NoJuniorTranche
+				Error::<T>::InvalidJuniorTranche
+			);
+
+			// All but the most junior tranche should have min risk buffers and interest rates
+			ensure!(
+				new_tranches.split_last().unwrap().1.iter().all(|tranche| {
+					tranche.min_risk_buffer.is_some() && tranche.interest_per_sec.is_some()
+				}),
+				Error::<T>::MissingTrancheValues
 			);
 
 			// For now, adding or removing tranches is not allowed, unless it's on pool creation.
