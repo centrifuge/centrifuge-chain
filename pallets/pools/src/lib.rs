@@ -1324,7 +1324,7 @@ pub mod pallet {
 		// u128 only supports up to about 18 tranches
 		// (max u128 is ~3.4e38, 18 tranches is 10^(18 * 2 + 1) ~= 1e37)
 		// Returns a tuple of (invest_weight, redeem_weight)
-		fn get_tranche_weights(
+		pub fn get_tranche_weights(
 			pool: &PoolDetails<
 				T::AccountId,
 				T::CurrencyId,
@@ -1333,7 +1333,7 @@ pub mod pallet {
 				T::InterestRate,
 			>,
 		) -> Vec<(u128, u128)> {
-			let redeem_start = 10u128.pow(pool.tranches.len() as u32 + 1);
+			let redeem_start = 10u128.pow(pool.tranches.len() as u32);
 			pool.tranches
 				.iter()
 				.map(|tranche| {

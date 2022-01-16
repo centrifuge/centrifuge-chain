@@ -339,8 +339,8 @@ pub mod pallet {
 		///
 		/// `create_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
 		/// caller *must* be the owner of the asset.
-		/// LoanStatus is set to created and needs to be activated by an admin origin to start borrowing.
-		/// Loan cannot be closed until the status has changed to Active.
+		/// LoanStatus is set to created and needs to be priced by an admin origin to start borrowing.
+		/// Loan cannot be closed until the status has changed to Priced.
 		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
 		#[pallet::weight(<T as Config>::WeightInfo::create())]
 		#[transactional]

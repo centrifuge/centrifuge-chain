@@ -28,7 +28,7 @@ use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
-	FixedPointNumber, Perquintill,
+	Perquintill,
 };
 use sp_std::vec;
 
@@ -112,11 +112,6 @@ pub(crate) fn create_pool<T>(
 	);
 
 	// Initialize pool with initial investments
-	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-	let senior_interest_rate =
-		<T as pallet_pools::Config>::InterestRate::saturating_from_rational(10, 100)
-			/ <T as pallet_pools::Config>::InterestRate::saturating_from_integer(SECS_PER_YEAR)
-			+ One::one();
 	assert_ok!(PoolPallet::<T>::create_pool(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,

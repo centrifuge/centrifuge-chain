@@ -229,30 +229,34 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_risk_buffer: Perquintill::zero(),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
-			..Default::default()
-		};
-		let tranche_b = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.05),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
-			..Default::default()
-		};
-		let tranche_c = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.1),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 30,
-			..Default::default()
-		};
-		let tranche_d = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.2),
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
+			seniority: 0,
 			..Default::default()
 		};
-		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
+		let tranche_b = Tranche {
+			min_risk_buffer: Perquintill::from_float(0.1),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: 30,
+			seniority: 1,
+			..Default::default()
+		};
+		let tranche_c = Tranche {
+			min_risk_buffer: Perquintill::from_float(0.05),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: Zero::zero(),
+			seniority: 2,
+			..Default::default()
+		};
+		let tranche_d = Tranche {
+			min_risk_buffer: Perquintill::zero(),
+			outstanding_invest_orders: Zero::zero(),
+			outstanding_redeem_orders: Zero::zero(),
+			seniority: 3,
+			..Default::default()
+		};
+		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
 
 		let epoch_tranches = tranches
 			.iter()
@@ -297,6 +301,8 @@ fn pool_constraints_pass() {
 			.collect::<Vec<_>>();
 
 		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
+
+		assert_eq!(Pools::get_tranche_weights(pool), vec![(10, 100_000), (100, 1_000_000), (1_000, 10_000_000), (10_000, 100_000_000)]);
 	});
 }
 
@@ -331,8 +337,8 @@ fn epoch() {
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = <T as Config>::InterestRate::saturating_from_rational(10, 100)
-			/ <T as Config>::InterestRate::saturating_from_integer(SECS_PER_YEAR)
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create_pool(
 			pool_owner.clone(),
@@ -523,7 +529,7 @@ fn collect_tranche_tokens() {
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = <T as Config>::InterestRate::saturating_from_rational(10, 100)
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create_pool(
@@ -640,9 +646,9 @@ fn test_approve_and_remove_roles() {
 		)
 		.unwrap();
 
-		// Initialize pool with initial investmentslet senior_interest_rate = <T as Config>::InterestRate::saturating_from_rational(10, 100)
+		// Initialize pool with initial investmentslet senior_interest_rate = Rate::saturating_from_rational(10, 100)
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = <T as Config>::InterestRate::saturating_from_rational(10, 100)
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create_pool(
