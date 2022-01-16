@@ -16,18 +16,21 @@ use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use common_traits::{Permissions, PoolNAV};
 use common_types::PoolRole;
+use frame_support::sp_runtime::traits::One;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use orml_traits::MultiCurrency;
 use pallet_pools::PoolLocator;
+use pallet_pools::TrancheInput;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
 use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
-use sp_arithmetic::traits::Zero;
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::{
+	traits::{AccountIdConversion, Zero},
+	FixedPointNumber, Perquintill,
+};
 use sp_std::vec;
-use pallet_pools::TrancheInput;
 
 type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
 pub(crate) fn set_role<T: pallet_loans::Config>(
@@ -109,18 +112,26 @@ pub(crate) fn create_pool<T>(
 	);
 
 	// Initialize pool with initial investments
+	const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+	let senior_interest_rate =
+		<T as pallet_pools::Config>::InterestRate::saturating_from_rational(10, 100)
+			/ <T as pallet_pools::Config>::InterestRate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
 	assert_ok!(PoolPallet::<T>::create_pool(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,
-		vec![TrancheInput {
-			interest_per_sec: 0,
-			min_risk_buffer: 0,
-			seniority: None,
-		}, TrancheInput {
-			interest_per_sec: 0,
-			min_risk_buffer: 0,
-			seniority: None,
-		}],
+		vec![
+			TrancheInput {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_percent(0),
+				seniority: None,
+			},
+			TrancheInput {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_percent(0),
+				seniority: None,
+			}
+		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
 	));

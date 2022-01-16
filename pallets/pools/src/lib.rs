@@ -50,14 +50,14 @@ pub trait TrancheToken<T: Config> {
 pub struct TrancheInput<Rate> {
 	pub interest_per_sec: Rate,
 	pub min_risk_buffer: Perquintill,
-	pub seniority: Option<u8>
+	pub seniority: Option<u32>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct Tranche<Balance, Rate> {
 	pub interest_per_sec: Rate,
 	pub min_risk_buffer: Perquintill,
-	pub seniority: u8,
+	pub seniority: u32,
 
 	pub outstanding_invest_orders: Balance,
 	pub outstanding_redeem_orders: Balance,
@@ -432,7 +432,7 @@ pub mod pallet {
 		NoOutstandingOrder,
 		/// User needs to collect before a new order can be submitted
 		CollectRequired,
-		/// Removing tranches is not supported
+		/// Adding & removing tranches is not supported
 		CannotAddOrRemoveTranches,
 		/// Invalid tranche seniority value
 		InvalidTrancheSeniority,
@@ -465,19 +465,17 @@ pub mod pallet {
 				.into_iter()
 				.rev() // reversing so the tranche_id represents the seniority
 				.enumerate()
-				.map(|(tranche_id, tranche)| {
-					Tranche {
-						interest_per_sec: tranche.interest_per_sec,
-						min_risk_buffer: tranche.min_risk_buffer,
-						seniority: tranche.seniority.unwrap_or(tranche_id as u8),
-						outstanding_invest_orders: Zero::zero(),
-						outstanding_redeem_orders: Zero::zero(),
+				.map(|(tranche_id, tranche)| Tranche {
+					interest_per_sec: tranche.interest_per_sec,
+					min_risk_buffer: tranche.min_risk_buffer,
+					seniority: tranche.seniority.unwrap_or(tranche_id as u32),
+					outstanding_invest_orders: Zero::zero(),
+					outstanding_redeem_orders: Zero::zero(),
 
-						debt: Zero::zero(),
-						reserve: Zero::zero(),
-						ratio: Perquintill::zero(),
-						last_updated_interest: now,
-					}
+					debt: Zero::zero(),
+					reserve: Zero::zero(),
+					ratio: Perquintill::zero(),
+					last_updated_interest: now,
 				})
 				.collect();
 
@@ -578,7 +576,7 @@ pub mod pallet {
 				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
 				Error::<T>::NoPermission
 			);
-			
+
 			// TODO: this probably shouldn't be calleable during a submission period
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
@@ -859,7 +857,10 @@ pub mod pallet {
 							loc,
 							submission_period_epoch,
 							tranche,
-							TrancheSolution { invest_fulfillment: Perquintill::zero(), redeem_fulfillment: Perquintill::zero() },
+							TrancheSolution {
+								invest_fulfillment: Perquintill::zero(),
+								redeem_fulfillment: Perquintill::zero(),
+							},
 							(Zero::zero(), Zero::zero()),
 							price.clone(),
 						)?;
@@ -887,7 +888,10 @@ pub mod pallet {
 
 				let full_execution_solution = orders
 					.iter()
-					.map(|_| TrancheSolution { invest_fulfillment: Perquintill::one(), redeem_fulfillment: Perquintill::one() })
+					.map(|_| TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					})
 					.collect::<Vec<_>>();
 
 				let tranche_values = pool
@@ -1225,11 +1229,12 @@ pub mod pallet {
 				Error::<T>::CannotAddOrRemoveTranches
 			);
 
+			// The seniority value should not be higher than 
 			ensure!(
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
-						Some(seniority) => seniority <= new_tranches.len() as u8,
-						None => true
+						Some(seniority) => seniority <= new_tranches.len() as u32,
+						None => true,
 					}
 				}),
 				Error::<T>::InvalidTrancheSeniority
@@ -1256,7 +1261,9 @@ pub mod pallet {
 				.fold(
 					Some(Zero::zero()),
 					|sum: Option<T::Balance>, (tranche, solution)| {
-						sum.and_then(|sum| sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest)))
+						sum.and_then(|sum| {
+							sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+						})
 					},
 				)
 				.ok_or(Error::<T>::Overflow)?;
@@ -1268,7 +1275,9 @@ pub mod pallet {
 				.fold(
 					Some(Zero::zero()),
 					|sum: Option<T::Balance>, (tranche, solution)| {
-						sum.and_then(|sum| sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem)))
+						sum.and_then(|sum| {
+							sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+						})
 					},
 				)
 				.ok_or(Error::<T>::Overflow)?;
@@ -1296,7 +1305,10 @@ pub mod pallet {
 					tranche
 						.value
 						.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-						.and_then(|value| value.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem)))
+						.and_then(|value| {
+							value
+								.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+						})
 				})
 				.collect::<Option<Vec<_>>>()
 				.ok_or(Error::<T>::Overflow)?;
@@ -1307,6 +1319,25 @@ pub mod pallet {
 				&min_risk_buffers,
 				&tranche_values,
 			)
+		}
+
+		// u128 only supports up to about 18 tranches
+		// (max u128 is ~3.4e38, 18 tranches is 10^(18 * 2 + 1) ~= 1e37)
+		// Returns a tuple of (invest_weight, redeem_weight)
+		fn get_tranche_weights(
+			pool: &PoolDetails<
+				T::AccountId,
+				T::CurrencyId,
+				T::EpochId,
+				T::Balance,
+				T::InterestRate,
+			>
+		) -> Vec<(u128, u128)> {
+			let redeem_start = 10u128.pow(pool.tranches.len() as u32 + 1);
+			pool.tranches
+				.iter()
+				.map(|tranche| (10u128.pow(tranche.seniority + 1), redeem_start * 10u128.pow(tranche.seniority + 1)))
+				.collect::<Vec<_>>()
 		}
 
 		fn validate_core_constraints(
@@ -1532,7 +1563,9 @@ pub mod pallet {
 				.and_then(|inv_price| inv_price.checked_mul_int(tranche.outstanding_invest_orders))
 				.map(|invest| solution.invest_fulfillment.mul_ceil(invest))
 				.unwrap_or(Zero::zero());
-			let token_redeem = solution.redeem_fulfillment.mul_floor(tranche.outstanding_redeem_orders);
+			let token_redeem = solution
+				.redeem_fulfillment
+				.mul_floor(tranche.outstanding_redeem_orders);
 
 			tranche.outstanding_invest_orders -= currency_invest;
 			tranche.outstanding_redeem_orders -= token_redeem;
