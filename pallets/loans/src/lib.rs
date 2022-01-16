@@ -192,7 +192,7 @@ pub mod pallet {
 		/// A pool was initialised. [pool]
 		PoolInitialised(PoolIdOf<T>),
 
-		/// A loan was created for an asset [pool, loan, asset]
+		/// A loan was created for an asset. [pool, loan, asset]
 		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 
 		/// A loan was closed. [pool, loan, asset]
