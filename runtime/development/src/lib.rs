@@ -866,7 +866,7 @@ impl pallet_loans::Config for Runtime {
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
-	type Pool = InvestorPool;
+	type Pool = Pools;
 	type Permission = Permissions;
 	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
@@ -1000,7 +1000,7 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
-		InvestorPool: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
+		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
 		Loan: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,

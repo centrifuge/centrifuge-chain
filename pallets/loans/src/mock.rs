@@ -51,7 +51,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		InvestorPool: pallet_pools::{Pallet, Call, Storage, Event<T>},
+		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
 		Loan: pallet_loans::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
@@ -240,7 +240,7 @@ impl pallet_loans::Config for MockRuntime {
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
-	type Pool = InvestorPool;
+	type Pool = Pools;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type Permission = Permissions;
