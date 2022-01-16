@@ -99,7 +99,6 @@ pub(crate) fn create<T>(
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 
-	set_role::<T>(pool_id.into(), owner.clone(), PoolRole::PoolAdmin);
 	set_role::<T>(
 		pool_id.into(),
 		junior_investor.clone(),

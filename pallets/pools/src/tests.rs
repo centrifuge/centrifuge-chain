@@ -328,13 +328,6 @@ fn epoch() {
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
-			ensure_signed(pool_owner.clone()).unwrap(),
-			PoolRole::PoolAdmin,
-		)
-		.unwrap();
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
-			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
@@ -520,13 +513,6 @@ fn collect_tranche_tokens() {
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
-			ensure_signed(pool_owner.clone()).unwrap(),
-			PoolRole::PoolAdmin,
-		)
-		.unwrap();
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
-			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
@@ -650,13 +636,6 @@ fn collect_tranche_tokens() {
 fn test_approve_and_remove_roles() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 1;
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
-			0,
-			pool_owner,
-			PoolRole::PoolAdmin,
-		)
-		.unwrap();
 
 		// Initialize pool with initial investmentslet senior_interest_rate = Rate::saturating_from_rational(10, 100)
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
