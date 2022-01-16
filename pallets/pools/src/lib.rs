@@ -408,8 +408,6 @@ pub mod pallet {
 		InSubmissionPeriod,
 		/// Attempted to close an epoch with an out of date NAV
 		NAVTooOld,
-		/// Attempted an operation while a pool is closing
-		PoolClosing,
 		/// An arithmetic overflow occured
 		Overflow,
 		/// A Tranche ID cannot be converted to an address
@@ -624,10 +622,6 @@ pub mod pallet {
 			);
 			let (currency, epoch) = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-				ensure!(
-					pool.submission_period_epoch.is_none(),
-					Error::<T>::PoolClosing
-				);
 				(pool.currency, pool.current_epoch)
 			};
 			let tranche = TrancheLocator {
@@ -696,10 +690,6 @@ pub mod pallet {
 
 			let epoch = {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-				ensure!(
-					pool.submission_period_epoch.is_none(),
-					Error::<T>::PoolClosing
-				);
 				pool.current_epoch
 			};
 			let currency = T::TrancheToken::tranche_token(pool_id, tranche_id);
@@ -823,7 +813,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				ensure!(
 					pool.submission_period_epoch.is_none(),
-					Error::<T>::PoolClosing
+					Error::<T>::InSubmissionPeriod
 				);
 
 				let now = T::Time::now().as_secs();
