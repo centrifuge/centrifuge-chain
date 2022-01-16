@@ -367,6 +367,8 @@ pub mod pallet {
 		PoolCreated(T::PoolId, T::AccountId),
 		/// Pool updated. [pool]
 		PoolUpdated(T::PoolId),
+		/// Tranches updated. [pool]
+		TranchesUpdated(T::PoolId),
 		/// Max reserve updated. [pool]
 		MaxReserveSet(T::PoolId),
 		/// Pool metadata updated. [pool, metadata]
@@ -596,9 +598,15 @@ pub mod pallet {
 
 				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
 
-				// TODO: actually update tranches
+				for (tranche, new_tranche) in &mut pool.tranches.iter_mut().zip(tranches) {
+					tranche.min_risk_buffer = new_tranche.min_risk_buffer;
+					tranche.interest_per_sec = new_tranche.interest_per_sec;
+					if new_tranche.seniority.is_some() {
+						tranche.seniority = new_tranche.seniority.unwrap();
+					}
+				}
 
-				Self::deposit_event(Event::PoolUpdated(pool_id));
+				Self::deposit_event(Event::TranchesUpdated(pool_id));
 				Ok(())
 			})
 		}
