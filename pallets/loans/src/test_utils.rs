@@ -82,7 +82,7 @@ where
 	loan_id
 }
 
-pub(crate) fn create_pool<T>(
+pub(crate) fn create<T>(
 	pool_id: T::PoolId,
 	owner: T::AccountId,
 	junior_investor: T::AccountId,
@@ -112,7 +112,7 @@ pub(crate) fn create_pool<T>(
 	);
 
 	// Initialize pool with initial investments
-	assert_ok!(PoolPallet::<T>::create_pool(
+	assert_ok!(PoolPallet::<T>::create(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,
 		vec![

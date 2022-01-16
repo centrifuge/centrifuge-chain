@@ -447,7 +447,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(100)]
-		pub fn create_pool(
+		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranches: Vec<TrancheInput<T::InterestRate>>,
@@ -512,7 +512,32 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
-		pub fn set_pool_metadata(
+		pub fn update(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+			min_epoch_time: u64,
+			challenge_time: u64,
+			max_nav_age: u64,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
+				Error::<T>::NoPermission
+			);
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				pool.min_epoch_time = min_epoch_time;
+				pool.challenge_time = challenge_time;
+				pool.max_nav_age = max_nav_age;
+				Self::deposit_event(Event::PoolUpdated(pool_id));
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			metadata: Vec<u8>,
@@ -547,31 +572,6 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.max_reserve = max_reserve;
 				Self::deposit_event(Event::MaxReserveSet(pool_id));
-				Ok(())
-			})
-		}
-
-		#[pallet::weight(100)]
-		pub fn update_pool(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			min_epoch_time: u64,
-			challenge_time: u64,
-			max_nav_age: u64,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
-				Error::<T>::NoPermission
-			);
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-
-				pool.min_epoch_time = min_epoch_time;
-				pool.challenge_time = challenge_time;
-				pool.max_nav_age = max_nav_age;
-				Self::deposit_event(Event::PoolUpdated(pool_id));
 				Ok(())
 			})
 		}

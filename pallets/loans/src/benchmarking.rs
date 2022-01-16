@@ -32,7 +32,7 @@ use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Rate, CFG as CURRENCY};
 use sp_runtime::traits::StaticLookup;
 use sp_std::vec;
-use test_utils::{assert_last_event, create_nft_class, create_pool, expect_asset_owner, mint_nft};
+use test_utils::{assert_last_event, create_nft_class, create, expect_asset_owner, mint_nft};
 
 pub struct Pallet<T: Config>(LoansPallet<T>);
 
@@ -159,7 +159,7 @@ where
 		&pool_account,
 		(500 * CURRENCY).into(),
 	);
-	create_pool::<T>(
+	create::<T>(
 		pool_id.into(),
 		pool_owner.clone(),
 		junior_inv.clone(),

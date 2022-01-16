@@ -21,7 +21,7 @@ use crate::mock::{
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
-	assert_last_event, create_nft_class, create_pool, expect_asset_owner, initialise_test_pool,
+	assert_last_event, create_nft_class, create, expect_asset_owner, initialise_test_pool,
 	mint_nft,
 };
 use frame_support::{assert_err, assert_ok};
@@ -75,7 +75,7 @@ where
 {
 	let pool_admin = PoolAdmin::get();
 
-	create_pool::<T>(
+	create::<T>(
 		pool_id,
 		pool_admin,
 		JuniorInvestor::get(),
@@ -1114,7 +1114,7 @@ fn test_add_write_off_groups() {
 			let pool_admin = PoolAdmin::get();
 			let risk_admin: u64 = RiskAdmin::get();
 			let pool_id = 0;
-			create_pool::<MockRuntime>(
+			create::<MockRuntime>(
 				pool_id,
 				pool_admin,
 				JuniorInvestor::get(),

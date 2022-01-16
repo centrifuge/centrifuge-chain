@@ -352,7 +352,7 @@ fn epoch() {
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
-		assert_ok!(Pools::create_pool(
+		assert_ok!(Pools::create(
 			pool_owner.clone(),
 			0,
 			vec![
@@ -370,7 +370,7 @@ fn epoch() {
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
-		assert_ok!(Pools::set_pool_metadata(
+		assert_ok!(Pools::set_metadata(
 			pool_owner.clone(),
 			0,
 			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
@@ -390,14 +390,14 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 30 * 60, 0, 0));
+		assert_ok!(Pools::update(pool_owner.clone(), 0, 30 * 60, 0, 0));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
-		assert_ok!(Pools::update_pool(pool_owner.clone(), 0, 0, 0, u64::MAX));
+		assert_ok!(Pools::update(pool_owner.clone(), 0, 0, 0, u64::MAX));
 
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
@@ -544,7 +544,7 @@ fn collect_tranche_tokens() {
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
-		assert_ok!(Pools::create_pool(
+		assert_ok!(Pools::create(
 			pool_owner.clone(),
 			0,
 			vec![
@@ -663,7 +663,7 @@ fn test_approve_and_remove_roles() {
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
-		assert_ok!(Pools::create_pool(
+		assert_ok!(Pools::create(
 			Origin::signed(pool_owner),
 			0,
 			vec![
