@@ -302,7 +302,15 @@ fn pool_constraints_pass() {
 
 		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
 
-		assert_eq!(Pools::get_tranche_weights(pool), vec![(10, 100_000), (100, 1_000_000), (1_000, 10_000_000), (10_000, 100_000_000)]);
+		assert_eq!(
+			Pools::get_tranche_weights(pool),
+			vec![
+				(10, 100_000),
+				(100, 1_000_000),
+				(1_000, 10_000_000),
+				(10_000, 100_000_000)
+			]
+		);
 	});
 }
 
