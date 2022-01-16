@@ -734,7 +734,7 @@ impl pallet_pools::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
-	type NAV = Loan;
+	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
 	type Permission = Permissions;
 	type Time = Timestamp;
@@ -1003,7 +1003,7 @@ construct_runtime!(
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
-		Loan: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 

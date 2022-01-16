@@ -52,7 +52,7 @@ frame_support::construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
-		Loan: pallet_loans::{Pallet, Call, Storage, Event<T>},
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
@@ -157,7 +157,7 @@ impl pallet_pools::Config for MockRuntime {
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
-	type NAV = Loan;
+	type NAV = Loans;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
