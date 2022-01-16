@@ -21,8 +21,7 @@ use crate::mock::{
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
-	assert_last_event, create_nft_class, create, expect_asset_owner, initialise_test_pool,
-	mint_nft,
+	assert_last_event, create, create_nft_class, expect_asset_owner, initialise_test_pool, mint_nft,
 };
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;

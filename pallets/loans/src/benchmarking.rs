@@ -32,7 +32,7 @@ use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Rate, CFG as CURRENCY};
 use sp_runtime::traits::StaticLookup;
 use sp_std::vec;
-use test_utils::{assert_last_event, create_nft_class, create, expect_asset_owner, mint_nft};
+use test_utils::{assert_last_event, create, create_nft_class, expect_asset_owner, mint_nft};
 
 pub struct Pallet<T: Config>(LoansPallet<T>);
 
