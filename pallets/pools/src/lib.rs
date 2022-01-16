@@ -464,7 +464,7 @@ pub mod pallet {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
-			Self::is_valid_tranche_change(&vec![], &tranches)?;
+			Self::is_valid_tranche_change(&Vec::new(), &tranches)?;
 
 			let now = T::Time::now().as_secs();
 			let n_tranches = tranches.clone().len() as u32;
