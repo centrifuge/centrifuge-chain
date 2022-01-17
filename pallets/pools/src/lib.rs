@@ -69,6 +69,21 @@ pub struct Tranche<Balance, Rate> {
 	pub last_updated_interest: u64,
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, Copy)]
+pub struct TrancheSolution {
+	pub invest_fulfillment: Perquintill,
+	pub redeem_fulfillment: Perquintill,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct SubmissionPeriodState<EpochId, Balance> {
+	pub epoch: EpochId,
+	pub best_submission: Option<Vec<TrancheSolution>>,
+	pub best_submission_score: Balance,
+	pub got_full_valid_solution: bool,
+	pub min_challenge_period_end: Option<u64>,
+}
+
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize>
 where
@@ -80,7 +95,7 @@ where
 	pub current_epoch: EpochId,
 	pub last_epoch_closed: u64,
 	pub last_epoch_executed: EpochId,
-	pub submission_period_epoch: Option<EpochId>,
+	pub submission_period_state: Option<SubmissionPeriodState<EpochId, Balance>>,
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
@@ -88,12 +103,6 @@ where
 	pub min_epoch_time: u64,
 	pub challenge_time: u64,
 	pub max_nav_age: u64,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, Copy)]
-pub struct TrancheSolution {
-	pub invest_fulfillment: Perquintill,
-	pub redeem_fulfillment: Perquintill,
 }
 
 /// Per-tranche and per-user order details.
@@ -200,6 +209,7 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ FixedPointOperand
 			+ From<u64>
+			+ From<u128>
 			+ TypeInfo
 			+ TryInto<u64>;
 
@@ -350,6 +360,8 @@ pub mod pallet {
 		/// An epoch was closed. [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
 		/// An epoch was executed. [pool, epoch]
+		SolutionSubmitted(T::PoolId, T::EpochId, Vec<TrancheSolution>),
+		/// An epoch was executed. [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Fulfilled orders were collected. [pool, tranche, end_epoch, user, outstanding_collections]
 		OrdersCollected(
@@ -382,6 +394,8 @@ pub mod pallet {
 		NoSuchPool,
 		/// Attempted to close an epoch too early
 		MinEpochTimeHasNotPassed,
+		/// Attempted to execute an epoch too early
+		ChallengeTimeHasNotPassed,
 		/// Cannot be called while the pool is in a submission period
 		InSubmissionPeriod,
 		/// Attempted to close an epoch with an out of date NAV
@@ -394,8 +408,8 @@ pub mod pallet {
 		WipedOut,
 		/// The provided solution is not a valid one
 		InvalidSolution,
-		/// Attempted to solve a pool which is not closing
-		NotClosing,
+		/// Attempted to solve a pool which is not in a submission period
+		NotInSubmissionPeriod,
 		/// Insufficient currency available for desired operation
 		InsufficientCurrency,
 		/// Insufficient reserve available for desired operation
@@ -422,6 +436,8 @@ pub mod pallet {
 		InvalidTrancheId,
 		/// Indicates that the new passed order equals the old-order
 		NoNewOrder,
+		/// Submitted solution is not an improvement
+		NotNewBestSubmission,
 	}
 
 	#[pallet::call]
@@ -473,7 +489,7 @@ pub mod pallet {
 					current_epoch: One::one(),
 					last_epoch_closed: now,
 					last_epoch_executed: Zero::zero(),
-					submission_period_epoch: None,
+					submission_period_state: None,
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
@@ -574,7 +590,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				ensure!(
-					pool.submission_period_epoch.is_none(),
+					pool.submission_period_state.is_none(),
 					Error::<T>::InSubmissionPeriod
 				);
 
@@ -755,7 +771,7 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				ensure!(
-					pool.submission_period_epoch.is_none(),
+					pool.submission_period_state.is_none(),
 					Error::<T>::InSubmissionPeriod
 				);
 
@@ -873,7 +889,13 @@ pub mod pallet {
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 				} else {
-					pool.submission_period_epoch = Some(submission_period_epoch);
+					pool.submission_period_state = Some(SubmissionPeriodState {
+						epoch: submission_period_epoch,
+						best_submission: None,
+						best_submission_score: Zero::zero(),
+						got_full_valid_solution: false,
+						min_challenge_period_end: None,
+					});
 					EpochExecution::<T>::insert(pool_id, epoch);
 				}
 
@@ -893,8 +915,10 @@ pub mod pallet {
 				EpochExecution::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let submission_period_epoch =
-					pool.submission_period_epoch.ok_or(Error::<T>::NotClosing)?;
+				let submission_period_state = pool
+					.submission_period_state
+					.clone()
+					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
 				let epoch_validation_result = Self::is_valid_solution(pool, &epoch, &solution);
 
@@ -906,10 +930,91 @@ pub mod pallet {
 					Error::<T>::InvalidSolution
 				);
 
-				pool.submission_period_epoch = None;
-				Self::do_execute_epoch(pool_id, pool, &epoch, &solution)?;
+				// Sum of all order-type weighted invest & redeem amounts for this solution
+				let score: T::Balance = solution
+					.iter()
+					.zip(epoch.tranches)
+					.zip(Self::get_tranche_weights(&pool))
+					.fold(
+						Some(Zero::zero()),
+						|sum: Option<T::Balance>,
+						 ((solution, epoch_execution), (invest_weight, redeem_weight))| {
+							sum.and_then(|sum| {
+								solution
+									.invest_fulfillment
+									.mul_floor(epoch_execution.invest)
+									.checked_mul(&invest_weight)
+									.and_then(|invest_score| {
+										solution
+											.redeem_fulfillment
+											.mul_floor(epoch_execution.redeem)
+											.checked_mul(&redeem_weight)
+											.and_then(|redeem_score| {
+												invest_score.checked_add(&redeem_score)
+											})
+									})
+									.as_ref()
+									.and_then(|total_score| sum.checked_add(total_score))
+							})
+						},
+					)
+					.ok_or(Error::<T>::Overflow)?;
+
+				ensure!(
+					score > submission_period_state.best_submission_score,
+					Error::<T>::NotNewBestSubmission
+				);
+
+				// TODO: check if score has increased
+
+				let now = T::Time::now().as_secs();
+				pool.submission_period_state = Some(SubmissionPeriodState {
+					epoch: submission_period_state.epoch,
+					best_submission: Some(solution.clone()),
+					best_submission_score: score.into(),
+					min_challenge_period_end: Some(now.saturating_add(pool.challenge_time)),
+					got_full_valid_solution: false,
+				});
+
+				Self::deposit_event(Event::SolutionSubmitted(
+					pool_id,
+					submission_period_state.epoch,
+					solution,
+				));
+				Ok(())
+			})
+		}
+
+		#[pallet::weight(100)]
+		pub fn execute_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let epoch =
+				EpochExecution::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			Pool::<T>::try_mutate(pool_id, |pool| {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				let submission_period_state = pool
+					.submission_period_state
+					.clone()
+					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
+
+				let now = T::Time::now().as_secs();
+				ensure!(
+					match submission_period_state.min_challenge_period_end {
+						None => false,
+						Some(min_challenge_period_end) => now >= min_challenge_period_end,
+					},
+					Error::<T>::ChallengeTimeHasNotPassed
+				);
+
+				let best_submission = submission_period_state
+					.best_submission
+					.ok_or(Error::<T>::ChallengeTimeHasNotPassed)?;
+
+				pool.submission_period_state = None;
+				Self::do_execute_epoch(pool_id, pool, &epoch, &best_submission)?;
 				EpochExecution::<T>::remove(pool_id);
-				Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
+				Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_state.epoch));
 				Ok(())
 			})
 		}
@@ -1391,14 +1496,14 @@ pub mod pallet {
 				T::InterestRate,
 				T::MaxSizeMetadata,
 			>,
-		) -> Vec<(u128, u128)> {
+		) -> Vec<(T::Balance, T::Balance)> {
 			let redeem_start = 10u128.pow(pool.tranches.len() as u32);
 			pool.tranches
 				.iter()
 				.map(|tranche| {
 					(
-						10u128.pow(tranche.seniority + 1),
-						redeem_start * 10u128.pow(tranche.seniority + 1),
+						10u128.pow(tranche.seniority + 1).into(),
+						(redeem_start * 10u128.pow(tranche.seniority + 1)).into(),
 					)
 				})
 				.collect::<Vec<_>>()
