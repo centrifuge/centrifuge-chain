@@ -715,7 +715,7 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// Parameterize pools pallet
+// Pool config parameters
 parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
 	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
