@@ -722,7 +722,7 @@ parameter_types! {
 	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxSizeMetadata: u32 = 100;
+	pub const MaxSizeMetadata: u32 = 46;
 }
 
 impl pallet_pools::Config for Runtime {
