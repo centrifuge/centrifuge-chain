@@ -172,6 +172,8 @@ parameter_types! {
 	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxSizeMetadata: u32 = 100;
 }
 
 impl Config for Test {
@@ -193,6 +195,7 @@ impl Config for Test {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
+	type MaxSizeMetadata = MaxSizeMetadata;
 }
 
 impl fake_nav::Config for Test {
