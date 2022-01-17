@@ -56,7 +56,7 @@ fn balance_of<T>(currency_id: T::CurrencyId, account: &T::AccountId) -> MultiCur
 where
 	T: pallet_pools::Config + frame_system::Config,
 {
-	<T as pallet_pools::Config>::Tokens::total_balance(currency_id, account)
+	<T as pallet_pools::Config>::Tokens::balance(currency_id, account)
 }
 
 fn issue_test_loan<T>(pool_id: u64, borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)
