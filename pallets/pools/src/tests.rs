@@ -505,6 +505,163 @@ fn epoch() {
 }
 
 #[test]
+fn submission_period() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = Origin::signed(2);
+		let borrower = 3;
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+		assert_ok!(Pools::create(
+			pool_owner.clone(),
+			0,
+			vec![
+				TrancheInput {
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None,
+				},
+				TrancheInput {
+					interest_per_sec: None,
+					min_risk_buffer: None,
+					seniority: None,
+				}
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			0,
+			JUNIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::update_invest_order(
+			senior_investor.clone(),
+			0,
+			SENIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+
+		assert_ok!(Pools::update(pool_owner.clone(), 0, 0, 0, u64::MAX));
+
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			0,
+			JUNIOR_TRANCHE_ID,
+			1
+		));
+
+		assert_ok!(Pools::collect(
+			senior_investor.clone(),
+			0,
+			SENIOR_TRANCHE_ID,
+			1
+		));
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			JUNIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+
+		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
+		assert_err!(
+			Pools::submit_solution(
+				pool_owner.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					}
+				]
+			),
+			Error::<Test>::NotNewBestSubmission
+		);
+
+		// Allowed as 1% redemption keeps
+		assert_ok!(Pools::submit_solution(
+			pool_owner.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::one(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::from_float(0.01),
+				}
+			]
+		));
+
+		// Can't submit the same solution twice
+		assert_err!(
+			Pools::submit_solution(
+				pool_owner.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::from_float(0.01),
+					}
+				]
+			),
+			Error::<Test>::NotNewBestSubmission
+		);
+
+		// Slight improvement
+		assert_ok!(Pools::submit_solution(
+			pool_owner.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::one(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::from_float(0.10),
+				}
+			]
+		));
+	});
+}
+
+#[test]
 fn collect_tranche_tokens() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);

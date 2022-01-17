@@ -84,6 +84,14 @@ pub struct SubmissionPeriodState<EpochId, Balance> {
 	pub min_challenge_period_end: Option<u64>,
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum SolutionState {
+	Healthy,
+	InsufficientCurrency,
+	MaxReserveViolated,
+	MinRiskBufferViolated,
+}
+
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize>
 where
@@ -922,7 +930,7 @@ pub mod pallet {
 
 				let epoch_validation_result = Self::is_valid_solution(pool, &epoch, &solution);
 
-				// Soft error check only for core constraints
+				// Don't allow the core constraint (insufficient currency) to be broken
 				ensure!(
 					epoch_validation_result.is_ok()
 						|| (epoch_validation_result.err().unwrap()
