@@ -721,6 +721,8 @@ parameter_types! {
 	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
 	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxSizeMetadata: u32 = 100;
 }
 
 impl pallet_pools::Config for Runtime {
@@ -742,6 +744,7 @@ impl pallet_pools::Config for Runtime {
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type PalletId = PoolPalletId;
+	type MaxSizeMetadata = MaxSizeMetadata;
 }
 
 parameter_types! {
