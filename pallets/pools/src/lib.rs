@@ -19,6 +19,7 @@ use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
+use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
@@ -405,9 +406,11 @@ pub mod pallet {
 				.map(|(tranche_id, tranche)| Tranche {
 					interest_per_sec: tranche.interest_per_sec.unwrap_or(One::one()),
 					min_risk_buffer: tranche.min_risk_buffer.unwrap_or(Perquintill::zero()),
-					seniority: tranche
-						.seniority
-						.unwrap_or(n_tranches - 1 - tranche_id as u32),
+					seniority: tranche.seniority.unwrap_or(
+						n_tranches
+							.saturating_sub(1)
+							.saturating_sub(tranche_id as u32),
+					),
 					outstanding_invest_orders: Zero::zero(),
 					outstanding_redeem_orders: Zero::zero(),
 
@@ -580,7 +583,7 @@ pub mod pallet {
 
 			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
 				if amount > order.invest {
-					let transfer_amount = amount - order.invest;
+					let transfer_amount = amount.saturating_sub(order.invest);
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 						let outstanding_invest_orders =
@@ -591,7 +594,7 @@ pub mod pallet {
 						T::Tokens::transfer(currency, &who, &pool_account, transfer_amount)
 					})?;
 				} else if amount < order.invest {
-					let transfer_amount = order.invest - amount;
+					let transfer_amount = order.invest.saturating_sub(amount);
 					Pool::<T>::try_mutate(pool_id, |pool| {
 						let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 						let outstanding_invest_orders =
@@ -746,6 +749,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(100)]
+		#[transactional]
 		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
 			ensure_signed(origin)?;
 
@@ -1160,7 +1164,7 @@ pub mod pallet {
 			old_tranches: &Vec<Tranche<T::Balance, T::InterestRate>>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
-			// At least one tranche must exist, and the first tranche must have an
+			// At least one tranche must exist, and the last (most junior) tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(
 				match new_tranches.last() {
@@ -1172,8 +1176,9 @@ pub mod pallet {
 			);
 
 			// All but the most junior tranche should have min risk buffers and interest rates
+			let mut non_junior_tranches = new_tranches.split_last().unwrap().1.iter();
 			ensure!(
-				new_tranches.split_last().unwrap().1.iter().all(|tranche| {
+				non_junior_tranches.all(|tranche| {
 					tranche.min_risk_buffer.is_some() && tranche.interest_per_sec.is_some()
 				}),
 				Error::<T>::MissingTrancheValues
