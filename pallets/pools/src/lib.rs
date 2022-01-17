@@ -965,8 +965,6 @@ pub mod pallet {
 					Error::<T>::NotNewBestSubmission
 				);
 
-				// TODO: check if score has increased
-
 				let now = T::Time::now().as_secs();
 				pool.submission_period_state = Some(SubmissionPeriodState {
 					epoch: submission_period_state.epoch,
