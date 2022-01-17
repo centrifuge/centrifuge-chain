@@ -18,7 +18,7 @@ macro_rules! impl_tranche_token {
 	() => {
 		pub struct TrancheToken<T>(core::marker::PhantomData<T>);
 
-		impl<T> pallet_tinlake_investor_pool::TrancheToken<T> for TrancheToken<T>
+		impl<T> pallet_pools::TrancheToken<T> for TrancheToken<T>
 		where
 			T: Config,
 			<T as Config>::PoolId: Into<u64>,

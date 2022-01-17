@@ -1,10 +1,10 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Loan pallet for runtime'
+description = 'Loans pallet for runtime'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'pallet-loan'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/nav-feed"
+name = 'pallet-loans'
+repository = "https://github.com/centrifuge/centrifuge-chain"
 version = '1.0.0'
 
 [package.metadata.docs.rs]
@@ -34,7 +34,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate",  default-fe
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.12" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.12" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false, optional = true, branch = "polkadot-v0.9.12" }
-pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", optional = true, default-features = false}
+pallet-pools = { path = "../pools", optional = true, default-features = false}
 primitives-tokens = { path = "../../primitives/tokens", optional = true, default-features = false }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.12" }
 
@@ -46,7 +46,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-f
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.12" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-pallet-tinlake-investor-pool = { path = "../tinlake-investor-pool", default-features = false}
+pallet-pools = { path = "../pools", default-features = false}
 primitives-tokens = { path = "../../primitives/tokens", default-features = false}
 
 [features]
@@ -59,7 +59,7 @@ runtime-benchmarks = [
     "orml-tokens",
     "orml-traits",
     "pallet-timestamp",
-    "pallet-tinlake-investor-pool",
+    "pallet-pools",
     "primitives-tokens"
 ]
 std = [

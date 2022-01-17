@@ -2043,12 +2043,13 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
- "pallet-loan",
+ "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-offences",
  "pallet-permissions",
+ "pallet-pools",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -2058,7 +2059,6 @@ dependencies = [
  "pallet-staking-reward-curve",
  "pallet-sudo",
  "pallet-timestamp",
- "pallet-tinlake-investor-pool",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
@@ -5603,7 +5603,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-loan"
+name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
  "common-traits",
@@ -5615,8 +5615,8 @@ dependencies = [
  "orml-traits",
  "pallet-balances",
  "pallet-permissions",
+ "pallet-pools",
  "pallet-timestamp",
- "pallet-tinlake-investor-pool",
  "pallet-uniques",
  "parity-scale-codec",
  "primitives-tokens",
@@ -5807,6 +5807,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-pools"
+version = "3.0.0"
+dependencies = [
+ "common-traits",
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-permissions",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "primitives-tokens",
+ "runtime-common",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-proxy"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.12#d76f39995315ec36980908e4b99709bd14927044"
@@ -5972,31 +5997,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "sp-timestamp",
-]
-
-[[package]]
-name = "pallet-tinlake-investor-pool"
-version = "3.0.0"
-dependencies = [
- "common-traits",
- "common-types",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "orml-tokens",
- "orml-traits",
- "pallet-permissions",
- "pallet-timestamp",
- "parity-scale-codec",
- "primitives-tokens",
- "runtime-common",
- "scale-info",
- "serde",
- "sp-arithmetic",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -8258,7 +8258,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-permissions",
- "pallet-tinlake-investor-pool",
+ "pallet-pools",
  "parity-scale-codec",
  "primitives-tokens",
  "scale-info",

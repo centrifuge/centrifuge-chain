@@ -108,11 +108,11 @@ pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-collator-allowlist = { path = "../../pallets/collator-allowlist", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
-pallet-tinlake-investor-pool = { path = "../../pallets/tinlake-investor-pool", default-features = false }
+pallet-pools = { path = "../../pallets/pools", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
 pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
-pallet-loan = { path = "../../pallets/loan", default-features = false }
+pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 
 [build-dependencies]
@@ -194,7 +194,7 @@ std = [
     "runtime-common/std",
     "pallet-uniques/std",
     "orml-tokens/std",
-    "pallet-loan/std",
+    "pallet-loans/std",
     "pallet-uniques/std",
     "primitives-tokens/std",
     "pallet-treasury/std"
@@ -213,8 +213,8 @@ runtime-benchmarks = [
     "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
-    "pallet-loan/runtime-benchmarks",
-    'pallet-collator-selection/runtime-benchmarks'
+    "pallet-loans/runtime-benchmarks",
+    "pallet-collator-selection/runtime-benchmarks"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

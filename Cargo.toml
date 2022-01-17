@@ -34,10 +34,11 @@ members = [
 	"pallets/collator-allowlist",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
-	"pallets/tinlake-investor-pool",
 	"pallets/migration",
 	"pallets/bridge",
 	"pallets/nft",
+	"pallets/pools",
+	"pallets/loans",
 	"pallets/registry",
 	"pallets/permissions",
 	"libs/common-traits",
@@ -46,7 +47,6 @@ members = [
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
-	"pallets/loan",
 ]
 
 [dependencies]
