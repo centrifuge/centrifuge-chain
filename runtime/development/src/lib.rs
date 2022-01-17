@@ -347,7 +347,7 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
+			ProxyType::NonTransfer => !matches!(c, Call::Tokens(..)),
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
@@ -935,7 +935,7 @@ impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restr
 where
 	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
 {
-	fn check(details: &TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		let TransferDetails {
 			send,
 			recv,
@@ -944,7 +944,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Usd => true,
+			CurrencyId::Usd | CurrencyId::Native => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
 					&& P::has_permission(
@@ -957,12 +957,26 @@ where
 	}
 }
 
+parameter_types! {
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
+}
+
 impl pallet_restricted_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type PreConditions = RestrictedTokens<Permissions>;
+	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesMutate = common_traits::Always;
+	type PreFungiblesMutateHold = common_traits::Always;
+	type PreFungiblesTransfer = common_traits::Always;
 	type Fungibles = OrmlTokens;
+	type PreCurrency = common_traits::Always;
+	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleMutate = common_traits::Always;
+	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleTransfer = common_traits::Always;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
 }
 
 parameter_type_with_key! {
@@ -1013,7 +1027,7 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 4,
 
 		// money stuff
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
+		Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 20,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
 
 		// authoring stuff

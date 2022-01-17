@@ -193,6 +193,7 @@ impl orml_tokens::Config for Test {
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
+
 impl pallet_restricted_tokens::Config for Test {
 	type Event = Event;
 	type Balance = Balance;
