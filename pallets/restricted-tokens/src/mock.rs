@@ -49,6 +49,7 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
+	Cfg,
 	KUSD,
 	USDT,
 	RestrictedCoin,
@@ -63,6 +64,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Config<T>, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Config<T>, Storage, Event<T>},
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
 	}
 );
@@ -92,7 +94,7 @@ impl frame_system::Config for MockRuntime {
 	type DbWeight = ();
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -111,6 +113,18 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub const MaxLocks: u32 = 100;
+	pub const ExistentialDeposit: u64 = 1;
+}
+impl pallet_balances::Config for MockRuntime {
+	type MaxLocks = MaxLocks;
+	type Balance = Balance;
+	type Event = Event;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
 }
 
 impl orml_tokens::Config for MockRuntime {
@@ -125,21 +139,35 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const NativeToken: CurrencyId = CurrencyId::Cfg;
+}
 impl pallet_restricted_tokens::Config for MockRuntime {
 	type Event = Event;
-	type PreConditions = RestrictedTokens;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
+	type PreExtrTransfer = RestrictedTokens;
+	type PreFungiblesMutate = common_traits::Always;
+	type PreFungiblesMutateHold = common_traits::Always;
+	type PreFungiblesTransfer = common_traits::Always;
 	type Fungibles = OrmlTokens;
+	type PreCurrency = common_traits::Always;
+	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleMutate = common_traits::Always;
+	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleTransfer = common_traits::Always;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
 }
 
 // Restricted coins are only allowed to be send to users with an id over 100
 pub struct RestrictedTokens;
 impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens {
-	fn check(t: &TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		match t.id {
 			CurrencyId::KUSD | CurrencyId::USDT => true,
 			CurrencyId::RestrictedCoin => t.recv >= 100 && t.send >= 100,
+			CurrencyId::Cfg => true,
 		}
 	}
 }

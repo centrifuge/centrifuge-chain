@@ -15,18 +15,18 @@
 ///! Mimics ORML-tokens Call-Api.
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+mod impl_currency;
+mod impl_fungible;
+mod impl_fungibles;
 #[cfg(test)]
 mod mock;
-
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
-use frame_support::traits::fungibles::{
-	Inspect, InspectHold, Mutate, MutateHold, Transfer, Unbalanced,
-};
+use frame_support::traits::{fungible, fungibles};
+use frame_support::traits::{Currency, LockableCurrency, ReservableCurrency};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use scale_info::TypeInfo;
 
@@ -52,6 +52,13 @@ impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Bala
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use crate::impl_currency::{CurrencyEffects, ReservableCurrencyEffects};
+	use crate::impl_fungible::{
+		FungibleMutateEffects, FungibleMutateHoldEffects, FungibleTransferEffects,
+	};
+	use crate::impl_fungibles::{
+		FungiblesMutateEffects, FungiblesMutateHoldEffects, FungiblesTransferEffects,
+	};
 	use common_traits::PreConditions;
 	use frame_support::scale_info::TypeInfo;
 	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup};
@@ -64,11 +71,6 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Checks the pre conditions for every transfer
-		type PreConditions: PreConditions<
-			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
-		>;
-
 		/// The balance type
 		type Balance: Parameter
 			+ Member
@@ -78,13 +80,66 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		/// The currency-id of this pallet
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
-		type Fungibles: Mutate<Self::AccountId>
-			+ Transfer<Self::AccountId>
-			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
-			+ Unbalanced<Self::AccountId>
-			+ MutateHold<Self::AccountId>;
+		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
+		type PreExtrTransfer: PreConditions<
+			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
+		>;
+
+		/// Checks the pre conditions for trait ReservableCurrency calls
+		type PreFungiblesMutate: PreConditions<
+			FungiblesMutateEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+		>;
+
+		/// Checks the pre conditions for trait ReservableCurrency calls
+		type PreFungiblesMutateHold: PreConditions<
+			FungiblesMutateHoldEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+		>;
+
+		/// Checks the pre conditions for trait ReservableCurrency calls
+		type PreFungiblesTransfer: PreConditions<
+			FungiblesTransferEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+		>;
+
+		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ fungibles::InspectHold<Self::AccountId>
+			+ fungibles::Mutate<Self::AccountId>
+			+ fungibles::MutateHold<Self::AccountId>
+			+ fungibles::Transfer<Self::AccountId>;
+
+		/// Checks the pre conditions for trait Currency calls
+		type PreCurrency: PreConditions<CurrencyEffects<Self::AccountId, Self::Balance>>;
+
+		/// Checks the pre conditions for trait ReservableCurrency calls
+		type PreReservableCurrency: PreConditions<
+			ReservableCurrencyEffects<Self::AccountId, Self::Balance>,
+		>;
+
+		/// Checks the pre conditions for trait fungible::Mutate calls
+		type PreFungibleMutate: PreConditions<FungibleMutateEffects<Self::AccountId, Self::Balance>>;
+
+		/// Checks the pre conditions for trait fungible::MutateHold calls
+		type PreFungibleMutateHold: PreConditions<
+			FungibleMutateHoldEffects<Self::AccountId, Self::Balance>,
+		>;
+
+		/// Checks the pre conditions for trait fungible::Transfer calls
+		type PreFungibleTransfer: PreConditions<
+			FungibleTransferEffects<Self::AccountId, Self::Balance>,
+		>;
+
+		type NativeFungible: Currency<Self::AccountId, Balance = Self::Balance>
+			+ LockableCurrency<Self::AccountId>
+			+ ReservableCurrency<Self::AccountId>
+			+ fungible::Inspect<Self::AccountId, Balance = Self::Balance>
+			+ fungible::InspectHold<Self::AccountId>
+			+ fungible::Mutate<Self::AccountId>
+			+ fungible::MutateHold<Self::AccountId>
+			+ fungible::Transfer<Self::AccountId>;
+
+		type NativeToken: Get<Self::CurrencyId>;
 	}
 
 	#[pallet::pallet]
@@ -129,7 +184,7 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			ensure!(
-				T::PreConditions::check(&TransferDetails::new(
+				T::PreExtrTransfer::check(TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
@@ -138,7 +193,19 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			T::Fungibles::transfer(currency_id, &from, &to, amount, false)?;
+			if T::NativeToken::get() == currency_id {
+				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+					&from, &to, amount, false,
+				)?;
+			} else {
+				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+					currency_id,
+					&from,
+					&to,
+					amount,
+					false,
+				)?;
+			}
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -161,7 +228,7 @@ pub mod pallet {
 			let to = T::Lookup::lookup(dest)?;
 
 			ensure!(
-				T::PreConditions::check(&TransferDetails::new(
+				T::PreExtrTransfer::check(TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
@@ -170,7 +237,19 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			T::Fungibles::transfer(currency_id, &from, &to, amount, true)?;
+			if T::NativeToken::get() == currency_id {
+				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+					&from, &to, amount, true,
+				)?;
+			} else {
+				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+					currency_id,
+					&from,
+					&to,
+					amount,
+					true,
+				)?;
+			}
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -192,10 +271,20 @@ pub mod pallet {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
-			let reducible_balance = T::Fungibles::reducible_balance(currency_id, &from, keep_alive);
+			let reducible_balance = if T::NativeToken::get() == currency_id {
+				<T::NativeFungible as fungible::Inspect<T::AccountId>>::reducible_balance(
+					&from, keep_alive,
+				)
+			} else {
+				<T::Fungibles as fungibles::Inspect<T::AccountId>>::reducible_balance(
+					currency_id,
+					&from,
+					keep_alive,
+				)
+			};
 
 			ensure!(
-				T::PreConditions::check(&TransferDetails::new(
+				T::PreExtrTransfer::check(TransferDetails::new(
 					from.clone(),
 					to.clone(),
 					currency_id,
@@ -204,7 +293,22 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			T::Fungibles::transfer(currency_id, &from, &to, reducible_balance, keep_alive)?;
+			if T::NativeToken::get() == currency_id {
+				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+					&from,
+					&to,
+					reducible_balance,
+					keep_alive,
+				)?;
+			} else {
+				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+					currency_id,
+					&from,
+					&to,
+					reducible_balance,
+					keep_alive,
+				)?;
+			}
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -227,7 +331,19 @@ pub mod pallet {
 			let from = T::Lookup::lookup(source)?;
 			let to = T::Lookup::lookup(dest)?;
 
-			T::Fungibles::transfer(currency_id, &from, &to, amount, false)?;
+			if T::NativeToken::get() == currency_id {
+				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
+					&from, &to, amount, false,
+				)?;
+			} else {
+				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
+					currency_id,
+					&from,
+					&to,
+					amount,
+					false,
+				)?;
+			}
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -254,10 +370,53 @@ pub mod pallet {
 				.checked_add(&new_reserved)
 				.ok_or(ArithmeticError::Overflow)?;
 
-			let old_reserved = T::Fungibles::balance_on_hold(currency_id, &who);
-			T::Fungibles::release(currency_id, &who, old_reserved, false)?;
-			T::Fungibles::set_balance(currency_id, &who, new_total)?;
-			T::Fungibles::hold(currency_id, &who, new_reserved)?;
+			if T::NativeToken::get() == currency_id {
+				let old_reserved =
+					<T::NativeFungible as fungible::InspectHold<T::AccountId>>::balance_on_hold(
+						&who,
+					);
+				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::release(
+					&who,
+					old_reserved,
+					false,
+				)?;
+				let to_burn = <T::NativeFungible as fungible::Inspect<T::AccountId>>::balance(&who);
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::burn_from(&who, to_burn)?;
+				<T::NativeFungible as fungible::Mutate<T::AccountId>>::mint_into(&who, new_total)?;
+				<T::NativeFungible as fungible::MutateHold<T::AccountId>>::hold(
+					&who,
+					new_reserved,
+				)?;
+			} else {
+				let old_reserved =
+					<T::Fungibles as fungibles::InspectHold<T::AccountId>>::balance_on_hold(
+						currency_id,
+						&who,
+					);
+				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::release(
+					currency_id,
+					&who,
+					old_reserved,
+					false,
+				)?;
+				let to_burn =
+					<T::Fungibles as fungibles::Inspect<T::AccountId>>::balance(currency_id, &who);
+				<T::Fungibles as fungibles::Mutate<T::AccountId>>::burn_from(
+					currency_id,
+					&who,
+					to_burn,
+				)?;
+				<T::Fungibles as fungibles::Mutate<T::AccountId>>::mint_into(
+					currency_id,
+					&who,
+					new_total,
+				)?;
+				<T::Fungibles as fungibles::MutateHold<T::AccountId>>::hold(
+					currency_id,
+					&who,
+					new_reserved,
+				)?;
+			}
 
 			Self::deposit_event(Event::BalanceSet {
 				currency_id,

@@ -26,8 +26,9 @@ common-types = { path = "../../libs/common-types", default-features = false }
 
 [dev-dependencies]
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.12" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.12" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.12" }
+pallet-balances= { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.12" }
 
 
 [features]

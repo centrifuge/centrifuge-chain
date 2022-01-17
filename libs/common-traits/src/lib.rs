@@ -161,20 +161,23 @@ pub trait Properties {
 }
 
 pub trait PreConditions<T> {
-	fn check(t: &T) -> bool;
+	fn check(t: T) -> bool;
 }
 
 #[impl_for_tuples(1, 10)]
-impl<T> PreConditions<T> for Tuple {
-	fn check(t: &T) -> bool {
-		for_tuples!( #( Tuple::check(t) )&* )
+impl<T> PreConditions<T> for Tuple
+where
+	T: Clone,
+{
+	fn check(t: T) -> bool {
+		for_tuples!( #( Tuple::check(t.clone()) )&* )
 	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Always;
 impl<T> PreConditions<T> for Always {
-	fn check(_t: &T) -> bool {
+	fn check(_t: T) -> bool {
 		true
 	}
 }
@@ -182,7 +185,7 @@ impl<T> PreConditions<T> for Always {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Never;
 impl<T> PreConditions<T> for Never {
-	fn check(_t: &T) -> bool {
+	fn check(_t: T) -> bool {
 		false
 	}
 }
