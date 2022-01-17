@@ -970,7 +970,11 @@ pub mod pallet {
 					epoch: submission_period_state.epoch,
 					best_submission: Some(solution.clone()),
 					best_submission_score: score.into(),
-					min_challenge_period_end: Some(now.saturating_add(pool.challenge_time)),
+					min_challenge_period_end: Some(
+						submission_period_state
+							.min_challenge_period_end
+							.unwrap_or(now.saturating_add(pool.challenge_time)),
+					),
 					got_full_valid_solution: false,
 				});
 
