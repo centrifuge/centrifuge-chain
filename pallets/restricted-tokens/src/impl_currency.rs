@@ -203,8 +203,8 @@ impl<T: Config> ReservableCurrency<T::AccountId> for Pallet<T> {
 }
 
 impl<T: Config> LockableCurrency<T::AccountId> for Pallet<T> {
-	type Moment = ();
-	type MaxLocks = ();
+	type Moment = <T::NativeFungible as LockableCurrency<T::AccountId>>::Moment;
+	type MaxLocks = <T::NativeFungible as LockableCurrency<T::AccountId>>::MaxLocks;
 
 	fn set_lock(
 		id: LockIdentifier,

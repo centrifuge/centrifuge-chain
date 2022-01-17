@@ -375,7 +375,7 @@ impl InstanceFilter<Call> for ProxyType {
 impl pallet_proxy::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type ProxyType = ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
@@ -454,7 +454,7 @@ const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 impl pallet_elections_phragmen::Config for Runtime {
 	type Event = Event;
 	type PalletId = ElectionsPhragmenModuleId;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type ChangeMembers = Council;
 	type InitializeMembers = Council;
 	type CurrencyToVote = U128CurrencyToVote;
@@ -500,7 +500,7 @@ parameter_types! {
 impl pallet_democracy::Config for Runtime {
 	type Proposal = Call;
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	/// The minimum period of locking and the period between a proposal being approved and enacted.
 	///
 	/// It should generally be a little more than the unstake period to ensure that
@@ -572,7 +572,7 @@ parameter_types! {
 
 impl pallet_identity::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type BasicDeposit = BasicDeposit;
 	type FieldDeposit = FieldDeposit;
 	type SubAccountDeposit = SubAccountDeposit;
@@ -591,7 +591,7 @@ parameter_types! {
 
 impl pallet_vesting::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
@@ -617,7 +617,7 @@ impl pallet_uniques::Config for Runtime {
 	type Event = Event;
 	type ClassId = ClassId;
 	type InstanceId = InstanceId;
-	type Currency = Balances;
+	type Currency = Tokens;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
 	type ClassDeposit = ClassDeposit;
@@ -656,7 +656,7 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-	type Currency = Balances;
+	type Currency = Tokens;
 	// either democracy or 75% of council votes
 	type ApproveOrigin = EnsureRootOr<
 		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
@@ -680,7 +680,7 @@ impl pallet_treasury::Config for Runtime {
 
 // our pallets
 impl pallet_fees::Config for Runtime {
-	type Currency = Balances;
+	type Currency = Tokens;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -709,7 +709,7 @@ parameter_types! {
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type Event = Event;
 	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
@@ -846,7 +846,7 @@ type CollatorSelectionUpdateOrigin = EnsureOneOf<
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
