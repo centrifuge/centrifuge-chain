@@ -12,8 +12,6 @@
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
-// We need this for the tests.
-#![feature(duration_consts_2)]
 
 use codec::{Decode, Encode};
 use common_traits::Properties;
