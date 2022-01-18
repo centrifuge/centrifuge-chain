@@ -15,6 +15,7 @@
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use common_traits::{Permissions, PoolNAV};
+use common_types::CurrencyId;
 use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
@@ -24,7 +25,6 @@ use frame_system::RawOrigin;
 use pallet_pools::PoolLocator;
 use pallet_pools::TrancheInput;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
-use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},

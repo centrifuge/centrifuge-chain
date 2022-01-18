@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 pub use crate as pallet_restricted_tokens;
-use common_traits::PreConditions;
+use common_traits::{PreConditions, TokenMetadata};
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
 use frame_support::traits::{Everything, GenesisBuild};
@@ -53,6 +53,35 @@ pub enum CurrencyId {
 	KUSD,
 	USDT,
 	RestrictedCoin,
+}
+
+impl TokenMetadata for CurrencyId {
+	fn name(&self) -> Vec<u8> {
+		match self {
+			CurrencyId::Cfg => b"Centrifuge".to_vec(),
+			CurrencyId::USDT => b"USD Tither".to_vec(),
+			CurrencyId::KUSD => b"Acala USD".to_vec(),
+			CurrencyId::RestrictedCoin => b"Restricted Token".to_vec(),
+		}
+	}
+
+	fn symbol(&self) -> Vec<u8> {
+		match self {
+			CurrencyId::Cfg => b"CFG".to_vec(),
+			CurrencyId::USDT => b"USDT".to_vec(),
+			CurrencyId::KUSD => b"KUSD".to_vec(),
+			CurrencyId::RestrictedCoin => b"RST".to_vec(),
+		}
+	}
+
+	fn decimals(&self) -> u8 {
+		match self {
+			CurrencyId::Cfg => 18,
+			CurrencyId::USDT => 12,
+			CurrencyId::KUSD => 12,
+			CurrencyId::RestrictedCoin => 27,
+		}
+	}
 }
 
 // Build mock runtime

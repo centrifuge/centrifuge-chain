@@ -1254,6 +1254,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -2073,7 +2074,6 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-runtime-common",
- "primitives-tokens",
  "runtime-common",
  "rustc-hex",
  "safe-mix",
@@ -5622,7 +5622,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-uniques",
  "parity-scale-codec",
- "primitives-tokens",
  "runtime-common",
  "scale-info",
  "serde",
@@ -5825,7 +5824,6 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
- "primitives-tokens",
  "runtime-common",
  "scale-info",
  "serde",
@@ -7629,15 +7627,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "primitives-tokens"
-version = "1.0.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
-]
-
-[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8275,6 +8264,7 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -8285,7 +8275,6 @@ dependencies = [
  "pallet-permissions",
  "pallet-pools",
  "parity-scale-codec",
- "primitives-tokens",
  "scale-info",
  "serde",
  "smallvec 1.8.0",

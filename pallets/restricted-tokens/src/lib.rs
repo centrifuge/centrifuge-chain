@@ -59,7 +59,7 @@ pub mod pallet {
 	use crate::impl_fungibles::{
 		FungiblesMutateEffects, FungiblesMutateHoldEffects, FungiblesTransferEffects,
 	};
-	use common_traits::PreConditions;
+	use common_traits::{PreConditions, TokenMetadata};
 	use frame_support::scale_info::TypeInfo;
 	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup};
 	use frame_support::sp_runtime::ArithmeticError;
@@ -81,7 +81,13 @@ pub mod pallet {
 			+ MaxEncodedLen;
 
 		/// The currency-id of this pallet
-		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
+		type CurrencyId: Parameter
+			+ Member
+			+ Copy
+			+ MaybeSerializeDeserialize
+			+ Ord
+			+ TypeInfo
+			+ TokenMetadata;
 
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<

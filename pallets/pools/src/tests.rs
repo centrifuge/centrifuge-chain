@@ -1,8 +1,8 @@
 use super::*;
 use crate::mock::*;
 use common_traits::Permissions as PermissionsT;
+use common_types::CurrencyId;
 use frame_support::{assert_err, assert_noop, assert_ok};
-use primitives_tokens::CurrencyId;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
 

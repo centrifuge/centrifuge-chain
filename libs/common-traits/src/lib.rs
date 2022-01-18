@@ -11,10 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// Ensure we're `no_std` when compiling for WebAssembly.
-#![cfg_attr(not(feature = "std"), no_std)]
-
-//! # A common trait for centrifuge
+//! # A common trait lib for centrifuge
 //!
 //! This crate provides some common traits used by centrifuge.
 
@@ -35,6 +32,7 @@ use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
 use sp_std::str::FromStr;
+use sp_std::vec::Vec;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -188,4 +186,14 @@ impl<T> PreConditions<T> for Never {
 	fn check(_t: T) -> bool {
 		false
 	}
+}
+
+/// A trait that Assets or Tokens can implement so that pallets
+/// can easily use the trait `InspectMetadata` with them.
+pub trait TokenMetadata {
+	fn name(&self) -> Vec<u8>;
+
+	fn symbol(&self) -> Vec<u8>;
+
+	fn decimals(&self) -> u8;
 }

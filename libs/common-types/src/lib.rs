@@ -28,8 +28,12 @@ use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
+// Pub exports
+pub use tokens::*;
+
 #[cfg(test)]
 mod tests;
+mod tokens;
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 // NOTE: In order to not carry around the Moment and TranchId all the time, we give it defaults.

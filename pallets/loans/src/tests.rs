@@ -23,13 +23,13 @@ use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
 	assert_last_event, create, create_nft_class, expect_asset_owner, initialise_test_pool, mint_nft,
 };
+use common_types::CurrencyId;
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
 use pallet_pools::PoolLocator;
-use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;

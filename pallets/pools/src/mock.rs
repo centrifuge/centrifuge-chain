@@ -1,5 +1,6 @@
 use crate::{self as pallet_pools, Config, DispatchResult};
 use common_traits::{Permissions as PermissionsT, PreConditions};
+use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::SortedMembers;
@@ -11,7 +12,6 @@ use frame_system as system;
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use pallet_restricted_tokens::TransferDetails;
-use primitives_tokens::CurrencyId;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -20,7 +20,7 @@ use sp_runtime::{
 
 pub use runtime_common::Rate;
 
-primitives_tokens::impl_tranche_token!();
+common_types::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
