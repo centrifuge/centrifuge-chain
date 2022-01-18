@@ -629,7 +629,6 @@ pub mod pallet {
 			})?;
 
 			Self::deposit_event(Event::InvestOrderUpdated(pool_id, who));
-
 			Ok(())
 		}
 
