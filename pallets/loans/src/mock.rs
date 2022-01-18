@@ -144,6 +144,8 @@ parameter_types! {
 	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
 	pub const PoolPalletId: PalletId = PalletId(*b"roc/pool");
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxSizeMetadata: u32 = 100;
 }
 
 impl pallet_pools::Config for MockRuntime {
@@ -165,6 +167,7 @@ impl pallet_pools::Config for MockRuntime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type PalletId = PoolPalletId;
 	type Permission = Permissions;
+	type MaxSizeMetadata = MaxSizeMetadata;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime

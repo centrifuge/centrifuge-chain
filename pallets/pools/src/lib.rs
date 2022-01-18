@@ -20,7 +20,7 @@ use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::transactional;
-use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime};
+use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
 use orml_traits::MultiCurrency;
 use scale_info::TypeInfo;
@@ -70,7 +70,10 @@ pub struct Tranche<Balance, Rate> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
+pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize>
+where
+	MetaSize: Get<u32> + Copy,
+{
 	pub owner: AccountId,
 	pub currency: CurrencyId,
 	pub tranches: Vec<Tranche<Balance, Rate>>, // ordered junior => senior
@@ -81,7 +84,7 @@ pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate> {
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
-	pub metadata: Option<Vec<u8>>,
+	pub metadata: Option<BoundedVec<u8, MetaSize>>,
 	pub min_epoch_time: u64,
 	pub challenge_time: u64,
 	pub max_nav_age: u64,
@@ -202,6 +205,7 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 
 		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+
 		type TrancheId: Member
 			+ Parameter
 			+ Default
@@ -211,6 +215,7 @@ pub mod pallet {
 			+ Into<usize>
 			+ TypeInfo
 			+ TryFrom<usize>;
+
 		type EpochId: Member
 			+ Parameter
 			+ Default
@@ -223,7 +228,9 @@ pub mod pallet {
 			+ Ord
 			+ CheckedAdd
 			+ AddAssign;
+
 		type CurrencyId: Parameter + Copy;
+
 		type Tokens: MultiCurrency<
 			Self::AccountId,
 			Balance = Self::Balance,
@@ -238,10 +245,12 @@ pub mod pallet {
 		>;
 
 		type LoanAmount: Into<Self::Balance>;
+
 		type NAV: PoolNAV<Self::PoolId, Self::LoanAmount>;
 
 		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self>;
+
 		type Time: UnixTime;
 
 		/// Default min epoch time
@@ -252,6 +261,9 @@ pub mod pallet {
 
 		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
+
+		/// Max size of Metadata
+		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 	}
 
 	#[pallet::pallet]
@@ -264,7 +276,14 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		T::PoolId,
-		PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::InterestRate>,
+		PoolDetails<
+			T::AccountId,
+			T::CurrencyId,
+			T::EpochId,
+			T::Balance,
+			T::InterestRate,
+			T::MaxSizeMetadata,
+		>,
 	>;
 
 	#[pallet::storage]
@@ -379,6 +398,8 @@ pub mod pallet {
 		CannotAddOrRemoveTranches,
 		/// Invalid tranche seniority value
 		InvalidTrancheSeniority,
+		/// Invalid metadata passed
+		BadMetadata,
 	}
 
 	#[pallet::call]
@@ -482,10 +503,15 @@ pub mod pallet {
 				BadOrigin
 			);
 
+			let checked_meta: BoundedVec<u8, T::MaxSizeMetadata> = metadata
+				.clone()
+				.try_into()
+				.map_err(|_| Error::<T>::BadMetadata)?;
+
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.metadata = Some(metadata.clone());
-				Self::deposit_event(Event::MetadataSet(pool_id, metadata.clone()));
+				pool.metadata = Some(checked_meta);
+				Self::deposit_event(Event::MetadataSet(pool_id, metadata));
 				Ok(())
 			})
 		}
@@ -971,7 +997,14 @@ pub mod pallet {
 		pub(crate) fn calculate_collect(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,
-			pool: PoolDetails<T::AccountId, T::CurrencyId, T::EpochId, T::Balance, T::InterestRate>,
+			pool: PoolDetails<
+				T::AccountId,
+				T::CurrencyId,
+				T::EpochId,
+				T::Balance,
+				T::InterestRate,
+				T::MaxSizeMetadata,
+			>,
 			end_epoch: T::EpochId,
 		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
 			// No collect possible in this epoch
@@ -1212,6 +1245,7 @@ pub mod pallet {
 				T::EpochId,
 				T::Balance,
 				T::InterestRate,
+				T::MaxSizeMetadata,
 			>,
 			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			solution: &[TrancheSolution],
@@ -1293,6 +1327,7 @@ pub mod pallet {
 				T::EpochId,
 				T::Balance,
 				T::InterestRate,
+				T::MaxSizeMetadata,
 			>,
 		) -> Vec<(u128, u128)> {
 			let redeem_start = 10u128.pow(pool.tranches.len() as u32);
@@ -1365,6 +1400,7 @@ pub mod pallet {
 				T::EpochId,
 				T::Balance,
 				T::InterestRate,
+				T::MaxSizeMetadata,
 			>,
 			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			solution: &[TrancheSolution],
@@ -1435,6 +1471,7 @@ pub mod pallet {
 				T::EpochId,
 				T::Balance,
 				T::InterestRate,
+				T::MaxSizeMetadata,
 			>,
 			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
 			executed_amounts: &Vec<(T::Balance, T::Balance)>,

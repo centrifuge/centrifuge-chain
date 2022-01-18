@@ -121,6 +121,7 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", bran
 [features]
 default = ["std"]
 std = [
+    "pallet-collator-allowlist/std",
     "common-types/std",
     "pallet-migration-manager/std",
     "pallet-permissions/std",
