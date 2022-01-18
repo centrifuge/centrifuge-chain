@@ -111,6 +111,15 @@ pub struct TrancheLocator<PoolId, TrancheId> {
 	pub tranche_id: TrancheId,
 }
 
+impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
+	fn new(pool_id: PoolId, tranche_id: TrancheId) -> Self {
+		TrancheLocator {
+			pool_id,
+			tranche_id,
+		}
+	}
+}
+
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
@@ -601,23 +610,22 @@ pub mod pallet {
 				BadOrigin
 			);
 
-			let tranche = TrancheLocator {
-				pool_id,
-				tranche_id,
-			};
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
-			Order::<T>::try_mutate(&tranche, &who, |order| -> DispatchResult {
-				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				Order::<T>::try_mutate(
+					&TrancheLocator::new(pool_id, tranche_id),
+					&who,
+					|order| -> DispatchResult {
+						ensure!(
+							order.invest.saturating_add(order.redeem) == Zero::zero()
+								|| order.epoch == pool.current_epoch,
+							Error::<T>::CollectRequired
+						);
 
-					ensure!(
-						order.invest.saturating_add(order.redeem) == Zero::zero()
-							|| order.epoch == pool.current_epoch,
-						Error::<T>::CollectRequired
-					);
-
-					Self::do_update_invest_order(&who, pool, order, amount, pool_id, tranche_id)
-				})
+						Self::do_update_invest_order(&who, pool, order, amount, pool_id, tranche_id)
+					},
+				)
 			})?;
 
 			Self::deposit_event(Event::InvestOrderUpdated(pool_id, who));
@@ -647,10 +655,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				Order::<T>::try_mutate(
-					&TrancheLocator {
-						pool_id,
-						tranche_id,
-					},
+					&TrancheLocator::new(pool_id, tranche_id),
 					&who,
 					|order| -> DispatchResult {
 						ensure!(
@@ -1019,7 +1024,10 @@ pub mod pallet {
 			ensure!(*order != update_order, Error::<T>::InvalidData);
 
 			Ok(if update_order > *order {
-				let transfer_amount = update_order.checked_sub(order).expect("Unreachable. qed.");
+				let transfer_amount = update_order
+					.checked_sub(order)
+					.expect("Updated order larger old order. qed.");
+
 				*pool_orders = pool_orders
 					.checked_add(&transfer_amount)
 					.ok_or(Error::<T>::Overflow)?;
@@ -1027,7 +1035,10 @@ pub mod pallet {
 				*order = update_order;
 				(who, pool, transfer_amount)
 			} else if update_order < *order {
-				let transfer_amount = order.checked_sub(&update_order).expect("Unreachable. qed.");
+				let transfer_amount = order
+					.checked_sub(&update_order)
+					.expect("Old order larger than updated order. qed.");
+
 				*pool_orders = pool_orders
 					.checked_sub(&transfer_amount)
 					.ok_or(Error::<T>::Overflow)?;
