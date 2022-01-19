@@ -754,12 +754,51 @@ fn invalid_tranche_id_is_err() {
 
 		assert_noop!(
 			Pools::update_invest_order(junior_investor.clone(), 0, 1, 500 * CURRENCY),
-			Error::<Test>::InvalidData
+			Error::<Test>::InvalidTrancheId
 		);
 
 		assert_noop!(
 			Pools::update_redeem_order(junior_investor.clone(), 0, 1, 500 * CURRENCY),
-			Error::<Test>::InvalidData
+			Error::<Test>::InvalidTrancheId
+		);
+	});
+}
+
+#[test]
+fn updating_with_same_amount_is_err() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(0, u64::MAX),
+		)
+		.unwrap();
+
+		assert_ok!(Pools::create(
+			senior_investor.clone(),
+			0,
+			vec![TrancheInput {
+				interest_per_sec: None,
+				min_risk_buffer: None,
+				seniority: None,
+			},],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			0,
+			0,
+			500 * CURRENCY
+		));
+
+		assert_noop!(
+			Pools::update_invest_order(junior_investor.clone(), 0, 0, 500 * CURRENCY),
+			Error::<Test>::NoNewOrder
 		);
 	});
 }

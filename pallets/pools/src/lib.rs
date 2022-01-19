@@ -420,6 +420,10 @@ pub mod pallet {
 		InvalidTrancheSeniority,
 		/// Invalid metadata passed
 		BadMetadata,
+		/// Invalid TrancheId passed. In most cases out-of-bound index
+		InvalidTrancheId,
+		/// Indicates that the new passed order equals the old-order
+		NoNewOrder,
 	}
 
 	#[pallet::call]
@@ -969,7 +973,7 @@ pub mod pallet {
 			let mut outstanding = &mut pool
 				.tranches
 				.get_mut(tranche_id.into())
-				.ok_or(Error::<T>::InvalidData)?
+				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_invest_orders;
 			let pool_account = PoolLocator { pool_id }.into_account();
 
@@ -997,7 +1001,7 @@ pub mod pallet {
 			let mut outstanding = &mut pool
 				.tranches
 				.get_mut(tranche_id.into())
-				.ok_or(Error::<T>::InvalidData)?
+				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_redeem_orders;
 			let pool_account = PoolLocator { pool_id }.into_account();
 
@@ -1016,37 +1020,35 @@ pub mod pallet {
 		fn update_order_amount<'a>(
 			who: &'a T::AccountId,
 			pool: &'a T::AccountId,
-			order: &mut T::Balance,
-			update_order: T::Balance,
+			old_order: &mut T::Balance,
+			new_order: T::Balance,
 			pool_orders: &mut T::Balance,
 		) -> Result<(&'a T::AccountId, &'a T::AccountId, T::Balance), DispatchError> {
-			ensure!(*order != update_order, Error::<T>::InvalidData);
-
-			Ok(if update_order > *order {
-				let transfer_amount = update_order
-					.checked_sub(order)
-					.expect("Updated order larger old order. qed.");
+			if new_order > *old_order {
+				let transfer_amount = new_order
+					.checked_sub(old_order)
+					.expect("New order larger than old order. qed.");
 
 				*pool_orders = pool_orders
 					.checked_add(&transfer_amount)
 					.ok_or(Error::<T>::Overflow)?;
 
-				*order = update_order;
-				(who, pool, transfer_amount)
-			} else if update_order < *order {
-				let transfer_amount = order
-					.checked_sub(&update_order)
-					.expect("Old order larger than updated order. qed.");
+				*old_order = new_order;
+				Ok((who, pool, transfer_amount))
+			} else if new_order < *old_order {
+				let transfer_amount = old_order
+					.checked_sub(&new_order)
+					.expect("Old order larger than new order. qed.");
 
 				*pool_orders = pool_orders
 					.checked_sub(&transfer_amount)
 					.ok_or(Error::<T>::Overflow)?;
 
-				*order = update_order;
-				(pool, who, transfer_amount)
+				*old_order = new_order;
+				Ok((pool, who, transfer_amount))
 			} else {
-				unreachable!("Unreachable code-area. qed.")
-			})
+				Err(Error::<T>::NoNewOrder.into())
+			}
 		}
 
 		pub(crate) fn calculate_collect(
