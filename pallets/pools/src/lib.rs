@@ -991,7 +991,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.current_epoch;
-			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false)
+			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		pub(crate) fn do_update_redeem_order(
@@ -1019,7 +1019,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.current_epoch;
-			T::Tokens::transfer(currency, send, recv, transfer_amount, false)
+			T::Tokens::transfer(currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		fn update_order_amount<'a>(
