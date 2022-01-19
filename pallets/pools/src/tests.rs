@@ -352,10 +352,12 @@ fn epoch() {
 				TrancheInput {
 					interest_per_sec: None,
 					min_risk_buffer: None,
+					seniority: None
 				},
 				TrancheInput {
 					interest_per_sec: Some(senior_interest_rate),
 					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
 				}
 			],
 			CurrencyId::Usd,
@@ -535,10 +537,12 @@ fn collect_tranche_tokens() {
 				TrancheInput {
 					interest_per_sec: None,
 					min_risk_buffer: None,
+					seniority: None
 				},
 				TrancheInput {
 					interest_per_sec: Some(senior_interest_rate),
 					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
 				}
 			],
 			CurrencyId::Usd,
@@ -645,10 +649,12 @@ fn test_approve_and_remove_roles() {
 				TrancheInput {
 					interest_per_sec: None,
 					min_risk_buffer: None,
+					seniority: None
 				},
 				TrancheInput {
 					interest_per_sec: Some(senior_interest_rate),
 					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
 				},
 			],
 			CurrencyId::Usd,
@@ -740,6 +746,7 @@ fn invalid_tranche_id_is_err() {
 			vec![TrancheInput {
 				interest_per_sec: None,
 				min_risk_buffer: None,
+				seniority: None
 			},],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -776,6 +783,7 @@ fn updating_with_same_amount_is_err() {
 			vec![TrancheInput {
 				interest_per_sec: None,
 				min_risk_buffer: None,
+				seniority: None
 			},],
 			CurrencyId::Usd,
 			10_000 * CURRENCY

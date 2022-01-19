@@ -118,10 +118,12 @@ pub(crate) fn create<T>(
 			TrancheInput {
 				interest_per_sec: None,
 				min_risk_buffer: None,
+				seniority: None
 			},
 			TrancheInput {
 				interest_per_sec: Some(One::one()),
 				min_risk_buffer: Some(Perquintill::from_percent(10)),
+				seniority: None
 			}
 		],
 		currency_id.into(),
