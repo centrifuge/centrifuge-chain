@@ -15,16 +15,16 @@
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use common_traits::{Permissions, PoolNAV};
+use common_types::CurrencyId;
 use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
+use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
-use orml_traits::MultiCurrency;
 use pallet_pools::PoolLocator;
 use pallet_pools::TrancheInput;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
-use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -159,12 +159,14 @@ pub(crate) fn create<T>(
 		&pool_account,
 		&junior_investor,
 		(500 * CURRENCY).into(),
+		false
 	));
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
 		CurrencyId::Tranche(pool_id.into(), 0).into(),
 		&pool_account,
 		&senior_investor,
 		(500 * CURRENCY).into(),
+		false
 	));
 }
 

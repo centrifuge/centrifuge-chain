@@ -34,7 +34,7 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 common-traits = { path = "../../libs/common-traits", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-pools = { path = "../../pallets/pools", default-features = false }
-primitives-tokens = { path = "../../primitives/tokens", default-features = false }
+common-types = { path = "../../libs/common-types", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 
 [features]
@@ -57,7 +57,7 @@ std = [
     "sp-core/std",
     "sp-consensus-aura/std",
     "sp-runtime/std",
-    "primitives-tokens/std",
+    "common-types/std",
     "pallet-anchors/std",
     "common-traits/std"
 ]

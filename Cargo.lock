@@ -1236,6 +1236,7 @@ name = "common-traits"
 version = "0.1.0"
 dependencies = [
  "frame-support",
+ "impl-trait-for-tuples",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -1253,6 +1254,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "sp-runtime",
  "sp-std",
 ]
 
@@ -2005,6 +2007,7 @@ dependencies = [
 name = "development-runtime"
 version = "2.0.0"
 dependencies = [
+ "common-traits",
  "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -2052,6 +2055,7 @@ dependencies = [
  "pallet-pools",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
+ "pallet-restricted-tokens",
  "pallet-scheduler",
  "pallet-session",
  "pallet-society",
@@ -2070,7 +2074,6 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain",
  "polkadot-runtime-common",
- "primitives-tokens",
  "runtime-common",
  "rustc-hex",
  "safe-mix",
@@ -5619,7 +5622,6 @@ dependencies = [
  "pallet-timestamp",
  "pallet-uniques",
  "parity-scale-codec",
- "primitives-tokens",
  "runtime-common",
  "scale-info",
  "serde",
@@ -5817,10 +5819,11 @@ dependencies = [
  "frame-system",
  "orml-tokens",
  "orml-traits",
+ "pallet-balances",
  "pallet-permissions",
+ "pallet-restricted-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
- "primitives-tokens",
  "runtime-common",
  "scale-info",
  "serde",
@@ -5883,6 +5886,26 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "unique-assets",
+]
+
+[[package]]
+name = "pallet-restricted-tokens"
+version = "0.1.0"
+dependencies = [
+ "common-traits",
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -7604,15 +7627,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "primitives-tokens"
-version = "1.0.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
- "serde",
-]
-
-[[package]]
 name = "proc-macro-crate"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8250,6 +8264,7 @@ name = "runtime-common"
 version = "1.0.0"
 dependencies = [
  "common-traits",
+ "common-types",
  "frame-support",
  "frame-system",
  "node-primitives",
@@ -8260,7 +8275,6 @@ dependencies = [
  "pallet-permissions",
  "pallet-pools",
  "parity-scale-codec",
- "primitives-tokens",
  "scale-info",
  "serde",
  "smallvec 1.8.0",

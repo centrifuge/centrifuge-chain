@@ -23,13 +23,13 @@ use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
 	assert_last_event, create, create_nft_class, expect_asset_owner, initialise_test_pool, mint_nft,
 };
+use common_types::CurrencyId;
+use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use loan_type::{BulletLoan, LoanType};
-use orml_traits::MultiCurrency;
 use pallet_loans::Event as LoanEvent;
 use pallet_pools::PoolLocator;
-use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
@@ -56,7 +56,7 @@ fn balance_of<T>(currency_id: T::CurrencyId, account: &T::AccountId) -> MultiCur
 where
 	T: pallet_pools::Config + frame_system::Config,
 {
-	<T as pallet_pools::Config>::Tokens::total_balance(currency_id, account)
+	<T as pallet_pools::Config>::Tokens::balance(currency_id, account)
 }
 
 fn issue_test_loan<T>(pool_id: u64, borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)

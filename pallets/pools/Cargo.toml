@@ -31,9 +31,11 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
-primitives-tokens = { path = "../../primitives/tokens", default-features = false }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
 runtime-common = { path = "../../runtime/common", default-features = true }
+pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true}
+pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.12" }
+
 
 [features]
 default = ['std']
@@ -43,7 +45,6 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'pallet-timestamp/std',
-    'primitives-tokens/std',
     'pallet-permissions/std',
     'orml-tokens/std',
     'orml-traits/std',

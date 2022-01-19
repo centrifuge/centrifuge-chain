@@ -19,10 +19,10 @@ use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
+use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
-use orml_traits::MultiCurrency;
 use scale_info::TypeInfo;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
@@ -251,11 +251,9 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Copy;
 
-		type Tokens: MultiCurrency<
-			Self::AccountId,
-			Balance = Self::Balance,
-			CurrencyId = Self::CurrencyId,
-		>;
+		type Tokens: Mutate<Self::AccountId>
+			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ Transfer<Self::AccountId>;
 
 		type Permission: Permissions<
 			Self::AccountId,
@@ -713,12 +711,19 @@ pub mod pallet {
 					&pool_account,
 					&who,
 					collections.payout_currency_amount,
+					false,
 				)?;
 			}
 
 			if collections.payout_token_amount > Zero::zero() {
 				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
-				T::Tokens::transfer(token, &pool_account, &who, collections.payout_token_amount)?;
+				T::Tokens::transfer(
+					token,
+					&pool_account,
+					&who,
+					collections.payout_token_amount,
+					false,
+				)?;
 			}
 
 			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
@@ -986,7 +991,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.current_epoch;
-			T::Tokens::transfer(pool.currency, send, recv, transfer_amount)
+			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		pub(crate) fn do_update_redeem_order(
@@ -1014,7 +1019,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.current_epoch;
-			T::Tokens::transfer(currency, send, recv, transfer_amount)
+			T::Tokens::transfer(currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		fn update_order_amount<'a>(
@@ -1639,10 +1644,10 @@ pub mod pallet {
 			let token = T::TrancheToken::tranche_token(loc.pool_id, loc.tranche_id);
 			if token_invest > token_redeem {
 				let tokens_to_mint = token_invest - token_redeem;
-				T::Tokens::deposit(token, &pool_address, tokens_to_mint)?;
+				T::Tokens::mint_into(token, &pool_address, tokens_to_mint)?;
 			} else if token_redeem > token_invest {
 				let tokens_to_burn = token_redeem - token_invest;
-				T::Tokens::withdraw(token, &pool_address, tokens_to_burn)?;
+				T::Tokens::burn_from(token, &pool_address, tokens_to_burn)?;
 			}
 
 			// Insert epoch closing information on invest/redeem fulfillment
@@ -1695,7 +1700,7 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
-				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
+				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
 				Ok(())
 			})
 		}
@@ -1744,7 +1749,7 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
-				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
+				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
 				Ok(())
 			})
 		}
