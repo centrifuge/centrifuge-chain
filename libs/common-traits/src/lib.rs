@@ -201,14 +201,17 @@ pub trait TokenMetadata {
 /// A means of weighting a tranche. This can be used
 /// in order to determine how much importance a tranche has
 pub trait TrancheWeigher {
-	type External: Clone;
+	type External;
 	type Weight;
 
 	fn calculate_weight(&self, input: Self::External) -> Self::Weight;
 }
 
 /// Implementation for a vec of TrancheWeigher
-impl<T: TrancheWeigher> TrancheWeigher for Vec<T> {
+impl<T: TrancheWeigher> TrancheWeigher for Vec<T>
+where
+	T::External: Clone,
+{
 	type Weight = Vec<T::Weight>;
 	type External = T::External;
 
