@@ -15,8 +15,9 @@
 //!
 //! The main components implemented in this mock module is a mock runtime
 //! and some helper functions.
-use crate as pallet_loan;
+use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+use common_types::{PermissionRoles, PoolRole, TimeProvider};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -24,11 +25,11 @@ use frame_support::{
 };
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use pallet_tinlake_investor_pool::PoolLocator;
+use pallet_pools::PoolLocator;
 use primitives_tokens::CurrencyId;
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, PoolId, Rate, TrancheToken, CENTI_CFG as CENTI_CURRENCY,
-	CFG as CURRENCY,
+	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
+	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
 use sp_io::TestExternalities;
@@ -50,11 +51,12 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>},
-		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>},
+		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
 	}
 );
 
@@ -137,7 +139,16 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
-impl pallet_tinlake_investor_pool::Config for MockRuntime {
+parameter_types! {
+	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
+	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
+	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
+	pub const PoolPalletId: PalletId = PalletId(*b"roc/pool");
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxSizeMetadata: u32 = 100;
+}
+
+impl pallet_pools::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
@@ -148,9 +159,15 @@ impl pallet_tinlake_investor_pool::Config for MockRuntime {
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
-	type NAV = Loan;
+	type NAV = Loans;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultChallengeTime = DefaultChallengeTime;
+	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type PalletId = PoolPalletId;
+	type Permission = Permissions;
+	type MaxSizeMetadata = MaxSizeMetadata;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
@@ -199,11 +216,27 @@ impl pallet_uniques::Config for MockRuntime {
 }
 
 parameter_types! {
-	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 0;
+}
+impl pallet_permissions::Config for MockRuntime {
+	type Event = Event;
+	type Location = u64;
+	type Role = PoolRole<Moment>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Editors = frame_support::traits::Everything;
+	type AdminOrigin = EnsureSignedBy<One, u64>;
+}
+
+parameter_types! {
+	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 200;
 }
 
-impl pallet_loan::Config for MockRuntime {
+impl pallet_loans::Config for MockRuntime {
 	type Event = Event;
 	type ClassId = ClassId;
 	type LoanId = InstanceId;
@@ -211,10 +244,11 @@ impl pallet_loan::Config for MockRuntime {
 	type Amount = Amount;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
-	type LoanPalletId = LoanPalletId;
-	type Pool = InvestorPool;
+	type LoansPalletId = LoansPalletId;
+	type Pool = Pools;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
+	type Permission = Permissions;
 }
 
 // USD currencyId
@@ -261,7 +295,7 @@ impl TestExternalitiesBuilder {
 				8,
 				9,
 				10,
-				pallet_loan::Pallet::<MockRuntime>::account_id(),
+				pallet_loans::Pallet::<MockRuntime>::account_id(),
 			]
 			.into_iter()
 			.map(|acc| (acc, 100 * CURRENCY))

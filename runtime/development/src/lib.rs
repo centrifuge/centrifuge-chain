@@ -5,9 +5,10 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use common_types::{PermissionRoles, TimeProvider};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -21,7 +22,8 @@ use frame_system::{
 use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
-use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
+use pallet_loans::PoolRole;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -35,6 +37,7 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
+
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -111,7 +114,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = frame_support::traits::Everything;
+	type BaseCallFilter = Migration;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -239,7 +242,7 @@ impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 	type UncleGenerations = UncleGenerations;
 	type FilterUncle = ();
-	type EventHandler = ();
+	type EventHandler = (CollatorSelection,);
 }
 
 parameter_types! {
@@ -258,10 +261,10 @@ impl pallet_session::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
 	// we don't have stash and controller, thus we don't need the convert as well.
-	type ValidatorIdOf = ValidatorOf;
+	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type SessionManager = ();
+	type SessionManager = CollatorSelection;
 	// Essentially just Aura, but lets be pedantic.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
@@ -409,7 +412,18 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
+/// The council
 type CouncilCollective = pallet_collective::Instance1;
+
+/// All council members must vote yes to create this origin.
+type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+
+/// 1/2 of all council members must vote yes to create this origin.
+type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+
+/// 2/3 of all council members must vote yes to create this origin.
+type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -501,27 +515,27 @@ impl pallet_democracy::Config for Runtime {
 	type MinimumDeposit = MinimumDeposit;
 
 	/// A straight majority of the council can decide what their next motion is.
-	type ExternalOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ExternalOrigin = HalfOfCouncil;
 
 	/// A super-majority can have the next scheduled referendum be a straight majority-carries vote.
-	type ExternalMajorityOrigin = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type ExternalMajorityOrigin = TwoThirdOfCouncil;
 
 	/// A unanimous council can have the next scheduled referendum be a straight default-carries
 	/// (NTB) vote.
-	type ExternalDefaultOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type ExternalDefaultOrigin = AllOfCouncil;
 
 	/// Two thirds of the council can have an ExternalMajority/ExternalDefault vote
 	/// be tabled immediately and with a shorter voting/enactment period.
-	type FastTrackOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type FastTrackOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 
-	type InstantOrigin = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+	type InstantOrigin = EnsureRootOr<AllOfCouncil>;
 
 	type InstantAllowed = InstantAllowed;
 
 	type FastTrackVotingPeriod = FastTrackVotingPeriod;
 
 	// To cancel a proposal which has been passed, 2/3 of the council must agree to it.
-	type CancellationOrigin = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type CancellationOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 
 	type BlacklistOrigin = EnsureRoot<AccountId>;
 
@@ -563,8 +577,8 @@ impl pallet_identity::Config for Runtime {
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
 	type Slashed = ();
-	type ForceOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
-	type RegistrarOrigin = EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
+	type RegistrarOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
 }
 
@@ -602,7 +616,7 @@ impl pallet_uniques::Config for Runtime {
 	type InstanceId = InstanceId;
 	type Currency = Balances;
 	// a straight majority of council can act as force origin
-	type ForceOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -613,18 +627,6 @@ impl pallet_uniques::Config for Runtime {
 	type ValueLimit = Limit;
 	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
 }
-
-type ApproveOrigin = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
->;
-
-type RejectOrigin = EnsureOneOf<
-	AccountId,
-	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
->;
 
 parameter_types! {
 	// 5% of the proposal value need to be bonded. This will be returned
@@ -653,9 +655,11 @@ parameter_types! {
 impl pallet_treasury::Config for Runtime {
 	type Currency = Balances;
 	// either democracy or 75% of council votes
-	type ApproveOrigin = ApproveOrigin;
+	type ApproveOrigin = EnsureRootOr<
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+	>;
 	// either democracy or more than 50% council votes
-	type RejectOrigin = RejectOrigin;
+	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -676,12 +680,19 @@ impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
-	type FeeChangeOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {
 	type WeightInfo = ();
+}
+
+impl pallet_collator_allowlist::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type ValidatorId = AccountId;
+	type ValidatorRegistration = Session;
 }
 
 // Parameterize claims pallet
@@ -694,7 +705,7 @@ parameter_types! {
 
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Balances;
 	type Event = Event;
 	type Longevity = Longevity;
@@ -704,20 +715,36 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_tinlake_investor_pool::Config for Runtime {
+// Pool config parameters
+parameter_types! {
+	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
+	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
+	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
+	pub const MaxSizeMetadata: u32 = 46;
+}
+
+impl pallet_pools::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
 	type PoolId = PoolId;
-	type TrancheId = u8;
+	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
-	type NAV = Loan;
+	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
+	type Permission = Permissions;
 	type Time = Timestamp;
+	type DefaultMinEpochTime = DefaultMinEpochTime;
+	type DefaultChallengeTime = DefaultChallengeTime;
+	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type PalletId = PoolPalletId;
+	type MaxSizeMetadata = MaxSizeMetadata;
 }
 
 parameter_types! {
@@ -734,6 +761,34 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type FinalizedFilter = Everything;
+	type InactiveFilter = Everything;
+	type OngoingFilter = BaseFilter;
+}
+
+// our base filter
+// allow base system calls needed for block production and runtime upgrade
+// other calls will be disallowed
+pub struct BaseFilter;
+
+impl Contains<Call> for BaseFilter {
+	fn contains(c: &Call) -> bool {
+		matches!(
+			c,
+			// Calls from Sudo
+			Call::Sudo(..)
+			// Calls for runtime upgrade
+			| Call::System(frame_system::Call::set_code{..})
+			| Call::System(frame_system::Call::set_code_without_checks{..})
+			// Calls that are present in each block
+			| Call::ParachainSystem(
+				cumulus_pallet_parachain_system::Call::set_validation_data{..}
+			)
+			| Call::Timestamp(pallet_timestamp::Call::set{..})
+			// Claiming logic is also enabled
+			| Call::CrowdloanClaim(pallet_crowdloan_claim::Call::claim_reward{..})
+		)
+	}
 }
 
 // Parameterize crowdloan reward pallet configuration
@@ -745,7 +800,7 @@ parameter_types! {
 impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
 }
 
@@ -762,7 +817,7 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
 	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
-	type AdminOrigin = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
 	type ClaimTransactionPriority = ClaimTransactionPriority;
@@ -770,12 +825,44 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type RewardMechanism = CrowdloanReward;
 }
 
+// Parameterize collator selection pallet
 parameter_types! {
-	pub const LoanPalletId: PalletId = PalletId(*b"pal/loan");
+	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub const MaxCandidates: u32 = 1000;
+	pub const MinCandidates: u32 = 5;
+	pub const SessionLength: BlockNumber = 6 * HOURS;
+	pub const MaxInvulnerables: u32 = 100;
+}
+
+type CollatorSelectionUpdateOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+>;
+
+// Implement Collator Selection pallet configuration trait for the runtime
+impl pallet_collator_selection::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type UpdateOrigin = CollatorSelectionUpdateOrigin;
+	type PotId = PotId;
+	type MaxCandidates = MaxCandidates;
+	type MinCandidates = MinCandidates;
+	type MaxInvulnerables = MaxInvulnerables;
+	// should be a multiple of session or things will get inconsistent
+	type KickThreshold = Period;
+	type ValidatorId = <Self as frame_system::Config>::AccountId;
+	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
+	type ValidatorRegistration = Session;
+	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 50;
 }
 
-impl pallet_loan::Config for Runtime {
+impl pallet_loans::Config for Runtime {
 	type Event = Event;
 	type ClassId = ClassId;
 	type LoanId = InstanceId;
@@ -783,10 +870,61 @@ impl pallet_loan::Config for Runtime {
 	type Amount = Amount;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
-	type LoanPalletId = LoanPalletId;
-	type Pool = InvestorPool;
-	type WeightInfo = pallet_loan::weights::SubstrateWeight<Self>;
+	type LoansPalletId = LoansPalletId;
+	type Pool = Pools;
+	type Permission = Permissions;
+	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
+}
+
+parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
+}
+
+impl pallet_permissions::Config for Runtime {
+	type Event = Event;
+	type Location = PoolId;
+	type Role = PoolRole<Moment, TrancheId>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Editors = Editors;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+}
+
+pub struct Editors;
+impl
+	Contains<(
+		AccountId,
+		Option<PoolRole<Moment, TrancheId>>,
+		PoolId,
+		PoolRole<Moment, TrancheId>,
+	)> for Editors
+{
+	fn contains(
+		t: &(
+			AccountId,
+			Option<PoolRole<Moment, TrancheId>>,
+			PoolId,
+			PoolRole<Moment, TrancheId>,
+		),
+	) -> bool {
+		let (_editor, maybe_role, _pool, role) = t;
+		if let Some(with_role) = maybe_role {
+			match *with_role {
+				PoolRole::PoolAdmin => true,
+				PoolRole::MemberListAdmin => match *role {
+					PoolRole::TrancheInvestor(_, _) => true,
+					_ => false,
+				},
+				_ => false,
+			}
+		} else {
+			false
+		}
+	}
 }
 
 parameter_type_with_key! {
@@ -841,6 +979,8 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
 
 		// authoring stuff
+		// collator_selection must go here in order for the storage to be available to pallet_session
+		CollatorSelection: pallet_collator_selection::{Pallet, Call, Storage, Event<T>, Config<T>} = 71,
 		Authorship: pallet_authorship::{Pallet, Call, Storage} = 30,
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 31,
 		Aura: pallet_aura::{Pallet, Storage, Config<T>} = 32,
@@ -865,8 +1005,10 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
-		InvestorPool: pallet_tinlake_investor_pool::{Pallet, Call, Storage, Event<T>} = 95,
-		Loan: pallet_loan::{Pallet, Call, Storage, Event<T>} = 96,
+		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
+		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
+		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 
 		// 3rd party pallets
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
@@ -1022,9 +1164,9 @@ impl_runtime_apis! {
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
-			use pallet_loan::benchmarking::Pallet as LoanPallet;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
-			impl pallet_loan::benchmarking::Config for Runtime {}
+			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1047,7 +1189,9 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
-			add_benchmark!(params, batches, pallet_loan, LoanPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
+			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1059,7 +1203,7 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
-			use pallet_loan::benchmarking::Pallet as LoanPallet;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1067,7 +1211,9 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_loan, LoanPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
+			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

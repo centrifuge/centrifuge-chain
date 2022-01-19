@@ -38,12 +38,15 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
+	use frame_system::{EnsureOneOf, EnsureRoot};
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
 	use sp_core::{H160, U256};
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 	use sp_std::vec::Vec;
+
+	pub type EnsureRootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;
@@ -128,6 +131,9 @@ pub mod types {
 	/// A representation of ClassId for Uniques
 	pub type ClassId = u64;
 
+	/// A representation of a tranche identifier
+	pub type TrancheId = u8;
+
 	/// A representation of InstanceId for Uniques.
 	#[derive(
 		codec::Encode,
@@ -167,7 +173,13 @@ pub mod constants {
 	pub const DAYS: BlockNumber = HOURS * 24;
 
 	/// Milliseconds per day
-	pub const MILLISECS_PER_DAY: u64 = 86400000;
+	pub const MILLISECS_PER_DAY: u64 = SECONDS_PER_DAY * 1000;
+
+	// Seconds units
+	pub const SECONDS_PER_MINUTE: u64 = 60;
+	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
+	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
+	pub const SECONDS_PER_YEAR: u64 = SECONDS_PER_DAY * 365;
 
 	/// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
 	/// used to limit the maximal weight of a single extrinsic.

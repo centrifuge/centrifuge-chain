@@ -12,7 +12,7 @@ jobs:
         target: [tests, lint]
     runs-on: ${{ matrix.os }}
     env:
-      RUST_TOOLCHAIN: "nightly-2021-09-28"
+      RUST_TOOLCHAIN: "nightly-2021-11-07"
     steps:
       - name: Free space on Ubuntu
         if: ${{ matrix.os }} == 'ubuntu-latest'
