@@ -197,3 +197,26 @@ pub trait TokenMetadata {
 
 	fn decimals(&self) -> u8;
 }
+
+/// A means of weighting a tranche. This can be used
+/// in order to determine how much importance a tranche has
+pub trait TrancheWeigher {
+	type External: Clone;
+	type Weight;
+
+	fn calculate_weight(&self, input: Self::External) -> Self::Weight;
+}
+
+/// Implementation for a vec of TrancheWeigher
+impl<T: TrancheWeigher> TrancheWeigher for Vec<T> {
+	type Weight = Vec<T::Weight>;
+	type External = T::External;
+
+	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
+		let mut weights = Vec::with_capacity(self.len());
+		self.iter()
+			.for_each(|tranche| weights.push(tranche.calculate_weight(input.clone())));
+
+		weights
+	}
+}

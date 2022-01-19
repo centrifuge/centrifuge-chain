@@ -15,7 +15,7 @@ mod tests;
 mod benchmarking;
 
 use codec::HasCompact;
-use common_traits::Permissions;
+use common_traits::{Permissions, TrancheWeigher};
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
@@ -51,7 +51,7 @@ pub trait TrancheToken<T: Config> {
 pub struct TrancheInput<Rate> {
 	pub interest_per_sec: Option<Rate>,
 	pub min_risk_buffer: Option<Perquintill>,
-	pub seniority: Option<u32>,
+	pub seniority: Option<Senority>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
@@ -66,7 +66,30 @@ pub struct Tranche<Balance, Rate> {
 	pub debt: Balance,
 	pub reserve: Balance,
 	pub ratio: Perquintill,
-	pub last_updated_interest: u64,
+	pub last_updated_interest: Moment,
+}
+
+/// A type alias for the Tranche weight calculation
+type NumTranches = u32;
+
+impl<Balance, Rate> TrancheWeigher for Tranche<Balance, Rate>
+where
+	Balance: From<u128>,
+{
+	type Weight = (Balance, Balance);
+	type External = NumTranches;
+
+	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
+		let redeem_starts = 10u128.pow(input);
+		(
+			10u128.pow(self.seniority.saturating_add(1)).into(),
+			// TODO(mustermeiszer): How to do this sanely
+			redeem_starts
+				.checked_mul(10u128.pow(self.seniority.saturating_add(1)).into())
+				.unwrap()
+				.into(),
+		)
+	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -145,6 +168,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
+	senority: Senority,
 }
 
 /// The information for a currently executing epoch
@@ -154,16 +178,16 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
 	nav: Balance,
 	reserve: Balance,
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
-	solution: Option<EpochSolution<EpochId, Balance>>,
+	solution: Option<EpochSolution<Balance>>,
 	end_challenge_period: Moment,
 }
 
 /// The solutions struct for epoch solution
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochSolution<EpochId, Balance> {
-	pub solution: Option<Vec<TrancheSolution>>,
+pub struct EpochSolution<Balance> {
+	pub solution: Vec<TrancheSolution>,
 	pub score: Balance,
-	pub full_valid_solution: bool,
+	pub healthy_solution: bool,
 }
 
 // The solution struct for a specific tranche
@@ -187,6 +211,9 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 
 // Type that indicates a point in time
 type Moment = u64;
+
+// Type that indicates the senority of a tranche
+type Senority = u32;
 
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
@@ -438,6 +465,8 @@ pub mod pallet {
 		NoNewOrder,
 		/// Submitted solution is not an improvement
 		NotNewBestSubmission,
+		/// No solution has yet been provided for the epoch
+		NoSolutionAvailable,
 	}
 
 	#[pallet::call]
@@ -489,7 +518,6 @@ pub mod pallet {
 					current_epoch: One::one(),
 					last_epoch_closed: now,
 					last_epoch_executed: Zero::zero(),
-					submission_period_state: None,
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
@@ -590,7 +618,7 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				ensure!(
-					pool.submission_period_state.is_none(),
+					EpochExecution::<T>::try_get(pool_id).is_err(),
 					Error::<T>::InSubmissionPeriod
 				);
 
@@ -771,7 +799,7 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				ensure!(
-					pool.submission_period_state.is_none(),
+					!EpochExecution::<T>::contains_key(pool_id),
 					Error::<T>::InSubmissionPeriod
 				);
 
@@ -874,6 +902,8 @@ pub mod pallet {
 						price: *price,
 						invest: *invest,
 						redeem: *redeem,
+						// TODO(mustermeiszer): Use correct senority from tranche here
+						senority: Zero::zero(),
 					})
 					.collect();
 
@@ -883,7 +913,7 @@ pub mod pallet {
 					reserve: pool.total_reserve,
 					tranches: epoch_tranches,
 					solution: None,
-					end_challenge_period: now.saturating_end(pool.challenge_time),
+					end_challenge_period: now.saturating_add(pool.challenge_time),
 				};
 
 				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
@@ -907,75 +937,41 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let epoch = EpochExecution::<T>::try_get(pool_id)
-				.map_err(|_| Error::<T>::NotInSubmissionPeriod)?;
+			EpochExecution::<T>::try_mutate(pool_id, |epoch| -> DispatchResult {
+				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
-			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
-				let epoch_validation_result = Self::is_valid_solution(pool, &epoch, &solution);
+				// TODO: Return enum and check for eerror.
+				//       Also do not accept current solution if is unhealty and last submitted is healty
+				let epoch_validation = Self::is_valid_solution(&pool, &epoch, &solution);
 
 				// Don't allow the core constraint (insufficient currency) to be broken
 				ensure!(
-					epoch_validation_result.is_ok()
-						|| (epoch_validation_result.err().unwrap()
+					epoch_validation.is_ok()
+						|| (epoch_validation.err().unwrap()
 							!= Error::<T>::InsufficientCurrency.into()),
 					Error::<T>::InvalidSolution
 				);
 
 				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let score: T::Balance = solution
-					.iter()
-					.zip(epoch.tranches)
-					.zip(Self::get_tranche_weights(&pool))
-					.fold(
-						Some(Zero::zero()),
-						|sum: Option<T::Balance>,
-						 ((solution, epoch_execution), (invest_weight, redeem_weight))| {
-							sum.and_then(|sum| {
-								solution
-									.invest_fulfillment
-									.mul_floor(epoch_execution.invest)
-									.checked_mul(&invest_weight)
-									.and_then(|invest_score| {
-										solution
-											.redeem_fulfillment
-											.mul_floor(epoch_execution.redeem)
-											.checked_mul(&redeem_weight)
-											.and_then(|redeem_score| {
-												invest_score.checked_add(&redeem_score)
-											})
-									})
-									.as_ref()
-									.and_then(|total_score| sum.checked_add(total_score))
-							})
-						},
-					)
-					.ok_or(Error::<T>::Overflow)?;
+				let score = Self::score_solution(&solution, &epoch.tranches);
 
-				ensure!(
-					score > submission_period_state.best_submission_score,
-					Error::<T>::NotNewBestSubmission
-				);
+				if let Some(ref curr_solution) = epoch.solution {
+					ensure!(
+						curr_solution.score <= score,
+						Error::<T>::NotNewBestSubmission
+					);
+				}
 
-				let now = T::Time::now().as_secs();
-				pool.submission_period_state = Some(SubmissionPeriodState {
-					epoch: submission_period_state.epoch,
-					best_submission: Some(solution.clone()),
-					best_submission_score: score.into(),
-					min_challenge_period_end: Some(
-						submission_period_state
-							.min_challenge_period_end
-							.unwrap_or(now.saturating_add(pool.challenge_time)),
-					),
-					got_full_valid_solution: false,
+				epoch.solution = Some(EpochSolution {
+					solution: solution.clone(),
+					score,
+					healthy_solution: epoch_validation.is_ok(),
 				});
 
-				Self::deposit_event(Event::SolutionSubmitted(
-					pool_id,
-					submission_period_state.epoch,
-					solution,
-				));
+				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, solution));
+
 				Ok(())
 			})
 		}
@@ -984,33 +980,38 @@ pub mod pallet {
 		pub fn execute_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let epoch =
-				EpochExecution::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-			Pool::<T>::try_mutate(pool_id, |pool| {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let submission_period_state = pool
-					.submission_period_state
-					.clone()
+			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
+				let epoch = epoch_info
+					.as_mut()
 					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
-				let now = T::Time::now().as_secs();
+				ensure!(epoch.solution.is_some(), Error::<T>::NoSolutionAvailable);
+
 				ensure!(
-					match submission_period_state.min_challenge_period_end {
-						None => false,
-						Some(min_challenge_period_end) => now >= min_challenge_period_end,
-					},
+					epoch.end_challenge_period < Self::now(),
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
-				let best_submission = submission_period_state
-					.best_submission
-					.ok_or(Error::<T>::ChallengeTimeHasNotPassed)?;
+				// TODO: Write a test for the `expect` in case we allow the removal of pools at some point
+				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+					let pool = pool
+						.as_mut()
+						.expect("EpochExecutionInfo can only exist on existing pools. qed.");
 
-				pool.submission_period_state = None;
-				Self::do_execute_epoch(pool_id, pool, &epoch, &best_submission)?;
-				EpochExecution::<T>::remove(pool_id);
-				Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_state.epoch));
-				Ok(())
+					let solution = &epoch
+						.solution
+						.as_ref()
+						.expect("Solution exists. qed.")
+						.solution;
+
+					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
+					Self::deposit_event(Event::EpochExecuted(pool_id, epoch.epoch));
+					Ok(())
+				})?;
+
+				// This kills the epoch info in storage.
+				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
+				Ok(*epoch_info = None)
 			})
 		}
 
@@ -1065,6 +1066,44 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
+		}
+
+		// TODO(mustermeiszer): Implement scoring of solution. What is acutally needed?
+		pub(crate) fn score_solution(
+			_solution: &[TrancheSolution],
+			_tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+		) -> T::Balance {
+			todo!()
+			/*
+			solution
+				.iter()
+				.zip(tranches)
+				.zip()
+				.fold(
+					Some(Zero::zero()),
+					|sum: Option<T::Balance>,
+					 ((solution, epoch_execution), (invest_weight, redeem_weight))| {
+						sum.and_then(|sum| {
+							solution
+								.invest_fulfillment
+								.mul_floor(epoch_execution.invest)
+								.checked_mul(&invest_weight)
+								.and_then(|invest_score| {
+									solution
+										.redeem_fulfillment
+										.mul_floor(epoch_execution.redeem)
+										.checked_mul(&redeem_weight)
+										.and_then(|redeem_score| {
+											invest_score.checked_add(&redeem_score)
+										})
+								})
+								.as_ref()
+								.and_then(|total_score| sum.checked_add(total_score))
+						})
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+				*/
 		}
 
 		pub(crate) fn do_update_invest_order(

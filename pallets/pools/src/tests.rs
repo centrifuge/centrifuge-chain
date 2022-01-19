@@ -2,6 +2,7 @@ use super::*;
 use crate::mock::*;
 use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
+use frame_support::sp_std::convert::TryInto;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
@@ -24,6 +25,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
+				senority: Default::default(),
 			})
 			.collect();
 
@@ -34,7 +36,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			submission_period_state: None,
 			max_reserve: 40,
 			available_reserve: Zero::zero(),
 			total_reserve: 39,
@@ -45,9 +46,12 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		};
 
 		let epoch = EpochExecutionInfo {
+			epoch: Zero::zero(),
 			nav: 0,
 			reserve: pool.total_reserve,
 			tranches: epoch_tranches,
+			solution: None,
+			end_challenge_period: 0,
 		};
 
 		let full_solution = pool
@@ -98,6 +102,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
+				..Default::default()
 			})
 			.collect();
 
@@ -108,7 +113,6 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			submission_period_state: None,
 			max_reserve: 5,
 			available_reserve: Zero::zero(),
 			total_reserve: 40,
@@ -119,9 +123,12 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		};
 
 		let epoch = EpochExecutionInfo {
+			epoch: Zero::zero(),
 			nav: 90,
 			reserve: pool.total_reserve,
 			tranches: epoch_tranches,
+			solution: None,
+			end_challenge_period: Default::default(),
 		};
 
 		let full_solution = pool
@@ -186,6 +193,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
+				..Default::default()
 			})
 			.collect();
 
@@ -196,7 +204,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			submission_period_state: None,
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
@@ -207,9 +214,12 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		};
 
 		let epoch = EpochExecutionInfo {
+			epoch: Zero::zero(),
 			nav: 0,
 			reserve: pool.total_reserve,
 			tranches: epoch_tranches,
+			solution: None,
+			end_challenge_period: Default::default(),
 		};
 
 		let full_solution = pool
@@ -263,12 +273,14 @@ fn pool_constraints_pass() {
 
 		let epoch_tranches = tranches
 			.iter()
-			.zip(vec![20, 35, 70, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
+			.zip(vec![20, 35, 70, 80])
+			.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
+			.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
 				value,
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
+				senority: tranche_id.try_into().unwrap(),
 			})
 			.collect();
 
@@ -279,7 +291,6 @@ fn pool_constraints_pass() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			submission_period_state: None,
 			max_reserve: 150,
 			available_reserve: Zero::zero(),
 			total_reserve: 50,
@@ -290,9 +301,12 @@ fn pool_constraints_pass() {
 		};
 
 		let epoch = EpochExecutionInfo {
+			epoch: Zero::zero(),
 			nav: 145,
 			reserve: pool.total_reserve,
 			tranches: epoch_tranches,
+			solution: None,
+			end_challenge_period: Default::default(),
 		};
 
 		let full_solution = pool
