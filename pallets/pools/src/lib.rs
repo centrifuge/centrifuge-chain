@@ -69,21 +69,6 @@ pub struct Tranche<Balance, Rate> {
 	pub last_updated_interest: u64,
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, Copy)]
-pub struct TrancheSolution {
-	pub invest_fulfillment: Perquintill,
-	pub redeem_fulfillment: Perquintill,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct SubmissionPeriodState<EpochId, Balance> {
-	pub epoch: EpochId,
-	pub best_submission: Option<Vec<TrancheSolution>>,
-	pub best_submission_score: Balance,
-	pub got_full_valid_solution: bool,
-	pub min_challenge_period_end: Option<u64>,
-}
-
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum SolutionState {
 	Healthy,
@@ -101,16 +86,15 @@ where
 	pub currency: CurrencyId,
 	pub tranches: Vec<Tranche<Balance, Rate>>, // ordered junior => senior
 	pub current_epoch: EpochId,
-	pub last_epoch_closed: u64,
+	pub last_epoch_closed: Moment,
 	pub last_epoch_executed: EpochId,
-	pub submission_period_state: Option<SubmissionPeriodState<EpochId, Balance>>,
 	pub max_reserve: Balance,
 	pub available_reserve: Balance,
 	pub total_reserve: Balance,
 	pub metadata: Option<BoundedVec<u8, MetaSize>>,
-	pub min_epoch_time: u64,
-	pub challenge_time: u64,
-	pub max_nav_age: u64,
+	pub min_epoch_time: Moment,
+	pub challenge_time: Moment,
+	pub max_nav_age: Moment,
 }
 
 /// Per-tranche and per-user order details.
@@ -163,6 +147,32 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	redeem: Balance,
 }
 
+/// The information for a currently executing epoch
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
+	epoch: EpochId,
+	nav: Balance,
+	reserve: Balance,
+	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
+	solution: Option<EpochSolution<EpochId, Balance>>,
+	end_challenge_period: Moment,
+}
+
+/// The solutions struct for epoch solution
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct EpochSolution<EpochId, Balance> {
+	pub solution: Option<Vec<TrancheSolution>>,
+	pub score: Balance,
+	pub full_valid_solution: bool,
+}
+
+// The solution struct for a specific tranche
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, Copy)]
+pub struct TrancheSolution {
+	pub invest_fulfillment: Perquintill,
+	pub redeem_fulfillment: Perquintill,
+}
+
 /// The outstanding collections for an account
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct OutstandingCollections<Balance> {
@@ -170,14 +180,6 @@ pub struct OutstandingCollections<Balance> {
 	pub payout_token_amount: Balance,
 	pub remaining_invest_currency: Balance,
 	pub remaining_redeem_token: Balance,
-}
-
-/// The information for a currently executing epoch
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio> {
-	nav: Balance,
-	reserve: Balance,
-	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
 }
 
 // type alias for StaticLookup source that resolves to account
@@ -196,6 +198,8 @@ type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::MaxSizeMetadata,
 >;
 type UserOrderOf<T> = UserOrder<<T as Config>::Balance, <T as Config>::EpochId>;
+type EpochExecutionInfoOf<T> =
+	EpochExecutionInfo<<T as Config>::Balance, <T as Config>::BalanceRatio, <T as Config>::EpochId>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -308,19 +312,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn pool)]
-	pub type Pool<T: Config> = StorageMap<
-		_,
-		Blake2_128Concat,
-		T::PoolId,
-		PoolDetails<
-			T::AccountId,
-			T::CurrencyId,
-			T::EpochId,
-			T::Balance,
-			T::InterestRate,
-			T::MaxSizeMetadata,
-		>,
-	>;
+	pub type Pool<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetailsOf<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order)]
@@ -348,7 +340,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn epoch_targets)]
 	pub type EpochExecution<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfo<T::Balance, T::BalanceRatio>>;
+		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfoOf<T>>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
@@ -886,9 +878,12 @@ pub mod pallet {
 					.collect();
 
 				let epoch = EpochExecutionInfo {
+					epoch: submission_period_epoch,
 					nav,
 					reserve: pool.total_reserve,
 					tranches: epoch_tranches,
+					solution: None,
+					end_challenge_period: now.saturating_end(pool.challenge_time),
 				};
 
 				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
@@ -897,13 +892,6 @@ pub mod pallet {
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 				} else {
-					pool.submission_period_state = Some(SubmissionPeriodState {
-						epoch: submission_period_epoch,
-						best_submission: None,
-						best_submission_score: Zero::zero(),
-						got_full_valid_solution: false,
-						min_challenge_period_end: None,
-					});
 					EpochExecution::<T>::insert(pool_id, epoch);
 				}
 
@@ -919,14 +907,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			let epoch =
-				EpochExecution::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			let epoch = EpochExecution::<T>::try_get(pool_id)
+				.map_err(|_| Error::<T>::NotInSubmissionPeriod)?;
+
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let submission_period_state = pool
-					.submission_period_state
-					.clone()
-					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
 				let epoch_validation_result = Self::is_valid_solution(pool, &epoch, &solution);
 
@@ -1416,15 +1401,8 @@ pub mod pallet {
 		}
 
 		pub fn is_valid_solution(
-			pool_details: &PoolDetails<
-				T::AccountId,
-				T::CurrencyId,
-				T::EpochId,
-				T::Balance,
-				T::InterestRate,
-				T::MaxSizeMetadata,
-			>,
-			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
+			pool_details: &PoolDetailsOf<T>,
+			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
 			let acc_invest: T::Balance = epoch
@@ -1571,15 +1549,8 @@ pub mod pallet {
 
 		fn do_execute_epoch(
 			pool_id: T::PoolId,
-			pool: &mut PoolDetails<
-				T::AccountId,
-				T::CurrencyId,
-				T::EpochId,
-				T::Balance,
-				T::InterestRate,
-				T::MaxSizeMetadata,
-			>,
-			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
+			pool: &mut PoolDetailsOf<T>,
+			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
 			pool.last_epoch_executed += One::one();
@@ -1642,15 +1613,8 @@ pub mod pallet {
 		}
 
 		fn rebalance_tranches(
-			pool: &mut PoolDetails<
-				T::AccountId,
-				T::CurrencyId,
-				T::EpochId,
-				T::Balance,
-				T::InterestRate,
-				T::MaxSizeMetadata,
-			>,
-			epoch: &EpochExecutionInfo<T::Balance, T::BalanceRatio>,
+			pool: &mut PoolDetailsOf<T>,
+			epoch: &EpochExecutionInfoOf<T>,
 			executed_amounts: &Vec<(T::Balance, T::Balance)>,
 		) -> DispatchResult {
 			// Calculate the new fraction of the total pool value that each tranche contains
