@@ -1,5 +1,8 @@
 use crate::{self as pallet_pools, Config, DispatchResult};
-use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use common_traits::{Permissions as PermissionsT, PreConditions};
+use common_types::CurrencyId;
+use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
@@ -8,7 +11,7 @@ use frame_support::{
 use frame_system as system;
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
-use primitives_tokens::CurrencyId;
+use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -17,7 +20,7 @@ use sp_runtime::{
 
 pub use runtime_common::Rate;
 
-primitives_tokens::impl_tranche_token!();
+common_types::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -75,10 +78,12 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>},
 		FakeNav: fake_nav::{Pallet, Storage},
-		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Storage, Event<T>}
 	}
 );
 
@@ -128,7 +133,7 @@ impl system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<Balance>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -151,6 +156,24 @@ parameter_type_with_key! {
 	};
 }
 
+// Parameterize balances pallet
+parameter_types! {
+	pub const ExistentialDeposit: u64 = 1;
+}
+
+// Implement balances pallet configuration for mock runtime
+impl pallet_balances::Config for Test {
+	type MaxLocks = MaxLocks;
+	type Balance = Balance;
+	type Event = Event;
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type AccountStore = System;
+	type WeightInfo = ();
+	type MaxReserves = ();
+	type ReserveIdentifier = ();
+}
+
 parameter_types! {
 	pub const MaxLocks: u32 = 100;
 }
@@ -165,6 +188,56 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+}
+
+parameter_types! {
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
+}
+
+impl pallet_restricted_tokens::Config for Test {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesMutate = common_traits::Always;
+	type PreFungiblesMutateHold = common_traits::Always;
+	type PreFungiblesTransfer = common_traits::Always;
+	type Fungibles = OrmlTokens;
+	type PreCurrency = common_traits::Always;
+	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleMutate = common_traits::Always;
+	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleTransfer = common_traits::Always;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+}
+
+pub struct RestrictedTokens<P>(PhantomData<P>);
+impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
+where
+	P: PermissionsT<u64, Location = u64, Role = PoolRole>,
+{
+	fn check(details: TransferDetails<u64, CurrencyId, Balance>) -> bool {
+		let TransferDetails {
+			send,
+			recv,
+			id,
+			amount: _amount,
+		} = details.clone();
+
+		match id {
+			CurrencyId::Usd => true,
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has_permission(
+						pool_id,
+						recv,
+						PoolRole::TrancheInvestor(tranche_id, UNION),
+					)
+			}
+			CurrencyId::Native => true,
+		}
+	}
 }
 
 parameter_types! {
@@ -204,8 +277,8 @@ impl fake_nav::Config for Test {
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
-pub const JUNIOR_TRANCHE_ID: u8 = 1;
-pub const SENIOR_TRANCHE_ID: u8 = 0;
+pub const JUNIOR_TRANCHE_ID: u8 = 0;
+pub const SENIOR_TRANCHE_ID: u8 = 1;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {

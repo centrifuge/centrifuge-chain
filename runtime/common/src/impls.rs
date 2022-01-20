@@ -2,6 +2,7 @@
 
 use super::*;
 use codec::{Decode, Encode};
+use common_types::CurrencyId;
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
 use frame_support::traits::{Currency, OnUnbalanced};
@@ -12,7 +13,6 @@ use frame_system::pallet::Config as SystemConfig;
 use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use pallet_pools::Config;
-use primitives_tokens::CurrencyId;
 use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
@@ -21,7 +21,7 @@ use sp_std::convert::TryInto;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
-primitives_tokens::impl_tranche_token!();
+common_types::impl_tranche_token!();
 
 pub struct DealWithFees<Config>(PhantomData<Config>);
 pub type NegativeImbalance<Config> =

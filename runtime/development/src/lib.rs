@@ -5,7 +5,9 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use common_types::{PermissionRoles, TimeProvider};
+use common_traits::Permissions as PermissionsT;
+use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
@@ -23,7 +25,6 @@ use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
-use pallet_loans::PoolRole;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -38,6 +39,8 @@ use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
 
+use common_traits::PreConditions;
+use pallet_restricted_tokens::TransferDetails;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -50,7 +53,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-pub use primitives_tokens::CurrencyId;
+pub use common_types::CurrencyId;
 
 /// common types for the runtime.
 pub use runtime_common::*;
@@ -344,7 +347,7 @@ impl InstanceFilter<Call> for ProxyType {
 	fn filter(&self, c: &Call) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer => !matches!(c, Call::Balances(..)),
+			ProxyType::NonTransfer => !matches!(c, Call::Tokens(..)),
 			ProxyType::Governance => matches!(
 				c,
 				Call::Democracy(..) | Call::Council(..) | Call::Elections(..) | Call::Utility(..)
@@ -372,7 +375,7 @@ impl InstanceFilter<Call> for ProxyType {
 impl pallet_proxy::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type ProxyType = ProxyType;
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
@@ -451,7 +454,7 @@ const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 impl pallet_elections_phragmen::Config for Runtime {
 	type Event = Event;
 	type PalletId = ElectionsPhragmenModuleId;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type ChangeMembers = Council;
 	type InitializeMembers = Council;
 	type CurrencyToVote = U128CurrencyToVote;
@@ -497,7 +500,7 @@ parameter_types! {
 impl pallet_democracy::Config for Runtime {
 	type Proposal = Call;
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	/// The minimum period of locking and the period between a proposal being approved and enacted.
 	///
 	/// It should generally be a little more than the unstake period to ensure that
@@ -569,7 +572,7 @@ parameter_types! {
 
 impl pallet_identity::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type BasicDeposit = BasicDeposit;
 	type FieldDeposit = FieldDeposit;
 	type SubAccountDeposit = SubAccountDeposit;
@@ -588,7 +591,7 @@ parameter_types! {
 
 impl pallet_vesting::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
@@ -614,7 +617,7 @@ impl pallet_uniques::Config for Runtime {
 	type Event = Event;
 	type ClassId = ClassId;
 	type InstanceId = InstanceId;
-	type Currency = Balances;
+	type Currency = Tokens;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
 	type ClassDeposit = ClassDeposit;
@@ -653,7 +656,7 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-	type Currency = Balances;
+	type Currency = Tokens;
 	// either democracy or 75% of council votes
 	type ApproveOrigin = EnsureRootOr<
 		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
@@ -677,7 +680,7 @@ impl pallet_treasury::Config for Runtime {
 
 // our pallets
 impl pallet_fees::Config for Runtime {
-	type Currency = Balances;
+	type Currency = Tokens;
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -706,7 +709,7 @@ parameter_types! {
 // Implement claims pallet configuration trait for the mock runtime
 impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type Event = Event;
 	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
@@ -734,7 +737,7 @@ impl pallet_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
-	type Tokens = Tokens;
+	type Tokens = OrmlTokens;
 	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
@@ -843,7 +846,7 @@ type CollatorSelectionUpdateOrigin = EnsureOneOf<
 // Implement Collator Selection pallet configuration trait for the runtime
 impl pallet_collator_selection::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type Currency = Tokens;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
 	type PotId = PotId;
 	type MaxCandidates = MaxCandidates;
@@ -927,6 +930,55 @@ impl
 	}
 }
 
+pub struct RestrictedTokens<P>(PhantomData<P>);
+impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
+where
+	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
+{
+	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
+		let TransferDetails {
+			send,
+			recv,
+			id,
+			amount: _amount,
+		} = details.clone();
+
+		match id {
+			CurrencyId::Usd | CurrencyId::Native => true,
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has_permission(
+						pool_id,
+						recv,
+						PoolRole::TrancheInvestor(tranche_id, UNION),
+					)
+			}
+		}
+	}
+}
+
+parameter_types! {
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
+}
+
+impl pallet_restricted_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesMutate = common_traits::Always;
+	type PreFungiblesMutateHold = common_traits::Always;
+	type PreFungiblesTransfer = common_traits::Always;
+	type Fungibles = OrmlTokens;
+	type PreCurrency = common_traits::Always;
+	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleMutate = common_traits::Always;
+	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleTransfer = common_traits::Always;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+}
+
 parameter_type_with_key! {
 	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
 		// every currency has a zero existential deposit
@@ -975,7 +1027,7 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 4,
 
 		// money stuff
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
+		Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 20,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
 
 		// authoring stuff
@@ -1009,9 +1061,10 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
 
 		// 3rd party pallets
-		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

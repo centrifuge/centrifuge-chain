@@ -23,17 +23,18 @@ use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
 	assert_last_event, create, create_nft_class, expect_asset_owner, initialise_test_pool, mint_nft,
 };
+use common_types::CurrencyId;
+use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use frame_system::RawOrigin;
 use loan_type::{BulletLoan, LoanType};
-use orml_traits::MultiCurrency;
 use pallet_loans::Event as LoanEvent;
 use pallet_pools::PoolLocator;
-use primitives_tokens::CurrencyId;
 use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
+use sp_runtime::ArithmeticError;
 
 // Return last triggered event
 fn last_event() -> Event {
@@ -56,7 +57,7 @@ fn balance_of<T>(currency_id: T::CurrencyId, account: &T::AccountId) -> MultiCur
 where
 	T: pallet_pools::Config + frame_system::Config,
 {
-	<T as pallet_pools::Config>::Tokens::total_balance(currency_id, account)
+	<T as pallet_pools::Config>::Tokens::balance(currency_id, account)
 }
 
 fn issue_test_loan<T>(pool_id: u64, borrower: T::AccountId) -> (T::PoolId, AssetOf<T>, AssetOf<T>)
@@ -1584,4 +1585,67 @@ fn test_repay_too_early() {
 	repay_too_early!(price_bullet_loan);
 	repay_too_early!(price_credit_line_loan);
 	repay_too_early!(price_credit_line_with_maturity_loan);
+}
+
+macro_rules! write_off_overflow {
+	($price_loan:ident) => {
+		TestExternalitiesBuilder::default()
+			.build()
+			.execute_with(|| {
+				let pool_admin = PoolAdmin::get();
+				let borrower: u64 = Borrower::get();
+				// successful issue
+				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				assert_eq!(pool_balance, 1000 * USD);
+
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				assert_eq!(owner_balance, Zero::zero());
+				let loan_id = loan.1;
+
+				// successful activation
+				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+				// after one year
+				// anyone can trigger the call
+				let caller = 42;
+				// add write off groups
+				let risk_admin = RiskAdmin::get();
+				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
+					RawOrigin::Signed(pool_admin).into(),
+					pool_id,
+					PoolRole::RiskAdmin,
+					vec![
+						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
+							risk_admin
+						)
+					]
+				));
+				//for group in vec![(3, 10), (313503982334601, 20)] {
+				for group in vec![(3, 10), (313503982334601, 15), (10, 20), (10, 30)] {
+					let res = Loans::add_write_off_group(
+						Origin::signed(risk_admin),
+						pool_id,
+						WriteOffGroup {
+							percentage: Rate::saturating_from_rational(group.1, 100),
+							overdue_days: group.0,
+						},
+					);
+					assert_ok!(res);
+				}
+
+				// same since write off group is missing
+				let t = math::seconds_per_year() * 2 + math::seconds_per_day() * 1337;
+				Timestamp::set_timestamp(t * 1000);
+
+				let res = Loans::write_off(Origin::signed(caller), pool_id, loan_id);
+				assert_err!(res, ArithmeticError::Overflow)
+			})
+	};
+}
+
+#[test]
+fn test_write_off_overflow() {
+	write_off_overflow!(price_bullet_loan);
+	write_off_overflow!(price_credit_line_with_maturity_loan);
 }

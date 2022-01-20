@@ -11,19 +11,19 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-// Ensure we're `no_std` when compiling for WebAssembly.
-#![cfg_attr(not(feature = "std"), no_std)]
-
-//! # A common trait for centrifuge
+//! # A common trait lib for centrifuge
 //!
 //! This crate provides some common traits used by centrifuge.
 
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
+use frame_support::RuntimeDebug;
+use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::traits::{
 	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
@@ -32,6 +32,7 @@ use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
 use sp_std::str::FromStr;
+use sp_std::vec::Vec;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -155,4 +156,44 @@ pub trait Properties {
 	fn rm(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
+}
+
+pub trait PreConditions<T> {
+	fn check(t: T) -> bool;
+}
+
+#[impl_for_tuples(1, 10)]
+impl<T> PreConditions<T> for Tuple
+where
+	T: Clone,
+{
+	fn check(t: T) -> bool {
+		for_tuples!( #( Tuple::check(t.clone()) )&* )
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Always;
+impl<T> PreConditions<T> for Always {
+	fn check(_t: T) -> bool {
+		true
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Never;
+impl<T> PreConditions<T> for Never {
+	fn check(_t: T) -> bool {
+		false
+	}
+}
+
+/// A trait that Assets or Tokens can implement so that pallets
+/// can easily use the trait `InspectMetadata` with them.
+pub trait TokenMetadata {
+	fn name(&self) -> Vec<u8>;
+
+	fn symbol(&self) -> Vec<u8>;
+
+	fn decimals(&self) -> u8;
 }

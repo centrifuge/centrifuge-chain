@@ -28,8 +28,12 @@ use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
+// Pub exports
+pub use tokens::*;
+
 #[cfg(test)]
 mod tests;
+mod tokens;
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 // NOTE: In order to not carry around the Moment and TranchId all the time, we give it defaults.
@@ -116,6 +120,11 @@ where
 		}
 	}
 }
+
+/// The implementation of trait Properties for our PermissionsRoles does not care which Moment
+/// is passed to the PoolRole::TrancheInvestor(TrancheId, Moment) variant.
+/// This UNION shall reflect that and explain to the reader why it is passed here.
+pub const UNION: u64 = 0;
 
 impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Properties
 	for PermissionRoles<Now, MaxTranches, MinDelay, TrancheId, Moment>

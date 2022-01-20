@@ -19,10 +19,10 @@ use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
 use core::{convert::TryFrom, ops::AddAssign};
+use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
-use orml_traits::MultiCurrency;
 use scale_info::TypeInfo;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
@@ -251,11 +251,9 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Copy;
 
-		type Tokens: MultiCurrency<
-			Self::AccountId,
-			Balance = Self::Balance,
-			CurrencyId = Self::CurrencyId,
-		>;
+		type Tokens: Mutate<Self::AccountId>
+			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
+			+ Transfer<Self::AccountId>;
 
 		type Permission: Permissions<
 			Self::AccountId,
@@ -388,7 +386,7 @@ pub mod pallet {
 		InSubmissionPeriod,
 		/// Attempted to close an epoch with an out of date NAV
 		NAVTooOld,
-		/// An arithmetic overflow occured
+		/// An arithmetic overflow occurred
 		Overflow,
 		/// A Tranche ID cannot be converted to an address
 		TrancheId,
@@ -444,18 +442,14 @@ pub mod pallet {
 			Self::is_valid_tranche_change(&Vec::new(), &tranches)?;
 
 			let now = T::Time::now().as_secs();
-			let n_tranches = tranches.clone().len() as u32;
 			let tranches = tranches
 				.into_iter()
 				.enumerate()
 				.map(|(tranche_id, tranche)| Tranche {
 					interest_per_sec: tranche.interest_per_sec.unwrap_or(One::one()),
 					min_risk_buffer: tranche.min_risk_buffer.unwrap_or(Perquintill::zero()),
-					seniority: tranche.seniority.unwrap_or(
-						n_tranches
-							.saturating_sub(1)
-							.saturating_sub(tranche_id as u32),
-					),
+					// seniority increases as index since the order is from junior to senior
+					seniority: tranche.seniority.unwrap_or(tranche_id as u32),
 					outstanding_invest_orders: Zero::zero(),
 					outstanding_redeem_orders: Zero::zero(),
 
@@ -713,12 +707,19 @@ pub mod pallet {
 					&pool_account,
 					&who,
 					collections.payout_currency_amount,
+					false,
 				)?;
 			}
 
 			if collections.payout_token_amount > Zero::zero() {
 				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
-				T::Tokens::transfer(token, &pool_account, &who, collections.payout_token_amount)?;
+				T::Tokens::transfer(
+					token,
+					&pool_account,
+					&who,
+					collections.payout_token_amount,
+					false,
+				)?;
 			}
 
 			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
@@ -986,7 +987,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.current_epoch;
-			T::Tokens::transfer(pool.currency, send, recv, transfer_amount)
+			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		pub(crate) fn do_update_redeem_order(
@@ -1014,7 +1015,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.current_epoch;
-			T::Tokens::transfer(currency, send, recv, transfer_amount)
+			T::Tokens::transfer(currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		fn update_order_amount<'a>(
@@ -1190,10 +1191,14 @@ pub mod pallet {
 			let total_assets = epoch_nav.checked_add(&epoch_reserve).unwrap();
 			let mut remaining_assets = total_assets;
 			let pool_is_zero = total_assets == Zero::zero();
-			let junior_tranche_id = tranches.len() - 1;
+			// we are gonna reverse the order
+			// such that prices are calculated from most senior to junior
+			// there by all the remaining assets are given to the most junior tranche
+			let junior_tranche_id = 0;
 			tranches
 				.iter_mut()
 				.enumerate()
+				.rev()
 				.map(|(tranche_id, tranche)| {
 					let currency =
 						T::TrancheToken::tranche_token(pool_id, tranche_id.try_into().ok()?);
@@ -1215,7 +1220,11 @@ pub mod pallet {
 						T::BalanceRatio::checked_from_rational(tranche_value, total_issuance)
 					}
 				})
-				.collect()
+				.collect::<Option<Vec<T::BalanceRatio>>>()
+				.and_then(|mut rev_prices| {
+					rev_prices.reverse();
+					Some(rev_prices)
+				})
 		}
 
 		fn update_tranche_debt(tranche: &mut Tranche<T::Balance, T::InterestRate>) -> Option<()> {
@@ -1254,10 +1263,10 @@ pub mod pallet {
 			old_tranches: &Vec<Tranche<T::Balance, T::InterestRate>>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
-			// At least one tranche must exist, and the last (most junior) tranche must have an
+			// At least one tranche must exist, and the first (most junior) tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(
-				match new_tranches.last() {
+				match new_tranches.first() {
 					None => false,
 					Some(tranche) =>
 						tranche.min_risk_buffer.is_none() && tranche.interest_per_sec.is_none(),
@@ -1266,7 +1275,7 @@ pub mod pallet {
 			);
 
 			// All but the most junior tranche should have min risk buffers and interest rates
-			let mut non_junior_tranches = new_tranches.split_last().unwrap().1.iter();
+			let mut non_junior_tranches = new_tranches.split_first().unwrap().1.iter();
 			ensure!(
 				non_junior_tranches.all(|tranche| {
 					tranche.min_risk_buffer.is_some() && tranche.interest_per_sec.is_some()
@@ -1435,7 +1444,8 @@ pub mod pallet {
 			let mut buffer_value = total_value;
 			for (tranche_value, min_risk_buffer) in current_tranche_values
 				.iter()
-				.zip(min_risk_buffers.iter().copied())
+				.rev()
+				.zip(min_risk_buffers.iter().copied().rev())
 			{
 				buffer_value = buffer_value
 					.checked_sub(tranche_value)
@@ -1542,6 +1552,7 @@ pub mod pallet {
 			let tranche_ratios: Vec<_> = executed_amounts
 				.iter()
 				.zip(&mut epoch.tranches.iter())
+				.rev()
 				.map(|((invest, redeem), tranche)| {
 					tranche
 						.value
@@ -1560,6 +1571,7 @@ pub mod pallet {
 			let tranche_assets = executed_amounts
 				.iter()
 				.zip(&mut pool.tranches)
+				.rev()
 				.map(|((invest, redeem), tranche)| {
 					Self::update_tranche_debt(tranche)?;
 					tranche
@@ -1585,10 +1597,10 @@ pub mod pallet {
 			let nav = epoch.nav.clone();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.total_reserve;
-			let junior_tranche_id = pool.tranches.len() - 1;
-			let tranches_junior_to_senior = pool.tranches.iter_mut();
-			for (((tranche_id, tranche), ratio), value) in tranches_junior_to_senior
-				.enumerate()
+			// reverse the order for easier re balancing
+			let junior_tranche_id = 0;
+			let tranches_senior_to_junior = pool.tranches.iter_mut().enumerate().rev();
+			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
 				.zip(tranche_ratios.iter())
 				.zip(tranche_assets.iter())
 			{
@@ -1606,7 +1618,6 @@ pub mod pallet {
 					remaining_reserve -= tranche.reserve;
 				}
 			}
-
 			Ok(())
 		}
 
@@ -1639,10 +1650,10 @@ pub mod pallet {
 			let token = T::TrancheToken::tranche_token(loc.pool_id, loc.tranche_id);
 			if token_invest > token_redeem {
 				let tokens_to_mint = token_invest - token_redeem;
-				T::Tokens::deposit(token, &pool_address, tokens_to_mint)?;
+				T::Tokens::mint_into(token, &pool_address, tokens_to_mint)?;
 			} else if token_redeem > token_invest {
 				let tokens_to_burn = token_redeem - token_invest;
-				T::Tokens::withdraw(token, &pool_address, tokens_to_burn)?;
+				T::Tokens::burn_from(token, &pool_address, tokens_to_burn)?;
 			}
 
 			// Insert epoch closing information on invest/redeem fulfillment
@@ -1670,8 +1681,8 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_junior_to_senior = &mut pool.tranches.iter_mut();
-				for tranche in tranches_junior_to_senior {
+				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
+				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
 
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
@@ -1695,7 +1706,7 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
-				T::Tokens::transfer(pool.currency, &who, &pool_account, amount)?;
+				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
 				Ok(())
 			})
 		}
@@ -1719,7 +1730,7 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior = &mut pool.tranches.iter_mut();
+				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
 				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
 
@@ -1744,7 +1755,7 @@ pub mod pallet {
 					remaining_amount -= tranche_amount;
 				}
 
-				T::Tokens::transfer(pool.currency, &pool_account, &who, amount)?;
+				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
 				Ok(())
 			})
 		}

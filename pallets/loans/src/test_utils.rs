@@ -15,16 +15,16 @@
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use common_traits::{Permissions, PoolNAV};
+use common_types::CurrencyId;
 use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
+use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
-use orml_traits::MultiCurrency;
 use pallet_pools::PoolLocator;
 use pallet_pools::TrancheInput;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
-use primitives_tokens::CurrencyId;
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
 	traits::{AccountIdConversion, Zero},
@@ -45,8 +45,8 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 }
 
 parameter_types! {
-	pub const JuniorTrancheId: u8 = 1;
-	pub const SeniorTrancheId: u8 = 0;
+	pub const JuniorTrancheId: u8 = 0;
+	pub const SeniorTrancheId: u8 = 1;
 }
 
 pub(crate) fn create_nft_class<T>(
@@ -116,14 +116,14 @@ pub(crate) fn create<T>(
 		pool_id,
 		vec![
 			TrancheInput {
-				interest_per_sec: Some(One::one()),
-				min_risk_buffer: Some(Perquintill::from_percent(10)),
-				seniority: None,
-			},
-			TrancheInput {
 				interest_per_sec: None,
 				min_risk_buffer: None,
-				seniority: None,
+				seniority: None
+			},
+			TrancheInput {
+				interest_per_sec: Some(One::one()),
+				min_risk_buffer: Some(Perquintill::from_percent(10)),
+				seniority: None
 			}
 		],
 		currency_id.into(),
@@ -159,12 +159,14 @@ pub(crate) fn create<T>(
 		&pool_account,
 		&junior_investor,
 		(500 * CURRENCY).into(),
+		false
 	));
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
 		CurrencyId::Tranche(pool_id.into(), 0).into(),
 		&pool_account,
 		&senior_investor,
 		(500 * CURRENCY).into(),
+		false
 	));
 }
 

@@ -650,7 +650,7 @@ fn development_genesis(
 			changes_trie_config: Default::default(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
-		tokens: development_runtime::TokensConfig {
+		orml_tokens: development_runtime::OrmlTokensConfig {
 			balances: token_balances,
 		},
 		elections: development_runtime::ElectionsConfig { members: vec![] },
