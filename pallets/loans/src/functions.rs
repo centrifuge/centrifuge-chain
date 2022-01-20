@@ -13,6 +13,7 @@
 
 //! Module provides loan related functions
 use super::*;
+use sp_runtime::ArithmeticError;
 
 impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
@@ -253,7 +254,7 @@ impl<T: Config> Pallet<T> {
 				let new_borrowed_amount = loan_info
 					.borrowed_amount
 					.checked_add(&amount)
-					.ok_or(Error::<T>::AddAmountOverflow)?;
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
 				// calculate new principal debt with adjustment amount
 				let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
@@ -295,13 +296,14 @@ impl<T: Config> Pallet<T> {
 				// borrow
 				true => new_pv
 					.checked_sub(&old_pv)
-					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff)),
+					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff))
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
 				false => old_pv
 					.checked_sub(&new_pv)
-					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff)),
-			}
-			.ok_or(Error::<T>::AddAmountOverflow)?;
+					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff))
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+			}?;
 			nav.latest_nav = new_nav;
 			*maybe_nav_details = Some(nav);
 			Ok(())
@@ -358,7 +360,7 @@ impl<T: Config> Pallet<T> {
 					math::Adjustment::Dec(repay_amount),
 					accumulated_rate,
 				)
-				.ok_or(Error::<T>::AddAmountOverflow)?;
+				.ok_or(Error::<T>::ValueOverflow)?;
 
 				loan_info.last_updated = now;
 				loan_info.accumulated_rate = accumulated_rate;
@@ -514,7 +516,7 @@ impl<T: Config> Pallet<T> {
 
 						// not written off by admin, and non admin trying to write off, then
 						// fetch the best write group available for this loan
-						math::valid_write_off_group(maturity_date, now, &write_off_groups)
+						math::valid_write_off_group(maturity_date, now, &write_off_groups)?
 							.ok_or(Error::<T>::NoValidWriteOffGroup)
 					}
 				}?;

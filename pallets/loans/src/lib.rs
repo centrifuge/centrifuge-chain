@@ -234,8 +234,8 @@ pub mod pallet {
 		/// Emits when the borrowed amount is more than ceiling
 		LoanCeilingReached,
 
-		/// Emits when the addition of borrowed amount overflowed
-		AddAmountOverflow,
+		/// Emits when an operation lead to the number overflow
+		ValueOverflow,
 
 		/// Emits when principal debt calculation failed due to overflow
 		PrincipalDebtOverflow,
