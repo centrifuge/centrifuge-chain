@@ -231,10 +231,12 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			})
 			.collect::<Vec<_>>();
 
-		assert_noop!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution),
-			Error::<Test>::RiskBufferViolated
+		let prev_root = frame_support::storage_root();
+		assert_eq!(
+			Pools::is_valid_solution(pool, &epoch, &full_solution).unwrap(),
+			PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated])
 		);
+		assert_eq!(prev_root, frame_support::storage_root())
 	});
 }
 

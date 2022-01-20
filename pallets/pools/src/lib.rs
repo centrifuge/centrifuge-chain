@@ -80,13 +80,16 @@ where
 	type External = NumTranches;
 
 	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
-		let redeem_starts = 10u128.pow(input);
+		let redeem_starts = 10u128.checked_pow(input).unwrap_or(u128::MAX);
 		(
-			10u128.pow(self.seniority.saturating_add(1)).into(),
+			10u128
+				.checked_pow(self.seniority.saturating_add(1))
+				.unwrap_or(u128::MAX)
+				.into(),
 			// TODO(mustermeiszer): How to do this sanely
 			redeem_starts
 				.checked_mul(10u128.pow(self.seniority.saturating_add(1)).into())
-				.unwrap()
+				.unwrap_or(u128::MAX)
 				.into(),
 		)
 	}
@@ -227,13 +230,16 @@ where
 	type External = NumTranches;
 
 	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
-		let redeem_starts = 10u128.pow(input);
+		let redeem_starts = 10u128.checked_pow(input).unwrap_or(u128::MAX);
 		(
-			10u128.pow(self.seniority.saturating_add(1)).into(),
+			10u128
+				.checked_pow(self.seniority.saturating_add(1))
+				.unwrap_or(u128::MAX)
+				.into(),
 			// TODO(mustermeiszer): How to do this sanely
 			redeem_starts
 				.checked_mul(10u128.pow(self.seniority.saturating_add(1)).into())
-				.unwrap()
+				.unwrap_or(u128::MAX)
 				.into(),
 		)
 	}
@@ -963,18 +969,26 @@ pub mod pallet {
 					.collect::<Option<Vec<_>>>()
 					.ok_or(Error::<T>::Overflow)?;
 
+				let seniorities = pool
+					.tranches
+					.iter()
+					.map(|tranche| tranche.seniority)
+					.collect::<Vec<_>>();
+
 				let epoch_tranches: Vec<_> = orders
 					.iter()
 					.zip(&tranche_values)
 					.zip(&epoch_tranche_prices)
-					.map(|(((invest, redeem), value), price)| EpochExecutionTranche {
-						value: *value,
-						price: *price,
-						invest: *invest,
-						redeem: *redeem,
-						// TODO(mustermeiszer): Use correct senority from tranche here
-						seniority: Zero::zero(),
-					})
+					.zip(&seniorities)
+					.map(
+						|((((invest, redeem), value), price), seniority)| EpochExecutionTranche {
+							value: *value,
+							price: *price,
+							invest: *invest,
+							redeem: *redeem,
+							seniority: *seniority,
+						},
+					)
 					.collect();
 
 				let epoch = EpochExecutionInfo {
@@ -1597,7 +1611,7 @@ pub mod pallet {
 			{
 				state.update_with_unhealthy(state_update);
 			}
-
+			// TODO: I think we don`t wanna genericaly error out here? But rather have a specific Error
 			let new_reserve = currency_available
 				.checked_sub(&acc_redeem)
 				.ok_or(Error::<T>::Overflow)?;
