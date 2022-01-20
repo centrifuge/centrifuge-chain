@@ -1027,7 +1027,7 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 4,
 
 		// money stuff
-		Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 20,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
 
 		// authoring stuff

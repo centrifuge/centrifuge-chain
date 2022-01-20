@@ -51,14 +51,14 @@ pub trait TrancheToken<T: Config> {
 pub struct TrancheInput<Rate> {
 	pub interest_per_sec: Option<Rate>,
 	pub min_risk_buffer: Option<Perquintill>,
-	pub seniority: Option<Senority>,
+	pub seniority: Option<Seniority>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct Tranche<Balance, Rate> {
 	pub interest_per_sec: Rate,
 	pub min_risk_buffer: Perquintill,
-	pub seniority: u32,
+	pub seniority: Seniority,
 
 	pub outstanding_invest_orders: Balance,
 	pub outstanding_redeem_orders: Balance,
@@ -93,8 +93,56 @@ where
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub enum SolutionState {
+pub enum PoolState {
 	Healthy,
+	Unhealthy(Vec<UnhealthyState>),
+}
+
+impl PoolState {
+	pub fn update(&mut self, update: PoolState) -> &mut Self {
+		match self {
+			PoolState::Healthy => match update {
+				PoolState::Healthy => self,
+				PoolState::Unhealthy(_) => {
+					*self = update;
+					self
+				}
+			},
+			PoolState::Unhealthy(states) => match update {
+				PoolState::Healthy => {
+					*self = update;
+					self
+				}
+				PoolState::Unhealthy(updates_states) => {
+					updates_states.into_iter().for_each(|unhealthy| {
+						if !states.contains(&unhealthy) {
+							states.push(unhealthy)
+						}
+					});
+					self
+				}
+			},
+		}
+	}
+
+	pub fn update_with_unhealthy(&mut self, update: UnhealthyState) -> &mut Self {
+		match self {
+			PoolState::Healthy => {
+				*self = PoolState::Unhealthy(vec![update]);
+				self
+			}
+			PoolState::Unhealthy(states) => {
+				if !states.contains(&update) {
+					states.push(update);
+				}
+				self
+			}
+		}
+	}
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum UnhealthyState {
 	InsufficientCurrency,
 	MaxReserveViolated,
 	MinRiskBufferViolated,
@@ -168,7 +216,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
-	seniority: Senority,
+	seniority: Seniority,
 }
 
 impl<Balance, BalanceRatio> TrancheWeigher for EpochExecutionTranche<Balance, BalanceRatio>
@@ -203,11 +251,11 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
 }
 
 /// The solutions struct for epoch solution
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct EpochSolution<Balance> {
 	pub solution: Vec<TrancheSolution>,
 	pub score: Balance,
-	pub healthy_solution: bool,
+	pub pool_state: PoolState,
 }
 
 // The solution struct for a specific tranche
@@ -233,7 +281,7 @@ type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::So
 type Moment = u64;
 
 // Type that indicates the senority of a tranche
-type Senority = u32;
+type Seniority = u32;
 
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
@@ -407,7 +455,7 @@ pub mod pallet {
 		/// An epoch was closed. [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
 		/// An epoch was executed. [pool, epoch]
-		SolutionSubmitted(T::PoolId, T::EpochId, Vec<TrancheSolution>),
+		SolutionSubmitted(T::PoolId, T::EpochId, Vec<TrancheSolution>, PoolState),
 		/// An epoch was executed. [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Fulfilled orders were collected. [pool, tranche, end_epoch, user, outstanding_collections]
@@ -487,6 +535,8 @@ pub mod pallet {
 		NotNewBestSubmission,
 		/// No solution has yet been provided for the epoch
 		NoSolutionAvailable,
+		/// Indicates that an un-healthy solution was submitted but a healty one exists
+		HealtySolutionExists,
 	}
 
 	#[pallet::call]
@@ -938,7 +988,9 @@ pub mod pallet {
 
 				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
 
-				if Self::is_valid_solution(pool, &epoch, &full_execution_solution).is_ok() {
+				if Self::is_valid_solution(pool, &epoch, &full_execution_solution)?
+					== PoolState::Healthy
+				{
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 				} else {
@@ -959,20 +1011,18 @@ pub mod pallet {
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch| -> DispatchResult {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
-
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
-				// TODO: Return enum and check for eerror.
-				//       Also do not accept current solution if is unhealty and last submitted is healty
-				let epoch_validation = Self::is_valid_solution(&pool, &epoch, &solution);
+				let state = Self::is_valid_solution(&pool, &epoch, &solution)?;
+				Self::inspect_healthiness(&state)?;
 
-				// Don't allow the core constraint (insufficient currency) to be broken
-				ensure!(
-					epoch_validation.is_ok()
-						|| (epoch_validation.err().unwrap()
-							!= Error::<T>::InsufficientCurrency.into()),
-					Error::<T>::InvalidSolution
-				);
+				if let Some(ref curr_solution) = epoch.solution {
+					ensure!(
+						state != PoolState::Healthy
+							&& curr_solution.pool_state == PoolState::Healthy,
+						Error::<T>::HealtySolutionExists
+					)
+				}
 
 				// Sum of all order-type weighted invest & redeem amounts for this solution
 				let score = Self::score_solution(&solution, &epoch.tranches)?;
@@ -987,10 +1037,15 @@ pub mod pallet {
 				epoch.solution = Some(EpochSolution {
 					solution: solution.clone(),
 					score,
-					healthy_solution: epoch_validation.is_ok(),
+					pool_state: state.clone(),
 				});
 
-				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, solution));
+				Self::deposit_event(Event::SolutionSubmitted(
+					pool_id,
+					epoch.epoch,
+					solution,
+					state,
+				));
 
 				Ok(())
 			})
@@ -1086,6 +1141,23 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
+		}
+
+		/// Inspect the state a pool would be in, if a solution to an epoch
+		/// would be applied.   
+		///
+		/// If the state is unacceptable the solution is discarded
+		pub(crate) fn inspect_healthiness(state: &PoolState) -> DispatchResult {
+			match state {
+				PoolState::Healthy => Ok(()),
+				PoolState::Unhealthy(states) => {
+					if states.contains(&UnhealthyState::InsufficientCurrency) {
+						Err(Error::<T>::InsufficientCurrency.into())
+					} else {
+						Ok(())
+					}
+				}
+			}
 		}
 
 		/// Calculates the score for a given solution
@@ -1483,39 +1555,48 @@ pub mod pallet {
 			pool_details: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
-		) -> DispatchResult {
+		) -> Result<PoolState, DispatchError> {
+			// start with in a healthy state
+			let mut state = PoolState::Healthy;
+
+			// EpochExecutionInfo is generated from PoolDetails, hence the
+			// tranche length of the former equals the later.
+			ensure!(
+				pool_details.tranches.len() == solution.len(),
+				Error::<T>::InvalidSolution
+			);
+
 			let acc_invest: T::Balance = epoch
 				.tranches
 				.iter()
 				.zip(solution)
-				.fold(
-					Some(Zero::zero()),
-					|sum: Option<T::Balance>, (tranche, solution)| {
-						sum.and_then(|sum| {
-							sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-						})
-					},
-				)
+				.fold(Some(T::Balance::zero()), |sum, (tranche, solution)| {
+					sum.and_then(|sum| {
+						sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+					})
+				})
 				.ok_or(Error::<T>::Overflow)?;
 
 			let acc_redeem: T::Balance = epoch
 				.tranches
 				.iter()
 				.zip(solution)
-				.fold(
-					Some(Zero::zero()),
-					|sum: Option<T::Balance>, (tranche, solution)| {
-						sum.and_then(|sum| {
-							sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-						})
-					},
-				)
+				.fold(Some(T::Balance::zero()), |sum, (tranche, solution)| {
+					sum.and_then(|sum| {
+						sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+					})
+				})
 				.ok_or(Error::<T>::Overflow)?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
 				.ok_or(Error::<T>::Overflow)?;
-			Self::validate_core_constraints(currency_available, acc_redeem)?;
+
+			if let Some(state_update) =
+				Self::validate_core_constraints(currency_available, acc_redeem)
+			{
+				state.update_with_unhealthy(state_update);
+			}
 
 			let new_reserve = currency_available
 				.checked_sub(&acc_redeem)
@@ -1544,6 +1625,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 
 			Self::validate_pool_constraints(
+				state,
 				new_reserve,
 				pool_details.max_reserve,
 				&min_risk_buffers,
@@ -1554,19 +1636,24 @@ pub mod pallet {
 		fn validate_core_constraints(
 			currency_available: T::Balance,
 			currency_out: T::Balance,
-		) -> DispatchResult {
+		) -> Option<UnhealthyState> {
 			if currency_out > currency_available {
-				Err(Error::<T>::InsufficientCurrency)?
+				Some(UnhealthyState::InsufficientCurrency)
+			} else {
+				None
 			}
-			Ok(())
 		}
 
 		fn validate_pool_constraints(
+			mut state: PoolState,
 			reserve: T::Balance,
 			max_reserve: T::Balance,
 			min_risk_buffers: &[Perquintill],
 			current_tranche_values: &[T::Balance],
-		) -> DispatchResult {
+		) -> Result<PoolState, DispatchError> {
+			// TODO: Not sure if this check is needed or we should assume, we checked here, of we should
+			//       write a wrapper or macro that checks if a given set of slices have the same length and
+			//       error out otherwise, cause we need this everywhere if we check it deeper down
 			if min_risk_buffers.len() != current_tranche_values.len() {
 				Err(Error::<T>::InvalidData)?
 			}
@@ -1584,6 +1671,7 @@ pub mod pallet {
 					},
 				)
 				.ok_or(Error::<T>::Overflow)?;
+
 			let mut buffer_value = total_value;
 			for (tranche_value, min_risk_buffer) in current_tranche_values
 				.iter()
@@ -1592,13 +1680,14 @@ pub mod pallet {
 				buffer_value = buffer_value
 					.checked_sub(tranche_value)
 					.ok_or(Error::<T>::Overflow)?;
+
 				let risk_buffer = Perquintill::from_rational(buffer_value, total_value);
 				if risk_buffer < min_risk_buffer {
-					Err(Error::<T>::RiskBufferViolated)?
+					state.update_with_unhealthy(UnhealthyState::MinRiskBufferViolated);
 				}
 			}
 
-			Ok(())
+			Ok(state)
 		}
 
 		fn do_execute_epoch(

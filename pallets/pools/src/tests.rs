@@ -321,7 +321,7 @@ fn pool_constraints_pass() {
 		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			Pools::get_tranche_weights(pool),
+			pool.tranches.calculate_weight(pool.tranches.len() as u32),
 			vec![
 				(10, 100_000),
 				(100, 1_000_000),
@@ -524,7 +524,6 @@ fn submission_period() {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
 		let pool_owner = Origin::signed(2);
-		let borrower = 3;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
