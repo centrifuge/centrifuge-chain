@@ -223,3 +223,20 @@ where
 		weights
 	}
 }
+
+/// Implementation for a vec of TrancheWeigher
+impl<T: TrancheWeigher> TrancheWeigher for &[T]
+where
+	T::External: Clone,
+{
+	type Weight = Vec<T::Weight>;
+	type External = T::External;
+
+	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
+		let mut weights = Vec::with_capacity(self.len());
+		self.iter()
+			.for_each(|tranche| weights.push(tranche.calculate_weight(input.clone())));
+
+		weights
+	}
+}

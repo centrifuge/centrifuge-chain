@@ -25,7 +25,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
-				senority: Default::default(),
+				seniority: Default::default(),
 			})
 			.collect();
 
@@ -280,7 +280,7 @@ fn pool_constraints_pass() {
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
-				senority: tranche_id.try_into().unwrap(),
+				seniority: tranche_id.try_into().unwrap(),
 			})
 			.collect();
 

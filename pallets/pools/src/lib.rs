@@ -168,7 +168,27 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
-	senority: Senority,
+	seniority: Senority,
+}
+
+impl<Balance, BalanceRatio> TrancheWeigher for EpochExecutionTranche<Balance, BalanceRatio>
+where
+	Balance: From<u128>,
+{
+	type Weight = (Balance, Balance);
+	type External = NumTranches;
+
+	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
+		let redeem_starts = 10u128.pow(input);
+		(
+			10u128.pow(self.seniority.saturating_add(1)).into(),
+			// TODO(mustermeiszer): How to do this sanely
+			redeem_starts
+				.checked_mul(10u128.pow(self.seniority.saturating_add(1)).into())
+				.unwrap()
+				.into(),
+		)
+	}
 }
 
 /// The information for a currently executing epoch
@@ -903,7 +923,7 @@ pub mod pallet {
 						invest: *invest,
 						redeem: *redeem,
 						// TODO(mustermeiszer): Use correct senority from tranche here
-						senority: Zero::zero(),
+						seniority: Zero::zero(),
 					})
 					.collect();
 
@@ -955,7 +975,7 @@ pub mod pallet {
 				);
 
 				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let score = Self::score_solution(&solution, &epoch.tranches);
+				let score = Self::score_solution(&solution, &epoch.tranches)?;
 
 				if let Some(ref curr_solution) = epoch.solution {
 					ensure!(
@@ -1068,42 +1088,62 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
-		// TODO(mustermeiszer): Implement scoring of solution. What is acutally needed?
+		/// Calculates the score for a given solution
+		///
+		/// Scores are calculated with the following function
+		///
+		/// Notation:
+		///  * X(a) -> A vector of a's, where each element is associated with a tranche
+		///  * ||X(a)||1 -> 1-Norm of a vector, i.e. the absolute sum over all elements
+		///
+		///  X = X(%-invest-fulfillments) * X(investments) * X(invest_tranche_weights)  
+		///            + X(%-redeem-fulfillments) * X(redemptions) * X(redeem_tranche_weights)
+		///     
+		///  score = ||X||1
+		///
+		/// Returns error upon overflow of `Balances` or if tranches.len() != solution.len()
 		pub(crate) fn score_solution(
-			_solution: &[TrancheSolution],
-			_tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
-		) -> T::Balance {
-			todo!()
-			/*
-			solution
+			solution: &[TrancheSolution],
+			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+		) -> Result<T::Balance, DispatchError> {
+			ensure!(
+				solution.len() == tranches.len(),
+				Error::<T>::InvalidSolution
+			);
+
+			let len = tranches.len().try_into().ok().ok_or(Error::<T>::Overflow)?;
+
+			let (invest_score, redeem_score) = solution
 				.iter()
 				.zip(tranches)
-				.zip()
+				.zip(tranches.calculate_weight(len))
 				.fold(
-					Some(Zero::zero()),
-					|sum: Option<T::Balance>,
-					 ((solution, epoch_execution), (invest_weight, redeem_weight))| {
-						sum.and_then(|sum| {
-							solution
-								.invest_fulfillment
-								.mul_floor(epoch_execution.invest)
-								.checked_mul(&invest_weight)
-								.and_then(|invest_score| {
-									solution
-										.redeem_fulfillment
-										.mul_floor(epoch_execution.redeem)
-										.checked_mul(&redeem_weight)
-										.and_then(|redeem_score| {
-											invest_score.checked_add(&redeem_score)
-										})
-								})
-								.as_ref()
-								.and_then(|total_score| sum.checked_add(total_score))
-						})
+					(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
+					|(invest_score, redeem_score),
+					 ((solution, tranches), (invest_weight, redeem_weight))| {
+						(
+							invest_score.and_then(|score| {
+								solution
+									.invest_fulfillment
+									.mul_floor(tranches.invest)
+									.checked_mul(&invest_weight)
+									.and_then(|score_tranche| score.checked_add(&score_tranche))
+							}),
+							redeem_score.and_then(|score| {
+								solution
+									.redeem_fulfillment
+									.mul_floor(tranches.redeem)
+									.checked_mul(&redeem_weight)
+									.and_then(|score_tranche| score.checked_add(&score_tranche))
+							}),
+						)
 					},
-				)
-				.ok_or(Error::<T>::Overflow)?;
-				*/
+				);
+
+			invest_score
+				.zip(redeem_score)
+				.and_then(|(invest_score, redeem_score)| invest_score.checked_add(&redeem_score))
+				.ok_or(Error::<T>::Overflow.into())
 		}
 
 		pub(crate) fn do_update_invest_order(
@@ -1509,31 +1549,6 @@ pub mod pallet {
 				&min_risk_buffers,
 				&tranche_values,
 			)
-		}
-
-		// u128 only supports up to about 18 tranches
-		// (max u128 is ~3.4e38, 18 tranches is 10^(18 * 2 + 1) ~= 1e37)
-		// Returns a tuple of (invest_weight, redeem_weight)
-		pub fn get_tranche_weights(
-			pool: &PoolDetails<
-				T::AccountId,
-				T::CurrencyId,
-				T::EpochId,
-				T::Balance,
-				T::InterestRate,
-				T::MaxSizeMetadata,
-			>,
-		) -> Vec<(T::Balance, T::Balance)> {
-			let redeem_start = 10u128.pow(pool.tranches.len() as u32);
-			pool.tranches
-				.iter()
-				.map(|tranche| {
-					(
-						10u128.pow(tranche.seniority + 1).into(),
-						(redeem_start * 10u128.pow(tranche.seniority + 1)).into(),
-					)
-				})
-				.collect::<Vec<_>>()
 		}
 
 		fn validate_core_constraints(
