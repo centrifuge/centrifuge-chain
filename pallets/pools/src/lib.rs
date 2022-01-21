@@ -355,15 +355,45 @@ pub struct UnhealthySolution<Balance> {
 	pub reserve_buff_score: Balance,
 }
 
-impl<Balance> PartialOrd for UnhealthySolution<Balance> {
+impl<Balance> PartialOrd for UnhealthySolution<Balance>
+where
+	Balance: PartialOrd,
+{
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		todo!()
+		// TODO: This seems not correct
+		let _score_better = self.score < other.score;
+
+		let tranche_buff_increased = self
+			.risk_buff_score
+			.iter()
+			.zip(&other.risk_buff_score)
+			.map(|(s_1_buff, s_2_buff)| s_1_buff >= s_2_buff)
+			.all(|buff_greater| buff_greater);
+
+		let reserve_score_increased = self.reserve_buff_score < other.reserve_buff_score;
+
+		if tranche_buff_increased {
+			Some(Ordering::Greater)
+		} else if reserve_score_increased {
+			Some(Ordering::Greater)
+		} else {
+			Some(Ordering::Less)
+		}
 	}
 }
 
-impl<Balance> PartialEq for UnhealthySolution<Balance> {
+impl<Balance> PartialEq for UnhealthySolution<Balance>
+where
+	Balance: PartialEq,
+{
 	fn eq(&self, other: &Self) -> bool {
-		todo!()
+		self.risk_buff_score
+			.iter()
+			.zip(&other.risk_buff_score)
+			.map(|(s_1_buff, s_2_buff)| s_1_buff == s_2_buff)
+			.all(|same_buff| same_buff)
+			&& self.score == other.score
+			&& self.reserve_buff_score == other.reserve_buff_score
 	}
 }
 
