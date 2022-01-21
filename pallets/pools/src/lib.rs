@@ -1749,6 +1749,7 @@ pub mod pallet {
 				.map(|(tranche, solution)| {
 					tranche
 						.supply
+						// TODO: Actually calcualate with prices
 						.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
 						.and_then(|value| {
 							value

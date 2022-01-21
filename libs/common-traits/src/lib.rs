@@ -21,11 +21,12 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
+use frame_support::sp_runtime::ArithmeticError;
 use frame_support::Parameter;
 use frame_support::RuntimeDebug;
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::traits::{
-	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+	AtLeast32BitUnsigned, Bounded, CheckedAdd, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
 };
 use sp_runtime::DispatchError;
@@ -238,5 +239,52 @@ where
 			.for_each(|tranche| weights.push(tranche.calculate_weight(input.clone())));
 
 		weights
+	}
+}
+
+pub trait Tranche {
+	type Supply;
+	type Value;
+	type Price;
+
+	fn supply(&self) -> Self::Supply;
+
+	fn value(&self) -> Self::Value;
+
+	fn price(&self) -> Self::Price;
+}
+
+impl<T: Tranche> Tranche for Vec<T>
+where
+	T::Value: Zero + CheckedAdd,
+{
+	type Supply = Vec<T::Supply>;
+	type Value = Result<T::Value, ArithmeticError>;
+	type Price = Vec<T::Price>;
+
+	fn supply(&self) -> Self::Supply {
+		let mut supplies = Vec::with_capacity(self.len());
+
+		self.iter()
+			.for_each(|tranche| supplies.push(tranche.supply()));
+
+		supplies
+	}
+
+	fn price(&self) -> Self::Price {
+		let mut prices = Vec::with_capacity(self.len());
+
+		self.iter().for_each(|tranche| prices.push(tranche.price()));
+
+		prices
+	}
+
+	fn value(&self) -> Self::Value {
+		self.iter().fold(Ok(Zero::zero()), |sum, tranche| {
+			sum.and_then(|sum| {
+				sum.checked_add(&tranche.value())
+					.ok_or(ArithmeticError::Overflow)
+			})
+		})
 	}
 }
