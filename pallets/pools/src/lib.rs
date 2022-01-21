@@ -219,6 +219,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
+	min_risk_buff: Perquintill,
 	seniority: Seniority,
 }
 
@@ -251,6 +252,7 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
 	epoch: EpochId,
 	nav: Balance,
 	reserve: Balance,
+	max_reserve: Balance,
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
 	solution: Option<EpochSolution<Balance>>,
 	end_challenge_period: Moment,
@@ -1076,18 +1078,28 @@ pub mod pallet {
 					.map(|tranche| tranche.seniority)
 					.collect::<Vec<_>>();
 
+				let tranche_min_risk_buffs = pool
+					.tranches
+					.iter()
+					.map(|tranche| tranche.min_risk_buffer)
+					.collect::<Vec<_>>();
+
 				let epoch_tranches: Vec<_> = orders
 					.iter()
 					.zip(&tranche_supply)
 					.zip(&epoch_tranche_prices)
 					.zip(&seniorities)
+					.zip(&tranche_min_risk_buffs)
 					.map(
-						|((((invest, redeem), supply), price), seniority)| EpochExecutionTranche {
-							supply: *supply,
-							price: *price,
-							invest: *invest,
-							redeem: *redeem,
-							seniority: *seniority,
+						|(((((invest, redeem), supply), price), seniority), min_risk_buff)| {
+							EpochExecutionTranche {
+								supply: *supply,
+								price: *price,
+								invest: *invest,
+								redeem: *redeem,
+								seniority: *seniority,
+								min_risk_buff: *min_risk_buff,
+							}
 						},
 					)
 					.collect();
@@ -1096,6 +1108,7 @@ pub mod pallet {
 					epoch: submission_period_epoch,
 					nav,
 					reserve: pool.total_reserve,
+					max_reserve: pool.max_reserve,
 					tranches: epoch_tranches,
 					solution: None,
 					end_challenge_period: now.saturating_add(pool.challenge_time),
@@ -1133,7 +1146,7 @@ pub mod pallet {
 				Self::inspect_healthiness(&state)?;
 
 				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let solution = Self::score_solution(&solution, &epoch.tranches, &state)?;
+				let solution = Self::score_solution(&solution, &epoch, &state)?;
 
 				if let Some(ref curr_solution) = epoch.solution {
 					ensure!(curr_solution < &solution, Error::<T>::NotNewBestSubmission);
@@ -1322,15 +1335,83 @@ pub mod pallet {
 		///
 		pub(crate) fn score_solution_unhealthy(
 			solution: &[TrancheSolution],
-			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+			info: &EpochExecutionInfoOf<T>,
 			state: &Vec<UnhealthyState>,
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
+			let tranches = &info.tranches;
+
 			// Get the usual score we calculate as if the pool would be healty.
 			let score = Self::calculate_score(solution, tranches)?;
-			// 1 /
-			//let risk_buff_score = tranches.iter().map(|tranche| tranche)
-			//let reserve_buff_score =
-			Err(Error::<T>::NotInSubmissionPeriod.into())
+
+			let total_value = tranches
+				.iter()
+				.fold(Some(T::Balance::zero()), |sum, tranche| {
+					sum.and_then(|total_value| {
+						tranche
+							.price
+							.checked_mul_int(tranche.supply.clone())
+							.map(|value| total_value.checked_add(&value))
+					})
+					.flatten()
+				})
+				.ok_or(Error::<T>::Overflow)?;
+
+			let risk_buff = tranches
+				.iter()
+				.map(|tranche| tranche.price.checked_mul_int(tranche.supply.clone()))
+				.flatten()
+				.map(|subordination_value| {
+					Perquintill::from_rational(subordination_value, total_value)
+				})
+				.collect::<Vec<Perquintill>>();
+
+			let risk_buff_score = tranches
+				.iter()
+				.zip(risk_buff)
+				.map(|(tranche, risk_buff)| {
+					risk_buff
+						.checked_sub(&tranche.min_risk_buff)
+						// TODO: Is this correct?????
+						.and_then(|div: Perquintill| {
+							Some(div.saturating_reciprocal_mul(T::Balance::one()))
+						})
+				})
+				.collect::<Option<Vec<_>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			let acc_invest: T::Balance = tranches
+				.iter()
+				.fold(Some(T::Balance::zero()), |sum, tranche| {
+					sum.and_then(|sum| sum.checked_add(&tranche.invest))
+				})
+				.ok_or(Error::<T>::Overflow)?;
+
+			let acc_redeem: T::Balance = tranches
+				.iter()
+				.fold(Some(T::Balance::zero()), |sum, tranche| {
+					sum.and_then(|sum| sum.checked_add(&tranche.redeem))
+				})
+				.ok_or(Error::<T>::Overflow)?;
+
+			let reserve_update = info
+				.reserve
+				.checked_add(&acc_invest)
+				.and_then(|value| value.checked_sub(&acc_redeem))
+				.and_then(|value| value.checked_sub(&info.max_reserve))
+				.ok_or(Error::<T>::Overflow)?;
+
+			// TODO: Is this correct ?????
+			let reserve_buff_score = T::BalanceRatio::from_inner(reserve_update)
+				.checked_div_int(T::Balance::one())
+				.ok_or(Error::<T>::Overflow)?;
+
+			Ok(EpochSolution::Unhealthy(UnhealthySolution {
+				score,
+				state: state.to_vec(),
+				solution: solution.to_vec(),
+				risk_buff_score,
+				reserve_buff_score,
+			}))
 		}
 
 		/// Scores a solution.
@@ -1339,18 +1420,18 @@ pub mod pallet {
 		/// to an epoch. Depending on the state, the correct solution function is choosen.
 		pub(crate) fn score_solution(
 			solution: &[TrancheSolution],
-			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+			info: &EpochExecutionInfoOf<T>,
 			state: &PoolState,
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			ensure!(
-				solution.len() == tranches.len(),
+				solution.len() == info.tranches.len(),
 				Error::<T>::InvalidSolution
 			);
 
 			match state {
-				PoolState::Healthy => Self::score_solution_healthy(solution, tranches),
+				PoolState::Healthy => Self::score_solution_healthy(solution, &info.tranches),
 				PoolState::Unhealthy(states) => {
-					Self::score_solution_unhealthy(solution, tranches, states)
+					Self::score_solution_unhealthy(solution, info, states)
 				}
 			}
 		}

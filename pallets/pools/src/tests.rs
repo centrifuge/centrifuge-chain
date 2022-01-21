@@ -25,7 +25,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
-				seniority: Default::default(),
+				..Default::default()
 			})
 			.collect();
 
@@ -49,6 +49,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			epoch: Zero::zero(),
 			nav: 0,
 			reserve: pool.total_reserve,
+			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			solution: None,
 			end_challenge_period: 0,
@@ -126,6 +127,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			epoch: Zero::zero(),
 			nav: 90,
 			reserve: pool.total_reserve,
+			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			solution: None,
 			end_challenge_period: Default::default(),
@@ -217,6 +219,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			epoch: Zero::zero(),
 			nav: 0,
 			reserve: pool.total_reserve,
+			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			solution: None,
 			end_challenge_period: Default::default(),
@@ -283,6 +286,7 @@ fn pool_constraints_pass() {
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
 				seniority: tranche_id.try_into().unwrap(),
+				..Default::default()
 			})
 			.collect();
 
@@ -306,6 +310,7 @@ fn pool_constraints_pass() {
 			epoch: Zero::zero(),
 			nav: 145,
 			reserve: pool.total_reserve,
+			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			solution: None,
 			end_challenge_period: Default::default(),
