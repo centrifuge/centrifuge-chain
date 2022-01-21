@@ -350,9 +350,9 @@ pub struct UnhealthySolution<Balance> {
 	pub state: Vec<UnhealthyState>,
 	pub solution: Vec<TrancheSolution>,
 	// The risk buffer score per tranche (less junior tranche) for this solution
-	pub risk_buff_score: Vec<Balance>,
+	pub risk_buff_score: Option<Vec<Balance>>,
 	// The reserve buffer score for this solution
-	pub reserve_buff_score: Balance,
+	pub reserve_buff_score: Option<Balance>,
 }
 
 impl<Balance> PartialOrd for UnhealthySolution<Balance>
@@ -363,18 +363,20 @@ where
 		// TODO: This seems not correct
 		let _score_better = self.score < other.score;
 
+		// TODO: Unsafe unwrap. The comparing of solutions is yet to be specced
 		let tranche_buff_increased = self
 			.risk_buff_score
+			.as_ref()
+			.unwrap()
 			.iter()
-			.zip(&other.risk_buff_score)
+			.zip(other.risk_buff_score.as_ref().unwrap())
 			.map(|(s_1_buff, s_2_buff)| s_1_buff >= s_2_buff)
 			.all(|buff_greater| buff_greater);
 
-		let reserve_score_increased = self.reserve_buff_score < other.reserve_buff_score;
+		// TODO: Currently we not support this.
+		//let reserve_score_increased = self.reserve_buff_score < other.reserve_buff_score;
 
 		if tranche_buff_increased {
-			Some(Ordering::Greater)
-		} else if reserve_score_increased {
 			Some(Ordering::Greater)
 		} else {
 			Some(Ordering::Less)
@@ -1176,13 +1178,23 @@ pub mod pallet {
 				Self::inspect_healthiness(&state)?;
 
 				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let solution = Self::score_solution(&solution, &epoch, &state)?;
+				let epoch_solution = Self::score_solution(&solution, &epoch, &state)?;
 
 				if let Some(ref curr_solution) = epoch.solution {
-					ensure!(curr_solution < &solution, Error::<T>::NotNewBestSubmission);
+					ensure!(
+						curr_solution < &epoch_solution,
+						Error::<T>::NotNewBestSubmission
+					);
 				}
 
-				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, solution));
+				// Assign new solutuion
+				epoch.solution = Some(epoch_solution.clone());
+
+				Self::deposit_event(Event::SolutionSubmitted(
+					pool_id,
+					epoch.epoch,
+					epoch_solution,
+				));
 
 				Ok(())
 			})
@@ -1373,67 +1385,88 @@ pub mod pallet {
 			// Get the usual score we calculate as if the pool would be healty.
 			let score = Self::calculate_score(solution, tranches)?;
 
-			let total_value = tranches
-				.iter()
-				.fold(Some(T::Balance::zero()), |sum, tranche| {
-					sum.and_then(|total_value| {
-						tranche
-							.price
-							.checked_mul_int(tranche.supply.clone())
-							.map(|value| total_value.checked_add(&value))
-					})
-					.flatten()
-				})
-				.ok_or(Error::<T>::Overflow)?;
-
-			let risk_buff = tranches
-				.iter()
-				.map(|tranche| tranche.price.checked_mul_int(tranche.supply.clone()))
-				.flatten()
-				.map(|subordination_value| {
-					Perquintill::from_rational(subordination_value, total_value)
-				})
-				.collect::<Vec<Perquintill>>();
-
-			let risk_buff_score = tranches
-				.iter()
-				.zip(risk_buff)
-				.map(|(tranche, risk_buff)| {
-					risk_buff
-						.checked_sub(&tranche.min_risk_buff)
-						// TODO: Is this correct?????
-						.and_then(|div: Perquintill| {
-							Some(div.saturating_reciprocal_mul(T::Balance::one()))
+			let risk_buff_score = if state.contains(&UnhealthyState::MinRiskBufferViolated) {
+				let total_value = tranches
+					.iter()
+					.fold(Some(T::Balance::zero()), |sum, tranche| {
+						sum.and_then(|total_value| {
+							tranche
+								.price
+								.checked_mul_int(tranche.supply.clone())
+								.map(|value| total_value.checked_add(&value))
 						})
-				})
-				.collect::<Option<Vec<_>>>()
-				.ok_or(Error::<T>::Overflow)?;
+						.flatten()
+					})
+					.ok_or(Error::<T>::Overflow)?;
 
-			let acc_invest: T::Balance = tranches
-				.iter()
-				.fold(Some(T::Balance::zero()), |sum, tranche| {
-					sum.and_then(|sum| sum.checked_add(&tranche.invest))
-				})
-				.ok_or(Error::<T>::Overflow)?;
+				let risk_buff = tranches
+					.iter()
+					.map(|tranche| tranche.price.checked_mul_int(tranche.supply.clone()))
+					.flatten()
+					.map(|subordination_value| {
+						Perquintill::from_rational(subordination_value, total_value)
+					})
+					.collect::<Vec<Perquintill>>();
 
-			let acc_redeem: T::Balance = tranches
-				.iter()
-				.fold(Some(T::Balance::zero()), |sum, tranche| {
-					sum.and_then(|sum| sum.checked_add(&tranche.redeem))
-				})
-				.ok_or(Error::<T>::Overflow)?;
+				Some(
+					tranches
+						.iter()
+						.zip(risk_buff)
+						.map(|(tranche, risk_buff)| {
+							risk_buff
+								.checked_sub(&tranche.min_risk_buff)
+								// TODO: Is this correct?????
+								.and_then(|div: Perquintill| {
+									Some(div.saturating_reciprocal_mul(T::Balance::one()))
+								})
+						})
+						.collect::<Option<Vec<_>>>()
+						.ok_or(Error::<T>::Overflow)?,
+				)
+			} else {
+				None
+			};
 
-			let reserve_update = info
-				.reserve
-				.checked_add(&acc_invest)
-				.and_then(|value| value.checked_sub(&acc_redeem))
-				.and_then(|value| value.checked_sub(&info.max_reserve))
-				.ok_or(Error::<T>::Overflow)?;
+			let reserve_buff_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
+				let (acc_invest, acc_redeem) = solution.iter().zip(tranches).fold(
+					(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
+					|(acc_invest, acc_redeem), (solution, tranches)| {
+						(
+							acc_invest.and_then(|acc| {
+								solution
+									.invest_fulfillment
+									.mul_floor(tranches.invest)
+									.checked_add(&acc)
+							}),
+							acc_redeem.and_then(|acc| {
+								solution
+									.redeem_fulfillment
+									.mul_floor(tranches.redeem)
+									.checked_add(&acc)
+							}),
+						)
+					},
+				);
 
-			// TODO: Is this correct ?????
-			let reserve_buff_score = T::BalanceRatio::from_inner(reserve_update)
-				.checked_div_int(T::Balance::one())
-				.ok_or(Error::<T>::Overflow)?;
+				let acc_invest = acc_invest.ok_or(Error::<T>::Overflow)?;
+				let acc_redeem = acc_redeem.ok_or(Error::<T>::Overflow)?;
+
+				let reserve_update = info
+					.reserve
+					.checked_add(&acc_invest)
+					.and_then(|value| value.checked_sub(&acc_redeem))
+					.and_then(|value| value.checked_sub(&info.max_reserve))
+					.ok_or(Error::<T>::Overflow)?;
+
+				// TODO: Is this correct ?????
+				Some(
+					T::BalanceRatio::from_inner(reserve_update)
+						.checked_div_int(T::Balance::one())
+						.ok_or(Error::<T>::Overflow)?,
+				)
+			} else {
+				None
+			};
 
 			Ok(EpochSolution::Unhealthy(UnhealthySolution {
 				score,
