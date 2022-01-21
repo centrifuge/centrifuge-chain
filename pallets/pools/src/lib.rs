@@ -33,6 +33,7 @@ use sp_runtime::{
 	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
 use sp_std::vec::Vec;
+use std::cmp::Ordering;
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
@@ -214,7 +215,7 @@ pub struct EpochDetails<BalanceRatio> {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochExecutionTranche<Balance, BalanceRatio> {
-	value: Balance,
+	supply: Balance,
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
@@ -256,11 +257,112 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
 }
 
 /// The solutions struct for epoch solution
+#[derive(Encode, Decode, Clone, Eq, RuntimeDebug, TypeInfo)]
+pub enum EpochSolution<Balance> {
+	Healthy(HealthySolution<Balance>),
+	Unhealthy(UnhealthySolution<Balance>),
+}
+
+impl<Balance> EpochSolution<Balance>
+where
+	Balance: Copy,
+{
+	pub fn score(&self) -> Balance {
+		match self {
+			EpochSolution::Healthy(solution) => solution.score,
+			EpochSolution::Unhealthy(solution) => solution.score,
+		}
+	}
+
+	pub fn healthy(&self) -> bool {
+		match self {
+			EpochSolution::Healthy(_) => true,
+			EpochSolution::Unhealthy(_) => false,
+		}
+	}
+
+	pub fn solution(&self) -> &[TrancheSolution] {
+		match self {
+			EpochSolution::Healthy(solution) => solution.solution.as_slice(),
+			EpochSolution::Unhealthy(solution) => solution.solution.as_slice(),
+		}
+	}
+}
+
+impl<Balance> PartialEq for EpochSolution<Balance>
+where
+	Balance: PartialEq,
+{
+	fn eq(&self, other: &Self) -> bool {
+		match self {
+			EpochSolution::Healthy(s_1) => match other {
+				EpochSolution::Healthy(s_2) => s_1.score == s_2.score,
+				EpochSolution::Unhealthy(_) => false,
+			},
+			EpochSolution::Unhealthy(s_1) => match other {
+				EpochSolution::Healthy(_) => false,
+				EpochSolution::Unhealthy(s_2) => s_1 == s_2,
+			},
+		}
+	}
+}
+
+impl<Balance> PartialOrd for EpochSolution<Balance>
+where
+	Balance: PartialOrd,
+{
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		match self {
+			EpochSolution::Healthy(s_1) => match other {
+				EpochSolution::Healthy(s_2) => {
+					let score_1 = &s_1.score;
+					let score_2 = &s_2.score;
+
+					Some(if score_1 > score_2 {
+						Ordering::Greater
+					} else if score_1 < score_2 {
+						Ordering::Less
+					} else {
+						Ordering::Equal
+					})
+				}
+				EpochSolution::Unhealthy(_) => Some(Ordering::Greater),
+			},
+			EpochSolution::Unhealthy(s_1) => match other {
+				EpochSolution::Healthy(_) => Some(Ordering::Less),
+				EpochSolution::Unhealthy(s_2) => s_1.partial_cmp(s_2),
+			},
+		}
+	}
+}
+
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct EpochSolution<Balance> {
+pub struct HealthySolution<Balance> {
 	pub solution: Vec<TrancheSolution>,
 	pub score: Balance,
-	pub pool_state: PoolState,
+}
+
+#[derive(Encode, Decode, Clone, Eq, RuntimeDebug, TypeInfo)]
+pub struct UnhealthySolution<Balance> {
+	pub score: Balance,
+	pub state: Vec<UnhealthyState>,
+	pub solution: Vec<TrancheSolution>,
+	// The risk buffer score per tranche (less junior tranche) for this solution
+	pub risk_buff_score: Vec<Balance>,
+	// The reserve buffer score for this solution
+	pub reserve_buff_score: Balance,
+}
+
+impl<Balance> PartialOrd for UnhealthySolution<Balance> {
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		todo!()
+	}
+}
+
+impl<Balance> PartialEq for UnhealthySolution<Balance> {
+	fn eq(&self, other: &Self) -> bool {
+		todo!()
+	}
 }
 
 // The solution struct for a specific tranche
@@ -459,8 +561,8 @@ pub mod pallet {
 		MetadataSet(T::PoolId, Vec<u8>),
 		/// An epoch was closed. [pool, epoch]
 		EpochClosed(T::PoolId, T::EpochId),
-		/// An epoch was executed. [pool, epoch]
-		SolutionSubmitted(T::PoolId, T::EpochId, Vec<TrancheSolution>, PoolState),
+		/// An epoch was executed. [pool, epoch, solution]
+		SolutionSubmitted(T::PoolId, T::EpochId, EpochSolution<T::Balance>),
 		/// An epoch was executed. [pool, epoch]
 		EpochExecuted(T::PoolId, T::EpochId),
 		/// Fulfilled orders were collected. [pool, tranche, end_epoch, user, outstanding_collections]
@@ -961,7 +1063,7 @@ pub mod pallet {
 					})
 					.collect::<Vec<_>>();
 
-				let tranche_values = pool
+				let tranche_supply = pool
 					.tranches
 					.iter()
 					.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
@@ -976,12 +1078,12 @@ pub mod pallet {
 
 				let epoch_tranches: Vec<_> = orders
 					.iter()
-					.zip(&tranche_values)
+					.zip(&tranche_supply)
 					.zip(&epoch_tranche_prices)
 					.zip(&seniorities)
 					.map(
-						|((((invest, redeem), value), price), seniority)| EpochExecutionTranche {
-							value: *value,
+						|((((invest, redeem), supply), price), seniority)| EpochExecutionTranche {
+							supply: *supply,
 							price: *price,
 							invest: *invest,
 							redeem: *redeem,
@@ -1030,36 +1132,14 @@ pub mod pallet {
 
 				Self::inspect_healthiness(&state)?;
 
-				if let Some(ref curr_solution) = epoch.solution {
-					ensure!(
-						state != PoolState::Healthy
-							&& curr_solution.pool_state == PoolState::Healthy,
-						Error::<T>::HealtySolutionExists
-					)
-				}
-
 				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let score = Self::score_solution(&solution, &epoch.tranches)?;
+				let solution = Self::score_solution(&solution, &epoch.tranches, &state)?;
 
 				if let Some(ref curr_solution) = epoch.solution {
-					ensure!(
-						curr_solution.score <= score,
-						Error::<T>::NotNewBestSubmission
-					);
+					ensure!(curr_solution < &solution, Error::<T>::NotNewBestSubmission);
 				}
 
-				epoch.solution = Some(EpochSolution {
-					solution: solution.clone(),
-					score,
-					pool_state: state.clone(),
-				});
-
-				Self::deposit_event(Event::SolutionSubmitted(
-					pool_id,
-					epoch.epoch,
-					solution,
-					state,
-				));
+				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, solution));
 
 				Ok(())
 			})
@@ -1091,7 +1171,7 @@ pub mod pallet {
 						.solution
 						.as_ref()
 						.expect("Solution exists. qed.")
-						.solution;
+						.solution();
 
 					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, epoch.epoch));
@@ -1170,7 +1250,22 @@ pub mod pallet {
 			}
 		}
 
-		/// Calculates the score for a given solution
+		/// Scores a solution and returns a healty solution as a result.
+		pub(crate) fn score_solution_healthy(
+			solution: &[TrancheSolution],
+			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+		) -> Result<EpochSolution<T::Balance>, DispatchError> {
+			let score = Self::calculate_score(solution, tranches)?;
+
+			Ok(EpochSolution::Healthy(HealthySolution {
+				solution: solution.to_vec(),
+				score,
+			}))
+		}
+
+		/// Calculates the score for a given solution. Should only be called inside the
+		/// `fn score_solution()` from the runtime, as there are no checks if solution
+		/// length matches tranche length.
 		///
 		/// Scores are calculated with the following function
 		///
@@ -1178,21 +1273,16 @@ pub mod pallet {
 		///  * X(a) -> A vector of a's, where each element is associated with a tranche
 		///  * ||X(a)||1 -> 1-Norm of a vector, i.e. the absolute sum over all elements
 		///
-		///  X = X(%-invest-fulfillments) * X(investments) * X(invest_tranche_weights)  
+		///  X = X(%-invest-fulfillments) * X(investments) * X(invest_tranche_weights)
 		///            + X(%-redeem-fulfillments) * X(redemptions) * X(redeem_tranche_weights)
-		///     
+		///
 		///  score = ||X||1
 		///
-		/// Returns error upon overflow of `Balances` or if tranches.len() != solution.len()
-		pub(crate) fn score_solution(
+		/// Returns error upon overflow of `Balances`.
+		pub(crate) fn calculate_score(
 			solution: &[TrancheSolution],
 			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
 		) -> Result<T::Balance, DispatchError> {
-			ensure!(
-				solution.len() == tranches.len(),
-				Error::<T>::InvalidSolution
-			);
-
 			let len = tranches.len().try_into().ok().ok_or(Error::<T>::Overflow)?;
 
 			let (invest_score, redeem_score) = solution
@@ -1226,6 +1316,43 @@ pub mod pallet {
 				.zip(redeem_score)
 				.and_then(|(invest_score, redeem_score)| invest_score.checked_add(&redeem_score))
 				.ok_or(Error::<T>::Overflow.into())
+		}
+
+		/// Scores an solution, that would bring a pool into an unhealthy state.
+		///
+		pub(crate) fn score_solution_unhealthy(
+			solution: &[TrancheSolution],
+			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+			state: &Vec<UnhealthyState>,
+		) -> Result<EpochSolution<T::Balance>, DispatchError> {
+			// Get the usual score we calculate as if the pool would be healty.
+			let score = Self::calculate_score(solution, tranches)?;
+			// 1 /
+			//let risk_buff_score = tranches.iter().map(|tranche| tranche)
+			//let reserve_buff_score =
+			Err(Error::<T>::NotInSubmissionPeriod.into())
+		}
+
+		/// Scores a solution.
+		///
+		/// This function checks the state a pool would be in when applying a solution
+		/// to an epoch. Depending on the state, the correct solution function is choosen.
+		pub(crate) fn score_solution(
+			solution: &[TrancheSolution],
+			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+			state: &PoolState,
+		) -> Result<EpochSolution<T::Balance>, DispatchError> {
+			ensure!(
+				solution.len() == tranches.len(),
+				Error::<T>::InvalidSolution
+			);
+
+			match state {
+				PoolState::Healthy => Self::score_solution_healthy(solution, tranches),
+				PoolState::Unhealthy(states) => {
+					Self::score_solution_unhealthy(solution, tranches, states)
+				}
+			}
 		}
 
 		pub(crate) fn do_update_invest_order(
@@ -1621,7 +1748,7 @@ pub mod pallet {
 				.zip(solution)
 				.map(|(tranche, solution)| {
 					tranche
-						.value
+						.supply
 						.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
 						.and_then(|value| {
 							value
@@ -1779,7 +1906,7 @@ pub mod pallet {
 				.zip(&mut epoch.tranches.iter())
 				.map(|((invest, redeem), tranche)| {
 					tranche
-						.value
+						.supply
 						.checked_add(invest)
 						.and_then(|value| value.checked_sub(redeem))
 						.map(|tranche_asset| {

@@ -21,7 +21,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.iter()
 			.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche, value)| EpochExecutionTranche {
-				value,
+				supply: value,
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
@@ -98,7 +98,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.iter()
 			.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche, value)| EpochExecutionTranche {
-				value,
+				supply: value,
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
@@ -189,7 +189,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.iter()
 			.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche, value)| EpochExecutionTranche {
-				value,
+				supply: value,
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
@@ -278,7 +278,7 @@ fn pool_constraints_pass() {
 			.zip(vec![20, 35, 70, 80])
 			.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
-				value,
+				supply: value,
 				price: One::one(),
 				invest: tranche.outstanding_invest_orders,
 				redeem: tranche.outstanding_redeem_orders,
