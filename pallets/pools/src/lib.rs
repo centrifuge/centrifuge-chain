@@ -146,7 +146,6 @@ impl PoolState {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UnhealthyState {
-	InsufficientCurrency,
 	MaxReserveViolated,
 	MinRiskBufferViolated,
 }
@@ -1028,6 +1027,7 @@ pub mod pallet {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
 				let state = Self::is_valid_solution(&pool, &epoch, &solution)?;
+
 				Self::inspect_healthiness(&state)?;
 
 				if let Some(ref curr_solution) = epoch.solution {
@@ -1161,16 +1161,12 @@ pub mod pallet {
 		/// would be applied.   
 		///
 		/// If the state is unacceptable the solution is discarded
+		///
+		/// NOTE: Currently, this is a no-op
 		pub(crate) fn inspect_healthiness(state: &PoolState) -> DispatchResult {
 			match state {
 				PoolState::Healthy => Ok(()),
-				PoolState::Unhealthy(states) => {
-					if states.contains(&UnhealthyState::InsufficientCurrency) {
-						Err(Error::<T>::InsufficientCurrency.into())
-					} else {
-						Ok(())
-					}
-				}
+				PoolState::Unhealthy(_states) => Ok(()),
 			}
 		}
 
@@ -1571,7 +1567,7 @@ pub mod pallet {
 			solution: &[TrancheSolution],
 		) -> Result<PoolState, DispatchError> {
 			// start with in a healthy state
-			let mut state = PoolState::Healthy;
+			let state = PoolState::Healthy;
 
 			// EpochExecutionInfo is generated from PoolDetails, hence the
 			// tranche length of the former equals the later.
@@ -1606,15 +1602,12 @@ pub mod pallet {
 				.checked_add(&epoch.reserve)
 				.ok_or(Error::<T>::Overflow)?;
 
-			if let Some(state_update) =
-				Self::validate_core_constraints(currency_available, acc_redeem)
-			{
-				state.update_with_unhealthy(state_update);
-			}
-			// TODO: I think we don`t wanna genericaly error out here? But rather have a specific Error
-			let new_reserve = currency_available
-				.checked_sub(&acc_redeem)
-				.ok_or(Error::<T>::Overflow)?;
+			Self::validate_core_constraints(currency_available, acc_redeem)?;
+
+			// Validate core-constraints does check that and errors out early.
+			let new_reserve = currency_available.checked_sub(&acc_redeem).expect(
+				"Validate core constraints ensures there is enough liquidity in the reserve. qed.",
+			);
 
 			let min_risk_buffers = pool_details
 				.tranches
@@ -1650,12 +1643,13 @@ pub mod pallet {
 		fn validate_core_constraints(
 			currency_available: T::Balance,
 			currency_out: T::Balance,
-		) -> Option<UnhealthyState> {
-			if currency_out > currency_available {
-				Some(UnhealthyState::InsufficientCurrency)
-			} else {
-				None
-			}
+		) -> DispatchResult {
+			ensure!(
+				currency_available.checked_sub(&currency_out).is_some(),
+				Error::<T>::InsufficientCurrency
+			);
+
+			Ok(())
 		}
 
 		fn validate_pool_constraints(
