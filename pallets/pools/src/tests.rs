@@ -703,11 +703,11 @@ fn submission_period() {
 			vec![
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::from_float(0.10),
 				},
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::from_float(0.10),
+					redeem_fulfillment: Perquintill::one(),
 				}
 			]
 		));
