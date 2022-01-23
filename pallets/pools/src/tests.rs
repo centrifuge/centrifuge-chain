@@ -51,7 +51,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			reserve: pool.total_reserve,
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
-			solution: None,
+			best_submission: None,
 			end_challenge_period: 0,
 		};
 
@@ -129,7 +129,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			reserve: pool.total_reserve,
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
-			solution: None,
+			best_submission: None,
 			end_challenge_period: Default::default(),
 		};
 
@@ -221,7 +221,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			reserve: pool.total_reserve,
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
-			solution: None,
+			best_submission: None,
 			end_challenge_period: Default::default(),
 		};
 
@@ -312,7 +312,7 @@ fn pool_constraints_pass() {
 			reserve: pool.total_reserve,
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
-			solution: None,
+			best_submission: None,
 			end_challenge_period: Default::default(),
 		};
 
@@ -614,8 +614,22 @@ fn submission_period() {
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
 		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
-		// Allowed as there exists no healty solution..
-		/*
+		let epoch = <pallet::EpochExecution<mock::Test>>::try_get(0).unwrap();
+		let existing_state_score = Pools::score_solution(&0, &epoch, &epoch.clone().best_submission.unwrap().solution()).unwrap();
+		let new_solution_score = Pools::score_solution(&0, &epoch, &vec![
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::one(),
+			},
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::one(),
+			}
+		]).unwrap();
+		assert_eq!(existing_state_score.healthy(), true);
+		assert_eq!(new_solution_score.healthy(), false);
+		assert_eq!(new_solution_score < existing_state_score, true);
+
 		assert_err!(
 			Pools::submit_solution(
 				pool_owner.clone(),
@@ -633,26 +647,37 @@ fn submission_period() {
 			),
 			Error::<Test>::NotNewBestSubmission
 		);
-		*/
 
-		// Allowed as 1% redemption keeps
+		// Allowed as 1% redemption keeps the risk buffer healthy
+		let partial_fulfilment_solution = Pools::score_solution(&0, &epoch, &vec![
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::from_float(0.01),
+			},
+			TrancheSolution {
+				invest_fulfillment: Perquintill::one(),
+				redeem_fulfillment: Perquintill::one(),
+			}
+		]).unwrap();
+		assert_eq!(partial_fulfilment_solution.healthy(), true);
+		assert_eq!(partial_fulfilment_solution > existing_state_score, true);
+
 		assert_ok!(Pools::submit_solution(
 			pool_owner.clone(),
 			0,
 			vec![
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::from_float(0.01),
 				},
 				TrancheSolution {
 					invest_fulfillment: Perquintill::one(),
-					redeem_fulfillment: Perquintill::from_float(0.01),
+					redeem_fulfillment: Perquintill::one(),
 				}
 			]
 		));
 
 		// Can't submit the same solution twice
-		/*
 		assert_err!(
 			Pools::submit_solution(
 				pool_owner.clone(),
@@ -660,20 +685,18 @@ fn submission_period() {
 				vec![
 					TrancheSolution {
 						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::from_float(0.01),
 					},
 					TrancheSolution {
 						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::from_float(0.01),
+						redeem_fulfillment: Perquintill::one(),
 					}
 				]
 			),
 			Error::<Test>::NotNewBestSubmission
 		);
-		*/
 
-		// Slight improvement
-		/*
+		// Slight risk buffer improvement
 		assert_ok!(Pools::submit_solution(
 			pool_owner.clone(),
 			0,
@@ -687,7 +710,7 @@ fn submission_period() {
 					redeem_fulfillment: Perquintill::from_float(0.10),
 				}
 			]
-		));*/
+		));
 	});
 }
 

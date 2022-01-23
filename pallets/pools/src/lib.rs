@@ -254,7 +254,7 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
 	reserve: Balance,
 	max_reserve: Balance,
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
-	solution: Option<EpochSolution<Balance>>,
+	best_submission: Option<EpochSolution<Balance>>,
 	end_challenge_period: Moment,
 }
 
@@ -350,9 +350,9 @@ pub struct UnhealthySolution<Balance> {
 	pub state: Vec<UnhealthyState>,
 	pub solution: Vec<TrancheSolution>,
 	// The risk buffer score per tranche (less junior tranche) for this solution
-	pub risk_buffer_score: Option<Vec<Balance>>,
+	pub risk_buffer_improvement_scores: Option<Vec<Balance>>,
 	// The reserve buffer score for this solution
-	pub reserve_buffer_score: Option<Balance>,
+	pub reserve_improvement_score: Option<Balance>,
 }
 
 impl<Balance> PartialOrd for UnhealthySolution<Balance>
@@ -364,19 +364,19 @@ where
 		let _score_better = self.score < other.score;
 
 		// TODO: Unsafe unwrap. The comparing of solutions is yet to be specced
-		let tranche_buff_increased = self
-			.risk_buffer_score
+		let tranche_buffer_increased = self
+			.risk_buffer_improvement_scores
 			.as_ref()
 			.unwrap()
 			.iter()
-			.zip(other.risk_buffer_score.as_ref().unwrap())
+			.zip(other.risk_buffer_improvement_scores.as_ref().unwrap())
 			.map(|(s_1_buff, s_2_buff)| s_1_buff >= s_2_buff)
 			.all(|buff_greater| buff_greater);
 
 		// TODO: Currently we not support this.
-		//let reserve_score_increased = self.reserve_buffer_score < other.reserve_buffer_score;
+		//let reserve_score_increased = self.reserve_improvement_score < other.reserve_improvement_score;
 
-		if tranche_buff_increased {
+		if tranche_buffer_increased {
 			Some(Ordering::Greater)
 		} else {
 			Some(Ordering::Less)
@@ -389,13 +389,13 @@ where
 	Balance: PartialEq,
 {
 	fn eq(&self, other: &Self) -> bool {
-		self.risk_buffer_score
+		self.risk_buffer_improvement_scores
 			.iter()
-			.zip(&other.risk_buffer_score)
+			.zip(&other.risk_buffer_improvement_scores)
 			.map(|(s_1_buff, s_2_buff)| s_1_buff == s_2_buff)
 			.all(|same_buff| same_buff)
 			&& self.score == other.score
-			&& self.reserve_buffer_score == other.reserve_buffer_score
+			&& self.reserve_improvement_score == other.reserve_improvement_score
 	}
 }
 
@@ -1132,13 +1132,13 @@ pub mod pallet {
 					)
 					.collect();
 
-				let epoch = EpochExecutionInfo {
+				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
 					nav,
 					reserve: pool.total_reserve,
 					max_reserve: pool.max_reserve,
 					tranches: epoch_tranches,
-					solution: None,
+					best_submission: None,
 					end_challenge_period: now.saturating_add(pool.challenge_time),
 				};
 
@@ -1150,6 +1150,17 @@ pub mod pallet {
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 				} else {
+					// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
+					let no_execution_solution = orders
+						.iter()
+						.map(|_| TrancheSolution {
+							invest_fulfillment: Perquintill::zero(),
+							redeem_fulfillment: Perquintill::zero(),
+						})
+						.collect::<Vec<_>>();
+
+					let existing_state_solution = Self::score_solution(&pool_id, &epoch, &no_execution_solution)?;
+					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
 				}
 
@@ -1167,24 +1178,19 @@ pub mod pallet {
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch| -> DispatchResult {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
-				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-
-				let state = Self::is_valid_solution(&pool, &epoch, &solution)?;
-
-				Self::inspect_healthiness(&state)?;
 
 				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let epoch_solution = Self::score_solution(&solution, &epoch, &state)?;
+				let epoch_solution = Self::score_solution(&pool_id, &epoch, &solution)?;
 
-				if let Some(ref curr_solution) = epoch.solution {
+				if let Some(ref previous_solution) = epoch.best_submission {
 					ensure!(
-						curr_solution < &epoch_solution,
+						&epoch_solution > previous_solution,
 						Error::<T>::NotNewBestSubmission
 					);
 				}
 
 				// Assign new solutuion
-				epoch.solution = Some(epoch_solution.clone());
+				epoch.best_submission = Some(epoch_solution.clone());
 
 				Self::deposit_event(Event::SolutionSubmitted(
 					pool_id,
@@ -1205,7 +1211,7 @@ pub mod pallet {
 					.as_mut()
 					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
-				ensure!(epoch.solution.is_some(), Error::<T>::NoSolutionAvailable);
+				ensure!(epoch.best_submission.is_some(), Error::<T>::NoSolutionAvailable);
 
 				ensure!(
 					epoch.end_challenge_period < Self::now(),
@@ -1219,7 +1225,7 @@ pub mod pallet {
 						.expect("EpochExecutionInfo can only exist on existing pools. qed.");
 
 					let solution = &epoch
-						.solution
+						.best_submission
 						.as_ref()
 						.expect("Solution exists. qed.")
 						.solution();
@@ -1378,52 +1384,55 @@ pub mod pallet {
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			let tranches = &info.tranches;
 
-			// Get the usual score we calculate as if the pool would be healthy.
-			let score = Self::calculate_score(solution, tranches)?;
-
-			let risk_buffer_score = if state.contains(&UnhealthyState::MinRiskBufferViolated) {
-				let total_value = tranches
-					.iter()
-					.fold(Some(T::Balance::zero()), |sum, tranche| {
-						sum.and_then(|total_value| {
-							tranche
-								.price
-								.checked_mul_int(tranche.supply.clone())
-								.map(|value| total_value.checked_add(&value))
-						})
-						.flatten()
-					})
-					.ok_or(Error::<T>::Overflow)?;
-
-				let risk_buffer = tranches
-					.iter()
-					.map(|tranche| tranche.price.checked_mul_int(tranche.supply.clone()))
-					.flatten()
-					.map(|subordinated_value| {
-						Perquintill::from_rational(subordinated_value, total_value)
-					})
-					.collect::<Vec<Perquintill>>();
-
-				Some(
-					tranches
+			let risk_buffer_improvement_scores =
+				if state.contains(&UnhealthyState::MinRiskBufferViolated) {
+					let new_tranche_supplies: Vec<_> = tranches
 						.iter()
-						.zip(risk_buffer)
-						.map(|(tranche, risk_buffer)| {
-							risk_buffer
-								.checked_sub(&tranche.min_risk_buffer)
-								// TODO: Is this correct?????
-								.and_then(|div: Perquintill| {
-									Some(div.saturating_reciprocal_mul(T::Balance::one()))
+						.zip(solution)
+						.map(|(tranche, solution)| {
+							tranche
+								.supply
+								.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+								.and_then(|value| {
+									value.checked_sub(
+										&solution.redeem_fulfillment.mul_floor(tranche.redeem),
+									)
 								})
 						})
 						.collect::<Option<Vec<_>>>()
-						.ok_or(Error::<T>::Overflow)?,
-				)
-			} else {
-				None
-			};
+						.ok_or(Error::<T>::Overflow)?;
 
-			let reserve_buffer_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
+					let tranche_prices = tranches
+						.iter()
+						.map(|tranche| tranche.price)
+						.collect::<Vec<_>>();
+
+					let risk_buffers =
+						Self::calculate_risk_buffers(&new_tranche_supplies, &tranche_prices)?;
+
+					// Score: 1 / (min risk buffer - risk buffer)
+					// A higher score means the distance to the min risk buffer is smaller
+					let non_junior_tranches = tranches.split_first().unwrap().1.iter();
+					Some(
+						non_junior_tranches
+							.zip(risk_buffers)
+							.map(|(tranche, risk_buffer)| {
+								tranche
+									.min_risk_buffer
+									.checked_sub(&risk_buffer)
+									// TODO: Is this correct?????
+									.and_then(|div: Perquintill| {
+										Some(div.saturating_reciprocal_mul(T::Balance::one()))
+									})
+							})
+							.collect::<Option<Vec<_>>>()
+							.ok_or(Error::<T>::Overflow)?,
+					)
+				} else {
+					None
+				};
+
+			let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
 				let (acc_invest, acc_redeem) = solution.iter().zip(tranches).fold(
 					(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
 					|(acc_invest, acc_redeem), (solution, tranches)| {
@@ -1447,17 +1456,19 @@ pub mod pallet {
 				let acc_invest = acc_invest.ok_or(Error::<T>::Overflow)?;
 				let acc_redeem = acc_redeem.ok_or(Error::<T>::Overflow)?;
 
-				let reserve_update = info
+				let new_reserve = info
 					.reserve
 					.checked_add(&acc_invest)
 					.and_then(|value| value.checked_sub(&acc_redeem))
 					.and_then(|value| value.checked_sub(&info.max_reserve))
 					.ok_or(Error::<T>::Overflow)?;
 
-				// TODO: Is this correct ?????
+				// Score: 1 / (new reserve - max reserve)
+				// A higher score means the distance to the max reserve is smaller
 				Some(
-					T::BalanceRatio::from_inner(reserve_update)
-						.checked_div_int(T::Balance::one())
+					new_reserve
+						.checked_sub(&info.max_reserve)
+						.and_then(|reserve_diff| T::BalanceRatio::one().checked_div_int(reserve_diff))
 						.ok_or(Error::<T>::Overflow)?,
 				)
 			} else {
@@ -1465,11 +1476,11 @@ pub mod pallet {
 			};
 
 			Ok(EpochSolution::Unhealthy(UnhealthySolution {
-				score,
+				score: Zero::zero(),
 				state: state.to_vec(),
 				solution: solution.to_vec(),
-				risk_buffer_score,
-				reserve_buffer_score,
+				risk_buffer_improvement_scores,
+				reserve_improvement_score,
 			}))
 		}
 
@@ -1478,19 +1489,23 @@ pub mod pallet {
 		/// This function checks the state a pool would be in when applying a solution
 		/// to an epoch. Depending on the state, the correct solution function is choosen.
 		pub(crate) fn score_solution(
+			pool_id: &T::PoolId,
+			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
-			info: &EpochExecutionInfoOf<T>,
-			state: &PoolState,
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			ensure!(
-				solution.len() == info.tranches.len(),
+				solution.len() == epoch.tranches.len(),
 				Error::<T>::InvalidSolution
 			);
 
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			let state = Self::is_valid_solution(&pool, &epoch, &solution)?;
+			Self::inspect_healthiness(&state)?;
+
 			match state {
-				PoolState::Healthy => Self::score_solution_healthy(solution, &info.tranches),
+				PoolState::Healthy => Self::score_solution_healthy(solution, &epoch.tranches),
 				PoolState::Unhealthy(states) => {
-					Self::score_solution_unhealthy(solution, info, states)
+					Self::score_solution_unhealthy(solution, epoch, &states)
 				}
 			}
 		}
