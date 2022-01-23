@@ -32,8 +32,8 @@ use sp_runtime::{
 	},
 	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
 };
+use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
-use std::cmp::Ordering;
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
