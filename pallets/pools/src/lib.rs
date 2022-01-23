@@ -1159,7 +1159,8 @@ pub mod pallet {
 						})
 						.collect::<Vec<_>>();
 
-					let existing_state_solution = Self::score_solution(&pool_id, &epoch, &no_execution_solution)?;
+					let existing_state_solution =
+						Self::score_solution(&pool_id, &epoch, &no_execution_solution)?;
 					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
 				}
@@ -1211,7 +1212,10 @@ pub mod pallet {
 					.as_mut()
 					.ok_or(Error::<T>::NotInSubmissionPeriod)?;
 
-				ensure!(epoch.best_submission.is_some(), Error::<T>::NoSolutionAvailable);
+				ensure!(
+					epoch.best_submission.is_some(),
+					Error::<T>::NoSolutionAvailable
+				);
 
 				ensure!(
 					epoch.end_challenge_period < Self::now(),
@@ -1468,7 +1472,9 @@ pub mod pallet {
 				Some(
 					new_reserve
 						.checked_sub(&info.max_reserve)
-						.and_then(|reserve_diff| T::BalanceRatio::one().checked_div_int(reserve_diff))
+						.and_then(|reserve_diff| {
+							T::BalanceRatio::one().checked_div_int(reserve_diff)
+						})
 						.ok_or(Error::<T>::Overflow)?,
 				)
 			} else {
