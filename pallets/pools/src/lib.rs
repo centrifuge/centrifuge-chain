@@ -132,7 +132,9 @@ impl PoolState {
 	pub fn update_with_unhealthy(&mut self, update: UnhealthyState) -> &mut Self {
 		match self {
 			PoolState::Healthy => {
-				*self = PoolState::Unhealthy(vec![update]);
+				let mut states = Vec::new();
+				states.push(update);
+				*self = PoolState::Unhealthy(states);
 				self
 			}
 			PoolState::Unhealthy(states) => {
