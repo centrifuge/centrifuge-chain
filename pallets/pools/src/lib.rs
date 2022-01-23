@@ -219,7 +219,7 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio> {
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
-	min_risk_buff: Perquintill,
+	min_risk_buffer: Perquintill,
 	seniority: Seniority,
 }
 
@@ -350,9 +350,9 @@ pub struct UnhealthySolution<Balance> {
 	pub state: Vec<UnhealthyState>,
 	pub solution: Vec<TrancheSolution>,
 	// The risk buffer score per tranche (less junior tranche) for this solution
-	pub risk_buff_score: Option<Vec<Balance>>,
+	pub risk_buffer_score: Option<Vec<Balance>>,
 	// The reserve buffer score for this solution
-	pub reserve_buff_score: Option<Balance>,
+	pub reserve_buffer_score: Option<Balance>,
 }
 
 impl<Balance> PartialOrd for UnhealthySolution<Balance>
@@ -365,16 +365,16 @@ where
 
 		// TODO: Unsafe unwrap. The comparing of solutions is yet to be specced
 		let tranche_buff_increased = self
-			.risk_buff_score
+			.risk_buffer_score
 			.as_ref()
 			.unwrap()
 			.iter()
-			.zip(other.risk_buff_score.as_ref().unwrap())
+			.zip(other.risk_buffer_score.as_ref().unwrap())
 			.map(|(s_1_buff, s_2_buff)| s_1_buff >= s_2_buff)
 			.all(|buff_greater| buff_greater);
 
 		// TODO: Currently we not support this.
-		//let reserve_score_increased = self.reserve_buff_score < other.reserve_buff_score;
+		//let reserve_score_increased = self.reserve_buffer_score < other.reserve_buffer_score;
 
 		if tranche_buff_increased {
 			Some(Ordering::Greater)
@@ -389,13 +389,13 @@ where
 	Balance: PartialEq,
 {
 	fn eq(&self, other: &Self) -> bool {
-		self.risk_buff_score
+		self.risk_buffer_score
 			.iter()
-			.zip(&other.risk_buff_score)
+			.zip(&other.risk_buffer_score)
 			.map(|(s_1_buff, s_2_buff)| s_1_buff == s_2_buff)
 			.all(|same_buff| same_buff)
 			&& self.score == other.score
-			&& self.reserve_buff_score == other.reserve_buff_score
+			&& self.reserve_buffer_score == other.reserve_buffer_score
 	}
 }
 
@@ -676,7 +676,7 @@ pub mod pallet {
 		NotNewBestSubmission,
 		/// No solution has yet been provided for the epoch
 		NoSolutionAvailable,
-		/// Indicates that an un-healthy solution was submitted but a healty one exists
+		/// Indicates that an un-healthy solution was submitted but a healthy one exists
 		HealtySolutionExists,
 	}
 
@@ -1119,14 +1119,14 @@ pub mod pallet {
 					.zip(&seniorities)
 					.zip(&tranche_min_risk_buffs)
 					.map(
-						|(((((invest, redeem), supply), price), seniority), min_risk_buff)| {
+						|(((((invest, redeem), supply), price), seniority), min_risk_buffer)| {
 							EpochExecutionTranche {
 								supply: *supply,
 								price: *price,
 								invest: *invest,
 								redeem: *redeem,
 								seniority: *seniority,
-								min_risk_buff: *min_risk_buff,
+								min_risk_buffer: *min_risk_buffer,
 							}
 						},
 					)
@@ -1301,7 +1301,7 @@ pub mod pallet {
 			}
 		}
 
-		/// Scores a solution and returns a healty solution as a result.
+		/// Scores a solution and returns a healthy solution as a result.
 		pub(crate) fn score_solution_healthy(
 			solution: &[TrancheSolution],
 			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
@@ -1378,10 +1378,10 @@ pub mod pallet {
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			let tranches = &info.tranches;
 
-			// Get the usual score we calculate as if the pool would be healty.
+			// Get the usual score we calculate as if the pool would be healthy.
 			let score = Self::calculate_score(solution, tranches)?;
 
-			let risk_buff_score = if state.contains(&UnhealthyState::MinRiskBufferViolated) {
+			let risk_buffer_score = if state.contains(&UnhealthyState::MinRiskBufferViolated) {
 				let total_value = tranches
 					.iter()
 					.fold(Some(T::Balance::zero()), |sum, tranche| {
@@ -1395,22 +1395,22 @@ pub mod pallet {
 					})
 					.ok_or(Error::<T>::Overflow)?;
 
-				let risk_buff = tranches
+				let risk_buffer = tranches
 					.iter()
 					.map(|tranche| tranche.price.checked_mul_int(tranche.supply.clone()))
 					.flatten()
-					.map(|subordination_value| {
-						Perquintill::from_rational(subordination_value, total_value)
+					.map(|subordinated_value| {
+						Perquintill::from_rational(subordinated_value, total_value)
 					})
 					.collect::<Vec<Perquintill>>();
 
 				Some(
 					tranches
 						.iter()
-						.zip(risk_buff)
-						.map(|(tranche, risk_buff)| {
-							risk_buff
-								.checked_sub(&tranche.min_risk_buff)
+						.zip(risk_buffer)
+						.map(|(tranche, risk_buffer)| {
+							risk_buffer
+								.checked_sub(&tranche.min_risk_buffer)
 								// TODO: Is this correct?????
 								.and_then(|div: Perquintill| {
 									Some(div.saturating_reciprocal_mul(T::Balance::one()))
@@ -1423,7 +1423,7 @@ pub mod pallet {
 				None
 			};
 
-			let reserve_buff_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
+			let reserve_buffer_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
 				let (acc_invest, acc_redeem) = solution.iter().zip(tranches).fold(
 					(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
 					|(acc_invest, acc_redeem), (solution, tranches)| {
@@ -1468,8 +1468,8 @@ pub mod pallet {
 				score,
 				state: state.to_vec(),
 				solution: solution.to_vec(),
-				risk_buff_score,
-				reserve_buff_score,
+				risk_buffer_score,
+				reserve_buffer_score,
 			}))
 		}
 
@@ -1890,14 +1890,13 @@ pub mod pallet {
 				.map(|tranche| tranche.min_risk_buffer)
 				.collect::<Vec<_>>();
 
-			let tranche_values: Vec<_> = epoch
+			let new_tranche_supplies: Vec<_> = epoch
 				.tranches
 				.iter()
 				.zip(solution)
 				.map(|(tranche, solution)| {
 					tranche
 						.supply
-						// TODO: Actually calcualate with prices
 						.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
 						.and_then(|value| {
 							value
@@ -1907,13 +1906,62 @@ pub mod pallet {
 				.collect::<Option<Vec<_>>>()
 				.ok_or(Error::<T>::Overflow)?;
 
+			let tranche_prices = epoch
+				.tranches
+				.iter()
+				.map(|tranche| tranche.price)
+				.collect::<Vec<_>>();
+
+			let risk_buffers =
+				Self::calculate_risk_buffers(&new_tranche_supplies, &tranche_prices)?;
+
 			Self::validate_pool_constraints(
 				state,
 				new_reserve,
 				pool_details.max_reserve,
 				&min_risk_buffers,
-				&tranche_values,
+				&risk_buffers,
 			)
+		}
+
+		pub(crate) fn calculate_risk_buffers(
+			tranche_supplies: &Vec<T::Balance>,
+			tranche_prices: &Vec<T::BalanceRatio>,
+		) -> Result<Vec<Perquintill>, DispatchError> {
+			let tranche_values: Vec<_> = tranche_supplies
+				.iter()
+				.zip(tranche_prices)
+				.map(|(supply, price)| price.checked_mul_int(supply.clone()))
+				.collect::<Option<Vec<_>>>()
+				.ok_or(Error::<T>::Overflow)?;
+
+			let pool_value = tranche_values
+				.iter()
+				.fold(
+					Some(Zero::zero()),
+					|sum: Option<T::Balance>, tranche_value| {
+						sum.and_then(|sum| sum.checked_add(tranche_value))
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+
+			// Iterate over the tranches senior => junior.
+			// Buffer of most senior tranche is pool value - senior tranche value.
+			// Buffer of each subordinate tranche is the buffer of the
+			// previous more senior tranche - this tranche value.
+			let mut remaining_subordinate_value = pool_value.clone();
+			let risk_buffers: Vec<Perquintill> = tranche_values
+				.iter()
+				.rev()
+				.map(|tranche_value| {
+					remaining_subordinate_value = remaining_subordinate_value
+						.checked_sub(tranche_value)
+						.unwrap_or(Zero::zero());
+					Perquintill::from_rational(remaining_subordinate_value, pool_value)
+				})
+				.collect::<Vec<Perquintill>>();
+
+			Ok(risk_buffers.into_iter().rev().collect())
 		}
 
 		fn validate_core_constraints(
@@ -1933,12 +1981,12 @@ pub mod pallet {
 			reserve: T::Balance,
 			max_reserve: T::Balance,
 			min_risk_buffers: &[Perquintill],
-			current_tranche_values: &[T::Balance],
+			risk_buffers: &[Perquintill],
 		) -> Result<PoolState, DispatchError> {
 			// TODO: Not sure if this check is needed or we should assume, we checked here, of we should
 			//       write a wrapper or macro that checks if a given set of slices have the same length and
 			//       error out otherwise, cause we need this everywhere if we check it deeper down
-			if min_risk_buffers.len() != current_tranche_values.len() {
+			if min_risk_buffers.len() != risk_buffers.len() {
 				Err(Error::<T>::InvalidData)?
 			}
 
@@ -1946,28 +1994,12 @@ pub mod pallet {
 				Err(Error::<T>::InsufficientReserve)?
 			}
 
-			let total_value = current_tranche_values
-				.iter()
-				.fold(
-					Some(Zero::zero()),
-					|sum: Option<T::Balance>, tranche_value| {
-						sum.and_then(|sum| sum.checked_add(tranche_value))
-					},
-				)
-				.ok_or(Error::<T>::Overflow)?;
-
-			let mut buffer_value = total_value;
-			for (tranche_value, min_risk_buffer) in current_tranche_values
+			for (risk_buffer, min_risk_buffer) in risk_buffers
 				.iter()
 				.rev()
 				.zip(min_risk_buffers.iter().copied().rev())
 			{
-				buffer_value = buffer_value
-					.checked_sub(tranche_value)
-					.ok_or(Error::<T>::Overflow)?;
-
-				let risk_buffer = Perquintill::from_rational(buffer_value, total_value);
-				if risk_buffer < min_risk_buffer {
+				if risk_buffer < &min_risk_buffer {
 					state.update_with_unhealthy(UnhealthyState::MinRiskBufferViolated);
 				}
 			}
