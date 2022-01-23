@@ -80,11 +80,11 @@ where
 	type Weight = (Balance, Balance);
 	type External = NumTranches;
 
-	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
-		let redeem_starts = 10u128.checked_pow(input).unwrap_or(u128::MAX);
+	fn calculate_weight(&self, n_tranches: Self::External) -> Self::Weight {
+		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
 		(
 			10u128
-				.checked_pow(self.seniority.saturating_add(1))
+				.checked_pow(n_tranches.checked_sub(self.seniority).unwrap_or(u32::MAX))
 				.unwrap_or(u128::MAX)
 				.into(),
 			// TODO(mustermeiszer): How to do this sanely
