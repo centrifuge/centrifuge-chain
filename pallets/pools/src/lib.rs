@@ -269,13 +269,6 @@ impl<Balance> EpochSolution<Balance>
 where
 	Balance: Copy,
 {
-	pub fn score(&self) -> Balance {
-		match self {
-			EpochSolution::Healthy(solution) => solution.score,
-			EpochSolution::Unhealthy(solution) => solution.score,
-		}
-	}
-
 	pub fn healthy(&self) -> bool {
 		match self {
 			EpochSolution::Healthy(_) => true,
@@ -346,7 +339,6 @@ pub struct HealthySolution<Balance> {
 
 #[derive(Encode, Decode, Clone, Eq, RuntimeDebug, TypeInfo)]
 pub struct UnhealthySolution<Balance> {
-	pub score: Balance,
 	pub state: Vec<UnhealthyState>,
 	pub solution: Vec<TrancheSolution>,
 	// The risk buffer score per tranche (less junior tranche) for this solution
@@ -360,27 +352,25 @@ where
 	Balance: PartialOrd,
 {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		// TODO: This seems not correct
-		let _score_better = self.score < other.score;
-
-		// TODO: Unsafe unwrap. The comparing of solutions is yet to be specced
-		let tranche_buffer_increased = self
+		let senior_to_junior_improvement_scores = self
 			.risk_buffer_improvement_scores
 			.as_ref()
-			.unwrap()
-			.iter()
-			.zip(other.risk_buffer_improvement_scores.as_ref().unwrap())
-			.map(|(s_1_buff, s_2_buff)| s_1_buff >= s_2_buff)
-			.all(|buff_greater| buff_greater);
-
-		// TODO: Currently we not support this.
-		//let reserve_score_increased = self.reserve_improvement_score < other.reserve_improvement_score;
-
-		if tranche_buffer_increased {
-			Some(Ordering::Greater)
-		} else {
-			Some(Ordering::Less)
+			.zip(other.risk_buffer_improvement_scores.as_ref());
+		for (s_1, s_2) in senior_to_junior_improvement_scores {
+			if s_1 > s_2 {
+				return Some(Ordering::Greater);
+			} else if s_1 < s_2 {
+				return Some(Ordering::Less);
+			}
 		}
+
+		if self.reserve_improvement_score > other.reserve_improvement_score {
+			return Some(Ordering::Greater);
+		} else if self.reserve_improvement_score < other.reserve_improvement_score {
+			return Some(Ordering::Less);
+		}
+
+		Some(Ordering::Equal)
 	}
 }
 
@@ -394,7 +384,6 @@ where
 			.zip(&other.risk_buffer_improvement_scores)
 			.map(|(s_1_buff, s_2_buff)| s_1_buff == s_2_buff)
 			.all(|same_buff| same_buff)
-			&& self.score == other.score
 			&& self.reserve_improvement_score == other.reserve_improvement_score
 	}
 }
@@ -1421,13 +1410,11 @@ pub mod pallet {
 						non_junior_tranches
 							.zip(risk_buffers)
 							.map(|(tranche, risk_buffer)| {
-								tranche
-									.min_risk_buffer
-									.checked_sub(&risk_buffer)
-									// TODO: Is this correct?????
-									.and_then(|div: Perquintill| {
+								tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
+									|div: Perquintill| {
 										Some(div.saturating_reciprocal_mul(T::Balance::one()))
-									})
+									},
+								)
 							})
 							.collect::<Option<Vec<_>>>()
 							.ok_or(Error::<T>::Overflow)?,
@@ -1482,7 +1469,6 @@ pub mod pallet {
 			};
 
 			Ok(EpochSolution::Unhealthy(UnhealthySolution {
-				score: Zero::zero(),
 				state: state.to_vec(),
 				solution: solution.to_vec(),
 				risk_buffer_improvement_scores,
