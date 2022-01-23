@@ -32,7 +32,9 @@ use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
 use runtime_common::{Amount, Rate, CFG as CURRENCY};
 use sp_runtime::traits::StaticLookup;
 use sp_std::vec;
-use test_utils::{assert_last_event, create, create_nft_class, expect_asset_owner, mint_nft};
+use test_utils::{
+	assert_last_event, create as create_test_pool, create_nft_class, expect_asset_owner, mint_nft,
+};
 
 pub struct Pallet<T: Config>(LoansPallet<T>);
 
@@ -150,20 +152,20 @@ where
 	let pool_account = pool_account::<T>(pool_id.into());
 	let pal_pool_id: T::PoolId = pool_id.into();
 	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), 0u8.into()),
+		CurrencyId::Tranche(pal_pool_id.into(), 0u8),
 		&pool_account,
 		(500 * CURRENCY).into(),
 	);
 	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), 1u8.into()),
+		CurrencyId::Tranche(pal_pool_id.into(), 1u8),
 		&pool_account,
 		(500 * CURRENCY).into(),
 	);
-	create::<T>(
+	create_test_pool::<T>(
 		pool_id.into(),
 		pool_owner.clone(),
-		junior_inv.clone(),
-		senior_inv.clone(),
+		junior_inv,
+		senior_inv,
 		CurrencyId::Usd,
 	);
 
@@ -260,7 +262,7 @@ fn add_test_write_off_groups<T: Config>(pool_id: PoolIdOf<T>, risk_admin: T::Acc
 where
 	<T as LoanConfig>::Rate: From<Rate>,
 {
-	for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
+	for group in &[(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
 		LoansPallet::<T>::add_write_off_group(
 			RawOrigin::Signed(risk_admin.clone()).into(),
 			pool_id,
@@ -304,7 +306,7 @@ benchmarks! {
 		assert_eq!(pool_id, got_pool_id);
 	}
 
-	create_loan {
+	create {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, asset)
@@ -321,7 +323,7 @@ benchmarks! {
 		expect_asset_owner::<T>(loan_asset, loan_owner);
 	}
 
-	price_loan {
+	price {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
 		LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
@@ -441,7 +443,7 @@ benchmarks! {
 		assert!(loan_info.present_value(&vec![]).unwrap() > Zero::zero());
 	}
 
-	write_off_loan {
+	write_off {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
 		LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
@@ -464,14 +466,14 @@ benchmarks! {
 		assert!(!loan_info.admin_written_off);
 	}
 
-	admin_write_off_loan {
+	admin_write_off {
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>();
 		LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
 		let loan_id: T::LoanId = 1u128.into();
 		activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner.clone());
 		let amount = Amount::from_inner(100 * CURRENCY).into();
-		LoansPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+		LoansPallet::<T>::borrow(RawOrigin::Signed(loan_owner).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 2+ years
 		let now = TimestampPallet::<T>::get().into();
 		let after_maturity = now + (2 * math::seconds_per_year() + 130 * math::seconds_per_day()) * 1000;
@@ -570,7 +572,7 @@ benchmarks! {
 		LoansPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
-		let after_one_year = now + 1 * math::seconds_per_year() * 1000;
+		let after_one_year = now + math::seconds_per_year() * 1000;
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());

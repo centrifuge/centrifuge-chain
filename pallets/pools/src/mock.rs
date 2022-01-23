@@ -277,8 +277,8 @@ impl fake_nav::Config for Test {
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
-pub const JUNIOR_TRANCHE_ID: u8 = 1;
-pub const SENIOR_TRANCHE_ID: u8 = 0;
+pub const JUNIOR_TRANCHE_ID: u8 = 0;
+pub const SENIOR_TRANCHE_ID: u8 = 1;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {

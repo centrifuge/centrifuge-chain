@@ -185,11 +185,11 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
-		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
+		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
 
 		let epoch_tranches = tranches
 			.iter()
-			.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
+			.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche, value)| EpochExecutionTranche {
 				supply: value,
 				price: One::one(),
@@ -250,35 +250,35 @@ fn pool_constraints_pass() {
 			min_risk_buffer: Perquintill::from_float(0.2),
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
-			seniority: 0,
+			seniority: 3,
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.1),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 30,
-			seniority: 1,
+			seniority: 2,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			min_risk_buffer: Perquintill::from_float(0.05),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
-			seniority: 2,
+			seniority: 1,
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			min_risk_buffer: Perquintill::zero(),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
-			seniority: 3,
+			seniority: 0,
 			..Default::default()
 		};
-		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
+		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
 
 		let epoch_tranches = tranches
 			.iter()
-			.zip(vec![20, 35, 70, 80])
+			.zip(vec![80, 70, 35, 20])
 			.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
 			.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
 				supply: value,
@@ -371,14 +371,14 @@ fn epoch() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				},
-				TrancheInput {
 					interest_per_sec: None,
 					min_risk_buffer: None,
-					seniority: None,
+					seniority: None
+				},
+				TrancheInput {
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
 				}
 			],
 			CurrencyId::Usd,
@@ -556,13 +556,13 @@ fn submission_period() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					interest_per_sec: None,
+					min_risk_buffer: None,
 					seniority: None,
 				},
 				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
 					seniority: None,
 				}
 			],
@@ -715,14 +715,14 @@ fn collect_tranche_tokens() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				},
-				TrancheInput {
 					interest_per_sec: None,
 					min_risk_buffer: None,
-					seniority: None,
+					seniority: None
+				},
+				TrancheInput {
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
 				}
 			],
 			CurrencyId::Usd,
@@ -827,15 +827,15 @@ fn test_approve_and_remove_roles() {
 			0,
 			vec![
 				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				},
-				TrancheInput {
 					interest_per_sec: None,
 					min_risk_buffer: None,
-					seniority: None,
-				}
+					seniority: None
+				},
+				TrancheInput {
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
+				},
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -926,7 +926,7 @@ fn invalid_tranche_id_is_err() {
 			vec![TrancheInput {
 				interest_per_sec: None,
 				min_risk_buffer: None,
-				seniority: None,
+				seniority: None
 			},],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -963,7 +963,7 @@ fn updating_with_same_amount_is_err() {
 			vec![TrancheInput {
 				interest_per_sec: None,
 				min_risk_buffer: None,
-				seniority: None,
+				seniority: None
 			},],
 			CurrencyId::Usd,
 			10_000 * CURRENCY

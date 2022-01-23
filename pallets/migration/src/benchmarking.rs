@@ -19,7 +19,7 @@ benchmarks! {
 		Pallet::<T>::migrate_balances_issuance(RawOrigin::Root.into(), additional_issuance).unwrap();
 	}: finalize(RawOrigin::Root)
 	verify {
-		assert!(<Completed<T>>::get() == Status::Complete);
+		assert!(<Status<T>>::get() == MigrationStatus::Complete);
 	}
   migrate_system_account{
 		let n in 1 .. <T as Config>::MigrationMaxAccounts::get();

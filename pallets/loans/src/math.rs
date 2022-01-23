@@ -16,6 +16,7 @@ use crate::math::Adjustment::{Dec, Inc};
 use crate::WriteOffGroup;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::FixedPointNumber;
+use sp_runtime::{ArithmeticError, DispatchError};
 use sp_std::vec::Vec;
 
 /// calculates the latest accumulated rate since the last
@@ -156,19 +157,24 @@ pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: u64,
 	now: u64,
 	groups: &Vec<WriteOffGroup<Rate>>,
-) -> Option<u32> {
+) -> Result<Option<u32>, DispatchError> {
 	let mut index = None;
 	let mut highest_overdue_days = 0;
 	let seconds_per_day = seconds_per_day();
-	groups.iter().enumerate().for_each(|(idx, group)| {
+	for (idx, group) in groups.iter().enumerate() {
 		let overdue_days = group.overdue_days;
-		let offset = maturity_date + seconds_per_day * overdue_days;
+		let offset = overdue_days
+			.checked_mul(seconds_per_day)
+			.and_then(|val| maturity_date.checked_add(val))
+			.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
+
 		if overdue_days >= highest_overdue_days && now >= offset {
 			index = Some(idx as u32);
 			highest_overdue_days = overdue_days;
 		}
-	});
-	index
+	}
+
+	Ok(index)
 }
 
 /// calculates ceiling for a loan,
@@ -263,6 +269,7 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use frame_support::assert_ok;
 	use frame_support::sp_runtime::traits::CheckedMul;
 	use runtime_common::{Amount, Rate, CFG as USD};
 	use sp_arithmetic::{FixedI128, PerThing};
@@ -457,7 +464,8 @@ mod tests {
 			let md = maturity * sec_per_day;
 			let now = md + now * sec_per_day;
 			let got_index = valid_write_off_group(md, now, &groups);
-			assert_eq!(index, got_index);
+			assert_ok!(got_index);
+			assert_eq!(index, got_index.unwrap());
 		})
 	}
 }
