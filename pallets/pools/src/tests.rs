@@ -52,7 +52,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
-			end_challenge_period: 0,
+			challenge_period_end: None,
 		};
 
 		let full_solution = pool
@@ -130,7 +130,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
-			end_challenge_period: Default::default(),
+			challenge_period_end: None,
 		};
 
 		let full_solution = pool
@@ -222,7 +222,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
-			end_challenge_period: Default::default(),
+			challenge_period_end: None,
 		};
 
 		let full_solution = pool
@@ -313,7 +313,7 @@ fn pool_constraints_pass() {
 			max_reserve: pool.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
-			end_challenge_period: Default::default(),
+			challenge_period_end: None,
 		};
 
 		let full_solution = pool

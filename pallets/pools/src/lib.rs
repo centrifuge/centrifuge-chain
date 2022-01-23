@@ -255,7 +255,7 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
 	max_reserve: Balance,
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
 	best_submission: Option<EpochSolution<Balance>>,
-	end_challenge_period: Moment,
+	challenge_period_end: Option<Moment>,
 }
 
 /// The solutions struct for epoch solution
@@ -352,6 +352,9 @@ where
 	Balance: PartialOrd,
 {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		// First, we check if any of the risk buffer scores are higher.
+		// A higher risk buffer score for a more senior tranche is more important
+		// than one for a less senior tranche.
 		let senior_to_junior_improvement_scores = self
 			.risk_buffer_improvement_scores
 			.as_ref()
@@ -364,6 +367,7 @@ where
 			}
 		}
 
+		// If there are no differences in risk buffer scores, we look at the reserve improvement score.
 		if self.reserve_improvement_score > other.reserve_improvement_score {
 			return Some(Ordering::Greater);
 		} else if self.reserve_improvement_score < other.reserve_improvement_score {
@@ -382,8 +386,8 @@ where
 		self.risk_buffer_improvement_scores
 			.iter()
 			.zip(&other.risk_buffer_improvement_scores)
-			.map(|(s_1_buff, s_2_buff)| s_1_buff == s_2_buff)
-			.all(|same_buff| same_buff)
+			.map(|(s_1_score, s_2_score)| s_1_score == s_2_score)
+			.all(|same_score| same_score)
 			&& self.reserve_improvement_score == other.reserve_improvement_score
 	}
 }
@@ -686,7 +690,7 @@ pub mod pallet {
 
 			Self::is_valid_tranche_change(&Vec::new(), &tranches)?;
 
-			let now = T::Time::now().as_secs();
+			let now = Self::now();
 			let tranches = tranches
 				.into_iter()
 				.enumerate()
@@ -999,7 +1003,7 @@ pub mod pallet {
 					Error::<T>::InSubmissionPeriod
 				);
 
-				let now = T::Time::now().as_secs();
+				let now = Self::now();
 				ensure!(
 					now.saturating_sub(pool.last_epoch_closed) >= pool.min_epoch_time,
 					Error::<T>::MinEpochTimeHasNotPassed
@@ -1128,7 +1132,7 @@ pub mod pallet {
 					max_reserve: pool.max_reserve,
 					tranches: epoch_tranches,
 					best_submission: None,
-					end_challenge_period: now.saturating_add(pool.challenge_time),
+					challenge_period_end: None,
 				};
 
 				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
@@ -1168,25 +1172,25 @@ pub mod pallet {
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch| -> DispatchResult {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
-
-				// Sum of all order-type weighted invest & redeem amounts for this solution
-				let epoch_solution = Self::score_solution(&pool_id, &epoch, &solution)?;
+				let new_solution = Self::score_solution(&pool_id, &epoch, &solution)?;
 
 				if let Some(ref previous_solution) = epoch.best_submission {
 					ensure!(
-						&epoch_solution > previous_solution,
+						&new_solution > previous_solution,
 						Error::<T>::NotNewBestSubmission
 					);
 				}
 
-				// Assign new solutuion
-				epoch.best_submission = Some(epoch_solution.clone());
+				epoch.best_submission = Some(new_solution.clone());
 
-				Self::deposit_event(Event::SolutionSubmitted(
-					pool_id,
-					epoch.epoch,
-					epoch_solution,
-				));
+				// Challenge period starts when the first new solution has been submitted
+				if epoch.challenge_period_end.is_none() {
+					let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+					epoch.challenge_period_end =
+						Some(Self::now().saturating_add(pool.challenge_time));
+				}
+
+				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
 
 				Ok(())
 			})
@@ -1207,7 +1211,10 @@ pub mod pallet {
 				);
 
 				ensure!(
-					epoch.end_challenge_period < Self::now(),
+					match epoch.challenge_period_end {
+						Some(challenge_period_end) => challenge_period_end < Self::now(),
+						None => false,
+					},
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
