@@ -818,9 +818,6 @@ fn execute_info_removed_after_epoch_execute() {
 }
 
 #[test]
-fn scoring_solutions_works() {}
-
-#[test]
 fn collect_tranche_tokens() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
