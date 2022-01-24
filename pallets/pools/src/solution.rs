@@ -189,9 +189,13 @@ where
 			other.has_state(&UnhealthyState::MinRiskBufferViolated),
 		) {
 			(true, true) => {
+				// If both vectors exist, we compare them element by element.
+				// As we sort tranches from senior -> junior, we ensure, that
+				// at the moment where a solution improves the risk buffer of a more
+				// senior tranche, it is ruled the better solution!
 				if self.risk_buffer_improvement_scores > other.risk_buffer_improvement_scores {
 					return Some(Ordering::Greater);
-				} else if self.risk_buffer_improvement_scores > other.risk_buffer_improvement_scores
+				} else if self.risk_buffer_improvement_scores < other.risk_buffer_improvement_scores
 				{
 					return Some(Ordering::Less);
 				}
@@ -201,7 +205,8 @@ where
 			(false, false) => (),
 		}
 
-		// If there are no differences in risk buffer scores, we look at the reserve improvement score.
+		// If there are no differences in risk buffer scores or there is no risk buffer violation
+		// we look at the reserve improvement score.
 		match (
 			self.has_state(&UnhealthyState::MaxReserveViolated),
 			other.has_state(&UnhealthyState::MaxReserveViolated),
@@ -218,6 +223,7 @@ where
 			(false, false) => (),
 		}
 
+		// If both of the above rules to not apply, we value the solutions as equal
 		Some(Ordering::Equal)
 	}
 }
@@ -471,5 +477,141 @@ mod test {
 	}
 
 	// Here we start with tests that cover the scoring behaviour which is implemented
-	// via the `ParitalOrd` implementation of `EpochSolution` and `UnhealthySolution`
+	// via the `ParitalOrd` implementation of `EpochSolution`, `HealthySolution` and `UnhealthySolution`.
+
+	#[test]
+	fn reserve_improvement_better() {
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: Default::default(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: None,
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: Default::default(),
+			solution: Default::default(),
+			reserve_improvement_score: Some(6),
+			risk_buffer_improvement_scores: None,
+		});
+
+		assert!(solution_1 < solution_2);
+	}
+
+	#[test]
+	fn no_reserve_violation_better() {
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: Default::default(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: None,
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: Default::default(),
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: None,
+		});
+
+		assert!(solution_1 < solution_2);
+	}
+
+	#[test]
+	fn no_risk_buff_violation_better() {
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![
+				UnhealthyState::MaxReserveViolated,
+				UnhealthyState::MinRiskBufferViolated,
+			],
+			solution: Default::default(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: Default::default(),
+			reserve_improvement_score: Some(1000),
+			risk_buffer_improvement_scores: None,
+		});
+
+		assert!(solution_1 < solution_2);
+	}
+
+	#[test]
+	fn reserve_improvement_decides_over_equal_min_risk_buff() {
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![
+				UnhealthyState::MaxReserveViolated,
+				UnhealthyState::MinRiskBufferViolated,
+			],
+			solution: Default::default(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![
+				UnhealthyState::MaxReserveViolated,
+				UnhealthyState::MinRiskBufferViolated,
+			],
+			solution: Default::default(),
+			reserve_improvement_score: Some(6),
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		assert!(solution_1 < solution_2);
+	}
+
+	#[test]
+	fn risk_buff_improvement_better() {
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MinRiskBufferViolated],
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MinRiskBufferViolated],
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: Some(vec![2u128, 0u128, 0u128, 0u128]), // 4 tranches
+		});
+
+		assert!(solution_1 < solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MinRiskBufferViolated],
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MinRiskBufferViolated],
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 5u128]), // 4 tranches
+		});
+
+		assert!(solution_1 < solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MinRiskBufferViolated],
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MinRiskBufferViolated],
+			solution: Default::default(),
+			reserve_improvement_score: None,
+			risk_buffer_improvement_scores: Some(vec![1u128, 3u128, 3u128, 5u128]), // 4 tranches
+		});
+
+		assert!(solution_1 < solution_2);
+	}
 }
