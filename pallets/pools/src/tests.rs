@@ -142,9 +142,11 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			})
 			.collect::<Vec<_>>();
 
-		assert_noop!(
+		assert_eq!(
 			Pools::is_valid_solution(pool, &epoch, &full_solution),
-			Error::<Test>::InsufficientReserve
+			Ok(PoolState::Unhealthy(vec![
+				UnhealthyState::MaxReserveViolated
+			]))
 		);
 
 		assert_ok!(Pools::is_valid_solution(
