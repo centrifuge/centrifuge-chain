@@ -149,6 +149,7 @@ impl PoolState {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UnhealthyState {
+	ZeroFulfillment,
 	MaxReserveViolated,
 	MinRiskBufferViolated,
 }
@@ -1858,7 +1859,7 @@ pub mod pallet {
 			solution: &[TrancheSolution],
 		) -> Result<PoolState, DispatchError> {
 			// start with in a healthy state
-			let state = PoolState::Healthy;
+			let mut state = PoolState::Healthy;
 
 			// EpochExecutionInfo is generated from PoolDetails, hence the
 			// tranche length of the former equals the later.
@@ -1866,6 +1867,14 @@ pub mod pallet {
 				pool_details.tranches.len() == solution.len(),
 				Error::<T>::InvalidSolution
 			);
+
+			// ZeroFulfillment solutions are regarded as unhealthy.
+			if solution.iter().all(|tranche_solution| {
+				tranche_solution.invest_fulfillment == Perquintill::zero()
+					&& tranche_solution.redeem_fulfillment == Perquintill::zero()
+			}) {
+				state.update_with_unhealthy(UnhealthyState::ZeroFulfillment);
+			}
 
 			let acc_invest: T::Balance = epoch
 				.tranches
@@ -2007,7 +2016,7 @@ pub mod pallet {
 			}
 
 			if reserve > max_reserve {
-				state.update_with_unhealthy(UnhealthyState::MaxReserveViolated)
+				state.update_with_unhealthy(UnhealthyState::MaxReserveViolated);
 			}
 
 			for (risk_buffer, min_risk_buffer) in risk_buffers
