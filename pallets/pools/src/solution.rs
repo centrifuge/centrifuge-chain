@@ -478,6 +478,38 @@ mod test {
 
 	// Here we start with tests that cover the scoring behaviour which is implemented
 	// via the `ParitalOrd` implementation of `EpochSolution`, `HealthySolution` and `UnhealthySolution`.
+	#[test]
+	fn higher_score_is_better() {
+		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 3,
+		});
+
+		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 4,
+		});
+		assert!(solution_1 < solution_2);
+	}
+
+	#[test]
+	fn healthy_always_above_unhealthy() {
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![
+				UnhealthyState::MinRiskBufferViolated,
+				UnhealthyState::MaxReserveViolated,
+			],
+			solution: Default::default(),
+			reserve_improvement_score: Some(1000),
+			risk_buffer_improvement_scores: Some(vec![1u128, 2u128, 3u128, 4u128]), // 4 tranches
+		});
+
+		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: Default::default(),
+			score: 0,
+		});
+		assert!(solution_1 < solution_2);
+	}
 
 	#[test]
 	fn reserve_improvement_better() {
@@ -489,7 +521,7 @@ mod test {
 		});
 
 		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
-			state: Default::default(),
+			state: vec![UnhealthyState::MaxReserveViolated],
 			solution: Default::default(),
 			reserve_improvement_score: Some(6),
 			risk_buffer_improvement_scores: None,
