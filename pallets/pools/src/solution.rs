@@ -125,18 +125,7 @@ where
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 		match self {
 			EpochSolution::Healthy(s_1) => match other {
-				EpochSolution::Healthy(s_2) => {
-					let score_1 = &s_1.score;
-					let score_2 = &s_2.score;
-
-					Some(if score_1 > score_2 {
-						Ordering::Greater
-					} else if score_1 < score_2 {
-						Ordering::Less
-					} else {
-						Ordering::Equal
-					})
-				}
+				EpochSolution::Healthy(s_2) => s_1.partial_cmp(s_2),
 				EpochSolution::Unhealthy(_) => Some(Ordering::Greater),
 			},
 			EpochSolution::Unhealthy(s_1) => match other {
@@ -151,6 +140,24 @@ where
 pub struct HealthySolution<Balance> {
 	pub solution: Vec<TrancheSolution>,
 	pub score: Balance,
+}
+
+impl<Balance> PartialOrd for HealthySolution<Balance>
+where
+	Balance: PartialOrd,
+{
+	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+		let score_self = &self.score;
+		let score_other = &other.score;
+
+		Some(if score_self > score_other {
+			Ordering::Greater
+		} else if score_self < score_other {
+			Ordering::Less
+		} else {
+			Ordering::Equal
+		})
+	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -462,4 +469,7 @@ mod test {
 		assert!(unhealthy.has_state(&UnhealthyState::MaxReserveViolated));
 		assert!(!unhealthy.has_state(&UnhealthyState::MinRiskBufferViolated));
 	}
+
+	// Here we start with tests that cover the scoring behaviour which is implemented
+	// via the `ParitalOrd` implementation of `EpochSolution` and `UnhealthySolution`
 }
