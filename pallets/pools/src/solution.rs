@@ -65,7 +65,6 @@ impl PoolState {
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum UnhealthyState {
-	ZeroFulfillment,
 	MaxReserveViolated,
 	MinRiskBufferViolated,
 }
@@ -159,31 +158,52 @@ pub struct UnhealthySolution<Balance> {
 	pub reserve_improvement_score: Option<Balance>,
 }
 
+impl<Balance> UnhealthySolution<Balance> {
+	fn has_state(&self, state: &UnhealthyState) -> bool {
+		self.state.contains(state)
+	}
+}
+
 impl<Balance> PartialOrd for UnhealthySolution<Balance>
 where
 	Balance: PartialOrd,
 {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		// First, we check if any of the risk buffer scores are higher.
+		// We check if any of the risk buffer scores are higher.
 		// A higher risk buffer score for a more senior tranche is more important
 		// than one for a less senior tranche.
-		let senior_to_junior_improvement_scores = self
-			.risk_buffer_improvement_scores
-			.as_ref()
-			.zip(other.risk_buffer_improvement_scores.as_ref());
-		for (s_1, s_2) in senior_to_junior_improvement_scores {
-			if s_1 > s_2 {
-				return Some(Ordering::Greater);
-			} else if s_1 < s_2 {
-				return Some(Ordering::Less);
+		match (
+			self.has_state(&UnhealthyState::MinRiskBufferViolated),
+			other.has_state(&UnhealthyState::MinRiskBufferViolated),
+		) {
+			(true, true) => {
+				if self.risk_buffer_improvement_scores > other.risk_buffer_improvement_scores {
+					return Some(Ordering::Greater);
+				} else if self.risk_buffer_improvement_scores > other.risk_buffer_improvement_scores
+				{
+					return Some(Ordering::Less);
+				}
 			}
+			(false, true) => return Some(Ordering::Greater),
+			(true, false) => return Some(Ordering::Less),
+			(false, false) => (),
 		}
 
 		// If there are no differences in risk buffer scores, we look at the reserve improvement score.
-		if self.reserve_improvement_score > other.reserve_improvement_score {
-			return Some(Ordering::Greater);
-		} else if self.reserve_improvement_score < other.reserve_improvement_score {
-			return Some(Ordering::Less);
+		match (
+			self.has_state(&UnhealthyState::MaxReserveViolated),
+			other.has_state(&UnhealthyState::MaxReserveViolated),
+		) {
+			(true, true) => {
+				if self.reserve_improvement_score > other.reserve_improvement_score {
+					return Some(Ordering::Greater);
+				} else if self.reserve_improvement_score < other.reserve_improvement_score {
+					return Some(Ordering::Less);
+				}
+			}
+			(false, true) => return Some(Ordering::Greater),
+			(true, false) => return Some(Ordering::Less),
+			(false, false) => (),
 		}
 
 		Some(Ordering::Equal)
