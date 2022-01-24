@@ -1,4 +1,4 @@
-use crate::{self as pallet_pools, Config, DispatchResult};
+use crate::{self as pallet_pools, Config, DispatchResult, Error};
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
@@ -279,6 +279,8 @@ pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 pub const JUNIOR_TRANCHE_ID: u8 = 0;
 pub const SENIOR_TRANCHE_ID: u8 = 1;
+pub const START_DATE: u64 = 1640991600; // 2022.01.01
+pub const SECONDS: u64 = 1000;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -299,13 +301,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::set_block_number(1);
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
-		Timestamp::set(Origin::none(), 1).unwrap();
+		Timestamp::set(Origin::none(), START_DATE).unwrap();
 	});
 	ext
 }
 
 pub fn next_block() {
-	next_block_after(6)
+	next_block_after(12)
 }
 
 pub fn next_block_after(seconds: u64) {
@@ -314,7 +316,7 @@ pub fn next_block_after(seconds: u64) {
 	System::set_block_number(System::block_number() + 1);
 	System::on_initialize(System::block_number());
 	Timestamp::on_initialize(System::block_number());
-	Timestamp::set(Origin::none(), Timestamp::now() + seconds).unwrap();
+	Timestamp::set(Origin::none(), Timestamp::now() + seconds * SECONDS).unwrap();
 }
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
@@ -333,4 +335,26 @@ pub fn test_nav_up(pool_id: u64, amount: Balance) {
 
 pub fn test_nav_down(pool_id: u64, amount: Balance) {
 	FakeNav::update(pool_id, FakeNav::value(pool_id) - amount);
+}
+
+/// Assumes externalities are available
+pub fn invest_close_and_collect(
+	pool_id: u64,
+	investments: Vec<(Origin, TrancheId, Balance)>,
+) -> DispatchResult {
+	for (who, tranche_id, investment) in investments.clone() {
+		Pools::update_invest_order(who, pool_id, tranche_id, investment)?;
+	}
+
+	Pools::close_epoch(Origin::signed(10), pool_id)?;
+
+	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
+		.map_err(|_| Error::<Test>::NoSuchPool)?
+		.last_epoch_closed;
+
+	for (who, tranche_id, _) in investments {
+		Pools::collect(who, pool_id, tranche_id, epoch as u32)?;
+	}
+
+	Ok(())
 }

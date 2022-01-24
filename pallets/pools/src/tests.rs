@@ -732,6 +732,95 @@ fn submission_period() {
 }
 
 #[test]
+fn execute_info_removed_after_epoch_execute() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = Origin::signed(2);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner.clone(),
+			0,
+			vec![
+				TrancheInput {
+					interest_per_sec: None,
+					min_risk_buffer: None,
+					seniority: None,
+				},
+				TrancheInput {
+					interest_per_sec: Some(senior_interest_rate),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None,
+				}
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(junior_investor.clone(), JUNIOR_TRANCHE_ID, 500 * CURRENCY),
+				(senior_investor.clone(), SENIOR_TRANCHE_ID, 500 * CURRENCY),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			JUNIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::from_float(0.10),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::one(),
+				}
+			]
+		));
+
+		next_block();
+
+		assert_ok!(Pools::execute_epoch(pool_owner, 0));
+		assert!(!EpochExecution::<Test>::contains_key(0));
+	});
+}
+
+#[test]
+fn scoring_solutions_works() {}
+
+#[test]
 fn collect_tranche_tokens() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
