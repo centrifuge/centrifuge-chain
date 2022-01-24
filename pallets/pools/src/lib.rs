@@ -1809,7 +1809,7 @@ pub mod pallet {
 			}
 
 			if reserve > max_reserve {
-				state.update_with_unhealthy(UnhealthyState::MaxReserveViolated);
+				state.add_unhealthy(UnhealthyState::MaxReserveViolated);
 			}
 
 			for (risk_buffer, min_risk_buffer) in risk_buffers
@@ -1818,7 +1818,7 @@ pub mod pallet {
 				.zip(min_risk_buffers.iter().copied().rev())
 			{
 				if risk_buffer < &min_risk_buffer {
-					state.update_with_unhealthy(UnhealthyState::MinRiskBufferViolated);
+					state.add_unhealthy(UnhealthyState::MinRiskBufferViolated);
 				}
 			}
 

@@ -19,43 +19,48 @@ pub enum PoolState {
 }
 
 impl PoolState {
+	/// Updates a PoolState to update.
+	///
+	/// NOTE:
+	/// * This will switch a PoolState::Healthy -> PoolState::Unhealthy(_) and vice versa
+	/// * If an already unhealthy state is updated, the new Vec<UnhealthyState> inside the
+	///   enum will be **overwritten** with the newly passed unhealthy states.
+	///   -> Use `add_unhealthy` or `rm_unhealthy` if the other states should be kept.
 	pub fn update(&mut self, update: PoolState) -> &mut Self {
-		match self {
-			PoolState::Healthy => match update {
-				PoolState::Healthy => self,
-				PoolState::Unhealthy(_) => {
-					*self = update;
-					self
-				}
-			},
-			PoolState::Unhealthy(states) => match update {
-				PoolState::Healthy => {
-					*self = update;
-					self
-				}
-				PoolState::Unhealthy(updates_states) => {
-					updates_states.into_iter().for_each(|unhealthy| {
-						if !states.contains(&unhealthy) {
-							states.push(unhealthy)
-						}
-					});
-					self
-				}
-			},
-		}
+		*self = update;
+		self
 	}
 
-	pub fn update_with_unhealthy(&mut self, update: UnhealthyState) -> &mut Self {
+	pub fn add_unhealthy(&mut self, add: UnhealthyState) -> &mut Self {
 		match self {
 			PoolState::Healthy => {
 				let mut states = Vec::new();
-				states.push(update);
+				states.push(add);
 				*self = PoolState::Unhealthy(states);
 				self
 			}
 			PoolState::Unhealthy(states) => {
-				if !states.contains(&update) {
-					states.push(update);
+				if !states.contains(&add) {
+					states.push(add);
+				}
+				self
+			}
+		}
+	}
+
+	pub fn rm_unhealthy(&mut self, rm: UnhealthyState) -> &mut Self {
+		match self {
+			PoolState::Healthy => {
+				let mut states = Vec::new();
+				states.push(rm);
+				*self = PoolState::Unhealthy(states);
+				self
+			}
+			PoolState::Unhealthy(states) => {
+				states.retain(|val| val != &rm);
+
+				if states.len() == 0 {
+					*self = PoolState::Healthy;
 				}
 				self
 			}
@@ -102,7 +107,7 @@ where
 	fn eq(&self, other: &Self) -> bool {
 		match self {
 			EpochSolution::Healthy(s_1) => match other {
-				EpochSolution::Healthy(s_2) => s_1.score == s_2.score,
+				EpochSolution::Healthy(s_2) => s_1 == s_2,
 				EpochSolution::Unhealthy(_) => false,
 			},
 			EpochSolution::Unhealthy(s_1) => match other {
@@ -148,7 +153,7 @@ pub struct HealthySolution<Balance> {
 	pub score: Balance,
 }
 
-#[derive(Encode, Decode, Clone, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct UnhealthySolution<Balance> {
 	pub state: Vec<UnhealthyState>,
 	pub solution: Vec<TrancheSolution>,
@@ -210,23 +215,251 @@ where
 	}
 }
 
-impl<Balance> PartialEq for UnhealthySolution<Balance>
-where
-	Balance: PartialEq,
-{
-	fn eq(&self, other: &Self) -> bool {
-		self.risk_buffer_improvement_scores
-			.iter()
-			.zip(&other.risk_buffer_improvement_scores)
-			.map(|(s_1_score, s_2_score)| s_1_score == s_2_score)
-			.all(|same_score| same_score)
-			&& self.reserve_improvement_score == other.reserve_improvement_score
-	}
-}
-
 // The solution struct for a specific tranche
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, Copy)]
 pub struct TrancheSolution {
 	pub invest_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	fn get_tranche_solution(invest_fulfillment: f64, redeem_fulfillment: f64) -> TrancheSolution {
+		TrancheSolution {
+			invest_fulfillment: Perquintill::from_float(invest_fulfillment),
+			redeem_fulfillment: Perquintill::from_float(redeem_fulfillment),
+		}
+	}
+
+	fn get_solution(fulfillments: Vec<(f64, f64)>) -> Vec<TrancheSolution> {
+		let mut solutions = Vec::new();
+
+		fulfillments
+			.into_iter()
+			.for_each(|(invest, redeem)| solutions.push(get_tranche_solution(invest, redeem)));
+
+		solutions
+	}
+
+	fn get_full_solution() -> Vec<TrancheSolution> {
+		let mut solutions = Vec::new();
+
+		solutions.push(get_tranche_solution(1.0, 1.0));
+		solutions.push(get_tranche_solution(1.0, 1.0));
+		solutions.push(get_tranche_solution(1.0, 1.0));
+		solutions.push(get_tranche_solution(1.0, 1.0));
+
+		solutions
+	}
+
+	#[test]
+	fn healthy_switches_to_unhealthy() {
+		let mut state = PoolState::Healthy;
+		state.add_unhealthy(UnhealthyState::MinRiskBufferViolated);
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]));
+
+		let mut state = PoolState::Healthy;
+		state.update(PoolState::Unhealthy(vec![
+			UnhealthyState::MinRiskBufferViolated,
+		]));
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]));
+	}
+
+	#[test]
+	fn unhealthy_switches_to_healthy() {
+		let mut state = PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]);
+		state.update(PoolState::Healthy);
+		assert!(state == PoolState::Healthy);
+	}
+
+	#[test]
+	fn update_overwrites() {
+		let mut state = PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]);
+		state.update(PoolState::Healthy);
+		assert!(state == PoolState::Healthy);
+
+		let mut state = PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]);
+		state.update(PoolState::Unhealthy(vec![
+			UnhealthyState::MaxReserveViolated,
+		]));
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MaxReserveViolated]));
+	}
+
+	#[test]
+	fn unhealthy_always_only_contains_a_single_variant() {
+		let mut state = PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]);
+		state.add_unhealthy(UnhealthyState::MinRiskBufferViolated);
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]));
+
+		state.add_unhealthy(UnhealthyState::MaxReserveViolated);
+		assert!(
+			state
+				== PoolState::Unhealthy(vec![
+					UnhealthyState::MinRiskBufferViolated,
+					UnhealthyState::MaxReserveViolated
+				])
+		);
+	}
+
+	#[test]
+	fn rm_unhealthy_works() {
+		let mut state = PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]);
+
+		state.add_unhealthy(UnhealthyState::MaxReserveViolated);
+		assert!(
+			state
+				== PoolState::Unhealthy(vec![
+					UnhealthyState::MinRiskBufferViolated,
+					UnhealthyState::MaxReserveViolated
+				])
+		);
+
+		state.rm_unhealthy(UnhealthyState::MaxReserveViolated);
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]));
+
+		state.rm_unhealthy(UnhealthyState::MaxReserveViolated);
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]));
+
+		state.rm_unhealthy(UnhealthyState::MinRiskBufferViolated);
+		assert!(state == PoolState::Healthy);
+	}
+
+	#[test]
+	fn epoch_solution_healthy_works() {
+		let solution = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 0,
+		});
+		assert!(solution.healthy());
+
+		let solution = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(2),
+			risk_buffer_improvement_scores: None,
+		});
+		assert!(!solution.healthy());
+	}
+
+	#[test]
+	fn epoch_solution_solution_works() {
+		let solution = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 0,
+		});
+		assert!(solution.solution() == get_full_solution());
+
+		let solution = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(2),
+			risk_buffer_improvement_scores: None,
+		});
+		assert!(solution.solution() == get_full_solution());
+	}
+
+	#[test]
+	fn epoch_solution_partial_eq_works() {
+		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 3,
+		});
+
+		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 3,
+		});
+		assert!(solution_1 == solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_solution(vec![(0.0, 0.0), (1.0, 0.7), (0.7, 0.7)]),
+			score: 3,
+		});
+
+		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 3,
+		});
+		assert!(solution_1 != solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 3,
+		});
+
+		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 4,
+		});
+		assert!(solution_1 != solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(2),
+			risk_buffer_improvement_scores: None,
+		});
+		let solution_2 = EpochSolution::<u128>::Healthy(HealthySolution {
+			solution: get_full_solution(),
+			score: 4,
+		});
+		assert!(solution_1 != solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(2),
+			risk_buffer_improvement_scores: None,
+		});
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(2),
+			risk_buffer_improvement_scores: None,
+		});
+		assert!(solution_1 == solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: None,
+		});
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(2),
+			risk_buffer_improvement_scores: None,
+		});
+		assert!(solution_1 != solution_2);
+
+		let solution_1 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: None,
+		});
+		let solution_2 = EpochSolution::<u128>::Unhealthy(UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_solution(vec![(0.0, 0.0), (1.0, 0.7), (0.7, 0.7)]),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: None,
+		});
+		assert!(solution_1 != solution_2);
+	}
+
+	#[test]
+	fn unhealthy_solution_has_state_works() {
+		let unhealthy = UnhealthySolution {
+			state: vec![UnhealthyState::MaxReserveViolated],
+			solution: get_full_solution(),
+			reserve_improvement_score: Some(5),
+			risk_buffer_improvement_scores: None,
+		};
+
+		assert!(unhealthy.has_state(&UnhealthyState::MaxReserveViolated));
+		assert!(!unhealthy.has_state(&UnhealthyState::MinRiskBufferViolated));
+	}
 }
