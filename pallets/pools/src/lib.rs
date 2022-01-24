@@ -2007,7 +2007,7 @@ pub mod pallet {
 			}
 
 			if reserve > max_reserve {
-				Err(Error::<T>::InsufficientReserve)?
+				state.update_with_unhealthy(UnhealthyState::MaxReserveViolated)
 			}
 
 			for (risk_buffer, min_risk_buffer) in risk_buffers
