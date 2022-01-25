@@ -128,7 +128,7 @@ pub mod pallet {
 			let from = ensure_signed(origin)?;
 
 			ensure!(
-				Permission::<T>::try_get(from.clone(), location.clone()).is_ok(),
+				Permission::<T>::contains_key(from.clone(), location.clone()),
 				Error::<T>::NoRoles
 			);
 
@@ -148,7 +148,7 @@ pub mod pallet {
 			Self::ensure_admin(origin)?;
 
 			ensure!(
-				Permission::<T>::try_get(from.clone(), location.clone()).is_ok(),
+				Permission::<T>::contains_key(from.clone(), location.clone()),
 				Error::<T>::NoRoles
 			);
 
