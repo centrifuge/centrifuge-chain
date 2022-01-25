@@ -29,9 +29,9 @@ use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_permissions.
 pub trait WeightInfo {
-	fn add_permission_root() -> Weight;
+	fn add_permission_admin() -> Weight;
 	fn add_permission_editor() -> Weight;
-	fn rm_permission_root() -> Weight;
+	fn rm_permission_admin() -> Weight;
 	fn rm_permission_editor() -> Weight;
 	fn purge_permissions() -> Weight;
 	fn admin_purge_permissions() -> Weight;
@@ -40,7 +40,7 @@ pub trait WeightInfo {
 /// Weights for pallet_permissions using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn add_permission_root() -> Weight {
+	fn add_permission_admin() -> Weight {
 		(85_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -50,7 +50,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn rm_permission_root() -> Weight {
+	fn rm_permission_admin() -> Weight {
 		(90_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -74,7 +74,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	fn add_permission_root() -> Weight {
+	fn add_permission_admin() -> Weight {
 		(85_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
@@ -84,7 +84,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn rm_permission_root() -> Weight {
+	fn rm_permission_admin() -> Weight {
 		(90_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))

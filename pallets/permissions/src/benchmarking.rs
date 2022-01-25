@@ -38,7 +38,7 @@ benchmarks! {
 		<T as pallet_permissions::Config>::Location: From<u64>,
 	}
 
-	add_permission_root {
+	add_permission_admin {
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
@@ -66,7 +66,7 @@ benchmarks! {
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc2, role.into()));
 	}
 
-	rm_permission_root {
+	rm_permission_admin {
 		// setup pool admin
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;

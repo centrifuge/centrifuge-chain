@@ -28,7 +28,7 @@ pub mod weights;
 
 /// Who informs about the caller's role
 enum Who {
-	Root,
+	Admin,
 	Editor,
 }
 
@@ -101,7 +101,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(T::WeightInfo::add_permission_root().max(T::WeightInfo::add_permission_editor()))]
+		#[pallet::weight(T::WeightInfo::add_permission_admin().max(T::WeightInfo::add_permission_editor()))]
 		pub fn add_permission(
 			origin: OriginFor<T>,
 			with_role: T::Role,
@@ -117,11 +117,11 @@ pub mod pallet {
 
 			match who {
 				Who::Editor => Ok(Some(T::WeightInfo::add_permission_editor()).into()),
-				Who::Root => Ok(Some(T::WeightInfo::add_permission_root()).into()),
+				Who::Admin => Ok(Some(T::WeightInfo::add_permission_admin()).into()),
 			}
 		}
 
-		#[pallet::weight(T::WeightInfo::rm_permission_editor().max(T::WeightInfo::rm_permission_root()))]
+		#[pallet::weight(T::WeightInfo::rm_permission_editor().max(T::WeightInfo::rm_permission_admin()))]
 		pub fn rm_permission(
 			origin: OriginFor<T>,
 			with_role: T::Role,
@@ -137,7 +137,7 @@ pub mod pallet {
 
 			match who {
 				Who::Editor => Ok(Some(T::WeightInfo::rm_permission_editor()).into()),
-				Who::Root => Ok(Some(T::WeightInfo::rm_permission_root()).into()),
+				Who::Admin => Ok(Some(T::WeightInfo::rm_permission_admin()).into()),
 			}
 		}
 
@@ -200,7 +200,7 @@ impl<T: Config> Pallet<T> {
 			}
 		}
 
-		Self::ensure_admin(origin).map(|_| Who::Root)
+		Self::ensure_admin(origin).map(|_| Who::Admin)
 	}
 
 	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
