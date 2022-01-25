@@ -16,6 +16,8 @@ use frame_support::traits::{
 	ReservableCurrency, SignedImbalance, WithdrawReasons,
 };
 
+/// Represents the trait `Currency` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum CurrencyEffects<AccountId, Balance> {
 	/// A call to the `Currency::can_slash()`.
 	///
@@ -196,14 +198,42 @@ impl<T: Config> Currency<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `Currency` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum ReservableCurrencyEffects<AccountId, Balance> {
+	/// A call to the `ReservableCurrency::can_reserve()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `who`. The person who's balance should be reserved.
+	/// * tuple.1 = `amount`. The amount that should be reserved.
+	/// * tuple.2 = `<T::NativeFungible as ReservableCurrency>::can_reserve()`. The result of the call to the
+	///   not-filtered trait `ReservableCurrency` implementation.
+	CanReserve(AccountId, Balance, bool),
+
+	/// A call to the `ReservableCurrency::reserve()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `who`. The person who's balance should be reserved.
+	/// * tuple.1 = `amount`. The amount that should be reserved.
 	Reserve(AccountId, Balance),
+
+	/// A call to the `ReservableCurrency::repatriate_reserved()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `slashed`. The account who's slashed.
+	/// * tuple.1 = `beneficiary`. The account that benefits from the slash.
+	/// * tuple.2 = `amount`. The amount that should be deducted.
+	/// * tuple.3 = `status`. The status the funds will be placed into.
 	RepatriateReserved(AccountId, AccountId, Balance, BalanceStatus),
 }
 
 impl<T: Config> ReservableCurrency<T::AccountId> for Pallet<T> {
 	fn can_reserve(who: &T::AccountId, value: Self::Balance) -> bool {
-		<T::NativeFungible as ReservableCurrency<T::AccountId>>::can_reserve(who, value)
+		T::PreReservableCurrency::check(ReservableCurrencyEffects::CanReserve(
+			who.clone(),
+			value,
+			<T::NativeFungible as ReservableCurrency<T::AccountId>>::can_reserve(who, value),
+		))
 	}
 
 	fn slash_reserved(
