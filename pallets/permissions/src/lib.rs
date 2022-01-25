@@ -24,6 +24,13 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+pub mod weights;
+
+/// Who informs about the caller's role
+enum Who {
+	Admin,
+	Editor,
+}
 
 use common_traits::{Permissions, Properties};
 use frame_support::traits::Contains;
@@ -33,6 +40,7 @@ use frame_system::pallet_prelude::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use crate::weights::WeightInfo;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -54,6 +62,8 @@ pub mod pallet {
 		)>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -91,39 +101,47 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::add_permission_admin().max(T::WeightInfo::add_permission_editor()))]
 		pub fn add_permission(
 			origin: OriginFor<T>,
 			with_role: T::Role,
 			to: T::AccountId,
 			location: T::Location,
 			role: T::Role,
-		) -> DispatchResult {
-			Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
+		) -> DispatchResultWithPostInfo {
+			let who =
+				Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
 
 			Pallet::<T>::do_add_permission(location.clone(), to.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::RoleAdded(to, location, role)))?;
 
-			Ok(())
+			match who {
+				Who::Editor => Ok(Some(T::WeightInfo::add_permission_editor()).into()),
+				Who::Admin => Ok(Some(T::WeightInfo::add_permission_admin()).into()),
+			}
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::rm_permission_editor().max(T::WeightInfo::rm_permission_admin()))]
 		pub fn rm_permission(
 			origin: OriginFor<T>,
 			with_role: T::Role,
 			from: T::AccountId,
 			location: T::Location,
 			role: T::Role,
-		) -> DispatchResult {
-			Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
+		) -> DispatchResultWithPostInfo {
+			let who =
+				Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
 
 			Pallet::<T>::do_rm_permission(location.clone(), from.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::RoleRemoved(from, location, role)))?;
 
-			Ok(())
+			match who {
+				Who::Editor => Ok(Some(T::WeightInfo::rm_permission_editor()).into()),
+				Who::Admin => Ok(Some(T::WeightInfo::rm_permission_admin()).into()),
+			}
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::purge_permissions())]
 		pub fn purge_permissions(origin: OriginFor<T>, location: T::Location) -> DispatchResult {
 			let from = ensure_signed(origin)?;
 
@@ -139,7 +157,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::admin_purge_permissions())]
 		pub fn admin_purge_permissions(
 			origin: OriginFor<T>,
 			from: T::AccountId,
@@ -167,28 +185,29 @@ impl<T: Config> Pallet<T> {
 		with_role: T::Role,
 		location: T::Location,
 		role: T::Role,
-	) -> DispatchResult {
-		if let Ok(who) = ensure_signed(origin.clone()) {
-			let has_role =
-				Permission::<T>::get(who.clone(), location.clone()).map_or(None, |roles| {
-					if roles.exists(role.clone()) {
-						Some(with_role)
-					} else {
-						None
-					}
-				});
-
-			if T::Editors::contains(&(who, has_role, location, role)) {
-				return Ok(());
+	) -> Result<Who, DispatchError> {
+		// check if origin is admin
+		match Self::ensure_admin(origin.clone()) {
+			Ok(()) => Ok(Who::Admin),
+			_ => {
+				// check if origin is editor
+				let editor = ensure_signed(origin)?;
+				let is_editor = Permission::<T>::get(editor.clone(), location.clone())
+					.and_then(|roles| {
+						Some(
+							roles.exists(with_role.clone())
+								&& T::Editors::contains(&(editor, Some(with_role), location, role)),
+						)
+					})
+					.unwrap_or(false);
+				ensure!(is_editor, Error::<T>::NoEditor);
+				Ok(Who::Editor)
 			}
 		}
-
-		Self::ensure_admin(origin)
 	}
 
 	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {
-		T::AdminOrigin::ensure_origin(origin)
-			.map_or(Err(Error::<T>::NoEditor.into()), |_| Ok(().into()))
+		T::AdminOrigin::ensure_origin(origin).map_or(Err(Error::<T>::NoEditor.into()), |_| Ok(()))
 	}
 
 	fn do_add_permission(
@@ -203,17 +222,15 @@ impl<T: Config> Pallet<T> {
 					.add(role.clone())
 					.map_err(|_| Error::<T>::WrongParameters)?;
 
-				Ok(Permission::<T>::insert(
-					who.clone(),
-					location.clone(),
-					new_role,
-				))
+				Permission::<T>::insert(who.clone(), location.clone(), new_role);
+				Ok(())
 			},
 			|mut roles| {
 				if !roles.exists(role.clone()) {
 					roles.add(role).map_err(|_| Error::<T>::WrongParameters)?;
 
-					Ok(Permission::<T>::insert(who.clone(), location, roles))
+					Permission::<T>::insert(who.clone(), location, roles);
+					Ok(())
 				} else {
 					Err(Error::<T>::RoleAlreadyGiven.into())
 				}
@@ -233,10 +250,11 @@ impl<T: Config> Pallet<T> {
 					roles.rm(role).map_err(|_| Error::<T>::WrongParameters)?;
 
 					if roles.empty() {
-						Ok(Permission::<T>::remove(who, location))
+						Permission::<T>::remove(who, location);
 					} else {
-						Ok(Permission::<T>::insert(who, location, roles))
+						Permission::<T>::insert(who, location, roles);
 					}
+					Ok(())
 				} else {
 					Err(Error::<T>::RoleNotGiven.into())
 				}
@@ -246,8 +264,8 @@ impl<T: Config> Pallet<T> {
 }
 
 impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
-	type Role = T::Role;
 	type Location = T::Location;
+	type Role = T::Role;
 	type Error = DispatchError;
 	type Ok = ();
 

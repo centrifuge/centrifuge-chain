@@ -102,6 +102,7 @@ impl pallet_permissions::Config for Test {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
+	type WeightInfo = ();
 }
 
 impl SortedMembers<u64> for One {

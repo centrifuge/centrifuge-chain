@@ -1,6 +1,6 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'Proofs'
+description = 'Common types for Centrifuge runtime'
 edition = '2021'
 license = "LGPL-3.0"
 name = 'common-types'
