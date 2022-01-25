@@ -15,6 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 pub use crate as pallet_restricted_tokens;
+use crate::impl_fungible::FungibleInspectPassthrough;
 use common_traits::{PreConditions, TokenMetadata};
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
@@ -182,6 +183,8 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 	type Fungibles = OrmlTokens;
 	type PreCurrency = common_traits::Always;
 	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
 	type PreFungibleMutate = common_traits::Always;
 	type PreFungibleMutateHold = common_traits::Always;
 	type PreFungibleTransfer = common_traits::Always;
@@ -192,6 +195,8 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 // Restricted coins are only allowed to be send to users with an id over 100
 pub struct RestrictedTokens;
 impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens {
+	type Result = bool;
+
 	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		match t.id {
 			CurrencyId::KUSD | CurrencyId::USDT => true,

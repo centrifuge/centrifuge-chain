@@ -54,7 +54,8 @@ pub mod pallet {
 	use super::*;
 	use crate::impl_currency::{CurrencyEffects, ReservableCurrencyEffects};
 	use crate::impl_fungible::{
-		FungibleMutateEffects, FungibleMutateHoldEffects, FungibleTransferEffects,
+		FungibleInspectEffects, FungibleInspectHoldEffects, FungibleMutateEffects,
+		FungibleMutateHoldEffects, FungibleTransferEffects,
 	};
 	use crate::impl_fungibles::{
 		FungiblesMutateEffects, FungiblesMutateHoldEffects, FungiblesTransferEffects,
@@ -92,21 +93,25 @@ pub mod pallet {
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<
 			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
+			Result = bool,
 		>;
 
-		/// Checks the pre conditions for trait ReservableCurrency calls
+		/// Checks the pre conditions for trait fungibles::Mutate calls
 		type PreFungiblesMutate: PreConditions<
 			FungiblesMutateEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
-		/// Checks the pre conditions for trait ReservableCurrency calls
+		/// Checks the pre conditions for trait fungibles::MutateHold calls
 		type PreFungiblesMutateHold: PreConditions<
 			FungiblesMutateHoldEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
-		/// Checks the pre conditions for trait ReservableCurrency calls
+		/// Checks the pre conditions for trait fungibles::Transfer calls
 		type PreFungiblesTransfer: PreConditions<
 			FungiblesTransferEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
@@ -116,24 +121,45 @@ pub mod pallet {
 			+ fungibles::Transfer<Self::AccountId>;
 
 		/// Checks the pre conditions for trait Currency calls
-		type PreCurrency: PreConditions<CurrencyEffects<Self::AccountId, Self::Balance>>;
+		type PreCurrency: PreConditions<
+			CurrencyEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
 
 		/// Checks the pre conditions for trait ReservableCurrency calls
 		type PreReservableCurrency: PreConditions<
 			ReservableCurrencyEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
+
+		/// Checks the pre conditions for trait fungible::Inspect calls
+		type PreFungibleInspect: PreConditions<
+			FungibleInspectEffects<Self::AccountId, Self::Balance>,
+			Result = Self::Balance,
+		>;
+
+		/// Checks the pre conditions for trait fungible::InspectHold calls
+		type PreFungibleInspectHold: PreConditions<
+			FungibleInspectHoldEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		/// Checks the pre conditions for trait fungible::Mutate calls
-		type PreFungibleMutate: PreConditions<FungibleMutateEffects<Self::AccountId, Self::Balance>>;
+		type PreFungibleMutate: PreConditions<
+			FungibleMutateEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
 
 		/// Checks the pre conditions for trait fungible::MutateHold calls
 		type PreFungibleMutateHold: PreConditions<
 			FungibleMutateHoldEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		/// Checks the pre conditions for trait fungible::Transfer calls
 		type PreFungibleTransfer: PreConditions<
 			FungibleTransferEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		type NativeFungible: Currency<Self::AccountId, Balance = Self::Balance>
