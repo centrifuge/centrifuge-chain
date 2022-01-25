@@ -186,21 +186,24 @@ impl<T: Config> Pallet<T> {
 		location: T::Location,
 		role: T::Role,
 	) -> Result<Who, DispatchError> {
-		if let Ok(who) = ensure_signed(origin.clone()) {
-			let has_role = Permission::<T>::get(who.clone(), location.clone()).and_then(|roles| {
-				if roles.exists(with_role.clone()) {
-					Some(with_role)
-				} else {
-					None
-				}
-			});
-
-			if T::Editors::contains(&(who, has_role, location, role)) {
-				return Ok(Who::Editor);
+		// check if origin is admin
+		match Self::ensure_admin(origin.clone()) {
+			Ok(()) => Ok(Who::Admin),
+			_ => {
+				// check if origin is editor
+				let editor = ensure_signed(origin)?;
+				let is_editor = Permission::<T>::get(editor.clone(), location.clone())
+					.and_then(|roles| {
+						Some(
+							roles.exists(with_role.clone())
+								&& T::Editors::contains(&(editor, Some(with_role), location, role)),
+						)
+					})
+					.unwrap_or(false);
+				ensure!(is_editor, Error::<T>::NoEditor);
+				Ok(Who::Editor)
 			}
 		}
-
-		Self::ensure_admin(origin).map(|_| Who::Admin)
 	}
 
 	fn ensure_admin(origin: OriginFor<T>) -> DispatchResult {

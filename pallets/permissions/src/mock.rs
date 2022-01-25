@@ -275,6 +275,7 @@ impl pallet_permissions::Config for MockRuntime {
 	type Storage = Storage;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Editors;
+	type WeightInfo = ();
 }
 
 parameter_types! {
