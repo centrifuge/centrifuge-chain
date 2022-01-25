@@ -1,0 +1,54 @@
+FROM centos:8
+
+# Image metadata
+LABEL io.centrifuge.maintainer="Centrifuge" \
+      io.centrifuge.description="RPM package builder" \
+      io.centrifuge.version="0.1.0" 
+
+ENV LANG=en_US.UTF-8
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV PATH $CARGO_HOME/bin:$PATH
+
+# Disable the list of mirrors (useless)
+#RUN sed -i 's/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo \
+# && sed -i 's/^#baseurl=/baseurl=/' /etc/yum.repos.d/CentOS-Base.repo
+    
+# Install requisite packages
+RUN yum -y update \
+ && yum -y group install "Development tools" \
+ && yum -y install \
+    rpmdevtools \
+    rpm-build \
+    rpmlint \
+    redhat-rpm-config \
+    sudo \
+    # Install Rustup tool and Rust compiler
+ && mkdir -p "$CARGO_HOME" \
+ && mkdir -p "$RUSTUP_HOME" \
+ && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
+ && chmod -R a=rwX $CARGO_HOME \
+ && yum clean all \
+ && rm -rf /var/cache/yum \
+    # Create RPM builder user
+ && adduser -G wheel rpmbuilder \
+ && mkdir -p /home/rpmbuilder/rpmbuild/{BUILD,SPECS,SOURCES,BUILDROOT,RPMS,SRPMS,tmp} \
+ && chmod -R 777 /home/rpmbuilder/rpmbuild
+
+# https://saule1508.github.io/build-rpm-with-docker/
+# https://github.com/jc21/docker-rpmbuild-centos7
+
+# Copy scripts and configuration files to target image
+ADD scripts/build_spec.sh /bin/
+ADD scripts/build_rpm.sh /bin/
+ADD scripts/build_all.sh /bin/
+ADD docker/.rpmmacros /home/rpmbuilder/
+ADD docker/sudoers/wheel /etc/sudoers.d/
+
+RUN chown root:root /etc/sudoers.d/*
+
+# Remove requiretty from sudoers main file
+#RUN sed -i '/Defaults    requiretty/c\#Defaults    requiretty' /etc/sudoers
+
+USER rpmbuilder
+
+WORKDIR /home/rpmbuilder
