@@ -16,6 +16,7 @@
 
 pub use crate as pallet_restricted_tokens;
 use crate::impl_fungible::FungibleInspectPassthrough;
+use crate::impl_fungibles::FungiblesInspectPassthrough;
 use common_traits::{PreConditions, TokenMetadata};
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
@@ -177,6 +178,8 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens;
+	type PreFungiblesInspect = FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;
 	type PreFungiblesMutateHold = common_traits::Always;
 	type PreFungiblesTransfer = common_traits::Always;

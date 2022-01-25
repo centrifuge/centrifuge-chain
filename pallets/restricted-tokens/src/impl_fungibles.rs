@@ -34,6 +34,34 @@ impl<T: Config> InspectMetadata<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `fungibles::Inspect` effects that are called via
+/// the pallet-restricted-tokens.
+pub enum FungiblesInspectEffects<AssetId, AccountId, Balance> {
+	/// A call to the `Inspect::reducible_balance()`.
+	///
+	/// Interpretation of tuple `(AssetId, AccountId, bool, Balance)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `who`. The person who's balance should be checked.
+	/// * tuple.2 = `keep_alive`. The liveness bool.
+	/// * tuple.3 = `<T::Fungibles as Inspect<T::AccountId>>::reducible_balance()`. The result of the call to the
+	///   not-filtered trait `fungibles::Inspect` implementation.
+	ReducibleBalance(AssetId, AccountId, bool, Balance),
+}
+
+pub struct FungiblesInspectPassthrough;
+impl<AssetId, AccountId, Balance>
+	PreConditions<FungiblesInspectEffects<AssetId, AccountId, Balance>>
+	for FungiblesInspectPassthrough
+{
+	type Result = Balance;
+
+	fn check(t: FungiblesInspectEffects<AssetId, AccountId, Balance>) -> Self::Result {
+		match t {
+			FungiblesInspectEffects::ReducibleBalance(_, _, _, amount) => amount,
+		}
+	}
+}
+
 impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 	type AssetId = T::CurrencyId;
 	type Balance = T::Balance;
@@ -67,12 +95,15 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		keep_alive: bool,
 	) -> Self::Balance {
-		// TODO: Actually, a filter would be nice here.. but how?
-
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::Inspect<T::AccountId>>::reducible_balance(who, keep_alive)
 		} else {
-			<T::Fungibles as Inspect<T::AccountId>>::reducible_balance(asset, who, keep_alive)
+			T::PreFungiblesInspect::check(FungiblesInspectEffects::ReducibleBalance(
+				asset.clone(),
+				who.clone(),
+				keep_alive,
+				<T::Fungibles as Inspect<T::AccountId>>::reducible_balance(asset, who, keep_alive),
+			))
 		}
 	}
 
@@ -101,6 +132,20 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `fungibles::InspectHold` effects that are called via
+/// the pallet-restricted-tokens.
+pub enum FungiblesInspectHoldEffects<AssetId, AccountId, Balance> {
+	/// A call to the `InspectHold::can_hold()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `who`. The person who's balance should be reserved.
+	/// * tuple.2 = `amount`. The amount that should be reserved.
+	/// * tuple.3 = `<T::Fungibles as InspectHold<T::AccountId>>::can_hold()`. The result of the call to the
+	///   not-filtered trait `fungibles::InspectHold` implementation.
+	CanHold(AssetId, AccountId, Balance, bool),
+}
+
 impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 	fn balance_on_hold(asset: Self::AssetId, who: &T::AccountId) -> Self::Balance {
 		if asset == T::NativeToken::get() {
@@ -111,22 +156,39 @@ impl<T: Config> InspectHold<T::AccountId> for Pallet<T> {
 	}
 
 	fn can_hold(asset: Self::AssetId, who: &T::AccountId, amount: Self::Balance) -> bool {
-		// TODO: Actually, a filter would be nice here.. but how?
-
 		if asset == T::NativeToken::get() {
 			<Pallet<T> as fungible::InspectHold<T::AccountId>>::can_hold(who, amount)
 		} else {
-			<T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, who, amount)
+			T::PreFungiblesInspectHold::check(FungiblesInspectHoldEffects::CanHold(
+				asset.clone(),
+				who.clone(),
+				amount,
+				<T::Fungibles as InspectHold<T::AccountId>>::can_hold(asset, who, amount),
+			))
 		}
 	}
 }
 
+/// Represents the trait `fungibles::Mutate` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum FungiblesMutateEffects<AssetId, AccountId, Balance> {
+	/// A call to the `Mutate::mint_into()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `who`. The person who's balance should be altered.
+	/// * tuple.2 = `amount`. The amount that should be minted.
 	MintInto(AssetId, AccountId, Balance),
+
+	/// A call to the `Mutate::burn_from()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `who`. The person who's balance should be altered.
+	/// * tuple.2 = `amount`. The amount that should be burned.
 	BurnFrom(AssetId, AccountId, Balance),
 }
 
-// TODO: Decide wether to manually implement `Mutate::slash()` and `Mutate::teleport`
 impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	fn mint_into(
 		asset: Self::AssetId,
@@ -171,9 +233,36 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `fungibles::MutateHold` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum FungiblesMutateHoldEffects<AssetId, AccountId, Balance> {
+	/// A call to the `MutateHold::hold()`.
+	///
+	/// Interpretation of tuple `(AssetId, AccountId, Balance)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `who`. The person who's balance should be altered.
+	/// * tuple.2 = `amount`. The amount that should be hold.
 	Hold(AssetId, AccountId, Balance),
+
+	/// A call to the `MutateHold::release()`.
+	///
+	/// Interpretation of tuple `(AssetId, AccountId, Balance)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `who`. The person who's balance should be altered.
+	/// * tuple.2 = `amount`. The amount that should be released.
 	Release(AssetId, AccountId, Balance, bool),
+
+	/// A call to the `MutateHold::transfer_held()`.
+	///
+	/// Interpretation of tuple `(AssetId, AccountId, AccountId, Balance, bool, bool)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `send`. The sender of the tokens.
+	/// * tuple.2 = `recv`. The receiver of the tokens.
+	/// * tuple.3 = `amount`. The amount that should be transferred.
+	/// * tuple.4 = `on_hold`. Indicating if on_hold transfers should
+	///   still be on_hold at receiver.
+	/// * tuple.5 = `best_effort`. Indicating if the transfer should be done
+	///   on a best effort base.
 	TransferHeld(AssetId, AccountId, AccountId, Balance, bool, bool),
 }
 
@@ -259,7 +348,17 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `fungibles::Transfer` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum FungiblesTransferEffects<AssetId, AccountId, Balance> {
+	/// A call to the `Transfer::transfer()`.
+	///
+	/// Interpretation of tuple `(AssetId, AccountId, AccountId, Balance, bool)`:
+	/// * tuple.0 = `asset`. The asset that should be used.
+	/// * tuple.1 = `send`. The sender of the tokens.
+	/// * tuple.2 = `recv`. The receiver of the tokens.
+	/// * tuple.3 = `amount`. The amount that should be transferred.
+	/// * tuple.4 = `keep_alice`. The lifeness requirements.
 	Transfer(AssetId, AccountId, AccountId, Balance, bool),
 }
 

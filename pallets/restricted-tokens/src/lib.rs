@@ -58,7 +58,8 @@ pub mod pallet {
 		FungibleMutateHoldEffects, FungibleTransferEffects,
 	};
 	use crate::impl_fungibles::{
-		FungiblesMutateEffects, FungiblesMutateHoldEffects, FungiblesTransferEffects,
+		FungiblesInspectEffects, FungiblesInspectHoldEffects, FungiblesMutateEffects,
+		FungiblesMutateHoldEffects, FungiblesTransferEffects,
 	};
 	use common_traits::{PreConditions, TokenMetadata};
 	use frame_support::scale_info::TypeInfo;
@@ -93,6 +94,18 @@ pub mod pallet {
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<
 			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
+			Result = bool,
+		>;
+
+		/// Checks the pre conditions for trait fungibles::Inspect calls
+		type PreFungiblesInspect: PreConditions<
+			FungiblesInspectEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = Self::Balance,
+		>;
+
+		/// Checks the pre conditions for trait fungibles::InspectHold calls
+		type PreFungiblesInspectHold: PreConditions<
+			FungiblesInspectHoldEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
 			Result = bool,
 		>;
 
