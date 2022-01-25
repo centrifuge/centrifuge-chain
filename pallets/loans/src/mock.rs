@@ -229,6 +229,7 @@ impl pallet_permissions::Config for MockRuntime {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
