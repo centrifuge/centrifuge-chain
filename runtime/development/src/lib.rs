@@ -40,7 +40,9 @@ use sp_runtime::transaction_validity::{
 };
 
 use common_traits::PreConditions;
-use pallet_restricted_tokens::TransferDetails;
+use pallet_restricted_tokens::{
+	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
+};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -936,6 +938,8 @@ impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restr
 where
 	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
 {
+	type Result = bool;
+
 	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		let TransferDetails {
 			send,
@@ -967,17 +971,22 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesInspect = FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;
 	type PreFungiblesMutateHold = common_traits::Always;
 	type PreFungiblesTransfer = common_traits::Always;
 	type Fungibles = OrmlTokens;
 	type PreCurrency = common_traits::Always;
 	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
 	type PreFungibleMutate = common_traits::Always;
 	type PreFungibleMutateHold = common_traits::Always;
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
+	type WeightInfo = ();
 }
 
 parameter_type_with_key! {
@@ -1247,6 +1256,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
+			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1270,6 +1280,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
+			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
