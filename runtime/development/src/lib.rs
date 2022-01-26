@@ -986,7 +986,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
-	type WeightInfo = ();
+	type WeightInfo = pallet_restricted_tokens::SubstrateWeight<Self>;
 }
 
 parameter_type_with_key! {

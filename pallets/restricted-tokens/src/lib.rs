@@ -17,7 +17,7 @@ pub use impl_fungibles::*;
 ///! A crate that allows for checking of preconditions before sending tokens.
 ///! Mimics ORML-tokens Call-Api.
 pub use pallet::*;
-pub use weights::WeightInfo;
+pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
