@@ -193,6 +193,7 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
+	type WeightInfo = ();
 }
 
 // Restricted coins are only allowed to be send to users with an id over 100
