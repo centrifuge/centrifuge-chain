@@ -14,11 +14,17 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+mod weights;
+pub use weights::*;
+
 use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
-use core::{convert::TryFrom, ops::AddAssign};
+use core::{
+	convert::TryFrom,
+	ops::{AddAssign, Sub},
+};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -247,7 +253,9 @@ pub mod pallet {
 			+ TypeInfo
 			+ Ord
 			+ CheckedAdd
-			+ AddAssign;
+			+ AddAssign
+			+ Sub<Output = Self::EpochId>
+			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
 
@@ -282,6 +290,12 @@ pub mod pallet {
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
+
+		/// Max number of Tranches
+		type MaxTranches: Get<u32>;
+
+		/// Weight Information
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -422,11 +436,13 @@ pub mod pallet {
 		InvalidTrancheId,
 		/// Indicates that the new passed order equals the old-order
 		NoNewOrder,
+		/// The requested tranche configuration has too many tranches
+		TooManyTranches,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::create(tranches.len() as u32))]
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -484,7 +500,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::update())]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -509,7 +525,7 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len() as u32))]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -534,7 +550,7 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::set_max_reserve())]
 		pub fn set_max_reserve(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -554,7 +570,7 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len() as u32))]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -580,8 +596,8 @@ pub mod pallet {
 					tranche.min_risk_buffer =
 						new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
 					tranche.interest_per_sec = new_tranche.interest_per_sec.unwrap_or(One::one());
-					if new_tranche.seniority.is_some() {
-						tranche.seniority = new_tranche.seniority.unwrap();
+					if let Some(new_seniority) = new_tranche.seniority {
+						tranche.seniority = new_seniority;
 					}
 				}
 
@@ -590,7 +606,7 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::update_invest_order())]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -630,7 +646,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -670,14 +686,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// TODO: this weight should likely scale based on collect_n_epochs
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::collect((*collect_n_epochs).into()))]
 		pub fn collect(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			collect_n_epochs: T::EpochId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
@@ -697,6 +712,8 @@ pub mod pallet {
 				.checked_add(&collect_n_epochs)
 				.ok_or(Error::<T>::Overflow)?
 				.min(pool.last_epoch_executed);
+
+			let actual_epochs = end_epoch - order.epoch;
 
 			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch)?;
 			let pool_account = PoolLocator { pool_id }.into_account();
@@ -740,7 +757,8 @@ pub mod pallet {
 					},
 				));
 				Ok(())
-			})
+			})?;
+			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
 
 		#[pallet::weight(100)]
@@ -910,7 +928,7 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::approve_role_for(accounts.len() as u32))]
 		#[frame_support::transactional]
 		pub fn approve_role_for(
 			origin: OriginFor<T>,
@@ -934,7 +952,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::revoke_role_for())]
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -1263,6 +1281,12 @@ pub mod pallet {
 			old_tranches: &Vec<Tranche<T::Balance, T::InterestRate>>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
+			// There is a limit to the number of allowed tranches
+			ensure!(
+				new_tranches.len() <= T::MaxTranches::get() as usize,
+				Error::<T>::TooManyTranches
+			);
+
 			// At least one tranche must exist, and the first (most junior) tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(

@@ -270,6 +270,8 @@ impl Config for Test {
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTranches = MaxTranches;
+	type WeightInfo = ();
 }
 
 impl fake_nav::Config for Test {
