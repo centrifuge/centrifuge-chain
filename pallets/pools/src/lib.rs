@@ -56,7 +56,7 @@ pub struct TrancheInput<Rate> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct Tranche<Balance, Rate> {
+pub struct Tranche<Balance, Rate, Weight> {
 	pub interest_per_sec: Rate,
 	pub min_risk_buffer: Perquintill,
 	pub seniority: Seniority,
@@ -68,16 +68,18 @@ pub struct Tranche<Balance, Rate> {
 	pub reserve: Balance,
 	pub ratio: Perquintill,
 	pub last_updated_interest: Moment,
+
+	_phantom: PhantomData<Weight>,
 }
 
 /// A type alias for the Tranche weight calculation
 type NumTranches = u32;
 
-impl<Balance, Rate> TrancheWeigher for Tranche<Balance, Rate>
+impl<Weight, Balance, Rate> TrancheWeigher for Tranche<Balance, Rate, Weight>
 where
-	Balance: From<u128>,
+	Weight: From<u128>,
 {
-	type Weight = (Balance, Balance);
+	type Weight = (Weight, Weight);
 	type External = NumTranches;
 
 	fn calculate_weight(&self, n_tranches: Self::External) -> Self::Weight {
@@ -96,13 +98,13 @@ where
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize>
+pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
 where
 	MetaSize: Get<u32> + Copy,
 {
 	pub owner: AccountId,
 	pub currency: CurrencyId,
-	pub tranches: Vec<Tranche<Balance, Rate>>, // ordered junior => senior
+	pub tranches: Vec<Tranche<Balance, Rate, Weight>>, // ordered junior => senior
 	pub current_epoch: EpochId,
 	pub last_epoch_closed: Moment,
 	pub last_epoch_executed: EpochId,
@@ -158,20 +160,23 @@ pub struct EpochDetails<BalanceRatio> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranche<Balance, BalanceRatio> {
+pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
 	supply: Balance,
 	price: BalanceRatio,
 	invest: Balance,
 	redeem: Balance,
 	min_risk_buffer: Perquintill,
 	seniority: Seniority,
+
+	_phantom: PhantomData<Weight>,
 }
 
-impl<Balance, BalanceRatio> TrancheWeigher for EpochExecutionTranche<Balance, BalanceRatio>
+impl<Weight, Balance, BalanceRatio> TrancheWeigher
+	for EpochExecutionTranche<Balance, BalanceRatio, Weight>
 where
-	Balance: From<u128>,
+	Weight: From<u128>,
 {
-	type Weight = (Balance, Balance);
+	type Weight = (Weight, Weight);
 	type External = NumTranches;
 
 	fn calculate_weight(&self, n_tranches: Self::External) -> Self::Weight {
@@ -191,12 +196,12 @@ where
 
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId> {
+pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight> {
 	epoch: EpochId,
 	nav: Balance,
 	reserve: Balance,
 	max_reserve: Balance,
-	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio>>,
+	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
 	best_submission: Option<EpochSolution<Balance>>,
 	challenge_period_end: Option<Moment>,
 }
@@ -227,14 +232,27 @@ type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::Balance,
 	<T as Config>::InterestRate,
 	<T as Config>::MaxSizeMetadata,
+	<T as Config>::TrancheWeight,
 >;
 type UserOrderOf<T> = UserOrder<<T as Config>::Balance, <T as Config>::EpochId>;
-type EpochExecutionInfoOf<T> =
-	EpochExecutionInfo<<T as Config>::Balance, <T as Config>::BalanceRatio, <T as Config>::EpochId>;
+type EpochExecutionInfoOf<T> = EpochExecutionInfo<
+	<T as Config>::Balance,
+	<T as Config>::BalanceRatio,
+	<T as Config>::EpochId,
+	<T as Config>::TrancheWeight,
+>;
+type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
+	<T as Config>::Balance,
+	<T as Config>::BalanceRatio,
+	<T as Config>::TrancheWeight,
+>;
+type TrancheOf<T> =
+	Tranche<<T as Config>::Balance, <T as Config>::InterestRate, <T as Config>::TrancheWeight>;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use frame_support::sp_runtime::traits::Convert;
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
 	use sp_std::convert::TryInto;
@@ -244,6 +262,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
 		type Balance: Member
 			+ Parameter
 			+ AtLeast32BitUnsigned
@@ -255,6 +274,11 @@ pub mod pallet {
 			+ From<u128>
 			+ TypeInfo
 			+ TryInto<u64>;
+
+		type TrancheWeight: Parameter
+			+ Copy
+			+ Convert<Self::TrancheWeight, Self::Balance>
+			+ From<u128>;
 
 		/// A fixed-point number which represents the value of
 		/// one currency type in terms of another.
@@ -508,6 +532,7 @@ pub mod pallet {
 					reserve: Zero::zero(),
 					ratio: Perquintill::zero(),
 					last_updated_interest: now,
+					_phantom: Default::default(),
 				})
 				.collect();
 
@@ -922,6 +947,7 @@ pub mod pallet {
 								redeem: *redeem,
 								seniority: *seniority,
 								min_risk_buffer: *min_risk_buffer,
+								_phantom: Default::default(),
 							}
 						},
 					)
@@ -1112,7 +1138,7 @@ pub mod pallet {
 		/// Scores a solution and returns a healthy solution as a result.
 		pub(crate) fn score_solution_healthy(
 			solution: &[TrancheSolution],
-			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+			tranches: &[EpochExecutionTrancheOf<T>],
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			let score = Self::calculate_score(solution, tranches)?;
 
@@ -1140,7 +1166,7 @@ pub mod pallet {
 		/// Returns error upon overflow of `Balances`.
 		pub(crate) fn calculate_score(
 			solution: &[TrancheSolution],
-			tranches: &[EpochExecutionTranche<T::Balance, T::BalanceRatio>],
+			tranches: &[EpochExecutionTrancheOf<T>],
 		) -> Result<T::Balance, DispatchError> {
 			let len = tranches.len().try_into().ok().ok_or(Error::<T>::Overflow)?;
 
@@ -1157,14 +1183,14 @@ pub mod pallet {
 								solution
 									.invest_fulfillment
 									.mul_floor(tranches.invest)
-									.checked_mul(&invest_weight)
+									.checked_mul(&T::TrancheWeight::convert(invest_weight))
 									.and_then(|score_tranche| score.checked_add(&score_tranche))
 							}),
 							redeem_score.and_then(|score| {
 								solution
 									.redeem_fulfillment
 									.mul_floor(tranches.redeem)
-									.checked_mul(&redeem_weight)
+									.checked_mul(&T::TrancheWeight::convert(redeem_weight))
 									.and_then(|score_tranche| score.checked_add(&score_tranche))
 							}),
 						)
@@ -1403,14 +1429,7 @@ pub mod pallet {
 		pub(crate) fn calculate_collect(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,
-			pool: PoolDetails<
-				T::AccountId,
-				T::CurrencyId,
-				T::EpochId,
-				T::Balance,
-				T::InterestRate,
-				T::MaxSizeMetadata,
-			>,
+			pool: PoolDetailsOf<T>,
 			end_epoch: T::EpochId,
 		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
 			// No collect possible in this epoch
@@ -1534,7 +1553,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_nav: T::Balance,
 			epoch_reserve: T::Balance,
-			tranches: &mut [Tranche<T::Balance, T::InterestRate>],
+			tranches: &mut [TrancheOf<T>],
 		) -> Option<Vec<T::BalanceRatio>> {
 			let total_assets = epoch_nav.checked_add(&epoch_reserve).unwrap();
 			let mut remaining_assets = total_assets;
@@ -1575,7 +1594,7 @@ pub mod pallet {
 				})
 		}
 
-		fn update_tranche_debt(tranche: &mut Tranche<T::Balance, T::InterestRate>) -> Option<()> {
+		fn update_tranche_debt(tranche: &mut TrancheOf<T>) -> Option<()> {
 			let now = Self::now();
 			let mut delta = now - tranche.last_updated_interest;
 			let mut interest = tranche.interest_per_sec;
@@ -1594,7 +1613,7 @@ pub mod pallet {
 
 		pub fn convert_orders_to_currency(
 			epoch_tranche_prices: &[T::BalanceRatio],
-			tranches: &[Tranche<T::Balance, T::InterestRate>],
+			tranches: &[TrancheOf<T>],
 		) -> Option<Vec<(T::Balance, T::Balance)>> {
 			epoch_tranche_prices
 				.iter()
@@ -1608,7 +1627,7 @@ pub mod pallet {
 		}
 
 		pub fn is_valid_tranche_change(
-			old_tranches: &Vec<Tranche<T::Balance, T::InterestRate>>,
+			old_tranches: &Vec<TrancheOf<T>>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
 			// At least one tranche must exist, and the first (most junior) tranche must have an
@@ -1974,7 +1993,7 @@ pub mod pallet {
 		fn update_tranche_for_epoch(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			submission_period_epoch: T::EpochId,
-			tranche: &mut Tranche<T::Balance, T::InterestRate>,
+			tranche: &mut TrancheOf<T>,
 			solution: TrancheSolution,
 			(currency_invest, _currency_redeem): (T::Balance, T::Balance),
 			price: T::BalanceRatio,

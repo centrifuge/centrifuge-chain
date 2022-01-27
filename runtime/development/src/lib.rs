@@ -748,6 +748,7 @@ impl pallet_pools::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type TrancheWeight = TrancheWeight;
 }
 
 parameter_types! {

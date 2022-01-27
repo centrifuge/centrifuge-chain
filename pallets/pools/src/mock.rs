@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub use runtime_common::Rate;
+pub use runtime_common::{Rate, TrancheWeight};
 
 common_types::impl_tranche_token!();
 
@@ -269,6 +269,7 @@ impl Config for Test {
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type TrancheWeight = TrancheWeight;
 }
 
 impl fake_nav::Config for Test {

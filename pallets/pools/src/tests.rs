@@ -336,10 +336,10 @@ fn pool_constraints_pass() {
 		assert_eq!(
 			pool.tranches.calculate_weight(pool.tranches.len() as u32),
 			vec![
-				(10_000, 100_000),
-				(1000, 1_000_000),
-				(100, 10_000_000),
-				(10, 100_000_000)
+				(10_000.into(), 100_000.into()),
+				(1000.into(), 1_000_000.into()),
+				(100.into(), 10_000_000.into()),
+				(10.into(), 100_000_000.into())
 			]
 		);
 	});
