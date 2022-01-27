@@ -75,7 +75,7 @@ pub enum UnhealthyState {
 }
 
 /// The solutions struct for epoch solution
-#[derive(Encode, Decode, Clone, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum EpochSolution<Balance> {
 	Healthy(HealthySolution<Balance>),
 	Unhealthy(UnhealthySolution<Balance>),
@@ -100,38 +100,16 @@ where
 	}
 }
 
-impl<Balance> PartialEq for EpochSolution<Balance>
-where
-	Balance: PartialEq,
-{
-	fn eq(&self, other: &Self) -> bool {
-		match self {
-			EpochSolution::Healthy(s_1) => match other {
-				EpochSolution::Healthy(s_2) => s_1 == s_2,
-				EpochSolution::Unhealthy(_) => false,
-			},
-			EpochSolution::Unhealthy(s_1) => match other {
-				EpochSolution::Healthy(_) => false,
-				EpochSolution::Unhealthy(s_2) => s_1 == s_2,
-			},
-		}
-	}
-}
-
 impl<Balance> PartialOrd for EpochSolution<Balance>
 where
 	Balance: PartialOrd,
 {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		match self {
-			EpochSolution::Healthy(s_1) => match other {
-				EpochSolution::Healthy(s_2) => s_1.partial_cmp(s_2),
-				EpochSolution::Unhealthy(_) => Some(Ordering::Greater),
-			},
-			EpochSolution::Unhealthy(s_1) => match other {
-				EpochSolution::Healthy(_) => Some(Ordering::Less),
-				EpochSolution::Unhealthy(s_2) => s_1.partial_cmp(s_2),
-			},
+		match (self, other) {
+			(EpochSolution::Healthy(s_1), EpochSolution::Healthy(s_2)) => s_1.partial_cmp(s_2),
+			(EpochSolution::Healthy(_), EpochSolution::Unhealthy(_)) => Some(Ordering::Greater),
+			(EpochSolution::Unhealthy(s_1), EpochSolution::Unhealthy(s_2)) => s_1.partial_cmp(s_2),
+			(EpochSolution::Unhealthy(_), EpochSolution::Healthy(_)) => Some(Ordering::Less),
 		}
 	}
 }
@@ -147,16 +125,7 @@ where
 	Balance: PartialOrd,
 {
 	fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-		let score_self = &self.score;
-		let score_other = &other.score;
-
-		Some(if score_self > score_other {
-			Ordering::Greater
-		} else if score_self < score_other {
-			Ordering::Less
-		} else {
-			Ordering::Equal
-		})
+		self.score.partial_cmp(&other.score)
 	}
 }
 
