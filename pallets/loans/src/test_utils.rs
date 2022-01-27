@@ -37,9 +37,7 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 	location: <T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 	who: T::AccountId,
 	role: PoolRole,
-) where
-	T::AccountId: From<u32>,
-{
+) {
 	PermissionsOf::<T>::add_permission(location, who, role)
 		.expect("adding permissions should not fail");
 }
@@ -95,7 +93,6 @@ pub(crate) fn create<T>(
 	<T as pallet_pools::Config>::TrancheId: From<u8>,
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
-	<T as frame_system::Config>::AccountId: From<u32>,
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 

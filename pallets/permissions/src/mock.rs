@@ -82,8 +82,8 @@ pub enum Location {
 
 impl Properties for Storage {
 	type Property = Role;
-	type Ok = ();
 	type Error = ();
+	type Ok = ();
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
@@ -105,7 +105,7 @@ impl Properties for Storage {
 	}
 
 	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
-		Ok(match property {
+		match property {
 			Role::Xcm(role) => match role {
 				XcmRole::Receiver => self.xcm.remove(XcmStorage::RECEIVER),
 				XcmRole::Sender => self.xcm.remove(XcmStorage::SENDER),
@@ -116,11 +116,12 @@ impl Properties for Storage {
 					self.org.remove(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
 			},
-		})
+		};
+		Ok(())
 	}
 
 	fn add(&mut self, property: Self::Property) -> Result<(), ()> {
-		Ok(match property {
+		match property {
 			Role::Xcm(role) => match role {
 				XcmRole::Receiver => self.xcm.insert(XcmStorage::RECEIVER),
 				XcmRole::Sender => self.xcm.insert(XcmStorage::SENDER),
@@ -131,7 +132,8 @@ impl Properties for Storage {
 					self.org.insert(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
 			},
-		})
+		};
+		Ok(())
 	}
 }
 
@@ -273,6 +275,7 @@ impl pallet_permissions::Config for MockRuntime {
 	type Storage = Storage;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Editors;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -324,14 +327,8 @@ impl pallet_dummy::Config for MockRuntime {
 	type PalletId = DummyAccount;
 }
 
+#[derive(Default)]
 pub struct TestExternalitiesBuilder;
-
-// Implement default trait for test externalities builder
-impl Default for TestExternalitiesBuilder {
-	fn default() -> Self {
-		Self {}
-	}
-}
 
 impl TestExternalitiesBuilder {
 	// Build a genesis storage key/value store
