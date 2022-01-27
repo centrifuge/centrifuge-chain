@@ -31,6 +31,14 @@ impl PoolState {
 		self
 	}
 
+	/// Adds an unhealthy state
+	///
+	/// * If the state was not present yet, it will be added to the
+	/// vector of unhealthy states. If it was added, then it will
+	/// not be added a second time.
+	///
+	/// * If the state was previously healthy, then this puts the
+	/// state into an unhealthy state!
 	pub fn add_unhealthy(&mut self, add: UnhealthyState) -> &mut Self {
 		match self {
 			PoolState::Healthy => {
@@ -48,14 +56,18 @@ impl PoolState {
 		}
 	}
 
+	/// Removes an unhealthy state
+	///
+	/// * If the state was not present yet, it will not be removed,
+	///  it it was present if will be removed.
+	///
+	/// * If there are no more unhealthy states, the state will
+	/// be switched to healthy
+	///
+	/// * If the state was healthy, this is a no-op
 	pub fn rm_unhealthy(&mut self, rm: UnhealthyState) -> &mut Self {
 		match self {
-			PoolState::Healthy => {
-				let mut states = Vec::new();
-				states.push(rm);
-				*self = PoolState::Unhealthy(states);
-				self
-			}
+			PoolState::Healthy => self,
 			PoolState::Unhealthy(states) => {
 				states.retain(|val| val != &rm);
 
@@ -286,7 +298,19 @@ mod test {
 	}
 
 	#[test]
+	fn add_unhealthy_works() {
+		let mut state = PoolState::Healthy;
+
+		state.add_unhealthy(UnhealthyState::MaxReserveViolated);
+		assert!(state == PoolState::Unhealthy(vec![UnhealthyState::MaxReserveViolated]));
+	}
+
+	#[test]
 	fn rm_unhealthy_works() {
+		let mut state = PoolState::Healthy;
+		state.rm_unhealthy(UnhealthyState::MaxReserveViolated);
+		assert!(state == PoolState::Healthy);
+
 		let mut state = PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated]);
 
 		state.add_unhealthy(UnhealthyState::MaxReserveViolated);
