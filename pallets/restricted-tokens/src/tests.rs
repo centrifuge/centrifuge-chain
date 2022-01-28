@@ -12,8 +12,10 @@
 
 use crate::mock::DISTR_PER_ACCOUNT;
 use crate::mock::*;
-use frame_support::traits::tokens::{fungible, DepositConsequence, WithdrawConsequence};
+use crate::Error;
+use frame_support::traits::tokens::{fungible, fungibles, DepositConsequence, WithdrawConsequence};
 use frame_support::{assert_noop, assert_ok};
+use orml_traits::GetByKey;
 
 #[test]
 fn transfer_works() {
@@ -514,6 +516,372 @@ fn fungible_transfer() {
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Transfer<
 					AccountId,
 				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, false)
+				.is_ok()
+			);
+		})
+}
+
+// Tests for fungibles::* trait calls that restricted tokens wraps
+
+#[test]
+fn fungibles_total_issuance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::total_issuance(CurrencyId::Cfg),
+				10 * DISTR_PER_ACCOUNT
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::total_issuance(CurrencyId::KUSD),
+				10 * DISTR_PER_ACCOUNT
+			);
+		})
+}
+
+#[test]
+fn fungibles_minimum_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::minimum_balance(CurrencyId::Cfg),
+				ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::minimum_balance(CurrencyId::KUSD),
+				ExistentialDeposits::get(&CurrencyId::KUSD)
+			)
+		})
+}
+
+#[test]
+fn fungibles_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::balance(CurrencyId::Cfg, &1),
+				DISTR_PER_ACCOUNT
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::balance(CurrencyId::KUSD, &1),
+				DISTR_PER_ACCOUNT
+			)
+		})
+}
+
+#[test]
+fn fungibles_reducible_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::Cfg, &1, false),
+				DISTR_PER_ACCOUNT - ExistentialDeposit::get()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::KUSD, &1, false),
+				DISTR_PER_ACCOUNT / 2
+			);
+		})
+}
+
+#[test]
+fn fungibles_can_deposit() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::can_deposit(CurrencyId::Cfg, &1, 10)
+					== DepositConsequence::Success
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::can_deposit(CurrencyId::KUSD, &1, 10)
+					== DepositConsequence::Success
+			);
+		})
+}
+
+#[test]
+fn fungibles_can_withdraw() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungibles::Inspect<
+				AccountId,
+			>>::can_withdraw(CurrencyId::KUSD, &1, DISTR_PER_ACCOUNT)
+				== WithdrawConsequence::ReducedToZero(0);
+			assert!(res);
+			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungibles::Inspect<
+				AccountId,
+			>>::can_withdraw(
+				CurrencyId::KUSD,
+				&1,
+				DISTR_PER_ACCOUNT - ExistentialDeposit::get(),
+			) == WithdrawConsequence::Success;
+			assert!(res);
+		})
+}
+
+#[test]
+fn fungibles_balance_on_hold() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+					AccountId,
+				>>::balance_on_hold(CurrencyId::USDT, &1,),
+				0
+			);
+		})
+}
+
+#[test]
+fn fungibles_can_hold() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+					AccountId,
+				>>::can_hold(CurrencyId::Cfg, &1, DISTR_PER_ACCOUNT)
+			);
+			assert!(
+				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+					AccountId,
+				>>::can_hold(CurrencyId::KUSD, &1, 0)
+			);
+			assert!(
+				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
+					AccountId,
+				>>::can_hold(CurrencyId::USDT, &1, 0)
+			);
+		})
+}
+
+#[test]
+fn fungibles_mint_into() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &1, 10),
+				Error::<MockRuntime>::PreConditionsNotMet
+			);
+
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
+		})
+}
+
+#[test]
+fn fungibles_burn_from() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::burn_from(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT),
+				Error::<MockRuntime>::PreConditionsNotMet,
+			);
+
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Mutate<AccountId>>::mint_into(CurrencyId::RestrictedCoin, &POOL_PALLET_ID, 10).is_ok())
+		})
+}
+
+#[test]
+fn fungibles_hold() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT)
+				.is_ok()
+			);
+
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::KUSD, &1, 1),
+				Error::<MockRuntime>::PreConditionsNotMet,
+			);
+
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::USDT, &1, 1),
+				Error::<MockRuntime>::PreConditionsNotMet,
+			);
+		})
+}
+
+#[test]
+fn fungibles_release() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT)
+				.is_ok()
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::release(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT, false)
+				.is_ok()
+			);
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::KUSD, &1, DISTR_PER_ACCOUNT),
+				Error::<MockRuntime>::PreConditionsNotMet
+			);
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::USDT, &1, DISTR_PER_ACCOUNT),
+				Error::<MockRuntime>::PreConditionsNotMet
+			);
+		})
+}
+
+#[test]
+fn fungibles_transfer_held() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::RestrictedCoin, &1, DISTR_PER_ACCOUNT)
+				.is_ok()
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::transfer_held(
+					CurrencyId::RestrictedCoin,
+					&1,
+					&9,
+					DISTR_PER_ACCOUNT,
+					false,
+					true
+				)
+				.is_ok()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &1, false),
+				0
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &9, false),
+				DISTR_PER_ACCOUNT / 2
+			);
+
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::hold(CurrencyId::RestrictedCoin, &2, DISTR_PER_ACCOUNT)
+				.is_ok()
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
+					AccountId,
+				>>::transfer_held(
+					CurrencyId::RestrictedCoin,
+					&2,
+					&9,
+					DISTR_PER_ACCOUNT,
+					false,
+					false
+				)
+				.is_ok()
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &9, false),
+				DISTR_PER_ACCOUNT
+			);
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
+					AccountId,
+				>>::reducible_balance(CurrencyId::RestrictedCoin, &2, false),
+				0
+			);
+		})
+}
+
+#[test]
+fn fungibles_transfer() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			// Min holding period is not over
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+					AccountId,
+				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, false)
+				.is_err()
+			);
+			Timer::pass(MIN_HOLD_PERIOD);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+					AccountId,
+				>>::transfer(CurrencyId::Cfg, &1, &100, DISTR_PER_ACCOUNT, false)
+				.is_ok()
+			);
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+					AccountId,
+				>>::transfer(
+					CurrencyId::RestrictedCoin,
+					&1,
+					&100,
+					DISTR_PER_ACCOUNT,
+					false
+				),
+				Error::<MockRuntime>::PreConditionsNotMet
+			);
+
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Transfer<
+					AccountId,
+				>>::transfer(
+					CurrencyId::RestrictedCoin,
+					&100,
+					&101,
+					DISTR_PER_ACCOUNT,
+					false
+				)
 				.is_ok()
 			);
 		})

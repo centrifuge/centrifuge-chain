@@ -82,7 +82,8 @@ impl Timer {
 mod filter {
 	pub mod fungibles {
 		use crate::impl_fungibles::*;
-		use crate::mock::{AccountId, Balance, CurrencyId, POOL_PALLET_ID};
+		use crate::mock::{AccountId, Balance, CurrencyId, RestrictedTokens, POOL_PALLET_ID};
+		use crate::TransferDetails;
 		use common_traits::PreConditions;
 
 		/// Dummy filter, that allows to reduce the balance of native normally
@@ -101,9 +102,8 @@ mod filter {
 						actually_reducible,
 					) => {
 						match asset {
-							// Note this filter actually is never received. As CFG is the native one, which is passe
+							// Note this filter actually never filters CurrencyId::Cfg. As CFG is the native one, which is passe
 							// directly to the fungible::Inspect implementation and the respective filters.
-							CurrencyId::Cfg => actually_reducible,
 							_ => actually_reducible / 2,
 						}
 					}
@@ -158,6 +158,49 @@ mod filter {
 						},
 						_ => true,
 					},
+				}
+			}
+		}
+
+		/// Dummy filter that enforeces hold restrictens given by can hold.
+		pub struct MutateHoldFilter;
+		impl PreConditions<FungiblesMutateHoldEffects<CurrencyId, AccountId, Balance>>
+			for MutateHoldFilter
+		{
+			type Result = bool;
+
+			fn check(
+				t: FungiblesMutateHoldEffects<CurrencyId, AccountId, Balance>,
+			) -> Self::Result {
+				match t {
+					FungiblesMutateHoldEffects::Hold(currency, who, amount) => {
+						InspectHoldFilter::check(FungiblesInspectHoldEffects::CanHold(
+							currency, who, amount, true,
+						))
+					}
+					_ => true,
+				}
+			}
+		}
+
+		/// Dummy filter for Transfer. Enforces rules for RestrictedTokens struct on trait level
+		pub struct TransferFilter;
+		impl PreConditions<FungiblesTransferEffects<CurrencyId, AccountId, Balance>> for TransferFilter {
+			type Result = bool;
+
+			fn check(t: FungiblesTransferEffects<CurrencyId, AccountId, Balance>) -> Self::Result {
+				match t {
+					FungiblesTransferEffects::Transfer(
+						currency,
+						send,
+						recv,
+						amount,
+						_keep_alive,
+					) => {
+						let details = TransferDetails::new(send, recv, currency, amount);
+
+						RestrictedTokens::check(details)
+					}
 				}
 			}
 		}
@@ -396,8 +439,8 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 	type PreFungiblesInspect = filter::fungibles::InspectFilter;
 	type PreFungiblesInspectHold = filter::fungibles::InspectHoldFilter;
 	type PreFungiblesMutate = filter::fungibles::MutateFilter;
-	type PreFungiblesMutateHold = common_traits::Always;
-	type PreFungiblesTransfer = common_traits::Always;
+	type PreFungiblesMutateHold = filter::fungibles::MutateHoldFilter;
+	type PreFungiblesTransfer = filter::fungibles::TransferFilter;
 	type Fungibles = OrmlTokens;
 	type PreCurrency = filter::currency::CurrencyFilter;
 	type PreReservableCurrency = common_traits::Always;
