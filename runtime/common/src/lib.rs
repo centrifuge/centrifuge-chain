@@ -134,6 +134,23 @@ pub mod types {
 	/// A representation of a tranche identifier
 	pub type TrancheId = u8;
 
+	/// A representation of a tranche weight, used to weight
+	/// importance of a tranche
+	#[derive(
+		codec::Encode,
+		codec::Decode,
+		Copy,
+		Debug,
+		Default,
+		Clone,
+		PartialEq,
+		Eq,
+		TypeInfo,
+		codec::CompactAs,
+	)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub struct TrancheWeight(pub u128);
+
 	/// A representation of InstanceId for Uniques.
 	#[derive(
 		codec::Encode,
