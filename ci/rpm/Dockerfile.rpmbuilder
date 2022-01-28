@@ -1,12 +1,16 @@
 FROM centos:8
 
+# https://saule1508.github.io/build-rpm-with-docker/
+# https://github.com/jc21/docker-rpmbuild-centos7
+
 # Image metadata
-LABEL io.centrifuge.maintainer="Centrifuge" \
+LABEL io.centrifuge.maintainer="K/F AG" \
       io.centrifuge.description="RPM package builder" \
       io.centrifuge.version="0.1.0" 
 
 ENV LANG=en_US.UTF-8
-ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo
 ENV PATH $CARGO_HOME/bin:$PATH
 
 # Disable the list of mirrors (useless)
@@ -14,9 +18,9 @@ ENV PATH $CARGO_HOME/bin:$PATH
 # && sed -i 's/^#baseurl=/baseurl=/' /etc/yum.repos.d/CentOS-Base.repo
     
 # Install requisite packages
-RUN yum -y update \
- && yum -y group install "Development tools" \
- && yum -y install \
+RUN dnf -y update \
+ && dnf -y group install "Development tools" \
+ && dnf -y install \
     rpmdevtools \
     rpm-build \
     rpmlint \
@@ -27,28 +31,28 @@ RUN yum -y update \
  && mkdir -p "$RUSTUP_HOME" \
  && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
  && chmod -R a=rwX $CARGO_HOME \
- && yum clean all \
+ ##&& dnf -y install rust-{,s}rpm-macros \
+ && dnf clean all \
  && rm -rf /var/cache/yum \
     # Create RPM builder user
  && adduser -G wheel rpmbuilder \
+    # Setup RPM packaging environment
  && mkdir -p /home/rpmbuilder/rpmbuild/{BUILD,SPECS,SOURCES,BUILDROOT,RPMS,SRPMS,tmp} \
- && chmod -R 777 /home/rpmbuilder/rpmbuild
+ && chmod -R 777 /home/rpmbuilder/rpmbuild \
+ && chown -R rpmbuilder:rpmbuilder /home/rpmbuilder \
+    # Configure sudoers (all permissions to users in the wheel group)
+ && echo '%wheel  ALL=(ALL)       NOPASSWD: ALL' > /etc/sudoers.d/wheel; chown root:root /etc/sudoers.d/wheel
+ 
+# Copy scripts and set executable permissions
+ADD ./scripts/build.sh /bin/
+ADD ./scripts/docker_entrypoint.sh /bin/
+RUN chmod 755 /bin/build.sh \
+ && ln -s /bin/build.sh /bin/build \
+ && chmod 755 /bin/docker_entrypoint.sh
 
-# https://saule1508.github.io/build-rpm-with-docker/
-# https://github.com/jc21/docker-rpmbuild-centos7
-
-# Copy scripts and configuration files to target image
-ADD scripts/build_spec.sh /bin/
-ADD scripts/build_rpm.sh /bin/
-ADD scripts/build_all.sh /bin/
-ADD docker/.rpmmacros /home/rpmbuilder/
-ADD docker/sudoers/wheel /etc/sudoers.d/
-
-RUN chown root:root /etc/sudoers.d/*
-
-# Remove requiretty from sudoers main file
-#RUN sed -i '/Defaults    requiretty/c\#Defaults    requiretty' /etc/sudoers
-
+# Set default user and working directory
 USER rpmbuilder
-
 WORKDIR /home/rpmbuilder
+
+# Bootstrap container using the entrypoint script
+ENTRYPOINT [ "/bin/docker_entrypoint.sh" ]

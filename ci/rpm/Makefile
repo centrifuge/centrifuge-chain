@@ -54,6 +54,7 @@ define display_help_message
 	@echo "  $(ccpink)remove-image$(ccend)     - remove RPM builder's Docker image from local repository"
 	@echo "  $(ccpink)build-spec$(ccend)       - generate RPM spec for Centrifuge Chain using rust2rpm tool"
 	@echo "  $(ccpink)build-rpm$(ccend)        - build Centrifuge Chain's binary RPM package (inside a container)"
+	@echo "  $(ccpink)clean-rpm$(ccend)        - clean up RPM building folder and artefacts (in ./rpmbuild, usually)"
 	@echo "  $(ccpink)mrproper$(ccend)         - remove local dangling Docker images and stopped containers"
 	@echo ""
 endef
@@ -89,7 +90,7 @@ endef
 
 # Remove RPM builder images (from local Docker repository)
 define remove_docker_image
-	@docker image rm --force $(DOCKER_IMAGE) > /dev/null 2>&1 || true && docker image rm --force $(DOCKER_IMAGE_NAME):latest > /dev/null 2>&1 || true
+	@docker image rm --force $(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) > /dev/null 2>&1 || true && docker image rm --force $(DOCKER_IMAGE_NAME):latest > /dev/null 2>&1 || true
 endef
 
 # Remove dangling Docker images and stopped containers
@@ -108,6 +109,11 @@ define build_rpm_spec
 	@docker container run --rm -it --volume $(PWD):/home/rpmbuilder $(DOCKER_IMAGE_NAME):latest rust2rpm
 endef
 
+# Clean up RPM building environment (in ./rpmbuild folder)
+define clean_rpm_building_environment
+	@rm -rf ./rpmbuild .bash_history .ssh
+endef
+
 # -------------------------------------------------------------------------------------------------
 # TARGETS DEFINITION
 # -------------------------------------------------------------------------------------------------
@@ -118,7 +124,7 @@ endef
 # name should be .PHONY. This typically includes 'all', 'help', 'build', 'clean',
 # and so on.
 
-.PHONY: all help build-image rebuild-image remove-image build-rpm build-spec mrproper
+.PHONY: all help build-image rebuild-image remove-image build-rpm clean-rpm build-spec mrproper
 
 # Set default target if none is specified
 .DEFAULT_GOAL := help
@@ -141,20 +147,25 @@ rebuild-image:
 
 # Remove RPM builder's Docker images, as well as containers
 remove-image:
-	@echo "$(ccred)[WARN] $(ccend)$(ccwhite)Removing RPM builder's local Docker image..."
+	@echo "$(ccred)[WARN] $(ccend)$(ccwhite) Removing RPM builder's local Docker image..."
 	$(call remove_docker_image)
 
 # Build Centrifuge Chain's RPM package
 build-rpm:
-	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite)Building Centrifuge Chain's RPM package..."
+	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite) Building Centrifuge Chain's RPM package..."
 	$(call build_rpm_package)
+
+# Clean up RPM building environment (in ./rpmbuild folder)
+clean-rpm:
+	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite) Cleaning up RPM building environment..."
+	$(call clean_rpm_building_environment)
 
 # Generate Centrifuge Chain's SPEC file from project's Cargo.tom file (using rust2rpm tool)
 build-spec:
-	@echo "$(ccgreen)[INFO]$(ccend) $(ccwhite)Generating Centrifuge Chain's RPM SEPC file..."
+	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite) Generating Centrifuge Chain's RPM SEPC file..."
 	$(call build_rpm_spec)
 
 # Remove dangling Docker images and unused stopped containers
 mrproper:
-	@echo "$(ccred)[WARN] $(ccend)$(ccwhite)Removing dangling Docker images and stopped containers ..."
+	@echo "$(ccred)[WARN] $(ccend)$(ccwhite) Removing dangling Docker images and stopped containers ..."
 	$(call purge_docker_images_and_containers)
