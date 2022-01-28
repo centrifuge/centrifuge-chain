@@ -13,7 +13,10 @@
 use crate::mock::DISTR_PER_ACCOUNT;
 use crate::mock::*;
 use crate::Error;
-use frame_support::traits::tokens::{fungible, fungibles, DepositConsequence, WithdrawConsequence};
+use frame_support::traits::{
+	tokens::{fungible, fungibles, DepositConsequence, ExistenceRequirement, WithdrawConsequence},
+	BalanceStatus, Currency, LockableCurrency, ReservableCurrency, WithdrawReasons,
+};
 use frame_support::{assert_noop, assert_ok};
 use orml_traits::GetByKey;
 
@@ -884,5 +887,279 @@ fn fungibles_transfer() {
 				)
 				.is_ok()
 			);
+		})
+}
+
+// Tests for currency::* traits calls that restricted tokens wraps
+
+#[test]
+fn currency_make_free_balance_be() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			{<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::make_free_balance_be(&80, 100)};
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(&80), 100);
+		})
+}
+
+#[test]
+fn currency_deposit_into_existing() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			{let _imb = <pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::deposit_into_existing(&8, 100).unwrap();}
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(&8), DISTR_PER_ACCOUNT + 100);
+		})
+}
+
+#[test]
+fn currency_deposit_creating() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let issuance = <pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance();
+			{let _imb = <pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::deposit_creating(&80, 100);}
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(&80), 100);
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance(), issuance + 100);
+		})
+}
+
+#[test]
+fn currency_withdraw() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::withdraw(
+					&1,
+					10,
+					WithdrawReasons::TRANSFER,
+					ExistenceRequirement::KeepAlive
+				),
+				Error::<MockRuntime>::PreConditionsNotMet
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::withdraw(
+					&1,
+					10,
+					WithdrawReasons::TRANSACTION_PAYMENT,
+					ExistenceRequirement::KeepAlive
+				)
+				.is_ok(),
+			);
+		})
+}
+
+#[test]
+fn currency_slash() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let issuance = <pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance();
+			{let (_, _) = <pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::slash(&1, 10);}
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_balance(&1), DISTR_PER_ACCOUNT - 10);
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_issuance(), issuance - 10);
+		})
+}
+
+#[test]
+fn currency_transfer() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::transfer(
+					&1,
+					&20,
+					DISTR_PER_ACCOUNT,
+					ExistenceRequirement::AllowDeath
+				)
+				.is_ok()
+			);
+		})
+}
+
+#[test]
+fn currency_ensure_can_withdraw() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_noop!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::ensure_can_withdraw(
+					&1,
+					10,
+					WithdrawReasons::TRANSFER,
+					DISTR_PER_ACCOUNT - 10
+				),
+				Error::<MockRuntime>::PreConditionsNotMet
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::ensure_can_withdraw(
+					&1,
+					10,
+					WithdrawReasons::TRANSACTION_PAYMENT,
+					DISTR_PER_ACCOUNT - 10
+				)
+				.is_ok(),
+			);
+		})
+}
+
+#[test]
+fn currency_free_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as Currency<AccountId>>::free_balance(
+					&1,
+				),
+				DISTR_PER_ACCOUNT
+			);
+		})
+}
+
+#[test]
+fn currency_issue() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let _ =
+				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::issue(100);
+		})
+}
+
+#[test]
+fn currency_burn() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let _ =
+				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::burn(100);
+		})
+}
+
+#[test]
+fn currency_total_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::total_balance(&1), DISTR_PER_ACCOUNT);
+		})
+}
+
+#[test]
+fn currency_can_slash() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::can_slash(
+					&1,
+					DISTR_PER_ACCOUNT
+				)
+			);
+		})
+}
+
+#[test]
+fn currency_minimum_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::minimum_balance(), ExistentialDeposit::get());
+		})
+}
+
+#[test]
+fn currency_can_reserve() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::can_reserve(
+					&1,
+					DISTR_PER_ACCOUNT
+				)
+			);
+		})
+}
+
+#[test]
+fn currency_slash_reserved() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, DISTR_PER_ACCOUNT));
+			let _ = <pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::slash_reserved(&1, DISTR_PER_ACCOUNT);
+		})
+}
+
+#[test]
+fn currency_reserved_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT - 100);
+		})
+}
+
+#[test]
+fn currency_reserve() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
+		})
+}
+
+#[test]
+fn currency_unreserve() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::reserve(&1, 100));
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT - 100);
+			<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::unreserve(&1, 100);
+			assert_eq!(<pallet_restricted_tokens::Pallet<MockRuntime> as Currency<AccountId>>::free_balance(&1), DISTR_PER_ACCOUNT);
+		})
+}
+
+#[test]
+fn currency_repatriate_reserved() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_ok!(<pallet_restricted_tokens::Pallet<MockRuntime> as ReservableCurrency<AccountId>>::repatriate_reserved(&1, &2, 100, BalanceStatus::Free));
+		})
+}
+
+#[test]
+fn currency_remove_lock() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::set_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSFER);
+			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::remove_lock(LOCK_ID, &1);
+		})
+}
+
+#[test]
+fn currency_set_lock() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::set_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSFER);
+		})
+}
+
+#[test]
+fn currency_extend_lock() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::set_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSFER);
+			<pallet_restricted_tokens::Pallet<MockRuntime> as LockableCurrency<AccountId>>::extend_lock(LOCK_ID, &1, DISTR_PER_ACCOUNT, WithdrawReasons::TRANSACTION_PAYMENT);
 		})
 }

@@ -37,6 +37,7 @@ pub const MIN_HOLD_PERIOD: Moment = 10;
 static mut TIME: Moment = 0;
 static mut PERIOD_STORAGE: *mut BTreeMap<AccountId, Moment> =
 	0usize as *mut BTreeMap<AccountId, Moment>;
+pub const LOCK_ID: [u8; 8] = *b"roc/locs";
 
 struct HoldingPeriodChecker;
 impl HoldingPeriodChecker {
