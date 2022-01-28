@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote, EqualPrivilegeOnly},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -51,10 +51,8 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
-use frame_support::traits::{Currency, Get, OnRuntimeUpgrade};
 /// common types for the runtime.
 pub use runtime_common::*;
-use sp_std::marker::PhantomData;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -72,7 +70,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1008,
+	spec_version: 1009,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -84,72 +82,6 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
-	}
-}
-
-/// Custom runtime upgrades
-///
-/// Migration to include collator-selection in a running chain
-
-pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
-
-type BalanceOfCollatorSelection<T> =
-	<<T as pallet_collator_selection::Config>::Currency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
-
-impl<T> IntegrateCollatorSelection<T>
-where
-	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
-	T::AccountId: From<sp_runtime::AccountId32>,
-	T::Keys: From<SessionKeys>,
-{
-	fn to_version() -> u32 {
-		1008
-	}
-
-	fn db_access_weights(reads: Option<u64>, writes: Option<u64>) -> Weight {
-		let mut weight: Weight = 0u32 as Weight;
-
-		if let Some(num_reads) = reads {
-			weight += T::DbWeight::get()
-				.reads(1 as Weight)
-				.saturating_mul(num_reads);
-		}
-
-		if let Some(num_writes) = writes {
-			weight += T::DbWeight::get()
-				.writes(1 as Weight)
-				.saturating_mul(num_writes);
-		}
-
-		weight
-	}
-}
-
-impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
-where
-	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
-	BalanceOfCollatorSelection<T>: From<u128>,
-	T::AccountId: From<sp_runtime::AccountId32>,
-	T::Keys: From<SessionKeys>,
-	<T as frame_system::Config>::AccountId: From<<T as pallet_session::Config>::ValidatorId>,
-{
-	fn on_runtime_upgrade() -> Weight {
-		let mut consumed: Weight = 0;
-
-		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
-			let current_validators = <pallet_session::Validators<T>>::get()
-				.into_iter()
-				.map(|who| who.into())
-				.collect();
-
-			<pallet_collator_selection::Invulnerables<T>>::set(current_validators);
-
-			consumed += Self::db_access_weights(Some(1), Some(1))
-		}
-
-		return consumed;
 	}
 }
 
@@ -454,6 +386,7 @@ impl pallet_proxy::Config for Runtime {
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type PalletsOrigin = OriginCaller;
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Self>;
 }
 
@@ -470,6 +403,7 @@ impl pallet_scheduler::Config for Runtime {
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
 }
 
@@ -912,8 +846,8 @@ pub type Executive = frame_executive::Executive<
 	Block,
 	frame_system::ChainContext<Runtime>,
 	Runtime,
-	AllPallets,
-	IntegrateCollatorSelection<Runtime>,
+	AllPalletsWithSystem,
+	(),
 >;
 
 impl_runtime_apis! {

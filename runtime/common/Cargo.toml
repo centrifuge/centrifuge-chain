@@ -15,20 +15,20 @@ smallvec = "1.4.0"
 # Substrate dependencies
 codec = { package = 'parity-scale-codec', version = '2.0.0', default-features = false, features = ['derive'] }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-frame-system = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-node-primitives = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-pallet-authorship = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-sp-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-sp-core = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-sp-consensus-aura = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
-sp-runtime = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
+frame-support = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+frame-system = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+node-primitives = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+pallet-authorship = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+sp-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+sp-arithmetic = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+sp-core = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+sp-consensus-aura = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
+sp-runtime = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.15" }
 
 # ORML dependencies
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.12" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.15" }
 
 # Local Dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
