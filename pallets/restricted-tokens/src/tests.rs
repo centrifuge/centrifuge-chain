@@ -12,6 +12,7 @@
 
 use crate::mock::DISTR_PER_ACCOUNT;
 use crate::mock::*;
+use frame_support::traits::tokens::{fungible, DepositConsequence, WithdrawConsequence};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
@@ -329,6 +330,191 @@ fn set_balance_works() {
 			assert!(
 				orml_tokens::Pallet::<MockRuntime>::accounts(101, CurrencyId::RestrictedCoin)
 					.reserved == 100
+			);
+		})
+}
+
+// Tests for fungible::* trait calls that restricted tokens wraps
+
+#[test]
+fn fungible_total_issuance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::total_issuance(), 10 * DISTR_PER_ACCOUNT)
+		})
+}
+
+#[test]
+fn fungible_minimum_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::minimum_balance(), 1)
+		})
+}
+
+#[test]
+fn fungible_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::balance(&1), DISTR_PER_ACCOUNT)
+		})
+}
+
+#[test]
+fn fungible_reducible_balance() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&1, true), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+		})
+}
+
+#[test]
+fn fungible_can_deposit() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10) == DepositConsequence::Success);
+		})
+}
+
+#[test]
+fn fungible_can_withdraw() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungible::Inspect<
+				AccountId,
+			>>::can_withdraw(&1, DISTR_PER_ACCOUNT)
+				== WithdrawConsequence::ReducedToZero(0);
+			assert!(res);
+			let res = <pallet_restricted_tokens::Pallet<MockRuntime> as fungible::Inspect<
+				AccountId,
+			>>::can_withdraw(&1, DISTR_PER_ACCOUNT - ExistentialDeposit::get())
+				== WithdrawConsequence::Success;
+			assert!(res);
+		})
+}
+
+#[test]
+fn fungible_balance_on_hold() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert_eq!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::InspectHold<
+					AccountId,
+				>>::balance_on_hold(&1,),
+				0
+			);
+		})
+}
+
+#[test]
+fn fungible_can_hold() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::InspectHold<
+					AccountId,
+				>>::can_hold(&1, DISTR_PER_ACCOUNT)
+			);
+		})
+}
+
+#[test]
+fn fungible_mint_into() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Mutate<AccountId>>::mint_into(&1, 10).is_ok());
+		})
+}
+
+#[test]
+fn fungible_burn_from() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Mutate<AccountId>>::burn_from(&1, DISTR_PER_ACCOUNT).is_ok());
+		})
+}
+
+#[test]
+fn fungible_hold() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<
+					AccountId,
+				>>::hold(&1, DISTR_PER_ACCOUNT)
+				.is_ok()
+			);
+		})
+}
+
+#[test]
+fn fungible_release() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<
+					AccountId,
+				>>::hold(&1, DISTR_PER_ACCOUNT)
+				.is_ok()
+			);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<
+					AccountId,
+				>>::release(&1, DISTR_PER_ACCOUNT, false)
+				.is_ok()
+			);
+		})
+}
+
+#[test]
+fn fungible_transfer_held() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::hold(&1, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::transfer_held(&1, &9, DISTR_PER_ACCOUNT, false, true).is_ok());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&1, false), 0);
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+
+
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::hold(&2, DISTR_PER_ACCOUNT).is_ok());
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::MutateHold<AccountId>>::transfer_held(&2, &9, DISTR_PER_ACCOUNT, false, false).is_ok());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&9, false), 2 * DISTR_PER_ACCOUNT - ExistentialDeposit::get());
+			assert_eq!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::reducible_balance(&2, false), 0);
+		})
+}
+
+#[test]
+fn fungible_transfer() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			// Min holding period is not over
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Transfer<
+					AccountId,
+				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, false)
+				.is_err()
+			);
+			Timer::pass(MIN_HOLD_PERIOD);
+			assert!(
+				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Transfer<
+					AccountId,
+				>>::transfer(&1, &100, DISTR_PER_ACCOUNT, false)
+				.is_ok()
 			);
 		})
 }

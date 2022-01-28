@@ -132,9 +132,33 @@ impl<T: Config> Mutate<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `fungible::MutateHold` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum FungibleMutateHoldEffects<AccountId, Balance> {
+	/// A call to the `MutateHold::hold()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance)`:
+	/// * tuple.0 = `who`. The person who's balance should be altered.
+	/// * tuple.1 = `amount`. The amount that should be hold.
 	Hold(AccountId, Balance),
+
+	/// A call to the `MutateHold::release()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance)`:
+	/// * tuple.0 = `who`. The person who's balance should be altered.
+	/// * tuple.1 = `amount`. The amount that should be released.
 	Release(AccountId, Balance, bool),
+
+	/// A call to the `MutateHold::transfer_held()`.
+	///
+	/// Interpretation of tuple `(AccountId, AccountId, Balance, bool, bool)`:
+	/// * tuple.0 = `send`. The sender of the tokens.
+	/// * tuple.1 = `recv`. The receiver of the tokens.
+	/// * tuple.2 = `amount`. The amount that should be transferred.
+	/// * tuple.3 = `on_hold`. Indicating if on_hold transfers should
+	///   still be on_hold at receiver.
+	/// * tuple.4 = `best_effort`. Indicating if the transfer should be done
+	///   on a best effort base.
 	TransferHeld(AccountId, AccountId, Balance, bool, bool),
 }
 
@@ -193,7 +217,16 @@ impl<T: Config> MutateHold<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `fungible::Transfer` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum FungibleTransferEffects<AccountId, Balance> {
+	/// A call to the `Transfer::transfer()`.
+	///
+	/// Interpretation of tuple `(AccountId, AccountId, Balance, bool)`:
+	/// * tuple.0 = `send`. The sender of the tokens.
+	/// * tuple.1 = `recv`. The receiver of the tokens.
+	/// * tuple.2 = `amount`. The amount that should be transferred.
+	/// * tuple.3 = `keep_alive`. The lifeness requirements.
 	Transfer(AccountId, AccountId, Balance, bool),
 }
 
