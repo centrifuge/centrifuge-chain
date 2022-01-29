@@ -674,6 +674,39 @@ impl pallet_treasury::Config for Runtime {
 	type MaxApprovals = MaxApprovals;
 }
 
+parameter_types! {
+	// per byte deposit is 0.01 AIR
+	pub const DepositPerByte: Balance = CENTI_AIR;
+	// Base deposit to add attribute is 0.1 AIR
+	pub const AttributeDepositBase: Balance = 10 * CENTI_AIR;
+	// Base deposit to add metadata is 0.1 AIR
+	pub const MetadataDepositBase: Balance = 10 * CENTI_AIR;
+	// Deposit to create a class is 1 AIR
+	pub const ClassDeposit: Balance = AIR;
+	// Deposit to create a class is 0.1 AIR
+	pub const InstanceDeposit: Balance = 10 * CENTI_AIR;
+	// Maximum limit of bytes for Metadata, Attribute key and Value
+	pub const Limit: u32 = 256;
+}
+
+impl pallet_uniques::Config for Runtime {
+	type Event = Event;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type Currency = Balances;
+	// a straight majority of council can act as force origin
+	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
+	type ClassDeposit = ClassDeposit;
+	type InstanceDeposit = InstanceDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = Limit;
+	type KeyLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+}
+
 // our pallets
 impl pallet_fees::Config for Runtime {
 	type Currency = Balances;
@@ -833,7 +866,7 @@ construct_runtime!(
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 69,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 70,
-		// Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 71,
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 72,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,

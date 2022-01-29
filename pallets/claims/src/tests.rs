@@ -157,13 +157,13 @@ fn set_upload_account() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			assert_eq!(Claims::get_upload_account(), 0x0);
+			assert_eq!(Claims::get_upload_account(), None);
 			assert_noop!(
 				Claims::set_upload_account(Origin::signed(USER_A), USER_A),
 				BadOrigin
 			);
 			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), USER_A));
-			assert_eq!(Claims::get_upload_account(), USER_A);
+			assert_eq!(Claims::get_upload_account(), Some(USER_A));
 		});
 }
 
@@ -172,7 +172,7 @@ fn store_root_hash() {
 	TestExternalitiesBuilder::default()
 		.build()
 		.execute_with(|| {
-			assert_eq!(Claims::get_upload_account(), 0x0);
+			assert_eq!(Claims::get_upload_account(), None);
 			// USER_A not allowed to upload hash
 			let root_hash = <MockRuntime as frame_system::Config>::Hashing::hash(&[0; 32]);
 			assert_noop!(
@@ -181,7 +181,7 @@ fn store_root_hash() {
 			);
 			// Adding ADMIN as allowed upload account
 			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-			assert_eq!(Claims::get_upload_account(), ADMIN);
+			assert_eq!(Claims::get_upload_account(), Some(ADMIN));
 			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
 			assert_eq!(Claims::get_root_hash(root_hash), true);
 		});

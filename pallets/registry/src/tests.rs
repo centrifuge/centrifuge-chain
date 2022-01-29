@@ -243,8 +243,8 @@ fn create_multiple_registries() {
 			assert_ne!(reg_id2, reg_id3);
 
 			// Owners own their registries
-			assert_eq!(Registry::get_owner(reg_id1), owner1);
-			assert_eq!(Registry::get_owner(reg_id2), owner2);
-			assert_eq!(Registry::get_owner(reg_id3), owner2);
+			assert_eq!(Registry::get_owner(reg_id1), Some(owner1));
+			assert_eq!(Registry::get_owner(reg_id2), Some(owner2));
+			assert_eq!(Registry::get_owner(reg_id3), Some(owner2));
 		});
 }
