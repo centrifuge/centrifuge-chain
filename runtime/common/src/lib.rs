@@ -38,8 +38,8 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
-	use frame_system::EnsureRoot;
 	use frame_support::traits::EnsureOneOf;
+	use frame_system::EnsureRoot;
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};

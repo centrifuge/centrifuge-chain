@@ -154,8 +154,7 @@ impl<T: Config> Pallet<T> {
 			ExistenceRequirement::KeepAlive,
 		)?;
 
-		let author = <pallet_authorship::Pallet<T>>::author()
-			.ok_or(Error::<T>::InvalidAuthor)?;
+		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
 		T::Currency::resolve_creating(&author, value);
 		Ok(())
 	}

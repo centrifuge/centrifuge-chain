@@ -16,7 +16,11 @@
 //! This pallet provides functionality of Storing anchors on Chain
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
-use frame_support::{dispatch::{DispatchError, DispatchResult}, StateVersion, storage::child};
+use frame_support::{
+	dispatch::{DispatchError, DispatchResult},
+	storage::child,
+	StateVersion,
+};
 pub use pallet::*;
 pub mod weights;
 use scale_info::TypeInfo;

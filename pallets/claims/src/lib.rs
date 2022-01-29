@@ -410,7 +410,10 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			ensure!(Self::get_upload_account() == Some(who), Error::<T>::MustBeAdmin);
+			ensure!(
+				Self::get_upload_account() == Some(who),
+				Error::<T>::MustBeAdmin
+			);
 
 			<RootHashes<T>>::insert(root_hash, true);
 

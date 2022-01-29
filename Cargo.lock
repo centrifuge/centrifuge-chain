@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "2.0.0"
+version = "0.1.9"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -895,7 +895,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -907,6 +907,8 @@ dependencies = [
  "cumulus-client-service",
  "cumulus-primitives-core",
  "cumulus-primitives-parachain-inherent",
+ "cumulus-relay-chain-interface",
+ "cumulus-relay-chain-local",
  "development-runtime",
  "frame-benchmarking",
  "frame-benchmarking-cli",
@@ -986,7 +988,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "2.0.0"
+version = "0.1.1"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -1923,6 +1925,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "cumulus-relay-chain-local"
+version = "0.1.0"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.16#867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790"
+dependencies = [
+ "async-trait",
+ "cumulus-primitives-core",
+ "cumulus-relay-chain-interface",
+ "futures 0.3.19",
+ "futures-timer",
+ "parking_lot 0.11.2",
+ "polkadot-client",
+ "polkadot-service",
+ "sc-client-api",
+ "sc-consensus-babe",
+ "sc-network",
+ "sc-service",
+ "sc-telemetry",
+ "sc-tracing",
+ "sp-api",
+ "sp-blockchain",
+ "sp-consensus",
+ "sp-core",
+ "sp-runtime",
+ "sp-state-machine",
+ "tracing",
+]
+
+[[package]]
 name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
 source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.16#867bfcd8f87cc986d1a3e9eeaf16c8b4e9a27790"
@@ -2026,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "2.0.0"
+version = "0.1.0"
 dependencies = [
  "common-traits",
  "common-types",
@@ -11544,7 +11574,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.2",
  "regex",
  "serde",
  "serde_json",

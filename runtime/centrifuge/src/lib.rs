@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, InstanceFilter, LockIdentifier, U128CurrencyToVote, EqualPrivilegeOnly},
+	traits::{Contains, EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,

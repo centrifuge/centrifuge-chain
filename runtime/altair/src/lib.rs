@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote, EqualPrivilegeOnly},
+	traits::{EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -77,7 +77,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	#[cfg(feature = "disable-runtime-api")]
 	apis: version::create_apis_vec![[]],
 	transaction_version: 1,
-	state_version: 0
+	state_version: 0,
 };
 
 /// Native version.

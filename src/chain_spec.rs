@@ -135,6 +135,46 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge Dev",
 		"centrifuge_dev",
+		ChainType::Live,
+		move || {
+			centrifuge_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<centrifuge_runtime::AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<centrifuge_runtime::AuraId>("Charlie"),
+					),
+				],
+				endowed_accounts(),
+				Some(100000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	CentrifugeChainSpec::from_genesis(
+		"Centrifuge Dev",
+		"centrifuge_dev",
 		ChainType::Local,
 		move || {
 			centrifuge_genesis(
@@ -216,6 +256,45 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 }
 
 pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Altair Dev",
+		"altair_dev",
+		ChainType::Live,
+		move || {
+			altair_genesis(
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<altair_runtime::AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<altair_runtime::AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<altair_runtime::AuraId>("Charlie"),
+					),
+				],
+				endowed_accounts(),
+				Some(100000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
@@ -424,6 +503,46 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	DevelopmentChainSpec::from_genesis(
+		"Dev Live",
+		"devel_live",
+		ChainType::Live,
+		move || {
+			development_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<development_runtime::AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<development_runtime::AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<development_runtime::AuraId>("Charlie"),
+					),
+				],
+				endowed_accounts(),
+				Some(10000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DEVEL".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	DevelopmentChainSpec::from_genesis(
 		"Dev Local",
 		"devel_local",
 		ChainType::Local,
@@ -516,7 +635,9 @@ fn centrifuge_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: centrifuge_runtime::SudoConfig { key: Some(root_key) },
+		sudo: centrifuge_runtime::SudoConfig {
+			key: Some(root_key),
+		},
 		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
 		session: centrifuge_runtime::SessionConfig {
 			keys: initial_authorities
@@ -681,7 +802,9 @@ fn development_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: development_runtime::SudoConfig { key: Some(root_key) },
+		sudo: development_runtime::SudoConfig {
+			key: Some(root_key),
+		},
 		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
 		collator_selection: development_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities

@@ -10,7 +10,10 @@ use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote, EqualPrivilegeOnly, EnsureOneOf},
+	traits::{
+		Contains, EnsureOneOf, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
+		U128CurrencyToVote,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
