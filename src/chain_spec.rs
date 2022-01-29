@@ -121,6 +121,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("centrifuge"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
@@ -148,6 +149,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -207,6 +209,7 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("altair"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
@@ -233,6 +236,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -295,6 +299,7 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("antares"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
@@ -321,6 +326,7 @@ pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -377,6 +383,7 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("charcoal"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
@@ -403,6 +410,7 @@ pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -432,6 +440,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -483,7 +492,6 @@ fn centrifuge_genesis(
 			code: centrifuge_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: centrifuge_runtime::BalancesConfig { balances },
 		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
@@ -508,7 +516,7 @@ fn centrifuge_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: centrifuge_runtime::SudoConfig { key: root_key },
+		sudo: centrifuge_runtime::SudoConfig { key: Some(root_key) },
 		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
 		session: centrifuge_runtime::SessionConfig {
 			keys: initial_authorities
@@ -556,7 +564,6 @@ fn altair_genesis(
 			code: altair_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
@@ -647,7 +654,6 @@ fn development_genesis(
 			code: development_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
 		orml_tokens: development_runtime::OrmlTokensConfig {
@@ -675,7 +681,7 @@ fn development_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: development_runtime::SudoConfig { key: root_key },
+		sudo: development_runtime::SudoConfig { key: Some(root_key) },
 		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
 		collator_selection: development_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities
