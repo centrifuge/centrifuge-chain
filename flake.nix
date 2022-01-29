@@ -25,6 +25,8 @@
           !(
             # ignore CI directories
             (type == "directory" && (p == ".github" || p == "ci")) ||
+            # ignore cargo files
+            (type == "directory" && (p == "target")) || p == ".cargo" ||
             # ignore CI files
             p == ".travis.yml" || p == "cloudbuild.yaml" ||
             # ignore flake.(nix|lock)
@@ -32,7 +34,7 @@
             # ignore docker files
             p == ".dockerignore" || p == "docker-compose.yml" ||
             # ignore misc
-            p == "rustfmt.toml"
+            p == "rustfmt.toml" || p == ".idea" || p == ".vscode"
           );
 
     in
