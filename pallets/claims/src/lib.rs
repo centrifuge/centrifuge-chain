@@ -166,6 +166,7 @@ pub mod pallet {
 	// for the pallet.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------
@@ -254,7 +255,7 @@ pub mod pallet {
 	/// Account that is allowed to upload new root hashes.
 	#[pallet::storage]
 	#[pallet::getter(fn get_upload_account)]
-	pub(super) type UploadAccount<T: Config> = StorageValue<_, T::AccountId, ValueQuery>;
+	pub(super) type UploadAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
 	// ------------------------------------------------------------------------
 	// Pallet genesis configuration
@@ -409,7 +410,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			ensure!(Self::get_upload_account() == who, Error::<T>::MustBeAdmin);
+			ensure!(Self::get_upload_account() == Some(who), Error::<T>::MustBeAdmin);
 
 			<RootHashes<T>>::insert(root_hash, true);
 

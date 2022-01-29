@@ -38,7 +38,8 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
-	use frame_system::{EnsureOneOf, EnsureRoot};
+	use frame_system::EnsureRoot;
+	use frame_support::traits::EnsureOneOf;
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
@@ -46,7 +47,7 @@ pub mod types {
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 	use sp_std::vec::Vec;
 
-	pub type EnsureRootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
+	pub type EnsureRootOr<O> = EnsureOneOf<EnsureRoot<AccountId>, O>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;

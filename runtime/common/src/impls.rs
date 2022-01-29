@@ -31,7 +31,9 @@ where
 	Config: AuthorshipConfig + BalancesConfig + SystemConfig,
 {
 	fn on_nonzero_unbalanced(amount: NegativeImbalance<Config>) {
-		Balances::<Config>::resolve_creating(&Authorship::<Config>::author(), amount);
+		if let Some(who) = Authorship::<Config>::author() {
+			Balances::<Config>::resolve_creating(&who, amount);
+		}
 	}
 }
 

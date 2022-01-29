@@ -146,6 +146,7 @@ pub mod pallet {
 	// Declare pallet structure placeholder
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	// ----------------------------------------------------------------------------
@@ -465,7 +466,7 @@ where
 			// In case period is 0 we will give everything on the first block
 			.unwrap_or(vested_reward)
 			// Ensure that we are at least giving out 1 per block. Otherwise, vesting will be ongoing
-			// forever. This is solved in substrate-polkadot-v0.9.15
+			// forever. This is solved in substrate-polkadot-v0.9.16
 			.max(One::one());
 
 		let schedule = pallet_vesting::VestingInfo::new(
