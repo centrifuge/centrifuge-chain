@@ -11,6 +11,11 @@
       version = "2.0.0";
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
 
+      # this mocks git to return the truncated SHA hash we get from Nix
+      git-mock = pkgs.writeShellScriptBin "git" ''
+        echo ${builtins.substring 0 6 (inputs.self.rev or "dirty")}
+      '';
+
       # srcFilter is used to keep out of the build non-source files,
       # so that we only trigger a rebuild when necessary.
       srcFilter = path: type:
@@ -44,7 +49,7 @@
           };
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
-          nativeBuildInputs = with pkgs; [ clang pkg-config ];
+          nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
           buildInputs = with pkgs; [ openssl ];
 
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
