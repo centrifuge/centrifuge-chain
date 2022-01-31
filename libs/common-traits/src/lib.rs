@@ -127,7 +127,7 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 pub trait Permissions<AccountId> {
 	type Location;
 	type Role;
-	type Error;
+	type Error: Debug;
 	type Ok;
 
 	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;

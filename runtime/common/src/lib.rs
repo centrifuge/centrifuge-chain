@@ -193,6 +193,7 @@ pub mod constants {
 	pub const MILLISECS_PER_DAY: u64 = SECONDS_PER_DAY * 1000;
 
 	// Seconds units
+	pub const SECONDS_AS_MILLI: u64 = 1000;
 	pub const SECONDS_PER_MINUTE: u64 = 60;
 	pub const SECONDS_PER_HOUR: u64 = SECONDS_PER_MINUTE * 60;
 	pub const SECONDS_PER_DAY: u64 = SECONDS_PER_HOUR * 24;
