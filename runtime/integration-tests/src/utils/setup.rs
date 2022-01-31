@@ -12,11 +12,11 @@
 #[cfg(feature = "with-dev-runtime")]
 pub use development_runtime::*;
 
-use crate::utils::{account, get_admin, start_chain_at};
+use crate::utils::{account, get_admin, start_chain};
 use frame_support::traits::GenesisBuild;
 use runtime_common::CFG as CURRENCY;
 
-pub const START_DATE: u64 = 1640991600; // 2022.01.01
+// pub const START_DATE: u64 = 1640991600; // 2022.01.01
 pub const NUM_ACCOUNTS: u32 = 100;
 
 /// Build genesis storage
@@ -56,6 +56,6 @@ pub fn start_env() -> sp_io::TestExternalities {
 	.unwrap();
 
 	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| start_chain_at(START_DATE));
+	ext.execute_with(|| start_chain());
 	ext
 }

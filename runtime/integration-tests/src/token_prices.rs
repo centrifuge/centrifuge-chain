@@ -9,9 +9,20 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::utils::{create_default_pool, start_env};
+use crate::utils::{create_default_pool, get_admin, into_signed, pass_time, start_env};
+use crate::utils::{get_signed, DefaultMinEpochTime, Loans, Pools};
 
 #[test]
 fn token_price_stays_zero() {
-	start_env().execute_with(|| {})
+	start_env().execute_with(|| {
+		create_default_pool(0).unwrap();
+
+		Pools::update_invest_order(get_signed(0), 0, 0, 500).unwrap();
+		Pools::update_invest_order(get_signed(1), 0, 0, 500).unwrap();
+
+		pass_time(DefaultMinEpochTime::get());
+
+		Loans::update_nav(into_signed(get_admin()), 0).unwrap();
+		Pools::close_epoch(into_signed(get_admin()), 0).unwrap();
+	})
 }

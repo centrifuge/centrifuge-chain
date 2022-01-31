@@ -3358,6 +3358,8 @@ version = "0.1.0"
 dependencies = [
  "common-traits",
  "common-types",
+ "cumulus-pallet-parachain-system",
+ "cumulus-primitives-core",
  "development-runtime",
  "frame-support",
  "frame-system",
@@ -3375,7 +3377,9 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-arithmetic",
+ "sp-block-builder",
  "sp-core",
+ "sp-inherents",
  "sp-io",
  "sp-runtime",
  "sp-std",

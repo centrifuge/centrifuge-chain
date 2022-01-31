@@ -9,10 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+#![allow(dead_code)]
 
 use crate::utils::setup::*;
 use codec::{Decode, Encode};
-use common_traits::Permissions;
+use common_traits::Permissions as PermissionsT;
 use common_types::PoolRole;
 use frame_support::dispatch::DispatchResult;
 use pallet_pools::{Error as PoolError, TrancheInput};
@@ -92,6 +93,27 @@ pub fn create_default_pool(id: PoolId) -> DispatchResult {
 		})
 		.collect();
 
+	(0..10)
+		.into_iter()
+		.map(|idx| permit_investor(idx, 0, 0))
+		.for_each(drop);
+	(10..20)
+		.into_iter()
+		.map(|idx| permit_investor(idx, 0, 1))
+		.for_each(drop);
+	(20..30)
+		.into_iter()
+		.map(|idx| permit_investor(idx, 0, 2))
+		.for_each(drop);
+	(30..40)
+		.into_iter()
+		.map(|idx| permit_investor(idx, 0, 3))
+		.for_each(drop);
+	(40..50)
+		.into_iter()
+		.map(|idx| permit_investor(idx, 0, 4))
+		.for_each(drop);
+
 	Pools::create(
 		into_signed(get_admin()),
 		id,
@@ -106,11 +128,16 @@ pub fn account(name: &'static str, index: u32, seed: u32) -> AccountId {
 	AccountId::decode(&mut &entropy[..]).unwrap()
 }
 
-pub fn permission_for<P>(who: AccountId, pool: PoolId, role: PoolRole)
-where
-	P: Permissions<AccountId, Location = PoolId, Role = PoolRole>,
-{
-	P::add_permission(pool, who, role).unwrap();
+pub fn permission_for(who: AccountId, pool: PoolId, role: PoolRole) {
+	<Permissions as PermissionsT<AccountId>>::add_permission(pool, who, role).unwrap();
+}
+
+pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {
+	permission_for(
+		get_account(investor),
+		pool,
+		PoolRole::TrancheInvestor(tranche, u64::MAX),
+	)
 }
 
 pub fn get_account(idx: u32) -> AccountId {
