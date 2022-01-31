@@ -65,7 +65,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1100,
+	spec_version: 1001,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -416,7 +416,7 @@ impl pallet_utility::Config for Runtime {
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
 	pub const MaxScheduledPerBlock: u32 = 50;
-	// Retry a scheduled item every 10 blocks (1 minute) until the preimage exists.
+	// Retry a scheduled item every 10 blocks (2 minutes) until the preimage exists.
 	pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 

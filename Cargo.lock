@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.1.9"
+version = "0.10.9"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
@@ -896,7 +896,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.1.9"
+version = "0.10.9"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -989,7 +989,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.1.1"
+version = "0.10.1"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
