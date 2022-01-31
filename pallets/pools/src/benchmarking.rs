@@ -219,7 +219,7 @@ where
 }
 
 fn assert_tranches_match<T: Config>(
-	chain: &[Tranche<T::Balance, T::InterestRate>],
+	chain: &[Tranche<T::Balance, T::InterestRate, T::TrancheWeight>],
 	target: &[TrancheInput<T::InterestRate>],
 ) {
 	assert!(chain.len() == target.len());

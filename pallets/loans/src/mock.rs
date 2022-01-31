@@ -170,6 +170,7 @@ impl pallet_pools::Config for MockRuntime {
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();
+	type TrancheWeight = runtime_common::TrancheWeight;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
