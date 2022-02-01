@@ -66,20 +66,6 @@ pub struct UserOrder<Balance, EpochId> {
 	pub epoch: EpochId,
 }
 
-impl<Balance, EpochId> Default for UserOrder<Balance, EpochId>
-where
-	Balance: Zero,
-	EpochId: One,
-{
-	fn default() -> Self {
-		UserOrder {
-			invest: Zero::zero(),
-			redeem: Zero::zero(),
-			epoch: One::one(),
-		}
-	}
-}
-
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
