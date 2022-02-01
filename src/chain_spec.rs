@@ -173,8 +173,8 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	CentrifugeChainSpec::from_genesis(
-		"Centrifuge Dev",
-		"centrifuge_dev",
+		"Centrifuge Local",
+		"centrifuge_local",
 		ChainType::Local,
 		move || {
 			centrifuge_genesis(
@@ -300,8 +300,8 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	AltairChainSpec::from_genesis(
-		"Altair Dev",
-		"altair_dev",
+		"Altair Local",
+		"altair_local",
 		ChainType::Local,
 		move || {
 			altair_genesis(
@@ -384,14 +384,14 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
+pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	AltairChainSpec::from_genesis(
-		"Antares Local Testnet",
-		"antares_local_testnet",
+		"Antares Local",
+		"antares_local",
 		ChainType::Local,
 		move || {
 			altair_genesis(
@@ -468,14 +468,14 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 	)
 }
 
-pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
+pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	AltairChainSpec::from_genesis(
-		"Charcoal Local Testnet",
-		"charcoal_local_testnet",
+		"Charcoal Local",
+		"charcoal_local",
 		ChainType::Local,
 		move || {
 			altair_genesis(
