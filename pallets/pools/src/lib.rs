@@ -835,9 +835,11 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::close_epoch_no_investments(T::MaxTranches::get())
+                             .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
+                             .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
 		#[transactional]
-		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
@@ -904,7 +906,10 @@ pub mod pallet {
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
-					return Ok(());
+					return Ok(Some(T::WeightInfo::close_epoch_no_investments(
+						pool.tranches.len() as u32,
+					))
+					.into());
 				}
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
@@ -987,6 +992,10 @@ pub mod pallet {
 				{
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
+					Ok(Some(T::WeightInfo::close_epoch_execute(
+						pool.tranches.len() as u32
+					))
+					.into())
 				} else {
 					// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
 					let no_execution_solution = orders
@@ -1001,21 +1010,23 @@ pub mod pallet {
 						Self::score_solution(&pool_id, &epoch, &no_execution_solution)?;
 					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
+					Ok(Some(T::WeightInfo::close_epoch_no_execution(
+						pool.tranches.len() as u32
+					))
+					.into())
 				}
-
-				Ok(())
 			})
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::submit_solution(T::MaxTranches::get()))]
 		pub fn submit_solution(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			solution: Vec<TrancheSolution>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			EpochExecution::<T>::try_mutate(pool_id, |epoch| -> DispatchResult {
+			EpochExecution::<T>::try_mutate(pool_id, |epoch| {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
 				let new_solution = Self::score_solution(&pool_id, &epoch, &solution)?;
 
@@ -1037,12 +1048,15 @@ pub mod pallet {
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
 
-				Ok(())
+				Ok(Some(T::WeightInfo::submit_solution(epoch.tranches.len() as u32)).into())
 			})
 		}
 
-		#[pallet::weight(100)]
-		pub fn execute_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
+		pub fn execute_epoch(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
@@ -1080,9 +1094,11 @@ pub mod pallet {
 					Ok(())
 				})?;
 
+				let num_tranches = epoch.tranches.len() as u32;
 				// This kills the epoch info in storage.
 				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
-				Ok(*epoch_info = None)
+				*epoch_info = None;
+				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
 			})
 		}
 

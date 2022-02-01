@@ -13,6 +13,7 @@
 
 //! Module provides benchmarking for Loan Pallet
 use super::*;
+use common_traits::PoolNAV;
 use common_types::CurrencyId;
 
 use codec::EncodeLike;
@@ -38,6 +39,7 @@ benchmarks! {
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
+		T::NAV: PoolNAV<T::PoolId, T::LoanAmount, Origin = T::Origin, ClassId = u64>,
 	}
 
 	create {
@@ -149,38 +151,147 @@ benchmarks! {
 		assert!(T::Tokens::balance(currency.into(), &caller) == (amount + (1_000_000 * CURRENCY)).into());
 	}
 
+	close_epoch_no_investments {
+		let n in 1..T::MaxTranches::get(); // number of tranches
+
+		let admin: T::AccountId = account("admin", 0, 0);
+		create_pool::<T>(n, admin.clone())?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0)?;
+		set_liquidity_admin::<T>(admin.clone(), admin.clone())?;
+		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0, 0, u64::MAX)?;
+		let max_reserve = 5_000 * CURRENCY;
+		Pallet::<T>::set_max_reserve(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), max_reserve.into())?;
+	}: close_epoch(RawOrigin::Signed(admin.clone()), 0u32.into())
+	verify {
+		assert_eq!(get_pool::<T>().last_epoch_executed, 1u32.into());
+		assert_eq!(get_pool::<T>().current_epoch, 2u32.into());
+	}
+
+	close_epoch_no_execution {
+		let n in 1..T::MaxTranches::get(); // number of tranches
+
+		let admin: T::AccountId = account("admin", 0, 0);
+		create_pool::<T>(n, admin.clone())?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0)?;
+		set_liquidity_admin::<T>(admin.clone(), admin.clone())?;
+		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0, 0, u64::MAX)?;
+		let max_reserve = 5_000 * CURRENCY;
+		Pallet::<T>::set_max_reserve(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), max_reserve.into())?;
+		let investment = max_reserve * 2;
+		let tranche = 0u8;
+		let investor = create_investor::<T>(admin.clone(), 0, tranche)?;
+		Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), 0u32.into(), tranche.into(), investment.into())?;
+	}: close_epoch(RawOrigin::Signed(admin.clone()), 0u32.into())
+	verify {
+		assert_eq!(get_pool::<T>().last_epoch_executed, 0u32.into());
+		assert_eq!(get_pool::<T>().current_epoch, 2u32.into());
+	}
+
+	close_epoch_execute {
+		let n in 1..T::MaxTranches::get(); // number of tranches
+
+		let admin: T::AccountId = account("admin", 0, 0);
+		create_pool::<T>(n, admin.clone())?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0)?;
+		set_liquidity_admin::<T>(admin.clone(), admin.clone())?;
+		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0, 0, u64::MAX)?;
+		let max_reserve = 5_000 * CURRENCY;
+		Pallet::<T>::set_max_reserve(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), max_reserve.into())?;
+		let investment = max_reserve / 2;
+		let tranche = 0u8;
+		let investor = create_investor::<T>(admin.clone(), 0, tranche)?;
+		Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), 0u32.into(), tranche.into(), investment.into())?;
+	}: close_epoch(RawOrigin::Signed(admin.clone()), 0u32.into())
+	verify {
+		assert_eq!(get_pool::<T>().last_epoch_executed, 1u32.into());
+		assert_eq!(get_pool::<T>().current_epoch, 2u32.into());
+	}
+
+	submit_solution {
+		let n in 1..T::MaxTranches::get(); // number of tranches
+
+		let admin: T::AccountId = account("admin", 0, 0);
+		create_pool::<T>(n, admin.clone())?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0)?;
+		set_liquidity_admin::<T>(admin.clone(), admin.clone())?;
+		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0, 0, u64::MAX)?;
+		let max_reserve = 5_000 * CURRENCY;
+		Pallet::<T>::set_max_reserve(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), max_reserve.into())?;
+		let investment = max_reserve * 2;
+		let tranche = 0u8;
+		let investor = create_investor::<T>(admin.clone(), 0, tranche)?;
+		Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), 0u32.into(), tranche.into(), investment.into())?;
+		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), 0u32.into())?;
+		let empty_solution = Pallet::<T>::epoch_targets(T::PoolId::from(0u32)).unwrap().best_submission.clone();
+		let tranche_solution = TrancheSolution {
+			invest_fulfillment: Perquintill::from_percent(50),
+			redeem_fulfillment: Perquintill::from_percent(50),
+		};
+		let solution = vec![tranche_solution; n as usize];
+	}: submit_solution(RawOrigin::Signed(admin.clone()), 0u32.into(), solution.clone())
+	verify {
+		assert_eq!(get_pool::<T>().last_epoch_executed, 0u32.into());
+		assert_eq!(get_pool::<T>().current_epoch, 2u32.into());
+		assert!(Pallet::<T>::epoch_targets(T::PoolId::from(0u32)).unwrap().challenge_period_end.is_some());
+		assert!(Pallet::<T>::epoch_targets(T::PoolId::from(0u32)).unwrap().best_submission != empty_solution);
+	}
+
+	execute_epoch {
+		let n in 1..T::MaxTranches::get(); // number of tranches
+
+		let admin: T::AccountId = account("admin", 0, 0);
+		create_pool::<T>(n, admin.clone())?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0)?;
+		set_liquidity_admin::<T>(admin.clone(), admin.clone())?;
+		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), 0, 0, u64::MAX)?;
+		let max_reserve = 5_000 * CURRENCY;
+		Pallet::<T>::set_max_reserve(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), max_reserve.into())?;
+		let investment = max_reserve * 2;
+		let tranche = 0u8;
+		let investor = create_investor::<T>(admin.clone(), 0, tranche)?;
+		Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), 0u32.into(), tranche.into(), investment.into())?;
+		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), 0u32.into())?;
+		let tranche_solution = TrancheSolution {
+			invest_fulfillment: Perquintill::from_percent(50),
+			redeem_fulfillment: Perquintill::from_percent(50),
+		};
+		let solution = vec![tranche_solution; n as usize];
+		Pallet::<T>::submit_solution(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), solution)?;
+	}: execute_epoch(RawOrigin::Signed(admin), 0u32.into())
+	verify {
+		assert_eq!(get_pool::<T>().last_epoch_executed, 1u32.into());
+		assert_eq!(get_pool::<T>().current_epoch, 2u32.into());
+		assert!(Pallet::<T>::epoch_targets(T::PoolId::from(0u32)).is_none());
+	}
+
 	approve_role_for {
 		let n in 1..100;
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(1, admin.clone())?;
 		let accounts = build_account_vec::<T>(n);
-		let role = PoolRole::<Moment, T::TrancheId>::TrancheInvestor(0u8.into(), 0x0FFF_FFFF_FFFF_FFFF);
-	}: approve_role_for(RawOrigin::Signed(admin.clone()), 0u32.into(), role, accounts)
+		let role = PoolRole::LiquidityAdmin;
+	}: approve_role_for(RawOrigin::Signed(admin.clone()), 0u32.into(), role.clone(), accounts.iter().cloned().map(|a| a.into()).collect())
 	verify {
-		assert!(true);
+		for account in accounts {
+			assert!(T::Permission::has_permission(0u32.into(), account.into(), role.clone()));
+		}
 	}
 
 	revoke_role_for {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(1, admin.clone())?;
-		let role = PoolRole::<Moment, T::TrancheId>::TrancheInvestor(0u8.into(), 0x0FFF_FFFF_FFFF_FFFF);
+		let role = PoolRole::LiquidityAdmin;
 		let account: T::AccountId = account("investor", 0, 0);
 		Pallet::<T>::approve_role_for(RawOrigin::Signed(admin.clone()).into(), 0u32.into(), role.clone(), vec![account.clone().into()])?;
-	}: revoke_role_for(RawOrigin::Signed(admin.clone()), 0u32.into(), role, account.into())
+	}: revoke_role_for(RawOrigin::Signed(admin.clone()), 0u32.into(), role.clone(), account.clone().into())
 	verify {
-		assert!(true);
+		assert!(!T::Permission::has_permission(0u32.into(), account.into(), role));
 	}
 }
 
-fn build_account_vec<T: Config>(
-	num_accounts: u32,
-) -> Vec<<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source>
-where
-	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
-		From<<T as frame_system::Config>::AccountId>,
-{
+fn build_account_vec<T: Config>(num_accounts: u32) -> Vec<T::AccountId> {
 	(0..num_accounts)
-		.map(|i| account::<T::AccountId>("investor", i, 0).into())
+		.map(|i| account::<T::AccountId>("investor", i, 0))
 		.collect()
 }
 
