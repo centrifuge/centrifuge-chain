@@ -13,13 +13,64 @@
 
 use crate::utils::setup::*;
 use codec::{Decode, Encode};
-use common_traits::Permissions as PermissionsT;
+use common_traits::{Permissions as PermissionsT, PoolNAV};
 use common_types::PoolRole;
 use frame_support::dispatch::DispatchResult;
-use pallet_pools::{Error as PoolError, TrancheInput};
-use runtime_common::{AccountId, Balance, PoolId, TrancheId, CFG as CURRENCY};
+use pallet_loans::types::NAVDetails;
+use pallet_loans::{
+	loan_type::{BulletLoan, LoanType},
+	math::*,
+	types::Asset,
+};
+use pallet_pools::{Error as PoolError, PoolDetails, TrancheInput};
+use runtime_common::{AccountId, Address, Balance, PoolId, TrancheId, CFG as CURRENCY};
+use sp_arithmetic::traits::Zero;
 use sp_io::hashing::blake2_256;
+use sp_runtime::sp_std::collections::btree_map::BTreeMap;
+use sp_runtime::traits::StaticLookup;
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
+
+static mut ASSET_IDS: *mut BTreeMap<ClassId, InstanceId> =
+	0usize as *mut BTreeMap<ClassId, InstanceId>;
+
+pub struct AssetIds;
+impl AssetIds {
+	pub fn get() -> &'static mut BTreeMap<ClassId, InstanceId> {
+		unsafe {
+			if ASSET_IDS.is_null() {
+				let map = Box::new(BTreeMap::<ClassId, InstanceId>::new());
+				ASSET_IDS = Box::into_raw(map);
+
+				&mut *(ASSET_IDS)
+			} else {
+				&mut *(ASSET_IDS)
+			}
+		}
+	}
+
+	pub fn next_id(id: ClassId) -> InstanceId {
+		let ids = AssetIds::get();
+		if let Some(loan_id) = ids.get_mut(&id) {
+			*loan_id = InstanceId(loan_id.0 + 1);
+			*loan_id
+		} else {
+			let loan_id = InstanceId(0);
+			ids.insert(id, loan_id);
+			loan_id
+		}
+	}
+
+	pub fn current_id(id: ClassId) -> InstanceId {
+		let ids = AssetIds::get();
+		if let Some(loan_id) = ids.get_mut(&id) {
+			*loan_id
+		} else {
+			let loan_id = InstanceId(0);
+			ids.insert(id, loan_id);
+			loan_id
+		}
+	}
+}
 
 pub fn invest_close_and_collect(
 	pool_id: PoolId,
@@ -60,7 +111,7 @@ pub fn invest_close_and_collect(
 /// 	* accounts with index 40 - 49 for tranche with id 4
 /// * Currency: CurrencyId::USD,
 /// * MaxReserve: 1000
-pub fn create_default_pool(id: PoolId) -> DispatchResult {
+pub fn create_default_pool(id: PoolId) {
 	let year_rate = Rate::saturating_from_integer(SECONDS_PER_YEAR);
 
 	let rates = vec![3, 5, 7, 10];
@@ -114,6 +165,8 @@ pub fn create_default_pool(id: PoolId) -> DispatchResult {
 		.map(|idx| permit_investor(idx, 0, 4))
 		.for_each(drop);
 
+	permit_admin(id);
+
 	Pools::create(
 		into_signed(get_admin()),
 		id,
@@ -121,6 +174,100 @@ pub fn create_default_pool(id: PoolId) -> DispatchResult {
 		CurrencyId::Usd,
 		1000 * CURRENCY,
 	)
+	.unwrap();
+	Uniques::create(
+		into_signed(get_admin()),
+		get_loan_nft_class_id(id),
+		Address::Id(get_admin()),
+	)
+	.unwrap();
+	Uniques::create(into_signed(get_admin()), id, Address::Id(get_admin())).unwrap();
+	Loans::initialise_pool(into_signed(get_admin()), id, get_loan_nft_class_id(id)).unwrap();
+}
+
+pub fn get_loan_nft_class_id(id: PoolId) -> ClassId {
+	id + 1000
+}
+
+pub fn issue_loan(pool: PoolId, amount: Balance) -> InstanceId {
+	let rev_admin =
+		<<Runtime as frame_system::Config>::Lookup as StaticLookup>::unlookup(get_admin());
+
+	Uniques::mint(
+		into_signed(get_admin()),
+		pool,
+		get_next_asset_id(pool),
+		rev_admin,
+	)
+	.unwrap();
+
+	let id = InstanceId(Loans::get_next_loan_id());
+	Loans::create(
+		into_signed(get_admin()),
+		pool,
+		Asset(pool, get_curr_asset_id(pool)),
+	)
+	.unwrap();
+
+	Loans::price(
+		into_signed(get_admin()),
+		pool,
+		id,
+		rate_per_sec(get_rate(15)).unwrap(),
+		LoanType::BulletLoan(BulletLoan::new(
+			get_rate(90),
+			get_rate(5),
+			get_rate(50),
+			Amount::from_inner(amount),
+			rate_per_sec(get_rate(4)).unwrap(),
+			get_date_from_delta(30 * SECONDS_PER_DAY),
+		)),
+	)
+	.unwrap();
+
+	id
+}
+
+pub fn get_date_from_delta(delta: Moment) -> Moment {
+	Timestamp::now() + delta
+}
+
+pub fn get_rate(perc: u32) -> Rate {
+	Rate::saturating_from_rational(perc, 100)
+}
+pub fn get_next_asset_id(class: ClassId) -> InstanceId {
+	AssetIds::next_id(class)
+}
+
+pub fn get_curr_asset_id(class: ClassId) -> InstanceId {
+	AssetIds::current_id(class)
+}
+
+pub fn get_tranche_prices(pool: PoolId) -> Vec<Balance> {
+	let (epoch_nav, _) = <Loans as PoolNAV<PoolId, Amount>>::nav(pool).unwrap();
+	let PoolDetails {
+		owner,
+		currency,
+		mut tranches, // ordered junior => senior
+		current_epoch,
+		last_epoch_closed,
+		last_epoch_executed,
+		max_reserve,
+		available_reserve,
+		total_reserve,
+		metadata,
+		min_epoch_time,
+		challenge_time,
+		max_nav_age,
+	} = Pools::pool(pool).unwrap();
+
+	let epoch_reserve = total_reserve;
+
+	Pools::calculate_tranche_prices(pool, epoch_nav.into(), epoch_reserve, &mut tranches)
+		.unwrap()
+		.into_iter()
+		.map(|rate| rate.into_inner())
+		.collect()
 }
 
 pub fn account(name: &'static str, index: u32, seed: u32) -> AccountId {
@@ -130,6 +277,14 @@ pub fn account(name: &'static str, index: u32, seed: u32) -> AccountId {
 
 pub fn permission_for(who: AccountId, pool: PoolId, role: PoolRole) {
 	<Permissions as PermissionsT<AccountId>>::add_permission(pool, who, role).unwrap();
+}
+
+pub fn permit_admin(id: PoolId) {
+	permission_for(get_admin(), id, PoolRole::PricingAdmin);
+	permission_for(get_admin(), id, PoolRole::LiquidityAdmin);
+	permission_for(get_admin(), id, PoolRole::RiskAdmin);
+	permission_for(get_admin(), id, PoolRole::MemberListAdmin);
+	permission_for(get_admin(), id, PoolRole::Borrower);
 }
 
 pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {

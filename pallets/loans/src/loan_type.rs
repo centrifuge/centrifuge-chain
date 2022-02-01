@@ -83,8 +83,7 @@ where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
 {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub(crate) fn new(
+	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,

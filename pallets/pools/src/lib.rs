@@ -1549,7 +1549,7 @@ pub mod pallet {
 			return Ok(outstanding);
 		}
 
-		fn calculate_tranche_prices(
+		pub fn calculate_tranche_prices(
 			pool_id: T::PoolId,
 			epoch_nav: T::Balance,
 			epoch_reserve: T::Balance,
