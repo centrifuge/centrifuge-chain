@@ -5,6 +5,8 @@
 /// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
 pub use pallet::*;
 pub use solution::*;
+pub use tranche::*;
+pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -13,8 +15,8 @@ mod mock;
 mod solution;
 #[cfg(test)]
 mod tests;
+mod tranche;
 mod weights;
-pub use weights::*;
 
 use codec::HasCompact;
 use common_traits::{Permissions, TrancheWeigher};
@@ -39,68 +41,6 @@ use sp_runtime::{
 };
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
-
-/// Trait for converting a pool+tranche ID pair to a CurrencyId
-///
-/// This should be implemented in the runtime to convert from the
-/// PoolId and TrancheId types to a CurrencyId that represents that
-/// tranche.
-///
-/// The pool epoch logic assumes that every tranche has a UNIQUE
-/// currency, but nothing enforces that. Failure to ensure currency
-/// uniqueness will almost certainly cause some wild bugs.
-pub trait TrancheToken<T: Config> {
-	fn tranche_token(pool: T::PoolId, tranche: T::TrancheId) -> T::CurrencyId;
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct TrancheInput<Rate> {
-	pub interest_per_sec: Option<Rate>,
-	pub min_risk_buffer: Option<Perquintill>,
-	pub seniority: Option<Seniority>,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct Tranche<Balance, Rate, Weight> {
-	pub interest_per_sec: Rate,
-	pub min_risk_buffer: Perquintill,
-	pub seniority: Seniority,
-
-	pub outstanding_invest_orders: Balance,
-	pub outstanding_redeem_orders: Balance,
-
-	pub debt: Balance,
-	pub reserve: Balance,
-	pub ratio: Perquintill,
-	pub last_updated_interest: Moment,
-
-	_phantom: PhantomData<Weight>,
-}
-
-/// A type alias for the Tranche weight calculation
-type NumTranches = u32;
-
-impl<Weight, Balance, Rate> TrancheWeigher for Tranche<Balance, Rate, Weight>
-where
-	Weight: From<u128>,
-{
-	type Weight = (Weight, Weight);
-	type External = NumTranches;
-
-	fn calculate_weight(&self, n_tranches: Self::External) -> Self::Weight {
-		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
-		(
-			10u128
-				.checked_pow(n_tranches.checked_sub(self.seniority).unwrap_or(u32::MAX))
-				.unwrap_or(u128::MAX)
-				.into(),
-			redeem_starts
-				.checked_mul(10u128.pow(self.seniority.saturating_add(1)).into())
-				.unwrap_or(u128::MAX)
-				.into(),
-		)
-	}
-}
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
@@ -130,22 +70,6 @@ pub struct UserOrder<Balance, EpochId> {
 	pub epoch: EpochId,
 }
 
-/// A representation of a tranche identifier that can be used as a storage key
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct TrancheLocator<PoolId, TrancheId> {
-	pub pool_id: PoolId,
-	pub tranche_id: TrancheId,
-}
-
-impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
-	fn new(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		TrancheLocator {
-			pool_id,
-			tranche_id,
-		}
-	}
-}
-
 /// A representation of a pool identifier that can be converted to an account address
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolLocator<PoolId> {
@@ -162,41 +86,6 @@ pub struct EpochDetails<BalanceRatio> {
 	pub invest_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
 	pub token_price: BalanceRatio,
-}
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
-	supply: Balance,
-	price: BalanceRatio,
-	invest: Balance,
-	redeem: Balance,
-	min_risk_buffer: Perquintill,
-	seniority: Seniority,
-
-	_phantom: PhantomData<Weight>,
-}
-
-impl<Weight, Balance, BalanceRatio> TrancheWeigher
-	for EpochExecutionTranche<Balance, BalanceRatio, Weight>
-where
-	Weight: From<u128>,
-{
-	type Weight = (Weight, Weight);
-	type External = NumTranches;
-
-	fn calculate_weight(&self, n_tranches: Self::External) -> Self::Weight {
-		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
-		(
-			10u128
-				.checked_pow(self.seniority.saturating_add(1))
-				.unwrap_or(u128::MAX)
-				.into(),
-			redeem_starts
-				.checked_mul(10u128.pow(self.seniority.saturating_add(1)).into())
-				.unwrap_or(u128::MAX)
-				.into(),
-		)
-	}
 }
 
 /// The information for a currently executing epoch
@@ -246,13 +135,6 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
 >;
-type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
-	<T as Config>::Balance,
-	<T as Config>::BalanceRatio,
-	<T as Config>::TrancheWeight,
->;
-type TrancheOf<T> =
-	Tranche<<T as Config>::Balance, <T as Config>::InterestRate, <T as Config>::TrancheWeight>;
 
 #[frame_support::pallet]
 pub mod pallet {
