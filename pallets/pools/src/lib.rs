@@ -1057,7 +1057,7 @@ pub mod pallet {
 
 				ensure!(
 					match epoch.challenge_period_end {
-						Some(challenge_period_end) => challenge_period_end < Self::now(),
+						Some(challenge_period_end) => challenge_period_end <= Self::now(),
 						None => false,
 					},
 					Error::<T>::ChallengeTimeHasNotPassed
