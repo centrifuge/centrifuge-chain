@@ -516,6 +516,22 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Create a new pool
+		///
+		/// Initialise a new pool with the given ID and tranche
+		/// configuration. Tranche 0 is the equity tranche, and must
+		/// have zero interest and a zero risk buffer.
+		///
+		/// The minimum epoch length, epoch solution challenge
+		/// time, and maximum NAV age will be set to chain-wide
+		/// defaults. They can be updated with a call to `update`.
+		///
+		/// The caller will be given the `PoolAdmin` role for
+		/// the created pool. Additional administrators can be
+		/// added with `approve_role_for`.
+		///
+		/// Returns an error if the requested pool ID is already in
+		/// use, or if the tranche configuration cannot be used.
 		#[pallet::weight(T::WeightInfo::create(tranches.len() as u32))]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -574,6 +590,14 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Update per-pool configuration settings.
+		///
+		/// This sets the minimum epoch length, epoch solution challenge
+		/// time, and maximum NAV age will be set to chain-wide
+		/// defaults.
+		///
+		/// The caller must have the `PoolAdmin` role in order to
+		/// invoke this extrinsic.
 		#[pallet::weight(T::WeightInfo::update())]
 		pub fn update(
 			origin: OriginFor<T>,
@@ -599,6 +623,10 @@ pub mod pallet {
 			})
 		}
 
+		/// Sets the IPFS hash for the pool metadata information.
+		///
+		/// The caller must have the `PoolAdmin` role in order to
+		/// invoke this extrinsic.
 		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len() as u32))]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
@@ -624,6 +652,13 @@ pub mod pallet {
 			})
 		}
 
+		/// Sets the maximum reserve for a pool
+		///
+		/// The caller must have the `LiquidityAdmin` role in
+		/// order to invoke this extrinsic. This role is not
+		/// given to the pool creator by default, and must be
+		/// added with `approve_role_for` before this
+		/// extrinsic can be called.
 		#[pallet::weight(T::WeightInfo::set_max_reserve())]
 		pub fn set_max_reserve(
 			origin: OriginFor<T>,
@@ -644,6 +679,14 @@ pub mod pallet {
 			})
 		}
 
+		/// Update the tranche configuration for a pool
+		///
+		/// Can only be called by an account with the `PoolAdmin` role.
+		///
+		/// The interest rate, seniority, and minimum risk buffer
+		/// will be set based on the new tranche configuration
+		/// passed in. This configuration must contain the same
+		/// number of tranches that the pool was created with.
 		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len() as u32))]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
@@ -680,6 +723,21 @@ pub mod pallet {
 			})
 		}
 
+		/// Update an order to invest tokens in a given tranche.
+		///
+		/// The caller must have the TrancheInvestor role for this
+		/// tranche, and that role must not have expired.
+		///
+		/// If the caller has an investment order for the
+		/// specified tranche in a prior epoch, it must first be
+		/// collected.
+		///
+		/// If the requested amount is greater than the current
+		/// investment order, the balance will be transferred from
+		/// the calling account to the pool. If the requested
+		/// amount is less than the current order, the balance
+		/// willbe transferred from the pool to the calling
+		/// account.
 		#[pallet::weight(T::WeightInfo::update_invest_order())]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
@@ -720,6 +778,21 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Update an order to redeem tokens in a given tranche.
+		///
+		/// The caller must have the TrancheInvestor role for this
+		/// tranche, and that role must not have expired.
+		///
+		/// If the caller has a redemption order for the
+		/// specified tranche in a prior epoch, it must first
+		/// be collected.
+		///
+		/// If the requested amount is greater than the current
+		/// investment order, the balance will be transferred from
+		/// the calling account to the pool. If the requested
+		/// amount is less than the current order, the balance
+		/// willbe transferred from the pool to the calling
+		/// account.
 		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
@@ -760,6 +833,12 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Collect the results of an executed invest or redeem order.
+		///
+		/// Iterates through up to `collect_n_epochs` epochs from
+		/// when the caller's order was initiated, and transfers
+		/// the total results of the order execution to the
+		/// caller's account.
 		#[pallet::weight(T::WeightInfo::collect((*collect_n_epochs).into()))]
 		pub fn collect(
 			origin: OriginFor<T>,
@@ -835,6 +914,24 @@ pub mod pallet {
 			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
 
+		/// Close the current epoch
+		///
+		/// Closing an epoch locks in all invest and redeem
+		/// orders placed during the epoch, and causes all
+		/// further invest and redeem orders to be set for the
+		/// next epoch.
+		///
+		/// If all orders can be executed without violating any
+		/// pool constraints - which include maximum reserve and
+		/// the tranche risk buffers - the execution will also be
+		/// done. See `execute_epoch` for details on epoch
+		/// execution.
+		///
+		/// If pool constraints would be violated by executing all
+		/// orders, the pool enters a challenge period. During a
+		/// challenge period, partial executions can be submitted
+		/// to be scored, and the best-scoring solution will
+		/// eventually be executed. See `submit_solution`.
 		#[pallet::weight(T::WeightInfo::close_epoch_no_investments(T::MaxTranches::get())
                              .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
                              .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
@@ -1018,6 +1115,16 @@ pub mod pallet {
 			})
 		}
 
+		/// Submit a partial execution solution for a closed epoch
+		///
+		/// If the submitted solution is "better" than the
+		/// previous best solution, it will replace it. Solutions
+		/// are ordered such that solutions which do not violate
+		/// constraints are better than those that do.
+		///
+		/// Once a valid solution has been submitted, the
+		/// challenge time begins. The pool can be executed once
+		/// the challenge time has expired.
 		#[pallet::weight(T::WeightInfo::submit_solution(T::MaxTranches::get()))]
 		pub fn submit_solution(
 			origin: OriginFor<T>,
@@ -1052,6 +1159,14 @@ pub mod pallet {
 			})
 		}
 
+		/// Execute an epoch for which a valid solution has been
+		/// submitted.
+		///
+		/// * Mints or burns tranche tokens based on investments
+		///   and redemptions
+		/// * Updates the portion of the reserve and loan balance
+		///   assigned to each tranche, based on the investments
+		///   and redemptions to those tranches.
 		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
 		pub fn execute_epoch(
 			origin: OriginFor<T>,
@@ -1102,6 +1217,10 @@ pub mod pallet {
 			})
 		}
 
+		/// Give the `accounts` the given `role` on the
+		/// requested pool.
+		///
+		/// The caller must have the `PoolAdmin` role.
 		#[pallet::weight(T::WeightInfo::approve_role_for(accounts.len() as u32))]
 		#[frame_support::transactional]
 		pub fn approve_role_for(
@@ -1126,6 +1245,10 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Remove the given `role` from the given account on
+		/// the requested pool.
+		///
+		/// The caller must have the `PoolAdmin` role.
 		#[pallet::weight(T::WeightInfo::revoke_role_for())]
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
