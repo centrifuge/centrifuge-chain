@@ -922,7 +922,7 @@ pub mod pallet {
 					.map(|tranche| tranche.seniority)
 					.collect::<Vec<_>>();
 
-				let tranche_min_risk_buffs = pool.tranches.min_risk_buffers();
+				let tranche_min_risk_buffs = pool.tranches.risk_buffers();
 
 				let epoch_tranches: Vec<_> = orders
 					.iter()
@@ -1616,11 +1616,7 @@ pub mod pallet {
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
 						Some(seniority) => {
-							seniority
-								<= new_tranches
-									.len()
-									.try_into()
-									.expect("MaxTranches is u32. qed.")
+							seniority <= new_tranches.len().try_into().expect("MaxTranches is u32")
 						}
 						None => true,
 					}
