@@ -593,8 +593,7 @@ pub mod pallet {
 		/// Update per-pool configuration settings.
 		///
 		/// This sets the minimum epoch length, epoch solution challenge
-		/// time, and maximum NAV age will be set to chain-wide
-		/// defaults.
+		/// time, and maximum NAV age.
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
@@ -928,8 +927,8 @@ pub mod pallet {
 		/// execution.
 		///
 		/// If pool constraints would be violated by executing all
-		/// orders, the pool enters a challenge period. During a
-		/// challenge period, partial executions can be submitted
+		/// orders, the pool enters a submission period. During a
+		/// submission period, partial executions can be submitted
 		/// to be scored, and the best-scoring solution will
 		/// eventually be executed. See `submit_solution`.
 		#[pallet::weight(T::WeightInfo::close_epoch_no_investments(T::MaxTranches::get())
