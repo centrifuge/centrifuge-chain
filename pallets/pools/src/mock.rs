@@ -200,17 +200,22 @@ impl pallet_restricted_tokens::Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;
 	type PreFungiblesMutateHold = common_traits::Always;
 	type PreFungiblesTransfer = common_traits::Always;
 	type Fungibles = OrmlTokens;
 	type PreCurrency = common_traits::Always;
 	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = pallet_restricted_tokens::FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
 	type PreFungibleMutate = common_traits::Always;
 	type PreFungibleMutateHold = common_traits::Always;
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
+	type WeightInfo = ();
 }
 
 pub struct RestrictedTokens<P>(PhantomData<P>);
@@ -218,6 +223,8 @@ impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedT
 where
 	P: PermissionsT<u64, Location = u64, Role = PoolRole>,
 {
+	type Result = bool;
+
 	fn check(details: TransferDetails<u64, CurrencyId, Balance>) -> bool {
 		let TransferDetails {
 			send,
