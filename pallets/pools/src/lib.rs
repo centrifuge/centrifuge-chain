@@ -19,7 +19,7 @@ mod tranche;
 mod weights;
 
 use codec::HasCompact;
-use common_traits::{Permissions, TrancheWeigher};
+use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
 use core::{
@@ -31,7 +31,6 @@ use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
 use scale_info::TypeInfo;
-use sp_runtime::traits::StaticLookup;
 use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
@@ -49,7 +48,7 @@ where
 {
 	pub owner: AccountId,
 	pub currency: CurrencyId,
-	pub tranches: Vec<Tranche<Balance, Rate, Weight>>, // ordered junior => senior
+	pub tranches: Tranches<Balance, Rate, Weight>, // ordered junior => senior
 	pub current_epoch: EpochId,
 	pub last_epoch_closed: Moment,
 	pub last_epoch_executed: EpochId,
@@ -95,7 +94,7 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight> {
 	nav: Balance,
 	reserve: Balance,
 	max_reserve: Balance,
-	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
+	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 	best_submission: Option<EpochSolution<Balance>>,
 	challenge_period_end: Option<Moment>,
 }
@@ -109,14 +108,8 @@ pub struct OutstandingCollections<Balance> {
 	pub remaining_redeem_token: Balance,
 }
 
-// type alias for StaticLookup source that resolves to account
-type LookUpSource<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
-
 // Type that indicates a point in time
 type Moment = u64;
-
-// Type that indicates the senority of a tranche
-type Seniority = u32;
 
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
@@ -427,28 +420,10 @@ pub mod pallet {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
-			Self::is_valid_tranche_change(&Vec::new(), &tranches)?;
+			Self::is_valid_tranche_change(&Tranches(Vec::new()), &tranches)?;
 
 			let now = Self::now();
-			let tranches = tranches
-				.into_iter()
-				.enumerate()
-				.map(|(tranche_id, tranche)| Tranche {
-					interest_per_sec: tranche.interest_per_sec.unwrap_or(One::one()),
-					min_risk_buffer: tranche.min_risk_buffer.unwrap_or(Perquintill::zero()),
-					// seniority increases as index since the order is from junior to senior
-					seniority: tranche.seniority.unwrap_or(tranche_id as u32),
-					outstanding_invest_orders: Zero::zero(),
-					outstanding_redeem_orders: Zero::zero(),
-
-					debt: Zero::zero(),
-					reserve: Zero::zero(),
-					ratio: Perquintill::zero(),
-					last_updated_interest: now,
-					_phantom: Default::default(),
-				})
-				.collect();
-
+			let tranches = Tranches::from_input(tranches.into_iter(), now);
 			Pool::<T>::insert(
 				pool_id,
 				PoolDetails {
@@ -590,7 +565,12 @@ pub mod pallet {
 
 				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
 
-				for (tranche, new_tranche) in &mut pool.tranches.iter_mut().zip(tranches) {
+				for (tranche, new_tranche) in &mut pool
+					.tranches
+					.as_mut_tranche_slice()
+					.iter_mut()
+					.zip(tranches)
+				{
 					tranche.min_risk_buffer =
 						new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
 					tranche.interest_per_sec = new_tranche.interest_per_sec.unwrap_or(One::one());
@@ -853,13 +833,14 @@ pub mod pallet {
 					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
 						.ok_or(Error::<T>::Overflow)?;
 
-				if pool.tranches.iter().all(|tranche| {
+				if pool.tranches.as_tranche_slice().iter().all(|tranche| {
 					tranche.outstanding_invest_orders.is_zero()
 						&& tranche.outstanding_redeem_orders.is_zero()
 				}) {
 					// This epoch is a no-op. Finish executing it.
 					for (tranche_id, (tranche, price)) in pool
 						.tranches
+						.as_mut_tranche_slice()
 						.iter_mut()
 						.zip(&epoch_tranche_prices)
 						.enumerate()
@@ -913,24 +894,16 @@ pub mod pallet {
 					})
 					.collect::<Vec<_>>();
 
-				let tranche_supply = pool
-					.tranches
-					.iter()
-					.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
-					.collect::<Option<Vec<_>>>()
-					.ok_or(Error::<T>::Overflow)?;
+				let tranche_supply = pool.tranches.supplies()?;
 
 				let seniorities = pool
 					.tranches
+					.as_tranche_slice()
 					.iter()
 					.map(|tranche| tranche.seniority)
 					.collect::<Vec<_>>();
 
-				let tranche_min_risk_buffs = pool
-					.tranches
-					.iter()
-					.map(|tranche| tranche.min_risk_buffer)
-					.collect::<Vec<_>>();
+				let tranche_min_risk_buffs = pool.tranches.risk_buffers();
 
 				let epoch_tranches: Vec<_> = orders
 					.iter()
@@ -958,7 +931,7 @@ pub mod pallet {
 					nav,
 					reserve: pool.total_reserve,
 					max_reserve: pool.max_reserve,
-					tranches: epoch_tranches,
+					tranches: EpochExecutionTranches(epoch_tranches),
 					best_submission: None,
 					challenge_period_end: None,
 				};
@@ -1175,7 +1148,7 @@ pub mod pallet {
 		/// Scores a solution and returns a healthy solution as a result.
 		pub(crate) fn score_solution_healthy(
 			solution: &[TrancheSolution],
-			tranches: &[EpochExecutionTrancheOf<T>],
+			tranches: &EpochExecutionTranchesOf<T>,
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			let score = Self::calculate_score(solution, tranches)?;
 
@@ -1203,14 +1176,12 @@ pub mod pallet {
 		/// Returns error upon overflow of `Balances`.
 		pub(crate) fn calculate_score(
 			solution: &[TrancheSolution],
-			tranches: &[EpochExecutionTrancheOf<T>],
+			tranches: &EpochExecutionTranchesOf<T>,
 		) -> Result<T::Balance, DispatchError> {
-			let len = tranches.len().try_into().ok().ok_or(Error::<T>::Overflow)?;
-
 			let (invest_score, redeem_score) = solution
 				.iter()
-				.zip(tranches)
-				.zip(tranches.calculate_weight(len))
+				.zip(tranches.as_tranche_slice())
+				.zip(tranches.calculate_weights())
 				.fold(
 					(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
 					|(invest_score, redeem_score),
@@ -1249,72 +1220,55 @@ pub mod pallet {
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			let tranches = &info.tranches;
 
-			let risk_buffer_improvement_scores =
-				if state.contains(&UnhealthyState::MinRiskBufferViolated) {
-					let new_tranche_supplies: Vec<_> = tranches
-						.iter()
-						.zip(solution)
-						.map(|(tranche, solution)| {
-							tranche
-								.supply
-								.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-								.and_then(|value| {
-									value.checked_sub(
-										&solution.redeem_fulfillment.mul_floor(tranche.redeem),
-									)
-								})
+			let risk_buffer_improvement_scores = if state
+				.contains(&UnhealthyState::MinRiskBufferViolated)
+			{
+				let new_tranche_supplies: Vec<_> = tranches.supplies_with_fulfillment(solution)?;
+				let risk_buffers =
+					Self::calculate_risk_buffers(&new_tranche_supplies, &tranches.prices())?;
+
+				// Score: 1 / (min risk buffer - risk buffer)
+				// A higher score means the distance to the min risk buffer is smaller
+				let non_junior_tranches =
+					tranches.as_tranche_slice().split_first().unwrap().1.iter();
+				Some(
+					non_junior_tranches
+						.zip(risk_buffers)
+						.map(|(tranche, risk_buffer)| {
+							tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
+								|div: Perquintill| {
+									Some(div.saturating_reciprocal_mul(T::Balance::one()))
+								},
+							)
 						})
 						.collect::<Option<Vec<_>>>()
-						.ok_or(Error::<T>::Overflow)?;
-
-					let tranche_prices = tranches
-						.iter()
-						.map(|tranche| tranche.price)
-						.collect::<Vec<_>>();
-
-					let risk_buffers =
-						Self::calculate_risk_buffers(&new_tranche_supplies, &tranche_prices)?;
-
-					// Score: 1 / (min risk buffer - risk buffer)
-					// A higher score means the distance to the min risk buffer is smaller
-					let non_junior_tranches = tranches.split_first().unwrap().1.iter();
-					Some(
-						non_junior_tranches
-							.zip(risk_buffers)
-							.map(|(tranche, risk_buffer)| {
-								tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
-									|div: Perquintill| {
-										Some(div.saturating_reciprocal_mul(T::Balance::one()))
-									},
-								)
-							})
-							.collect::<Option<Vec<_>>>()
-							.ok_or(Error::<T>::Overflow)?,
-					)
-				} else {
-					None
-				};
+						.ok_or(Error::<T>::Overflow)?,
+				)
+			} else {
+				None
+			};
 
 			let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
-				let (acc_invest, acc_redeem) = solution.iter().zip(tranches).fold(
-					(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
-					|(acc_invest, acc_redeem), (solution, tranches)| {
-						(
-							acc_invest.and_then(|acc| {
-								solution
-									.invest_fulfillment
-									.mul_floor(tranches.invest)
-									.checked_add(&acc)
-							}),
-							acc_redeem.and_then(|acc| {
-								solution
-									.redeem_fulfillment
-									.mul_floor(tranches.redeem)
-									.checked_add(&acc)
-							}),
-						)
-					},
-				);
+				let (acc_invest, acc_redeem) =
+					solution.iter().zip(tranches.as_tranche_slice()).fold(
+						(Some(<T::Balance>::zero()), Some(<T::Balance>::zero())),
+						|(acc_invest, acc_redeem), (solution, tranches)| {
+							(
+								acc_invest.and_then(|acc| {
+									solution
+										.invest_fulfillment
+										.mul_floor(tranches.invest)
+										.checked_add(&acc)
+								}),
+								acc_redeem.and_then(|acc| {
+									solution
+										.redeem_fulfillment
+										.mul_floor(tranches.redeem)
+										.checked_add(&acc)
+								}),
+							)
+						},
+					);
 
 				let acc_invest = acc_invest.ok_or(Error::<T>::Overflow)?;
 				let acc_redeem = acc_redeem.ok_or(Error::<T>::Overflow)?;
@@ -1358,7 +1312,7 @@ pub mod pallet {
 			solution: &[TrancheSolution],
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			ensure!(
-				solution.len() == epoch.tranches.len(),
+				solution.len() == epoch.tranches.num_tranches(),
 				Error::<T>::InvalidSolution
 			);
 
@@ -1384,6 +1338,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let mut outstanding = &mut pool
 				.tranches
+				.as_mut_tranche_slice()
 				.get_mut(tranche_id.into())
 				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_invest_orders;
@@ -1412,6 +1367,7 @@ pub mod pallet {
 			let currency = T::TrancheToken::tranche_token(pool_id, tranche_id);
 			let mut outstanding = &mut pool
 				.tranches
+				.as_mut_tranche_slice()
 				.get_mut(tranche_id.into())
 				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_redeem_orders;
@@ -1590,7 +1546,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			epoch_nav: T::Balance,
 			epoch_reserve: T::Balance,
-			tranches: &mut [TrancheOf<T>],
+			tranches: &mut TranchesOf<T>,
 		) -> Option<Vec<T::BalanceRatio>> {
 			let total_assets = epoch_nav.checked_add(&epoch_reserve).unwrap();
 			let mut remaining_assets = total_assets;
@@ -1600,6 +1556,7 @@ pub mod pallet {
 			// there by all the remaining assets are given to the most junior tranche
 			let junior_tranche_id = 0;
 			tranches
+				.as_mut_tranche_slice()
 				.iter_mut()
 				.enumerate()
 				.rev()
@@ -1650,11 +1607,11 @@ pub mod pallet {
 
 		pub fn convert_orders_to_currency(
 			epoch_tranche_prices: &[T::BalanceRatio],
-			tranches: &[TrancheOf<T>],
+			tranches: &TranchesOf<T>,
 		) -> Option<Vec<(T::Balance, T::Balance)>> {
 			epoch_tranche_prices
 				.iter()
-				.zip(tranches.iter())
+				.zip(tranches.as_tranche_slice().iter())
 				.map(|(price, tranche)| {
 					price
 						.checked_mul_int(tranche.outstanding_redeem_orders)
@@ -1664,7 +1621,7 @@ pub mod pallet {
 		}
 
 		pub fn is_valid_tranche_change(
-			old_tranches: &Vec<TrancheOf<T>>,
+			old_tranches: &TranchesOf<T>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
@@ -1696,7 +1653,8 @@ pub mod pallet {
 			// For now, adding or removing tranches is not allowed, unless it's on pool creation.
 			// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
 			ensure!(
-				old_tranches.len() == 0 || new_tranches.len() == old_tranches.len(),
+				old_tranches.num_tranches() == 0
+					|| new_tranches.len() == old_tranches.num_tranches(),
 				Error::<T>::CannotAddOrRemoveTranches
 			);
 
@@ -1704,7 +1662,9 @@ pub mod pallet {
 			ensure!(
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
-						Some(seniority) => seniority <= new_tranches.len() as u32,
+						Some(seniority) => {
+							seniority <= new_tranches.len().try_into().expect("MaxTranches is u32")
+						}
 						None => true,
 					}
 				}),
@@ -1725,12 +1685,13 @@ pub mod pallet {
 			// EpochExecutionInfo is generated from PoolDetails, hence the
 			// tranche length of the former equals the later.
 			ensure!(
-				pool_details.tranches.len() == solution.len(),
+				pool_details.tranches.num_tranches() == solution.len(),
 				Error::<T>::InvalidSolution
 			);
 
 			let acc_invest: T::Balance = epoch
 				.tranches
+				.as_tranche_slice()
 				.iter()
 				.zip(solution)
 				.fold(Some(T::Balance::zero()), |sum, (tranche, solution)| {
@@ -1742,6 +1703,7 @@ pub mod pallet {
 
 			let acc_redeem: T::Balance = epoch
 				.tranches
+				.as_tranche_slice()
 				.iter()
 				.zip(solution)
 				.fold(Some(T::Balance::zero()), |sum, (tranche, solution)| {
@@ -1764,12 +1726,14 @@ pub mod pallet {
 
 			let min_risk_buffers = pool_details
 				.tranches
+				.as_tranche_slice()
 				.iter()
 				.map(|tranche| tranche.min_risk_buffer)
 				.collect::<Vec<_>>();
 
 			let new_tranche_supplies: Vec<_> = epoch
 				.tranches
+				.as_tranche_slice()
 				.iter()
 				.zip(solution)
 				.map(|(tranche, solution)| {
@@ -1786,6 +1750,7 @@ pub mod pallet {
 
 			let tranche_prices = epoch
 				.tranches
+				.as_tranche_slice()
 				.iter()
 				.map(|tranche| tranche.price)
 				.collect::<Vec<_>>();
@@ -1895,6 +1860,7 @@ pub mod pallet {
 
 			let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch
 				.tranches
+				.as_tranche_slice()
 				.iter()
 				.zip(solution.iter())
 				.map(|(tranche, solution)| {
@@ -1908,11 +1874,12 @@ pub mod pallet {
 			// Update tranche orders and add epoch solution state
 			for ((((tranche_id, tranche), solution), executed_amounts), epoch_tranche) in pool
 				.tranches
+				.as_mut_tranche_slice()
 				.iter_mut()
 				.enumerate()
 				.zip(solution.iter().copied())
 				.zip(executed_amounts.iter().copied())
-				.zip(&epoch.tranches)
+				.zip(epoch.tranches.as_tranche_slice())
 			{
 				let loc = TrancheLocator {
 					pool_id,
@@ -1963,7 +1930,7 @@ pub mod pallet {
 				.ok_or(Error::<T>::Overflow)?;
 			let tranche_ratios: Vec<_> = executed_amounts
 				.iter()
-				.zip(&mut epoch.tranches.iter())
+				.zip(epoch.tranches.as_tranche_slice().iter())
 				.rev()
 				.map(|((invest, redeem), tranche)| {
 					tranche
@@ -1982,7 +1949,7 @@ pub mod pallet {
 			let mut total_assets = total_assets;
 			let tranche_assets = executed_amounts
 				.iter()
-				.zip(&mut pool.tranches)
+				.zip(pool.tranches.as_mut_tranche_slice())
 				.rev()
 				.map(|((invest, redeem), tranche)| {
 					Self::update_tranche_debt(tranche)?;
@@ -2011,7 +1978,12 @@ pub mod pallet {
 			let mut remaining_reserve = pool.total_reserve;
 			// reverse the order for easier re balancing
 			let junior_tranche_id = 0;
-			let tranches_senior_to_junior = pool.tranches.iter_mut().enumerate().rev();
+			let tranches_senior_to_junior = pool
+				.tranches
+				.as_mut_tranche_slice()
+				.iter_mut()
+				.enumerate()
+				.rev();
 			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
 				.zip(tranche_ratios.iter())
 				.zip(tranche_assets.iter())
@@ -2093,7 +2065,8 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
+				let tranches_senior_to_junior =
+					pool.tranches.as_mut_tranche_slice().iter_mut().rev();
 				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
 
@@ -2142,7 +2115,8 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
+				let tranches_senior_to_junior =
+					&mut pool.tranches.as_mut_tranche_slice().iter_mut().rev();
 				for tranche in tranches_senior_to_junior {
 					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
 

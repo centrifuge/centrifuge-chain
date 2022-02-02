@@ -20,19 +20,35 @@
 /// currency, but nothing enforces that. Failure to ensure currency
 /// uniqueness will almost certainly cause some wild bugs.
 use super::*;
-use common_traits::{Combinator, Tranche as TrancheT};
 use frame_support::sp_runtime::ArithmeticError;
+use frame_support::sp_std::convert::TryInto;
+use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 
-// Types alias for EpochExecutionTranche
+/// Types alias for EpochExecutionTranches
+pub(super) type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
+	<T as Config>::Balance,
+	<T as Config>::BalanceRatio,
+	<T as Config>::TrancheWeight,
+>;
+
+/// Types alias for EpochExecutionTranche
+#[allow(dead_code)]
 pub(super) type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
 	<T as Config>::Balance,
 	<T as Config>::BalanceRatio,
 	<T as Config>::TrancheWeight,
 >;
 
-// Types alias for Tranche
+/// Types alias for Tranches
+pub(super) type TranchesOf<T> =
+	Tranches<<T as Config>::Balance, <T as Config>::InterestRate, <T as Config>::TrancheWeight>;
+
+/// Types alias for Tranche
 pub(super) type TrancheOf<T> =
 	Tranche<<T as Config>::Balance, <T as Config>::InterestRate, <T as Config>::TrancheWeight>;
+
+/// Type that indicates the senority of a tranche
+type Seniority = u32;
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
 ///
@@ -71,7 +87,7 @@ impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct Tranches<T: Config>(Vec<TrancheOf<T>>);
+pub struct Tranches<Balance, Rate, Weight>(pub(super) Vec<Tranche<Balance, Rate, Weight>>);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct Tranche<Balance, Rate, Weight> {
@@ -90,18 +106,64 @@ pub struct Tranche<Balance, Rate, Weight> {
 	pub(super) _phantom: PhantomData<Weight>,
 }
 
-impl<T: Config> Tranches<T> {
-	fn supply(&self) -> Vec<Option<T::Balance>> {
+impl<Balance, Rate, Weight> Tranches<Balance, Rate, Weight>
+where
+	Balance: Zero + Copy + BaseArithmetic,
+	Weight: Copy + From<u128>,
+	Rate: One,
+{
+	pub fn from_input(tranches: impl Iterator<Item = TrancheInput<Rate>>, now: Moment) -> Self {
+		Self(
+			tranches
+				.enumerate()
+				.map(|(id, input)| Tranche {
+					interest_per_sec: input.interest_per_sec.unwrap_or(One::one()),
+					min_risk_buffer: input.min_risk_buffer.unwrap_or(Perquintill::zero()),
+					// seniority increases as index since the order is from junior to senior
+					seniority: input
+						.seniority
+						.unwrap_or(id.try_into().expect("MaxTranches is u32")),
+					outstanding_invest_orders: Zero::zero(),
+					outstanding_redeem_orders: Zero::zero(),
+
+					debt: Zero::zero(),
+					reserve: Zero::zero(),
+					ratio: Perquintill::zero(),
+					last_updated_interest: now,
+					_phantom: Default::default(),
+				})
+				.collect(),
+		)
+	}
+
+	pub fn num_tranches(&self) -> usize {
+		self.0.len()
+	}
+
+	pub fn into_tranches(self) -> Vec<Tranche<Balance, Rate, Weight>> {
+		self.0
+	}
+
+	pub fn as_tranche_slice(&self) -> &[Tranche<Balance, Rate, Weight>] {
+		self.0.as_slice()
+	}
+
+	pub fn as_mut_tranche_slice(&mut self) -> &mut [Tranche<Balance, Rate, Weight>] {
+		self.0.as_mut_slice()
+	}
+
+	pub fn supplies(&self) -> Result<Vec<Balance>, DispatchError> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
-			.collect()
+			.collect::<Option<Vec<_>>>()
+			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn acc_supply(&self) -> Result<T::Balance, DispatchError> {
+	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
 		self.0
 			.iter()
-			.fold(Some(T::Balance::zero()), |sum, tranche| {
+			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| {
 					acc.checked_add(&tranche.debt)
 						.and_then(|acc| acc.checked_add(&tranche.reserve))
@@ -110,40 +172,41 @@ impl<T: Config> Tranches<T> {
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn investments(&self) -> Vec<T::Balance> {
+	pub fn investments(&self) -> Vec<Balance> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.outstanding_invest_orders)
 			.collect()
 	}
 
-	fn acc_investments(&self) -> Result<T::Balance, DispatchError> {
+	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
 		self.0
 			.iter()
-			.fold(Some(T::Balance::zero()), |sum, tranche| {
+			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_invest_orders))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn redemptions(&self) -> Vec<T::Balance> {
+	pub fn redemptions(&self) -> Vec<Balance> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.outstanding_redeem_orders)
 			.collect()
 	}
 
-	fn acc_redemptions(&self) -> Result<T::Balance, DispatchError> {
+	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
 		self.0
 			.iter()
-			.fold(Some(T::Balance::zero()), |sum, tranche| {
+			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_redeem_orders))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn calculate_weight(&self) -> Vec<(T::TrancheWeight, T::TrancheWeight)> {
-		let redeem_starts = 10u128.checked_pow(self.0.len()).unwrap_or(u128::MAX);
+	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
+		let n_tranches: u32 = self.0.len().try_into().expect("MaxTranches is u32");
+		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
 
 		self.0
 			.iter()
@@ -152,13 +215,13 @@ impl<T: Config> Tranches<T> {
 					10u128
 						.checked_pow(
 							n_tranches
-								.checked_sub(&tranche.seniority)
+								.checked_sub(tranche.seniority)
 								.unwrap_or(u32::MAX),
 						)
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(&tranche.seniority.saturating_add(1)).into())
+						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)).into())
 						.unwrap_or(u128::MAX)
 						.into(),
 				)
@@ -166,7 +229,7 @@ impl<T: Config> Tranches<T> {
 			.collect()
 	}
 
-	fn risk_buffers(&self) -> Vec<Perquintill> {
+	pub fn risk_buffers(&self) -> Vec<Perquintill> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer)
@@ -175,50 +238,111 @@ impl<T: Config> Tranches<T> {
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranches<T: Config>(Vec<EpochExecutionTrancheOf<T>>);
+pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight>(
+	pub(super) Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
+);
 
-impl<T: Config> EpochExecutionTranches<T> {
-	fn supply(&self) -> Vec<T::Balance> {
+impl<Balance, BalanceRatio, Weight> EpochExecutionTranches<Balance, BalanceRatio, Weight>
+where
+	Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
+	Weight: Copy + From<u128>,
+	BalanceRatio: Copy,
+{
+	pub fn num_tranches(&self) -> usize {
+		self.0.len()
+	}
+
+	pub fn into_tranches(self) -> Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+		self.0
+	}
+
+	pub fn as_tranche_slice(&self) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
+		self.0.as_slice()
+	}
+
+	pub fn as_mut_tranche_slice(
+		&mut self,
+	) -> &mut [EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
+		self.0.as_mut_slice()
+	}
+
+	pub fn prices(&self) -> Vec<BalanceRatio> {
+		self.0.iter().map(|tranche| tranche.price).collect()
+	}
+
+	pub fn supplies_with_fulfillment(
+		&self,
+		fulfillments: &[TrancheSolution],
+	) -> Result<Vec<Balance>, DispatchError> {
+		self.0
+			.iter()
+			.zip(fulfillments)
+			.map(|(tranche, solution)| {
+				tranche
+					.supply
+					.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+					.and_then(|value| {
+						value.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+					})
+			})
+			.collect::<Option<Vec<_>>>()
+			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	pub fn acc_supply_with_fulfillment(
+		&self,
+		fulfillments: &[TrancheSolution],
+	) -> Result<Balance, DispatchError> {
+		self.supplies_with_fulfillment(fulfillments)?
+			.iter()
+			.fold(Some(Balance::zero()), |acc, add| {
+				acc.and_then(|sum| sum.checked_add(add))
+			})
+			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	pub fn supplies(&self) -> Vec<Balance> {
 		self.0.iter().map(|tranche| tranche.supply).collect()
 	}
 
-	fn acc_supply(&self) -> Result<T::Balance, DispatchError> {
+	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
 		self.0
 			.iter()
-			.fold(Some(T::Balance::zero()), |sum, tranche| {
+			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.supply))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn investments(&self) -> Vec<T::Balance> {
+	pub fn investments(&self) -> Vec<Balance> {
 		self.0.iter().map(|tranche| tranche.invest).collect()
 	}
 
-	fn acc_investments(&self) -> Result<T::Balance, DispatchError> {
+	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
 		self.0
 			.iter()
-			.fold(Some(T::Balance::zero()), |sum, tranche| {
+			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.invest))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn redemptions(&self) -> Vec<T::Balance> {
+	pub fn redemptions(&self) -> Vec<Balance> {
 		self.0.iter().map(|tranche| tranche.redeem).collect()
 	}
 
-	fn acc_redemptions(&self) -> Result<T::Balance, DispatchError> {
+	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
 		self.0
 			.iter()
-			.fold(Some(T::Balance::zero()), |sum, tranche| {
+			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.redeem))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	fn calculate_weight(&self) -> Vec<(T::TrancheWeight, T::TrancheWeight)> {
-		let redeem_starts = 10u128.checked_pow(self.0.len()).unwrap_or(u128::MAX);
+	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
+		let n_tranches: u32 = self.0.len().try_into().expect("MaxTranches is u32");
+		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
 
 		self.0
 			.iter()
@@ -227,13 +351,13 @@ impl<T: Config> EpochExecutionTranches<T> {
 					10u128
 						.checked_pow(
 							n_tranches
-								.checked_sub(&tranche.seniority)
+								.checked_sub(tranche.seniority)
 								.unwrap_or(u32::MAX),
 						)
 						.unwrap_or(u128::MAX)
 						.into(),
 					redeem_starts
-						.checked_mul(10u128.pow(&tranche.seniority.saturating_add(1)).into())
+						.checked_mul(10u128.pow(tranche.seniority.saturating_add(1)).into())
 						.unwrap_or(u128::MAX)
 						.into(),
 				)
@@ -241,7 +365,7 @@ impl<T: Config> EpochExecutionTranches<T> {
 			.collect()
 	}
 
-	fn risk_buffers(&self) -> Vec<Perquintill> {
+	pub fn risk_buffers(&self) -> Vec<Perquintill> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer)

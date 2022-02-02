@@ -10,24 +10,29 @@ use sp_runtime::Perquintill;
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches: Vec<_> = std::iter::repeat(Tranche {
-			outstanding_redeem_orders: 10,
-			..Default::default()
-		})
-		.take(4)
-		.collect();
-
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
+		let tranches = Tranches(
+			std::iter::repeat(Tranche {
+				outstanding_redeem_orders: 10,
 				..Default::default()
 			})
-			.collect();
+			.take(4)
+			.collect(),
+		);
+
+		let epoch_tranches = EpochExecutionTranches(
+			tranches
+				.as_tranche_slice()
+				.iter()
+				.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, value)| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			owner: Zero::zero(),
@@ -57,6 +62,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 
 		let full_solution = pool
 			.tranches
+			.as_tranche_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -94,18 +100,21 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			outstanding_redeem_orders: 10,
 			..Default::default()
 		};
-		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				..Default::default()
-			})
-			.collect();
+		let tranches = Tranches(vec![tranche_a, tranche_b, tranche_c, tranche_d]);
+		let epoch_tranches = EpochExecutionTranches(
+			tranches
+				.as_tranche_slice()
+				.iter()
+				.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, value)| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			owner: Zero::zero(),
@@ -135,6 +144,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 
 		let full_solution = pool
 			.tranches
+			.as_tranche_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -187,19 +197,22 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
-		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
+		let tranches = Tranches(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
 
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				..Default::default()
-			})
-			.collect();
+		let epoch_tranches = EpochExecutionTranches(
+			tranches
+				.as_tranche_slice()
+				.iter()
+				.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, value)| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			owner: Zero::zero(),
@@ -229,6 +242,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let full_solution = pool
 			.tranches
+			.as_tranche_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -276,21 +290,24 @@ fn pool_constraints_pass() {
 			seniority: 0,
 			..Default::default()
 		};
-		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
+		let tranches = Tranches(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
 
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![80, 70, 35, 20])
-			.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				seniority: tranche_id.try_into().unwrap(),
-				..Default::default()
-			})
-			.collect();
+		let epoch_tranches = EpochExecutionTranches(
+			tranches
+				.as_tranche_slice()
+				.iter()
+				.zip(vec![80, 70, 35, 20])
+				.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					seniority: tranche_id.try_into().unwrap(),
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			owner: Zero::zero(),
@@ -320,6 +337,7 @@ fn pool_constraints_pass() {
 
 		let full_solution = pool
 			.tranches
+			.as_tranche_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -334,7 +352,7 @@ fn pool_constraints_pass() {
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
 		assert_eq!(
-			pool.tranches.calculate_weight(pool.tranches.len() as u32),
+			pool.tranches.calculate_weights(),
 			vec![
 				(10_000.into(), 100_000.into()),
 				(1000.into(), 1_000_000.into()),
@@ -430,27 +448,33 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].interest_per_sec,
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec,
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.available_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1000 * CURRENCY);
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].ratio,
-			Perquintill::from_float(0.5)
-		);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
-		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].ratio,
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].ratio,
 			Perquintill::from_float(0.5)
 		);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].ratio,
+			Perquintill::from_float(0.5)
+		);
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		);
 
@@ -460,19 +484,19 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
@@ -484,13 +508,21 @@ fn epoch() {
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		); // not yet rebalanced
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
-		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY); // there's interest in here now
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY
+		); // there's interest in here now
 		assert_eq!(pool.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
 
@@ -513,17 +545,27 @@ fn epoch() {
 			pool.last_epoch_executed,
 		)
 		.unwrap();
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
-		assert!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_redeem_orders,
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			0
 		);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
+		assert!(
+			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY
+		);
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].outstanding_redeem_orders,
+			0
+		);
+		assert_eq!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			0
+		);
 		assert_eq!(pool.available_reserve, pool.total_reserve);
 		assert!(pool.total_reserve > 750 * CURRENCY);
 		assert!(pool.total_reserve < 800 * CURRENCY);
-		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY);
+		assert!(
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY
+		);
 		assert_eq!(
 			pool.total_reserve + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
@@ -891,7 +933,7 @@ fn collect_tranche_tokens() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_invest_orders,
+			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].outstanding_invest_orders,
 			0
 		);
 
@@ -942,101 +984,6 @@ fn collect_tranche_tokens() {
 			JUNIOR_TRANCHE_ID,
 			2
 		));
-	});
-}
-
-#[test]
-fn test_approve_and_remove_roles() {
-	new_test_ext().execute_with(|| {
-		let pool_owner = 1;
-
-		// Initialize pool with initial investmentslet senior_interest_rate = Rate::saturating_from_rational(10, 100)
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
-			+ One::one();
-		assert_ok!(Pools::create(
-			Origin::signed(pool_owner),
-			0,
-			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				},
-			],
-			CurrencyId::Usd,
-			10_000 * CURRENCY
-		));
-
-		let pool_id = 0;
-		assert!(<Pools as PoolInspect<u64>>::pool_exists(pool_id));
-		assert!(<Test as Config>::Permission::has_permission(
-			pool_id,
-			pool_owner,
-			PoolRole::PoolAdmin
-		));
-
-		// setup test cases
-		for (role, sources) in vec![
-			(PoolRole::PoolAdmin, vec![2, 3]),
-			(PoolRole::Borrower, vec![4, 5]),
-			(PoolRole::PricingAdmin, vec![6, 7]),
-			(PoolRole::MemberListAdmin, vec![8, 9]),
-			(PoolRole::RiskAdmin, vec![10, 11]),
-			(PoolRole::LiquidityAdmin, vec![12, 13]),
-		] {
-			// they should not have a role first
-			let targets: Vec<u64> = sources
-				.iter()
-				.map(|admin| {
-					<<Test as frame_system::Config>::Lookup as StaticLookup>::unlookup(*admin)
-				})
-				.collect();
-
-			targets.iter().for_each(|acc| {
-				assert!(!<Test as Config>::Permission::has_permission(
-					pool_id, *acc, role
-				))
-			});
-
-			// approve role for all the accounts
-			assert_ok!(Pools::approve_role_for(
-				Origin::signed(pool_owner),
-				pool_id,
-				role,
-				sources.clone()
-			));
-
-			// they should have role now
-			targets.iter().for_each(|acc| {
-				assert!(<Test as Config>::Permission::has_permission(
-					pool_id, *acc, role
-				))
-			});
-
-			sources.iter().for_each(|source| {
-				// revoke roles
-				assert_ok!(Pools::revoke_role_for(
-					Origin::signed(pool_owner),
-					pool_id,
-					role,
-					*source
-				));
-			});
-
-			// they should not have role now
-			targets.iter().for_each(|acc| {
-				assert!(!<Test as Config>::Permission::has_permission(
-					pool_id, *acc, role
-				))
-			});
-		}
 	});
 }
 
