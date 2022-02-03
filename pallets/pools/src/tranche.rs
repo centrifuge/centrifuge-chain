@@ -47,7 +47,7 @@ pub(super) type TranchesOf<T> =
 pub(super) type TrancheOf<T> =
 	Tranche<<T as Config>::Balance, <T as Config>::InterestRate, <T as Config>::TrancheWeight>;
 
-/// Type that indicates the senority of a tranche
+/// Type that indicates the seniority of a tranche
 type Seniority = u32;
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId
@@ -229,7 +229,7 @@ where
 			.collect()
 	}
 
-	pub fn risk_buffers(&self) -> Vec<Perquintill> {
+	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer)
@@ -365,7 +365,7 @@ where
 			.collect()
 	}
 
-	pub fn risk_buffers(&self) -> Vec<Perquintill> {
+	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
 		self.0
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer)
