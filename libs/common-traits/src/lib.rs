@@ -164,22 +164,29 @@ pub trait Properties {
 }
 
 pub trait PreConditions<T> {
-	fn check(t: T) -> bool;
+	type Result;
+
+	fn check(t: T) -> Self::Result;
 }
 
 #[impl_for_tuples(1, 10)]
+#[tuple_types_custom_trait_bound(PreConditions<T, Result = bool>)]
 impl<T> PreConditions<T> for Tuple
 where
 	T: Clone,
 {
-	fn check(t: T) -> bool {
-		for_tuples!( #( Tuple::check(t.clone()) )&* )
+	type Result = bool;
+
+	fn check(t: T) -> Self::Result {
+		for_tuples!( #( <Tuple as PreConditions::<T>>::check(t.clone()) )&* )
 	}
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Always;
 impl<T> PreConditions<T> for Always {
+	type Result = bool;
+
 	fn check(_t: T) -> bool {
 		true
 	}
@@ -188,6 +195,8 @@ impl<T> PreConditions<T> for Always {
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Never;
 impl<T> PreConditions<T> for Never {
+	type Result = bool;
+
 	fn check(_t: T) -> bool {
 		false
 	}
