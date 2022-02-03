@@ -318,10 +318,6 @@ pub mod pallet {
 		InvestOrderUpdated(T::PoolId, T::AccountId),
 		/// A redeem order was updated. [pool, account]
 		RedeemOrderUpdated(T::PoolId, T::AccountId),
-		/// A role was approved for an account in a pool. [pool, role, account]
-		RoleApproved(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
-		// A role was revoked for an account in a pool. [pool, role, account]
-		RoleRevoked(T::PoolId, PoolRole<Moment, T::TrancheId>, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -903,7 +899,7 @@ pub mod pallet {
 					.map(|tranche| tranche.seniority)
 					.collect::<Vec<_>>();
 
-				let tranche_min_risk_buffs = pool.tranches.risk_buffers();
+				let tranche_min_risk_buffs = pool.tranches.min_risk_buffers();
 
 				let epoch_tranches: Vec<_> = orders
 					.iter()
