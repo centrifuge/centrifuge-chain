@@ -22,10 +22,7 @@ use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
-use core::{
-	convert::TryFrom,
-	ops::{AddAssign, Sub},
-};
+use core::{convert::TryFrom, ops::AddAssign};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -62,11 +59,25 @@ where
 }
 
 /// Per-tranche and per-user order details.
-#[derive(Clone, Default, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct UserOrder<Balance, EpochId> {
 	pub invest: Balance,
 	pub redeem: Balance,
 	pub epoch: EpochId,
+}
+
+impl<Balance, EpochId> Default for UserOrder<Balance, EpochId>
+where
+	Balance: Zero,
+	EpochId: One,
+{
+	fn default() -> Self {
+		UserOrder {
+			invest: Zero::zero(),
+			redeem: Zero::zero(),
+			epoch: One::one(),
+		}
+	}
 }
 
 /// A representation of a pool identifier that can be converted to an account address
@@ -197,6 +208,7 @@ pub mod pallet {
 			+ Parameter
 			+ Default
 			+ Copy
+			+ Saturating
 			+ HasCompact
 			+ MaxEncodedLen
 			+ Zero
@@ -205,7 +217,6 @@ pub mod pallet {
 			+ Ord
 			+ CheckedAdd
 			+ AddAssign
-			+ Sub<Output = Self::EpochId>
 			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
@@ -266,7 +277,6 @@ pub mod pallet {
 		Blake2_128Concat,
 		T::AccountId,
 		UserOrder<T::Balance, T::EpochId>,
-		ValueQuery,
 	>;
 
 	#[pallet::storage]
@@ -619,7 +629,14 @@ pub mod pallet {
 				Order::<T>::try_mutate(
 					&TrancheLocator::new(pool_id, tranche_id),
 					&who,
-					|order| -> DispatchResult {
+					|active_order| -> DispatchResult {
+						let order = if let Some(order) = active_order {
+							order
+						} else {
+							*active_order = Some(UserOrder::default());
+							active_order.as_mut().expect("UserOrder now Some. qed.")
+						};
+
 						ensure!(
 							order.invest.saturating_add(order.redeem) == Zero::zero()
 								|| order.epoch == pool.current_epoch,
@@ -674,7 +691,14 @@ pub mod pallet {
 				Order::<T>::try_mutate(
 					&TrancheLocator::new(pool_id, tranche_id),
 					&who,
-					|order| -> DispatchResult {
+					|active_order| -> DispatchResult {
+						let order = if let Some(order) = active_order {
+							order
+						} else {
+							*active_order = Some(UserOrder::default());
+							active_order.as_mut().expect("UserOrder now Some. qed.")
+						};
+
 						ensure!(
 							order.invest.saturating_add(order.redeem) == Zero::zero()
 								|| order.epoch == pool.current_epoch,
@@ -712,6 +736,7 @@ pub mod pallet {
 			};
 			let order =
 				Order::<T>::try_get(&loc, &who).map_err(|_| Error::<T>::NoOutstandingOrder)?;
+
 			ensure!(
 				order.epoch <= pool.last_epoch_executed,
 				Error::<T>::EpochNotExecutedYet
@@ -722,12 +747,11 @@ pub mod pallet {
 				.checked_add(&collect_n_epochs)
 				.ok_or(Error::<T>::Overflow)?
 				.min(pool.last_epoch_executed);
+			let actual_epochs = end_epoch.saturating_sub(order.epoch);
 
-			let actual_epochs = end_epoch - order.epoch;
+			let collections = Self::calculate_collect(loc.clone(), order, end_epoch)?;
 
-			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch)?;
 			let pool_account = PoolLocator { pool_id }.into_account();
-
 			if collections.payout_currency_amount > Zero::zero() {
 				T::Tokens::transfer(
 					pool.currency,
@@ -749,25 +773,35 @@ pub mod pallet {
 				)?;
 			}
 
-			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
-				order.invest = collections.remaining_invest_currency;
-				order.redeem = collections.remaining_redeem_token;
-				order.epoch = end_epoch + One::one();
-
-				Self::deposit_event(Event::OrdersCollected(
-					pool_id,
-					tranche_id,
-					end_epoch,
+			if collections.remaining_redeem_token != Zero::zero()
+				|| collections.remaining_invest_currency != Zero::zero()
+			{
+				Order::<T>::insert(
+					loc,
 					who.clone(),
-					OutstandingCollections {
-						payout_currency_amount: collections.payout_currency_amount,
-						payout_token_amount: collections.payout_token_amount,
-						remaining_invest_currency: collections.remaining_invest_currency,
-						remaining_redeem_token: collections.remaining_redeem_token,
+					UserOrder {
+						invest: collections.remaining_invest_currency,
+						redeem: collections.remaining_redeem_token,
+						epoch: pool.current_epoch,
 					},
-				));
-				Ok(())
-			})?;
+				);
+			} else {
+				Order::<T>::remove(loc, who.clone())
+			};
+
+			Self::deposit_event(Event::OrdersCollected(
+				pool_id,
+				tranche_id,
+				end_epoch,
+				who.clone(),
+				OutstandingCollections {
+					payout_currency_amount: collections.payout_currency_amount,
+					payout_token_amount: collections.payout_token_amount,
+					remaining_invest_currency: collections.remaining_invest_currency,
+					remaining_redeem_token: collections.remaining_redeem_token,
+				},
+			));
+
 			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
 
@@ -1383,124 +1417,96 @@ pub mod pallet {
 		pub(crate) fn calculate_collect(
 			loc: TrancheLocator<T::PoolId, T::TrancheId>,
 			order: UserOrder<T::Balance, T::EpochId>,
-			pool: PoolDetailsOf<T>,
 			end_epoch: T::EpochId,
 		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			// No collect possible in this epoch
-			if order.epoch == pool.current_epoch {
-				return Ok(OutstandingCollections {
-					payout_currency_amount: Zero::zero(),
-					payout_token_amount: Zero::zero(),
-					remaining_invest_currency: order.invest,
-					remaining_redeem_token: order.redeem,
-				});
-			}
-
-			// It is only possible to collect epochs which are already over
-			let end_epoch = end_epoch.min(pool.last_epoch_executed);
-
-			// We initialize the outstanding collections to the ordered amounts,
-			// and then fill the payouts based on executions in the accumulated epochs
+			let epoch_idx = order.epoch;
 			let mut outstanding = OutstandingCollections {
 				payout_currency_amount: Zero::zero(),
 				payout_token_amount: Zero::zero(),
 				remaining_invest_currency: order.invest,
 				remaining_redeem_token: order.redeem,
 			};
+			let mut all_calculated = false;
 
-			// Parse remaining_invest_currency into payout_token_amount
-			// TODO: Now we are passing a mutable value, mutate it, and re-assign it.
-			// Once we implement benchmarking for this, we should check if the reference approach
-			// is more efficient, considering that the mutations occur within a loop.
-			outstanding = Self::parse_invest_executions(&loc, outstanding, order.epoch, end_epoch)?;
+			while epoch_idx <= end_epoch && !all_calculated {
+				// Note: If this errors out here, the system is in a corrupt state.
+				let epoch = Epoch::<T>::try_get(&loc, epoch_idx)
+					.map_err(|_| Error::<T>::EpochNotExecutedYet)?;
 
-			// Parse remaining_redeem_token into payout_currency_amount
-			outstanding = Self::parse_redeem_executions(&loc, outstanding, order.epoch, end_epoch)?;
+				if outstanding.remaining_invest_currency != Zero::zero() {
+					Self::parse_invest_executions(&epoch, &mut outstanding)?;
+				}
+
+				if outstanding.remaining_redeem_token != Zero::zero() {
+					Self::parse_redeem_executions(&epoch, &mut outstanding)?;
+				}
+
+				all_calculated = outstanding.remaining_invest_currency == Zero::zero()
+					&& outstanding.remaining_redeem_token == Zero::zero();
+			}
 
 			return Ok(outstanding);
 		}
 
 		fn parse_invest_executions(
-			loc: &TrancheLocator<T::PoolId, T::TrancheId>,
-			mut outstanding: OutstandingCollections<T::Balance>,
-			start_epoch: T::EpochId,
-			end_epoch: T::EpochId,
-		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			let mut epoch_idx = start_epoch;
+			epoch: &EpochDetails<T::BalanceRatio>,
+			outstanding: &mut OutstandingCollections<T::Balance>,
+		) -> DispatchResult {
+			// Multiply invest fulfilment in this epoch with outstanding order amount to get executed amount
+			// Rounding down in favor of the system
+			let amount = epoch
+				.invest_fulfillment
+				.mul_floor(outstanding.remaining_invest_currency);
 
-			while epoch_idx <= end_epoch && outstanding.remaining_invest_currency != Zero::zero() {
-				let epoch =
-					Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
+			if amount != Zero::zero() {
+				// Divide by the token price to get the payout in tokens
+				let amount_token = epoch
+					.token_price
+					.reciprocal()
+					.and_then(|inv_price| inv_price.checked_mul_int(amount))
+					.unwrap_or(Zero::zero());
 
-				// Multiply invest fulfilment in this epoch with outstanding order amount to get executed amount
-				// Rounding down in favor of the system
-				let amount = epoch
-					.invest_fulfillment
-					.mul_floor(outstanding.remaining_invest_currency);
-
-				if amount != Zero::zero() {
-					// Divide by the token price to get the payout in tokens
-					let amount_token = epoch
-						.token_price
-						.reciprocal()
-						.and_then(|inv_price| inv_price.checked_mul_int(amount))
-						.unwrap_or(Zero::zero());
-
-					outstanding.payout_token_amount = outstanding
-						.payout_token_amount
-						.checked_add(&amount_token)
-						.ok_or(Error::<T>::Overflow)?;
-					outstanding.remaining_invest_currency = outstanding
-						.remaining_invest_currency
-						.checked_sub(&amount)
-						.ok_or(Error::<T>::Overflow)?;
-				}
-
-				epoch_idx = epoch_idx + One::one();
+				outstanding.payout_token_amount = outstanding
+					.payout_token_amount
+					.checked_add(&amount_token)
+					.ok_or(Error::<T>::Overflow)?;
+				outstanding.remaining_invest_currency = outstanding
+					.remaining_invest_currency
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
 			}
 
-			return Ok(outstanding);
+			Ok(())
 		}
 
 		fn parse_redeem_executions(
-			loc: &TrancheLocator<T::PoolId, T::TrancheId>,
-			mut outstanding: OutstandingCollections<T::Balance>,
-			start_epoch: T::EpochId,
-			end_epoch: T::EpochId,
-		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			let mut epoch_idx = start_epoch;
+			epoch: &EpochDetails<T::BalanceRatio>,
+			outstanding: &mut OutstandingCollections<T::Balance>,
+		) -> DispatchResult {
+			// Multiply redeem fulfilment in this epoch with outstanding order amount to get executed amount
+			// Rounding down in favor of the system
+			let amount = epoch
+				.redeem_fulfillment
+				.mul_floor(outstanding.remaining_redeem_token);
 
-			while epoch_idx <= end_epoch && outstanding.remaining_redeem_token != Zero::zero() {
-				let epoch =
-					Epoch::<T>::try_get(&loc, epoch_idx).map_err(|_| Error::<T>::NoSuchPool)?;
+			if amount != Zero::zero() {
+				// Multiply by the token price to get the payout in currency
+				let amount_currency = epoch
+					.token_price
+					.checked_mul_int(amount)
+					.unwrap_or(Zero::zero());
 
-				// Multiply redeem fulfilment in this epoch with outstanding order amount to get executed amount
-				// Rounding down in favor of the system
-				let amount = epoch
-					.redeem_fulfillment
-					.mul_floor(outstanding.remaining_redeem_token);
-
-				if amount != Zero::zero() {
-					// Multiply by the token price to get the payout in currency
-					let amount_currency = epoch
-						.token_price
-						.checked_mul_int(amount)
-						.unwrap_or(Zero::zero());
-
-					outstanding.payout_currency_amount = outstanding
-						.payout_currency_amount
-						.checked_add(&amount_currency)
-						.ok_or(Error::<T>::Overflow)?;
-					outstanding.remaining_redeem_token = outstanding
-						.remaining_redeem_token
-						.checked_sub(&amount)
-						.ok_or(Error::<T>::Overflow)?;
-				}
-
-				epoch_idx = epoch_idx + One::one();
+				outstanding.payout_currency_amount = outstanding
+					.payout_currency_amount
+					.checked_add(&amount_currency)
+					.ok_or(Error::<T>::Overflow)?;
+				outstanding.remaining_redeem_token = outstanding
+					.remaining_redeem_token
+					.checked_sub(&amount)
+					.ok_or(Error::<T>::Overflow)?;
 			}
 
-			return Ok(outstanding);
+			Ok(())
 		}
 
 		fn calculate_tranche_prices(
