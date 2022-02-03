@@ -33,3 +33,6 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Cargo RPM extension builds and logs
+rpmbuild/

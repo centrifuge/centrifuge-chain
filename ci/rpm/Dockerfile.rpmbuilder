@@ -1,51 +1,201 @@
-FROM centos:8
 
-# https://saule1508.github.io/build-rpm-with-docker/
-# https://github.com/jc21/docker-rpmbuild-centos7
+# -------------------------------------------------------------------------------------------------
+# Centos RPM package builder
+# -------------------------------------------------------------------------------------------------
+
+FROM centos:latest as rpmbuilder-centos
 
 # Image metadata
-LABEL io.centrifuge.maintainer="K/F AG" \
-      io.centrifuge.description="RPM package builder" \
-      io.centrifuge.version="0.1.0" 
+LABEL io.centrifuge.devops.rpmbuilder.maintainer="K/F AG" \
+      io.centrifuge.devops.rpmbuilder.description="CentOS RPM package builder" \
+      io.centrifuge.devops.rpmbuilder.version="latest"
 
 ENV LANG=en_US.UTF-8
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo
 ENV PATH $CARGO_HOME/bin:$PATH
 
-# Disable the list of mirrors (useless)
-#RUN sed -i 's/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo \
-# && sed -i 's/^#baseurl=/baseurl=/' /etc/yum.repos.d/CentOS-Base.repo
-    
-# Install requisite packages
-RUN dnf -y update \
- && dnf -y group install "Development tools" \
- && dnf -y install \
+# Clean up and upgrade CentOS distro (first file system layer)  
+RUN dnf clean all \
+ && rm -rf /var/cache/dnf \
+ && dnf -y upgrade; dnf -y update
+
+# Install requisite packages (another file system layer)
+RUN dnf -y install \
+    clang \
+    openssl-devel \
     rpmdevtools \
     rpm-build \
     rpmlint \
     redhat-rpm-config \
     sudo \
-    # Install Rustup tool and Rust compiler
+    # Install development tools
+ && dnf -y group install "Development tools" \
+    # Install Rust tools
  && mkdir -p "$CARGO_HOME" \
  && mkdir -p "$RUSTUP_HOME" \
- && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
- && chmod -R a=rwX $CARGO_HOME \
- ##&& dnf -y install rust-{,s}rpm-macros \
+ && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly \
+ && rustup target add wasm32-unknown-unknown \
+ && rustup update nightly \
+ && cargo install cargo-rpm \
+ && chown -R root:wheel ${CARGO_HOME} ${RUSTUP_HOME} \
+ && chmod -R 775 ${CARGO_HOME} ${RUSTUP_HOME} \
  && dnf clean all \
- && rm -rf /var/cache/yum \
+ && rm -rf /var/cache/dnf \
+    # Create RPM builder user
+ && adduser -G mock,wheel rpmbuilder \
+    # Setup RPM packaging environment
+ && mkdir -p /home/rpmbuilder/rpmbuild/{BUILD,SPECS,SOURCES,BUILDROOT,RPMS,SRPMS,tmp} \
+ && chmod -R 777 /home/rpmbuilder/rpmbuild \
+ && chown -R rpmbuilder:rpmbuilder /home/rpmbuilder/rpmbuild \
+    # Configure sudoers (all permissions to users in the wheel group)
+ && echo '%wheel  ALL=(ALL)       NOPASSWD: ALL' > /etc/sudoers.d/wheel \
+ && chown root:root /etc/sudoers.d/wheel
+ 
+# Copy scripts and set executable permissions
+ADD ./scripts/build.sh /bin/
+ADD ./scripts/docker_entrypoint.sh /bin/
+ADD ./.rpmmacros /home/rpmbuilder
+ADD ./centrifuge.service /etc/default/centrifuge
+RUN chmod 755 /bin/build.sh \
+ && ln -s /bin/build.sh /bin/build \
+ && chmod 755 /bin/docker_entrypoint.sh
+
+# Set default user and working directory
+USER rpmbuilder
+WORKDIR /home/rpmbuilder
+
+# Bootstrap container using the entrypoint script
+ENTRYPOINT [ "/bin/docker_entrypoint.sh" ]
+
+# -------------------------------------------------------------------------------------------------
+# Fedora RPM package builder
+# -------------------------------------------------------------------------------------------------
+
+FROM fedora:latest as rpmbuilder-fedora
+
+# Image metadata
+LABEL io.centrifuge.devops.rpmbuilder.maintainer="K/F AG" \
+      io.centrifuge.devops.rpmbuilder.description="Fedora RPM package builder" \
+      io.centrifuge.devops.rpmbuilder.version="latest"
+
+ENV LANG=en_US.UTF-8
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo
+ENV PATH $CARGO_HOME/bin:$PATH
+
+# Clean up and upgrade Fedora distro (first file system layer)  
+RUN dnf clean all \
+ && rm -rf /var/cache/dnf \
+ && dnf -y upgrade; dnf -y update
+
+# Install requisite packages (another file system layer)
+RUN dnf -y install \
+    clang \
+    fedora-packager \
+    fedora-review \
+    openssl-devel \
+    rpmdevtools \
+    rpm-build \
+    rpmlint \
+    redhat-rpm-config \
+    sudo \
+    # Install development tools
+ && dnf -y group install "Development tools" \
+    # Install Rust tools
+ && mkdir -p "$CARGO_HOME" \
+ && mkdir -p "$RUSTUP_HOME" \
+ && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly \
+ && rustup target add wasm32-unknown-unknown \
+ && rustup update nightly \
+ && cargo install cargo-rpm \
+ && chown -R root:wheel ${CARGO_HOME} ${RUSTUP_HOME} \
+ && chmod -R 775 ${CARGO_HOME} ${RUSTUP_HOME} \
+ && dnf clean all \
+ && rm -rf /var/cache/dnf \
+    # Create RPM builder user
+ && adduser -G mock,wheel rpmbuilder \
+    # Setup RPM packaging environment
+ && mkdir -p /home/rpmbuilder/rpmbuild/{BUILD,SPECS,SOURCES,BUILDROOT,RPMS,SRPMS,tmp} \
+ && chmod -R 777 /home/rpmbuilder/rpmbuild \
+ && chown -R rpmbuilder:rpmbuilder /home/rpmbuilder/rpmbuild \
+    # Configure sudoers (all permissions to users in the wheel group)
+ && echo '%wheel  ALL=(ALL)       NOPASSWD: ALL' > /etc/sudoers.d/wheel \
+ && chown root:root /etc/sudoers.d/wheel
+ 
+# Copy scripts and set executable permissions
+ADD ./scripts/build.sh /bin/
+ADD ./scripts/docker_entrypoint.sh /bin/
+ADD ./.rpmmacros /home/rpmbuilder
+ADD ./centrifuge.service /etc/default/centrifuge
+RUN chmod 755 /bin/build.sh \
+ && ln -s /bin/build.sh /bin/build \
+ && chmod 755 /bin/docker_entrypoint.sh
+
+# Set default user and working directory
+USER rpmbuilder
+WORKDIR /home/rpmbuilder
+
+# Bootstrap container using the entrypoint script
+ENTRYPOINT [ "/bin/docker_entrypoint.sh" ]
+
+# -------------------------------------------------------------------------------------------------
+# RedHat RPM package builder
+# -------------------------------------------------------------------------------------------------
+
+FROM registry.access.redhat.com/ubi8/ubi:latest as rpmbuilder-redhat
+
+# Image metadata
+LABEL io.centrifuge.devops.rpmbuilder.maintainer="K/F AG" \
+      io.centrifuge.devops.rpmbuilder.description="Red Hat RPM package builder" \
+      io.centrifuge.devops.rpmbuilder.version="latest" 
+
+ENV LANG=en_US.UTF-8
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo
+ENV PATH $CARGO_HOME/bin:$PATH
+
+# Clean up and upgrade RedHat distro (first file system layer)  
+RUN dnf clean all \
+ && rm -rf /var/cache/dnf \
+ && dnf upgrade -y \
+ && dnf update -y
+
+# Install requisite packages (second file system layer)
+RUN dnf install -y \
+    # Install basic development tools and libraries
+    clang \
+    openssl-devel \
+    rpm-build \
+    rpm-libs \
+    rust-srpm-macros  \
+    sudo
+
+# Install Rust tools (third file system layer)
+RUN mkdir -p "${CARGO_HOME}" "{$RUSTUP_HOME}" \
+ && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain nightly \
+ && rustup target add wasm32-unknown-unknown \
+ && rustup update nightly \
+ && cargo install cargo-rpm \
+ && chown -R root:wheel ${CARGO_HOME} ${RUSTUP_HOME} \
+ && chmod -R 775 ${CARGO_HOME} ${RUSTUP_HOME} \
+ && dnf clean all \
+ && rm -rf /var/cache/dnf \
     # Create RPM builder user
  && adduser -G wheel rpmbuilder \
     # Setup RPM packaging environment
  && mkdir -p /home/rpmbuilder/rpmbuild/{BUILD,SPECS,SOURCES,BUILDROOT,RPMS,SRPMS,tmp} \
  && chmod -R 777 /home/rpmbuilder/rpmbuild \
- && chown -R rpmbuilder:rpmbuilder /home/rpmbuilder \
+ && chown -R rpmbuilder:rpmbuilder /home/rpmbuilder/rpmbuild \
     # Configure sudoers (all permissions to users in the wheel group)
- && echo '%wheel  ALL=(ALL)       NOPASSWD: ALL' > /etc/sudoers.d/wheel; chown root:root /etc/sudoers.d/wheel
- 
+ && echo '%wheel  ALL=(ALL)       NOPASSWD: ALL' > /etc/sudoers.d/wheel \
+ && chown root:root /etc/sudoers.d/wheel
+
 # Copy scripts and set executable permissions
 ADD ./scripts/build.sh /bin/
 ADD ./scripts/docker_entrypoint.sh /bin/
+ADD ./.rpmmacros /home/rpmbuilder
+ADD ./centrifuge.service /etc/default/centrifuge
 RUN chmod 755 /bin/build.sh \
  && ln -s /bin/build.sh /bin/build \
  && chmod 755 /bin/docker_entrypoint.sh

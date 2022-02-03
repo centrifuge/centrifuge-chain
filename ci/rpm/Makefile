@@ -8,8 +8,8 @@
 # All rights reserved                                                                             #
 #                                                                                                 #
 #                                                                                                 #
-# Description: Centrifuge's RPM package builder.                                                  #
-# See https://whamcloud.github.io/Online-Help/docs/Contributor_Docs/cd_Building_Rust_RPMs.html    #
+# Description: Main script used to build RPM builder Docker images for major RPM-based Linux      #
+#              distributions, including CentOS, Red Hat, and Fedora (and Scientific Linux).       #
 ###################################################################################################
 
 
@@ -18,19 +18,20 @@
 # -------------------------------------------------------------------------------------------------
 
 # Colors definition
-ccred=\033[0;31m
-ccgreen=\033[38;5;112m
-ccblue=\033[38;5;33m
-ccyellow=\033[0;33m
-ccorange=\033[38;5;166m
-ccwhite=\033[97m
-ccpink=\033[35;40m
-ccend=\033[0m
+RED=\033[0;31m
+RESET=\033[38;5;112m
+BLUE=\033[38;5;33m
+YELLOW=\033[0;33m
+WHITE=\033[97m
+RESET=\033[0m
 
 # Docker image name and tag
 DOCKER_IMAGE:="centrifugeio/rpmbuilder"
-DOCKER_IMAGE_TAG:="0.1.0"
+DOCKER_IMAGE_TAG:="latest"
 DOCKER_FILE:="Dockerfile.rpmbuilder"
+
+# Supported Linus distros
+SUPPORTED_LINUX_DISTROS:=centos fedora redhat
 
 # -------------------------------------------------------------------------------------------------
 # FUNCTIONS DEFINITION
@@ -45,73 +46,65 @@ define display_help_message
 	@echo "Handcrafted since 2022 by Centrifuge contributors"
 	@echo "All rights reserved"
 	@echo ""
-	@echo "$(ccwhite)Usage:$(ccend)"
-	@echo "  make $(ccpink)COMMAND$(ccend)"
+	@echo "$(WHITE)USAGE:$(RESET)"
+	@echo "  make $(BLUE)COMMAND$(RESET) [$(YELLOW)OPTIONS$(RESET)]"
 	@echo ""
-	@echo "Commands:"
-	@echo "  $(ccpink)build-image$(ccend)      - build (incrementally) RPM builder's Docker image (from cache)"
-	@echo "  $(ccpink)rebuild-image$(ccend)    - rebuild RPM builder's Docker image from scratch (without using the cache)"
-	@echo "  $(ccpink)remove-image$(ccend)     - remove RPM builder's Docker image from local repository"
-	@echo "  $(ccpink)build-spec$(ccend)       - generate RPM spec for Centrifuge Chain using rust2rpm tool"
-	@echo "  $(ccpink)build-rpm$(ccend)        - build Centrifuge Chain's binary RPM package (inside a container)"
-	@echo "  $(ccpink)clean-rpm$(ccend)        - clean up RPM building folder and artefacts (in ./rpmbuild, usually)"
-	@echo "  $(ccpink)mrproper$(ccend)         - remove local dangling Docker images and stopped containers"
+	@echo "$(WHITE)COMMANDS:$(RESET)"
+	@echo "  $(BLUE)build-image$(RESET)  [$(YELLOW)centos$(RESET) | $(YELLOW)fedora$(RESET) | $(YELLOW)redhat$(RESET)]     build RPM builder's Docker image for a given Linux distro"
+	@echo "  $(BLUE)remove-image$(RESET) [$(YELLOW)centos$(RESET) | $(YELLOW)fedora$(RESET) | $(YELLOW)redhat$(RESET)]     remove RPM builder's Docker image of a given Linux distro from local repository"
+	@echo "  $(BLUE)clean$(RESET)                                       remove builds and logs"
+	@echo "  $(BLUE)mrproper$(RESET)                                    remove builds, logs, and Docker images (including dangling images and stopped containers)"
 	@echo ""
+	@echo "$(WHITE)EXAMPLES:$(RESET)"
+	@echo "  Create a RPM builder's Docker image for Red Hat Linux:"
+	@echo "    $(BLUE)$$ make build-image redhat$(RESET)"
+	@echo "  This command will produce a new Docker image called 'centrifugeio/rpmbuilder:redhat-latest'"
+	@echo ""
+	@echo "  For removing a RPM builders' Docker image for a given Linux distro, enter the following command:"
+	@echo "    $(BLUE)$$ make remove-image fedora$(RESET)"
+	@echo "  This command will remove the Docker image called 'centrifugeio/rpmbuilder:fedora-latest'"
 endef
 
-# Build an incremental (using cache) Docker image
-define build_docker_image
-	@docker image build \
-		--tag=$(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) \
-		--tag=$(DOCKER_IMAGE):latest \
-		--rm \
-		--file=$(DOCKER_FILE) \
-		.
-endef
-
-# Build a clean Docker image, without using cache
+# Build a RPM builder Docker image for a given RPM-based Linux distro.
 #
 # During the process of building an image Docker will step through the instructions in your Dockerfile
 # executing each in the order specified. As each instruction is examined Docker will look for an existing 
 # image in its cache that it can reuse, rather than creating a new (duplicate) image. If you do not want 
-# to use the cache at all you can use the --no-cache=true option on the docker build command.
+# to use the cache at all you can use the --no-cache=true option on the docker build command. That's what
+# we do in this function, rebuilding a clean image.
 #
+# @param $1 Name of the Linux distro for which a RPM builer Docker image has to be built. Supported
+#           Linux distros are 'centos', 'fedora', 'redhat'.
 # @see https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/#build-cache
-
-define rebuild_docker_image
+define build_docker_image
+	@echo "$(RESET)[INFO]$(RESET) Building $(BLUE)$(1)$(RESET) RPM builder image ..."
 	@docker image build \
-		--tag=$(DOCKER_IMAGE) \
-		--tag=$(DOCKER_IMAGE_NAME):latest \
+		--target rpmbuilder-$(1) \
+		--tag="$(DOCKER_IMAGE):$(1)-$(DOCKER_IMAGE_TAG)" \
 		--no-cache \
 		--rm \
 		--file=$(DOCKER_FILE) \
 		.
 endef
 
-# Remove RPM builder images (from local Docker repository)
+# Remove the RPM builder image of a given Linux distro from local Docker repository
+#
+# @param $1 Name of the Linux distro for which a RPM builer Docker image is to be built. Available
+#           values are 'centos', 'fedora', 'redhat'.
 define remove_docker_image
-	@docker image rm --force $(DOCKER_IMAGE):$(DOCKER_IMAGE_TAG) > /dev/null 2>&1 || true && docker image rm --force $(DOCKER_IMAGE_NAME):latest > /dev/null 2>&1 || true
-endef
-
-# Remove dangling Docker images and stopped containers
-define purge_docker_images_and_containers
-	@docker ps -aq --no-trunc | xargs docker rm
-	@docker images -q --filter dangling=true | xargs docker rmi
-endef
-
-# Build Centrifuge Chain's RPM package inside a Docker container
-define build_rpm_package
-	@docker container run --rm -it --volume $(PWD):/home/rpmbuilder $(DOCKER_IMAGE_NAME):latest rpmbuild
-endef
-
-# Build Centrifuge Chain's RPM package specification from Cargo files, using rust2rpm tool
-define build_rpm_spec
-	@docker container run --rm -it --volume $(PWD):/home/rpmbuilder $(DOCKER_IMAGE_NAME):latest rust2rpm
+	@echo "$(RED)[WARN] $(ccend)$(WHITE) Removing $(BLUE)$(1)$(RESET) RPM builder image ..."
+	@docker image rm --force $(DOCKER_IMAGE):$(1)-$(DOCKER_IMAGE_TAG) > /dev/null 2>&1 || true 
 endef
 
 # Clean up RPM building environment (in ./rpmbuild folder)
-define clean_rpm_building_environment
+define clean_builds_and_logs
 	@rm -rf ./rpmbuild .bash_history .ssh
+endef
+
+# Remove dangling Docker images and stopped containers
+define prune_docker_images_and_containers
+	@docker ps -aq --no-trunc | xargs docker rm
+	@docker images -q --filter dangling=true | xargs docker rmi
 endef
 
 # -------------------------------------------------------------------------------------------------
@@ -124,7 +117,25 @@ endef
 # name should be .PHONY. This typically includes 'all', 'help', 'build', 'clean',
 # and so on.
 
-.PHONY: all help build-image rebuild-image remove-image build-rpm clean-rpm build-spec mrproper
+.PHONY: all help build-image remove-image clean mrproper
+
+# Turn arguments for 'build-image' and 'remove-image' targets into "do-nothing" targets
+#
+# If the first argument is 'build-image' or 'remove-image', then following argument(s) is(are)
+# a list of Linux distribution(s) for which a RPM builder Docker image has to be built. For instance,
+# in the following command, 'redhat' and 'centos' are arguments passed to the 'build-image' or
+# 'remove-image' target:
+#   $ make [build-image | remove-image] redhat centos
+# Here, 'redhat' and 'centos' are turned into "do-nothing" targets.
+#
+# See https://stackoverflow.com/questions/2214575/passing-arguments-to-make-run/14061796#14061796
+ifeq ($(firstword $(MAKECMDGOALS)),$(filter $(MAKECMDGOALS), build-image remove-image))
+  # use the rest as arguments for "build-image"
+  DISTRO_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+
+  # ...and if okay, turn them into do-nothing targets
+  $(eval $(DISTRO_ARGS):;@:)
+endif
 
 # Set default target if none is specified
 .DEFAULT_GOAL := help
@@ -135,37 +146,20 @@ all: help
 help:
 	$(call display_help_message)
 
-# Build Docker image incrementally (using cache)
+# Build RPM builder's Docker image for a given (or more) Linux distribution
 build-image:
-	@echo "$(ccgreen)[INFO]$(ccend) Building RPM builder's Docker image (from cache)..."
-	$(call build_docker_image)
+	$(foreach distro,$(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)),$(call build_docker_image,$(distro)))
 
-# Build a clean Docker image, without using cache
-rebuild-image:
-	@echo "$(ccgreen)[INFO]$(ccend) Rebuilding RPM builder's Docker image (without using cache)..."
-	$(call rebuild_docker_image)
-
-# Remove RPM builder's Docker images, as well as containers
+# Remove one (or all) RPM builder's Docker image(s)
 remove-image:
-	@echo "$(ccred)[WARN] $(ccend)$(ccwhite) Removing RPM builder's local Docker image..."
-	$(call remove_docker_image)
+	$(foreach distro,$(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)),$(call remove_docker_image,$(distro)))
 
-# Build Centrifuge Chain's RPM package
-build-rpm:
-	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite) Building Centrifuge Chain's RPM package..."
-	$(call build_rpm_package)
-
-# Clean up RPM building environment (in ./rpmbuild folder)
-clean-rpm:
-	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite) Cleaning up RPM building environment..."
-	$(call clean_rpm_building_environment)
-
-# Generate Centrifuge Chain's SPEC file from project's Cargo.tom file (using rust2rpm tool)
-build-spec:
-	@echo "$(ccgreen)[INFO]$(ccend)$(ccwhite) Generating Centrifuge Chain's RPM SEPC file..."
-	$(call build_rpm_spec)
+# Gentle clean up (only builds and logs)
+clean:
+	@echo "$(RED)[WARN] $(RESET)$(WHITE) Removing builds and logs ..."
+	$(call clean_builds_and_logs)
 
 # Remove dangling Docker images and unused stopped containers
-mrproper:
-	@echo "$(ccred)[WARN] $(ccend)$(ccwhite) Removing dangling Docker images and stopped containers ..."
-	$(call purge_docker_images_and_containers)
+mrproper: clean
+	@echo "$(RED)[WARN] $(RESET)$(WHITE) Removing builds, logs, and Docker images (including dangling Docker images and stopped containers) ..."
+	$(call prune_docker_images_and_containers)

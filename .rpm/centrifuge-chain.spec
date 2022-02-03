@@ -1,0 +1,1 @@
+../ci/rpm/centrifuge-chain.spec

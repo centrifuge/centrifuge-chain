@@ -171,3 +171,12 @@ runtime-benchmarks = [
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
 ]
+
+[package.metadata.rpm]
+package = "centrifuge-chain"
+
+[package.metadata.rpm.cargo]
+buildflags = ["--release"]
+
+[package.metadata.rpm.targets]
+centrifuge-chain = { path = "/usr/bin/centrifuge-chain" }
