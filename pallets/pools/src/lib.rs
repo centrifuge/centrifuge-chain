@@ -1616,7 +1616,11 @@ pub mod pallet {
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
 						Some(seniority) => {
-							seniority <= new_tranches.len().try_into().expect("MaxTranches is u32")
+							seniority
+								<= new_tranches
+									.len()
+									.try_into()
+									.expect("MaxTranches is u32. qed.")
 						}
 						None => true,
 					}
