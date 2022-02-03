@@ -168,6 +168,8 @@ impl pallet_pools::Config for MockRuntime {
 	type PalletId = PoolPalletId;
 	type Permission = Permissions;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTranches = MaxTranches;
+	type WeightInfo = ();
 	type TrancheWeight = runtime_common::TrancheWeight;
 }
 

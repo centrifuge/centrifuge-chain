@@ -13,12 +13,17 @@ mod mock;
 mod solution;
 #[cfg(test)]
 mod tests;
+mod weights;
+pub use weights::*;
 
 use codec::HasCompact;
 use common_traits::{Permissions, TrancheWeigher};
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
-use core::{convert::TryFrom, ops::AddAssign};
+use core::{
+	convert::TryFrom,
+	ops::{AddAssign, Sub},
+};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -324,7 +329,9 @@ pub mod pallet {
 			+ TypeInfo
 			+ Ord
 			+ CheckedAdd
-			+ AddAssign;
+			+ AddAssign
+			+ Sub<Output = Self::EpochId>
+			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
 
@@ -359,6 +366,12 @@ pub mod pallet {
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
+
+		/// Max number of Tranches
+		type MaxTranches: Get<u32>;
+
+		/// Weight Information
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -491,6 +504,8 @@ pub mod pallet {
 		InvalidTrancheId,
 		/// Indicates that the new passed order equals the old-order
 		NoNewOrder,
+		/// The requested tranche configuration has too many tranches
+		TooManyTranches,
 		/// Submitted solution is not an improvement
 		NotNewBestSubmission,
 		/// No solution has yet been provided for the epoch
@@ -501,7 +516,23 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(100)]
+		/// Create a new pool
+		///
+		/// Initialise a new pool with the given ID and tranche
+		/// configuration. Tranche 0 is the equity tranche, and must
+		/// have zero interest and a zero risk buffer.
+		///
+		/// The minimum epoch length, epoch solution challenge
+		/// time, and maximum NAV age will be set to chain-wide
+		/// defaults. They can be updated with a call to `update`.
+		///
+		/// The caller will be given the `PoolAdmin` role for
+		/// the created pool. Additional administrators can be
+		/// added with `approve_role_for`.
+		///
+		/// Returns an error if the requested pool ID is already in
+		/// use, or if the tranche configuration cannot be used.
+		#[pallet::weight(T::WeightInfo::create(tranches.len() as u32))]
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -559,7 +590,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		/// Update per-pool configuration settings.
+		///
+		/// This sets the minimum epoch length, epoch solution challenge
+		/// time, and maximum NAV age.
+		///
+		/// The caller must have the `PoolAdmin` role in order to
+		/// invoke this extrinsic.
+		#[pallet::weight(T::WeightInfo::update())]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -584,7 +622,11 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		/// Sets the IPFS hash for the pool metadata information.
+		///
+		/// The caller must have the `PoolAdmin` role in order to
+		/// invoke this extrinsic.
+		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len() as u32))]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -609,7 +651,14 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		/// Sets the maximum reserve for a pool
+		///
+		/// The caller must have the `LiquidityAdmin` role in
+		/// order to invoke this extrinsic. This role is not
+		/// given to the pool creator by default, and must be
+		/// added with `approve_role_for` before this
+		/// extrinsic can be called.
+		#[pallet::weight(T::WeightInfo::set_max_reserve())]
 		pub fn set_max_reserve(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -629,7 +678,15 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		/// Update the tranche configuration for a pool
+		///
+		/// Can only be called by an account with the `PoolAdmin` role.
+		///
+		/// The interest rate, seniority, and minimum risk buffer
+		/// will be set based on the new tranche configuration
+		/// passed in. This configuration must contain the same
+		/// number of tranches that the pool was created with.
+		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len() as u32))]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -655,8 +712,8 @@ pub mod pallet {
 					tranche.min_risk_buffer =
 						new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
 					tranche.interest_per_sec = new_tranche.interest_per_sec.unwrap_or(One::one());
-					if new_tranche.seniority.is_some() {
-						tranche.seniority = new_tranche.seniority.unwrap();
+					if let Some(new_seniority) = new_tranche.seniority {
+						tranche.seniority = new_seniority;
 					}
 				}
 
@@ -665,7 +722,22 @@ pub mod pallet {
 			})
 		}
 
-		#[pallet::weight(100)]
+		/// Update an order to invest tokens in a given tranche.
+		///
+		/// The caller must have the TrancheInvestor role for this
+		/// tranche, and that role must not have expired.
+		///
+		/// If the caller has an investment order for the
+		/// specified tranche in a prior epoch, it must first be
+		/// collected.
+		///
+		/// If the requested amount is greater than the current
+		/// investment order, the balance will be transferred from
+		/// the calling account to the pool. If the requested
+		/// amount is less than the current order, the balance
+		/// willbe transferred from the pool to the calling
+		/// account.
+		#[pallet::weight(T::WeightInfo::update_invest_order())]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -705,7 +777,22 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		/// Update an order to redeem tokens in a given tranche.
+		///
+		/// The caller must have the TrancheInvestor role for this
+		/// tranche, and that role must not have expired.
+		///
+		/// If the caller has a redemption order for the
+		/// specified tranche in a prior epoch, it must first
+		/// be collected.
+		///
+		/// If the requested amount is greater than the current
+		/// investment order, the balance will be transferred from
+		/// the calling account to the pool. If the requested
+		/// amount is less than the current order, the balance
+		/// willbe transferred from the pool to the calling
+		/// account.
+		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -745,14 +832,19 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// TODO: this weight should likely scale based on collect_n_epochs
-		#[pallet::weight(100)]
+		/// Collect the results of an executed invest or redeem order.
+		///
+		/// Iterates through up to `collect_n_epochs` epochs from
+		/// when the caller's order was initiated, and transfers
+		/// the total results of the order execution to the
+		/// caller's account.
+		#[pallet::weight(T::WeightInfo::collect((*collect_n_epochs).into()))]
 		pub fn collect(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			collect_n_epochs: T::EpochId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
 			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
@@ -772,6 +864,8 @@ pub mod pallet {
 				.checked_add(&collect_n_epochs)
 				.ok_or(Error::<T>::Overflow)?
 				.min(pool.last_epoch_executed);
+
+			let actual_epochs = end_epoch - order.epoch;
 
 			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch)?;
 			let pool_account = PoolLocator { pool_id }.into_account();
@@ -815,12 +909,33 @@ pub mod pallet {
 					},
 				));
 				Ok(())
-			})
+			})?;
+			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
 
-		#[pallet::weight(100)]
+		/// Close the current epoch
+		///
+		/// Closing an epoch locks in all invest and redeem
+		/// orders placed during the epoch, and causes all
+		/// further invest and redeem orders to be set for the
+		/// next epoch.
+		///
+		/// If all orders can be executed without violating any
+		/// pool constraints - which include maximum reserve and
+		/// the tranche risk buffers - the execution will also be
+		/// done. See `execute_epoch` for details on epoch
+		/// execution.
+		///
+		/// If pool constraints would be violated by executing all
+		/// orders, the pool enters a submission period. During a
+		/// submission period, partial executions can be submitted
+		/// to be scored, and the best-scoring solution will
+		/// eventually be executed. See `submit_solution`.
+		#[pallet::weight(T::WeightInfo::close_epoch_no_investments(T::MaxTranches::get())
+                             .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
+                             .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
 		#[transactional]
-		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+		pub fn close_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
@@ -887,7 +1002,10 @@ pub mod pallet {
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
-					return Ok(());
+					return Ok(Some(T::WeightInfo::close_epoch_no_investments(
+						pool.tranches.len() as u32,
+					))
+					.into());
 				}
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
@@ -970,6 +1088,10 @@ pub mod pallet {
 				{
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
+					Ok(Some(T::WeightInfo::close_epoch_execute(
+						pool.tranches.len() as u32
+					))
+					.into())
 				} else {
 					// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
 					let no_execution_solution = orders
@@ -984,21 +1106,33 @@ pub mod pallet {
 						Self::score_solution(&pool_id, &epoch, &no_execution_solution)?;
 					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
+					Ok(Some(T::WeightInfo::close_epoch_no_execution(
+						pool.tranches.len() as u32
+					))
+					.into())
 				}
-
-				Ok(())
 			})
 		}
 
-		#[pallet::weight(100)]
+		/// Submit a partial execution solution for a closed epoch
+		///
+		/// If the submitted solution is "better" than the
+		/// previous best solution, it will replace it. Solutions
+		/// are ordered such that solutions which do not violate
+		/// constraints are better than those that do.
+		///
+		/// Once a valid solution has been submitted, the
+		/// challenge time begins. The pool can be executed once
+		/// the challenge time has expired.
+		#[pallet::weight(T::WeightInfo::submit_solution(T::MaxTranches::get()))]
 		pub fn submit_solution(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			solution: Vec<TrancheSolution>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			EpochExecution::<T>::try_mutate(pool_id, |epoch| -> DispatchResult {
+			EpochExecution::<T>::try_mutate(pool_id, |epoch| {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
 				let new_solution = Self::score_solution(&pool_id, &epoch, &solution)?;
 
@@ -1020,12 +1154,23 @@ pub mod pallet {
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
 
-				Ok(())
+				Ok(Some(T::WeightInfo::submit_solution(epoch.tranches.len() as u32)).into())
 			})
 		}
 
-		#[pallet::weight(100)]
-		pub fn execute_epoch(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+		/// Execute an epoch for which a valid solution has been
+		/// submitted.
+		///
+		/// * Mints or burns tranche tokens based on investments
+		///   and redemptions
+		/// * Updates the portion of the reserve and loan balance
+		///   assigned to each tranche, based on the investments
+		///   and redemptions to those tranches.
+		#[pallet::weight(T::WeightInfo::execute_epoch(T::MaxTranches::get()))]
+		pub fn execute_epoch(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			EpochExecution::<T>::try_mutate(pool_id, |epoch_info| {
@@ -1040,7 +1185,7 @@ pub mod pallet {
 
 				ensure!(
 					match epoch.challenge_period_end {
-						Some(challenge_period_end) => challenge_period_end < Self::now(),
+						Some(challenge_period_end) => challenge_period_end <= Self::now(),
 						None => false,
 					},
 					Error::<T>::ChallengeTimeHasNotPassed
@@ -1063,13 +1208,19 @@ pub mod pallet {
 					Ok(())
 				})?;
 
+				let num_tranches = epoch.tranches.len() as u32;
 				// This kills the epoch info in storage.
 				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
-				Ok(*epoch_info = None)
+				*epoch_info = None;
+				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
 			})
 		}
 
-		#[pallet::weight(100)]
+		/// Give the `accounts` the given `role` on the
+		/// requested pool.
+		///
+		/// The caller must have the `PoolAdmin` role.
+		#[pallet::weight(T::WeightInfo::approve_role_for(accounts.len() as u32))]
 		#[frame_support::transactional]
 		pub fn approve_role_for(
 			origin: OriginFor<T>,
@@ -1093,7 +1244,11 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::weight(100)]
+		/// Remove the given `role` from the given account on
+		/// the requested pool.
+		///
+		/// The caller must have the `PoolAdmin` role.
+		#[pallet::weight(T::WeightInfo::revoke_role_for())]
 		pub fn revoke_role_for(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -1630,6 +1785,12 @@ pub mod pallet {
 			old_tranches: &Vec<TrancheOf<T>>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
+			// There is a limit to the number of allowed tranches
+			ensure!(
+				new_tranches.len() <= T::MaxTranches::get() as usize,
+				Error::<T>::TooManyTranches
+			);
+
 			// At least one tranche must exist, and the first (most junior) tranche must have an
 			// interest rate of 0, indicating that it receives all remaining equity
 			ensure!(

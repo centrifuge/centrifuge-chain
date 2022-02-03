@@ -60,11 +60,16 @@ mod fake_nav {
 	}
 
 	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
+		type ClassId = ();
+		type Origin = ();
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
 			Some((Self::value(pool_id), 0))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
+		}
+		fn initialise(_: (), _: T::PoolId, _: ()) -> DispatchResult {
+			Ok(())
 		}
 	}
 }
@@ -277,6 +282,8 @@ impl Config for Test {
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTranches = MaxTranches;
+	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
 }
 
@@ -355,14 +362,14 @@ pub fn invest_close_and_collect(
 		Pools::update_invest_order(who, pool_id, tranche_id, investment)?;
 	}
 
-	Pools::close_epoch(Origin::signed(10), pool_id)?;
+	Pools::close_epoch(Origin::signed(10), pool_id).map_err(|e| e.error)?;
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
 		.last_epoch_closed;
 
 	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, tranche_id, epoch as u32)?;
+		Pools::collect(who, pool_id, tranche_id, epoch as u32).map_err(|e| e.error)?;
 	}
 
 	Ok(())
