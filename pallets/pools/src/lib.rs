@@ -403,7 +403,7 @@ pub mod pallet {
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
-		#[pallet::weight(T::WeightInfo::create(tranches.len() as u32))]
+		#[pallet::weight(T::WeightInfo::create(tranches.len().try_into().unwrap_or(u32::MAX)))]
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -479,7 +479,7 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len() as u32))]
+		#[pallet::weight(T::WeightInfo::set_metadata(metadata.len().try_into().unwrap_or(u32::MAX)))]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -539,7 +539,7 @@ pub mod pallet {
 		/// will be set based on the new tranche configuration
 		/// passed in. This configuration must contain the same
 		/// number of tranches that the pool was created with.
-		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len() as u32))]
+		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len().try_into().unwrap_or(u32::MAX)))]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -862,7 +862,10 @@ pub mod pallet {
 					pool.last_epoch_executed += One::one();
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 					return Ok(Some(T::WeightInfo::close_epoch_no_investments(
-						pool.tranches.len() as u32,
+						pool.tranches
+							.num_tranches()
+							.try_into()
+							.expect("MaxTranches is u32. qed."),
 					))
 					.into());
 				}
@@ -940,7 +943,10 @@ pub mod pallet {
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 					Ok(Some(T::WeightInfo::close_epoch_execute(
-						pool.tranches.len() as u32
+						pool.tranches
+							.num_tranches()
+							.try_into()
+							.expect("MaxTranches is u32. qed."),
 					))
 					.into())
 				} else {
@@ -958,7 +964,10 @@ pub mod pallet {
 					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
 					Ok(Some(T::WeightInfo::close_epoch_no_execution(
-						pool.tranches.len() as u32
+						pool.tranches
+							.num_tranches()
+							.try_into()
+							.expect("MaxTranches is u32. qed."),
 					))
 					.into())
 				}
@@ -1005,7 +1014,14 @@ pub mod pallet {
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
 
-				Ok(Some(T::WeightInfo::submit_solution(epoch.tranches.len() as u32)).into())
+				Ok(Some(T::WeightInfo::submit_solution(
+					epoch
+						.tranches
+						.num_tranches()
+						.try_into()
+						.expect("MaxTranches is u32. qed."),
+				))
+				.into())
 			})
 		}
 
@@ -1059,67 +1075,16 @@ pub mod pallet {
 					Ok(())
 				})?;
 
-				let num_tranches = epoch.tranches.len() as u32;
+				let num_tranches = epoch
+					.tranches
+					.num_tranches()
+					.try_into()
+					.expect("MaxTranches is u32. qed.");
 				// This kills the epoch info in storage.
 				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
 				*epoch_info = None;
 				Ok(Some(T::WeightInfo::execute_epoch(num_tranches)).into())
 			})
-		}
-
-		/// Give the `accounts` the given `role` on the
-		/// requested pool.
-		///
-		/// The caller must have the `PoolAdmin` role.
-		#[pallet::weight(T::WeightInfo::approve_role_for(accounts.len() as u32))]
-		#[frame_support::transactional]
-		pub fn approve_role_for(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			role: PoolRole<Moment, T::TrancheId>,
-			accounts: Vec<LookUpSource<T>>,
-		) -> DispatchResult {
-			let pool_admin = ensure_signed(origin)?;
-
-			ensure!(
-				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin),
-				BadOrigin
-			);
-
-			for source in accounts {
-				let who = T::Lookup::lookup(source)?;
-				T::Permission::add_permission(pool_id, who.clone(), role)?;
-				Self::deposit_event(Event::RoleApproved(pool_id, role, who));
-			}
-
-			Ok(())
-		}
-
-		/// Remove the given `role` from the given account on
-		/// the requested pool.
-		///
-		/// The caller must have the `PoolAdmin` role.
-		#[pallet::weight(T::WeightInfo::revoke_role_for())]
-		pub fn revoke_role_for(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			role: PoolRole<Moment, T::TrancheId>,
-			account: LookUpSource<T>,
-		) -> DispatchResult {
-			let pool_admin = ensure_signed(origin)?;
-
-			ensure!(
-				T::Permission::has_permission(pool_id, pool_admin, PoolRole::PoolAdmin,),
-				BadOrigin
-			);
-
-			let who = T::Lookup::lookup(account)?;
-
-			T::Permission::rm_permission(pool_id, who.clone(), role.clone())?;
-
-			Self::deposit_event(Event::<T>::RoleRevoked(pool_id, role, who));
-
-			Ok(())
 		}
 	}
 
@@ -1659,7 +1624,11 @@ pub mod pallet {
 				new_tranches.iter().all(|tranche| {
 					match tranche.seniority {
 						Some(seniority) => {
-							seniority <= new_tranches.len().try_into().expect("MaxTranches is u32")
+							seniority
+								<= new_tranches
+									.len()
+									.try_into()
+									.expect("MaxTranches is u32. qed.")
 						}
 						None => true,
 					}
