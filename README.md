@@ -100,6 +100,7 @@ This script will take a valid chain-spec chain_id, a parachain_id and a flag to 
 ```
 Adapt parameters accordingly.
 
+
 ## Benchmarking pallets
 Pallets are to be benchmarked to find the correct weight for extrinsics. Follow substrate's benchmarking boiler-plate code
 and add pallet benchmark to the runtime. Then run the following script to generate a benchamarked `weights.rs` file for the pallet
