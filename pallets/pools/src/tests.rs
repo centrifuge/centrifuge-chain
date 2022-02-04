@@ -984,7 +984,7 @@ fn collect_tranche_tokens() {
 			junior_investor.clone(),
 			0,
 			JUNIOR_TRANCHE_ID,
-			2
+			1
 		));
 	});
 }
@@ -1168,5 +1168,60 @@ fn no_order_is_err() {
 			Pools::collect(junior_investor.clone(), pool_id, jun_tranche_id, 2),
 			Error::<Test>::NoOutstandingOrder
 		);
+	})
+}
+
+#[test]
+fn collecting_over_last_exec_epoch_is_err() {
+	new_test_ext().execute_with(|| {
+		let jun_invest_id = 0u64;
+		let junior_investor = Origin::signed(jun_invest_id);
+		let pool_admin = Origin::signed(99);
+		let pool_id = 0;
+		let jun_tranche_id = 0;
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			pool_id,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),
+		)
+		.unwrap();
+
+		assert_ok!(Pools::create(
+			pool_admin.clone(),
+			pool_id,
+			vec![TrancheInput {
+				interest_per_sec: None,
+				min_risk_buffer: None,
+				seniority: None
+			},],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		next_block();
+
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			pool_id,
+			jun_tranche_id,
+			500 * CURRENCY
+		));
+
+		assert_ok!(Pools::close_epoch(pool_admin.clone(), pool_id));
+
+		next_block();
+
+		assert_noop!(
+			Pools::collect(junior_investor.clone(), pool_id, jun_tranche_id, 2),
+			Error::<Test>::EpochNotExecutedYet
+		);
+
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			pool_id,
+			jun_tranche_id,
+			1
+		));
 	})
 }
