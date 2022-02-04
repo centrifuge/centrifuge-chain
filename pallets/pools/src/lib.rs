@@ -22,7 +22,7 @@ use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve};
 use common_types::PoolRole;
-use core::{convert::TryFrom, ops::AddAssign};
+use core::convert::TryFrom;
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -146,6 +146,7 @@ pub mod pallet {
 	use frame_support::sp_runtime::traits::Convert;
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
+	use sp_runtime::ArithmeticError;
 	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -208,15 +209,10 @@ pub mod pallet {
 			+ Parameter
 			+ Default
 			+ Copy
-			+ Saturating
+			+ AtLeast32BitUnsigned
 			+ HasCompact
 			+ MaxEncodedLen
-			+ Zero
-			+ One
 			+ TypeInfo
-			+ Ord
-			+ CheckedAdd
-			+ AddAssign
 			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
@@ -377,6 +373,8 @@ pub mod pallet {
 		CollectRequired,
 		/// Adding & removing tranches is not supported
 		CannotAddOrRemoveTranches,
+		/// Indicating that a collect with `collect_n_epchs` == 0 was called
+		CollectsNoEpochs,
 		/// Invalid tranche seniority value
 		InvalidTrancheSeniority,
 		/// Invalid metadata passed
@@ -737,16 +735,17 @@ pub mod pallet {
 			let order =
 				Order::<T>::try_get(&loc, &who).map_err(|_| Error::<T>::NoOutstandingOrder)?;
 
+			let end_epoch: T::EpochId = collect_n_epochs
+				.checked_sub(&One::one())
+				.ok_or(Error::<T>::CollectsNoEpochs)?
+				.checked_add(&order.epoch)
+				.ok_or(DispatchError::from(ArithmeticError::Overflow))?;
+
 			ensure!(
-				order.epoch <= pool.last_epoch_executed,
+				end_epoch <= pool.last_epoch_executed,
 				Error::<T>::EpochNotExecutedYet
 			);
 
-			let end_epoch: T::EpochId = order
-				.epoch
-				.checked_add(&collect_n_epochs)
-				.ok_or(Error::<T>::Overflow)?
-				.min(pool.last_epoch_executed);
 			let actual_epochs = end_epoch.saturating_sub(order.epoch);
 
 			let collections = Self::calculate_collect(loc.clone(), order, end_epoch)?;

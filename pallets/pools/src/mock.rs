@@ -366,10 +366,10 @@ pub fn invest_close_and_collect(
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.last_epoch_closed;
+		.last_epoch_executed;
 
 	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, tranche_id, epoch as u32).map_err(|e| e.error)?;
+		Pools::collect(who, pool_id, tranche_id, epoch).map_err(|e| e.error)?;
 	}
 
 	Ok(())
