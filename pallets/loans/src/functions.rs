@@ -13,9 +13,25 @@
 
 //! Module provides loan related functions
 use super::*;
+use crate::weights::WeightInfo;
+use frame_support::weights::Weight;
 use sp_runtime::ArithmeticError;
 
 impl<T: Config> Pallet<T> {
+	// calculates write off group weight for count number of write off groups looped
+	// this function needs to adjusted when the reads and write changes for the write off group extrinsic
+	pub(crate) fn write_off_group_weight(count: u64) -> Weight {
+		T::WeightInfo::write_off()
+			.saturating_mul(count)
+			.saturating_sub(
+				(count - 1).saturating_mul(
+					T::DbWeight::get()
+						.reads(4)
+						.saturating_add(T::DbWeight::get().writes(2)),
+				),
+			)
+	}
+
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
 		T::LoansPalletId::get().into_account()
