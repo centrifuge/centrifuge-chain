@@ -46,6 +46,7 @@ type Block = frame_system::mocking::MockBlock<MockRuntime>;
 	PartialEq,
 	Eq,
 	scale_info::TypeInfo,
+	codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
