@@ -1,4 +1,4 @@
-use crate::{self as pallet_pools, Config, DispatchResult};
+use crate::{self as pallet_pools, Config, DispatchResult, Error};
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
@@ -18,7 +18,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 
-pub use runtime_common::Rate;
+pub use runtime_common::{Rate, TrancheWeight};
 
 common_types::impl_tranche_token!();
 
@@ -60,11 +60,16 @@ mod fake_nav {
 	}
 
 	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
+		type ClassId = ();
+		type Origin = ();
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
 			Some((Self::value(pool_id), 0))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
+		}
+		fn initialise(_: (), _: T::PoolId, _: ()) -> DispatchResult {
+			Ok(())
 		}
 	}
 }
@@ -201,17 +206,22 @@ impl pallet_restricted_tokens::Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;
 	type PreFungiblesMutateHold = common_traits::Always;
 	type PreFungiblesTransfer = common_traits::Always;
 	type Fungibles = OrmlTokens;
 	type PreCurrency = common_traits::Always;
 	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = pallet_restricted_tokens::FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
 	type PreFungibleMutate = common_traits::Always;
 	type PreFungibleMutateHold = common_traits::Always;
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
+	type WeightInfo = ();
 }
 
 pub struct RestrictedTokens<P>(PhantomData<P>);
@@ -219,6 +229,8 @@ impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedT
 where
 	P: PermissionsT<u64, Location = u64, Role = PoolRole>,
 {
+	type Result = bool;
+
 	fn check(details: TransferDetails<u64, CurrencyId, Balance>) -> bool {
 		let TransferDetails {
 			send,
@@ -271,6 +283,9 @@ impl Config for Test {
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTranches = MaxTranches;
+	type WeightInfo = ();
+	type TrancheWeight = TrancheWeight;
 }
 
 impl fake_nav::Config for Test {
@@ -281,6 +296,8 @@ pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 pub const JUNIOR_TRANCHE_ID: u8 = 0;
 pub const SENIOR_TRANCHE_ID: u8 = 1;
+pub const START_DATE: u64 = 1640991600; // 2022.01.01
+pub const SECONDS: u64 = 1000;
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -301,13 +318,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		System::set_block_number(1);
 		System::on_initialize(System::block_number());
 		Timestamp::on_initialize(System::block_number());
-		Timestamp::set(Origin::none(), 1).unwrap();
+		Timestamp::set(Origin::none(), START_DATE).unwrap();
 	});
 	ext
 }
 
 pub fn next_block() {
-	next_block_after(6)
+	next_block_after(12)
 }
 
 pub fn next_block_after(seconds: u64) {
@@ -316,7 +333,7 @@ pub fn next_block_after(seconds: u64) {
 	System::set_block_number(System::block_number() + 1);
 	System::on_initialize(System::block_number());
 	Timestamp::on_initialize(System::block_number());
-	Timestamp::set(Origin::none(), Timestamp::now() + seconds).unwrap();
+	Timestamp::set(Origin::none(), Timestamp::now() + seconds * SECONDS).unwrap();
 }
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
@@ -335,4 +352,26 @@ pub fn test_nav_up(pool_id: u64, amount: Balance) {
 
 pub fn test_nav_down(pool_id: u64, amount: Balance) {
 	FakeNav::update(pool_id, FakeNav::value(pool_id) - amount);
+}
+
+/// Assumes externalities are available
+pub fn invest_close_and_collect(
+	pool_id: u64,
+	investments: Vec<(Origin, TrancheId, Balance)>,
+) -> DispatchResult {
+	for (who, tranche_id, investment) in investments.clone() {
+		Pools::update_invest_order(who, pool_id, tranche_id, investment)?;
+	}
+
+	Pools::close_epoch(Origin::signed(10), pool_id).map_err(|e| e.error)?;
+
+	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
+		.map_err(|_| Error::<Test>::NoSuchPool)?
+		.last_epoch_closed;
+
+	for (who, tranche_id, _) in investments {
+		Pools::collect(who, pool_id, tranche_id, epoch as u32).map_err(|e| e.error)?;
+	}
+
+	Ok(())
 }

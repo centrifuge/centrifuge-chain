@@ -11,9 +11,13 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use impl_currency::*;
+pub use impl_fungible::*;
+pub use impl_fungibles::*;
 ///! A crate that allows for checking of preconditions before sending tokens.
 ///! Mimics ORML-tokens Call-Api.
 pub use pallet::*;
+pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -24,11 +28,17 @@ mod impl_fungibles;
 mod mock;
 #[cfg(test)]
 mod tests;
+mod weights;
 
 use frame_support::traits::{fungible, fungibles};
 use frame_support::traits::{Currency, LockableCurrency, ReservableCurrency};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use scale_info::TypeInfo;
+
+pub enum TokenType {
+	Native,
+	Other,
+}
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, MaxEncodedLen, RuntimeDebug, TypeInfo)]
 pub struct TransferDetails<AccountId, CurrencyId, Balance> {
@@ -54,16 +64,19 @@ pub mod pallet {
 	use super::*;
 	use crate::impl_currency::{CurrencyEffects, ReservableCurrencyEffects};
 	use crate::impl_fungible::{
-		FungibleMutateEffects, FungibleMutateHoldEffects, FungibleTransferEffects,
+		FungibleInspectEffects, FungibleInspectHoldEffects, FungibleMutateEffects,
+		FungibleMutateHoldEffects, FungibleTransferEffects,
 	};
 	use crate::impl_fungibles::{
-		FungiblesMutateEffects, FungiblesMutateHoldEffects, FungiblesTransferEffects,
+		FungiblesInspectEffects, FungiblesInspectHoldEffects, FungiblesMutateEffects,
+		FungiblesMutateHoldEffects, FungiblesTransferEffects,
 	};
 	use common_traits::{PreConditions, TokenMetadata};
 	use frame_support::scale_info::TypeInfo;
 	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, CheckedAdd, StaticLookup};
 	use frame_support::sp_runtime::ArithmeticError;
 	use frame_system::pallet_prelude::*;
+	use sp_std::cmp::max;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -92,21 +105,37 @@ pub mod pallet {
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<
 			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
+			Result = bool,
 		>;
 
-		/// Checks the pre conditions for trait ReservableCurrency calls
+		/// Checks the pre conditions for trait fungibles::Inspect calls
+		type PreFungiblesInspect: PreConditions<
+			FungiblesInspectEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = Self::Balance,
+		>;
+
+		/// Checks the pre conditions for trait fungibles::InspectHold calls
+		type PreFungiblesInspectHold: PreConditions<
+			FungiblesInspectHoldEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
+
+		/// Checks the pre conditions for trait fungibles::Mutate calls
 		type PreFungiblesMutate: PreConditions<
 			FungiblesMutateEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
-		/// Checks the pre conditions for trait ReservableCurrency calls
+		/// Checks the pre conditions for trait fungibles::MutateHold calls
 		type PreFungiblesMutateHold: PreConditions<
 			FungiblesMutateHoldEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
-		/// Checks the pre conditions for trait ReservableCurrency calls
+		/// Checks the pre conditions for trait fungibles::Transfer calls
 		type PreFungiblesTransfer: PreConditions<
 			FungiblesTransferEffects<Self::CurrencyId, Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		type Fungibles: fungibles::Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
@@ -116,24 +145,45 @@ pub mod pallet {
 			+ fungibles::Transfer<Self::AccountId>;
 
 		/// Checks the pre conditions for trait Currency calls
-		type PreCurrency: PreConditions<CurrencyEffects<Self::AccountId, Self::Balance>>;
+		type PreCurrency: PreConditions<
+			CurrencyEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
 
 		/// Checks the pre conditions for trait ReservableCurrency calls
 		type PreReservableCurrency: PreConditions<
 			ReservableCurrencyEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
+
+		/// Checks the pre conditions for trait fungible::Inspect calls
+		type PreFungibleInspect: PreConditions<
+			FungibleInspectEffects<Self::AccountId, Self::Balance>,
+			Result = Self::Balance,
+		>;
+
+		/// Checks the pre conditions for trait fungible::InspectHold calls
+		type PreFungibleInspectHold: PreConditions<
+			FungibleInspectHoldEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		/// Checks the pre conditions for trait fungible::Mutate calls
-		type PreFungibleMutate: PreConditions<FungibleMutateEffects<Self::AccountId, Self::Balance>>;
+		type PreFungibleMutate: PreConditions<
+			FungibleMutateEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
+		>;
 
 		/// Checks the pre conditions for trait fungible::MutateHold calls
 		type PreFungibleMutateHold: PreConditions<
 			FungibleMutateHoldEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		/// Checks the pre conditions for trait fungible::Transfer calls
 		type PreFungibleTransfer: PreConditions<
 			FungibleTransferEffects<Self::AccountId, Self::Balance>,
+			Result = bool,
 		>;
 
 		type NativeFungible: Currency<Self::AccountId, Balance = Self::Balance>
@@ -146,6 +196,8 @@ pub mod pallet {
 			+ fungible::Transfer<Self::AccountId>;
 
 		type NativeToken: Get<Self::CurrencyId>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -180,13 +232,13 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::weight(100)]
+		#[pallet::weight(max(T::WeightInfo::transfer_native(), T::WeightInfo::transfer_other()))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] amount: T::Balance,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
@@ -200,10 +252,12 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			if T::NativeToken::get() == currency_id {
+			let token = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
 					&from, &to, amount, false,
 				)?;
+
+				TokenType::Native
 			} else {
 				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
 					currency_id,
@@ -212,7 +266,9 @@ pub mod pallet {
 					amount,
 					false,
 				)?;
-			}
+
+				TokenType::Other
+			};
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -221,10 +277,16 @@ pub mod pallet {
 				amount,
 			});
 
-			Ok(())
+			match token {
+				TokenType::Native => Ok(Some(T::WeightInfo::transfer_native()).into()),
+				TokenType::Other => Ok(Some(T::WeightInfo::transfer_other()).into()),
+			}
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(max(
+			T::WeightInfo::transfer_keep_alive_native(),
+			T::WeightInfo::transfer_keep_alive_other(),
+		))]
 		pub fn transfer_keep_alive(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
@@ -244,10 +306,12 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			if T::NativeToken::get() == currency_id {
+			let token = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
 					&from, &to, amount, true,
 				)?;
+
+				TokenType::Native
 			} else {
 				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
 					currency_id,
@@ -256,7 +320,9 @@ pub mod pallet {
 					amount,
 					true,
 				)?;
-			}
+
+				TokenType::Other
+			};
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -265,16 +331,22 @@ pub mod pallet {
 				amount,
 			});
 
-			Ok(().into())
+			match token {
+				TokenType::Native => Ok(Some(T::WeightInfo::transfer_keep_alive_native()).into()),
+				TokenType::Other => Ok(Some(T::WeightInfo::transfer_keep_alive_other()).into()),
+			}
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(max(
+			T::WeightInfo::transfer_all_native(),
+			T::WeightInfo::transfer_all_other(),
+		))]
 		pub fn transfer_all(
 			origin: OriginFor<T>,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			keep_alive: bool,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let from = ensure_signed(origin)?;
 			let to = T::Lookup::lookup(dest)?;
 
@@ -300,13 +372,15 @@ pub mod pallet {
 				Error::<T>::PreConditionsNotMet
 			);
 
-			if T::NativeToken::get() == currency_id {
+			let token = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
 					&from,
 					&to,
 					reducible_balance,
 					keep_alive,
 				)?;
+
+				TokenType::Native
 			} else {
 				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
 					currency_id,
@@ -315,7 +389,9 @@ pub mod pallet {
 					reducible_balance,
 					keep_alive,
 				)?;
-			}
+
+				TokenType::Other
+			};
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -323,25 +399,34 @@ pub mod pallet {
 				to,
 				amount: reducible_balance,
 			});
-			Ok(())
+
+			match token {
+				TokenType::Native => Ok(Some(T::WeightInfo::transfer_all_native()).into()),
+				TokenType::Other => Ok(Some(T::WeightInfo::transfer_all_other()).into()),
+			}
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(max(
+			T::WeightInfo::force_transfer_native(),
+			T::WeightInfo::force_transfer_other(),
+		))]
 		pub fn force_transfer(
 			origin: OriginFor<T>,
 			source: <T::Lookup as StaticLookup>::Source,
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] amount: T::Balance,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let from = T::Lookup::lookup(source)?;
 			let to = T::Lookup::lookup(dest)?;
 
-			if T::NativeToken::get() == currency_id {
+			let token = if T::NativeToken::get() == currency_id {
 				<T::NativeFungible as fungible::Transfer<T::AccountId>>::transfer(
 					&from, &to, amount, false,
 				)?;
+
+				TokenType::Native
 			} else {
 				<T::Fungibles as fungibles::Transfer<T::AccountId>>::transfer(
 					currency_id,
@@ -350,7 +435,9 @@ pub mod pallet {
 					amount,
 					false,
 				)?;
-			}
+
+				TokenType::Other
+			};
 
 			Self::deposit_event(Event::Transfer {
 				currency_id,
@@ -359,17 +446,23 @@ pub mod pallet {
 				amount,
 			});
 
-			Ok(())
+			match token {
+				TokenType::Native => Ok(Some(T::WeightInfo::force_transfer_native()).into()),
+				TokenType::Other => Ok(Some(T::WeightInfo::force_transfer_other()).into()),
+			}
 		}
 
-		#[pallet::weight(100)]
+		#[pallet::weight(max(
+			T::WeightInfo::set_balance_native(),
+			T::WeightInfo::set_balance_other(),
+		))]
 		pub fn set_balance(
 			origin: OriginFor<T>,
 			who: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] new_free: T::Balance,
 			#[pallet::compact] new_reserved: T::Balance,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let who = T::Lookup::lookup(who)?;
 
@@ -377,7 +470,7 @@ pub mod pallet {
 				.checked_add(&new_reserved)
 				.ok_or(ArithmeticError::Overflow)?;
 
-			if T::NativeToken::get() == currency_id {
+			let token = if T::NativeToken::get() == currency_id {
 				let old_reserved =
 					<T::NativeFungible as fungible::InspectHold<T::AccountId>>::balance_on_hold(
 						&who,
@@ -394,6 +487,8 @@ pub mod pallet {
 					&who,
 					new_reserved,
 				)?;
+
+				TokenType::Native
 			} else {
 				let old_reserved =
 					<T::Fungibles as fungibles::InspectHold<T::AccountId>>::balance_on_hold(
@@ -423,7 +518,9 @@ pub mod pallet {
 					&who,
 					new_reserved,
 				)?;
-			}
+
+				TokenType::Other
+			};
 
 			Self::deposit_event(Event::BalanceSet {
 				currency_id,
@@ -432,7 +529,10 @@ pub mod pallet {
 				reserved: new_reserved,
 			});
 
-			Ok(())
+			match token {
+				TokenType::Native => Ok(Some(T::WeightInfo::set_balance_native()).into()),
+				TokenType::Other => Ok(Some(T::WeightInfo::set_balance_other()).into()),
+			}
 		}
 	}
 }
