@@ -16,7 +16,6 @@ services:
       --chain=/chainspec.json
       --wasm-execution=compiled
       --execution=wasm
-      --no-beefy
       --base-path=/data
       --port 30333
       --rpc-port 9933
@@ -45,7 +44,6 @@ services:
       --base-path=/data
       --wasm-execution=compiled
       --execution=wasm
-      --no-beefy
       --port 30333
       --rpc-port 9933
       --ws-port 9944
