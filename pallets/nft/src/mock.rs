@@ -29,9 +29,9 @@ use chainbridge::{
 
 use frame_support::{
 	parameter_types,
-	traits::{GenesisBuild, SortedMembers},
+	traits::{FindAuthor, GenesisBuild, SortedMembers},
 	weights::Weight,
-	PalletId,
+	ConsensusEngineId, PalletId,
 };
 
 use frame_system::EnsureSignedBy;
@@ -142,6 +142,7 @@ impl frame_system::Config for MockRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 // Parameterize FRAME balances pallet
@@ -162,9 +163,20 @@ impl pallet_balances::Config for MockRuntime {
 	type ReserveIdentifier = ();
 }
 
+pub struct AuthorGiven;
+
+impl FindAuthor<u64> for AuthorGiven {
+	fn find_author<'a, I>(_digests: I) -> Option<u64>
+	where
+		I: 'a + IntoIterator<Item = (ConsensusEngineId, &'a [u8])>,
+	{
+		Some(100)
+	}
+}
+
 // Implement Substrate FRAME authorship pallet for the mock runtime
 impl pallet_authorship::Config for MockRuntime {
-	type FindAuthor = ();
+	type FindAuthor = AuthorGiven;
 	type UncleGenerations = ();
 	type FilterUncle = ();
 	type EventHandler = ();

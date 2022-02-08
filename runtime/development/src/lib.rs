@@ -10,7 +10,10 @@ use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{
+		Contains, EnsureOneOf, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
+		U128CurrencyToVote,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -19,7 +22,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureOneOf, EnsureRoot,
+	EnsureRoot,
 };
 use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
@@ -40,7 +43,9 @@ use sp_runtime::transaction_validity::{
 };
 
 use common_traits::PreConditions;
-use pallet_restricted_tokens::TransferDetails;
+use pallet_restricted_tokens::{
+	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
+};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -76,8 +81,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	authoring_version: 1,
 	spec_version: 1000,
 	impl_version: 1,
+	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
+	#[cfg(feature = "disable-runtime-api")]
+	apis: version::create_apis_vec![[]],
 	transaction_version: 1,
+	state_version: 0,
 };
 
 /// Native version.
@@ -157,6 +166,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -165,7 +175,7 @@ parameter_types! {
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
-	type OnValidationData = ();
+	type OnSystemEvent = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type OutboundXcmpMessageSource = ();
 	type DmpMessageHandler = ();
@@ -390,12 +400,15 @@ impl pallet_proxy::Config for Runtime {
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type PalletsOrigin = OriginCaller;
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Self>;
 }
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
 	pub const MaxScheduledPerBlock: u32 = 50;
+	// Retry a scheduled item every 10 blocks (2 minutes) until the preimage exists.
+	pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -406,7 +419,26 @@ impl pallet_scheduler::Config for Runtime {
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
+	type PreimageProvider = Preimage;
+	type NoPreimagePostponement = NoPreimagePostponement;
+}
+
+parameter_types! {
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+	type WeightInfo = ();
+	type Event = Event;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = PreimageMaxSize;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
 }
 
 parameter_types! {
@@ -492,7 +524,6 @@ parameter_types! {
 	pub const MinimumDeposit: Balance = 10 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
-	pub const PreimageByteDeposit: Balance = 100 * MICRO_CFG;
 	pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }
@@ -639,6 +670,9 @@ parameter_types! {
 	// if the above yields to lower value
 	pub const ProposalBondMinimum: Balance = 100 * CFG;
 
+	// Maximum amount to bond per proposal. This will be the most that gets bonded per proposal
+	pub const ProposalBondMaximum: Balance = 500 * CFG;
+
 	// periods between treasury spends
 	pub const SpendPeriod: BlockNumber = 30 * DAYS;
 
@@ -668,6 +702,7 @@ impl pallet_treasury::Config for Runtime {
 	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
+	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
 	type PalletId = TreasuryPalletId;
@@ -748,6 +783,9 @@ impl pallet_pools::Config for Runtime {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTranches = MaxTranches;
+	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
+	type TrancheWeight = TrancheWeight;
 }
 
 parameter_types! {
@@ -838,7 +876,6 @@ parameter_types! {
 }
 
 type CollatorSelectionUpdateOrigin = EnsureOneOf<
-	AccountId,
 	EnsureRoot<AccountId>,
 	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
 >;
@@ -936,6 +973,8 @@ impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restr
 where
 	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
 {
+	type Result = bool;
+
 	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		let TransferDetails {
 			send,
@@ -967,17 +1006,22 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreFungiblesInspect = FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;
 	type PreFungiblesMutateHold = common_traits::Always;
 	type PreFungiblesTransfer = common_traits::Always;
 	type Fungibles = OrmlTokens;
 	type PreCurrency = common_traits::Always;
 	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
 	type PreFungibleMutate = common_traits::Always;
 	type PreFungibleMutateHold = common_traits::Always;
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
+	type WeightInfo = pallet_restricted_tokens::SubstrateWeight<Self>;
 }
 
 parameter_type_with_key! {
@@ -1028,7 +1072,7 @@ construct_runtime!(
 		ParachainInfo: parachain_info::{Pallet, Storage, Config} = 4,
 
 		// money stuff
-		Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 20,
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>} = 20,
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage} = 21,
 
 		// authoring stuff
@@ -1051,6 +1095,7 @@ construct_runtime!(
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 69,
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 72,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -1082,6 +1127,7 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
@@ -1101,10 +1147,29 @@ pub type Executive = frame_executive::Executive<
 	Block,
 	frame_system::ChainContext<Runtime>,
 	Runtime,
-	AllPallets,
-	(),
+	AllPalletsWithSystem,
+	SchedulerMigrationV3,
 >;
 
+// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
+pub struct SchedulerMigrationV3;
+impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		Scheduler::migrate_v2_to_v3()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Scheduler::pre_migrate_to_v3()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		Scheduler::post_migrate_to_v3()
+	}
+}
+
+#[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -1201,8 +1266,8 @@ impl_runtime_apis! {
 	}
 
 	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
-		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
-			ParachainSystem::collect_collation_info()
+		fn collect_collation_info(header: &<Block as BlockT>::Header) -> cumulus_primitives_core::CollationInfo {
+			ParachainSystem::collect_collation_info(header)
 		}
 	}
 
@@ -1244,9 +1309,11 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
+			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1267,9 +1334,11 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
+			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

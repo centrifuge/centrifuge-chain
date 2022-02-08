@@ -2,7 +2,7 @@ version: '3'
 services:
   node_alice:
     container_name: alice
-    image: "parity/polkadot:v0.9.13"
+    image: "parity/polkadot:v0.9.16"
     ports:
       - "30333:30333"
       - "9933:9933"
@@ -16,7 +16,6 @@ services:
       --chain=/chainspec.json
       --wasm-execution=compiled
       --execution=wasm
-      --no-beefy
       --base-path=/data
       --port 30333
       --rpc-port 9933
@@ -30,7 +29,7 @@ services:
 
   node_bob:
     container_name: bob
-    image: "parity/polkadot:v0.9.13"
+    image: "parity/polkadot:v0.9.16"
     ports:
       - "30344:30333"
       - "9935:9933"
@@ -45,7 +44,6 @@ services:
       --base-path=/data
       --wasm-execution=compiled
       --execution=wasm
-      --no-beefy
       --port 30333
       --rpc-port 9933
       --ws-port 9944

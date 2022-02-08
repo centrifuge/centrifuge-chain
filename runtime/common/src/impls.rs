@@ -17,6 +17,7 @@ use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_core::H160;
+use sp_runtime::traits::Convert;
 use sp_std::convert::TryInto;
 use sp_std::vec;
 use sp_std::vec::Vec;
@@ -31,7 +32,9 @@ where
 	Config: AuthorshipConfig + BalancesConfig + SystemConfig,
 {
 	fn on_nonzero_unbalanced(amount: NegativeImbalance<Config>) {
-		Balances::<Config>::resolve_creating(&Authorship::<Config>::author(), amount);
+		if let Some(who) = Authorship::<Config>::author() {
+			Balances::<Config>::resolve_creating(&who, amount);
+		}
 	}
 }
 
@@ -159,6 +162,18 @@ impl From<u16> for InstanceId {
 }
 
 impl From<u128> for InstanceId {
+	fn from(v: u128) -> Self {
+		Self(v)
+	}
+}
+
+impl Convert<TrancheWeight, Balance> for TrancheWeight {
+	fn convert(weight: TrancheWeight) -> Balance {
+		weight.0
+	}
+}
+
+impl From<u128> for TrancheWeight {
 	fn from(v: u128) -> Self {
 		Self(v)
 	}

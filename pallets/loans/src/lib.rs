@@ -73,6 +73,7 @@ pub mod pallet {
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -550,6 +551,8 @@ pub mod pallet {
 }
 
 impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
+	type ClassId = T::ClassId;
+	type Origin = T::Origin;
 	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, u64)> {
 		PoolNAV::<T>::get(pool_id)
 			.and_then(|nav_details| Some((nav_details.latest_nav, nav_details.last_updated)))
@@ -558,6 +561,14 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
 		let (updated_nav, ..) = Self::update_nav_of_pool(pool_id)?;
 		Ok(updated_nav)
+	}
+
+	fn initialise(
+		origin: OriginFor<T>,
+		pool_id: PoolIdOf<T>,
+		class_id: T::ClassId,
+	) -> DispatchResult {
+		Self::initialise_pool(origin, pool_id, class_id)
 	}
 }
 

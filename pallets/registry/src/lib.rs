@@ -157,6 +157,7 @@ pub mod pallet {
 	// for the pallet.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	// ------------------------------------------------------------------------
@@ -216,7 +217,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn get_owner)]
 	pub type Owner<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::RegistryId, T::AccountId, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::RegistryId, T::AccountId, OptionQuery>;
 
 	// ------------------------------------------------------------------------
 	// Pallet errors

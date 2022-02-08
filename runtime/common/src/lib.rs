@@ -38,7 +38,8 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
-	use frame_system::{EnsureOneOf, EnsureRoot};
+	use frame_support::traits::EnsureOneOf;
+	use frame_system::EnsureRoot;
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
@@ -46,7 +47,7 @@ pub mod types {
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 	use sp_std::vec::Vec;
 
-	pub type EnsureRootOr<O> = EnsureOneOf<AccountId, EnsureRoot<AccountId>, O>;
+	pub type EnsureRootOr<O> = EnsureOneOf<EnsureRoot<AccountId>, O>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;
@@ -79,9 +80,6 @@ pub mod types {
 
 	/// Block header type as expected by this runtime.
 	pub type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
-
-	/// Digest item type.
-	pub type DigestItem = sp_runtime::generic::DigestItem<Hash>;
 
 	/// Aura consensus authority.
 	pub type AuraId = sp_consensus_aura::sr25519::AuthorityId;
@@ -133,6 +131,23 @@ pub mod types {
 
 	/// A representation of a tranche identifier
 	pub type TrancheId = u8;
+
+	/// A representation of a tranche weight, used to weight
+	/// importance of a tranche
+	#[derive(
+		codec::Encode,
+		codec::Decode,
+		Copy,
+		Debug,
+		Default,
+		Clone,
+		PartialEq,
+		Eq,
+		TypeInfo,
+		codec::CompactAs,
+	)]
+	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+	pub struct TrancheWeight(pub u128);
 
 	/// A representation of InstanceId for Uniques.
 	#[derive(

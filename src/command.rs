@@ -75,16 +75,19 @@ fn load_spec(
 		"centrifuge" => Ok(Box::new(chain_spec::centrifuge_config())),
 		"centrifuge-staging" => Ok(Box::new(chain_spec::centrifuge_staging(para_id))),
 		"centrifuge-dev" => Ok(Box::new(chain_spec::centrifuge_dev(para_id))),
+		"centrifuge-local" => Ok(Box::new(chain_spec::centrifuge_local(para_id))),
 		"altair" => Ok(Box::new(chain_spec::altair_config())),
 		"altair-staging" => Ok(Box::new(chain_spec::altair_staging(para_id))),
 		"altair-dev" => Ok(Box::new(chain_spec::altair_dev(para_id))),
+		"altair-local" => Ok(Box::new(chain_spec::altair_local(para_id))),
 		"antares" => Ok(Box::new(chain_spec::antares_config())),
 		"antares-staging" => Ok(Box::new(chain_spec::antares_staging(para_id))),
-		"antares-dev" => Ok(Box::new(chain_spec::antares_dev(para_id))),
+		"antares-local" => Ok(Box::new(chain_spec::antares_local(para_id))),
 		"charcoal" => Ok(Box::new(chain_spec::charcoal_config())),
 		"charcoal-staging" => Ok(Box::new(chain_spec::charcoal_staging(para_id))),
-		"charcoal-dev" => Ok(Box::new(chain_spec::charcoal_dev(para_id))),
+		"charcoal-local" => Ok(Box::new(chain_spec::charcoal_local(para_id))),
 		"development" => Ok(Box::new(chain_spec::development(para_id))),
+		"development-local" => Ok(Box::new(chain_spec::development_local(para_id))),
 		"" => Err(String::from("No Chain-id provided")),
 
 		path => {
@@ -136,7 +139,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
-		load_spec(id, self.run.parachain_id.unwrap_or(10001).into())
+		load_spec(id, self.parachain_id.unwrap_or(10001).into())
 	}
 
 	fn native_runtime_version(spec: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
@@ -291,10 +294,14 @@ pub fn run() -> Result<()> {
 			builder.with_profiling(sc_tracing::TracingReceiver::Log, "");
 			let _ = builder.init();
 
-			let block: Block = generate_genesis_block(&load_spec(
+			let chain_spec = &load_spec(
 				&params.chain.clone().unwrap_or_default(),
 				params.parachain_id.unwrap_or(10001).into(),
-			)?)?;
+			)?;
+
+			let state_version = Cli::native_runtime_version(&chain_spec).state_version();
+			let block: Block = generate_genesis_block(&chain_spec, state_version)?;
+
 			let raw_header = block.header().encode();
 			let output_buf = if params.raw {
 				raw_header
@@ -363,13 +370,14 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
-				let id = ParaId::from(cli.run.parachain_id.unwrap_or(100));
+				let id = cli.parachain_id.unwrap_or(10001).into();
 
 				let parachain_account =
 					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
 
-				let block: Block =
-					generate_genesis_block(&config.chain_spec).map_err(|e| format!("{:?}", e))?;
+				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
+				let block: Block = generate_genesis_block(&config.chain_spec, state_version)
+					.map_err(|e| format!("{:?}", e))?;
 				let genesis_state = format!("0x{:?}", HexDisplay::from(&block.header().encode()));
 
 				let task_executor = config.tokio_handle.clone();
@@ -503,8 +511,14 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.rpc_cors(is_dev)
 	}
 
-	fn prometheus_config(&self, default_listen_port: u16) -> Result<Option<PrometheusConfig>> {
-		self.base.base.prometheus_config(default_listen_port)
+	fn prometheus_config(
+		&self,
+		default_listen_port: u16,
+		chain_spec: &Box<dyn ChainSpec>,
+	) -> Result<Option<PrometheusConfig>> {
+		self.base
+			.base
+			.prometheus_config(default_listen_port, chain_spec)
 	}
 
 	fn telemetry_endpoints(
@@ -534,7 +548,16 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.announce_block()
 	}
 
-	fn init<C: SubstrateCli>(&self) -> Result<()> {
+	fn init<F>(
+		&self,
+		_support_url: &String,
+		_impl_version: &String,
+		_logger_hook: F,
+		_config: &sc_service::Configuration,
+	) -> Result<()>
+	where
+		F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
+	{
 		unreachable!("PolkadotCli is never initialized; qed");
 	}
 }

@@ -3,7 +3,7 @@
 set -e
 
 cmd=$1
-parachain="${PARA_CHAIN_SPEC:-altair-dev}"
+parachain="${PARA_CHAIN_SPEC:-altair-local}"
 para_id="${PARA_ID:-2000}"
 
 case $cmd in

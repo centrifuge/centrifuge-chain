@@ -100,6 +100,7 @@ impl frame_system::Config for MockRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 // Parameterize FRAME balances pallet
@@ -168,6 +169,9 @@ impl pallet_pools::Config for MockRuntime {
 	type PalletId = PoolPalletId;
 	type Permission = Permissions;
 	type MaxSizeMetadata = MaxSizeMetadata;
+	type MaxTranches = MaxTranches;
+	type WeightInfo = ();
+	type TrancheWeight = runtime_common::TrancheWeight;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime

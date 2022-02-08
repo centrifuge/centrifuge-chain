@@ -16,10 +16,53 @@ use frame_support::traits::{
 	ReservableCurrency, SignedImbalance, WithdrawReasons,
 };
 
+/// Represents the trait `Currency` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum CurrencyEffects<AccountId, Balance> {
-	EnsureCanWithdraw(AccountId, Balance, WithdrawReasons, Balance),
+	/// A call to the `Currency::can_slash()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `who`. The person who should be slashed.
+	/// * tuple.1 = `value`. The to be slashed amount.
+	/// * tuple.2 = `<T::NativeFungible as Currency>::can_slash()`. The result of the call to the
+	///   not-filtered trait `Currency` implementation.
+	CanSlash(AccountId, Balance, bool),
+
+	/// A call to the `Currency::can_withdraw()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, WitdrawReasons, Balance, DispatchResult)`:
+	/// * tuple.0 = `who`. The person who's balance should be altered.
+	/// * tuple.1 = `_amount`. The amount that should be withdrawn.
+	/// * tuple.2 = `reasons`. The reasons for the withdraw.
+	/// * tuple.3 = `new_balance`. The balance the account has after the withdraw.
+	/// * tuple.4 = `<T::NativeFungible as Currency>::can_withdraw()`. The result of the call to the
+	///   not-filtered trait `Currency` implementation.
+	EnsureCanWithdraw(AccountId, Balance, WithdrawReasons, Balance, DispatchResult),
+
+	/// A call to the `Currency::transfer()`.
+	///
+	/// Interpretation of tuple `(AccountId, AccountId, Balance, ExistenceRequirement)`:
+	/// * tuple.0 = `sender`. The person who should be taken from.
+	/// * tuple.1 = `receiver`. The person who should receive.
+	/// * tuple.2 = `amount`. The amount that should be transfered.
+	/// * tuple.3 = `existence`. The requirements the accounts must have after the transfer.
 	Transfer(AccountId, AccountId, Balance, ExistenceRequirement),
+
+	/// A call to the `Currency::withdraw()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, WitdrawReasons, ExistenceRequirement)`:
+	/// * tuple.0 = `who`. The person who's balance should be altered.
+	/// * tuple.1 = `amount`. The amount that should be withdrawn.
+	/// * tuple.2 = `reasons`. The reasons for the withdraw.
+	/// * tuple.3 = `existence`. The requirements the accounts must have after the transfer.
 	Withdraw(AccountId, Balance, WithdrawReasons, ExistenceRequirement),
+
+	/// A call to the `Currency::deposit_into_existing()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance)`:
+	/// * tuple.0 = `who`. The person who's balance should be deposit into.
+	/// * tuple.1 = `amount`. The amount that should be deposited.
+	DepositIntoExisting(AccountId, Balance),
 }
 
 impl<T: Config> Currency<T::AccountId> for Pallet<T> {
@@ -32,7 +75,11 @@ impl<T: Config> Currency<T::AccountId> for Pallet<T> {
 	}
 
 	fn can_slash(who: &T::AccountId, value: Self::Balance) -> bool {
-		<T::NativeFungible as Currency<T::AccountId>>::can_slash(who, value)
+		T::PreCurrency::check(CurrencyEffects::CanSlash(
+			who.clone(),
+			value,
+			<T::NativeFungible as Currency<T::AccountId>>::can_slash(who, value),
+		))
 	}
 
 	fn total_issuance() -> Self::Balance {
@@ -67,16 +114,17 @@ impl<T: Config> Currency<T::AccountId> for Pallet<T> {
 				_amount,
 				reasons,
 				new_balance,
+				<T::NativeFungible as Currency<T::AccountId>>::ensure_can_withdraw(
+					who,
+					_amount,
+					reasons,
+					new_balance,
+				)
 			)),
 			Error::<T>::PreConditionsNotMet
 		);
 
-		<T::NativeFungible as Currency<T::AccountId>>::ensure_can_withdraw(
-			who,
-			_amount,
-			reasons,
-			new_balance,
-		)
+		Ok(())
 	}
 
 	fn transfer(
@@ -111,6 +159,11 @@ impl<T: Config> Currency<T::AccountId> for Pallet<T> {
 		who: &T::AccountId,
 		value: Self::Balance,
 	) -> Result<Self::PositiveImbalance, DispatchError> {
+		ensure!(
+			T::PreCurrency::check(CurrencyEffects::DepositIntoExisting(who.clone(), value,)),
+			Error::<T>::PreConditionsNotMet
+		);
+
 		<T::NativeFungible as Currency<T::AccountId>>::deposit_into_existing(who, value)
 	}
 
@@ -145,14 +198,42 @@ impl<T: Config> Currency<T::AccountId> for Pallet<T> {
 	}
 }
 
+/// Represents the trait `Currency` effects that are called via
+/// the pallet-restricted-tokens.
 pub enum ReservableCurrencyEffects<AccountId, Balance> {
+	/// A call to the `ReservableCurrency::can_reserve()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `who`. The person who's balance should be reserved.
+	/// * tuple.1 = `amount`. The amount that should be reserved.
+	/// * tuple.2 = `<T::NativeFungible as ReservableCurrency>::can_reserve()`. The result of the call to the
+	///   not-filtered trait `ReservableCurrency` implementation.
+	CanReserve(AccountId, Balance, bool),
+
+	/// A call to the `ReservableCurrency::reserve()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `who`. The person who's balance should be reserved.
+	/// * tuple.1 = `amount`. The amount that should be reserved.
 	Reserve(AccountId, Balance),
+
+	/// A call to the `ReservableCurrency::repatriate_reserved()`.
+	///
+	/// Interpretation of tuple `(AccountId, Balance, bool)`:
+	/// * tuple.0 = `slashed`. The account who's slashed.
+	/// * tuple.1 = `beneficiary`. The account that benefits from the slash.
+	/// * tuple.2 = `amount`. The amount that should be deducted.
+	/// * tuple.3 = `status`. The status the funds will be placed into.
 	RepatriateReserved(AccountId, AccountId, Balance, BalanceStatus),
 }
 
 impl<T: Config> ReservableCurrency<T::AccountId> for Pallet<T> {
 	fn can_reserve(who: &T::AccountId, value: Self::Balance) -> bool {
-		<T::NativeFungible as ReservableCurrency<T::AccountId>>::can_reserve(who, value)
+		T::PreReservableCurrency::check(ReservableCurrencyEffects::CanReserve(
+			who.clone(),
+			value,
+			<T::NativeFungible as ReservableCurrency<T::AccountId>>::can_reserve(who, value),
+		))
 	}
 
 	fn slash_reserved(
