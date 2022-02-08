@@ -172,7 +172,10 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
+    "polkadot-runtime-common/std",
+    "pallet-preimage/std",
 ]
+
 runtime-benchmarks = [
     "frame-benchmarking",
     "hex-literal",

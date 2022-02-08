@@ -180,7 +180,10 @@ std = [
     "pallet-migration-manager/std",
     "pallet-crowdloan-claim/std",
     "pallet-crowdloan-reward/std",
-    "pallet-treasury/std"
+    "pallet-treasury/std",
+    "polkadot-runtime-common/std",
+    "pallet-preimage/std",
+    "pallet-uniques/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

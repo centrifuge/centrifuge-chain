@@ -200,8 +200,12 @@ std = [
     "orml-tokens/std",
     "pallet-loans/std",
     "pallet-uniques/std",
-    "pallet-treasury/std"
+    "pallet-treasury/std",
+    "polkadot-runtime-common/std",
+    "pallet-preimage/std",
+    "pallet-uniques/std",
 ]
+
 runtime-benchmarks = [
     "frame-benchmarking",
     "hex-literal",
