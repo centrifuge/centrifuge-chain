@@ -239,6 +239,7 @@ impl pallet_permissions::Config for MockRuntime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 200;
+	pub const MaxWriteOffgroups: u32 = 10;
 }
 
 impl pallet_loans::Config for MockRuntime {
@@ -251,9 +252,10 @@ impl pallet_loans::Config for MockRuntime {
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
+	type Permission = Permissions;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
-	type Permission = Permissions;
+	type MaxWriteOffGroups = MaxWriteOffgroups;
 }
 
 // USD currencyId

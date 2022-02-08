@@ -137,6 +137,10 @@ pub mod pallet {
 		/// This is a soft limit for maximum loans we can expect in a pool.
 		/// this is mainly used to calculate estimated weight for NAV calculation.
 		type MaxLoansPerPool: Get<u64>;
+
+		/// This is a soft limit for maximum number of write off groups
+		/// we will have per pool. This is mainly used to calculate maximum weight for write off extrinsics
+		type MaxWriteOffGroups: Get<u32>;
 	}
 
 	/// Stores the loan nft class ID against a given pool
@@ -510,19 +514,34 @@ pub mod pallet {
 		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
 		/// Cannot update a loan that was written off by admin.
 		/// Cannot write off a healthy loan or loan type that do not have maturity date.
-		#[pallet::weight(<T as Config>::WeightInfo::write_off())]
+		///
+		///
+		/// Weight is calculated for one group. Since there is no extra read or writes for groups more than 1,
+		/// We need to ensure we are charging the reads and write only once but the actual compute to be equal to number of groups processed
+		#[pallet::weight(Pallet::<T>::write_off_group_weight(T::MaxWriteOffGroups::get() as u64))]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			// ensure this is a signed call
 			ensure_signed(origin)?;
 
 			// try to write off
 			let index = Self::write_off_loan(pool_id, loan_id, None)?;
 			Self::deposit_event(Event::<T>::WrittenOff(pool_id, loan_id, index));
-			Ok(())
+
+			// since the write off group index is picked in loop sequentially,
+			// total loops = index+1
+
+			// this is soft limit, so runtime do not have enough in the deposit.
+			// charge the maximum we have deposited
+			let count = index + 1;
+			if count >= T::MaxWriteOffGroups::get() {
+				return Ok(().into());
+			}
+
+			Ok(Some(Self::write_off_group_weight(count as u64)).into())
 		}
 
 		/// Write off an loan from admin origin
@@ -555,7 +574,7 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	type Origin = T::Origin;
 	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, u64)> {
 		PoolNAV::<T>::get(pool_id)
-			.and_then(|nav_details| Some((nav_details.latest_nav, nav_details.last_updated)))
+			.map(|nav_details| (nav_details.latest_nav, nav_details.last_updated))
 	}
 
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {

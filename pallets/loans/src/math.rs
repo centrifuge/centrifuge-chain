@@ -17,7 +17,6 @@ use crate::WriteOffGroup;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{ArithmeticError, DispatchError};
-use sp_std::vec::Vec;
 
 /// calculates the latest accumulated rate since the last
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
@@ -156,7 +155,7 @@ where
 pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: u64,
 	now: u64,
-	groups: &Vec<WriteOffGroup<Rate>>,
+	groups: &[WriteOffGroup<Rate>],
 ) -> Result<Option<u32>, DispatchError> {
 	let mut index = None;
 	let mut highest_overdue_days = 0;
@@ -166,7 +165,7 @@ pub(crate) fn valid_write_off_group<Rate>(
 		let offset = overdue_days
 			.checked_mul(seconds_per_day)
 			.and_then(|val| maturity_date.checked_add(val))
-			.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
+			.ok_or_else::<DispatchError, _>(|| ArithmeticError::Overflow.into())?;
 
 		if overdue_days >= highest_overdue_days && now >= offset {
 			index = Some(idx as u32);
