@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -51,10 +51,8 @@ pub mod constants;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
-use frame_support::traits::{Currency, Get, OnRuntimeUpgrade};
 /// common types for the runtime.
 pub use runtime_common::*;
-use sp_std::marker::PhantomData;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -72,10 +70,14 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1008,
+	spec_version: 1009,
 	impl_version: 1,
+	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
+	#[cfg(feature = "disable-runtime-api")]
+	apis: version::create_apis_vec![[]],
 	transaction_version: 1,
+	state_version: 0,
 };
 
 /// Native version.
@@ -84,72 +86,6 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion {
 		runtime_version: VERSION,
 		can_author_with: Default::default(),
-	}
-}
-
-/// Custom runtime upgrades
-///
-/// Migration to include collator-selection in a running chain
-
-pub struct IntegrateCollatorSelection<T>(PhantomData<T>);
-
-type BalanceOfCollatorSelection<T> =
-	<<T as pallet_collator_selection::Config>::Currency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
-
-impl<T> IntegrateCollatorSelection<T>
-where
-	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
-	T::AccountId: From<sp_runtime::AccountId32>,
-	T::Keys: From<SessionKeys>,
-{
-	fn to_version() -> u32 {
-		1008
-	}
-
-	fn db_access_weights(reads: Option<u64>, writes: Option<u64>) -> Weight {
-		let mut weight: Weight = 0u32 as Weight;
-
-		if let Some(num_reads) = reads {
-			weight += T::DbWeight::get()
-				.reads(1 as Weight)
-				.saturating_mul(num_reads);
-		}
-
-		if let Some(num_writes) = writes {
-			weight += T::DbWeight::get()
-				.writes(1 as Weight)
-				.saturating_mul(num_writes);
-		}
-
-		weight
-	}
-}
-
-impl<T> OnRuntimeUpgrade for IntegrateCollatorSelection<T>
-where
-	T: pallet_session::Config + pallet_collator_selection::Config + frame_system::Config,
-	BalanceOfCollatorSelection<T>: From<u128>,
-	T::AccountId: From<sp_runtime::AccountId32>,
-	T::Keys: From<SessionKeys>,
-	<T as frame_system::Config>::AccountId: From<<T as pallet_session::Config>::ValidatorId>,
-{
-	fn on_runtime_upgrade() -> Weight {
-		let mut consumed: Weight = 0;
-
-		if VERSION.spec_version == IntegrateCollatorSelection::<T>::to_version() {
-			let current_validators = <pallet_session::Validators<T>>::get()
-				.into_iter()
-				.map(|who| who.into())
-				.collect();
-
-			<pallet_collator_selection::Invulnerables<T>>::set(current_validators);
-
-			consumed += Self::db_access_weights(Some(1), Some(1))
-		}
-
-		return consumed;
 	}
 }
 
@@ -221,6 +157,7 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
 parameter_types! {
@@ -229,7 +166,7 @@ parameter_types! {
 
 impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
-	type OnValidationData = ();
+	type OnSystemEvent = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type OutboundXcmpMessageSource = ();
 	type DmpMessageHandler = ();
@@ -454,12 +391,15 @@ impl pallet_proxy::Config for Runtime {
 impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type PalletsOrigin = OriginCaller;
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Self>;
 }
 
 parameter_types! {
 	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * MaximumBlockWeight::get();
 	pub const MaxScheduledPerBlock: u32 = 50;
+	// Retry a scheduled item every 10 blocks (2 minutes) until the preimage exists.
+	pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
 impl pallet_scheduler::Config for Runtime {
@@ -470,7 +410,26 @@ impl pallet_scheduler::Config for Runtime {
 	type MaximumWeight = MaximumSchedulerWeight;
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
+	type PreimageProvider = Preimage;
+	type NoPreimagePostponement = NoPreimagePostponement;
+}
+
+parameter_types! {
+	pub const PreimageMaxSize: u32 = 4096 * 1024;
+	pub PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+	type WeightInfo = ();
+	type Event = Event;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type MaxSize = PreimageMaxSize;
+	type BaseDeposit = PreimageBaseDeposit;
+	type ByteDeposit = PreimageByteDeposit;
 }
 
 parameter_types! {
@@ -559,7 +518,6 @@ parameter_types! {
 	pub const MinimumDeposit: Balance = 500 * AIR;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
-	pub const PreimageByteDeposit: Balance = 100 * MICRO_AIR;
 	pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }
@@ -674,6 +632,9 @@ parameter_types! {
 	// if the above yields to lower value
 	pub const ProposalBondMinimum: Balance = 100 * AIR;
 
+	// Maximum amount to bond per proposal. This will be the most that gets bonded per proposal
+	pub const ProposalBondMaximum: Balance = 500 * AIR;
+
 	// periods between treasury spends
 	pub const SpendPeriod: BlockNumber = 6 * DAYS;
 
@@ -702,6 +663,7 @@ impl pallet_treasury::Config for Runtime {
 	type OnSlash = Treasury;
 	type ProposalBond = ProposalBond;
 	type ProposalBondMinimum = ProposalBondMinimum;
+	type ProposalBondMaximum = ProposalBondMaximum;
 	type SpendPeriod = SpendPeriod;
 	type Burn = Burn;
 	type PalletId = TreasuryPalletId;
@@ -710,6 +672,39 @@ impl pallet_treasury::Config for Runtime {
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
 	type SpendFunds = ();
 	type MaxApprovals = MaxApprovals;
+}
+
+parameter_types! {
+	// per byte deposit is 0.01 AIR
+	pub const DepositPerByte: Balance = CENTI_AIR;
+	// Base deposit to add attribute is 0.1 AIR
+	pub const AttributeDepositBase: Balance = 10 * CENTI_AIR;
+	// Base deposit to add metadata is 0.1 AIR
+	pub const MetadataDepositBase: Balance = 10 * CENTI_AIR;
+	// Deposit to create a class is 1 AIR
+	pub const ClassDeposit: Balance = AIR;
+	// Deposit to create a class is 0.1 AIR
+	pub const InstanceDeposit: Balance = 10 * CENTI_AIR;
+	// Maximum limit of bytes for Metadata, Attribute key and Value
+	pub const Limit: u32 = 256;
+}
+
+impl pallet_uniques::Config for Runtime {
+	type Event = Event;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type Currency = Balances;
+	// a straight majority of council can act as force origin
+	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
+	type ClassDeposit = ClassDeposit;
+	type InstanceDeposit = InstanceDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type AttributeDepositBase = AttributeDepositBase;
+	type DepositPerByte = DepositPerByte;
+	type StringLimit = Limit;
+	type KeyLimit = Limit;
+	type ValueLimit = Limit;
+	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
 }
 
 // our pallets
@@ -870,7 +865,8 @@ construct_runtime!(
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 69,
-		// Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 70,
+		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 70,
+		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>} = 72,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -893,6 +889,7 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
+	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
@@ -912,10 +909,29 @@ pub type Executive = frame_executive::Executive<
 	Block,
 	frame_system::ChainContext<Runtime>,
 	Runtime,
-	AllPallets,
-	IntegrateCollatorSelection<Runtime>,
+	AllPalletsWithSystem,
+	SchedulerMigrationV3,
 >;
 
+// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
+pub struct SchedulerMigrationV3;
+impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
+	fn on_runtime_upgrade() -> frame_support::weights::Weight {
+		Scheduler::migrate_v2_to_v3()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn pre_upgrade() -> Result<(), &'static str> {
+		Scheduler::pre_migrate_to_v3()
+	}
+
+	#[cfg(feature = "try-runtime")]
+	fn post_upgrade() -> Result<(), &'static str> {
+		Scheduler::post_migrate_to_v3()
+	}
+}
+
+#[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
 	impl sp_api::Core<Block> for Runtime {
 		fn version() -> RuntimeVersion {
@@ -1012,8 +1028,8 @@ impl_runtime_apis! {
 	}
 
 	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
-		fn collect_collation_info() -> cumulus_primitives_core::CollationInfo {
-			ParachainSystem::collect_collation_info()
+		fn collect_collation_info(header: &<Block as BlockT>::Header) -> cumulus_primitives_core::CollationInfo {
+			ParachainSystem::collect_collation_info(header)
 		}
 	}
 

@@ -179,6 +179,7 @@ impl frame_system::Config for MockRuntime {
 	type SystemWeightInfo = ();
 	type SS58Prefix = ();
 	type OnSetCode = ();
+	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 pub const ACCOUNTS: u32 = 100;
 pub const VESTINGS: u32 = 10;

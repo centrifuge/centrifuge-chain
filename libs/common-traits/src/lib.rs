@@ -48,7 +48,6 @@ use sp_std::vec::Vec;
 pub trait Reward {
 	/// The account from the parachain, that the claimer provided in her/his transaction.
 	type ParachainAccountId: Debug
-		+ Default
 		+ MaybeSerialize
 		+ MaybeSerializeDeserialize
 		+ Member

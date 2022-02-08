@@ -28,12 +28,7 @@ fn setup_blocks(blocks: u64) {
 	let mut parent_hash = System::parent_hash();
 
 	for i in 1..(blocks + 1) {
-		System::initialize(
-			&i,
-			&parent_hash,
-			&Default::default(),
-			frame_system::InitKind::Full,
-		);
+		System::initialize(&i, &parent_hash, &Default::default());
 		RandomnessCollectiveFlip::on_initialize(i);
 
 		let header = System::finalize();
@@ -918,8 +913,8 @@ fn anchor_evict_single_anchor_per_day_1000_days() {
 		assert_eq!(
 			Anchors::get_evicted_anchor_root_by_day(2).unwrap(),
 			[
-				141, 182, 69, 210, 74, 76, 129, 19, 72, 18, 220, 239, 151, 249, 235, 160, 142, 206,
-				116, 30, 241, 179, 146, 32, 209, 7, 37, 235, 43, 29, 120, 54
+				106, 177, 65, 39, 81, 119, 28, 116, 158, 148, 37, 216, 134, 138, 238, 162, 35, 32,
+				214, 75, 138, 67, 134, 31, 2, 234, 148, 63, 132, 5, 213, 49
 			]
 		);
 
@@ -1095,8 +1090,8 @@ fn test_same_day_1001_anchors() {
 		assert_eq!(
 			Anchors::get_evicted_anchor_root_by_day(2).unwrap(),
 			[
-				92, 227, 43, 232, 192, 36, 154, 162, 187, 4, 214, 137, 5, 41, 2, 236, 173, 218,
-				241, 123, 165, 96, 38, 211, 182, 172, 234, 99, 53, 196, 17, 100
+				46, 187, 188, 251, 253, 16, 138, 26, 49, 40, 34, 104, 1, 5, 156, 255, 11, 103, 146,
+				2, 120, 3, 185, 115, 191, 116, 127, 187, 239, 227, 40, 133
 			]
 		);
 

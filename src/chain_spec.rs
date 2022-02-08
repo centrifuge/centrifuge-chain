@@ -121,6 +121,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("centrifuge"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
@@ -134,6 +135,46 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge Dev",
 		"centrifuge_dev",
+		ChainType::Live,
+		move || {
+			centrifuge_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<centrifuge_runtime::AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<centrifuge_runtime::AuraId>("Charlie"),
+					),
+				],
+				endowed_accounts(),
+				Some(100000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	CentrifugeChainSpec::from_genesis(
+		"Centrifuge Local",
+		"centrifuge_local",
 		ChainType::Local,
 		move || {
 			centrifuge_genesis(
@@ -148,6 +189,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -207,6 +249,7 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("altair"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
@@ -220,6 +263,45 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 	AltairChainSpec::from_genesis(
 		"Altair Dev",
 		"altair_dev",
+		ChainType::Live,
+		move || {
+			altair_genesis(
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<altair_runtime::AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<altair_runtime::AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<altair_runtime::AuraId>("Charlie"),
+					),
+				],
+				endowed_accounts(),
+				Some(100000000 * AIR),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DAIR".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	AltairChainSpec::from_genesis(
+		"Altair Local",
+		"altair_local",
 		ChainType::Local,
 		move || {
 			altair_genesis(
@@ -233,6 +315,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -295,19 +378,20 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("antares"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
 }
 
-pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
+pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	AltairChainSpec::from_genesis(
-		"Antares Local Testnet",
-		"antares_local_testnet",
+		"Antares Local",
+		"antares_local",
 		ChainType::Local,
 		move || {
 			altair_genesis(
@@ -321,6 +405,7 @@ pub fn antares_dev(para_id: ParaId) -> AltairChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -377,19 +462,20 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 				.expect("Polkadot telemetry url is valid; qed"),
 		),
 		Some("charcoal"),
+		None,
 		Some(properties),
 		Default::default(),
 	)
 }
 
-pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
+pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
 	properties.insert("tokenDecimals".into(), 18.into());
 
 	AltairChainSpec::from_genesis(
-		"Charcoal Local Testnet",
-		"charcoal_local_testnet",
+		"Charcoal Local",
+		"charcoal_local",
 		ChainType::Local,
 		move || {
 			altair_genesis(
@@ -405,12 +491,53 @@ pub fn charcoal_dev(para_id: ParaId) -> AltairChainSpec {
 		vec![],
 		None,
 		None,
+		None,
 		Some(properties),
 		Default::default(),
 	)
 }
 
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "DEVEL".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	DevelopmentChainSpec::from_genesis(
+		"Dev Live",
+		"devel_live",
+		ChainType::Live,
+		move || {
+			development_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![
+					(
+						get_account_id_from_seed::<sr25519::Public>("Alice"),
+						get_from_seed::<development_runtime::AuraId>("Alice"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Bob"),
+						get_from_seed::<development_runtime::AuraId>("Bob"),
+					),
+					(
+						get_account_id_from_seed::<sr25519::Public>("Charlie"),
+						get_from_seed::<development_runtime::AuraId>("Charlie"),
+					),
+				],
+				endowed_accounts(),
+				Some(10000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
 	properties.insert("tokenDecimals".into(), 18.into());
@@ -432,6 +559,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 			)
 		},
 		vec![],
+		None,
 		None,
 		None,
 		Some(properties),
@@ -483,7 +611,6 @@ fn centrifuge_genesis(
 			code: centrifuge_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: centrifuge_runtime::BalancesConfig { balances },
 		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
@@ -508,7 +635,9 @@ fn centrifuge_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: centrifuge_runtime::SudoConfig { key: root_key },
+		sudo: centrifuge_runtime::SudoConfig {
+			key: Some(root_key),
+		},
 		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
 		session: centrifuge_runtime::SessionConfig {
 			keys: initial_authorities
@@ -556,7 +685,6 @@ fn altair_genesis(
 			code: altair_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
@@ -647,7 +775,6 @@ fn development_genesis(
 			code: development_runtime::WASM_BINARY
 				.expect("WASM binary was not build, please build it!")
 				.to_vec(),
-			changes_trie_config: Default::default(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
 		orml_tokens: development_runtime::OrmlTokensConfig {
@@ -675,7 +802,9 @@ fn development_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: development_runtime::SudoConfig { key: root_key },
+		sudo: development_runtime::SudoConfig {
+			key: Some(root_key),
+		},
 		parachain_info: development_runtime::ParachainInfoConfig { parachain_id: id },
 		collator_selection: development_runtime::CollatorSelectionConfig {
 			invulnerables: initial_authorities

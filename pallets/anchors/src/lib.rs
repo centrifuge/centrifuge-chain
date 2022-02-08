@@ -19,6 +19,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
+	StateVersion,
 };
 pub use pallet::*;
 pub mod weights;
@@ -89,6 +90,7 @@ pub mod pallet {
 	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -488,7 +490,7 @@ impl<T: Config> Pallet<T> {
 			// exists before hand to ensure that it doesn't overwrite a root.
 			.map(|(day, key)| {
 				if !<EvictedAnchorRoots<T>>::contains_key(day) {
-					<EvictedAnchorRoots<T>>::insert(day, child::root(&key));
+					<EvictedAnchorRoots<T>>::insert(day, child::root(&key, StateVersion::V0));
 				}
 				key
 			})

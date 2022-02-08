@@ -43,6 +43,7 @@ pub mod pallet {
 	// method.
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
+	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
@@ -102,6 +103,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Fee associated to given key not found
 		FeeNotFoundForKey,
+		/// Invalid author of blocked fetched
+		InvalidAuthor,
 	}
 
 	#[pallet::call]
@@ -151,7 +154,7 @@ impl<T: Config> Pallet<T> {
 			ExistenceRequirement::KeepAlive,
 		)?;
 
-		let author = <pallet_authorship::Pallet<T>>::author();
+		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
 		T::Currency::resolve_creating(&author, value);
 		Ok(())
 	}
