@@ -108,7 +108,6 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
- "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
