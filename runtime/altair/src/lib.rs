@@ -727,26 +727,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 	type ValidatorRegistration = Session;
 }
 
-// Parameterize claims pallet
-parameter_types! {
-	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
-	pub const Longevity: u32 = 64;
-	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const MinimalPayoutAmount: Balance = 5 * AIR;
-}
-
-// Implement claims pallet configuration trait for the mock runtime
-impl pallet_claims::Config for Runtime {
-	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type Currency = Balances;
-	type Event = Event;
-	type Longevity = Longevity;
-	type MinimalPayoutAmount = MinimalPayoutAmount;
-	type PalletId = ClaimsPalletId;
-	type UnsignedPriority = UnsignedPriority;
-	type WeightInfo = ();
-}
-
 parameter_types! {
 	pub const MigrationMaxAccounts: u32 = 100;
 	pub const MigrationMaxVestings: u32 = 10;
@@ -871,7 +851,6 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
