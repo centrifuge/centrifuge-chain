@@ -1138,7 +1138,6 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
-		Spambot: cumulus_ping::{Pallet, Call, Storage, Event<T>} = 201,
 	}
 );
 
@@ -1230,13 +1229,6 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 
 parameter_types! {
 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
-}
-
-impl cumulus_ping::Config for Runtime {
-	type Event = Event;
-	type Origin = Origin;
-	type Call = Call;
-	type XcmSender = XcmRouter;
 }
 
 pub struct XcmConfig;

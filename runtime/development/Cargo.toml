@@ -31,7 +31,6 @@ cumulus-pallet-dmp-queue = {git = "https://github.com/paritytech/cumulus", defau
 cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
 pallet-collator-selection = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
-cumulus-ping = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.16" }
@@ -191,7 +190,6 @@ std = [
     "xcm-builder/std",
     "cumulus-pallet-xcm/std",
     "cumulus-pallet-aura-ext/std",
-    "cumulus-ping/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
     "pallet-fees/std",
