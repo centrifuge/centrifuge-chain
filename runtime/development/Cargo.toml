@@ -31,6 +31,7 @@ cumulus-pallet-dmp-queue = {git = "https://github.com/paritytech/cumulus", defau
 cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
 pallet-collator-selection = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
+cumulus-ping = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.16" }
 
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.16" }
@@ -100,6 +101,8 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate", default-fea
 # orml pallets
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.16" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.16" }
+orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.16" }
+orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.16" }
 
 runtime-common = { path = "../common", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = false }
@@ -188,6 +191,7 @@ std = [
     "xcm-builder/std",
     "cumulus-pallet-xcm/std",
     "cumulus-pallet-aura-ext/std",
+    "cumulus-ping/std",
     "pallet-aura/std",
     "sp-consensus-aura/std",
     "pallet-fees/std",
@@ -196,8 +200,8 @@ std = [
     "pallet-sudo/std",
     "pallet-society/std",
     "runtime-common/std",
-    "pallet-uniques/std",
     "orml-tokens/std",
+    "orml-xtokens/std",
     "pallet-loans/std",
     "pallet-uniques/std",
     "pallet-treasury/std",
