@@ -9,7 +9,7 @@ pub const BOB: [u8; 32] = [5u8; 32];
 
 /// Parachain Ids
 pub const PARA_ID_DEVELOPMENT: u32 = 2000;
-pub const PARA_ID_SIBLING: u32 = 2001;
+pub const PARA_ID_SIBLING: u32 = 3000;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

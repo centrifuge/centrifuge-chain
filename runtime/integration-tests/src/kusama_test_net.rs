@@ -63,7 +63,7 @@ decl_test_network! {
 			// Be sure to use `PARA_ID_DEVELOPMENT`
 			(2000, Development),
 			// Be sure to use `PARA_ID_SIBLING`
-			(2001, Sibling),
+			(3000, Sibling),
 		],
 	}
 }

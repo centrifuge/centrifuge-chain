@@ -107,3 +107,8 @@ To verify that the `Usd` tokens were moved as expected, verify the `Usd` balance
 sender and receiver parachains respectively:
 
 - `Developer` > `Chain State` > `OrmlTokens` and be sure to select the right account and `Usd` as the currency param.
+
+## Integration Tests
+
+In `runtime` > `integration-tests` > `xcm_transfers` we have our integrated tests covering the xcm transfers using an
+environment identical to the one described previously that you can setup on your machine but emulated instead.
