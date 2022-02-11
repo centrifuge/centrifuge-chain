@@ -46,10 +46,10 @@ start-parachain)
     --log="main,debug" \
   ;;
 
-start-parachain-other)
+start-parachain-sibling)
   parachain="development-local"
   para_id="${PARA_ID:-3000}"
-  echo "Building parachain $parachain with para id $para_id ..."
+  echo "Building parachain $parachain with para-id $para_id ..."
   cargo build --release
 
   if [ "$2" == "purge" ]; then
