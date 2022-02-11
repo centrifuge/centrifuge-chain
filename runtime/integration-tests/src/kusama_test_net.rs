@@ -23,7 +23,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use development_runtime::{CurrencyId, Origin, Runtime};
 use runtime_common::AccountId;
 
-use crate::setup::{native_amount, ExtBuilder, ALICE, BOB};
+use crate::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {
@@ -39,7 +39,7 @@ decl_test_parachain! {
 		Origin = Origin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(2000),
+		new_ext = para_ext(PARA_ID_DEVELOPMENT),
 	}
 }
 
@@ -49,7 +49,7 @@ decl_test_parachain! {
 		Origin = Origin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(2001),
+		new_ext = para_ext(PARA_ID_SIBLING),
 	}
 }
 
@@ -57,7 +57,12 @@ decl_test_network! {
 	pub struct TestNet {
 		relay_chain = KusamaNet,
 		parachains = vec![
+			// N.B: Ideally, we could use the defined para id constants but doing so
+			// fails with: "error: arbitrary expressions aren't allowed in patterns"
+
+			// Be sure to use `PARA_ID_DEVELOPMENT`
 			(2000, Development),
+			// Be sure to use `PARA_ID_SIBLING`
 			(2001, Sibling),
 		],
 	}
@@ -73,8 +78,8 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(AccountId::from(ALICE), native_amount(2002)),
-			(ParaId::from(2000).into_account(), native_amount(7)),
-			(ParaId::from(2001).into_account(), native_amount(7)),
+			(ParaId::from(PARA_ID_DEVELOPMENT).into_account(), native_amount(7)),
+			(ParaId::from(PARA_ID_SIBLING).into_account(), native_amount(7)),
 		],
 	}
 	.assimilate_storage(&mut t)

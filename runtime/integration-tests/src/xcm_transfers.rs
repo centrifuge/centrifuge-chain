@@ -11,15 +11,15 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use frame_support::assert_ok;
-use xcm_emulator::{ParaId, TestExt};
+use xcm_emulator::{TestExt};
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 
 use crate::kusama_test_net::{Development, Sibling, TestNet};
 use orml_traits::MultiCurrency;
 
-use crate::setup::{native_amount, usd_amount, CurrencyId, ALICE, BOB};
-use development_runtime::{AccountId, Balances, Origin, OrmlTokens, XTokens};
+use crate::setup::{native_amount, usd_amount, CurrencyId, ALICE, BOB, sibling_account, PARA_ID_SIBLING};
+use development_runtime::{Balances, Origin, OrmlTokens, XTokens};
 
 #[test]
 fn transfer_native_to_sibling() {
@@ -31,10 +31,11 @@ fn transfer_native_to_sibling() {
 
 	Development::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
+		assert_eq!(Balances::free_balance(&sibling_account()), 0);
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance,);
+		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
 	});
 
 	Development::execute_with(|| {
@@ -46,7 +47,7 @@ fn transfer_native_to_sibling() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2001),
+						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -63,6 +64,9 @@ fn transfer_native_to_sibling() {
 			Balances::free_balance(&ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
+
+		// Verify that the amount transferred is now part of the sibling account here
+		assert_eq!(Balances::free_balance(&sibling_account()), transfer_amount);
 	});
 
 	Sibling::execute_with(|| {
@@ -88,6 +92,15 @@ fn transfer_usd_to_sibling() {
 			&ALICE.into(),
 			alice_initial_balance
 		));
+
+		assert_eq!(
+			OrmlTokens::free_balance(
+				CurrencyId::Usd,
+				&sibling_account()
+			),
+			0
+		);
+
 	});
 
 	Sibling::execute_with(|| {
@@ -111,7 +124,7 @@ fn transfer_usd_to_sibling() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2001),
+						Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -120,17 +133,19 @@ fn transfer_usd_to_sibling() {
 				)
 				.into()
 			),
-			8_000_000,
+			8_000_000_000,
 		));
 
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::Usd, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
+
+		// Verify that the amount transferred is now part of the sibling account here
+		assert_eq!(OrmlTokens::free_balance(CurrencyId::Usd, &sibling_account()), transfer_amount);
 	});
 
 	Sibling::execute_with(|| {
-		//TODO(nuno): failing here
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
 			bob_initial_balance + transfer_amount

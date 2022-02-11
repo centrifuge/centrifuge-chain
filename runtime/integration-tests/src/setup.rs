@@ -7,6 +7,10 @@ use runtime_common::Balance;
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
+/// Parachain Ids
+pub const PARA_ID_DEVELOPMENT: u32 = 2000;
+pub const PARA_ID_SIBLING: u32 = 2001;
+
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
 	parachain_id: u32,
@@ -16,7 +20,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: 2000,
+			parachain_id: PARA_ID_DEVELOPMENT,
 		}
 	}
 }
@@ -91,4 +95,14 @@ pub fn usd_amount(amount: Balance) -> Balance {
 
 pub fn dollar(currency_id: CurrencyId) -> Balance {
 	10u128.saturating_pow(currency_id.decimals().into())
+}
+
+pub fn sibling_account() -> AccountId {
+	parachain_account(PARA_ID_SIBLING.into())
+}
+
+fn parachain_account(id: u32) -> AccountId {
+	use sp_runtime::traits::AccountIdConversion;
+
+	polkadot_parachain::primitives::Sibling::from(id).into_account()
 }
