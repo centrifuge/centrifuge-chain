@@ -1185,7 +1185,6 @@ fn native_currency_location(id: CurrencyId) -> MultiLocation {
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		frame_support::log::trace!(target: "xcm_transfersa", "Converting currency to location {:?}", id.clone());
 		Some(native_currency_location(id))
 	}
 }
@@ -1201,16 +1200,13 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 		match location.clone() {
 			MultiLocation {
 				parents: 1,
-				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} if para_id == 2000 || para_id == 3000 => match &key[..] {
+				interior: X2(Parachain(2000), GeneralKey(key)),
+			} => match &key[..] {
 				[0] => Ok(CurrencyId::Native),
 				[1] => Ok(CurrencyId::Usd),
 				_ => Err(location.clone()),
 			},
-			_ => {
-				frame_support::log::trace!(target: "xcm_transfersa", "Tried to convert unkown multilocation to currency: {:?}", location);
-				Err(location.clone())
-			}
+			_ => Err(location.clone()),
 		}
 	}
 }
@@ -1265,7 +1261,6 @@ impl xcm_executor::Config for XcmConfig {
 pub type Trader = (
 	FixedRateOfFungible<NativePerSecond, ()>,
 	FixedRateOfFungible<DevUsdPerSecond, ()>,
-	FixedRateOfFungible<DevUsdPerSecondB, ()>,
 );
 
 pub type Barrier = (
@@ -1361,14 +1356,6 @@ parameter_types! {
 	);
 
 	pub DevUsdPerSecond: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(CurrencyId::Usd.encode())),
-		).into(),
-		10
-	);
-
-	pub DevUsdPerSecondB: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
