@@ -11,14 +11,16 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use frame_support::assert_ok;
-use xcm_emulator::{TestExt};
+use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 
 use crate::kusama_test_net::{Development, Sibling, TestNet};
 use orml_traits::MultiCurrency;
 
-use crate::setup::{native_amount, usd_amount, CurrencyId, ALICE, BOB, sibling_account, PARA_ID_SIBLING};
+use crate::setup::{
+	native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
+};
 use development_runtime::{Balances, Origin, OrmlTokens, XTokens};
 
 #[test]
@@ -94,13 +96,9 @@ fn transfer_usd_to_sibling() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(
-				CurrencyId::Usd,
-				&sibling_account()
-			),
+			OrmlTokens::free_balance(CurrencyId::Usd, &sibling_account()),
 			0
 		);
-
 	});
 
 	Sibling::execute_with(|| {
@@ -142,7 +140,10 @@ fn transfer_usd_to_sibling() {
 		);
 
 		// Verify that the amount transferred is now part of the sibling account here
-		assert_eq!(OrmlTokens::free_balance(CurrencyId::Usd, &sibling_account()), transfer_amount);
+		assert_eq!(
+			OrmlTokens::free_balance(CurrencyId::Usd, &sibling_account()),
+			transfer_amount
+		);
 	});
 
 	Sibling::execute_with(|| {
