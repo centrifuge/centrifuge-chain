@@ -30,7 +30,6 @@ use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-// XCM imports
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
@@ -1244,8 +1243,6 @@ impl cumulus_ping::Config for Runtime {
 	type XcmSender = XcmRouter;
 }
 
-// XCM stuff
-
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Call = Call;
@@ -1432,11 +1429,6 @@ pub type FungiblesTransactor = FungiblesAdapter<
 	CheckingAccount,
 >;
 
-//
-// pub trait MatchesFungibles<AssetId, Balance> {
-// 	fn matches_fungibles(a: &MultiAsset) -> result::Result<(AssetId, Balance), Error>;
-// }
-
 /// This is defined in cumulus but it doesn't seem made available to the world so it's copy-pasted here.
 /// Allow checking in assets that have issuance > 0.
 pub struct NonZeroIssuance<AccountId, Assets>(PhantomData<(AccountId, Assets)>);
@@ -1449,8 +1441,6 @@ where
 		!Assets::total_issuance(*id).is_zero()
 	}
 }
-
-// END XCM stuff
 
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
