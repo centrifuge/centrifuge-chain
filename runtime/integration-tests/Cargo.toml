@@ -52,7 +52,6 @@ xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "releas
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.16" }
 kusama-runtime = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.16" }
 
-
 # cumulus
 cumulus-pallet-aura-ext = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.16" }
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.16" }
