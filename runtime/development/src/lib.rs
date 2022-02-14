@@ -1167,6 +1167,7 @@ impl Convert<AccountId, MultiLocation> for AccountIdToMultiLocation {
 }
 
 parameter_types! {
+	//TODO(nuno): we may need to fine tune this value later on
 	pub const BaseXcmWeight: Weight = 100_000_000;
 	pub const MaxAssetsForTransfer: usize = 2;
 }
@@ -1239,7 +1240,7 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTransactor = FungiblesTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type IsReserve = MultiNativeAsset;
-	type IsTeleporter = (); // <- should be enough to allow teleportation of KSM
+	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
 	type Weigher = FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
@@ -1252,7 +1253,7 @@ impl xcm_executor::Config for XcmConfig {
 
 pub type Trader = (
 	FixedRateOfFungible<NativePerSecond, ()>,
-	FixedRateOfFungible<DevUsdPerSecond, ()>,
+	FixedRateOfFungible<UsdPerSecond, ()>,
 );
 
 pub type Barrier = (
@@ -1335,24 +1336,26 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 }
 
 parameter_types! {
-	// One XCM operation is 1_000_000_000 weight - almost certainly a conservative estimate.
+	//TODO(nuno): we need to fine tune this value later on
 	pub UnitWeightCost: Weight = 100_000_000;
 	pub const MaxInstructions: u32 = 100;
 
 	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(u32::from(ParachainInfo::get())), GeneralKey(CurrencyId::Native.encode())),
+			X2(Parachain(2000), GeneralKey(CurrencyId::Native.encode())),
 		).into(),
-		10,
+		//TODO(nuno): we need to fine tune this value later on
+		10_000,
 	);
 
-	pub DevUsdPerSecond: (AssetId, u128) = (
+	pub UsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
-		10
+		//TODO(nuno): we need to fine tune this value later on
+		200_000
 	);
 }
 
@@ -1382,12 +1385,12 @@ parameter_types! {
 /// No local origins on this chain are allowed to dispatch XCM sends/executions.
 pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNetwork>;
 
-/// The means for routing XCM messages which are not for local execution into the right message
-/// queues.
+/// The means for routing XCM messages which are not for local execution
+/// into the right message queues.
 pub type XcmRouter = (
-	// Two routers - use UMP to communicate with the relay chain:
+	// Use UMP to communicate with the relay chain
 	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
-	// ..and XCMP to communicate with the sibling chains.
+	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
 

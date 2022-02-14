@@ -10,7 +10,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use frame_support::assert_ok;
+use frame_support::{assert_ok};
 use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
@@ -21,7 +21,8 @@ use orml_traits::MultiCurrency;
 use crate::setup::{
 	native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
 };
-use development_runtime::{Balances, Origin, OrmlTokens, XTokens};
+use development_runtime::{Balances, Origin, OrmlTokens, XTokens, NativePerSecond, UsdPerSecond};
+use runtime_common::Balance;
 
 #[test]
 fn transfer_native_to_sibling() {
@@ -72,10 +73,10 @@ fn transfer_native_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		// Verify that BOB now has initial balance + amount transferred
+		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			Balances::free_balance(&BOB.into()),
-			bob_initial_balance + transfer_amount,
+			bob_initial_balance + transfer_amount - native_fee(),
 		);
 	});
 }
@@ -147,9 +148,28 @@ fn transfer_usd_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
+		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
-			bob_initial_balance + transfer_amount
+			bob_initial_balance + transfer_amount - usd_fee()
 		);
 	});
+}
+
+// The fee associated with transferring Native tokens
+fn native_fee() -> Balance {
+	let (_asset, fee) = NativePerSecond::get();
+	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
+	// time the transfers take.
+	// NOTE: it is possible that in different machines this value may differ. We shall see.
+	fee.div_euclid(10_000) * 4
+}
+
+// The fee associated with transferring Native tokens
+fn usd_fee() -> Balance {
+	let (_asset, fee) = UsdPerSecond::get();
+	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
+	// time the transfers take.
+	// NOTE: it is possible that in different machines this value may differ. We shall see.
+	fee.div_euclid(10_000) * 4
 }
