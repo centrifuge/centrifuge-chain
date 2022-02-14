@@ -10,7 +10,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use frame_support::{assert_ok};
+use frame_support::assert_ok;
 use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
@@ -21,7 +21,7 @@ use orml_traits::MultiCurrency;
 use crate::setup::{
 	native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
 };
-use development_runtime::{Balances, Origin, OrmlTokens, XTokens, NativePerSecond, UsdPerSecond};
+use development_runtime::{Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond, XTokens};
 use runtime_common::Balance;
 
 #[test]
