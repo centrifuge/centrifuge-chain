@@ -11,8 +11,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate frame_system;
-
 ///! A crate that defines a simple permissions logic for our infrastructure.
 pub use pallet::*;
 
