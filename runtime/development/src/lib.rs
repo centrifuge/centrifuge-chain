@@ -1182,16 +1182,24 @@ fn native_currency_location(id: CurrencyId) -> MultiLocation {
 	)
 }
 
+impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
+	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
+		if let MultiAsset {
+			id: Concrete(location),
+			..
+		} = asset
+		{
+			<CurrencyIdConvert as xcm_executor::traits::Convert<_, _>>::convert(location).ok()
+		} else {
+			None
+		}
+	}
+}
+
 pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		Some(native_currency_location(id))
-	}
-}
-
-impl Convert<MultiLocation, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(_location: MultiLocation) -> Option<CurrencyId> {
-		panic!("TODO(nuno): see if we can drop this implementation");
 	}
 }
 
@@ -1207,23 +1215,6 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				_ => Err(location.clone()),
 			},
 			_ => Err(location.clone()),
-		}
-	}
-}
-
-impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
-	fn convert(asset: MultiAsset) -> Option<CurrencyId> {
-		frame_support::log::trace!(target: "xcm_transfersa", "Converting multiAsset to currency Id {:?}", asset.clone());
-		if let MultiAsset {
-			id: Concrete(location),
-			..
-		} = asset
-		{
-			frame_support::log::trace!(target: "xcm_transfersa", "Is is a concrete with locatin {:?}", location.clone());
-			Self::convert(location)
-		} else {
-			frame_support::log::trace!(target: "xcm_transfersa", "Not concrete, returning None");
-			None
 		}
 	}
 }
