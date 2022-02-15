@@ -101,6 +101,10 @@ pub fn sibling_account() -> AccountId {
 	parachain_account(PARA_ID_SIBLING.into())
 }
 
+pub fn development_account() -> AccountId {
+	parachain_account(PARA_ID_DEVELOPMENT.into())
+}
+
 fn parachain_account(id: u32) -> AccountId {
 	use sp_runtime::traits::AccountIdConversion;
 

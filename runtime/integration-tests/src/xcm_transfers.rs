@@ -19,9 +19,12 @@ use crate::kusama_test_net::{Development, Sibling, TestNet};
 use orml_traits::MultiCurrency;
 
 use crate::setup::{
-	native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
+	development_account, native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
+	PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
 };
-use development_runtime::{Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond, XTokens};
+use development_runtime::{
+	Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond2000, XTokens,
+};
 use runtime_common::Balance;
 
 #[test]
@@ -156,6 +159,87 @@ fn transfer_usd_to_sibling() {
 	});
 }
 
+#[test]
+fn transfer_usd_to_development() {
+	TestNet::reset();
+
+	let alice_initial_balance = usd_amount(10);
+	let bob_initial_balance = usd_amount(10);
+	let transfer_amount = usd_amount(7);
+
+	Sibling::execute_with(|| {
+		assert_ok!(OrmlTokens::deposit(
+			CurrencyId::Usd,
+			&ALICE.into(),
+			alice_initial_balance
+		));
+
+		assert_eq!(
+			OrmlTokens::free_balance(CurrencyId::Usd, &development_account()),
+			0
+		);
+	});
+
+	Development::execute_with(|| {
+		assert_ok!(OrmlTokens::deposit(
+			CurrencyId::Usd,
+			&BOB.into(),
+			bob_initial_balance
+		));
+		assert_eq!(
+			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
+			bob_initial_balance,
+		);
+
+		assert_ok!(OrmlTokens::deposit(
+			CurrencyId::Usd,
+			&sibling_account().into(),
+			bob_initial_balance
+		));
+	});
+
+	Sibling::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			CurrencyId::Usd,
+			transfer_amount,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(PARA_ID_DEVELOPMENT),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000,
+		));
+
+		assert_eq!(
+			OrmlTokens::free_balance(CurrencyId::Usd, &ALICE.into()),
+			alice_initial_balance - transfer_amount
+		);
+
+		// Verify that the amount transferred is now part of the development account here
+		assert_eq!(
+			OrmlTokens::free_balance(CurrencyId::Usd, &development_account()),
+			transfer_amount
+		);
+	});
+
+	Development::execute_with(|| {
+		// Verify that BOB now has initial balance + amount transferred - fee
+		assert_eq!(
+			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
+			bob_initial_balance + transfer_amount - usd_fee()
+		);
+	});
+}
+
 // The fee associated with transferring Native tokens
 fn native_fee() -> Balance {
 	let (_asset, fee) = NativePerSecond::get();
@@ -167,7 +251,7 @@ fn native_fee() -> Balance {
 
 // The fee associated with transferring Native tokens
 fn usd_fee() -> Balance {
-	let (_asset, fee) = UsdPerSecond::get();
+	let (_asset, fee) = UsdPerSecond2000::get();
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.

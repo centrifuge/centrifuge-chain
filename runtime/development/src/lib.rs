@@ -1203,7 +1203,8 @@ impl xcm_executor::Config for XcmConfig {
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
 	FixedRateOfFungible<NativePerSecond, ()>,
-	FixedRateOfFungible<UsdPerSecond, ()>,
+	FixedRateOfFungible<UsdPerSecond2000, ()>,
+	FixedRateOfFungible<UsdPerSecond3000, ()>,
 );
 
 parameter_types! {
@@ -1216,10 +1217,21 @@ parameter_types! {
 		10_000,
 	);
 
-	pub UsdPerSecond: (AssetId, u128) = (
+	pub UsdPerSecond2000: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
+		).into(),
+		//TODO(nuno): we need to fine tune this value later on
+		200_000
+	);
+
+	/// We support this Trader for testing purposes when we spawn a sibling clone development
+	/// parachain with id 3000.
+	pub UsdPerSecond3000: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(3000), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
 		//TODO(nuno): we need to fine tune this value later on
 		200_000
@@ -1277,8 +1289,8 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 		match location.clone() {
 			MultiLocation {
 				parents: 1,
-				interior: X2(Parachain(2000), GeneralKey(key)),
-			} => match &key[..] {
+				interior: X2(Parachain(para_id), GeneralKey(key)),
+			} if para_id == 2000 || para_id == 3000 => match &key[..] {
 				[0] => Ok(CurrencyId::Native),
 				[1] => Ok(CurrencyId::Usd),
 				_ => Err(location.clone()),
@@ -1303,7 +1315,13 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(2000), GeneralKey(id.encode())))
+	MultiLocation::new(
+		1,
+		X2(
+			Parachain(ParachainInfo::get().into()),
+			GeneralKey(id.encode()),
+		),
+	)
 }
 
 /// Allow checking in assets that have issuance > 0.
