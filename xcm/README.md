@@ -28,13 +28,19 @@ The sibling parachain is just a clone of `development-local` with another para i
 2. Start the cfg `development-local` parachain (`2000`)
 
 ```
-RUST_LOG=info,xcm=trace,xcm-executor=trace PARA_CHAIN_SPEC="development-local" ./scripts/init.sh start-parachain purge
+RUST_LOG=info,xcm=trace,xcm-executor=trace \
+PARA_CHAIN_SPEC="development-local" \
+./scripts/init.sh \
+start-parachain purge
 ```
 
 3. Start the sibling parachain (`3000`)
 
 ```
-RUST_LOG=info,xcm=trace,xcm-executor=trace PARA_CHAIN_SPEC="development-local" ./scripts/init.sh start-parachain-sibling purge
+RUST_LOG=info,xcm=trace,xcm-executor=trace \
+PARA_CHAIN_SPEC="development-local" \
+PARA_ID=3000 \
+./scripts/init.sh start-parachain purge
 ```
 
 4. Onboard the `development-local` parachain
