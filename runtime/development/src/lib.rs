@@ -1236,7 +1236,6 @@ pub type Barrier = (
 	AllowSubscriptionsFrom<Everything>,
 );
 
-
 /// Means for transacting the fungibles assets of ths parachain.
 pub type FungiblesTransactor = FungiblesAdapter<
 	// Use this fungibles implementation
@@ -1304,28 +1303,21 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(
-		1,
-		X2(
-			Parachain(2000),
-			GeneralKey(id.encode()),
-		),
-	)
+	MultiLocation::new(1, X2(Parachain(2000), GeneralKey(id.encode())))
 }
 
 /// Allow checking in assets that have issuance > 0.
 /// This is defined in cumulus but it doesn't seem made available to the world.
 pub struct NonZeroIssuance<AccountId, Assets>(PhantomData<(AccountId, Assets)>);
 impl<AccountId, Assets> Contains<<Assets as fungibles::Inspect<AccountId>>::AssetId>
-for NonZeroIssuance<AccountId, Assets>
-	where
-		Assets: fungibles::Inspect<AccountId>,
+	for NonZeroIssuance<AccountId, Assets>
+where
+	Assets: fungibles::Inspect<AccountId>,
 {
 	fn contains(id: &<Assets as fungibles::Inspect<AccountId>>::AssetId) -> bool {
 		!Assets::total_issuance(*id).is_zero()
 	}
 }
-
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
 /// ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind` which can
@@ -1350,7 +1342,6 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	// Xcm origins can be represented natively under the Xcm pallet's Xcm origin.
 	XcmPassthrough<Origin>,
 );
-
 
 /// The config for the Downward Message Passing Queue, i.e., how messages coming from the
 /// relay-chain are handled.
@@ -1430,7 +1421,6 @@ pub type XcmRouter = (
 	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
-
 
 /// Block type as expected by this runtime.
 pub type Block = generic::Block<Header, UncheckedExtrinsic>;
