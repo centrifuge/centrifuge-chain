@@ -842,6 +842,15 @@ pub mod pallet {
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
+				let (nav_amount, nav_last_updated) =
+					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+
+				ensure!(
+					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
+					Error::<T>::NAVTooOld
+				);
+				let nav = nav_amount.into();
+
 				let submission_period_epoch = pool.current_epoch;
 				pool.current_epoch += One::one();
 				pool.last_epoch_closed = now;
@@ -849,14 +858,6 @@ pub mod pallet {
 				// Set available reserve to 0 to disable originations while the epoch is closed but not executed
 				pool.available_reserve = Zero::zero();
 				let epoch_reserve = pool.total_reserve;
-
-				let (nav_amount, nav_last_updated) =
-					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
-				ensure!(
-					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
-					Error::<T>::NAVTooOld
-				);
-				let nav = nav_amount.into();
 
 				let epoch_tranche_prices =
 					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
@@ -1113,6 +1114,7 @@ pub mod pallet {
 					.num_tranches()
 					.try_into()
 					.expect("MaxTranches is u32. qed.");
+
 				// This kills the epoch info in storage.
 				// See: https://github.com/paritytech/substrate/blob/bea8f32e7807233ab53045fe8214427e0f136230/frame/support/src/storage/generator/map.rs#L269-L284
 				*epoch_info = None;
@@ -1560,6 +1562,7 @@ pub mod pallet {
 			let mut interest = tranche.interest_per_sec;
 			let mut total_interest: T::InterestRate = One::one();
 			while delta != 0 {
+				// TODO: What catches this?
 				if delta & 1 == 1 {
 					total_interest = interest.checked_mul(&total_interest)?;
 				}
@@ -1964,6 +1967,7 @@ pub mod pallet {
 					tranche.reserve = remaining_reserve;
 				} else {
 					tranche.debt = ratio.mul_ceil(nav);
+					// TODO: What catches this?
 					if tranche.debt > *value {
 						tranche.debt = *value;
 					}
@@ -2020,7 +2024,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(crate) fn do_payback(
+		pub(crate) fn do_deposit(
 			who: T::AccountId,
 			pool_id: T::PoolId,
 			amount: T::Balance,
@@ -2066,7 +2070,7 @@ pub mod pallet {
 			})
 		}
 
-		pub(crate) fn do_borrow(
+		pub(crate) fn do_withdraw(
 			who: T::AccountId,
 			pool_id: T::PoolId,
 			amount: T::Balance,
@@ -2130,10 +2134,10 @@ impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
 	type Balance = T::Balance;
 
 	fn withdraw(pool_id: Self::PoolId, to: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_borrow(to, pool_id, amount)
+		Self::do_withdraw(to, pool_id, amount)
 	}
 
 	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_payback(from, pool_id, amount)
+		Self::do_deposit(from, pool_id, amount)
 	}
 }
