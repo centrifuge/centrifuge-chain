@@ -6003,6 +6003,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nft-marketplace"
+version = "2.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-nicks"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16#19162e43be45817b44c7d48e50d03f074f60fbf4"

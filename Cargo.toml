@@ -38,6 +38,7 @@ members = [
 	"pallets/migration",
 	"pallets/bridge",
 	"pallets/nft",
+	"pallets/nft-marketplace",
 	"pallets/pools",
 	"pallets/loans",
 	"pallets/registry",
