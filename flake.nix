@@ -3,6 +3,11 @@
 
   inputs = {
     nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
+    gitignore = {
+      url = github:hercules-ci/gitignore.nix;
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs = inputs:
@@ -29,25 +34,29 @@
 
       # srcFilter is used to keep out of the build non-source files,
       # so that we only trigger a rebuild when necessary.
-      srcFilter = path: type:
+      srcFilter = src:
         let
-          p = baseNameOf path;
-        in
-          !(
-            # ignore CI directories
-            (type == "directory" && (p == ".github" || p == "ci")) ||
-            # ignore cargo files
-            (type == "directory" && (p == "target" || p == ".cargo")) ||
-            # ignore CI files
-            p == ".travis.yml" || p == "cloudbuild.yaml" ||
-            # ignore flake.(nix|lock)
-            p == "flake.nix" || p == "flake.lock" ||
-            # ignore docker files
-            p == ".dockerignore" || p == "docker-compose.yml" ||
-            # ignore misc
-            p == "rustfmt.toml" || p == ".idea" || p == ".vscode"
-          );
+          isGitIgnored = inputs.gitignore.lib.gitignoreFilter src;
 
+          ignoreList = [
+            ".dockerignore"
+            ".envrc"
+            ".github"
+            ".travis.yml"
+            "CODE_OF_CONDUCT.md"
+            "README.md"
+            "ci"
+            "cloudbuild.yaml"
+            "codecov.yml"
+            "docker-compose.yml"
+            "flake.lock"
+            "flake.nix"
+            "rustfmt.toml"
+          ];
+        in
+        path: type:
+          isGitIgnored path type
+          && builtins.all (name: builtins.baseNameOf path != name) ignoreList;
     in
     {
       packages.${system} = {
@@ -60,10 +69,11 @@
           # we don't include unnecessary files in the package.
           src = pkgs.lib.cleanSourceWith {
             src = ./.;
-            filter = srcFilter;
+            filter = srcFilter ./.;
             name = "${name}-${version}-source";
           };
-          # This is a hash of all the Cargo dependencies.
+
+          # This is a hash of all the Cargo dependencies, for reproducibility.
           cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
 
           nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
