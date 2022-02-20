@@ -74,7 +74,7 @@
       packages.x86_64-linux.dockerContainer =
         pkgs.dockerTools.buildImage {
           name = "centrifugeio/${name}";
-          tag = "latest";
+          tag = version;
 
           contents = inputs.self.defaultPackage.x86_64-linux;
 
