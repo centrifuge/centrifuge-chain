@@ -10,8 +10,9 @@
       name = "centrifuge-chain";
       major = "2.0.0";
       version = "${major}-${commit-substr}";
+      system = [ "x86_64-linux" ];
 
-      pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+      pkgs = inputs.nixpkgs.legacyPackages.${system};
 
       # This evaluates to the first 6 digits of the git hash of this repo's HEAD
       # commit, or to "dirty" if there are uncommitted changes.
@@ -47,7 +48,7 @@
 
     in
     {
-      packages.x86_64-linux.centrifuge-chain =
+      packages.${system}.centrifuge-chain =
         pkgs.rustPlatform.buildRustPackage {
           pname = name;
           inherit version;
@@ -68,14 +69,14 @@
 
           doCheck = false;
         };
-      defaultPackage.x86_64-linux = inputs.self.packages.x86_64-linux.centrifuge-chain;
+      defaultPackage.${system} = inputs.self.packages.${system}.centrifuge-chain;
 
-      packages.x86_64-linux.dockerContainer =
+      packages.${system}.dockerContainer =
         pkgs.dockerTools.buildLayeredImage {
           name = "centrifugeio/${name}";
           tag = version;
 
-          contents = inputs.self.defaultPackage.x86_64-linux;
+          contents = inputs.self.defaultPackage.${system};
 
           config = {
             ExposedPorts = {
