@@ -10,13 +10,15 @@
       name = "centrifuge-chain";
       major = "2.0.0";
       version = "${major}-${commit-substr}";
-      system = "x86_64-linux";
-
-      pkgs = inputs.nixpkgs.legacyPackages.${system};
 
       # This evaluates to the first 6 digits of the git hash of this repo's HEAD
       # commit, or to "dirty" if there are uncommitted changes.
       commit-substr = builtins.substring 0 6 (inputs.self.rev or "dirty");
+
+      # This could be made into a list, to support multiple platforms
+      system = "x86_64-linux";
+
+      pkgs = inputs.nixpkgs.legacyPackages.${system};
 
       # This is a mock git program, which just returns the commit-substr value.
       # It is called when the build process calls git. Instead of the real git,
