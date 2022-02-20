@@ -10,7 +10,7 @@
       name = "centrifuge-chain";
       major = "2.0.0";
       version = "${major}-${commit-substr}";
-      system = [ "x86_64-linux" ];
+      system = "x86_64-linux";
 
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
