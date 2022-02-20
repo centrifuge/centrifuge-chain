@@ -74,8 +74,8 @@
           doCheck = false;
         };
 
-        # This is the Docker container.
-        dockerContainer = pkgs.dockerTools.buildLayeredImage {
+        # This is the Docker image.
+        dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "centrifugeio/${name}";
           tag = version;
 

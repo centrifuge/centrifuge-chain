@@ -19,7 +19,7 @@ jobs:
         with:
           name: centrifuge-chain
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-      - run: nix build -L .#dockerContainer
+      - run: nix build -L .#dockerImage
       - name: Load built image into Docker
         run: docker load -i result
       - name: Login to Docker Hub
