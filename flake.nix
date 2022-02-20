@@ -61,7 +61,7 @@
           src = pkgs.lib.cleanSourceWith {
             src = ./.;
             filter = srcFilter;
-            name = "${name}-source";
+            name = "${name}-${version}-source";
           };
           # This is a hash of all the Cargo dependencies.
           cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
