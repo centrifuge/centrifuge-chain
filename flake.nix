@@ -54,11 +54,14 @@
             pname = name;
             inherit version;
 
+            # This applies the srcFilter function to the current directory, so
+            # we don't include unnecessary files in the package.
             src = pkgs.lib.cleanSourceWith {
               src = ./.;
               filter = srcFilter;
-              name = "centrifuge-chain-source";
+              name = "${name}-source";
             };
+            # This is a hash of all the Cargo dependencies.
             cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
 
             nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
