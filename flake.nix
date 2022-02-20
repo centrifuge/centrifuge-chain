@@ -57,7 +57,7 @@
             filter = srcFilter;
             name = "centrifuge-chain-source";
           };
-          cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
+          cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
 
           nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
           buildInputs = [ pkgs.openssl ];
