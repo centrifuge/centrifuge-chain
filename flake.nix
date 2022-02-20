@@ -8,12 +8,20 @@
   outputs = inputs:
     let
       name = "centrifuge-chain";
-      version = "2.0.0";
+      major = "2.0.0";
+      version = "${major}-${commit-substr}";
+
       pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
 
-      # this mocks git to return the truncated SHA hash we get from Nix
+      # This evaluates to the first 6 digits of the git hash of this repo's HEAD
+      # commit, or to "dirty" if there are uncommitted changes.
+      commit-substr = builtins.substring 0 6 (inputs.self.rev or "dirty");
+
+      # This is a mock git program, which just returns the commit-substr value.
+      # It is called when the build process calls git. Instead of the real git,
+      # it will find this one.
       git-mock = pkgs.writeShellScriptBin "git" ''
-        echo ${builtins.substring 0 6 (inputs.self.rev or "dirty")}
+        echo ${commit-substr}
       '';
 
       # srcFilter is used to keep out of the build non-source files,
@@ -42,7 +50,7 @@
       packages.x86_64-linux.centrifuge-chain =
         pkgs.rustPlatform.buildRustPackage {
           pname = name;
-          version = version;
+          inherit version;
 
           src = pkgs.lib.cleanSourceWith {
             src = ./.;
@@ -52,7 +60,7 @@
           cargoSha256 = "sha256-52CN7N9FQiJSODloo0VZGPNw4P5XsaWfaQxEf6Nm2gI=";
 
           nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
-          buildInputs = with pkgs; [ openssl ];
+          buildInputs = [ pkgs.openssl ];
 
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
           PROTOC = "${pkgs.protobuf}/bin/protoc";
