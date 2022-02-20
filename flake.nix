@@ -78,9 +78,6 @@
           contents = inputs.self.defaultPackage.x86_64-linux;
 
           config = {
-            Env = [
-              "PATH=/bin:$PATH"
-            ];
             ExposedPorts = {
               "30333/tcp" = { };
               "9933/tcp" = { };
