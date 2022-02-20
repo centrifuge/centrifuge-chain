@@ -68,11 +68,10 @@
 
           doCheck = false;
         };
-
       defaultPackage.x86_64-linux = inputs.self.packages.x86_64-linux.centrifuge-chain;
 
       packages.x86_64-linux.dockerContainer =
-        pkgs.dockerTools.buildImage {
+        pkgs.dockerTools.buildLayeredImage {
           name = "centrifugeio/${name}";
           tag = version;
 
