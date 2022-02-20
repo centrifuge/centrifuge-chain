@@ -51,48 +51,48 @@
       packages.${system} = {
         # This is the native package.
         centrifuge-chain = pkgs.rustPlatform.buildRustPackage {
-            pname = name;
-            inherit version;
+          pname = name;
+          inherit version;
 
-            # This applies the srcFilter function to the current directory, so
-            # we don't include unnecessary files in the package.
-            src = pkgs.lib.cleanSourceWith {
-              src = ./.;
-              filter = srcFilter;
-              name = "${name}-source";
-            };
-            # This is a hash of all the Cargo dependencies.
-            cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
-
-            nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
-            buildInputs = [ pkgs.openssl ];
-
-            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
-            PROTOC = "${pkgs.protobuf}/bin/protoc";
-            BUILD_DUMMY_WASM_BINARY = 1;
-
-            doCheck = false;
+          # This applies the srcFilter function to the current directory, so
+          # we don't include unnecessary files in the package.
+          src = pkgs.lib.cleanSourceWith {
+            src = ./.;
+            filter = srcFilter;
+            name = "${name}-source";
           };
+          # This is a hash of all the Cargo dependencies.
+          cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
+
+          nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
+          buildInputs = [ pkgs.openssl ];
+
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
+          PROTOC = "${pkgs.protobuf}/bin/protoc";
+          BUILD_DUMMY_WASM_BINARY = 1;
+
+          doCheck = false;
+        };
 
         # This is the Docker container.
         dockerContainer = pkgs.dockerTools.buildLayeredImage {
-            name = "centrifugeio/${name}";
-            tag = version;
+          name = "centrifugeio/${name}";
+          tag = version;
 
-            contents = inputs.self.defaultPackage.${system};
+          contents = inputs.self.defaultPackage.${system};
 
-            config = {
-              ExposedPorts = {
-                "30333/tcp" = { };
-                "9933/tcp" = { };
-                "9944/tcp" = { };
-              };
-              Volumes = {
-                "/data" = { };
-              };
-              Entrypoint = [ "centrifuge-chain" ];
+          config = {
+            ExposedPorts = {
+              "30333/tcp" = { };
+              "9933/tcp" = { };
+              "9944/tcp" = { };
             };
+            Volumes = {
+              "/data" = { };
+            };
+            Entrypoint = [ "centrifuge-chain" ];
           };
+        };
       };
 
       defaultPackage.${system} = inputs.self.packages.${system}.centrifuge-chain;
