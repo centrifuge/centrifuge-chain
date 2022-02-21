@@ -7,12 +7,35 @@
 //! // TODO(nuno): Explain more, including how the NFTs will be locked once set for sale.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
-
-use frame_support::dispatch::DispatchResult;
+use codec::{Decode, Encode};
+use frame_support::{
+	dispatch::DispatchResult,
+	traits::fungibles::{self, Inspect, Transfer},
+};
 use frame_system::ensure_signed;
-use sp_runtime::traits::AtLeast32BitUnsigned;
+use scale_info::TypeInfo;
 
 pub use pallet::*;
+
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type CurrencyOf<T> =
+	<<T as pallet::Config>::Fungibles as fungibles::Inspect<AccountIdOf<T>>>::AssetId;
+type BalanceOf<T> =
+	<<T as pallet::Config>::Fungibles as fungibles::Inspect<AccountIdOf<T>>>::Balance;
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct Sale<AccountId, CurrencyId, Balance> {
+	pub seller: AccountId,
+	pub price: AskingPrice<CurrencyId, Balance>,
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct AskingPrice<CurrencyId, Balance> {
+	pub currency: CurrencyId,
+	pub amount: Balance,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -26,28 +49,29 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_uniques::Config {
 		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// The NFT class id
-		type ClassId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
+		// /// The NFT class id
+		// type ClassId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
+		//
+		// /// The NFT instance id
+		// type InstanceId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
 
-		/// The NFT instance id
-		type InstanceId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
+		type Fungibles: fungibles::Transfer<Self::AccountId>;
 
-		/// The supported currencies that NFTs can be sold in
-		type CurrencyId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
-
-		/// The type for the asking price amount
-		type Balance: Parameter
-			+ Member
-			+ AtLeast32BitUnsigned
-			+ Default
-			+ Copy
-			+ MaybeSerializeDeserialize
-			+ MaxEncodedLen;
-
+		// /// The supported currencies that NFTs can be sold in
+		// type CurrencyId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
+		//
+		// /// The type for the asking price amount
+		// type Balance: Parameter
+		// 	+ Member
+		// 	+ AtLeast32BitUnsigned
+		// 	+ Default
+		// 	+ Copy
+		// 	+ MaybeSerializeDeserialize
+		// 	+ MaxEncodedLen;
 		//TODO(nuno): we also need an impl of fungibles to move balances when having the buyer
 		// paying the asking price
 	}
@@ -56,15 +80,17 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		//TODO(nuno): define this type appropriately later
-		pub initial_state: Option<T::Balance>,
+		pub initial_state: Vec<AccountIdOf<T>>,
 	}
+
+	//<<T as pallet::Config>::Fungibles as Trait>::AssetId
 
 	// The default value for the genesis config type.
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
-				initial_state: None,
+				initial_state: vec![],
 			}
 		}
 	}
@@ -90,8 +116,8 @@ pub mod pallet {
 		Blake2_128Concat,
 		// The second key, the nft instance id
 		T::InstanceId,
-		// The asking price
-		(T::CurrencyId, T::Balance),
+		// The data regarding this item open for sale
+		Sale<AccountIdOf<T>, CurrencyOf<T>, BalanceOf<T>>,
 	>;
 
 	#[pallet::event]
@@ -106,10 +132,16 @@ pub mod pallet {
 
 		/// An NFT has been sold
 		Sold,
+
+		/// An NFT was removed from the gallery
+		Removed,
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
+		/// A user tried to add an NFT that could not be found
+		NotFound,
+
 		/// The origin is not the owner of an NFT
 		NotOwner,
 
@@ -118,32 +150,105 @@ pub mod pallet {
 
 		/// A buyer attempted to buy an NFT that is not for sale
 		NotForSale,
+
+		/// A buyer attempted to buy an NFT they already own
+		AlreadyOwner,
+
+		/// This pallet is not the freezer of a given asset
+		NotFreezer,
+
+		/// This pallet is not the freezer of a given asset
+		NotAdmin,
+
+		/// The seller does not have sufficient balance to buy the asset
+		InsufficientBalance,
+
+		/// Payment failed, i.e, failed to transfer the asking price from the buyer to the seller
+		PaymentFailed,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Put the given NFT for sale
+		/// Add the given NFT to the gallery, putting it for sale.
+		///
 		/// Fails if
+		///   - the NFT is not found in `pallet_uniques`
 		///   - `origin` is not the owner of the nft
-		///   - TODO(nuno)
+		///   - this pallet has not been set to be the freezer of the asset
+		///   - the nft is already for sale in the gallery
 		#[pallet::weight(10_000_000)]
-		pub fn add(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+		pub fn add(
+			origin: OriginFor<T>,
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
+			currency: CurrencyOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let seller = ensure_signed(origin.clone())?;
 
-			// TODO(nuno): implement this
+			// Check that the seller is the owner of the asset
+			ensure!(
+				!Self::is_owner(seller.clone(), class_id, instance_id)?,
+				Error::<T>::AlreadyOwner,
+			);
+
+			// Check that the asset is not yet for sale
+			ensure!(
+				!<Gallery<T>>::contains_key(class_id, instance_id),
+				Error::<T>::AlreadyForSale
+			);
+
+			// Freeze the asset to disallow unprivileged transfers
+			<pallet_uniques::Pallet<T>>::freeze(origin.clone(), class_id, instance_id)
+				.map_err(|_| Error::<T>::NotFreezer)?;
+
+			// Put the asset for sale
+			<Gallery<T>>::insert(
+				class_id,
+				instance_id,
+				Sale {
+					seller,
+					price: AskingPrice { currency, amount },
+				},
+			);
+			Self::deposit_event(Event::ForSale);
+
 			Ok(())
 		}
 
-		/// Remove an nft from sale
+		/// Remove an NFT from sale
 		///
 		/// Fails if
 		///   - `origin` is not the owner of the NFT
 		///   - the nft is not for sale
+		///   - the pallet is not the asset's Freezer
 		#[pallet::weight(10_000_000)]
-		pub fn remove(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+		pub fn remove(
+			origin: OriginFor<T>,
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
 
-			// TODO(nuno): implement this
+			// Check that origin is the owner of the asset
+			ensure!(
+				Self::is_owner(who, class_id, instance_id)?,
+				Error::<T>::NotOwner,
+			);
+
+			// Check that this NFT is for sale
+			ensure!(
+				<Gallery<T>>::contains_key(class_id, instance_id),
+				Error::<T>::NotForSale
+			);
+
+			<Gallery<T>>::remove(class_id, instance_id);
+			Self::deposit_event(Event::Removed);
+
+			// Try and thaw the asset, fails if this pallet is not its freezer anymore
+			<pallet_uniques::Pallet<T>>::thaw(origin.clone(), class_id, instance_id)
+				.map_err(|_| Error::<T>::NotFreezer)?;
+
 			Ok(())
 		}
 
@@ -153,13 +258,63 @@ pub mod pallet {
 		///   - `origin` does not have enough balance of the currency the nft is being sold in
 		///   - the specified NFT does not exist in the gallery
 		///   - this pallet is not an admin of the NFT class and can't therefore transfer ownership
+		///   - transferring the nft from the seller to the buyer fails
 		///   - transferring the asking price fails
 		#[pallet::weight(10_000_000)]
-		pub fn buy(origin: OriginFor<T>) -> DispatchResult {
-			let _who = ensure_signed(origin)?;
+		pub fn buy(
+			origin: OriginFor<T>,
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
+		) -> DispatchResult {
+			let buyer = ensure_signed(origin.clone())?;
 
-			// TODO(nuno): implement this
+			// Ensure that the buyer is not the owner of the asset already
+			ensure!(
+				!Self::is_owner(buyer.clone(), class_id, instance_id)?,
+				Error::<T>::AlreadyOwner,
+			);
+
+			let sale = <Gallery<T>>::get(class_id, instance_id)
+				.ok_or(Error::<T>::NotForSale)?;
+
+			ensure!(
+				T::Fungibles::balance(sale.price.currency, &buyer) >= sale.price.amount,
+				Error::<T>::InsufficientBalance
+			);
+
+			// Q: Shouldn't we first verify that this pallet is still the freezer of the asset?
+			T::Fungibles::transfer(
+				sale.price.currency,
+				&buyer,
+				&sale.seller,
+				sale.price.amount,
+				true,
+			)
+			.map_err(|_| Error::<T>::PaymentFailed)?;
+
+			// Thaw the NFT so that we can transfer it
+			<pallet_uniques::Pallet<T>>::thaw(origin.clone(), class_id, instance_id)
+				.map_err(|_| Error::<T>::NotFreezer)?;
+
+			// TODO(nuno): Transfer NFT from seller to buyer
+			// The transfer can only be done by the owner or admin of the asset so I am not sure
+			// how the Freezer comes into play here. We probably need to require us to also be the
+			// admin of this asset?
+			// <pallet_uniques::Pallet<T>>::transfer(origin.clone(), class_id, instance_id, buyer.clone().into());
+
 			Ok(())
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		fn is_owner(
+			account: T::AccountId,
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
+		) -> Result<bool, Error<T>> {
+			<pallet_uniques::Pallet<T>>::owner(class_id, instance_id)
+				.map(|owner| owner == account)
+				.ok_or(Error::<T>::NotFound)
 		}
 	}
 }

@@ -6010,6 +6010,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
+ "pallet-uniques",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
