@@ -6006,12 +6006,16 @@ dependencies = [
 name = "pallet-nft-marketplace"
 version = "2.0.0"
 dependencies = [
+ "common-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "orml-tokens",
+ "orml-traits",
  "pallet-balances",
  "pallet-uniques",
  "parity-scale-codec",
+ "runtime-common",
  "scale-info",
  "sp-core",
  "sp-io",

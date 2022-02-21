@@ -18,6 +18,9 @@ use sp_runtime::traits::StaticLookup;
 
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type CurrencyOf<T> =
 	<<T as pallet::Config>::Fungibles as fungibles::Inspect<AccountIdOf<T>>>::AssetId;
@@ -51,30 +54,11 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_uniques::Config {
-		/// The overarching event type.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		// /// The NFT class id
-		// type ClassId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
-		//
-		// /// The NFT instance id
-		// type InstanceId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
-
+		/// Fungibles implements fungibles::Transfer, granting us a way of charging
+		/// the buyer of an NFT the respective asking price.
 		type Fungibles: fungibles::Transfer<Self::AccountId>;
-
-		// /// The supported currencies that NFTs can be sold in
-		// type CurrencyId: Parameter + Member + MaybeSerializeDeserialize + Copy + Default + TypeInfo;
-		//
-		// /// The type for the asking price amount
-		// type Balance: Parameter
-		// 	+ Member
-		// 	+ AtLeast32BitUnsigned
-		// 	+ Default
-		// 	+ Copy
-		// 	+ MaybeSerializeDeserialize
-		// 	+ MaxEncodedLen;
-		//TODO(nuno): we also need an impl of fungibles to move balances when having the buyer
-		// paying the asking price
 	}
 
 	// The genesis config type.
@@ -83,8 +67,6 @@ pub mod pallet {
 		//TODO(nuno): define this type appropriately later
 		pub initial_state: Vec<AccountIdOf<T>>,
 	}
-
-	//<<T as pallet::Config>::Fungibles as Trait>::AssetId
 
 	// The default value for the genesis config type.
 	#[cfg(feature = "std")]
