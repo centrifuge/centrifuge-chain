@@ -48,6 +48,7 @@ pub struct AskingPrice<CurrencyId, Balance> {
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
+	use frame_support::transactional;
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
@@ -225,6 +226,7 @@ pub mod pallet {
 		///   - transferring the nft from the seller to the buyer fails
 		///   - transferring the asking price fails
 		#[pallet::weight(10_000_000)]
+		#[transactional]
 		pub fn buy(
 			origin: OriginFor<T>,
 			class_id: T::ClassId,
@@ -269,7 +271,6 @@ pub mod pallet {
 				buyer_lookup,
 			)
 			.map_err(|_| Error::<T>::FailedNftTransfer)?;
-			//TODO(nuno): ^ how do we rollback the payment if this bit fails?
 
 			Ok(())
 		}
