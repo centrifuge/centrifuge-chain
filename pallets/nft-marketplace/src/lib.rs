@@ -152,8 +152,8 @@ pub mod pallet {
 
 			// Check that the seller is the owner of the asset
 			ensure!(
-				!Self::is_owner(seller.clone(), class_id, instance_id)?,
-				Error::<T>::AlreadyOwner,
+				Self::is_owner(seller.clone(), class_id, instance_id)?,
+				Error::<T>::NotOwner,
 			);
 
 			// Check that the asset is not yet for sale

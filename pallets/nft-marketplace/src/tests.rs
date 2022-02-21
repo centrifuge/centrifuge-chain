@@ -14,7 +14,7 @@
 use crate::mock::*;
 use common_types::CurrencyId;
 use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop};
+use frame_support::{assert_noop, assert_ok};
 use runtime_common::InstanceId;
 
 /// Verify that calling `NftMarketplace::add` specifiying an nft that is not present in the
@@ -54,6 +54,28 @@ fn buy_nft_not_found() {
 		assert_noop!(
 			NftMarketplace::buy(origin, unknown_asset.0, unknown_asset.1),
 			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
+		);
+	});
+}
+#[test]
+fn add_nft_works() {
+	new_test_ext().execute_with(|| {
+		let origin: Origin = Origin::signed(1);
+		let asset_id = (0, InstanceId(1));
+
+		// Mint the nft in the uniques pallet
+		assert_ok!(Uniques::create(origin.clone(), asset_id.0, 1));
+		assert_ok!(Uniques::mint(origin.clone(), asset_id.0, asset_id.1, 1));
+
+		// Set it for sale in the NftMarketplace
+		assert_ok!(
+			NftMarketplace::add(origin.clone(), asset_id.0, asset_id.1, CurrencyId::Usd, 10_000)
+		);
+
+		// Verify that if the seller tries to put it for sale again, that it fails with `AlreadyForSale`
+		assert_noop!(
+			NftMarketplace::add(origin, asset_id.0, asset_id.1, CurrencyId::Usd, 10_000),
+			DispatchError::from(nft_marketplace::Error::<Test>::AlreadyForSale)
 		);
 	});
 }
