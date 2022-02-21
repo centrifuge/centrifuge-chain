@@ -64,31 +64,6 @@ pub mod pallet {
 		type Fungibles: fungibles::Transfer<Self::AccountId>;
 	}
 
-	// The genesis config type.
-	#[pallet::genesis_config]
-	pub struct GenesisConfig<T: Config> {
-		//TODO(nuno): define this type appropriately later
-		pub initial_state: Vec<AccountIdOf<T>>,
-	}
-
-	// The default value for the genesis config type.
-	#[cfg(feature = "std")]
-	impl<T: Config> Default for GenesisConfig<T> {
-		fn default() -> Self {
-			Self {
-				initial_state: vec![],
-			}
-		}
-	}
-
-	// The build of genesis for the pallet.
-	#[pallet::genesis_build]
-	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-			//TODO(nuno): prefill the gallery with the initial state once that's ready.
-		}
-	}
-
 	/// The gallery of NFTs currently for sale
 	#[pallet::storage]
 	#[pallet::getter(fn get_allowlisted)]
