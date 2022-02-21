@@ -154,7 +154,7 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-type Balance = u128;
+pub type Balance = u128;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {

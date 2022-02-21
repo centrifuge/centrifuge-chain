@@ -4,20 +4,21 @@ use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use runtime_common::{Rate, TrancheWeight};
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches = Tranches(
-			std::iter::repeat(Tranche {
+		let tranches = Tranches {
+			tranches: std::iter::repeat(Tranche {
 				outstanding_redeem_orders: 10,
 				..Default::default()
 			})
 			.take(4)
 			.collect(),
-		);
+		};
 
 		let epoch_tranches = EpochExecutionTranches(
 			tranches
@@ -41,9 +42,11 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 40,
-			available_reserve: Zero::zero(),
-			total_reserve: 39,
+			reserve: ReserveDetails {
+				max_reserve: 40,
+				available_reserve: Zero::zero(),
+				total_reserve: 39,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -53,8 +56,8 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 0,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -83,24 +86,30 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranche_a = Tranche {
 			outstanding_invest_orders: 10,
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 0),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 1),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 2),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 3),
 			..Default::default()
 		};
-		let tranches = Tranches(vec![tranche_a, tranche_b, tranche_c, tranche_d]);
+		let tranches = Tranches {
+			tranches: vec![tranche_a, tranche_b, tranche_c, tranche_d],
+		};
 		let epoch_tranches = EpochExecutionTranches(
 			tranches
 				.as_tranche_slice()
@@ -123,9 +132,11 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 5,
-			available_reserve: Zero::zero(),
-			total_reserve: 40,
+			reserve: ReserveDetails {
+				max_reserve: 5,
+				available_reserve: Zero::zero(),
+				total_reserve: 40,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -135,8 +146,8 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 90,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -159,14 +170,9 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			]))
 		);
 
-		assert_ok!(Pools::is_valid_solution(
-			&PoolDetails {
-				max_reserve: 100,
-				..pool.clone()
-			},
-			&epoch,
-			&full_solution
-		));
+		let mut details = pool.clone();
+		details.reserve.max_reserve = 100;
+		assert_ok!(Pools::is_valid_solution(&details, &epoch, &full_solution));
 	});
 }
 
@@ -197,7 +203,9 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
-		let tranches = Tranches(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
+		let tranches = Tranches {
+			tranches: vec![tranche_d, tranche_c, tranche_b, tranche_a],
+		};
 
 		let epoch_tranches = EpochExecutionTranches(
 			tranches
@@ -221,9 +229,11 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 150,
-			available_reserve: Zero::zero(),
-			total_reserve: 50,
+			reserve: ReserveDetails {
+				max_reserve: 150,
+				available_reserve: Zero::zero(),
+				total_reserve: 50,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -233,8 +243,8 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 0,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -267,6 +277,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 3,
+			currency: CurrencyId::Tranche(0, 3),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -274,6 +285,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 30,
 			seniority: 2,
+			currency: CurrencyId::Tranche(0, 2),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -281,6 +293,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 1,
+			currency: CurrencyId::Tranche(0, 1),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
@@ -288,10 +301,12 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 0,
+			currency: CurrencyId::Tranche(0, 0),
 			..Default::default()
 		};
-		let tranches = Tranches(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
-
+		let tranches = Tranches {
+			tranches: vec![tranche_d, tranche_c, tranche_b, tranche_a],
+		};
 		let epoch_tranches = EpochExecutionTranches(
 			tranches
 				.as_tranche_slice()
@@ -316,9 +331,11 @@ fn pool_constraints_pass() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 150,
-			available_reserve: Zero::zero(),
-			total_reserve: 50,
+			reserve: ReserveDetails {
+				max_reserve: 150,
+				available_reserve: Zero::zero(),
+				total_reserve: 50,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -328,8 +345,8 @@ fn pool_constraints_pass() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 145,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -451,8 +468,8 @@ fn epoch() {
 			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec,
 			Rate::from_inner(1_000000003170979198376458650)
 		);
-		assert_eq!(pool.available_reserve, 1000 * CURRENCY);
-		assert_eq!(pool.total_reserve, 1000 * CURRENCY);
+		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);
+		assert_eq!(pool.reserve.total_reserve, 1000 * CURRENCY);
 		assert_eq!(
 			pool.tranches.as_tranche_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			0
@@ -499,8 +516,8 @@ fn epoch() {
 			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
-		assert_eq!(pool.available_reserve, 500 * CURRENCY);
-		assert_eq!(pool.total_reserve, 500 * CURRENCY);
+		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
+		assert_eq!(pool.reserve.total_reserve, 500 * CURRENCY);
 
 		// Repay (with made up interest) after a month.
 		next_block_after(60 * 60 * 24 * 30);
@@ -523,8 +540,8 @@ fn epoch() {
 		assert!(
 			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY
 		); // there's interest in here now
-		assert_eq!(pool.available_reserve, 500 * CURRENCY);
-		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
+		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
+		assert_eq!(pool.reserve.total_reserve, 1010 * CURRENCY);
 
 		// Senior investor tries to redeem
 		next_block();
@@ -560,14 +577,15 @@ fn epoch() {
 			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			0
 		);
-		assert_eq!(pool.available_reserve, pool.total_reserve);
-		assert!(pool.total_reserve > 750 * CURRENCY);
-		assert!(pool.total_reserve < 800 * CURRENCY);
+		assert_eq!(pool.reserve.available_reserve, pool.reserve.total_reserve);
+		assert!(pool.reserve.total_reserve > 750 * CURRENCY);
+		assert!(pool.reserve.total_reserve < 800 * CURRENCY);
 		assert!(
 			pool.tranches.as_tranche_slice()[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY
 		);
 		assert_eq!(
-			pool.total_reserve + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
+			pool.reserve.total_reserve
+				+ senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
 		);
 	});
