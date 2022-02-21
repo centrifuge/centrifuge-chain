@@ -20,13 +20,39 @@ use runtime_common::InstanceId;
 /// Verify that calling `NftMarketplace::add` specifiying an nft that is not present in the
 /// underlying `pallet_uniques` fails with `nft_marketplace::Error::<T>::NotFound`.
 #[test]
-fn nft_not_found() {
+fn add_nft_not_found() {
 	new_test_ext().execute_with(|| {
 		let origin: Origin = Origin::signed(33);
 		let unknown_asset = (0, InstanceId(1));
 
 		assert_noop!(
 			NftMarketplace::add(origin, unknown_asset.0, unknown_asset.1, CurrencyId::Usd, 3),
+			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
+		);
+	});
+}
+
+#[test]
+fn remove_nft_not_found() {
+	new_test_ext().execute_with(|| {
+		let origin: Origin = Origin::signed(33);
+		let unknown_asset = (0, InstanceId(1));
+
+		assert_noop!(
+			NftMarketplace::remove(origin, unknown_asset.0, unknown_asset.1),
+			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
+		);
+	});
+}
+
+#[test]
+fn buy_nft_not_found() {
+	new_test_ext().execute_with(|| {
+		let origin: Origin = Origin::signed(33);
+		let unknown_asset = (0, InstanceId(1));
+
+		assert_noop!(
+			NftMarketplace::buy(origin, unknown_asset.0, unknown_asset.1),
 			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
 		);
 	});

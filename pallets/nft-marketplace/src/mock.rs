@@ -13,7 +13,7 @@
 
 pub use crate::{self as nft_marketplace};
 use frame_support::parameter_types;
-use frame_support::traits::Everything;
+use frame_support::traits::{GenesisBuild, Everything};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use sp_core::H256;
@@ -177,7 +177,14 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	.assimilate_storage(&mut t)
 	.unwrap();
 
-	//TODO(nuno): don't forget the genesis for uniques, orml-tokens, and nft-marketplace
+	orml_tokens::GenesisConfig::<Test> {
+		balances: (0..10)
+			.into_iter()
+			.map(|idx| (idx, CurrencyId::Usd, 1000 * CURRENCY))
+			.collect(),
+	}
+		.assimilate_storage(&mut t)
+		.unwrap();
 
 	t.into()
 }
