@@ -255,10 +255,19 @@ where
 }
 
 parameter_types! {
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+
+	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
 	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+
+	// Runtime-defined constraints for pool parameters
+	pub const MinEpochTimeLowerBound: u64 = 0; // no lower bound
+	pub const ChallengeTimeLowerBound: u64 = 0; // no lower bound
+	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // no upper bound
+
+	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 }
@@ -280,6 +289,9 @@ impl Config for Test {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
+	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
