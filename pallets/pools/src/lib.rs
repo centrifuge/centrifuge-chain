@@ -1905,7 +1905,7 @@ pub mod pallet {
 				.rev();
 			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
 				.zip(tranche_ratios.iter())
-				.zip(tranche_assets.iter())
+				.zip(tranche_assets.iter().rev())
 			{
 				tranche.ratio = *ratio;
 				if tranche_id == junior_tranche_id {
