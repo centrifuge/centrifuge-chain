@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as nft_marketplace};
+pub use crate::{self as nft_marketplace};
 use frame_support::parameter_types;
 use frame_support::traits::Everything;
 use frame_system::EnsureSignedBy;
@@ -42,7 +42,7 @@ frame_support::construct_runtime!(
 		OrmlTokens: orml_tokens::{Pallet, Config<T>, Storage, Event<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 
-		NftMartketplace: nft_marketplace::{Pallet, Call, Storage},
+		NftMarketplace: nft_marketplace::{Pallet, Call, Storage},
 
 	}
 );
@@ -176,6 +176,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
+
+	//TODO(nuno): don't forget the genesis for uniques, orml-tokens, and nft-marketplace
 
 	t.into()
 }
