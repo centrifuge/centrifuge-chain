@@ -417,7 +417,16 @@ fn epoch() {
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
-		assert_ok!(Pools::update(pool_owner.clone(), 0, 0, 0, u64::MAX));
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
@@ -588,7 +597,16 @@ fn submission_period() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update(pool_owner.clone(), 0, 0, 0, u64::MAX));
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
 
@@ -1138,9 +1156,36 @@ fn pool_parameters_should_be_constrained() {
 		let realistic_challenge_time = 30 * 60; // 30 mins
 		let realistic_max_nav_age = 1 * 60; // 1 min
 
-		// assert_err!(Pools::update(pool_owner.clone(), pool_id, 0, realistic_challenge_time, realistic_max_nav_age), Error::<Test>::PoolParameterBoundViolated);
-		// assert_err!(Pools::update(pool_owner.clone(), pool_id, realistic_min_epoch_time, 0, realistic_max_nav_age), Error::<Test>::PoolParameterBoundViolated);
-		// assert_err!(Pools::update(pool_owner.clone(), pool_id, realistic_min_epoch_time, realistic_challenge_time, 7 * 24 * 60 * 60), Error::<Test>::PoolParameterBoundViolated);
+		assert_err!(
+			Pools::update(
+				pool_owner.clone(),
+				pool_id,
+				0,
+				realistic_challenge_time,
+				realistic_max_nav_age
+			),
+			Error::<Test>::PoolParameterBoundViolated
+		);
+		assert_err!(
+			Pools::update(
+				pool_owner.clone(),
+				pool_id,
+				realistic_min_epoch_time,
+				0,
+				realistic_max_nav_age
+			),
+			Error::<Test>::PoolParameterBoundViolated
+		);
+		assert_err!(
+			Pools::update(
+				pool_owner.clone(),
+				pool_id,
+				realistic_min_epoch_time,
+				realistic_challenge_time,
+				7 * 24 * 60 * 60
+			),
+			Error::<Test>::PoolParameterBoundViolated
+		);
 
 		assert_ok!(Pools::update(
 			pool_owner.clone(),

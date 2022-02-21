@@ -263,9 +263,9 @@ parameter_types! {
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 0; // no lower bound
-	pub const ChallengeTimeLowerBound: u64 = 0; // no lower bound
-	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // no upper bound
+	pub const MinEpochTimeLowerBound: u64 = 1;
+	pub const ChallengeTimeLowerBound: u64 = 1;
+	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
