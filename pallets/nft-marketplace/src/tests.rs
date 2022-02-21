@@ -68,9 +68,13 @@ fn add_nft_works() {
 		assert_ok!(Uniques::mint(origin.clone(), asset_id.0, asset_id.1, 1));
 
 		// Set it for sale in the NftMarketplace
-		assert_ok!(
-			NftMarketplace::add(origin.clone(), asset_id.0, asset_id.1, CurrencyId::Usd, 10_000)
-		);
+		assert_ok!(NftMarketplace::add(
+			origin.clone(),
+			asset_id.0,
+			asset_id.1,
+			CurrencyId::Usd,
+			10_000
+		));
 
 		// Verify that if the seller tries to put it for sale again, that it fails with `AlreadyForSale`
 		assert_noop!(
