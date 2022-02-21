@@ -210,3 +210,16 @@ pub trait TokenMetadata {
 
 	fn decimals(&self) -> u8;
 }
+
+/// Trait for converting a pool+tranche ID pair to a CurrencyId
+///
+/// This should be implemented in the runtime to convert from the
+/// PoolId and TrancheId types to a CurrencyId that represents that
+/// tranche.
+///
+/// The pool epoch logic assumes that every tranche has a UNIQUE
+/// currency, but nothing enforces that. Failure to ensure currency
+/// uniqueness will almost certainly cause some wild bugs.
+pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
+	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
+}

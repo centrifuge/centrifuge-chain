@@ -12,7 +12,6 @@ use frame_support::weights::{
 use frame_system::pallet::Config as SystemConfig;
 use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
 use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
-use pallet_pools::Config;
 use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
