@@ -246,11 +246,10 @@ where
 		Ok(Self { tranches })
 	}
 
-	pub fn fold<R>(
-		&self,
-		start: R,
-		mut f: impl FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, R) -> Result<R, DispatchError>,
-	) -> Result<R, DispatchError> {
+	pub fn fold<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
+	where
+		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, R) -> Result<R, DispatchError>,
+	{
 		let mut iter = self.tranches.iter();
 		let mut r = if let Some(tranche) = iter.next() {
 			f(tranche, start)?
@@ -264,10 +263,10 @@ where
 		Ok(r)
 	}
 
-	pub fn combine<R>(
-		&self,
-		mut f: impl FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
-	) -> Result<Vec<R>, DispatchError> {
+	pub fn combine<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in &self.tranches {
 			let r = f(tranche)?;
@@ -276,10 +275,10 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_mut<R>(
-		&mut self,
-		mut f: impl FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
-	) -> Result<Vec<R>, DispatchError> {
+	pub fn combine_mut<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		for tranche in &mut self.tranches {
 			let r = f(tranche)?;
@@ -288,11 +287,11 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with<R, W>(
-		&self,
-		with: impl IntoIterator<Item = W>,
-		mut f: impl FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
-	) -> Result<Vec<R>, DispatchError> {
+	pub fn combine_with<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter().zip(with.into_iter());
