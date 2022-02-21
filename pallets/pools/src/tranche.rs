@@ -125,7 +125,7 @@ where
 	fn default() -> Self {
 		Self {
 			interest_per_sec: One::one(),
-			min_risk_buffer: Perquintill::one(),
+			min_risk_buffer: Perquintill::zero(),
 			seniority: 0,
 			currency: CurrencyId::Tranche(0, 0),
 			outstanding_invest_orders: Zero::zero(),
@@ -356,7 +356,8 @@ where
 		// such that prices are calculated from most senior to junior
 		// there by all the remaining assets are given to the most junior tranche
 		let junior_tranche_id = 0;
-		self.tranches
+		let rev_prices = self
+			.tranches
 			.iter_mut()
 			.enumerate()
 			.rev()
@@ -383,8 +384,14 @@ where
 						.ok_or(ArithmeticError::Overflow.into())
 				}
 			})
-			.rev()
-			.collect::<Result<Vec<BalanceRatio>, DispatchError>>()
+			.collect::<Result<Vec<BalanceRatio>, DispatchError>>()?;
+
+		// NOTE: For some reason the compiler does shit with the code (or I am too stupid, which is
+		//       more likely) and does optimize away or something if I rev -> map -> rev. So doing this
+		//       manually again here.
+		//
+		// TODO: Put into for loop and allocate upfront with capacity.
+		Ok(rev_prices.into_iter().rev().collect())
 	}
 
 	pub fn num_tranches(&self) -> usize {

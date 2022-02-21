@@ -3,8 +3,9 @@ use crate::mock::*;
 use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
+use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
-use runtime_common::{Rate, TrancheWeight};
+use runtime_common::Rate;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
 
@@ -462,6 +463,27 @@ fn epoch() {
 			SENIOR_TRANCHE_ID,
 			1
 		));
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			0,
+			JUNIOR_TRANCHE_ID,
+			1
+		));
+
+		assert_eq!(
+			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
+				CurrencyId::Tranche(0, 0),
+				&0,
+			),
+			500 * CURRENCY,
+		);
+		assert_eq!(
+			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
+				CurrencyId::Tranche(0, 1),
+				&1,
+			),
+			500 * CURRENCY,
+		);
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
