@@ -14,6 +14,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
+use sp_runtime::traits::StaticLookup;
 
 pub use pallet::*;
 
@@ -165,6 +166,9 @@ pub mod pallet {
 
 		/// Payment failed, i.e, failed to transfer the asking price from the buyer to the seller
 		PaymentFailed,
+
+		/// Failed to transfer a purchased NFT
+		FailedNftTransfer,
 	}
 
 	#[pallet::call]
@@ -274,8 +278,7 @@ pub mod pallet {
 				Error::<T>::AlreadyOwner,
 			);
 
-			let sale = <Gallery<T>>::get(class_id, instance_id)
-				.ok_or(Error::<T>::NotForSale)?;
+			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
 			ensure!(
 				T::Fungibles::balance(sale.price.currency, &buyer) >= sale.price.amount,
@@ -296,11 +299,17 @@ pub mod pallet {
 			<pallet_uniques::Pallet<T>>::thaw(origin.clone(), class_id, instance_id)
 				.map_err(|_| Error::<T>::NotFreezer)?;
 
-			// TODO(nuno): Transfer NFT from seller to buyer
-			// The transfer can only be done by the owner or admin of the asset so I am not sure
-			// how the Freezer comes into play here. We probably need to require us to also be the
-			// admin of this asset?
-			// <pallet_uniques::Pallet<T>>::transfer(origin.clone(), class_id, instance_id, buyer.clone().into());
+			// TODO(nuno): The transfer can only be done by the owner or admin of the asset so I am
+			// not sure how the Freezer comes into play here. We need to check if we are admin beforehand.
+			let buyer_lookup = T::Lookup::unlookup(buyer);
+			<pallet_uniques::Pallet<T>>::transfer(
+				origin.clone(),
+				class_id,
+				instance_id,
+				buyer_lookup,
+			)
+			.map_err(|_| Error::<T>::FailedNftTransfer)?;
+			//TODO(nuno): ^ how do we rollback the payment if this bit fails?
 
 			Ok(())
 		}
