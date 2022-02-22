@@ -588,9 +588,18 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
-					min_epoch_time: T::DefaultMinEpochTime::get(),
-					challenge_time: T::DefaultChallengeTime::get(),
-					max_nav_age: T::DefaultMaxNAVAge::get(),
+					min_epoch_time: sp_std::cmp::max(
+						T::DefaultMinEpochTime::get(),
+						T::MinEpochTimeLowerBound::get(),
+					),
+					challenge_time: sp_std::cmp::max(
+						T::DefaultChallengeTime::get(),
+						T::ChallengeTimeLowerBound::get(),
+					),
+					max_nav_age: sp_std::cmp::min(
+						T::DefaultMaxNAVAge::get(),
+						T::MaxNAVAgeUpperBound::get(),
+					),
 					metadata: None,
 				},
 			);
