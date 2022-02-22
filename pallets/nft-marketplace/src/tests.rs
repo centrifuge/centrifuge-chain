@@ -313,9 +313,7 @@ fn buy_nft_works() {
 		let buyer: Origin = Origin::signed(2);
 		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::Usd, &2);
 		assert_ok!(NftMarketplace::buy(buyer.clone(), class_id, instance_id));
-
-		// TODO(nuno): Verify other things, namely:
-
+		
 		// Verify that if the seller can't buy it back because it's no longer for sale
 		assert_noop!(
 			NftMarketplace::buy(seller, class_id, instance_id),
