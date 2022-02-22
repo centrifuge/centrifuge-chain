@@ -79,7 +79,7 @@
           nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
           buildInputs = [ pkgs.openssl ];
 
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           PROTOC = "${pkgs.protobuf}/bin/protoc";
           BUILD_DUMMY_WASM_BINARY = 1;
 
