@@ -2,7 +2,7 @@
   description = "Nix package for centrifuge-chain";
 
   inputs = {
-    nixpkgs.url = github:NixOS/nixpkgs/nixos-20.09;
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-21.11;
     gitignore = {
       url = github:hercules-ci/gitignore.nix;
       inputs.nixpkgs.follows = "nixpkgs";
