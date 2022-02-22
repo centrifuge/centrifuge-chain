@@ -25,6 +25,7 @@ use common_traits::TrancheToken as TrancheTokenT;
 use common_types::CurrencyId;
 use frame_support::sp_runtime::ArithmeticError;
 use frame_support::sp_std::convert::TryInto;
+use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
 
 /// Types alias for EpochExecutionTranches
@@ -502,9 +503,9 @@ where
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight>(
-	pub(super) Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
-);
+pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight> {
+	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
+}
 
 impl<Balance, BalanceRatio, Weight> EpochExecutionTranches<Balance, BalanceRatio, Weight>
 where
@@ -512,33 +513,91 @@ where
 	Weight: Copy + From<u128>,
 	BalanceRatio: Copy,
 {
+	pub fn new(tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>) -> Self {
+		Self { tranches }
+	}
+
+	pub fn non_residual_tranches(
+		&self,
+	) -> Option<&[EpochExecutionTranche<Balance, BalanceRatio, Weight>]> {
+		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
+			Some(tail)
+		} else {
+			None
+		}
+	}
+
+	pub fn non_residual_tranches_mut(
+		&mut self,
+	) -> Option<&mut [EpochExecutionTranche<Balance, BalanceRatio, Weight>]> {
+		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
+			Some(tail)
+		} else {
+			None
+		}
+	}
+
+	pub fn residual_tranche(
+		&self,
+	) -> Option<&EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
+			Some(head)
+		} else {
+			None
+		}
+	}
+
+	pub fn residual_tranche_mut(
+		&mut self,
+	) -> Option<&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
+			Some(head)
+		} else {
+			None
+		}
+	}
+
 	pub fn num_tranches(&self) -> usize {
-		self.0.len()
+		self.tranches.len()
 	}
 
 	pub fn into_tranches(self) -> Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
-		self.0
+		self.tranches
 	}
 
-	pub fn as_tranche_slice(&self) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
-		self.0.as_slice()
+	pub fn senior_to_junior_slice(
+		&self,
+	) -> &RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+		self.tranches.rev()
 	}
 
-	pub fn as_mut_tranche_slice(
+	pub fn senior_to_junior_slice_mut(
+		&mut self,
+	) -> &mut RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
+		self.tranches.rev_mut()
+	}
+
+	pub fn junior_to_senior_slice(
+		&self,
+	) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
+		self.tranches.as_slice()
+	}
+
+	pub fn junior_to_senior_slice_mut(
 		&mut self,
 	) -> &mut [EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
-		self.0.as_mut_slice()
+		self.tranches.as_mut_slice()
 	}
 
 	pub fn prices(&self) -> Vec<BalanceRatio> {
-		self.0.iter().map(|tranche| tranche.price).collect()
+		self.tranches.iter().map(|tranche| tranche.price).collect()
 	}
 
 	pub fn supplies_with_fulfillment(
 		&self,
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
-		self.0
+		self.tranches
 			.iter()
 			.zip(fulfillments)
 			.map(|(tranche, solution)| {
@@ -566,11 +625,11 @@ where
 	}
 
 	pub fn supplies(&self) -> Vec<Balance> {
-		self.0.iter().map(|tranche| tranche.supply).collect()
+		self.tranches.iter().map(|tranche| tranche.supply).collect()
 	}
 
 	pub fn acc_supply(&self) -> Result<Balance, DispatchError> {
-		self.0
+		self.tranches
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.supply))
@@ -579,11 +638,11 @@ where
 	}
 
 	pub fn investments(&self) -> Vec<Balance> {
-		self.0.iter().map(|tranche| tranche.invest).collect()
+		self.tranches.iter().map(|tranche| tranche.invest).collect()
 	}
 
 	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
-		self.0
+		self.tranches
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.invest))
@@ -592,11 +651,11 @@ where
 	}
 
 	pub fn redemptions(&self) -> Vec<Balance> {
-		self.0.iter().map(|tranche| tranche.redeem).collect()
+		self.tranches.iter().map(|tranche| tranche.redeem).collect()
 	}
 
 	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.0
+		self.tranches
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
 				sum.and_then(|acc| acc.checked_add(&tranche.redeem))
@@ -605,10 +664,10 @@ where
 	}
 
 	pub fn calculate_weights(&self) -> Vec<(Weight, Weight)> {
-		let n_tranches: u32 = self.0.len().try_into().expect("MaxTranches is u32");
+		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
 		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
 
-		self.0
+		self.tranches
 			.iter()
 			.map(|tranche| {
 				(
@@ -630,7 +689,7 @@ where
 	}
 
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
-		self.0
+		self.tranches
 			.iter()
 			.map(|tranche| tranche.min_risk_buffer)
 			.collect()
@@ -652,4 +711,9 @@ pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
 #[cfg(test)]
 pub mod test {
 	use super::*;
+
+	#[test]
+	fn reverse_slice_panics_on_out_of_bounds() {}
+
+	fn reverse_works_for_both_tranches() {}
 }
