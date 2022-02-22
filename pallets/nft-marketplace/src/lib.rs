@@ -14,7 +14,7 @@ use frame_support::{
 };
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::traits::{AccountIdConversion, StaticLookup};
 
 pub use pallet::*;
 
@@ -48,7 +48,7 @@ pub struct AskingPrice<CurrencyId, Balance> {
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
-	use frame_support::transactional;
+	use frame_support::{transactional, PalletId};
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::pallet]
@@ -63,6 +63,10 @@ pub mod pallet {
 		/// Fungibles implements fungibles::Transfer, granting us a way of charging
 		/// the buyer of an NFT the respective asking price.
 		type Fungibles: fungibles::Transfer<Self::AccountId>;
+
+		/// PalletID of this loan module
+		#[pallet::constant]
+		type PalletId: Get<PalletId>;
 	}
 
 	/// The gallery of NFTs currently for sale
@@ -284,6 +288,11 @@ pub mod pallet {
 			<pallet_uniques::Pallet<T>>::owner(class_id, instance_id)
 				.map(|owner| owner == account)
 				.ok_or(Error::<T>::NotFound)
+		}
+
+		#[allow(dead_code)]
+		fn account() -> T::AccountId {
+			T::PalletId::get().into_account()
 		}
 	}
 }

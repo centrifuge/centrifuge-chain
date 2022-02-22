@@ -192,3 +192,34 @@ fn buy_nft_fails_insufficient_balance() {
 		);
 	});
 }
+
+
+#[test]
+fn buy_nft_works() {
+	new_test_ext().execute_with(|| {
+		let seller: Origin = Origin::signed(1);
+		let (class_id, instance_id) = (0, InstanceId(1));
+
+		// Mint the nft in the uniques pallet
+		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
+		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
+
+		// Set it for sale in the NftMarketplace
+		assert_ok!(NftMarketplace::add(
+			seller.clone(),
+			class_id,
+			instance_id,
+			CurrencyId::Usd,
+			10_000
+		));
+
+		// Verify that the buyer can buy the nft
+		let buyer: Origin = Origin::signed(2);
+		assert_ok!(NftMarketplace::buy(buyer, class_id, instance_id));
+
+		// TODO(nuno): Verify other things, namely:
+		// - we are no longer the freezer / the asset is no longer frozen
+		// - the buyer is now the owner of the freezer
+		// - the asking price was deducted appropriately
+	});
+}

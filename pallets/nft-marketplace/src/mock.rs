@@ -12,7 +12,7 @@
 // GNU General Public License for more details.
 
 pub use crate::{self as nft_marketplace};
-use frame_support::parameter_types;
+use frame_support::{parameter_types, PalletId};
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
@@ -161,6 +161,11 @@ impl frame_support::traits::SortedMembers<u64> for One {
 impl nft_marketplace::Config for Test {
 	type Event = ();
 	type Fungibles = OrmlTokens;
+	type PalletId = NftMarketplacePalletId;
+}
+
+parameter_types! {
+	pub const NftMarketplacePalletId: PalletId = PalletId(*b"pal/nftm");
 }
 
 #[allow(dead_code)]
