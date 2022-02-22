@@ -609,10 +609,15 @@ pub mod pallet {
 
 				pool.tranches
 					.combine_with_mut(tranches.iter(), |tranche, new_tranche| {
-						tranche.min_risk_buffer =
-							new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
-						tranche.interest_per_sec =
-							new_tranche.interest_per_sec.unwrap_or(One::one());
+						tranche.tranche_type = if let Some(interest_per_sec) = new_tranche.interest_per_sec {
+							TrancheType::NonResidual {
+								interest_per_sec,
+								min_risk_buffer: new_tranche.min_risk_buffer.ok_or(DispatchError::Other("Corrupt runtime state. If interest is set, risk buffer must be set too."))?
+							}
+						} else {
+							TrancheType::Residual
+						};
+
 						if let Some(new_seniority) = new_tranche.seniority {
 							tranche.seniority = new_seniority;
 						}
@@ -962,7 +967,13 @@ pub mod pallet {
 								invest: invest,
 								redeem: redeem,
 								seniority: tranche.seniority,
-								min_risk_buffer: tranche.min_risk_buffer,
+								min_risk_buffer: match tranche.tranche_type {
+									TrancheType::Residual => Perquintill::zero(),
+									TrancheType::NonResidual {
+										ref interest_per_sec,
+										ref min_risk_buffer,
+									} => min_risk_buffer.clone(),
+								},
 								_phantom: Default::default(),
 							};
 
@@ -1233,35 +1244,35 @@ pub mod pallet {
 		) -> Result<EpochSolution<T::Balance>, DispatchError> {
 			let tranches = &info.tranches;
 
-			let risk_buffer_improvement_scores = if state
-				.contains(&UnhealthyState::MinRiskBufferViolated)
-			{
-				let new_tranche_supplies: Vec<_> = tranches.supplies_with_fulfillment(solution)?;
-				let risk_buffers =
-					Self::calculate_risk_buffers(&new_tranche_supplies, &tranches.prices())?;
+			let risk_buffer_improvement_scores =
+				if state.contains(&UnhealthyState::MinRiskBufferViolated) {
+					let risk_buffers = Self::calculate_risk_buffers(
+						&tranches.supplies_with_fulfillment(solution)?,
+						&tranches.prices(),
+					)?;
 
-				// Score: 1 / (min risk buffer - risk buffer)
-				// A higher score means the distance to the min risk buffer is smaller
-				let non_junior_tranches = tranches
-					.non_residual_tranches()
-					.ok_or(Error::<T>::InvalidData)?;
-				Some(
-					non_junior_tranches
-						.iter()
-						.zip(risk_buffers)
-						.map(|(tranche, risk_buffer)| {
-							tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
-								|div: Perquintill| {
-									Some(div.saturating_reciprocal_mul(T::Balance::one()))
-								},
-							)
-						})
-						.collect::<Option<Vec<_>>>()
-						.ok_or(Error::<T>::Overflow)?,
-				)
-			} else {
-				None
-			};
+					// Score: 1 / (min risk buffer - risk buffer)
+					// A higher score means the distance to the min risk buffer is smaller
+					let non_junior_tranches = tranches
+						.non_residual_tranches()
+						.ok_or(Error::<T>::InvalidData)?;
+					Some(
+						non_junior_tranches
+							.iter()
+							.zip(risk_buffers)
+							.map(|(tranche, risk_buffer)| {
+								tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
+									|div: Perquintill| {
+										Some(div.saturating_reciprocal_mul(T::Balance::one()))
+									},
+								)
+							})
+							.collect::<Option<Vec<_>>>()
+							.ok_or(Error::<T>::Overflow)?,
+					)
+				} else {
+					None
+				};
 
 			let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
 				let (acc_invest, acc_redeem) =
@@ -1641,7 +1652,7 @@ pub mod pallet {
 				.tranches
 				.junior_to_senior_slice()
 				.iter()
-				.map(|tranche| tranche.min_risk_buffer)
+				.map(|tranche| tranche.min_risk_buffer())
 				.collect::<Vec<_>>();
 
 			let new_tranche_supplies: Vec<_> = epoch
@@ -1732,6 +1743,12 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Validates if the maximal reserve of a pool is exceeded or it
+		/// any of the risk buffers falls below its minium.
+		///
+		/// **IMPORTANT NOTE:**  
+		/// * min_risk_buffers => MUST be sorted from junior-to-senior tranche
+		/// * risk_buffers => MUST be sorted from junior-to-senior tranche
 		fn validate_pool_constraints(
 			mut state: PoolState,
 			reserve: T::Balance,
@@ -1739,23 +1756,14 @@ pub mod pallet {
 			min_risk_buffers: &[Perquintill],
 			risk_buffers: &[Perquintill],
 		) -> Result<PoolState, DispatchError> {
-			// TODO: Not sure if this check is needed or we should assume, we checked here, of we should
-			//       write a wrapper or macro that checks if a given set of slices have the same length and
-			//       error out otherwise, cause we need this everywhere if we check it deeper down
-			if min_risk_buffers.len() != risk_buffers.len() {
-				Err(Error::<T>::InvalidData)?
-			}
-
 			if reserve > max_reserve {
 				state.add_unhealthy(UnhealthyState::MaxReserveViolated);
 			}
 
-			for (risk_buffer, min_risk_buffer) in risk_buffers
-				.iter()
-				.rev()
-				.zip(min_risk_buffers.iter().copied().rev())
+			for (risk_buffer, min_risk_buffer) in
+				risk_buffers.iter().rev().zip(min_risk_buffers.iter().rev())
 			{
-				if risk_buffer < &min_risk_buffer {
+				if risk_buffer < min_risk_buffer {
 					state.add_unhealthy(UnhealthyState::MinRiskBufferViolated);
 				}
 			}
@@ -1771,43 +1779,38 @@ pub mod pallet {
 		) -> DispatchResult {
 			pool.last_epoch_executed += One::one();
 
-			let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch
-				.tranches
-				.junior_to_senior_slice()
-				.iter()
-				.zip(solution.iter())
-				.map(|(tranche, solution)| {
-					(
+			let executed_amounts: Vec<(T::Balance, T::Balance)> =
+				epoch.tranches.combine_with(solution, |tranche, solution| {
+					Ok((
 						solution.invest_fulfillment.mul_floor(tranche.invest),
 						solution.redeem_fulfillment.mul_floor(tranche.redeem),
-					)
-				})
-				.collect();
+					))
+				})?;
 
+			let last_epoch_executed = pool.last_epoch_executed;
 			// Update tranche orders and add epoch solution state
-			for ((((tranche_id, tranche), solution), executed_amounts), epoch_tranche) in pool
-				.tranches
-				.junior_to_senior_slice_mut()
-				.iter_mut()
-				.enumerate()
-				.zip(solution.iter().copied())
-				.zip(executed_amounts.iter().copied())
-				.zip(epoch.tranches.junior_to_senior_slice())
-			{
-				let loc = TrancheLocator {
-					pool_id,
-					tranche_id: T::TrancheId::try_from(tranche_id)
-						.map_err(|_| Error::<T>::TrancheId)?,
-				};
-				Self::update_tranche_for_epoch(
-					loc,
-					pool.last_epoch_executed,
-					tranche,
-					solution,
-					executed_amounts,
-					epoch_tranche.price,
-				)?;
-			}
+			pool.tranches.combine_with_mut(
+				solution
+					.iter()
+					.zip(executed_amounts.iter())
+					.zip(epoch.tranches.junior_to_senior_slice())
+					.enumerate(),
+				|tranche, (tranche_id, ((solution, executed_amounts), epoch_tranche))| {
+					let loc = TrancheLocator {
+						pool_id,
+						tranche_id: T::TrancheId::try_from(tranche_id)
+							.map_err(|_| Error::<T>::TrancheId)?,
+					};
+					Self::update_tranche_for_epoch(
+						loc,
+						last_epoch_executed,
+						tranche,
+						*solution,
+						*executed_amounts,
+						epoch_tranche.price,
+					)
+				},
+			)?;
 
 			// Update the total/available reserve for the new total value of the pool
 			pool.reserve.total_reserve = executed_amounts
@@ -1842,11 +1845,10 @@ pub mod pallet {
 				.total_reserve
 				.checked_add(&epoch.nav)
 				.ok_or(Error::<T>::Overflow)?;
-			let tranche_ratios: Vec<_> = executed_amounts
-				.iter()
-				.zip(epoch.tranches.junior_to_senior_slice())
-				.rev()
-				.map(|((invest, redeem), tranche)| {
+
+			let tranche_ratios = epoch.tranches.combine_with_rev(
+				executed_amounts.iter().rev(),
+				|tranche, (invest, redeem)| {
 					tranche
 						.supply
 						.checked_add(invest)
@@ -1854,16 +1856,16 @@ pub mod pallet {
 						.map(|tranche_asset| {
 							Perquintill::from_rational(tranche_asset, total_assets)
 						})
-				})
-				.collect::<Option<Vec<Perquintill>>>()
-				.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow.into())
+				},
+			)?;
 
 			let now = Self::now();
 			// Calculate the new total asset value for each tranche
 			// This uses the current state of the tranches, rather than the cached epoch-close-time values.
 			let mut total_assets = total_assets;
-			let tranche_assets = pool.tranches.combine_with_mut(
-				executed_amounts.iter(),
+			let tranche_assets = pool.tranches.combine_with_mut_rev(
+				executed_amounts.iter().rev(),
 				|tranche, (invest, redeem)| {
 					tranche.accrue(now)?;
 
@@ -1882,7 +1884,7 @@ pub mod pallet {
 								value
 							}
 						})
-						.ok_or::<DispatchError>(ArithmeticError::Overflow.into())
+						.ok_or(ArithmeticError::Overflow.into())
 				},
 			)?;
 
@@ -1890,34 +1892,27 @@ pub mod pallet {
 			let nav = epoch.nav.clone();
 			let mut remaining_nav = nav;
 			let mut remaining_reserve = pool.reserve.total_reserve;
-			// reverse the order for easier re balancing
-			let junior_tranche_id = 0;
-			let tranches_senior_to_junior = pool
-				.tranches
-				.junior_to_senior_slice_mut()
-				.iter_mut()
-				.enumerate()
-				.rev();
-			for (((tranche_id, tranche), ratio), value) in tranches_senior_to_junior
-				.zip(tranche_ratios.iter())
-				.zip(tranche_assets.iter().rev())
-			{
-				tranche.ratio = *ratio;
-				if tranche_id == junior_tranche_id {
-					tranche.debt = remaining_nav;
-					tranche.reserve = remaining_reserve;
-				} else {
-					tranche.debt = ratio.mul_ceil(nav);
-					// TODO: What catches this?
-					if tranche.debt > *value {
-						tranche.debt = *value;
-					}
-					tranche.reserve = value.saturating_sub(tranche.debt);
-					remaining_nav -= tranche.debt;
-					remaining_reserve -= tranche.reserve;
-				}
-			}
-			Ok(())
+			pool.tranches
+				.combine_with_mut_rev(
+					tranche_ratios.iter().zip(tranche_assets.iter()),
+					|tranche, (ratio, value)| {
+						tranche.ratio = *ratio;
+						if tranche.tranche_type == TrancheType::Residual {
+							tranche.debt = remaining_nav;
+							tranche.reserve = remaining_reserve;
+						} else {
+							tranche.debt = ratio.mul_ceil(nav);
+							if tranche.debt > *value {
+								tranche.debt = *value;
+							}
+							tranche.reserve = value.saturating_sub(tranche.debt);
+							remaining_nav -= tranche.debt;
+							remaining_reserve -= tranche.reserve;
+						}
+						Ok(())
+					},
+				)
+				.map(|_| ())
 		}
 
 		/// Prepare tranches for next epoch.
@@ -1990,7 +1985,7 @@ pub mod pallet {
 				for tranche in pool.tranches.senior_to_junior_slice_mut() {
 					tranche.accrue(now)?;
 
-					let tranche_amount = if tranche.interest_per_sec != One::one() {
+					let tranche_amount = if tranche.tranche_type == TrancheType::Residual {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
@@ -2041,7 +2036,7 @@ pub mod pallet {
 				for tranche in pool.tranches.senior_to_junior_slice_mut() {
 					tranche.accrue(now)?;
 
-					let tranche_amount = if tranche.interest_per_sec != One::one() {
+					let tranche_amount = if tranche.tranche_type != TrancheType::Residual {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
