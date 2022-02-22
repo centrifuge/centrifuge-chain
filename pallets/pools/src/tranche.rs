@@ -86,15 +86,6 @@ impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Tranches<Balance, Rate, Weight, Currency>
-where
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
-{
-	pub(super) tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Tranche<Balance, Rate, Weight, Currency>
 where
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -202,6 +193,15 @@ where
 	}
 }
 
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Tranches<Balance, Rate, Weight, Currency>
+where
+	Rate: FixedPointNumber<Inner = Balance>,
+	Balance: FixedPointOperand,
+{
+	tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
+}
+
 impl<Balance, Rate, Weight, CurrencyId> Tranches<Balance, Rate, Weight, CurrencyId>
 where
 	CurrencyId: Copy,
@@ -245,6 +245,10 @@ where
 		}
 
 		Ok(Self { tranches })
+	}
+
+	pub fn new(tranches: Vec<Tranche<Balance, Rate, Weight, CurrencyId>>) -> Self {
+		Self { tranches }
 	}
 
 	pub fn fold<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
@@ -402,11 +406,59 @@ where
 		self.tranches
 	}
 
-	pub fn as_tranche_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn non_residual_tranches(&self) -> Option<&[Tranche<Balance, Rate, Weight, CurrencyId>]> {
+		if let Some((_head, tail)) = self.tranches.as_slice().split_first() {
+			Some(tail)
+		} else {
+			None
+		}
+	}
+
+	pub fn non_residual_tranches_mut(
+		&mut self,
+	) -> Option<&mut [Tranche<Balance, Rate, Weight, CurrencyId>]> {
+		if let Some((_head, tail)) = self.tranches.as_mut_slice().split_first_mut() {
+			Some(tail)
+		} else {
+			None
+		}
+	}
+
+	pub fn residual_tranche(&self) -> Option<&Tranche<Balance, Rate, Weight, CurrencyId>> {
+		if let Some((head, _tail)) = self.tranches.as_slice().split_first() {
+			Some(head)
+		} else {
+			None
+		}
+	}
+
+	pub fn residual_tranche_mut(
+		&mut self,
+	) -> Option<&mut Tranche<Balance, Rate, Weight, CurrencyId>> {
+		if let Some((head, _tail)) = self.tranches.as_mut_slice().split_first_mut() {
+			Some(head)
+		} else {
+			None
+		}
+	}
+
+	pub fn senior_to_junior_slice(&self) -> &RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
+		self.tranches.rev()
+	}
+
+	pub fn senior_to_junior_slice_mut(
+		&mut self,
+	) -> &mut RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
+		self.tranches.rev_mut()
+	}
+
+	pub fn junior_to_senior_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
 		self.tranches.as_slice()
 	}
 
-	pub fn as_mut_tranche_slice(&mut self) -> &mut [Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn junior_to_senior_slice_mut(
+		&mut self,
+	) -> &mut [Tranche<Balance, Rate, Weight, CurrencyId>] {
 		self.tranches.as_mut_slice()
 	}
 
@@ -715,5 +767,6 @@ pub mod test {
 	#[test]
 	fn reverse_slice_panics_on_out_of_bounds() {}
 
+	#[test]
 	fn reverse_works_for_both_tranches() {}
 }

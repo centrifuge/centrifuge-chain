@@ -457,12 +457,7 @@ pub mod pallet {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
-			Self::is_valid_tranche_change(
-				&Tranches {
-					tranches: Vec::new(),
-				},
-				&tranches,
-			)?;
+			Self::is_valid_tranche_change(&Tranches::new(Vec::new()), &tranches)?;
 
 			let now = Self::now();
 			let tranches = Tranches::from_input::<T::PoolId, T::TrancheId, T::TrancheToken>(
@@ -1358,7 +1353,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let mut outstanding = &mut pool
 				.tranches
-				.as_mut_tranche_slice()
+				.junior_to_senior_slice_mut()
 				.get_mut(tranche_id.into())
 				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_invest_orders;
@@ -1387,7 +1382,7 @@ pub mod pallet {
 			let currency = T::TrancheToken::tranche_token(pool_id, tranche_id);
 			let mut outstanding = &mut pool
 				.tranches
-				.as_mut_tranche_slice()
+				.junior_to_senior_slice_mut()
 				.get_mut(tranche_id.into())
 				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_redeem_orders;
@@ -1644,7 +1639,7 @@ pub mod pallet {
 
 			let min_risk_buffers = pool_details
 				.tranches
-				.as_tranche_slice()
+				.junior_to_senior_slice()
 				.iter()
 				.map(|tranche| tranche.min_risk_buffer)
 				.collect::<Vec<_>>();
@@ -1792,7 +1787,7 @@ pub mod pallet {
 			// Update tranche orders and add epoch solution state
 			for ((((tranche_id, tranche), solution), executed_amounts), epoch_tranche) in pool
 				.tranches
-				.as_mut_tranche_slice()
+				.junior_to_senior_slice_mut()
 				.iter_mut()
 				.enumerate()
 				.zip(solution.iter().copied())
@@ -1899,7 +1894,7 @@ pub mod pallet {
 			let junior_tranche_id = 0;
 			let tranches_senior_to_junior = pool
 				.tranches
-				.as_mut_tranche_slice()
+				.junior_to_senior_slice_mut()
 				.iter_mut()
 				.enumerate()
 				.rev();
@@ -1992,9 +1987,7 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior =
-					pool.tranches.as_mut_tranche_slice().iter_mut().rev();
-				for tranche in tranches_senior_to_junior {
+				for tranche in pool.tranches.senior_to_junior_slice_mut() {
 					tranche.accrue(now)?;
 
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
@@ -2045,9 +2038,7 @@ pub mod pallet {
 					.ok_or(Error::<T>::Overflow)?;
 
 				let mut remaining_amount = amount;
-				let tranches_senior_to_junior =
-					&mut pool.tranches.as_mut_tranche_slice().iter_mut().rev();
-				for tranche in tranches_senior_to_junior {
+				for tranche in pool.tranches.senior_to_junior_slice_mut() {
 					tranche.accrue(now)?;
 
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
