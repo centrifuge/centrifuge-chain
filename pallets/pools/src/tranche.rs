@@ -86,13 +86,21 @@ impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum TrancheType<Rate> {
+	Residual,
+	NonResidual {
+		interest_per_sec: Rate,
+		min_risk_buffer: Perquintill,
+	},
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct Tranche<Balance, Rate, Weight, Currency>
 where
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 {
-	pub(super) interest_per_sec: Rate,
-	pub(super) min_risk_buffer: Perquintill,
+	pub(super) tranche_type: TrancheType<Rate>,
 	pub(super) seniority: Seniority,
 	pub(super) currency: Currency,
 
@@ -116,8 +124,10 @@ where
 {
 	fn default() -> Self {
 		Self {
-			interest_per_sec: One::one(),
-			min_risk_buffer: Perquintill::zero(),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::zero(),
+			},
 			seniority: 0,
 			currency: CurrencyId::Tranche(0, 0),
 			outstanding_invest_orders: Zero::zero(),
@@ -165,7 +175,7 @@ where
 
 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
 		let mut delta = now - self.last_updated_interest;
-		let mut interest = self.interest_per_sec;
+		let mut interest = self.interest_per_sec();
 		let mut total_interest: Rate = One::one();
 		while delta != 0 {
 			// TODO: What catches this?
@@ -185,6 +195,26 @@ where
 		self.last_updated_interest = now;
 
 		Ok(())
+	}
+
+	pub fn min_risk_buffer(&self) -> Perquintill {
+		match &self.tranche_type {
+			TrancheType::Residual => Perquintill::zero(),
+			TrancheType::NonResidual {
+				interest_per_sec: ref _interest_per_sec,
+				ref min_risk_buffer,
+			} => min_risk_buffer.clone(),
+		}
+	}
+
+	pub fn interest_per_sec(&self) -> Rate {
+		match &self.tranche_type {
+			TrancheType::Residual => One::one(),
+			TrancheType::NonResidual {
+				ref interest_per_sec,
+				min_risk_buffer: ref _min_risk_buffer,
+			} => interest_per_sec.clone(),
+		}
 	}
 
 	pub fn debt(&mut self, now: Moment) -> Result<Balance, DispatchError> {
@@ -221,9 +251,19 @@ where
 		let mut tranches = Vec::with_capacity(tranche_inputs.len());
 
 		for (id, input) in tranche_inputs.iter().enumerate() {
+			let tranche_type = if let Some(interest_per_sec) = input.interest_per_sec {
+				TrancheType::NonResidual {
+					interest_per_sec,
+					min_risk_buffer: input.min_risk_buffer.ok_or(DispatchError::Other(
+						"Corrupt runtime state. If interest is set, risk buffer must be set too.",
+					))?,
+				}
+			} else {
+				TrancheType::Residual
+			};
+
 			tranches.push(Tranche {
-				interest_per_sec: input.interest_per_sec.unwrap_or(One::one()),
-				min_risk_buffer: input.min_risk_buffer.unwrap_or(Perquintill::zero()),
+				tranche_type: tranche_type,
 				// seniority increases as index since the order is from junior to senior
 				seniority: input
 					.seniority
@@ -321,6 +361,85 @@ where
 		let mut res = Vec::with_capacity(self.tranches.len());
 		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter_mut().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn fold_rev<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
+	where
+		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, R) -> Result<R, DispatchError>,
+	{
+		let mut iter = self.tranches.iter().rev();
+		let mut r = if let Some(tranche) = iter.next() {
+			f(tranche, start)?
+		} else {
+			return Ok(start);
+		};
+
+		while let Some(tranche) = iter.next() {
+			r = f(tranche, r)?;
+		}
+		Ok(r)
+	}
+
+	pub fn combine_rev<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in self.tranches.iter().rev() {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_mut_rev<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in self.tranches.iter_mut().rev() {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_with_rev<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		// TODO: Would be nice to error out when with is larger than tranches...
+		let iter = self.tranches.iter().rev().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn combine_with_mut_rev<R, W, I, F>(
+		&mut self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		// TODO: Would be nice to error out when with is larger than tranches...
+		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -542,7 +661,7 @@ where
 	pub fn min_risk_buffers(&self) -> Vec<Perquintill> {
 		self.tranches
 			.iter()
-			.map(|tranche| tranche.min_risk_buffer)
+			.map(|tranche| tranche.min_risk_buffer())
 			.collect()
 	}
 
@@ -641,6 +760,186 @@ where
 		self.tranches.as_mut_slice()
 	}
 
+	pub fn fold<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
+	where
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			R,
+		) -> Result<R, DispatchError>,
+	{
+		let mut iter = self.tranches.iter();
+		let mut r = if let Some(tranche) = iter.next() {
+			f(tranche, start)?
+		} else {
+			return Ok(start);
+		};
+
+		while let Some(tranche) = iter.next() {
+			r = f(tranche, r)?;
+		}
+		Ok(r)
+	}
+
+	pub fn combine<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in &self.tranches {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_mut<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+		) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in &mut self.tranches {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_with<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			W,
+		) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		// TODO: Would be nice to error out when with is larger than tranches...
+		let iter = self.tranches.iter().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn combine_with_mut<R, W, I, F>(
+		&mut self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			W,
+		) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		// TODO: Would be nice to error out when with is larger than tranches...
+		let iter = self.tranches.iter_mut().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn fold_rev<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
+	where
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			R,
+		) -> Result<R, DispatchError>,
+	{
+		let mut iter = self.tranches.iter().rev();
+		let mut r = if let Some(tranche) = iter.next() {
+			f(tranche, start)?
+		} else {
+			return Ok(start);
+		};
+
+		while let Some(tranche) = iter.next() {
+			r = f(tranche, r)?;
+		}
+		Ok(r)
+	}
+
+	pub fn combine_rev<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in self.tranches.iter().rev() {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_mut_rev<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+		) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in self.tranches.iter_mut().rev() {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_with_rev<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			W,
+		) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		// TODO: Would be nice to error out when with is larger than tranches...
+		let iter = self.tranches.iter().rev().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn combine_with_mut_rev<R, W, I, F>(
+		&mut self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			W,
+		) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		// TODO: Would be nice to error out when with is larger than tranches...
+		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
 	pub fn prices(&self) -> Vec<BalanceRatio> {
 		self.tranches.iter().map(|tranche| tranche.price).collect()
 	}
@@ -649,19 +948,15 @@ where
 		&self,
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
-		self.tranches
-			.iter()
-			.zip(fulfillments)
-			.map(|(tranche, solution)| {
-				tranche
-					.supply
-					.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-					.and_then(|value| {
-						value.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-					})
-			})
-			.collect::<Option<Vec<_>>>()
-			.ok_or(ArithmeticError::Overflow.into())
+		self.combine_with(fulfillments, |tranche, solution| {
+			tranche
+				.supply
+				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+				.and_then(|value| {
+					value.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+				})
+				.ok_or(ArithmeticError::Overflow.into())
+		})
 	}
 
 	pub fn acc_supply_with_fulfillment(

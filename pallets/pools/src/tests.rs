@@ -179,25 +179,34 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
+			},
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.2),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.2),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.1),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.1),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			min_risk_buffer: Perquintill::zero(),
+			tranche_type: TrancheType::Residual,
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
@@ -270,7 +279,10 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.2),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.2),
+			},
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 3,
@@ -278,7 +290,10 @@ fn pool_constraints_pass() {
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.1),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.1),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 30,
 			seniority: 2,
@@ -286,7 +301,10 @@ fn pool_constraints_pass() {
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.05),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.05),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 1,
@@ -294,7 +312,7 @@ fn pool_constraints_pass() {
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			min_risk_buffer: Perquintill::zero(),
+			tranche_type: TrancheType::Residual,
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 0,
@@ -481,7 +499,7 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec,
+			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec(),
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);
@@ -579,14 +597,8 @@ fn epoch() {
 			pool.last_epoch_executed,
 		)
 		.unwrap();
-		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].debt,
-			0
-		);
-		assert!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].reserve
-				> 500 * CURRENCY
-		);
+		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
+		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
 		assert_eq!(
 			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize]
 				.outstanding_redeem_orders,
