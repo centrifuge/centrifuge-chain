@@ -12,8 +12,8 @@
 // GNU General Public License for more details.
 
 pub use crate::{self as nft_marketplace};
-use frame_support::{parameter_types, PalletId};
 use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::{parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
 use sp_core::H256;

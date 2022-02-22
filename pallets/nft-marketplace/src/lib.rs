@@ -121,11 +121,8 @@ pub mod pallet {
 		/// A buyer attempted to buy an NFT they already own
 		AlreadyOwner,
 
-		/// This pallet is not the freezer of a given asset
-		NotFreezer,
-
-		/// This pallet is not the freezer of a given asset
-		NotAdmin,
+		/// This pallet was not given enough permission (Freezer + Admin) to manage an asset
+		NoPermission,
 
 		/// The seller does not have sufficient balance to buy the asset
 		InsufficientBalance,
@@ -170,7 +167,7 @@ pub mod pallet {
 
 			// Freeze the asset to disallow unprivileged transfers
 			<pallet_uniques::Pallet<T>>::freeze(Self::origin(), class_id, instance_id)
-				.map_err(|_| Error::<T>::NotFreezer)?;
+				.map_err(|_| Error::<T>::NoPermission)?;
 
 			// Put the asset for sale
 			<Gallery<T>>::insert(
@@ -212,12 +209,12 @@ pub mod pallet {
 				Error::<T>::NotForSale
 			);
 
+			// Try and thaw the asset, fails if this pallet is not its freezer anymore but we don't
+			// need to do anything about that.
+			let _ = <pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id);
+
 			<Gallery<T>>::remove(class_id, instance_id);
 			Self::deposit_event(Event::Removed);
-
-			// Try and thaw the asset, fails if this pallet is not its freezer anymore
-			<pallet_uniques::Pallet<T>>::thaw(Self::origin(),class_id, instance_id)
-				.map_err(|_| Error::<T>::NotFreezer)?;
 
 			Ok(())
 		}
@@ -263,10 +260,8 @@ pub mod pallet {
 
 			// Thaw the NFT so that we can transfer it
 			<pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id)
-				.map_err(|_| Error::<T>::NotFreezer)?;
+				.map_err(|_| Error::<T>::NoPermission)?;
 
-			// TODO(nuno): The transfer can only be done by the owner or admin of the asset so I am
-			// not sure how the Freezer comes into play here. We need to check if we are admin beforehand.
 			let buyer_lookup = T::Lookup::unlookup(buyer);
 			<pallet_uniques::Pallet<T>>::transfer(
 				Self::origin(),

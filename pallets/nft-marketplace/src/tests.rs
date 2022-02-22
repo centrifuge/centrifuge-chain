@@ -14,9 +14,9 @@
 use crate::mock::*;
 use common_types::CurrencyId;
 use frame_support::dispatch::DispatchError;
-use frame_support::{assert_noop, assert_ok};
-use runtime_common::{InstanceId};
 use frame_support::traits::fungibles::Inspect;
+use frame_support::{assert_noop, assert_ok};
+use runtime_common::InstanceId;
 
 /// Verify that calling `NftMarketplace::add` specifiying an nft that is not present in the
 /// underlying `pallet_uniques` fails with `nft_marketplace::Error::<T>::NotFound`.
@@ -34,27 +34,18 @@ fn add_nft_not_found() {
 }
 
 #[test]
-fn remove_nft_not_found() {
+fn add_nft_no_permission() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(33);
-		let unknown_asset = (0, InstanceId(1));
+		let seller: Origin = Origin::signed(1);
+		let (class_id, instance_id) = (0, InstanceId(1));
+
+		// Mint the nft in the uniques pallet
+		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
+		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
 
 		assert_noop!(
-			NftMarketplace::remove(seller, unknown_asset.0, unknown_asset.1),
-			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
-		);
-	});
-}
-
-#[test]
-fn buy_nft_not_found() {
-	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(33);
-		let unknown_asset = (0, InstanceId(1));
-
-		assert_noop!(
-			NftMarketplace::buy(seller, unknown_asset.0, unknown_asset.1),
-			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
+			NftMarketplace::add(seller, class_id, instance_id, CurrencyId::Usd, 3),
+			DispatchError::from(nft_marketplace::Error::<Test>::NoPermission)
 		);
 	});
 }
@@ -94,6 +85,56 @@ fn add_nft_works() {
 	});
 }
 
+// Verify that if the owner of the asset changes the Admin & Freezer of their asset after adding it,
+// calling `NftMarketplace::remove` will still succeed.
+#[test]
+fn remove_nft_no_permission() {
+	new_test_ext().execute_with(|| {
+		let seller: Origin = Origin::signed(1);
+		let (class_id, instance_id) = (0, InstanceId(1));
+
+		// Mint the nft in the uniques pallet
+		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
+		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
+
+		// Make NftMarketplace the admin and freezer of the asset's class
+		assert_ok!(Uniques::set_team(
+			seller.clone(),
+			class_id,
+			1,
+			NftMarketplace::account(),
+			NftMarketplace::account()
+		));
+
+		// Set it for sale in the NftMarketplace
+		assert_ok!(NftMarketplace::add(
+			seller.clone(),
+			class_id,
+			instance_id,
+			CurrencyId::Usd,
+			10_000
+		));
+
+		// Now we remove NftMarketplace as the admin and freezer of the asset's class
+		assert_ok!(Uniques::set_team(seller.clone(), class_id, 1, 1, 1,));
+
+		// Verify that try and remove it again fails with `NoPermission`. This happens because
+		// we attempt to thaw the asset, frozen when added, and we no longer have the permissions
+		// to do so.
+		assert_ok!(NftMarketplace::remove(
+			seller.clone(),
+			class_id,
+			instance_id
+		));
+
+		// Verify that indeed the asset is no longer for sale
+		assert_noop!(
+			NftMarketplace::remove(seller, class_id, instance_id),
+			DispatchError::from(nft_marketplace::Error::<Test>::NotForSale),
+		);
+	});
+}
+
 #[test]
 fn remove_nft_works() {
 	new_test_ext().execute_with(|| {
@@ -121,9 +162,11 @@ fn remove_nft_works() {
 			10_000
 		));
 
-		assert_ok!(
-			NftMarketplace::remove(seller.clone(), class_id, instance_id),
-		);
+		assert_ok!(NftMarketplace::remove(
+			seller.clone(),
+			class_id,
+			instance_id
+		),);
 
 		// Verify that try and remove it again fails with `NotForSale`
 		assert_noop!(
@@ -133,9 +176,21 @@ fn remove_nft_works() {
 	});
 }
 
+#[test]
+fn buy_nft_not_found() {
+	new_test_ext().execute_with(|| {
+		let seller: Origin = Origin::signed(33);
+		let unknown_asset = (0, InstanceId(1));
+
+		assert_noop!(
+			NftMarketplace::buy(seller, unknown_asset.0, unknown_asset.1),
+			DispatchError::from(nft_marketplace::Error::<Test>::NotFound)
+		);
+	});
+}
 
 #[test]
-fn buy_nft_fails_already_owner() {
+fn buy_nft_already_owner() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(1);
 		let (class_id, instance_id) = (0, InstanceId(1));
@@ -170,7 +225,7 @@ fn buy_nft_fails_already_owner() {
 }
 
 #[test]
-fn buy_nft_fails_not_for_sale() {
+fn buy_nft_not_for_sale() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(1);
 		let (class_id, instance_id) = (0, InstanceId(1));
@@ -189,7 +244,7 @@ fn buy_nft_fails_not_for_sale() {
 }
 
 #[test]
-fn buy_nft_fails_insufficient_balance() {
+fn buy_nft_insufficient_balance() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(1);
 		let (class_id, instance_id) = (0, InstanceId(1));
@@ -225,7 +280,6 @@ fn buy_nft_fails_insufficient_balance() {
 	});
 }
 
-
 #[test]
 fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
@@ -256,5 +310,10 @@ fn buy_nft_works() {
 		// Verify that the buyer can buy the nft
 		let buyer: Origin = Origin::signed(2);
 		assert_ok!(NftMarketplace::buy(buyer, class_id, instance_id));
+
+		// TODO(nuno): Verify other things, namely:
+		// - we are no longer the freezer / the asset is no longer frozen
+		// - the buyer is now the owner of the freezer
+		// - the asking price was deducted appropriately
 	});
 }
