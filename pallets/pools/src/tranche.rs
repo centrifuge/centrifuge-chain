@@ -740,6 +740,18 @@ where
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
+	pub(super) supply: Balance,
+	pub(super) price: BalanceRatio,
+	pub(super) invest: Balance,
+	pub(super) redeem: Balance,
+	pub(super) min_risk_buffer: Perquintill,
+	pub(super) seniority: Seniority,
+
+	pub(super) _phantom: PhantomData<Weight>,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochExecutionTranches<Balance, BalanceRatio, Weight> {
 	tranches: Vec<EpochExecutionTranche<Balance, BalanceRatio, Weight>>,
 }
@@ -1109,16 +1121,47 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionTranche<Balance, BalanceRatio, Weight> {
-	pub(super) supply: Balance,
-	pub(super) price: BalanceRatio,
-	pub(super) invest: Balance,
-	pub(super) redeem: Balance,
-	pub(super) min_risk_buffer: Perquintill,
-	pub(super) seniority: Seniority,
+pub(crate) fn calculate_risk_buffers<Balance, BalanceRatio>(
+	tranche_supplies: &[Balance],
+	tranche_prices: &[BalanceRatio],
+) -> Result<Vec<Perquintill>, DispatchError>
+where
+	BalanceRatio: Copy + FixedPointNumber,
+	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+{
+	let tranche_values: Vec<_> = tranche_supplies
+		.iter()
+		.zip(tranche_prices)
+		.map(|(supply, price)| price.checked_mul_int(supply.clone()))
+		.collect::<Option<Vec<_>>>()
+		.ok_or(ArithmeticError::Overflow)?;
 
-	pub(super) _phantom: PhantomData<Weight>,
+	let pool_value = tranche_values
+		.iter()
+		.fold(Some(Zero::zero()), |sum: Option<Balance>, tranche_value| {
+			sum.and_then(|sum| sum.checked_add(tranche_value))
+		})
+		.ok_or(ArithmeticError::Overflow)?;
+
+	// Iterate over the tranches senior => junior.
+	// Buffer of most senior tranche is pool value - senior tranche value.
+	// Buffer of each subordinate tranche is the buffer of the
+	// previous more senior tranche - this tranche value.
+	let mut remaining_subordinate_value = pool_value.clone();
+	let mut risk_buffers: Vec<Perquintill> = tranche_values
+		.iter()
+		.rev()
+		.map(|tranche_value| {
+			remaining_subordinate_value = remaining_subordinate_value
+				.checked_sub(tranche_value)
+				.unwrap_or(Zero::zero());
+			Perquintill::from_rational(remaining_subordinate_value, pool_value)
+		})
+		.collect::<Vec<Perquintill>>();
+
+	risk_buffers.reverse();
+
+	Ok(risk_buffers)
 }
 
 #[cfg(test)]

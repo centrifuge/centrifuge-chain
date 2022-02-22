@@ -378,7 +378,11 @@ fn pool_constraints_pass() {
 		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			Pools::calculate_risk_buffers(&vec![3, 1], &vec![One::one(), One::one()]).unwrap(),
+			crate::calculate_risk_buffers::<u128, runtime_common::Rate>(
+				&vec![3, 1],
+				&vec![One::one(), One::one()]
+			)
+			.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
 		assert_eq!(

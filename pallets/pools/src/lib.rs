@@ -1240,7 +1240,7 @@ pub mod pallet {
 
 			let risk_buffer_improvement_scores =
 				if state.contains(&UnhealthyState::MinRiskBufferViolated) {
-					let risk_buffers = Self::calculate_risk_buffers(
+					let risk_buffers = calculate_risk_buffers(
 						&tranches.supplies_with_fulfillment(solution)?,
 						&tranches.prices(),
 					)?;
@@ -1673,8 +1673,7 @@ pub mod pallet {
 				.map(|tranche| tranche.price)
 				.collect::<Vec<_>>();
 
-			let risk_buffers =
-				Self::calculate_risk_buffers(&new_tranche_supplies, &tranche_prices)?;
+			let risk_buffers = calculate_risk_buffers(&new_tranche_supplies, &tranche_prices)?;
 
 			Self::validate_pool_constraints(
 				state,
@@ -1683,46 +1682,6 @@ pub mod pallet {
 				&min_risk_buffers,
 				&risk_buffers,
 			)
-		}
-
-		pub(crate) fn calculate_risk_buffers(
-			tranche_supplies: &Vec<T::Balance>,
-			tranche_prices: &Vec<T::BalanceRatio>,
-		) -> Result<Vec<Perquintill>, DispatchError> {
-			let tranche_values: Vec<_> = tranche_supplies
-				.iter()
-				.zip(tranche_prices)
-				.map(|(supply, price)| price.checked_mul_int(supply.clone()))
-				.collect::<Option<Vec<_>>>()
-				.ok_or(Error::<T>::Overflow)?;
-
-			let pool_value = tranche_values
-				.iter()
-				.fold(
-					Some(Zero::zero()),
-					|sum: Option<T::Balance>, tranche_value| {
-						sum.and_then(|sum| sum.checked_add(tranche_value))
-					},
-				)
-				.ok_or(Error::<T>::Overflow)?;
-
-			// Iterate over the tranches senior => junior.
-			// Buffer of most senior tranche is pool value - senior tranche value.
-			// Buffer of each subordinate tranche is the buffer of the
-			// previous more senior tranche - this tranche value.
-			let mut remaining_subordinate_value = pool_value.clone();
-			let risk_buffers: Vec<Perquintill> = tranche_values
-				.iter()
-				.rev()
-				.map(|tranche_value| {
-					remaining_subordinate_value = remaining_subordinate_value
-						.checked_sub(tranche_value)
-						.unwrap_or(Zero::zero());
-					Perquintill::from_rational(remaining_subordinate_value, pool_value)
-				})
-				.collect::<Vec<Perquintill>>();
-
-			Ok(risk_buffers.into_iter().rev().collect())
 		}
 
 		fn validate_core_constraints(
