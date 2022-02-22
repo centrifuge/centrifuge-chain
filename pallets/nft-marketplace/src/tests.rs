@@ -23,7 +23,7 @@ use runtime_common::InstanceId;
 #[test]
 fn add_nft_not_found() {
 	new_test_ext().execute_with(|| {
-		let seller: Origin = Origin::signed(33);
+		let seller: Origin = Origin::signed(SELLER);
 		let unknown_nft = (0, InstanceId(1));
 
 		assert_noop!(
