@@ -168,6 +168,9 @@ parameter_types! {
 	pub const NftMarketplacePalletId: PalletId = PalletId(*b"pal/nftm");
 }
 
+pub(crate) const SELLER: u64 = 0x1;
+pub(crate) const BUYER: u64 = 0x2;
+
 #[allow(dead_code)]
 // Build the genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -177,7 +180,11 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	// pre-fill balances
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(1, 100_000 * CURRENCY), (2, 10_000 * CURRENCY), (100, 100)],
+		balances: vec![
+			(SELLER, 100_000 * CURRENCY),
+			(BUYER, 10_000 * CURRENCY),
+			(100, 100),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
