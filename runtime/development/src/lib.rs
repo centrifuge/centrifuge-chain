@@ -768,12 +768,21 @@ impl pallet_claims::Config for Runtime {
 
 // Pool config parameters
 parameter_types! {
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+
+	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
 	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
 	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
-	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+
+	// Runtime-defined constraints for pool parameters
+	pub const MinEpochTimeLowerBound: u64 = 1; // do not allow multiple epochs closed in 1 block
+	pub const ChallengeTimeLowerBound: u64 = 1; // do not allow submission and execution in 1 block
+	pub const MaxNAVAgeUpperBound: u64 = 60 * 60; // 1 hour
+
+	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
-	pub const MaxSizeMetadata: u32 = 46;
+	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
 }
 
 impl pallet_pools::Config for Runtime {
@@ -794,6 +803,9 @@ impl pallet_pools::Config for Runtime {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
+	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;

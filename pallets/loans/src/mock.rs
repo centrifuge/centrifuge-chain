@@ -141,10 +141,19 @@ impl orml_tokens::Config for MockRuntime {
 }
 
 parameter_types! {
+	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+
+	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
 	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
-	pub const PoolPalletId: PalletId = PalletId(*b"roc/pool");
+
+	// Runtime-defined constraints for pool parameters
+	pub const MinEpochTimeLowerBound: u64 = 0; // disable bound
+	pub const ChallengeTimeLowerBound: u64 = 0; // disable bound
+	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // disable bound
+
+	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 }
@@ -166,6 +175,9 @@ impl pallet_pools::Config for MockRuntime {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
+	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type Permission = Permissions;
 	type MaxSizeMetadata = MaxSizeMetadata;

@@ -260,6 +260,7 @@ pub mod pallet {
 	use frame_support::sp_runtime::traits::Convert;
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
+	use sp_runtime::ArithmeticError;
 	use sp_std::convert::TryInto;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -363,6 +364,15 @@ pub mod pallet {
 
 		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
+
+		/// Min epoch time lower bound
+		type MinEpochTimeLowerBound: Get<u64>;
+
+		/// Challenge time lower bound
+		type ChallengeTimeLowerBound: Get<u64>;
+
+		/// Max NAV age upper bound
+		type MaxNAVAgeUpperBound: Get<u64>;
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -469,8 +479,6 @@ pub mod pallet {
 		InSubmissionPeriod,
 		/// Attempted to close an epoch with an out of date NAV
 		NAVTooOld,
-		/// An arithmetic overflow occurred
-		Overflow,
 		/// A Tranche ID cannot be converted to an address
 		TrancheId,
 		/// Closing the epoch now would wipe out the junior tranche
@@ -511,8 +519,8 @@ pub mod pallet {
 		NotNewBestSubmission,
 		/// No solution has yet been provided for the epoch
 		NoSolutionAvailable,
-		/// Indicates that an un-healthy solution was submitted but a healthy one exists
-		HealtySolutionExists,
+		/// One of the runtime-level pool parameter bounds was violated
+		PoolParameterBoundViolated,
 	}
 
 	#[pallet::call]
@@ -580,9 +588,18 @@ pub mod pallet {
 					max_reserve,
 					available_reserve: Zero::zero(),
 					total_reserve: Zero::zero(),
-					min_epoch_time: T::DefaultMinEpochTime::get(),
-					challenge_time: T::DefaultChallengeTime::get(),
-					max_nav_age: T::DefaultMaxNAVAge::get(),
+					min_epoch_time: sp_std::cmp::max(
+						T::DefaultMinEpochTime::get(),
+						T::MinEpochTimeLowerBound::get(),
+					),
+					challenge_time: sp_std::cmp::max(
+						T::DefaultChallengeTime::get(),
+						T::ChallengeTimeLowerBound::get(),
+					),
+					max_nav_age: sp_std::cmp::min(
+						T::DefaultMaxNAVAge::get(),
+						T::MaxNAVAgeUpperBound::get(),
+					),
 					metadata: None,
 				},
 			);
@@ -610,6 +627,13 @@ pub mod pallet {
 			ensure!(
 				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
 				BadOrigin
+			);
+
+			ensure!(
+				min_epoch_time >= T::MinEpochTimeLowerBound::get()
+					&& challenge_time >= T::ChallengeTimeLowerBound::get()
+					&& max_nav_age <= T::MaxNAVAgeUpperBound::get(),
+				Error::<T>::PoolParameterBoundViolated
 			);
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
@@ -863,7 +887,7 @@ pub mod pallet {
 			let end_epoch: T::EpochId = order
 				.epoch
 				.checked_add(&collect_n_epochs)
-				.ok_or(Error::<T>::Overflow)?
+				.ok_or(ArithmeticError::Overflow)?
 				.min(pool.last_epoch_executed);
 
 			let actual_epochs = end_epoch - order.epoch;
@@ -970,7 +994,7 @@ pub mod pallet {
 
 				let epoch_tranche_prices =
 					Self::calculate_tranche_prices(pool_id, nav, epoch_reserve, &mut pool.tranches)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 
 				if pool.tranches.iter().all(|tranche| {
 					tranche.outstanding_invest_orders.is_zero()
@@ -1022,7 +1046,7 @@ pub mod pallet {
 				// Convert redeem orders to the pool currency and return a list of (invest, redeem) pairs.
 				let orders =
 					Self::convert_orders_to_currency(&epoch_tranche_prices, &pool.tranches)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 
 				let full_execution_solution = orders
 					.iter()
@@ -1037,7 +1061,7 @@ pub mod pallet {
 					.iter()
 					.map(|tranche| tranche.debt.checked_add(&tranche.reserve))
 					.collect::<Option<Vec<_>>>()
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Overflow)?;
 
 				let seniorities = pool
 					.tranches
@@ -1324,7 +1348,11 @@ pub mod pallet {
 			solution: &[TrancheSolution],
 			tranches: &[EpochExecutionTrancheOf<T>],
 		) -> Result<T::Balance, DispatchError> {
-			let len = tranches.len().try_into().ok().ok_or(Error::<T>::Overflow)?;
+			let len = tranches
+				.len()
+				.try_into()
+				.ok()
+				.ok_or(ArithmeticError::Overflow)?;
 
 			let (invest_score, redeem_score) = solution
 				.iter()
@@ -1356,7 +1384,7 @@ pub mod pallet {
 			invest_score
 				.zip(redeem_score)
 				.and_then(|(invest_score, redeem_score)| invest_score.checked_add(&redeem_score))
-				.ok_or(Error::<T>::Overflow.into())
+				.ok_or(ArithmeticError::Overflow.into())
 		}
 
 		/// Scores an solution, that would bring a pool into an unhealthy state.
@@ -1384,7 +1412,7 @@ pub mod pallet {
 								})
 						})
 						.collect::<Option<Vec<_>>>()
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 
 					let tranche_prices = tranches
 						.iter()
@@ -1408,7 +1436,7 @@ pub mod pallet {
 								)
 							})
 							.collect::<Option<Vec<_>>>()
-							.ok_or(Error::<T>::Overflow)?,
+							.ok_or(ArithmeticError::Overflow)?,
 					)
 				} else {
 					None
@@ -1435,15 +1463,15 @@ pub mod pallet {
 					},
 				);
 
-				let acc_invest = acc_invest.ok_or(Error::<T>::Overflow)?;
-				let acc_redeem = acc_redeem.ok_or(Error::<T>::Overflow)?;
+				let acc_invest = acc_invest.ok_or(ArithmeticError::Overflow)?;
+				let acc_redeem = acc_redeem.ok_or(ArithmeticError::Overflow)?;
 
 				let new_reserve = info
 					.reserve
 					.checked_add(&acc_invest)
 					.and_then(|value| value.checked_sub(&acc_redeem))
 					.and_then(|value| value.checked_sub(&info.max_reserve))
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Underflow)?;
 
 				// Score: 1 / (new reserve - max reserve)
 				// A higher score means the distance to the max reserve is smaller
@@ -1453,7 +1481,7 @@ pub mod pallet {
 						.and_then(|reserve_diff| {
 							T::BalanceRatio::one().checked_div_int(reserve_diff)
 						})
-						.ok_or(Error::<T>::Overflow)?,
+						.ok_or(ArithmeticError::Underflow)?,
 				)
 			} else {
 				None
@@ -1562,7 +1590,7 @@ pub mod pallet {
 
 				*pool_orders = pool_orders
 					.checked_add(&transfer_amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Overflow)?;
 
 				*old_order = new_order;
 				Ok((who, pool, transfer_amount))
@@ -1573,7 +1601,7 @@ pub mod pallet {
 
 				*pool_orders = pool_orders
 					.checked_sub(&transfer_amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Underflow)?;
 
 				*old_order = new_order;
 				Ok((pool, who, transfer_amount))
@@ -1651,11 +1679,11 @@ pub mod pallet {
 					outstanding.payout_token_amount = outstanding
 						.payout_token_amount
 						.checked_add(&amount_token)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 					outstanding.remaining_invest_currency = outstanding
 						.remaining_invest_currency
 						.checked_sub(&amount)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Underflow)?;
 				}
 
 				epoch_idx = epoch_idx + One::one();
@@ -1692,11 +1720,11 @@ pub mod pallet {
 					outstanding.payout_currency_amount = outstanding
 						.payout_currency_amount
 						.checked_add(&amount_currency)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 					outstanding.remaining_redeem_token = outstanding
 						.remaining_redeem_token
 						.checked_sub(&amount)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Underflow)?;
 				}
 
 				epoch_idx = epoch_idx + One::one();
@@ -1857,7 +1885,7 @@ pub mod pallet {
 						sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
 					})
 				})
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			let acc_redeem: T::Balance = epoch
 				.tranches
@@ -1868,11 +1896,11 @@ pub mod pallet {
 						sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
 					})
 				})
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			Self::validate_core_constraints(currency_available, acc_redeem)?;
 
@@ -1901,7 +1929,7 @@ pub mod pallet {
 						})
 				})
 				.collect::<Option<Vec<_>>>()
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			let tranche_prices = epoch
 				.tranches
@@ -1930,7 +1958,7 @@ pub mod pallet {
 				.zip(tranche_prices)
 				.map(|(supply, price)| price.checked_mul_int(supply.clone()))
 				.collect::<Option<Vec<_>>>()
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			let pool_value = tranche_values
 				.iter()
@@ -1940,7 +1968,7 @@ pub mod pallet {
 						sum.and_then(|sum| sum.checked_add(tranche_value))
 					},
 				)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			// Iterate over the tranches senior => junior.
 			// Buffer of most senior tranche is pool value - senior tranche value.
@@ -2060,7 +2088,7 @@ pub mod pallet {
 						})
 					},
 				)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			pool.available_reserve = pool.total_reserve;
 
@@ -2079,7 +2107,7 @@ pub mod pallet {
 			let total_assets = pool
 				.total_reserve
 				.checked_add(&epoch.nav)
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 			let tranche_ratios: Vec<_> = executed_amounts
 				.iter()
 				.zip(&mut epoch.tranches.iter())
@@ -2094,7 +2122,7 @@ pub mod pallet {
 						})
 				})
 				.collect::<Option<Vec<Perquintill>>>()
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			// Calculate the new total asset value for each tranche
 			// This uses the current state of the tranches, rather than the cached epoch-close-time values.
@@ -2122,7 +2150,7 @@ pub mod pallet {
 						})
 				})
 				.collect::<Option<Vec<T::Balance>>>()
-				.ok_or(Error::<T>::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?;
 
 			// Rebalance tranches based on the new tranche asset values and ratios
 			let nav = epoch.nav.clone();
@@ -2209,12 +2237,12 @@ pub mod pallet {
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_add(&amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Overflow)?;
 
 				let mut remaining_amount = amount;
 				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
 				for tranche in tranches_senior_to_junior {
-					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					Self::update_tranche_debt(tranche).ok_or(ArithmeticError::Overflow)?;
 
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
@@ -2232,7 +2260,7 @@ pub mod pallet {
 					tranche.reserve = tranche
 						.reserve
 						.checked_add(&tranche_amount)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 
 					remaining_amount -= tranche_amount;
 				}
@@ -2254,16 +2282,16 @@ pub mod pallet {
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Overflow)?;
 				pool.available_reserve = pool
 					.available_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Overflow)?;
 
 				let mut remaining_amount = amount;
 				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
 				for tranche in tranches_senior_to_junior {
-					Self::update_tranche_debt(tranche).ok_or(Error::<T>::Overflow)?;
+					Self::update_tranche_debt(tranche).ok_or(ArithmeticError::Overflow)?;
 
 					let tranche_amount = if tranche.interest_per_sec != One::one() {
 						tranche.ratio.mul_ceil(amount)
@@ -2281,7 +2309,7 @@ pub mod pallet {
 					tranche.debt = tranche
 						.debt
 						.checked_add(&tranche_amount)
-						.ok_or(Error::<T>::Overflow)?;
+						.ok_or(ArithmeticError::Overflow)?;
 
 					remaining_amount -= tranche_amount;
 				}
