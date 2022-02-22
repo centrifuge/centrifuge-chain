@@ -143,7 +143,7 @@ where
 
 impl<Balance, Rate, Weight, Currency> Tranche<Balance, Rate, Weight, Currency>
 where
-	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand,
+	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	Rate: FixedPointNumber<Inner = Balance> + One + Copy,
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
@@ -235,7 +235,7 @@ where
 impl<Balance, Rate, Weight, CurrencyId> Tranches<Balance, Rate, Weight, CurrencyId>
 where
 	CurrencyId: Copy,
-	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand,
+	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	Rate: One + Copy + FixedPointNumber<Inner = Balance>,
 {
@@ -670,6 +670,72 @@ where
 			.iter()
 			.map(|tranche| tranche.seniority)
 			.collect::<Vec<_>>()
+	}
+
+	pub fn rebalance_tranches(
+		&mut self,
+		now: Moment,
+		pool_total_reserve: Balance,
+		pool_nav: Balance,
+		tranche_ratios: &[Perquintill],
+		executed_amounts: &[(Balance, Balance)],
+	) -> DispatchResult {
+		// Calculate the new fraction of the total pool value that each tranche contains
+		// This is based on the tranche values at time of epoch close.
+		let total_assets = pool_total_reserve
+			.checked_add(&pool_nav)
+			.ok_or(ArithmeticError::Overflow)?;
+
+		// Calculate the new total asset value for each tranche
+		// This uses the current state of the tranches, rather than the cached epoch-close-time values.
+		let mut total_assets = total_assets;
+		let tranche_assets = self.combine_with_mut_rev(
+			executed_amounts.iter().rev(),
+			|tranche, (invest, redeem)| {
+				tranche.accrue(now)?;
+
+				tranche
+					.debt
+					.checked_add(&tranche.reserve)
+					.and_then(|value| value.checked_add(invest))
+					.and_then(|value| value.checked_sub(redeem))
+					.map(|value| {
+						if value > total_assets {
+							let assets = total_assets;
+							total_assets = Zero::zero();
+							assets
+						} else {
+							total_assets = total_assets.saturating_sub(value);
+							value
+						}
+					})
+					.ok_or(ArithmeticError::Overflow.into())
+			},
+		)?;
+
+		// Rebalance tranches based on the new tranche asset values and ratios
+		let mut remaining_nav = pool_nav;
+		let mut remaining_reserve = pool_total_reserve;
+		self.combine_with_mut_rev(
+			tranche_ratios.iter().rev().zip(tranche_assets.iter()),
+			|tranche, (ratio, value)| {
+				tranche.ratio = *ratio;
+				if tranche.tranche_type == TrancheType::Residual {
+					tranche.debt = remaining_nav;
+					tranche.reserve = remaining_reserve;
+				} else {
+					tranche.debt = ratio.mul_ceil(pool_nav);
+					if tranche.debt > *value {
+						tranche.debt = *value;
+					}
+					tranche.reserve = value.saturating_sub(tranche.debt);
+					remaining_nav -= tranche.debt;
+					remaining_reserve -= tranche.reserve;
+				}
+				Ok(())
+			},
+		)
+		.map(|_| ())
 	}
 }
 
