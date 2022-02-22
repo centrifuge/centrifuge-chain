@@ -258,9 +258,9 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
-	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
-	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
+	pub const DefaultMinEpochTime: u64 = 1;
+	pub const DefaultChallengeTime: u64 = 1;
+	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1;

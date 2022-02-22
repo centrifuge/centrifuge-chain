@@ -795,6 +795,17 @@ fn execute_info_removed_after_epoch_execute() {
 			10_000 * CURRENCY
 		));
 
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
 		invest_close_and_collect(
 			0,
 			vec![
@@ -893,6 +904,17 @@ fn collect_tranche_tokens() {
 			SENIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
 
 		// Outstanding orders
 		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
