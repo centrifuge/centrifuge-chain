@@ -188,7 +188,6 @@ pub mod pallet {
 		/// Fails if
 		///   - `origin` is not the owner of the NFT
 		///   - the nft is not for sale
-		///   - the pallet is not the asset's Freezer
 		#[pallet::weight(10_000_000)]
 		pub fn remove(
 			origin: OriginFor<T>,
