@@ -26,7 +26,7 @@ use common_types::CurrencyId;
 use frame_support::sp_runtime::ArithmeticError;
 use frame_support::sp_std::convert::TryInto;
 use rev_slice::{RevSlice, SliceExt};
-use sp_arithmetic::traits::{BaseArithmetic, Unsigned};
+use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 
 /// Types alias for EpochExecutionTranches
 pub(super) type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
@@ -176,22 +176,18 @@ where
 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
 		let mut delta = now - self.last_updated_interest;
 		let mut interest = self.interest_per_sec();
-		let mut total_interest: Rate = One::one();
-		while delta != 0 {
-			// TODO: What catches this?
-			if delta & 1 == 1 {
-				total_interest = interest
-					.checked_mul(&total_interest)
-					.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
-			}
-			interest = interest
-				.checked_mul(&interest)
-				.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
-			delta = delta >> 1;
-		}
+		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
+		//       for us, as we simply have the same debt if this happens
+		let total_interest = checked_pow(
+			interest,
+			delta
+				.try_into()
+				.map_err(|_| DispatchError::Other("Usize should be at least 64 bits."))?,
+		)
+		.ok_or(ArithmeticError::Overflow)?;
 		self.debt = total_interest
 			.checked_mul_int(self.debt)
-			.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
+			.ok_or(ArithmeticError::Overflow)?;
 		self.last_updated_interest = now;
 
 		Ok(())
