@@ -21,7 +21,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect(),
 		};
 
-		let epoch_tranches = EpochExecutionTranches(
+		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.as_tranche_slice()
 				.iter()
@@ -111,7 +111,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranches = Tranches {
 			tranches: vec![tranche_a, tranche_b, tranche_c, tranche_d],
 		};
-		let epoch_tranches = EpochExecutionTranches(
+		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.as_tranche_slice()
 				.iter()
@@ -208,7 +208,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			tranches: vec![tranche_d, tranche_c, tranche_b, tranche_a],
 		};
 
-		let epoch_tranches = EpochExecutionTranches(
+		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.as_tranche_slice()
 				.iter()
@@ -308,7 +308,7 @@ fn pool_constraints_pass() {
 		let tranches = Tranches {
 			tranches: vec![tranche_d, tranche_c, tranche_b, tranche_a],
 		};
-		let epoch_tranches = EpochExecutionTranches(
+		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.as_tranche_slice()
 				.iter()

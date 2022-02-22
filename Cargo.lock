@@ -5825,6 +5825,7 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
+ "rev_slice",
  "runtime-common",
  "scale-info",
  "serde",
@@ -8216,6 +8217,12 @@ name = "retain_mut"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11000e6ba5020e53e7cc26f73b91ae7d5496b4977851479edb66b694c0675c21"
+
+[[package]]
+name = "rev_slice"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ed802e95a56a9f0cbc3687c0baf84bb0aa9c3af2fae758add8a07bbbc4e3954"
 
 [[package]]
 name = "ring"
