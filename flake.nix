@@ -91,7 +91,10 @@
           name = "centrifugeio/${name}";
           tag = version;
 
-          contents = inputs.self.defaultPackage.${system};
+          contents = [
+            pkgs.busybox
+            inputs.self.defaultPackage.${system}
+          ];
 
           config = {
             ExposedPorts = {
