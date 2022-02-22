@@ -69,6 +69,14 @@ fn add_nft_works() {
 		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
 		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
 
+		assert_ok!(Uniques::set_team(
+			seller.clone(),
+			class_id,
+			1,
+			NftMarketplace::account(),
+			NftMarketplace::account()
+		));
+
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
@@ -95,6 +103,14 @@ fn remove_nft_works() {
 		// Mint the nft in the uniques pallet
 		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
 		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
+
+		assert_ok!(Uniques::set_team(
+			seller.clone(),
+			class_id,
+			1,
+			NftMarketplace::account(),
+			NftMarketplace::account()
+		));
 
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
@@ -127,6 +143,14 @@ fn buy_nft_fails_already_owner() {
 		// Mint the nft in the uniques pallet
 		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
 		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
+
+		assert_ok!(Uniques::set_team(
+			seller.clone(),
+			class_id,
+			1,
+			NftMarketplace::account(),
+			NftMarketplace::account()
+		));
 
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
@@ -174,6 +198,14 @@ fn buy_nft_fails_insufficient_balance() {
 		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
 		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
 
+		assert_ok!(Uniques::set_team(
+			seller.clone(),
+			class_id,
+			1,
+			NftMarketplace::account(),
+			NftMarketplace::account()
+		));
+
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
@@ -204,6 +236,14 @@ fn buy_nft_works() {
 		assert_ok!(Uniques::create(seller.clone(), class_id, 1));
 		assert_ok!(Uniques::mint(seller.clone(), class_id, instance_id, 1));
 
+		assert_ok!(Uniques::set_team(
+			seller.clone(),
+			class_id,
+			1,
+			NftMarketplace::account(),
+			NftMarketplace::account()
+		));
+
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
@@ -216,10 +256,5 @@ fn buy_nft_works() {
 		// Verify that the buyer can buy the nft
 		let buyer: Origin = Origin::signed(2);
 		assert_ok!(NftMarketplace::buy(buyer, class_id, instance_id));
-
-		// TODO(nuno): Verify other things, namely:
-		// - we are no longer the freezer / the asset is no longer frozen
-		// - the buyer is now the owner of the freezer
-		// - the asking price was deducted appropriately
 	});
 }

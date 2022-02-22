@@ -50,6 +50,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_support::{transactional, PalletId};
 	use frame_system::pallet_prelude::*;
+	use frame_system::RawOrigin;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -168,7 +169,7 @@ pub mod pallet {
 			);
 
 			// Freeze the asset to disallow unprivileged transfers
-			<pallet_uniques::Pallet<T>>::freeze(origin.clone(), class_id, instance_id)
+			<pallet_uniques::Pallet<T>>::freeze(Self::origin(), class_id, instance_id)
 				.map_err(|_| Error::<T>::NotFreezer)?;
 
 			// Put the asset for sale
@@ -215,7 +216,7 @@ pub mod pallet {
 			Self::deposit_event(Event::Removed);
 
 			// Try and thaw the asset, fails if this pallet is not its freezer anymore
-			<pallet_uniques::Pallet<T>>::thaw(origin.clone(), class_id, instance_id)
+			<pallet_uniques::Pallet<T>>::thaw(Self::origin(),class_id, instance_id)
 				.map_err(|_| Error::<T>::NotFreezer)?;
 
 			Ok(())
@@ -261,14 +262,14 @@ pub mod pallet {
 			.map_err(|_| Error::<T>::PaymentFailed)?;
 
 			// Thaw the NFT so that we can transfer it
-			<pallet_uniques::Pallet<T>>::thaw(origin.clone(), class_id, instance_id)
+			<pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id)
 				.map_err(|_| Error::<T>::NotFreezer)?;
 
 			// TODO(nuno): The transfer can only be done by the owner or admin of the asset so I am
 			// not sure how the Freezer comes into play here. We need to check if we are admin beforehand.
 			let buyer_lookup = T::Lookup::unlookup(buyer);
 			<pallet_uniques::Pallet<T>>::transfer(
-				origin.clone(),
+				Self::origin(),
 				class_id,
 				instance_id,
 				buyer_lookup,
@@ -291,8 +292,12 @@ pub mod pallet {
 		}
 
 		#[allow(dead_code)]
-		fn account() -> T::AccountId {
+		pub fn account() -> T::AccountId {
 			T::PalletId::get().into_account()
+		}
+
+		pub fn origin() -> T::Origin {
+			RawOrigin::from(Some(Self::account())).into()
 		}
 	}
 }
