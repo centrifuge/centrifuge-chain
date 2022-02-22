@@ -242,10 +242,9 @@ pub mod pallet {
 
 			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
-			ensure!(
-				T::Fungibles::balance(sale.price.currency, &buyer) >= sale.price.amount,
-				Error::<T>::InsufficientBalance
-			);
+			T::Fungibles::can_withdraw(sale.price.currency, &buyer, sale.price.amount)
+				.into_result()
+				.map_err(|_| Error::<T>::InsufficientBalance)?;
 
 			// Q: Shouldn't we first verify that this pallet is still the freezer of the asset?
 			T::Fungibles::transfer(

@@ -172,7 +172,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 
 	// pre-fill balances
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(1, 100000 * CURRENCY), (2, 100000), (100, 100)],
+		balances: vec![(1, 100_000 * CURRENCY), (2, 10_000 * CURRENCY), (100, 100)],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
