@@ -284,6 +284,7 @@ fn buy_nft_insufficient_balance() {
 fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(1);
+		let seller_initial_balance = OrmlTokens::balance(CurrencyId::Usd, &1);
 		let (class_id, instance_id) = (0, InstanceId(1));
 
 		// Mint the nft in the uniques pallet
@@ -299,21 +300,41 @@ fn buy_nft_works() {
 		));
 
 		// Set it for sale in the NftMarketplace
+		let nft_price = 10_000;
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
 			class_id,
 			instance_id,
 			CurrencyId::Usd,
-			10_000
+			nft_price
 		));
 
 		// Verify that the buyer can buy the nft
 		let buyer: Origin = Origin::signed(2);
-		assert_ok!(NftMarketplace::buy(buyer, class_id, instance_id));
+		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::Usd, &2);
+		assert_ok!(NftMarketplace::buy(buyer.clone(), class_id, instance_id));
 
 		// TODO(nuno): Verify other things, namely:
-		// - we are no longer the freezer / the asset is no longer frozen
-		// - the buyer is now the owner of the freezer
-		// - the asking price was deducted appropriately
+
+		// Verify that if the seller can't buy it back because it's no longer for sale
+		assert_noop!(
+			NftMarketplace::buy(seller, class_id, instance_id),
+			DispatchError::from(nft_marketplace::Error::<Test>::NotForSale)
+		);
+
+		// Verify that if the seller can't buy it back because it's no longer for sale
+		assert_eq!(Uniques::owner(class_id, instance_id), Some(2));
+
+		// Verify that the price of the nft was transferred to the seller's account
+		assert_eq!(
+			OrmlTokens::balance(CurrencyId::Usd, &1),
+			seller_initial_balance + nft_price
+		);
+
+		// Verify that the price of the nft was withdrawn from the buyer's account
+		assert_eq!(
+			OrmlTokens::balance(CurrencyId::Usd, &2),
+			buyer_initial_balance - nft_price
+		);
 	});
 }

@@ -94,14 +94,11 @@ pub mod pallet {
 		/// An NFT has been added to the gallery and is now for sale
 		ForSale,
 
-		/// An NFT has been removed from the gallery and is no longer for sale
-		Unlisted,
+		/// An NFT was removed from the gallery and is no longer for sale
+		Removed,
 
 		/// An NFT has been sold
 		Sold,
-
-		/// An NFT was removed from the gallery
-		Removed,
 	}
 
 	#[pallet::error]
@@ -269,6 +266,9 @@ pub mod pallet {
 				buyer_lookup,
 			)
 			.map_err(|_| Error::<T>::FailedNftTransfer)?;
+
+			<Gallery<T>>::remove(class_id, instance_id);
+			Self::deposit_event(Event::Sold);
 
 			Ok(())
 		}
