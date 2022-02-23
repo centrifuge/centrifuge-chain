@@ -1170,7 +1170,7 @@ pub mod pallet {
 			}
 		}
 
-		fn inspect_solution(
+		pub(crate) fn inspect_solution(
 			pool: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
@@ -1184,12 +1184,23 @@ pub mod pallet {
 				calculate_solution_parameters::<_, _, T::InterestRate, _, T::CurrencyId>(
 					&epoch.tranches,
 					&solution,
-				)?;
+				)
+				.map_err(|e| {
+					// In case we have an underflow in the calculation, there
+					// is not enough balance in the tranches to realize the redeemptions.
+					// We convert this at the pool level into an InsufficientCurrency error.
+					if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
+						Error::<T>::InsufficientCurrency.into()
+					} else {
+						e
+					}
+				})?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
 				.ok_or(ArithmeticError::Overflow)?;
 
+			// Mostly a sanity check. This is catched above.
 			ensure!(
 				currency_available.checked_sub(&acc_redeem).is_some(),
 				Error::<T>::InsufficientCurrency

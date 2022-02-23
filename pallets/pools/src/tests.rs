@@ -75,7 +75,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution),
+			Pools::inspect_solution(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientCurrency
 		);
 	});
@@ -163,7 +163,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect::<Vec<_>>();
 
 		assert_eq!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution),
+			Pools::inspect_solution(pool, &epoch, &full_solution),
 			Ok(PoolState::Unhealthy(vec![
 				UnhealthyState::MaxReserveViolated
 			]))
@@ -171,7 +171,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 
 		let mut details = pool.clone();
 		details.reserve.max_reserve = 100;
-		assert_ok!(Pools::is_valid_solution(&details, &epoch, &full_solution));
+		assert_ok!(Pools::inspect_solution(&details, &epoch, &full_solution));
 	});
 }
 
@@ -180,7 +180,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
+				interest_per_sec: Rate::one(),
 				min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
 			},
 			outstanding_invest_orders: 100,
@@ -268,7 +268,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let prev_root = frame_support::storage_root();
 		assert_eq!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution).unwrap(),
+			Pools::inspect_solution(pool, &epoch, &full_solution).unwrap(),
 			PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated])
 		);
 		assert_eq!(prev_root, frame_support::storage_root())
@@ -375,7 +375,7 @@ fn pool_constraints_pass() {
 			})
 			.collect::<Vec<_>>();
 
-		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
+		assert_ok!(Pools::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
 			crate::calculate_risk_buffers::<u128, runtime_common::Rate>(
@@ -648,7 +648,7 @@ fn submission_period() {
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+		let senior_interest_rate = Rate::saturating_from_rational(10u128, 100u128)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
@@ -710,13 +710,13 @@ fn submission_period() {
 		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
 		let epoch = <pallet::EpochExecution<mock::Test>>::try_get(0).unwrap();
 		let existing_state_score = Pools::score_solution(
-			&0,
+			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&epoch.clone().best_submission.unwrap().solution(),
 		)
 		.unwrap();
 		let new_solution_score = Pools::score_solution(
-			&0,
+			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&vec![
 				TrancheSolution {
@@ -754,7 +754,7 @@ fn submission_period() {
 
 		// Allowed as 1% redemption keeps the risk buffer healthy
 		let partial_fulfilment_solution = Pools::score_solution(
-			&0,
+			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&vec![
 				TrancheSolution {
@@ -930,7 +930,7 @@ fn collect_tranche_tokens() {
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+		let senior_interest_rate = Rate::saturating_from_rational(10u128, 100u128)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(

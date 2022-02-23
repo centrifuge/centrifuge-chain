@@ -17,7 +17,7 @@ scale-info = { version = "1.0", default-features = false, features = ["derive"] 
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.12" }
 
 [dev-dependencies]
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.12" }
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.12" }
 
 [features]
 default = ['std']
