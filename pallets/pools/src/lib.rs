@@ -2225,7 +2225,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		pub(crate) fn do_payback(
+		pub(crate) fn do_deposit(
 			who: T::AccountId,
 			pool_id: T::PoolId,
 			amount: T::Balance,
@@ -2270,7 +2270,7 @@ pub mod pallet {
 			})
 		}
 
-		pub(crate) fn do_borrow(
+		pub(crate) fn do_withdraw(
 			who: T::AccountId,
 			pool_id: T::PoolId,
 			amount: T::Balance,
@@ -2333,10 +2333,10 @@ impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
 	type Balance = T::Balance;
 
 	fn withdraw(pool_id: Self::PoolId, to: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_borrow(to, pool_id, amount)
+		Self::do_withdraw(to, pool_id, amount)
 	}
 
 	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_payback(from, pool_id, amount)
+		Self::do_deposit(from, pool_id, amount)
 	}
 }

@@ -350,12 +350,12 @@ pub fn next_block_after(seconds: u64) {
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
-	Pools::do_borrow(borrower, pool_id, amount)
+	Pools::do_withdraw(borrower, pool_id, amount)
 }
 
 pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
-	Pools::do_payback(borrower, pool_id, amount)
+	Pools::do_deposit(borrower, pool_id, amount)
 }
 
 pub fn test_nav_up(pool_id: u64, amount: Balance) {
