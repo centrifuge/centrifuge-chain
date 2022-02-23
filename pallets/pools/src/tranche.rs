@@ -28,13 +28,6 @@ use frame_support::sp_std::convert::TryInto;
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 
-/// Types alias for EpochExecutionTranches
-pub(super) type EpochExecutionTranchesOf<T> = EpochExecutionTranches<
-	<T as Config>::Balance,
-	<T as Config>::BalanceRatio,
-	<T as Config>::TrancheWeight,
->;
-
 /// Types alias for EpochExecutionTranche
 #[allow(dead_code)]
 pub(super) type EpochExecutionTrancheOf<T> = EpochExecutionTranche<
