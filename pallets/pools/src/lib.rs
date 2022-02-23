@@ -1568,7 +1568,7 @@ pub mod pallet {
 			);
 
 			let mut prev_tranche_type = &TrancheType::Residual;
-			let mut prev_seniority = &Some(One::one());
+			let mut prev_seniority = &None;
 			let max_seniority = new_tranches
 				.len()
 				.try_into()
@@ -1579,6 +1579,7 @@ pub mod pallet {
 					prev_tranche_type.valid_next_tranche(tranche_type),
 					Error::<T>::InvalidTrancheStructure
 				);
+
 				ensure!(
 					prev_seniority <= seniority && seniority <= &Some(max_seniority),
 					Error::<T>::InvalidTrancheSeniority
