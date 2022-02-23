@@ -7,6 +7,10 @@
       url = github:hercules-ci/gitignore.nix;
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    fenix = {
+      url = github:nix-community/fenix;
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
   };
 
@@ -24,6 +28,10 @@
       system = "x86_64-linux";
 
       pkgs = inputs.nixpkgs.legacyPackages.${system};
+
+      nightlyRustPlatform = pkgs.makeRustPlatform {
+        inherit (inputs.fenix.packages.${system}.minimal) cargo rustc;
+      };
 
       # This is a mock git program, which just returns the commit-substr value.
       # It is called when the build process calls git. Instead of the real git,
@@ -61,7 +69,7 @@
     {
       packages.${system} = {
         # This is the native package.
-        centrifuge-chain = pkgs.rustPlatform.buildRustPackage {
+        centrifuge-chain = nightlyRustPlatform.buildRustPackage {
           pname = name;
           inherit version;
 
