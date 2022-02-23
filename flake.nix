@@ -89,7 +89,8 @@
 
           LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
           PROTOC = "${pkgs.protobuf}/bin/protoc";
-          BUILD_DUMMY_WASM_BINARY = 1;
+          SKIP_WASM_BUILD = 1;
+
 
           doCheck = false;
         };
