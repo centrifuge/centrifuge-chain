@@ -366,8 +366,9 @@ pub mod pallet {
 		PoolInUse,
 		/// Attempted to create a pool without a junior tranche
 		InvalidJuniorTranche,
-		/// Attempted to create a pool with missing tranche inputs
-		MissingTrancheValues,
+		/// Attempted to create a tranche structure where
+		/// * non-decreasing interest rate per tranche
+		InvalidTrancheStructure,
 		/// Attempted an operation on a pool which does not exist
 		NoSuchPool,
 		/// Attempted to close an epoch too early
@@ -409,6 +410,8 @@ pub mod pallet {
 		/// Indicating that a collect with `collect_n_epchs` == 0 was called
 		CollectsNoEpochs,
 		/// Invalid tranche seniority value
+		/// * seniority MUST be smaller number of tranches
+		/// * MUST be increasing per tranche
 		InvalidTrancheSeniority,
 		/// Invalid metadata passed
 		BadMetadata,
@@ -457,7 +460,7 @@ pub mod pallet {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
-			Self::is_valid_tranche_change(&Tranches::new(Vec::new()), &tranches)?;
+			Self::is_valid_tranche_change(None, &tranches)?;
 
 			let now = Self::now();
 			let tranches = Tranches::from_input::<T::PoolId, T::TrancheId, T::TrancheToken>(
@@ -605,24 +608,19 @@ pub mod pallet {
 					Error::<T>::InSubmissionPeriod
 				);
 
-				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
+				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
 
-				pool.tranches
-					.combine_with_mut(tranches.iter(), |tranche, new_tranche| {
-						tranche.tranche_type = if let Some(interest_per_sec) = new_tranche.interest_per_sec {
-							TrancheType::NonResidual {
-								interest_per_sec,
-								min_risk_buffer: new_tranche.min_risk_buffer.ok_or(DispatchError::Other("Corrupt runtime state. If interest is set, risk buffer must be set too."))?
-							}
-						} else {
-							TrancheType::Residual
-						};
+				pool.tranches.combine_with_mut(
+					tranches.into_iter(),
+					|tranche, (new_tranche_type, seniority)| {
+						tranche.tranche_type = new_tranche_type;
 
-						if let Some(new_seniority) = new_tranche.seniority {
+						if let Some(new_seniority) = seniority {
 							tranche.seniority = new_seniority;
 						}
 						Ok(())
-					})?;
+					},
+				)?;
 
 				Self::deposit_event(Event::TranchesUpdated(pool_id));
 				Ok(())
@@ -1535,7 +1533,7 @@ pub mod pallet {
 		}
 
 		pub fn is_valid_tranche_change(
-			old_tranches: &TranchesOf<T>,
+			old_tranches: Option<&TranchesOf<T>>,
 			new_tranches: &Vec<TrancheInput<T::InterestRate>>,
 		) -> DispatchResult {
 			// There is a limit to the number of allowed tranches
@@ -1549,46 +1547,57 @@ pub mod pallet {
 			ensure!(
 				match new_tranches.first() {
 					None => false,
-					Some(tranche) =>
-						tranche.min_risk_buffer.is_none() && tranche.interest_per_sec.is_none(),
+					Some((tranche_type, _)) => tranche_type == &TrancheType::Residual,
 				},
 				Error::<T>::InvalidJuniorTranche
 			);
 
 			// All but the most junior tranche should have min risk buffers and interest rates
-			let mut non_junior_tranches = new_tranches.split_first().unwrap().1.iter();
+			let (_residual_tranche, non_residual_tranche) = new_tranches
+				.split_first()
+				.ok_or(Error::<T>::InvalidJuniorTranche)?;
+
+			// Currently we only allow a single junior tranche per pool
+			// This is subject to change in the future
 			ensure!(
-				non_junior_tranches.all(|tranche| {
-					tranche.min_risk_buffer.is_some() && tranche.interest_per_sec.is_some()
-				}),
-				Error::<T>::MissingTrancheValues
+				match non_residual_tranche.iter().next() {
+					None => true,
+					Some((next_tranche, _)) => next_tranche != &TrancheType::Residual,
+				},
+				Error::<T>::InvalidTrancheStructure
 			);
 
-			// For now, adding or removing tranches is not allowed, unless it's on pool creation.
-			// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
-			ensure!(
-				old_tranches.num_tranches() == 0
-					|| new_tranches.len() == old_tranches.num_tranches(),
-				Error::<T>::CannotAddOrRemoveTranches
-			);
+			let mut prev_tranche_type = &TrancheType::Residual;
+			let mut prev_seniority = &Some(One::one());
+			let max_seniority = new_tranches
+				.len()
+				.try_into()
+				.expect("MaxTranches is u32. qed.");
 
-			// The seniority value should not be higher than the number of tranches (otherwise you would have unnecessary gaps)
-			ensure!(
-				new_tranches.iter().all(|tranche| {
-					match tranche.seniority {
-						Some(seniority) => {
-							seniority
-								<= new_tranches
-									.len()
-									.try_into()
-									.expect("MaxTranches is u32. qed.")
-						}
-						None => true,
-					}
-				}),
-				Error::<T>::InvalidTrancheSeniority
-			);
+			for (tranche_type, seniority) in new_tranches.iter() {
+				ensure!(
+					prev_tranche_type.valid_next_tranche(tranche_type),
+					Error::<T>::InvalidTrancheStructure
+				);
+				ensure!(
+					prev_seniority <= seniority && seniority <= &Some(max_seniority),
+					Error::<T>::InvalidTrancheSeniority
+				);
 
+				prev_tranche_type = tranche_type;
+				prev_seniority = seniority;
+			}
+
+			// In case we are not setting up a new pool (i.e. a tranche setup already exists) we check
+			// wether the changes are valid with respect to the existing setup.
+			if let Some(old_tranches) = old_tranches {
+				// For now, adding or removing tranches is not allowed, unless it's on pool creation.
+				// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
+				ensure!(
+					new_tranches.len() == old_tranches.num_tranches(),
+					Error::<T>::CannotAddOrRemoveTranches
+				);
+			}
 			Ok(())
 		}
 
