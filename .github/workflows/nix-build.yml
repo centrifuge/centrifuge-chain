@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.3.4
+      - uses: actions/checkout@v2
         with:
           # Nix Flakes doesn't work on shallow clones
           fetch-depth: 0
@@ -18,4 +18,5 @@ jobs:
         with:
           name: centrifuge-chain
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-      - run: nix build -L
+      - name: Build centrifuge-chain
+        run: nix build -L
