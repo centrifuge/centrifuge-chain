@@ -23,7 +23,7 @@ use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types};
 use frame_system::RawOrigin;
 use pallet_pools::PoolLocator;
-use pallet_pools::TrancheInput;
+use pallet_pools::TrancheType;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
 use runtime_common::CFG as CURRENCY;
 use sp_runtime::{
@@ -112,16 +112,14 @@ pub(crate) fn create<T>(
 		RawOrigin::Signed(owner.clone()).into(),
 		pool_id,
 		vec![
-			TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},
-			TrancheInput {
-				interest_per_sec: Some(One::one()),
-				min_risk_buffer: Some(Perquintill::from_percent(10)),
-				seniority: None
-			}
+			(TrancheType::Residual, None),
+			(
+				TrancheType::NonResidual {
+					interest_per_sec: One::one(),
+					min_risk_buffer: Perquintill::from_percent(10),
+				},
+				None
+			)
 		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
@@ -148,7 +146,7 @@ pub(crate) fn create<T>(
 	));
 
 	let pool = PoolStorage::<T>::get(pool_id).unwrap();
-	assert_eq!(pool.available_reserve, (1000 * CURRENCY).into());
+	assert_eq!(pool.reserve.available_reserve, (1000 * CURRENCY).into());
 
 	// TODO(ved) do disbursal manually for now
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
