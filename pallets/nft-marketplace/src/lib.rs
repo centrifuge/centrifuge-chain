@@ -165,7 +165,7 @@ pub mod pallet {
 		/// A buyer attempted to buy an NFT they are selling
 		IsSeller,
 
-		/// The buyer does not have sufficient balance to buy the asset
+		/// The buyer does not have sufficient balance to buy the nft
 		InsufficientBalance,
 
 		/// Payment failed, i.e, failed to transfer the asking price from the buyer to the seller
@@ -194,13 +194,13 @@ pub mod pallet {
 		) -> DispatchResult {
 			let seller = ensure_signed(origin.clone())?;
 
-			// Check that the seller is the owner of the asset
+			// Check that the seller is the owner of the nft
 			ensure!(
 				Self::is_owner(seller.clone(), class_id, instance_id)?,
 				Error::<T>::NotOwner,
 			);
 
-			// Check that the asset is not yet for sale
+			// Check that the nft is not yet for sale
 			ensure!(
 				!<Gallery<T>>::contains_key(class_id, instance_id),
 				Error::<T>::AlreadyForSale
@@ -210,7 +210,7 @@ pub mod pallet {
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())
 				.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
-			// Put the asset for sale
+			// Put the nft for sale
 			let sale = Sale {
 				seller,
 				price: AskingPrice { currency, amount },
