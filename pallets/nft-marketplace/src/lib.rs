@@ -93,16 +93,21 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	//TODO(nuno): given these meaningful params
 	pub enum Event<T: Config> {
 		/// An NFT has been added to the gallery and is now for sale
 		ForSale(SaleOf<T>),
 
 		/// An NFT was removed from the gallery and is no longer for sale
-		Removed { class_id: T::ClassId, instance_id: T::InstanceId },
+		Removed {
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
+		},
 
 		/// An NFT has been sold
-		Sold { sale: SaleOf<T>, buyer: T::AccountId },
+		Sold {
+			sale: SaleOf<T>,
+			buyer: T::AccountId,
+		},
 	}
 
 	#[pallet::error]
@@ -175,11 +180,7 @@ pub mod pallet {
 				seller,
 				price: AskingPrice { currency, amount },
 			};
-			<Gallery<T>>::insert(
-				class_id,
-				instance_id,
-				sale.clone(),
-			);
+			<Gallery<T>>::insert(class_id, instance_id, sale.clone());
 			Self::deposit_event(Event::ForSale(sale));
 
 			Ok(())
@@ -215,7 +216,10 @@ pub mod pallet {
 			let _ = <pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id);
 
 			<Gallery<T>>::remove(class_id, instance_id);
-			Self::deposit_event(Event::Removed { class_id, instance_id });
+			Self::deposit_event(Event::Removed {
+				class_id,
+				instance_id,
+			});
 
 			Ok(())
 		}
@@ -245,11 +249,12 @@ pub mod pallet {
 
 			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
+			// Make sure the buyer can pay for the NFT
 			T::Fungibles::can_withdraw(sale.price.currency, &buyer, sale.price.amount)
 				.into_result()
 				.map_err(|_| Error::<T>::InsufficientBalance)?;
 
-			// Q: Shouldn't we first verify that this pallet is still the freezer of the asset?
+			// Have the buyer pay for the NFT
 			T::Fungibles::transfer(
 				sale.price.currency,
 				&buyer,
@@ -263,6 +268,7 @@ pub mod pallet {
 			<pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id)
 				.map_err(|_| Error::<T>::NoPermission)?;
 
+			// Transfer the NFT to the buyer
 			let buyer_lookup = T::Lookup::unlookup(buyer.clone());
 			<pallet_uniques::Pallet<T>>::transfer(
 				Self::origin(),
@@ -273,7 +279,7 @@ pub mod pallet {
 			.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
 			<Gallery<T>>::remove(class_id, instance_id);
-			Self::deposit_event(Event::Sold { sale, buyer});
+			Self::deposit_event(Event::Sold { sale, buyer });
 
 			Ok(())
 		}
