@@ -15,11 +15,16 @@
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,
-	traits::fungibles::{self, Inspect, Transfer},
+	traits::{
+		fungibles::{self, Inspect as FungiblesInspect, Transfer as FungiblesTransfer},
+		tokens::nonfungibles::{
+			self, Inspect as NonFungiblesInspect, Transfer as NonFungiblesTransfer,
+		},
+	},
 };
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AccountIdConversion, StaticLookup};
+use sp_runtime::traits::AccountIdConversion;
 
 pub use pallet::*;
 
@@ -38,6 +43,13 @@ type BalanceOf<T> =
 	<<T as pallet::Config>::Fungibles as fungibles::Inspect<AccountIdOf<T>>>::Balance;
 
 type SaleOf<T> = Sale<AccountIdOf<T>, CurrencyOf<T>, BalanceOf<T>>;
+
+/// type alias to Non fungible ClassId type
+type ClassIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ClassId;
+
+/// type alias to Non fungible InstanceId type
+type InstanceIdOf<T> =
+	<<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::InstanceId;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -67,14 +79,35 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_uniques::Config {
+	pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Fungibles implements fungibles::Transfer, granting us a way of charging
 		/// the buyer of an NFT the respective asking price.
 		type Fungibles: fungibles::Transfer<Self::AccountId>;
 
-		/// PalletID of this loan module
+		/// The NonFungibles trait impl that can transfer and inspect NFTs.
+		type NonFungibles: nonfungibles::Transfer<Self::AccountId>;
+
+		/// The NFT ClassId type
+		type ClassId: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Copy
+			+ Default
+			+ TypeInfo
+			+ IsType<ClassIdOf<Self>>;
+
+		/// The NFT InstanceId type
+		type InstanceId: Parameter
+			+ Member
+			+ MaybeSerializeDeserialize
+			+ Copy
+			+ TypeInfo
+			+ From<u128>
+			+ IsType<InstanceIdOf<Self>>;
+
+		/// The Id of this pallet
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 	}
@@ -147,7 +180,7 @@ pub mod pallet {
 		/// Add the given NFT to the gallery, putting it for sale.
 		///
 		/// Fails if
-		///   - the NFT is not found in `pallet_uniques`
+		///   - the NFT is not found in [T::NonFungibles]
 		///   - `origin` is not the owner of the nft
 		///   - the nft is already for sale in the gallery
 		///   - transferring ownership of the NFT to this pallet's account fails
@@ -174,14 +207,8 @@ pub mod pallet {
 			);
 
 			// Transfer the NFT to the parachain account
-			let our_account_lookup = T::Lookup::unlookup(Self::account());
-			<pallet_uniques::Pallet<T>>::transfer(
-				origin.clone(),
-				class_id,
-				instance_id,
-				our_account_lookup,
-			)
-			.map_err(|_| Error::<T>::FailedNftTransfer)?;
+			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())
+				.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
 			// Put the asset for sale
 			let sale = Sale {
@@ -216,14 +243,8 @@ pub mod pallet {
 			ensure!(who == sale.seller, Error::<T>::NotOwner);
 
 			// Transfer the NFT back to the seller, i.e., the original owner of this NFT
-			let seller_account_lookup = T::Lookup::unlookup(sale.seller);
-			<pallet_uniques::Pallet<T>>::transfer(
-				Self::origin(),
-				class_id,
-				instance_id,
-				seller_account_lookup,
-			)
-			.map_err(|_| Error::<T>::FailedNftTransfer)?;
+			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &sale.seller)
+				.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
 			// Remove the NFT from the gallery
 			<Gallery<T>>::remove(class_id, instance_id);
@@ -272,12 +293,11 @@ pub mod pallet {
 			.map_err(|_| Error::<T>::PaymentFailed)?;
 
 			// Transfer the NFT to the buyer
-			let buyer_lookup = T::Lookup::unlookup(buyer.clone());
-			<pallet_uniques::Pallet<T>>::transfer(
-				Self::origin(),
-				class_id,
-				instance_id,
-				buyer_lookup,
+			T::NonFungibles::transfer(
+				// Self::origin(),
+				&class_id.into(),
+				&instance_id.into(),
+				&buyer.clone(),
 			)
 			.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
@@ -294,7 +314,7 @@ pub mod pallet {
 			class_id: T::ClassId,
 			instance_id: T::InstanceId,
 		) -> Result<bool, Error<T>> {
-			<pallet_uniques::Pallet<T>>::owner(class_id, instance_id)
+			T::NonFungibles::owner(&class_id.into(), &instance_id.into())
 				.map(|owner| owner == account)
 				.ok_or(Error::<T>::NotFound)
 		}

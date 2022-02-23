@@ -161,6 +161,9 @@ impl frame_support::traits::SortedMembers<u64> for One {
 impl nft_marketplace::Config for Test {
 	type Event = ();
 	type Fungibles = OrmlTokens;
+	type NonFungibles = Uniques;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
 	type PalletId = NftMarketplacePalletId;
 }
 
