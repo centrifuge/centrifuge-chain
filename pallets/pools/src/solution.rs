@@ -97,24 +97,6 @@ pub enum EpochSolution<Balance> {
 }
 
 impl<Balance> EpochSolution<Balance> {
-	/// Scores a solution and returns a healthy solution as a result.
-	pub fn score_solution_healthy<BalanceRatio, Weight>(
-		solution: &[TrancheSolution],
-		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
-	) -> Result<EpochSolution<Balance>, DispatchError>
-	where
-		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
-		Weight: Copy + From<u128> + Convert<Weight, Balance>,
-		BalanceRatio: Copy,
-	{
-		let score = Self::calculate_score(solution, tranches)?;
-
-		Ok(EpochSolution::Healthy(HealthySolution {
-			solution: solution.to_vec(),
-			score,
-		}))
-	}
-
 	/// Calculates the score for a given solution. Should only be called inside the
 	/// `fn score_solution()` from the runtime, as there are no checks if solution
 	/// length matches tranche length.
@@ -171,6 +153,24 @@ impl<Balance> EpochSolution<Balance> {
 			.zip(redeem_score)
 			.and_then(|(invest_score, redeem_score)| invest_score.checked_add(&redeem_score))
 			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	/// Scores a solution and returns a healthy solution as a result.
+	pub fn score_solution_healthy<BalanceRatio, Weight>(
+		solution: &[TrancheSolution],
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	) -> Result<EpochSolution<Balance>, DispatchError>
+	where
+		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
+		Weight: Copy + From<u128> + Convert<Weight, Balance>,
+		BalanceRatio: Copy,
+	{
+		let score = Self::calculate_score(solution, tranches)?;
+
+		Ok(EpochSolution::Healthy(HealthySolution {
+			solution: solution.to_vec(),
+			score,
+		}))
 	}
 
 	/// Scores an solution, that would bring a pool into an unhealthy state.

@@ -1030,10 +1030,9 @@ where
 			tranche
 				.supply
 				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
-				.and_then(|value| {
-					value.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
-				})
-				.ok_or(ArithmeticError::Overflow.into())
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_sub(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+				.ok_or(ArithmeticError::Underflow.into())
 		})
 	}
 
@@ -1166,11 +1165,12 @@ where
 
 #[cfg(test)]
 pub mod test {
-	use super::*;
-
 	#[test]
 	fn reverse_slice_panics_on_out_of_bounds() {}
 
 	#[test]
 	fn reverse_works_for_both_tranches() {}
+
+	#[test]
+	fn accrue_overflows_safely() {}
 }
