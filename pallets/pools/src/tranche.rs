@@ -60,14 +60,8 @@ pub(super) type TrancheOf<T> = Tranche<
 >;
 
 /// Type that indicates the seniority of a tranche
-type Seniority = u32;
-
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct TrancheInput<Rate> {
-	pub interest_per_sec: Option<Rate>,
-	pub min_risk_buffer: Option<Perquintill>,
-	pub seniority: Option<Seniority>,
-}
+pub type Seniority = u32;
+pub type TrancheInput<Rate> = (TrancheType<Rate>, Option<Seniority>);
 
 /// A representation of a tranche identifier that can be used as a storage key
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -92,6 +86,38 @@ pub enum TrancheType<Rate> {
 		interest_per_sec: Rate,
 		min_risk_buffer: Perquintill,
 	},
+}
+
+impl<Rate> TrancheType<Rate>
+where
+	Rate: PartialOrd + PartialEq,
+{
+	/// Compares tranches with the following schema:
+	///
+	/// * (Residual, Residual) => true
+	/// * (Residual, NonResidual) => true,
+	/// * (NonResidual, Residual) => false,
+	/// * (NonResidual, NonResidual) =>
+	/// 		interest rate of next tranche must be smaller
+	///         equal to the interest rate of self.
+	///
+	pub fn valid_next_tranche(&self, next: &TrancheType<Rate>) -> bool {
+		match (self, next) {
+			(TrancheType::Residual, TrancheType::Residual) => true,
+			(TrancheType::Residual, TrancheType::NonResidual { .. }) => true,
+			(TrancheType::NonResidual { .. }, TrancheType::Residual) => false,
+			(
+				TrancheType::NonResidual {
+					interest_per_sec: ref interest_prev,
+					..
+				},
+				TrancheType::NonResidual {
+					interest_per_sec: ref interest_next,
+					..
+				},
+			) => interest_prev >= interest_next,
+		}
+	}
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -174,8 +200,8 @@ where
 	}
 
 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
-		let mut delta = now - self.last_updated_interest;
-		let mut interest = self.interest_per_sec();
+		let delta = now - self.last_updated_interest;
+		let interest = self.interest_per_sec();
 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
 		//       for us, as we simply have the same debt if this happens
 		let total_interest = checked_pow(
@@ -246,23 +272,11 @@ where
 	) -> Result<Self, DispatchError> {
 		let mut tranches = Vec::with_capacity(tranche_inputs.len());
 
-		for (id, input) in tranche_inputs.iter().enumerate() {
-			let tranche_type = if let Some(interest_per_sec) = input.interest_per_sec {
-				TrancheType::NonResidual {
-					interest_per_sec,
-					min_risk_buffer: input.min_risk_buffer.ok_or(DispatchError::Other(
-						"Corrupt runtime state. If interest is set, risk buffer must be set too.",
-					))?,
-				}
-			} else {
-				TrancheType::Residual
-			};
-
+		for (id, (tranche_type, seniority)) in tranche_inputs.into_iter().enumerate() {
 			tranches.push(Tranche {
-				tranche_type: tranche_type,
+				tranche_type,
 				// seniority increases as index since the order is from junior to senior
-				seniority: input
-					.seniority
+				seniority: seniority
 					.unwrap_or(id.try_into().map_err(|_| ArithmeticError::Overflow)?),
 				currency: TrancheToken::tranche_token(
 					pool_id,
