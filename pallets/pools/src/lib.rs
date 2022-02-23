@@ -1700,12 +1700,12 @@ pub mod pallet {
 					.reserve
 					.total_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Underflow)?;
 				pool.reserve.available_reserve = pool
 					.reserve
 					.available_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::Overflow)?;
+					.ok_or(ArithmeticError::Underflow)?;
 
 				let mut remaining_amount = amount;
 				for tranche in pool.tranches.senior_to_junior_slice_mut() {
