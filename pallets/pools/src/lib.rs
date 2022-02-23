@@ -1660,7 +1660,7 @@ pub mod pallet {
 				for tranche in pool.tranches.senior_to_junior_slice_mut() {
 					tranche.accrue(now)?;
 
-					let tranche_amount = if tranche.tranche_type == TrancheType::Residual {
+					let tranche_amount = if tranche.tranche_type != TrancheType::Residual {
 						tranche.ratio.mul_ceil(amount)
 					} else {
 						remaining_amount
@@ -1672,13 +1672,18 @@ pub mod pallet {
 						tranche_amount
 					};
 
-					tranche.debt -= tranche_amount;
+					// NOTE: we ensure this is never underflowing. But better be safe than sorry.
+					tranche.debt = tranche.debt.saturating_sub(tranche_amount);
 					tranche.reserve = tranche
 						.reserve
 						.checked_add(&tranche_amount)
 						.ok_or(Error::<T>::Overflow)?;
 
-					remaining_amount -= tranche_amount;
+					// NOTE: In case there is an error in the ratios this might be critical. Hence,
+					//       we check here and error out
+					remaining_amount = remaining_amount
+						.checked_sub(&tranche_amount)
+						.ok_or(ArithmeticError::Underflow)?;
 				}
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
