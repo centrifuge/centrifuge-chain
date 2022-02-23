@@ -939,7 +939,7 @@ macro_rules! test_pool_nav {
 					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
 
 					// payback 50 and borrow more later
-					let repay_amount = Amount::from_inner(200 * USD);
+					let repay_amount = Amount::from_inner(50 * USD);
 					let res =
 						Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 					assert_ok!(res);
