@@ -428,16 +428,14 @@ fn epoch() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -657,16 +655,14 @@ fn submission_period() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None,
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -858,16 +854,14 @@ fn execute_info_removed_after_epoch_execute() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None,
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -943,16 +937,14 @@ fn collect_tranche_tokens() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -1060,11 +1052,7 @@ fn invalid_tranche_id_is_err() {
 		assert_ok!(Pools::create(
 			senior_investor.clone(),
 			0,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1097,11 +1085,7 @@ fn updating_with_same_amount_is_err() {
 		assert_ok!(Pools::create(
 			senior_investor.clone(),
 			0,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1139,11 +1123,7 @@ fn updating_orders_updates_epoch() {
 		assert_ok!(Pools::create(
 			pool_admin.clone(),
 			pool_id,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1206,11 +1186,7 @@ fn no_order_is_err() {
 		assert_ok!(Pools::create(
 			pool_admin.clone(),
 			pool_id,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1245,11 +1221,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 		assert_ok!(Pools::create(
 			pool_admin.clone(),
 			pool_id,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));

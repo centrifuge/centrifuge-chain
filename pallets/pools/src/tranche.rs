@@ -150,11 +150,8 @@ where
 {
 	fn default() -> Self {
 		Self {
-			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
-				min_risk_buffer: Perquintill::zero(),
-			},
-			seniority: 0,
+			tranche_type: TrancheType::Residual,
+			seniority: 1,
 			currency: CurrencyId::Tranche(0, 0),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
