@@ -1,10 +1,15 @@
 //! NFT Marketplace pallet
 //!
-//! This pallet provides a marketplace for digital art creators and owners
-//! to enlist their NFTs for sale and for potential buyers to browse and
-//! buy NFTs.
+//! This pallet provides a marketplace for digital art creators and owners to enlist their
+//! NFTs for sale and for potential buyers to browse and buy NFTs.
 //!
-//! // TODO(nuno): Explain more, including how the NFTs will be locked once set for sale.
+//! To set an NFT for sale, users will call `add`, which will add the NFT to the gallery
+//! of NFT that open for sale. Doing so will have the NFT being transferred from the seller
+//! to this pallet's account.
+//!
+//! To remove an NFT from sale and thus reclaim its ownership, sellers can call `remove`.
+//!
+//! To buy an NFT, any account besides the seller of an NFT being purchased can call `buy`.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
@@ -121,22 +126,19 @@ pub mod pallet {
 		/// A seller has attempted to list an NFT that is already for sale
 		AlreadyForSale,
 
-		/// A buyer attempted to buy an NFT that is not for sale
+		/// An operation expected an NFT to be for sale when it is not
 		NotForSale,
 
-		/// A buyer attempted to buy an NFT they already own
-		AlreadyOwner,
+		/// A buyer attempted to buy an NFT they are selling
+		IsSeller,
 
-		/// This pallet was not given enough permission (Freezer + Admin) to manage an asset
-		NoPermission,
-
-		/// The seller does not have sufficient balance to buy the asset
+		/// The buyer does not have sufficient balance to buy the asset
 		InsufficientBalance,
 
 		/// Payment failed, i.e, failed to transfer the asking price from the buyer to the seller
 		PaymentFailed,
 
-		/// Failed to transfer a purchased NFT
+		/// Failed to transfer an NFT from one account to another
 		FailedNftTransfer,
 	}
 
@@ -147,8 +149,8 @@ pub mod pallet {
 		/// Fails if
 		///   - the NFT is not found in `pallet_uniques`
 		///   - `origin` is not the owner of the nft
-		///   - this pallet has not been set to be the freezer of the asset
 		///   - the nft is already for sale in the gallery
+		///   - transferring ownership of the NFT to this pallet's account fails
 		#[pallet::weight(10_000_000)]
 		pub fn add(
 			origin: OriginFor<T>,
@@ -171,9 +173,15 @@ pub mod pallet {
 				Error::<T>::AlreadyForSale
 			);
 
-			// Freeze the asset to disallow unprivileged transfers
-			<pallet_uniques::Pallet<T>>::freeze(Self::origin(), class_id, instance_id)
-				.map_err(|_| Error::<T>::NoPermission)?;
+			// Transfer the NFT to the parachain account
+			let our_account_lookup = T::Lookup::unlookup(Self::account());
+			<pallet_uniques::Pallet<T>>::transfer(
+				origin.clone(),
+				class_id,
+				instance_id,
+				our_account_lookup,
+			)
+			.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
 			// Put the asset for sale
 			let sale = Sale {
@@ -188,9 +196,13 @@ pub mod pallet {
 
 		/// Remove an NFT from sale
 		///
+		/// The sellers of an NFT that is for sale can call this extrinsic to reclaim
+		/// ownership over their NFT and remove it from sale.
+		///
 		/// Fails if
-		///   - `origin` is not the owner of the NFT
 		///   - the nft is not for sale
+		///   - `origin` is not the seller of the NFT
+		///   - transferring the ownership of the NFT back to the seller fails
 		#[pallet::weight(10_000_000)]
 		pub fn remove(
 			origin: OriginFor<T>,
@@ -198,23 +210,22 @@ pub mod pallet {
 			instance_id: T::InstanceId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
+			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
-			// Check that origin is the owner of the asset
-			ensure!(
-				Self::is_owner(who, class_id, instance_id)?,
-				Error::<T>::NotOwner,
-			);
+			// Ensure that the buyer is not the seller of the NFT
+			ensure!(who == sale.seller, Error::<T>::NotOwner);
 
-			// Check that this NFT is for sale
-			ensure!(
-				<Gallery<T>>::contains_key(class_id, instance_id),
-				Error::<T>::NotForSale
-			);
+			// Transfer the NFT back to the seller, i.e., the original owner of this NFT
+			let seller_account_lookup = T::Lookup::unlookup(sale.seller);
+			<pallet_uniques::Pallet<T>>::transfer(
+				Self::origin(),
+				class_id,
+				instance_id,
+				seller_account_lookup,
+			)
+			.map_err(|_| Error::<T>::FailedNftTransfer)?;
 
-			// Try and thaw the asset, fails if this pallet is not its freezer anymore but we don't
-			// need to do anything about that.
-			let _ = <pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id);
-
+			// Remove the NFT from the gallery
 			<Gallery<T>>::remove(class_id, instance_id);
 			Self::deposit_event(Event::Removed {
 				class_id,
@@ -227,11 +238,11 @@ pub mod pallet {
 		/// Buy the given nft
 		///
 		/// Fails if
+		///   - the NFT is not for sale
+		///   - `origin` is the seller of the NFT
 		///   - `origin` does not have enough balance of the currency the nft is being sold in
-		///   - the specified NFT does not exist in the gallery
-		///   - this pallet is not an admin of the NFT class and can't therefore transfer ownership
-		///   - transferring the nft from the seller to the buyer fails
-		///   - transferring the asking price fails
+		///   - transferring the asking price from the buyer to the seller fails
+		///   - transferring the nft to the buyer fails
 		#[pallet::weight(10_000_000)]
 		#[transactional]
 		pub fn buy(
@@ -240,21 +251,17 @@ pub mod pallet {
 			instance_id: T::InstanceId,
 		) -> DispatchResult {
 			let buyer = ensure_signed(origin.clone())?;
-
-			// Ensure that the buyer is not the owner of the asset already
-			ensure!(
-				!Self::is_owner(buyer.clone(), class_id, instance_id)?,
-				Error::<T>::AlreadyOwner,
-			);
-
 			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
+
+			// Ensure that the buyer is not the seller of the NFT
+			ensure!(buyer != sale.seller, Error::<T>::IsSeller);
 
 			// Make sure the buyer can pay for the NFT
 			T::Fungibles::can_withdraw(sale.price.currency, &buyer, sale.price.amount)
 				.into_result()
 				.map_err(|_| Error::<T>::InsufficientBalance)?;
 
-			// Have the buyer pay for the NFT
+			// Have the buyer pay the seller for the NFT
 			T::Fungibles::transfer(
 				sale.price.currency,
 				&buyer,
@@ -263,10 +270,6 @@ pub mod pallet {
 				true,
 			)
 			.map_err(|_| Error::<T>::PaymentFailed)?;
-
-			// Thaw the NFT so that we can transfer it
-			<pallet_uniques::Pallet<T>>::thaw(Self::origin(), class_id, instance_id)
-				.map_err(|_| Error::<T>::NoPermission)?;
 
 			// Transfer the NFT to the buyer
 			let buyer_lookup = T::Lookup::unlookup(buyer.clone());
@@ -296,7 +299,6 @@ pub mod pallet {
 				.ok_or(Error::<T>::NotFound)
 		}
 
-		#[allow(dead_code)]
 		pub fn account() -> T::AccountId {
 			T::PalletId::get().into_account()
 		}

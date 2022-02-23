@@ -170,6 +170,7 @@ parameter_types! {
 
 pub(crate) const SELLER: u64 = 0x1;
 pub(crate) const BUYER: u64 = 0x2;
+pub(crate) const BAD_ACTOR: u64 = 0x3;
 
 #[allow(dead_code)]
 // Build the genesis storage according to the mock runtime.
@@ -183,7 +184,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		balances: vec![
 			(SELLER, 100_000 * CURRENCY),
 			(BUYER, 10_000 * CURRENCY),
-			(100, 100),
+			(BAD_ACTOR, 10_000 * CURRENCY),
 		],
 	}
 	.assimilate_storage(&mut t)
