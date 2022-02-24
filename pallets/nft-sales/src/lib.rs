@@ -3,13 +3,12 @@
 //! This pallet provides a place for digital art creators and owners to offer their
 //! NFTs for sale and for potential buyers to browse and buy them.
 //!
-//! To set an NFT for sale, users will call `add`, which will add the NFT to the gallery
-//! of NFT that open for sale. Doing so will have the NFT being transferred from the seller
-//! to this pallet's account.
+//! To sell NFTs, users will call `add`. Doing so will have the NFT being transferred
+//! from the seller to this pallet's account, to grant us the own
 //!
-//! To remove an NFT from sale and thus reclaim its ownership, sellers can call `remove`.
+//! To remove an NFT from sale and thus reclaim its ownership, sellers will call `remove`.
 //!
-//! To buy an NFT, any account besides the seller of an NFT being purchased can call `buy`.
+//! To buy an NFT, users will call `buy`.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
@@ -32,6 +31,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+// Type aliases
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 type CurrencyOf<T> =
@@ -42,13 +42,12 @@ type BalanceOf<T> =
 
 type SaleOf<T> = Sale<AccountIdOf<T>, CurrencyOf<T>, BalanceOf<T>>;
 
-/// type alias to Non fungible ClassId type
 type ClassIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ClassId;
 
-/// type alias to Non fungible InstanceId type
 type InstanceIdOf<T> =
 	<<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::InstanceId;
 
+// Storage types
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Sale<AccountId, CurrencyId, Balance> {
@@ -110,10 +109,11 @@ pub mod pallet {
 		type PalletId: Get<PalletId>;
 	}
 
-	/// The gallery of NFTs currently for sale
+	/// The active sales.
+	/// A sale is an entry identified by an NFT class and instance id.
 	#[pallet::storage]
 	#[pallet::getter(fn get_allowlisted)]
-	pub(super) type Gallery<T: Config> = StorageDoubleMap<
+	pub(super) type Sales<T: Config> = StorageDoubleMap<
 		_,
 		// The hasher for the first key
 		Blake2_128Concat,
@@ -123,17 +123,21 @@ pub mod pallet {
 		Blake2_128Concat,
 		// The second key, the nft instance id
 		T::InstanceId,
-		// The data regarding this item open for sale
+		// The data regarding the sale
 		SaleOf<T>,
 	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// An NFT has been added to the gallery and is now for sale
-		ForSale(SaleOf<T>),
+		/// An NFT is now for sale
+		ForSale {
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
+			sale: SaleOf<T>,
+		},
 
-		/// An NFT was removed from the gallery and is no longer for sale
+		/// An NFT was removed
 		Removed {
 			class_id: T::ClassId,
 			instance_id: T::InstanceId,
@@ -141,6 +145,8 @@ pub mod pallet {
 
 		/// An NFT has been sold
 		Sold {
+			class_id: T::ClassId,
+			instance_id: T::InstanceId,
 			sale: SaleOf<T>,
 			buyer: T::AccountId,
 		},
@@ -148,39 +154,38 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// A user tried to add an NFT that could not be found
+		/// A user tried to add an NFT that could not be found in T::NonFungibles
 		NotFound,
 
 		/// The origin is not the owner of an NFT
 		NotOwner,
 
-		/// A seller has attempted to list an NFT that is already for sale
+		/// A seller has attempted to add an NFT that is already for sale
 		AlreadyForSale,
 
 		/// An operation expected an NFT to be for sale when it is not
 		NotForSale,
 
-		/// A buyer's max offer is invalid, i.e., either the currency or amount did not match
-		/// the latest asking price for the targeted NFT.
+		/// A buyer's max offer is invalid, i.e., either the currency or amount did
+		/// not match the latest asking price for the targeted NFT.
 		InvalidOffer,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Add the given NFT to the gallery, putting it for sale.
+		/// Add an NFT
 		///
 		/// Fails if
 		///   - the NFT is not found in [T::NonFungibles]
 		///   - `origin` is not the owner of the nft
-		///   - the nft is already for sale in the gallery
+		///   - the nft is already for sale
 		///   - transferring ownership of the NFT to this pallet's account fails
 		#[pallet::weight(10_000_000)]
 		pub fn add(
 			origin: OriginFor<T>,
 			class_id: T::ClassId,
 			instance_id: T::InstanceId,
-			currency: CurrencyOf<T>,
-			amount: BalanceOf<T>,
+			price: Price<CurrencyOf<T>, BalanceOf<T>>,
 		) -> DispatchResult {
 			let seller = ensure_signed(origin.clone())?;
 
@@ -190,9 +195,9 @@ pub mod pallet {
 				Error::<T>::NotOwner,
 			);
 
-			// Check that the nft is not yet for sale
+			// Ensure that the nft is not for sale
 			ensure!(
-				!<Gallery<T>>::contains_key(class_id, instance_id),
+				!<Sales<T>>::contains_key(class_id, instance_id),
 				Error::<T>::AlreadyForSale
 			);
 
@@ -200,19 +205,20 @@ pub mod pallet {
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())?;
 
 			// Put the nft for sale
-			let sale = Sale {
-				seller,
-				price: Price { currency, amount },
-			};
-			<Gallery<T>>::insert(class_id, instance_id, sale.clone());
-			Self::deposit_event(Event::ForSale(sale));
+			let sale = Sale { seller, price };
+			<Sales<T>>::insert(class_id, instance_id, sale.clone());
+			Self::deposit_event(Event::ForSale {
+				class_id,
+				instance_id,
+				sale,
+			});
 
 			Ok(())
 		}
 
-		/// Remove an NFT from sale
+		/// Remove an NFT
 		///
-		/// The sellers of an NFT that is for sale can call this extrinsic to reclaim
+		/// The seller of an NFT that is for sale can call this extrinsic to reclaim
 		/// ownership over their NFT and remove it from sale.
 		///
 		/// Fails if
@@ -226,7 +232,7 @@ pub mod pallet {
 			instance_id: T::InstanceId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
-			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
+			let sale = <Sales<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
 			// Ensure that the buyer is not the seller of the NFT
 			ensure!(who == sale.seller, Error::<T>::NotOwner);
@@ -234,8 +240,8 @@ pub mod pallet {
 			// Transfer the NFT back to the seller, i.e., the original owner of this NFT
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &sale.seller)?;
 
-			// Remove the NFT from the gallery
-			<Gallery<T>>::remove(class_id, instance_id);
+			// Remove the NFT from the active sales
+			<Sales<T>>::remove(class_id, instance_id);
 			Self::deposit_event(Event::Removed {
 				class_id,
 				instance_id,
@@ -246,11 +252,11 @@ pub mod pallet {
 
 		/// Buy the given nft
 		///
-		/// Buyers must propose a `max_offer` to save them from a scenario where they would end up
+		/// Buyers must propose a `max_offer` to save them from a scenario where they could end up
 		/// paying more than they desired for an NFT. That scenario could take place if the seller
 		/// increased the asking price right before the buyer submits this call to buy said NFT.
 		///
-		/// Buyer always pays the latest asking price as long as it does not exceed their max offer.
+		/// Buyers always pay the latest asking price as long as it does not exceed their max offer.
 		///
 		/// Fails if
 		///   - the NFT is not for sale
@@ -267,7 +273,7 @@ pub mod pallet {
 			max_offer: Price<CurrencyOf<T>, BalanceOf<T>>,
 		) -> DispatchResult {
 			let buyer = ensure_signed(origin.clone())?;
-			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
+			let sale = <Sales<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
 			ensure!(
 				sale.price.currency == max_offer.currency && sale.price.amount <= max_offer.amount,
@@ -291,14 +297,23 @@ pub mod pallet {
 				&buyer.clone(),
 			)?;
 
-			<Gallery<T>>::remove(class_id, instance_id);
-			Self::deposit_event(Event::Sold { sale, buyer });
+			<Sales<T>>::remove(class_id, instance_id);
+			Self::deposit_event(Event::Sold {
+				class_id,
+				instance_id,
+				sale,
+				buyer,
+			});
 
 			Ok(())
 		}
 	}
 
 	impl<T: Config> Pallet<T> {
+		/// Check if the given `account` is the owner of the NFT.
+		/// Returns:
+		///		- Ok(bool) when the NFT is found in T::NonFungibles
+		///     - Err(NotFound) when the NFT could not be found in T::NonFungibles
 		fn is_owner(
 			account: T::AccountId,
 			class_id: T::ClassId,
@@ -309,12 +324,12 @@ pub mod pallet {
 				.ok_or(Error::<T>::NotFound)
 		}
 
-		pub fn account() -> T::AccountId {
-			T::PalletId::get().into_account()
-		}
-
 		pub fn origin() -> T::Origin {
 			RawOrigin::from(Some(Self::account())).into()
+		}
+
+		pub fn account() -> T::AccountId {
+			T::PalletId::get().into_account()
 		}
 	}
 }
