@@ -18,13 +18,10 @@ use frame_support::{
 		fungibles::{self, Transfer as FungiblesTransfer},
 		tokens::nonfungibles::{self, Inspect as _, Transfer as NonFungiblesTransfer},
 	},
-	weights::Weight,
 };
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
-
-use runtime_common::CFG as AIR;
 
 pub use pallet::*;
 
@@ -183,7 +180,7 @@ pub mod pallet {
 		///   - `origin` is not the owner of the nft
 		///   - the nft is already for sale
 		///   - transferring ownership of the NFT to this pallet's account fails
-		#[pallet::weight((10 * AIR) as Weight)]
+		#[pallet::weight(200_000_000)]
 		pub fn add(
 			origin: OriginFor<T>,
 			class_id: T::ClassId,
@@ -228,7 +225,7 @@ pub mod pallet {
 		///   - the nft is not for sale
 		///   - `origin` is not the seller of the NFT
 		///   - transferring the ownership of the NFT back to the seller fails
-		#[pallet::weight((10 * AIR) as Weight)]
+		#[pallet::weight(200_000_000)]
 		pub fn remove(
 			origin: OriginFor<T>,
 			class_id: T::ClassId,
@@ -267,7 +264,7 @@ pub mod pallet {
 		///   - `origin` does not have enough balance of the currency the nft is being sold in
 		///   - transferring the asking price from the buyer to the seller fails
 		///   - transferring the nft to the buyer fails
-		#[pallet::weight((10 * AIR) as Weight)]
+		#[pallet::weight(200_000_000)]
 		#[transactional]
 		pub fn buy(
 			origin: OriginFor<T>,
