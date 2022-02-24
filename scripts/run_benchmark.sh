@@ -10,7 +10,7 @@ if [  -z "${output}" ]; then
     output=$(echo "./${pallet}/src/weights.rs" | sed 's/pallet-/\pallets\//')
 fi
 
-echo "Benchmarking ${pallet}..."
+echo "Benchmarking ${pallet} for runtime $chain..."
 cargo run --release --features runtime-benchmarks -- benchmark \
   --chain="${chain}" \
   --steps=50 \
