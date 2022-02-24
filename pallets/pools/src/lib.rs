@@ -1494,7 +1494,9 @@ pub mod pallet {
 					pool.min_update_delay = min_update_delay;
 				}
 
-				if let Some(require_redeem_fulfillments_before_updates) = changes.require_redeem_fulfillments_before_updates {
+				if let Some(require_redeem_fulfillments_before_updates) =
+					changes.require_redeem_fulfillments_before_updates
+				{
 					pool.require_redeem_fulfillments_before_updates =
 						require_redeem_fulfillments_before_updates;
 				}
