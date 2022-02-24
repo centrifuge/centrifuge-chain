@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
