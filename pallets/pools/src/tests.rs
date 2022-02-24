@@ -501,33 +501,33 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec(),
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec(),
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.reserve.total_reserve, 1000 * CURRENCY);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			0
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].ratio,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].ratio,
 			Perquintill::from_float(0.5)
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			0
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].ratio,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].ratio,
 			Perquintill::from_float(0.5)
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		);
 
@@ -537,19 +537,19 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
@@ -562,20 +562,19 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			0
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		); // not yet rebalanced
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			0
 		);
 		assert!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].reserve
-				> 500 * CURRENCY
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY
 		); // there's interest in here now
 		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.reserve.total_reserve, 1010 * CURRENCY);
@@ -602,20 +601,19 @@ fn epoch() {
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize]
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize]
 				.outstanding_redeem_orders,
 			0
 		);
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			0
 		);
 		assert_eq!(pool.reserve.available_reserve, pool.reserve.total_reserve);
 		assert!(pool.reserve.total_reserve > 750 * CURRENCY);
 		assert!(pool.reserve.total_reserve < 800 * CURRENCY);
 		assert!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize].reserve
-				> 250 * CURRENCY
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY
 		);
 		assert_eq!(
 			pool.reserve.total_reserve
@@ -979,7 +977,7 @@ fn collect_tranche_tokens() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.junior_to_senior_slice()[SENIOR_TRANCHE_ID as usize]
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize]
 				.outstanding_invest_orders,
 			0
 		);
