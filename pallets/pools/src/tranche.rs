@@ -114,11 +114,7 @@ where
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Tranche<Balance, Rate, Weight, Currency>
-where
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
-{
+pub struct Tranche<Balance, Rate, Weight, Currency> {
 	pub(super) tranche_type: TrancheType<Rate>,
 	pub(super) seniority: Seniority,
 	pub(super) currency: Currency,
@@ -236,11 +232,7 @@ where
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Tranches<Balance, Rate, Weight, Currency>
-where
-	Rate: FixedPointNumber<Inner = Balance>,
-	Balance: FixedPointOperand,
-{
+pub struct Tranches<Balance, Rate, Weight, Currency> {
 	tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
 }
 
