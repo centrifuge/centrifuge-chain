@@ -83,7 +83,7 @@ where
 		Ok(())
 	}
 
-	fn start_epoch(&mut self, _now: Moment) -> DispatchResult {
+	fn start_epoch(&mut self) -> DispatchResult {
 		self.reserve.available_reserve = self.reserve.total_reserve;
 		self.last_epoch_executed += One::one();
 		Ok(())
@@ -934,7 +934,7 @@ pub mod pallet {
 						},
 					)?;
 
-					pool.start_epoch(now)?;
+					pool.start_epoch()?;
 
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 
@@ -1509,8 +1509,6 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
-			pool.last_epoch_executed += One::one();
-
 			let executed_amounts: Vec<(T::Balance, T::Balance)> =
 				epoch.tranches.combine_with(solution, |tranche, solution| {
 					Ok((
@@ -1518,6 +1516,22 @@ pub mod pallet {
 						solution.redeem_fulfillment.mul_floor(tranche.redeem),
 					))
 				})?;
+
+			// Update the total/available reserve for the new total value of the pool
+			pool.reserve.total_reserve = executed_amounts
+				.iter()
+				.fold(
+					Some(pool.reserve.total_reserve),
+					|acc: Option<T::Balance>, (investments, redemptions)| {
+						acc.and_then(|acc| {
+							acc.checked_add(investments)
+								.and_then(|res| res.checked_sub(redemptions))
+						})
+					},
+				)
+				.ok_or(Error::<T>::Overflow)?;
+
+			pool.start_epoch()?;
 
 			let last_epoch_executed = pool.last_epoch_executed;
 			// Update tranche orders and add epoch solution state
@@ -1543,22 +1557,6 @@ pub mod pallet {
 					)
 				},
 			)?;
-
-			// Update the total/available reserve for the new total value of the pool
-			pool.reserve.total_reserve = executed_amounts
-				.iter()
-				.fold(
-					Some(pool.reserve.total_reserve),
-					|acc: Option<T::Balance>, (investments, redemptions)| {
-						acc.and_then(|acc| {
-							acc.checked_add(investments)
-								.and_then(|res| res.checked_sub(redemptions))
-						})
-					},
-				)
-				.ok_or(Error::<T>::Overflow)?;
-
-			pool.reserve.available_reserve = pool.reserve.total_reserve;
 
 			let total_assets = pool
 				.reserve
