@@ -138,8 +138,9 @@ fn remove_nft_works() {
 	});
 }
 
+// Verify that a seller of an NFT can choose to buy it.
 #[test]
-fn buy_nft_already_owner() {
+fn buy_nft_seller() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
 		let (class_id, instance_id) = prepared_nft(&seller);
@@ -153,11 +154,7 @@ fn buy_nft_already_owner() {
 			10_000
 		));
 
-		// Verify that the seller cannot buy the item they are selling
-		assert_noop!(
-			NftMarketplace::buy(seller, class_id, instance_id),
-			DispatchError::from(nft_marketplace::Error::<Test>::IsSeller)
-		);
+		assert_ok!(NftMarketplace::buy(seller, class_id, instance_id));
 	});
 }
 

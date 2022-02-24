@@ -17,9 +17,7 @@ use frame_support::{
 	dispatch::DispatchResult,
 	traits::{
 		fungibles::{self, Transfer as FungiblesTransfer},
-		tokens::nonfungibles::{
-			self, Inspect as _, Transfer as NonFungiblesTransfer,
-		},
+		tokens::nonfungibles::{self, Inspect as _, Transfer as NonFungiblesTransfer},
 	},
 };
 use frame_system::ensure_signed;
@@ -161,9 +159,6 @@ pub mod pallet {
 
 		/// An operation expected an NFT to be for sale when it is not
 		NotForSale,
-
-		/// A buyer attempted to buy an NFT they are selling
-		IsSeller,
 	}
 
 	#[pallet::call]
@@ -262,9 +257,6 @@ pub mod pallet {
 		) -> DispatchResult {
 			let buyer = ensure_signed(origin.clone())?;
 			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
-
-			// Ensure that the buyer is not the seller of the NFT
-			ensure!(buyer != sale.seller, Error::<T>::IsSeller);
 
 			// Have the buyer pay the seller for the NFT
 			T::Fungibles::transfer(
