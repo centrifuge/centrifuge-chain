@@ -167,12 +167,14 @@ where
 	where
 		BalanceRatio: FixedPointNumber<Inner = Balance>,
 	{
-		Ok((
+		let orders = (
 			self.outstanding_invest_orders,
 			price
 				.checked_mul_int(self.outstanding_redeem_orders)
 				.ok_or(ArithmeticError::Overflow)?,
-		))
+		);
+
+		Ok(orders)
 	}
 
 	pub fn balance(&self) -> Result<Balance, DispatchError> {
@@ -317,7 +319,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -338,7 +339,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter_mut().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -422,11 +422,9 @@ where
 	where
 		BalanceRatio: FixedPointNumber<Inner = Balance>,
 	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for (tranche, price) in self.tranches.iter().zip(prices) {
-			res.push(tranche.order_as_currency(price)?);
-		}
-		Ok(res)
+		self.combine_with_non_residual_top(prices.iter(), |tranche, price| {
+			tranche.order_as_currency(price)
+		})
 	}
 
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
