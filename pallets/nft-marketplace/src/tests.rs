@@ -12,6 +12,7 @@
 // GNU General Public License for more details.
 
 use crate::mock::*;
+use crate::Price;
 use common_types::CurrencyId;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::fungibles::Inspect;
@@ -145,16 +146,20 @@ fn buy_nft_seller() {
 		let seller: Origin = Origin::signed(SELLER);
 		let (class_id, instance_id) = prepared_nft(&seller);
 
+		let price = Price {
+			currency: CurrencyId::Usd,
+			amount: 10_000,
+		};
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
 			class_id,
 			instance_id,
-			CurrencyId::Usd,
-			10_000
+			price.currency,
+			price.amount
 		));
 
-		assert_ok!(NftMarketplace::buy(seller, class_id, instance_id));
+		assert_ok!(NftMarketplace::buy(seller, class_id, instance_id, price));
 	});
 }
 
@@ -163,11 +168,15 @@ fn buy_nft_not_for_sale() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
 		let (class_id, instance_id) = prepared_nft(&seller);
+		let offer = Price {
+			currency: CurrencyId::Usd,
+			amount: 10_000,
+		};
 
 		// Verify that the buyer cannot buy the nft because it's not for sale
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
-			NftMarketplace::buy(buyer, class_id, instance_id),
+			NftMarketplace::buy(buyer, class_id, instance_id, offer),
 			DispatchError::from(nft_marketplace::Error::<Test>::NotForSale)
 		);
 	});
@@ -178,21 +187,25 @@ fn buy_nft_insufficient_balance() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
 		let (class_id, instance_id) = prepared_nft(&seller);
+		let price = Price {
+			currency: CurrencyId::Usd,
+			amount: OrmlTokens::balance(CurrencyId::Usd, &1) + 1,
+		};
 
 		// Set it for sale in the NftMarketplace
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
 			class_id,
 			instance_id,
-			CurrencyId::Usd,
-			OrmlTokens::balance(CurrencyId::Usd, &1) + 1 // < Just too expensive
+			price.currency,
+			price.amount, // < Just too expensive
 		));
 
 		// Verify that the buyer cannot buy the nft because its asking price
 		// exceeds the seller's balance.
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
-			NftMarketplace::buy(buyer, class_id, instance_id),
+			NftMarketplace::buy(buyer, class_id, instance_id, price),
 			DispatchError::from(orml_tokens::Error::<Test>::BalanceTooLow)
 		);
 	});
@@ -206,23 +219,31 @@ fn buy_nft_works() {
 		let (class_id, instance_id) = prepared_nft(&seller);
 
 		// Set it for sale in the NftMarketplace
-		let nft_price = 10_000;
+		let price = Price {
+			currency: CurrencyId::Usd,
+			amount: 10_000,
+		};
 		assert_ok!(NftMarketplace::add(
 			seller.clone(),
 			class_id,
 			instance_id,
-			CurrencyId::Usd,
-			nft_price
+			price.currency,
+			price.amount,
 		));
 
 		// Verify that the buyer can buy the nft
 		let buyer: Origin = Origin::signed(BUYER);
 		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::Usd, &BUYER);
-		assert_ok!(NftMarketplace::buy(buyer.clone(), class_id, instance_id));
+		assert_ok!(NftMarketplace::buy(
+			buyer.clone(),
+			class_id,
+			instance_id,
+			price.clone()
+		));
 
 		// Verify that if the seller can't buy it back because it's no longer for sale
 		assert_noop!(
-			NftMarketplace::buy(seller, class_id, instance_id),
+			NftMarketplace::buy(seller, class_id, instance_id, price.clone()),
 			DispatchError::from(nft_marketplace::Error::<Test>::NotForSale)
 		);
 
@@ -231,14 +252,81 @@ fn buy_nft_works() {
 
 		// Verify that the price of the nft was transferred to the seller's account
 		assert_eq!(
-			OrmlTokens::balance(CurrencyId::Usd, &SELLER),
-			seller_initial_balance + nft_price
+			OrmlTokens::balance(price.currency, &SELLER),
+			seller_initial_balance + price.amount
 		);
 
 		// Verify that the price of the nft was withdrawn from the buyer's account
 		assert_eq!(
-			OrmlTokens::balance(CurrencyId::Usd, &BUYER),
-			buyer_initial_balance - nft_price
+			OrmlTokens::balance(price.currency, &BUYER),
+			buyer_initial_balance - price.amount
+		);
+	});
+}
+
+// Verify that the max offer amount of the buyer is respected. If it's lower than the asking price,
+// it should fail with `InvalidOffer`
+#[test]
+fn buy_nft_respects_max_offer_amount() {
+	new_test_ext().execute_with(|| {
+		let seller: Origin = Origin::signed(SELLER);
+		let (class_id, instance_id) = prepared_nft(&seller);
+
+		// Set it for sale
+		let price = Price {
+			currency: CurrencyId::Usd,
+			amount: 10_000,
+		};
+		assert_ok!(NftMarketplace::add(
+			seller.clone(),
+			class_id,
+			instance_id,
+			price.currency,
+			price.amount,
+		));
+
+		let buyer: Origin = Origin::signed(BUYER);
+		let offer = Price {
+			currency: price.currency,
+			amount: price.amount - 1,
+		};
+		assert_noop!(
+			NftMarketplace::buy(buyer.clone(), class_id, instance_id, offer),
+			DispatchError::from(nft_marketplace::Error::<Test>::InvalidOffer)
+		);
+	});
+}
+
+// Verify that the max offer amount of the buyer is respected. If it's lower than the asking price,
+// it should fail with `InvalidOffer`
+#[test]
+fn buy_nft_respects_max_offer_currency() {
+	new_test_ext().execute_with(|| {
+		let seller: Origin = Origin::signed(SELLER);
+		let (class_id, instance_id) = prepared_nft(&seller);
+
+		// Set it for sale
+		let price = Price {
+			currency: CurrencyId::Usd,
+			amount: 10_000,
+		};
+		assert_ok!(NftMarketplace::add(
+			seller.clone(),
+			class_id,
+			instance_id,
+			price.currency,
+			price.amount,
+		));
+
+		let buyer: Origin = Origin::signed(BUYER);
+		let offer = Price {
+			currency: CurrencyId::Native, // <- mismatching currency
+			amount: price.amount,
+		};
+
+		assert_noop!(
+			NftMarketplace::buy(buyer.clone(), class_id, instance_id, offer),
+			DispatchError::from(nft_marketplace::Error::<Test>::InvalidOffer)
 		);
 	});
 }

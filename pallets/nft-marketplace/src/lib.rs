@@ -53,12 +53,12 @@ type InstanceIdOf<T> =
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct Sale<AccountId, CurrencyId, Balance> {
 	pub seller: AccountId,
-	pub price: AskingPrice<CurrencyId, Balance>,
+	pub price: Price<CurrencyId, Balance>,
 }
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct AskingPrice<CurrencyId, Balance> {
+pub struct Price<CurrencyId, Balance> {
 	pub currency: CurrencyId,
 	pub amount: Balance,
 }
@@ -159,6 +159,10 @@ pub mod pallet {
 
 		/// An operation expected an NFT to be for sale when it is not
 		NotForSale,
+
+		/// A buyer's max offer is invalid, i.e., either the currency or amount did not match
+		/// the latest asking price for the targeted NFT.
+		InvalidOffer,
 	}
 
 	#[pallet::call]
@@ -198,7 +202,7 @@ pub mod pallet {
 			// Put the nft for sale
 			let sale = Sale {
 				seller,
-				price: AskingPrice { currency, amount },
+				price: Price { currency, amount },
 			};
 			<Gallery<T>>::insert(class_id, instance_id, sale.clone());
 			Self::deposit_event(Event::ForSale(sale));
@@ -242,6 +246,12 @@ pub mod pallet {
 
 		/// Buy the given nft
 		///
+		/// Buyers must propose a `max_offer` to save them from a scenario where they would end up
+		/// paying more than they desired for an NFT. That scenario could take place if the seller
+		/// increased the asking price right before the buyer submits this call to buy said NFT.
+		///
+		/// Buyer always pays the latest asking price as long as it does not exceed their max offer.
+		///
 		/// Fails if
 		///   - the NFT is not for sale
 		///   - `origin` is the seller of the NFT
@@ -254,9 +264,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			class_id: T::ClassId,
 			instance_id: T::InstanceId,
+			max_offer: Price<CurrencyOf<T>, BalanceOf<T>>,
 		) -> DispatchResult {
 			let buyer = ensure_signed(origin.clone())?;
 			let sale = <Gallery<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
+
+			ensure!(
+				sale.price.currency == max_offer.currency && sale.price.amount <= max_offer.amount,
+				Error::<T>::InvalidOffer,
+			);
 
 			// Have the buyer pay the seller for the NFT
 			T::Fungibles::transfer(
