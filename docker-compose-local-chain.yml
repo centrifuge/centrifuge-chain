@@ -1,0 +1,32 @@
+version: '3'
+services:
+  cc_alice:
+    container_name: cc-alice
+    image: "centrifugeio/centrifuge-chain:${CC_DOCKER_TAG:-parachain-latest}"
+    ports:
+      - "30355:30333"
+      - "9936:9933"
+      - "9946:9944"
+    volumes:
+      - type: bind
+        source: ./res/rococo-local.json
+        target: /chainspec.json
+        read_only: true
+    command: >
+      --chain="${CC_CHAIN_ID:-development-local}" 
+      --alice
+      --parachain-id="2000"
+      --wasm-execution=compiled
+      --execution=wasm
+      --rpc-external
+      --rpc-cors all
+      --ws-external
+      --rpc-methods=Unsafe
+      --state-cache-size=0
+      --log="main,info"
+      -- 
+      --wasm-execution=compiled 
+      --execution=wasm
+      --chain=/chainspec.json 
+      --bootnodes="/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWDLpRT9KFo6pKdkmdQQt599tmqVYpoeiHemY32Gf4RUpp"
+      --bootnodes="/ip4/127.0.0.1/tcp/30344/p2p/12D3KooWKpaJZbNymrZmKG6BNNDC58z8p9YKDXfZtyhEjktgtph4"
