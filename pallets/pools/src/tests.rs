@@ -23,7 +23,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
-				.residual_slice()
+				.residual_top_slice()
 				.iter()
 				.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(|(tranche, value)| EpochExecutionTranche {
@@ -66,7 +66,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 
 		let full_solution = pool
 			.tranches
-			.residual_slice()
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -111,7 +111,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranches = Tranches::new(vec![tranche_a, tranche_b, tranche_c, tranche_d]);
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
-				.residual_slice()
+				.residual_top_slice()
 				.iter()
 				.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(|(tranche, value)| EpochExecutionTranche {
@@ -154,7 +154,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 
 		let full_solution = pool
 			.tranches
-			.residual_slice()
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -215,7 +215,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
-				.residual_slice()
+				.residual_top_slice()
 				.iter()
 				.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(|(tranche, value)| EpochExecutionTranche {
@@ -258,7 +258,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let full_solution = pool
 			.tranches
-			.residual_slice()
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -322,7 +322,7 @@ fn pool_constraints_pass() {
 		let tranches = Tranches::new(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
-				.residual_slice()
+				.residual_top_slice()
 				.iter()
 				.zip(vec![80, 70, 35, 20])
 				.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
@@ -367,7 +367,7 @@ fn pool_constraints_pass() {
 
 		let full_solution = pool
 			.tranches
-			.residual_slice()
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),

@@ -994,7 +994,8 @@ pub mod pallet {
 				let inspection_full_solution =
 					Self::inspect_solution(pool, &epoch, &full_execution_solution);
 				if inspection_full_solution.is_ok()
-					&& inspection_full_solution? == PoolState::Healthy
+					&& inspection_full_solution.expect("is_ok() == true. qed.")
+						== PoolState::Healthy
 				{
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));

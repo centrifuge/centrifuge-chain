@@ -531,7 +531,7 @@ where
 		self.tranches.rev_mut()
 	}
 
-	pub fn residual_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn residual_top_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
 		self.tranches.as_slice()
 	}
 
