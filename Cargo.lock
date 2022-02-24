@@ -2103,6 +2103,7 @@ dependencies = [
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
+ "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
  "pallet-pools",

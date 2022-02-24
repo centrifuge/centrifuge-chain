@@ -676,6 +676,19 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
+	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+}
+
+impl pallet_nft_sales::Config for Runtime {
+	type Event = Event;
+	type Fungibles = Tokens;
+	type NonFungibles = Uniques;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type PalletId = NftSalesPalletId;
+}
+
+parameter_types! {
 	// 5% of the proposal value need to be bonded. This will be returned
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 
@@ -1134,7 +1147,8 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
-		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
+		NftSales: pallet_nft_sales::{Pallet, Call, Event<T>} = 100,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
