@@ -872,70 +872,26 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-			let loc = TrancheLocator {
-				pool_id,
-				tranche_id,
-			};
-			let order =
-				Order::<T>::try_get(&loc, &who).map_err(|_| Error::<T>::NoOutstandingOrder)?;
-			ensure!(
-				order.epoch <= pool.last_epoch_executed,
-				Error::<T>::EpochNotExecutedYet
-			);
+			Self::do_collect(who, pool_id, tranche_id, collect_n_epochs)
+		}
+		/// Collect the results of an executed invest or
+		/// redeem order for another account.
+		///
+		/// Iterates through up to `collect_n_epochs` epochs from
+		/// when the caller's order was initiated, and transfers
+		/// the total results of the order execution to the
+		/// caller's account.
+		#[pallet::weight(T::WeightInfo::collect((*collect_n_epochs).into()))]
+		pub fn collect_for(
+			origin: OriginFor<T>,
+			who: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			collect_n_epochs: T::EpochId,
+		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
 
-			let end_epoch: T::EpochId = order
-				.epoch
-				.checked_add(&collect_n_epochs)
-				.ok_or(ArithmeticError::Overflow)?
-				.min(pool.last_epoch_executed);
-
-			let actual_epochs = end_epoch - order.epoch;
-
-			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch)?;
-			let pool_account = PoolLocator { pool_id }.into_account();
-
-			if collections.payout_currency_amount > Zero::zero() {
-				T::Tokens::transfer(
-					pool.currency,
-					&pool_account,
-					&who,
-					collections.payout_currency_amount,
-					false,
-				)?;
-			}
-
-			if collections.payout_token_amount > Zero::zero() {
-				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
-				T::Tokens::transfer(
-					token,
-					&pool_account,
-					&who,
-					collections.payout_token_amount,
-					false,
-				)?;
-			}
-
-			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
-				order.invest = collections.remaining_invest_currency;
-				order.redeem = collections.remaining_redeem_token;
-				order.epoch = end_epoch + One::one();
-
-				Self::deposit_event(Event::OrdersCollected(
-					pool_id,
-					tranche_id,
-					end_epoch,
-					who.clone(),
-					OutstandingCollections {
-						payout_currency_amount: collections.payout_currency_amount,
-						payout_token_amount: collections.payout_token_amount,
-						remaining_invest_currency: collections.remaining_invest_currency,
-						remaining_redeem_token: collections.remaining_redeem_token,
-					},
-				));
-				Ok(())
-			})?;
-			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
+			Self::do_collect(who, pool_id, tranche_id, collect_n_epochs)
 		}
 
 		/// Close the current epoch
@@ -1519,6 +1475,78 @@ pub mod pallet {
 					Self::score_solution_unhealthy(solution, epoch, &states)
 				}
 			}
+		}
+
+		pub(crate) fn do_collect(
+			who: T::AccountId,
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			collect_n_epochs: T::EpochId,
+		) -> DispatchResultWithPostInfo {
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			let loc = TrancheLocator {
+				pool_id,
+				tranche_id,
+			};
+			let order =
+				Order::<T>::try_get(&loc, &who).map_err(|_| Error::<T>::NoOutstandingOrder)?;
+			ensure!(
+				order.epoch <= pool.last_epoch_executed,
+				Error::<T>::EpochNotExecutedYet
+			);
+
+			let end_epoch: T::EpochId = order
+				.epoch
+				.checked_add(&collect_n_epochs)
+				.ok_or(ArithmeticError::Overflow)?
+				.min(pool.last_epoch_executed);
+
+			let actual_epochs = end_epoch - order.epoch;
+
+			let collections = Self::calculate_collect(loc.clone(), order, pool.clone(), end_epoch)?;
+			let pool_account = PoolLocator { pool_id }.into_account();
+
+			if collections.payout_currency_amount > Zero::zero() {
+				T::Tokens::transfer(
+					pool.currency,
+					&pool_account,
+					&who,
+					collections.payout_currency_amount,
+					false,
+				)?;
+			}
+
+			if collections.payout_token_amount > Zero::zero() {
+				let token = T::TrancheToken::tranche_token(pool_id, tranche_id);
+				T::Tokens::transfer(
+					token,
+					&pool_account,
+					&who,
+					collections.payout_token_amount,
+					false,
+				)?;
+			}
+
+			Order::<T>::try_mutate(&loc, &who, |order| -> DispatchResult {
+				order.invest = collections.remaining_invest_currency;
+				order.redeem = collections.remaining_redeem_token;
+				order.epoch = end_epoch + One::one();
+
+				Self::deposit_event(Event::OrdersCollected(
+					pool_id,
+					tranche_id,
+					end_epoch,
+					who.clone(),
+					OutstandingCollections {
+						payout_currency_amount: collections.payout_currency_amount,
+						payout_token_amount: collections.payout_token_amount,
+						remaining_invest_currency: collections.remaining_invest_currency,
+						remaining_redeem_token: collections.remaining_redeem_token,
+					},
+				));
+				Ok(())
+			})?;
+			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
 
 		pub(crate) fn do_update_invest_order(
