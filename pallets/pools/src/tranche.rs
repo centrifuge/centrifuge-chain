@@ -444,43 +444,39 @@ where
 		// we are gonna reverse the order
 		// such that prices are calculated from most senior to junior
 		// there by all the remaining assets are given to the most junior tranche
-		let junior_tranche_id = 0;
-		let rev_prices = self
-			.tranches
-			.iter_mut()
-			.enumerate()
-			.rev()
-			.map(|(tranche_id, tranche)| {
-				let total_issuance = Tokens::total_issuance(tranche.currency);
+		let mut prices = self.combine_mut_residual_top(|tranche| {
+			let total_issuance = Tokens::total_issuance(tranche.currency);
 
-				if pool_is_zero || total_issuance == Zero::zero() {
-					Ok(One::one())
-				} else if tranche_id == junior_tranche_id {
-					BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
-						.ok_or(ArithmeticError::Overflow.into())
+			if pool_is_zero || total_issuance == Zero::zero() {
+				Ok(One::one())
+			} else if tranche.tranche_type == TrancheType::Residual {
+				BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
+					.ok_or(ArithmeticError::Overflow.into())
+			} else {
+				tranche.accrue(now)?;
+				let tranche_value = tranche.balance()?;
+
+				// Indicates that a tranche has been wiped out and/or a tranche has
+				// lost value due to defaults.
+				let tranche_value = if tranche_value > remaining_assets {
+					let left_over_assets = remaining_assets;
+					remaining_assets = Zero::zero();
+					left_over_assets
 				} else {
-					tranche.accrue(now)?;
-					let tranche_value = tranche.balance()?;
+					remaining_assets = remaining_assets
+						.checked_sub(&tranche_value)
+						.expect("Tranche value smaller equal remaining assets. qed.");
+					tranche_value
+				};
+				BalanceRatio::checked_from_rational(tranche_value, total_issuance)
+					.ok_or(ArithmeticError::Overflow.into())
+			}
+		})?;
 
-					let tranche_value = if tranche_value > remaining_assets {
-						remaining_assets = Zero::zero();
-						remaining_assets
-					} else {
-						remaining_assets -= tranche_value;
-						tranche_value
-					};
-					BalanceRatio::checked_from_rational(tranche_value, total_issuance)
-						.ok_or(ArithmeticError::Overflow.into())
-				}
-			})
-			.collect::<Result<Vec<BalanceRatio>, DispatchError>>()?;
-
-		// NOTE: For some reason the compiler does shit with the code (or I am too stupid, which is
-		//       more likely) and does optimize away or something if I rev -> map -> rev. So doing this
-		//       manually again here.
-		//
-		// TODO: Put into for loop and allocate upfront with capacity.
-		Ok(rev_prices.into_iter().rev().collect())
+		// NOTE: We always pass around data in order NonResidual-to-Residual.
+		//       -> So we need to reverse here again.
+		prices.reverse();
+		Ok(prices)
 	}
 
 	pub fn num_tranches(&self) -> usize {
