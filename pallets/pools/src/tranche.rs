@@ -283,7 +283,7 @@ where
 		Self { tranches }
 	}
 
-	pub fn combine<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
@@ -295,7 +295,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_mut<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_mut_non_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
@@ -307,7 +307,11 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_with_non_residual_top<R, I, W, F>(
+		&self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
@@ -324,7 +328,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_mut<R, W, I, F>(
+	pub fn combine_with_mut_non_residual_top<R, W, I, F>(
 		&mut self,
 		with: I,
 		mut f: F,
@@ -345,7 +349,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_rev<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
@@ -357,7 +361,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_mut_rev<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_mut_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
@@ -369,7 +373,11 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_rev<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_with_residual_top<R, I, W, F>(
+		&self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, W) -> Result<R, DispatchError>,
 		I: IntoIterator<Item = W>,
@@ -386,7 +394,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_mut_rev<R, W, I, F>(
+	pub fn combine_with_mut_residual_top<R, W, I, F>(
 		&mut self,
 		with: I,
 		mut f: F,
@@ -519,23 +527,21 @@ where
 		}
 	}
 
-	pub fn senior_to_junior_slice(&self) -> &RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
+	pub fn non_residual_top_slice(&self) -> &RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
 		self.tranches.rev()
 	}
 
-	pub fn senior_to_junior_slice_mut(
+	pub fn non_residual_top_slice_mut(
 		&mut self,
 	) -> &mut RevSlice<Tranche<Balance, Rate, Weight, CurrencyId>> {
 		self.tranches.rev_mut()
 	}
 
-	pub fn junior_to_senior_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn residual_slice(&self) -> &[Tranche<Balance, Rate, Weight, CurrencyId>] {
 		self.tranches.as_slice()
 	}
 
-	pub fn junior_to_senior_slice_mut(
-		&mut self,
-	) -> &mut [Tranche<Balance, Rate, Weight, CurrencyId>] {
+	pub fn residual_top_slice_mut(&mut self) -> &mut [Tranche<Balance, Rate, Weight, CurrencyId>] {
 		self.tranches.as_mut_slice()
 	}
 
@@ -559,14 +565,14 @@ where
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	pub fn investments(&self) -> Vec<Balance> {
+	pub fn outstanding_investments(&self) -> Vec<Balance> {
 		self.tranches
 			.iter()
 			.map(|tranche| tranche.outstanding_invest_orders)
 			.collect()
 	}
 
-	pub fn acc_investments(&self) -> Result<Balance, DispatchError> {
+	pub fn acc_outstanding_investments(&self) -> Result<Balance, DispatchError> {
 		self.tranches
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
@@ -575,14 +581,14 @@ where
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	pub fn redemptions(&self) -> Vec<Balance> {
+	pub fn oustanding_redemptions(&self) -> Vec<Balance> {
 		self.tranches
 			.iter()
 			.map(|tranche| tranche.outstanding_redeem_orders)
 			.collect()
 	}
 
-	pub fn acc_redemptions(&self) -> Result<Balance, DispatchError> {
+	pub fn acc_oustanding_redemptions(&self) -> Result<Balance, DispatchError> {
 		self.tranches
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
@@ -647,7 +653,7 @@ where
 		// Calculate the new total asset value for each tranche
 		// This uses the current state of the tranches, rather than the cached epoch-close-time values.
 		let mut total_assets = total_assets;
-		let tranche_assets = self.combine_with_mut_rev(
+		let tranche_assets = self.combine_with_mut_residual_top(
 			executed_amounts.iter().rev(),
 			|tranche, (invest, redeem)| {
 				tranche.accrue(now)?;
@@ -674,7 +680,7 @@ where
 		// Rebalance tranches based on the new tranche asset values and ratios
 		let mut remaining_nav = pool_nav;
 		let mut remaining_reserve = pool_total_reserve;
-		self.combine_with_mut_rev(
+		self.combine_with_mut_residual_top(
 			tranche_ratios.iter().rev().zip(tranche_assets.iter()),
 			|tranche, (ratio, value)| {
 				tranche.ratio = *ratio;
@@ -772,31 +778,29 @@ where
 		self.tranches
 	}
 
-	pub fn senior_to_junior_slice(
+	pub fn non_residual_top_slice(
 		&self,
 	) -> &RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
 		self.tranches.rev()
 	}
 
-	pub fn senior_to_junior_slice_mut(
+	pub fn non_residual_top_slice_mut(
 		&mut self,
 	) -> &mut RevSlice<EpochExecutionTranche<Balance, BalanceRatio, Weight>> {
 		self.tranches.rev_mut()
 	}
 
-	pub fn junior_to_senior_slice(
-		&self,
-	) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
+	pub fn residual_top_slice(&self) -> &[EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
 		self.tranches.as_slice()
 	}
 
-	pub fn junior_to_senior_slice_mut(
+	pub fn residual_top_slice_mut(
 		&mut self,
 	) -> &mut [EpochExecutionTranche<Balance, BalanceRatio, Weight>] {
 		self.tranches.as_mut_slice()
 	}
 
-	pub fn combine<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
 	{
@@ -808,7 +812,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_mut<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_mut_non_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
 			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
@@ -822,7 +826,11 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_with_non_residual_top<R, I, W, F>(
+		&self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
 			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
@@ -831,7 +839,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -842,7 +849,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_mut<R, W, I, F>(
+	pub fn combine_with_mut_non_residual_top<R, W, I, F>(
 		&mut self,
 		with: I,
 		mut f: F,
@@ -855,7 +862,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter_mut().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -866,7 +872,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_rev<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
 	{
@@ -878,7 +884,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_mut_rev<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_mut_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
 			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
@@ -892,7 +898,11 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_rev<R, I, W, F>(&self, with: I, mut f: F) -> Result<Vec<R>, DispatchError>
+	pub fn combine_with_residual_top<R, I, W, F>(
+		&self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(
 			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
@@ -901,7 +911,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -912,7 +921,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_mut_rev<R, W, I, F>(
+	pub fn combine_with_mut_residual_top<R, W, I, F>(
 		&mut self,
 		with: I,
 		mut f: F,
@@ -925,7 +934,6 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
 		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
@@ -944,7 +952,7 @@ where
 		&self,
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
-		self.combine_with(fulfillments, |tranche, solution| {
+		self.combine_with_non_residual_top(fulfillments, |tranche, solution| {
 			tranche
 				.supply
 				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))

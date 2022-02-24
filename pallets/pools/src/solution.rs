@@ -124,7 +124,7 @@ impl<Balance> EpochSolution<Balance> {
 	{
 		let (invest_score, redeem_score) = solution
 			.iter()
-			.zip(tranches.junior_to_senior_slice())
+			.zip(tranches.residual_top_slice())
 			.zip(tranches.calculate_weights())
 			.fold(
 				(Some(Balance::zero()), Some(Balance::zero())),
@@ -220,26 +220,25 @@ impl<Balance> EpochSolution<Balance> {
 		};
 
 		let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
-			let (acc_invest, acc_redeem) =
-				solution.iter().zip(tranches.junior_to_senior_slice()).fold(
-					(Some(Balance::zero()), Some(Balance::zero())),
-					|(acc_invest, acc_redeem), (solution, tranches)| {
-						(
-							acc_invest.and_then(|acc| {
-								solution
-									.invest_fulfillment
-									.mul_floor(tranches.invest)
-									.checked_add(&acc)
-							}),
-							acc_redeem.and_then(|acc| {
-								solution
-									.redeem_fulfillment
-									.mul_floor(tranches.redeem)
-									.checked_add(&acc)
-							}),
-						)
-					},
-				);
+			let (acc_invest, acc_redeem) = solution.iter().zip(tranches.residual_top_slice()).fold(
+				(Some(Balance::zero()), Some(Balance::zero())),
+				|(acc_invest, acc_redeem), (solution, tranches)| {
+					(
+						acc_invest.and_then(|acc| {
+							solution
+								.invest_fulfillment
+								.mul_floor(tranches.invest)
+								.checked_add(&acc)
+						}),
+						acc_redeem.and_then(|acc| {
+							solution
+								.redeem_fulfillment
+								.mul_floor(tranches.redeem)
+								.checked_add(&acc)
+						}),
+					)
+				},
+			);
 
 			let acc_invest = acc_invest.ok_or(ArithmeticError::Overflow)?;
 			let acc_redeem = acc_redeem.ok_or(ArithmeticError::Overflow)?;
@@ -404,7 +403,7 @@ where
 	Weight: Copy + From<u128>,
 {
 	let acc_invest: Balance = epoch_tranches
-		.junior_to_senior_slice()
+		.residual_top_slice()
 		.iter()
 		.zip(solution)
 		.fold(Some(Balance::zero()), |sum, (tranche, solution)| {
@@ -415,7 +414,7 @@ where
 		.ok_or(ArithmeticError::Overflow)?;
 
 	let acc_redeem: Balance = epoch_tranches
-		.junior_to_senior_slice()
+		.residual_top_slice()
 		.iter()
 		.zip(solution)
 		.fold(Some(Balance::zero()), |sum, (tranche, solution)| {
