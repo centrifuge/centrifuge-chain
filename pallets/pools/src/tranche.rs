@@ -283,23 +283,6 @@ where
 		Self { tranches }
 	}
 
-	pub fn fold<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
-	where
-		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, R) -> Result<R, DispatchError>,
-	{
-		let mut iter = self.tranches.iter();
-		let mut r = if let Some(tranche) = iter.next() {
-			f(tranche, start)?
-		} else {
-			return Ok(start);
-		};
-
-		while let Some(tranche) = iter.next() {
-			r = f(tranche, r)?;
-		}
-		Ok(r)
-	}
-
 	pub fn combine<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
@@ -360,23 +343,6 @@ where
 		}
 
 		Ok(res)
-	}
-
-	pub fn fold_rev<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
-	where
-		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>, R) -> Result<R, DispatchError>,
-	{
-		let mut iter = self.tranches.iter().rev();
-		let mut r = if let Some(tranche) = iter.next() {
-			f(tranche, start)?
-		} else {
-			return Ok(start);
-		};
-
-		while let Some(tranche) = iter.next() {
-			r = f(tranche, r)?;
-		}
-		Ok(r)
 	}
 
 	pub fn combine_rev<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
@@ -830,26 +796,6 @@ where
 		self.tranches.as_mut_slice()
 	}
 
-	pub fn fold<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
-	where
-		F: FnMut(
-			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
-			R,
-		) -> Result<R, DispatchError>,
-	{
-		let mut iter = self.tranches.iter();
-		let mut r = if let Some(tranche) = iter.next() {
-			f(tranche, start)?
-		} else {
-			return Ok(start);
-		};
-
-		while let Some(tranche) = iter.next() {
-			r = f(tranche, r)?;
-		}
-		Ok(r)
-	}
-
 	pub fn combine<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
@@ -918,26 +864,6 @@ where
 		}
 
 		Ok(res)
-	}
-
-	pub fn fold_rev<R, F>(&self, start: R, mut f: F) -> Result<R, DispatchError>
-	where
-		F: FnMut(
-			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
-			R,
-		) -> Result<R, DispatchError>,
-	{
-		let mut iter = self.tranches.iter().rev();
-		let mut r = if let Some(tranche) = iter.next() {
-			f(tranche, start)?
-		} else {
-			return Ok(start);
-		};
-
-		while let Some(tranche) = iter.next() {
-			r = f(tranche, r)?;
-		}
-		Ok(r)
 	}
 
 	pub fn combine_rev<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
