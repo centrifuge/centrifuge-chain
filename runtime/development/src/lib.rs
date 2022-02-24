@@ -774,6 +774,8 @@ parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
 	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
 	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
+	pub const DefaultMinUpdateDelay: u64 = 1 * 60; // 1 minute
+	pub const DefaultRequireRedeemFulfillmentsBeforeUpdates: bool = false;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1; // do not allow multiple epochs closed in 1 block
@@ -803,6 +805,7 @@ impl pallet_pools::Config for Runtime {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type DefaultMinUpdateDelay = DefaultMinUpdateDelay;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;

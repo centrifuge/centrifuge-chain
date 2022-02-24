@@ -77,6 +77,16 @@ pub struct Tranche<Balance, Rate, Weight> {
 	_phantom: PhantomData<Weight>,
 }
 
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct PoolUpdate<Rate> {
+	pub tranches: Option<Vec<TrancheInput<Rate>>>,
+	pub min_epoch_time: Option<Moment>,
+	pub challenge_time: Option<Moment>,
+	pub max_nav_age: Option<Moment>,
+	pub min_update_delay: Option<Moment>,
+	pub require_redeem_fulfillments_before_updates: Option<bool>,
+}
+
 /// A type alias for the Tranche weight calculation
 type NumTranches = u32;
 
@@ -120,6 +130,10 @@ where
 	pub min_epoch_time: Moment,
 	pub challenge_time: Moment,
 	pub max_nav_age: Moment,
+	pub min_update_delay: Moment,
+	pub require_redeem_fulfillments_before_updates: bool,
+	pub scheduled_update: Option<PoolUpdate<Rate>>,
+	pub scheduled_update_executed_after: Option<Moment>,
 }
 
 /// Per-tranche and per-user order details.
@@ -356,28 +370,22 @@ pub mod pallet {
 
 		type Time: UnixTime;
 
-		/// Default min epoch time
+		/// Defaults
 		type DefaultMinEpochTime: Get<u64>;
-
-		/// Default challenge time
 		type DefaultChallengeTime: Get<u64>;
-
-		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
+		type DefaultMinUpdateDelay: Get<u64>;
+		type DefaultRequireRedeemFulfillmentsBeforeUpdates: Get<bool>;
 
-		/// Min epoch time lower bound
+		/// Parameter bounds
 		type MinEpochTimeLowerBound: Get<u64>;
-
-		/// Challenge time lower bound
 		type ChallengeTimeLowerBound: Get<u64>;
-
-		/// Max NAV age upper bound
 		type MaxNAVAgeUpperBound: Get<u64>;
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
-		/// Max number of Tranches
+		/// Max number of tranches
 		type MaxTranches: Get<u32>;
 
 		/// Weight Information
@@ -430,8 +438,6 @@ pub mod pallet {
 		Created(T::PoolId, T::AccountId),
 		/// A pool was updated. [pool]
 		Updated(T::PoolId),
-		/// Tranches were updated. [pool]
-		TranchesUpdated(T::PoolId),
 		/// The max reserve was updated. [pool]
 		MaxReserveSet(T::PoolId),
 		/// Pool metadata was set. [pool, metadata]
@@ -601,6 +607,11 @@ pub mod pallet {
 						T::MaxNAVAgeUpperBound::get(),
 					),
 					metadata: None,
+					min_update_delay: T::DefaultMinUpdateDelay::get(),
+					require_redeem_fulfillments_before_updates:
+						T::DefaultRequireRedeemFulfillmentsBeforeUpdates::get(),
+					scheduled_update: None,
+					scheduled_update_executed_after: None,
 				},
 			);
 			T::Permission::add_permission(pool_id, owner.clone(), PoolRole::PoolAdmin)?;
@@ -619,9 +630,7 @@ pub mod pallet {
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			min_epoch_time: u64,
-			challenge_time: u64,
-			max_nav_age: u64,
+			changes: PoolUpdate<T::InterestRate>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -630,21 +639,50 @@ pub mod pallet {
 			);
 
 			ensure!(
-				min_epoch_time >= T::MinEpochTimeLowerBound::get()
-					&& challenge_time >= T::ChallengeTimeLowerBound::get()
-					&& max_nav_age <= T::MaxNAVAgeUpperBound::get(),
-				Error::<T>::PoolParameterBoundViolated
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
 			);
 
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+			if let Some(min_epoch_time) = changes.min_epoch_time {
+				ensure!(
+					min_epoch_time >= T::MinEpochTimeLowerBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
 
-				pool.min_epoch_time = min_epoch_time;
-				pool.challenge_time = challenge_time;
-				pool.max_nav_age = max_nav_age;
-				Self::deposit_event(Event::Updated(pool_id));
-				Ok(())
-			})
+			if let Some(challenge_time) = changes.challenge_time {
+				ensure!(
+					challenge_time >= T::ChallengeTimeLowerBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
+
+			if let Some(max_nav_age) = changes.max_nav_age {
+				ensure!(
+					max_nav_age <= T::MaxNAVAgeUpperBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+			if let Some(tranches) = &changes.tranches {
+				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
+			}
+
+			if pool.min_update_delay == 0
+				&& pool.require_redeem_fulfillments_before_updates == false
+			{
+				Self::do_update_pool(&pool_id, &changes)
+			} else {
+				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+					let mut_pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+					mut_pool.scheduled_update = Some(changes.clone());
+					mut_pool.scheduled_update_executed_after =
+						Some(Self::now().saturating_add(mut_pool.min_update_delay));
+					Ok(())
+				})
+			}
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
@@ -699,50 +737,6 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.max_reserve = max_reserve;
 				Self::deposit_event(Event::MaxReserveSet(pool_id));
-				Ok(())
-			})
-		}
-
-		/// Update the tranche configuration for a pool
-		///
-		/// Can only be called by an account with the `PoolAdmin` role.
-		///
-		/// The interest rate, seniority, and minimum risk buffer
-		/// will be set based on the new tranche configuration
-		/// passed in. This configuration must contain the same
-		/// number of tranches that the pool was created with.
-		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len() as u32))]
-		pub fn update_tranches(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranches: Vec<TrancheInput<T::InterestRate>>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
-				BadOrigin
-			);
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-
-				ensure!(
-					EpochExecution::<T>::try_get(pool_id).is_err(),
-					Error::<T>::InSubmissionPeriod
-				);
-
-				Self::is_valid_tranche_change(&pool.tranches, &tranches)?;
-
-				for (tranche, new_tranche) in &mut pool.tranches.iter_mut().zip(tranches) {
-					tranche.min_risk_buffer =
-						new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
-					tranche.interest_per_sec = new_tranche.interest_per_sec.unwrap_or(One::one());
-					if let Some(new_seniority) = new_tranche.seniority {
-						tranche.seniority = new_seniority;
-					}
-				}
-
-				Self::deposit_event(Event::TranchesUpdated(pool_id));
 				Ok(())
 			})
 		}
@@ -1477,6 +1471,56 @@ pub mod pallet {
 			}
 		}
 
+		pub(crate) fn do_update_pool(
+			pool_id: &T::PoolId,
+			changes: &PoolUpdate<T::InterestRate>,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				if let Some(min_epoch_time) = changes.min_epoch_time {
+					pool.min_epoch_time = min_epoch_time;
+				}
+
+				if let Some(challenge_time) = changes.challenge_time {
+					pool.challenge_time = challenge_time;
+				}
+
+				if let Some(max_nav_age) = changes.max_nav_age {
+					pool.max_nav_age = max_nav_age;
+				}
+
+				if let Some(min_update_delay) = changes.min_update_delay {
+					pool.min_update_delay = min_update_delay;
+				}
+
+				if let Some(require_redeem_fulfillments_before_updates) = changes.require_redeem_fulfillments_before_updates {
+					pool.require_redeem_fulfillments_before_updates =
+						require_redeem_fulfillments_before_updates;
+				}
+
+				if let Some(tranches) = &changes.tranches {
+					// TODO: update debt for all tranches first
+
+					for (tranche, new_tranche) in &mut pool.tranches.iter_mut().zip(tranches) {
+						tranche.min_risk_buffer =
+							new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
+						tranche.interest_per_sec =
+							new_tranche.interest_per_sec.unwrap_or(One::one());
+						if let Some(new_seniority) = new_tranche.seniority {
+							tranche.seniority = new_seniority;
+						}
+					}
+				}
+
+				pool.scheduled_update = None;
+				pool.scheduled_update_executed_after = None;
+
+				Self::deposit_event(Event::Updated(pool_id.clone()));
+				Ok(())
+			})
+		}
+
 		pub(crate) fn do_collect(
 			who: T::AccountId,
 			pool_id: T::PoolId,
@@ -2121,6 +2165,25 @@ pub mod pallet {
 			pool.available_reserve = pool.total_reserve;
 
 			Self::rebalance_tranches(pool, &epoch, &executed_amounts)?;
+
+			if let Some(changes) = &pool.scheduled_update {
+				if pool.require_redeem_fulfillments_before_updates == true {
+					// The pool update is only executed if for each tranche, the redeem fulfillment was 100% or there were no orders
+					// This makes sure that investors can fully redeem if they want before the update goes through
+					if epoch
+						.tranches
+						.iter()
+						.zip(solution.iter())
+						.all(|(tranche, solution)| {
+							solution.redeem_fulfillment == Perquintill::from_percent(100)
+								|| tranche.redeem == Zero::zero()
+						}) {
+						Self::do_update_pool(&pool_id, &changes)?;
+					}
+				} else {
+					Self::do_update_pool(&pool_id, &changes)?;
+				}
+			}
 
 			Ok(())
 		}
