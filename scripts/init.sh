@@ -25,6 +25,16 @@ stop-relay-chain)
   docker-compose -f ./docker-compose-local-relay.yml down
   ;;
 
+start-parachain-docker)
+  echo "Starting local parachain with Alice..."
+  docker-compose -f ./docker-compose-local-chain.yml up -d
+  ;;
+
+stop-parachain-docker)
+  echo "Stopping local parachain with Alice..."
+  docker-compose -f ./docker-compose-local-chain.yml down
+  ;;
+
 start-parachain)
   printf "\nBuilding parachain with runtime '$parachain' and id '$para_id'...\n"
   cargo build --release
