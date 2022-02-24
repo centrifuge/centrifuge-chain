@@ -11,20 +11,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate::{self as nft_marketplace};
+pub use crate::{self as nft_sales};
+use common_types::CurrencyId;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{parameter_types, PalletId};
 use frame_system::EnsureSignedBy;
 use orml_traits::parameter_type_with_key;
+use runtime_common::{Balance, ClassId, InstanceId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-
-use common_types::CurrencyId;
-
-use runtime_common::{Balance, ClassId, InstanceId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -41,9 +39,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		OrmlTokens: orml_tokens::{Pallet, Config<T>, Storage, Event<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
-
-		NftMarketplace: nft_marketplace::{Pallet, Call, Storage},
-
+		NftSales: nft_sales::{Pallet, Call, Storage},
 	}
 );
 
@@ -158,17 +154,17 @@ impl frame_support::traits::SortedMembers<u64> for One {
 	}
 }
 
-impl nft_marketplace::Config for Test {
+impl nft_sales::Config for Test {
 	type Event = ();
 	type Fungibles = OrmlTokens;
 	type NonFungibles = Uniques;
 	type ClassId = ClassId;
 	type InstanceId = InstanceId;
-	type PalletId = NftMarketplacePalletId;
+	type PalletId = NftSalesPalletId;
 }
 
 parameter_types! {
-	pub const NftMarketplacePalletId: PalletId = PalletId(*b"pal/nftm");
+	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
 }
 
 pub(crate) const SELLER: u64 = 0x1;

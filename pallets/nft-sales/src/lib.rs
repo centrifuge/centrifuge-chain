@@ -1,7 +1,7 @@
-//! NFT Marketplace pallet
+//! NFT Sales pallet
 //!
-//! This pallet provides a marketplace for digital art creators and owners to enlist their
-//! NFTs for sale and for potential buyers to browse and buy NFTs.
+//! This pallet provides a place for digital art creators and owners to offer their
+//! NFTs for sale and for potential buyers to browse and buy them.
 //!
 //! To set an NFT for sale, users will call `add`, which will add the NFT to the gallery
 //! of NFT that open for sale. Doing so will have the NFT being transferred from the seller

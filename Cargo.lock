@@ -6003,7 +6003,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-nft-marketplace"
+name = "pallet-nft-sales"
 version = "2.0.0"
 dependencies = [
  "common-types",

@@ -1,10 +1,10 @@
 [package]
 authors = ["Centrifuge <admin@centrifuge.io>"]
-description = 'NFT Marketplace pallet'
+description = 'NFT Sales pallet'
 edition = '2018'
 license = "LGPL-3.0"
-name = 'pallet-nft-marketplace'
-repository = "https://github.com/centrifuge/centrifuge-chain/pallets/nft-marketplace"
+name = 'pallet-nft-sales'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/nft-sales"
 version = '2.0.0'
 
 [package.metadata.docs.rs]
