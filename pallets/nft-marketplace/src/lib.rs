@@ -16,9 +16,9 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::DispatchResult,
 	traits::{
-		fungibles::{self, Inspect as FungiblesInspect, Transfer as FungiblesTransfer},
+		fungibles::{self, Transfer as FungiblesTransfer},
 		tokens::nonfungibles::{
-			self, Inspect as NonFungiblesInspect, Transfer as NonFungiblesTransfer,
+			self, Inspect as _, Transfer as NonFungiblesTransfer,
 		},
 	},
 };
@@ -164,15 +164,6 @@ pub mod pallet {
 
 		/// A buyer attempted to buy an NFT they are selling
 		IsSeller,
-
-		/// The buyer does not have sufficient balance to buy the nft
-		InsufficientBalance,
-
-		/// Payment failed, i.e, failed to transfer the asking price from the buyer to the seller
-		PaymentFailed,
-
-		/// Failed to transfer an NFT from one account to another
-		FailedNftTransfer,
 	}
 
 	#[pallet::call]
@@ -207,8 +198,7 @@ pub mod pallet {
 			);
 
 			// Transfer the NFT to the parachain account
-			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())
-				.map_err(|_| Error::<T>::FailedNftTransfer)?;
+			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())?;
 
 			// Put the nft for sale
 			let sale = Sale {
@@ -243,8 +233,7 @@ pub mod pallet {
 			ensure!(who == sale.seller, Error::<T>::NotOwner);
 
 			// Transfer the NFT back to the seller, i.e., the original owner of this NFT
-			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &sale.seller)
-				.map_err(|_| Error::<T>::FailedNftTransfer)?;
+			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &sale.seller)?;
 
 			// Remove the NFT from the gallery
 			<Gallery<T>>::remove(class_id, instance_id);
@@ -277,11 +266,6 @@ pub mod pallet {
 			// Ensure that the buyer is not the seller of the NFT
 			ensure!(buyer != sale.seller, Error::<T>::IsSeller);
 
-			// Make sure the buyer can pay for the NFT
-			T::Fungibles::can_withdraw(sale.price.currency, &buyer, sale.price.amount)
-				.into_result()
-				.map_err(|_| Error::<T>::InsufficientBalance)?;
-
 			// Have the buyer pay the seller for the NFT
 			T::Fungibles::transfer(
 				sale.price.currency,
@@ -289,8 +273,7 @@ pub mod pallet {
 				&sale.seller,
 				sale.price.amount,
 				true,
-			)
-			.map_err(|_| Error::<T>::PaymentFailed)?;
+			)?;
 
 			// Transfer the NFT to the buyer
 			T::NonFungibles::transfer(
@@ -298,8 +281,7 @@ pub mod pallet {
 				&class_id.into(),
 				&instance_id.into(),
 				&buyer.clone(),
-			)
-			.map_err(|_| Error::<T>::FailedNftTransfer)?;
+			)?;
 
 			<Gallery<T>>::remove(class_id, instance_id);
 			Self::deposit_event(Event::Sold { sale, buyer });

@@ -196,7 +196,7 @@ fn buy_nft_insufficient_balance() {
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
 			NftMarketplace::buy(buyer, class_id, instance_id),
-			DispatchError::from(nft_marketplace::Error::<Test>::InsufficientBalance)
+			DispatchError::from(orml_tokens::Error::<Test>::BalanceTooLow)
 		);
 	});
 }
