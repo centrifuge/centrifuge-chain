@@ -2056,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.1.0"
+version = "0.10.1"
 dependencies = [
  "common-traits",
  "common-types",
@@ -2103,6 +2103,7 @@ dependencies = [
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
+ "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
  "pallet-pools",
@@ -6000,6 +6001,27 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "unique-assets",
+]
+
+[[package]]
+name = "pallet-nft-sales"
+version = "2.0.0"
+dependencies = [
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-uniques",
+ "parity-scale-codec",
+ "runtime-common",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
