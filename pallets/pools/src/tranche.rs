@@ -655,19 +655,23 @@ where
 				tranche
 					.debt
 					.checked_add(&tranche.reserve)
-					.and_then(|value| value.checked_add(invest))
-					.and_then(|value| value.checked_sub(redeem))
+					.ok_or(ArithmeticError::Overflow)?
+					.checked_add(invest)
+					.ok_or(ArithmeticError::Overflow)?
+					.checked_sub(redeem)
+					.ok_or(ArithmeticError::Underflow.into())
 					.map(|value| {
 						if value > total_assets {
 							let assets = total_assets;
 							total_assets = Zero::zero();
 							assets
 						} else {
-							total_assets = total_assets.saturating_sub(value);
+							total_assets = total_assets
+								.checked_sub(&value)
+								.expect("total_assets greater equal value. qed.");
 							value
 						}
 					})
-					.ok_or(ArithmeticError::Overflow.into())
 			},
 		)?;
 
@@ -687,8 +691,18 @@ where
 						tranche.debt = *value;
 					}
 					tranche.reserve = value.saturating_sub(tranche.debt);
-					remaining_nav -= tranche.debt;
-					remaining_reserve -= tranche.reserve;
+					remaining_nav =
+						remaining_nav
+							.checked_sub(&tranche.debt)
+							.ok_or(DispatchError::Other(
+							"Corrupted pool-state. Pool NAV should be able to handle tranche debt substraction.",
+						))?;
+					remaining_reserve =
+						remaining_reserve
+							.checked_sub(&tranche.reserve)
+							.ok_or(DispatchError::Other(
+							"Corrupted pool-state. Pool reserve should be able to handle tranche reserve substraction.",
+						))?;
 				}
 				Ok(())
 			},
