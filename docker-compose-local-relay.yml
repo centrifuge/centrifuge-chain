@@ -1,3 +1,5 @@
+# Node Key Alice: `subkey inspect //Alice`
+# Node Key Bob: `subkey inspect //Bob`
 version: '3'
 services:
   node_alice:

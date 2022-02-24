@@ -13,7 +13,7 @@ services:
         target: /chainspec.json
         read_only: true
     command: >
-      --chain="${CC_CHAIN_ID:-development-local}" 
+      --chain="${PARA_CHAIN_SPEC:-development-local}" 
       --alice
       --parachain-id="2000"
       --wasm-execution=compiled
