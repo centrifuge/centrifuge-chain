@@ -43,6 +43,10 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			min_update_delay: 0,
+			require_redeem_fulfillments_before_updates: false,
+			scheduled_update: None,
+			scheduled_update_executed_after: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -121,6 +125,10 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			min_update_delay: 0,
+			require_redeem_fulfillments_before_updates: false,
+			scheduled_update: None,
+			scheduled_update_executed_after: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -215,6 +223,10 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			min_update_delay: 0,
+			require_redeem_fulfillments_before_updates: false,
+			scheduled_update: None,
+			scheduled_update_executed_after: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -306,6 +318,10 @@ fn pool_constraints_pass() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			min_update_delay: 0,
+			require_redeem_fulfillments_before_updates: false,
+			scheduled_update: None,
+			scheduled_update_executed_after: None,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -410,7 +426,18 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update(pool_owner.clone(), 0, 30 * 60, 1, 0));
+		assert_ok!(Pools::update(
+			pool_owner.clone(),
+			0,
+			PoolUpdate {
+				tranches: None,
+				min_epoch_time: Some(30 * 60),
+				challenge_time: Some(1),
+				max_nav_age: Some(0),
+				min_update_delay: None,
+				require_redeem_fulfillments_before_updates: None,
+			}
+		));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner.clone(), 0),
@@ -1181,40 +1208,60 @@ fn pool_parameters_should_be_constrained() {
 		assert_err!(
 			Pools::update(
 				pool_owner.clone(),
-				pool_id,
 				0,
-				realistic_challenge_time,
-				realistic_max_nav_age
+				PoolUpdate {
+					tranches: None,
+					min_epoch_time: Some(0),
+					challenge_time: Some(realistic_challenge_time),
+					max_nav_age: Some(realistic_max_nav_age),
+					min_update_delay: None,
+					require_redeem_fulfillments_before_updates: None,
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
 		assert_err!(
 			Pools::update(
 				pool_owner.clone(),
-				pool_id,
-				realistic_min_epoch_time,
 				0,
-				realistic_max_nav_age
+				PoolUpdate {
+					tranches: None,
+					min_epoch_time: Some(realistic_min_epoch_time),
+					challenge_time: Some(0),
+					max_nav_age: Some(realistic_max_nav_age),
+					min_update_delay: None,
+					require_redeem_fulfillments_before_updates: None,
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
 		assert_err!(
 			Pools::update(
 				pool_owner.clone(),
-				pool_id,
-				realistic_min_epoch_time,
-				realistic_challenge_time,
-				7 * 24 * 60 * 60
+				0,
+				PoolUpdate {
+					tranches: None,
+					min_epoch_time: Some(realistic_min_epoch_time),
+					challenge_time: Some(realistic_challenge_time),
+					max_nav_age: Some(7 * 24 * 60 * 60),
+					min_update_delay: None,
+					require_redeem_fulfillments_before_updates: None,
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
 
 		assert_ok!(Pools::update(
 			pool_owner.clone(),
-			pool_id,
-			realistic_min_epoch_time,
-			realistic_challenge_time,
-			realistic_max_nav_age
+			0,
+			PoolUpdate {
+				tranches: None,
+				min_epoch_time: Some(realistic_min_epoch_time),
+				challenge_time: Some(realistic_challenge_time),
+				max_nav_age: Some(realistic_max_nav_age),
+				min_update_delay: None,
+				require_redeem_fulfillments_before_updates: None,
+			}
 		));
 	});
 }

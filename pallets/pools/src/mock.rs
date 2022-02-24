@@ -261,6 +261,8 @@ parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 1;
 	pub const DefaultChallengeTime: u64 = 1;
 	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
+	pub const DefaultMinUpdateDelay: u64 = 0; // no delay
+	pub const DefaultRequireRedeemFulfillmentsBeforeUpdates: bool = false;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1;
@@ -289,6 +291,9 @@ impl Config for Test {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
+	type DefaultMinUpdateDelay = DefaultMinUpdateDelay;
+	type DefaultRequireRedeemFulfillmentsBeforeUpdates =
+		DefaultRequireRedeemFulfillmentsBeforeUpdates;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;

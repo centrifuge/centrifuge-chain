@@ -806,6 +806,8 @@ impl pallet_pools::Config for Runtime {
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type DefaultMinUpdateDelay = DefaultMinUpdateDelay;
+	type DefaultRequireRedeemFulfillmentsBeforeUpdates =
+		DefaultRequireRedeemFulfillmentsBeforeUpdates;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
