@@ -465,6 +465,12 @@ fn epoch() {
 
 		// Borrow some money
 		next_block();
+		// Borrow more than pool reserve should fail NotEnoughFunds error
+		assert_noop!(
+			test_borrow(borrower.clone(), 0, pool.total_reserve + 1),
+			Error::<Test>::NotEnoughFundsInPool
+		);
+
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();

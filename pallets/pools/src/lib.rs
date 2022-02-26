@@ -521,6 +521,8 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
+		/// Not enough funds in pool
+		NotEnoughFundsInPool,
 	}
 
 	#[pallet::call]
@@ -2310,11 +2312,11 @@ pub mod pallet {
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_sub(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
+					.ok_or(Error::<T>::NotEnoughFundsInPool)?;
 				pool.available_reserve = pool
 					.available_reserve
 					.checked_sub(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
+					.ok_or(Error::<T>::NotEnoughFundsInPool)?;
 
 				let mut remaining_amount = amount;
 				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
