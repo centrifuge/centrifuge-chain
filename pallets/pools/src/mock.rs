@@ -9,7 +9,7 @@ use frame_support::{
 	traits::{GenesisBuild, Hooks},
 };
 use frame_system as system;
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
@@ -291,6 +291,7 @@ impl Config for Test {
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type Permission = Permissions;
 	type PalletId = PoolPalletId;

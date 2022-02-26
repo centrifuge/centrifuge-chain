@@ -380,6 +380,9 @@ pub mod pallet {
 		/// Max number of Tranches
 		type MaxTranches: Get<u32>;
 
+		/// The origin permitted to create pools
+		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
+
 		/// Weight Information
 		type WeightInfo: WeightInfo;
 	}
@@ -549,6 +552,7 @@ pub mod pallet {
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 		) -> DispatchResult {
+			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 			let owner = ensure_signed(origin)?;
 
 			// A single pool ID can only be used by one owner.
