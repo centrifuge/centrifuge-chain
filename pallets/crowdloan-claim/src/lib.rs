@@ -234,7 +234,6 @@ pub mod pallet {
 
 		/// Contributor's account identifier on the relay chain.
 		type RelayChainAccountId: Debug
-			+ Default
 			+ MaybeSerialize
 			+ MaybeSerializeDeserialize
 			+ Member
