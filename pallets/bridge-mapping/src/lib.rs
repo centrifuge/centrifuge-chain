@@ -62,9 +62,7 @@ pub mod pallet {
 		/// assets.
 		type Address: Parameter
 			+ Member
-			+ Default
-			+ From<<Self as pallet_nft::Config>::RegistryId>
-			+ Into<<Self as pallet_nft::Config>::RegistryId>;
+			+ Default;
 
 		/// Admin is able to set/remove resource mappings.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;

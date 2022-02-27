@@ -1,6 +1,6 @@
 [package]
 name = "development-runtime"
-version = "0.10.1"
+version = "0.10.2"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
@@ -107,6 +107,9 @@ runtime-common = { path = "../common", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = false }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
+# bridge pallets
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.16" }
+
 # our custom pallets
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
@@ -120,6 +123,9 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-loans = { path = "../../pallets/loans", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
+pallet-bridge = { path = "../../pallets/bridge", default-features = false }
+pallet-nft = { path = "../../pallets/nft", default-features = false }
+pallet-bridge-mapping = { path = "../../pallets/bridge-mapping", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -209,6 +215,10 @@ std = [
     "pallet-preimage/std",
     "pallet-uniques/std",
     "pallet-nft-sales/std",
+    "chainbridge/std",
+    "pallet-nft/std",
+    "pallet-bridge/std",
+    "pallet-bridge-mapping/std",
 ]
 
 runtime-benchmarks = [

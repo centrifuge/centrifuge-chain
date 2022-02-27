@@ -19,8 +19,10 @@
 
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
-use sp_core::{blake2_256, keccak_256, H256};
+use sp_core::{hashing::blake2_256, keccak_256};
+use sp_core::H256;
 use sp_runtime::sp_std::vec::Vec;
+use sp_std::vec;
 
 // Routines for building and validating proofs
 use proofs::{Hasher, Verifier};

@@ -65,53 +65,6 @@ fn mint_err_duplicate_id() {
 		});
 }
 
-#[test]
-fn transfer() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
-
-			// First mint to USER_A account
-			assert_ok!(Nft::mint(USER_A, USER_A, asset_id.clone(), vec![]));
-
-			// Transfer from USER_A to USER_B account (should work as USER_A owns the asset)
-			assert_ok!(
-				<Nft as Unique<AssetId<RegistryId, TokenId>, u64>>::transfer(
-					USER_A,
-					USER_B,
-					asset_id.clone()
-				)
-			);
-
-			// USER_B should own the asset now
-			assert_eq!(
-				<Nft as Unique<AssetId<RegistryId, TokenId>, u64>>::owner_of(asset_id),
-				Some(USER_B)
-			);
-		});
-}
-
-#[test]
-fn transfer_err_when_not_owner() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
-
-			// USER_B mint to her/his account
-			assert_ok!(Nft::mint(USER_B, USER_B, asset_id.clone(), vec![]));
-
-			// Invalid transfer of the asset from USER_A to USER_B account, because USER_A does not own the asset
-			assert_err!(
-				<Nft as Unique<AssetId<RegistryId, TokenId>, u64>>::transfer(
-					USER_A, USER_B, asset_id
-				),
-				Error::<MockRuntime>::NotAssetOwner
-			);
-		});
-}
-
 // ----------------------------------------------------------------------------
 // Test unit cases for NFTs features
 // ----------------------------------------------------------------------------
