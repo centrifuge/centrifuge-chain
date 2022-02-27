@@ -1127,7 +1127,7 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.16#ca10ab94c612a84e99fc6519345f408139a3fe9a"
+source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.16#4176c14631a40b11c8fc1a901f6b5f4ca4bec07f"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
@@ -2056,8 +2056,9 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
+ "chainbridge",
  "common-traits",
  "common-types",
  "cumulus-pallet-aura-ext",
@@ -2086,6 +2087,8 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-bridge",
+ "pallet-bridge-mapping",
  "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
@@ -2103,6 +2106,7 @@ dependencies = [
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
+ "pallet-nft",
  "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
@@ -11672,7 +11676,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.2",
+ "parking_lot 0.9.0",
  "regex",
  "serde",
  "serde_json",
@@ -11799,8 +11803,8 @@ version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee73e6e4924fe940354b8d4d98cad5231175d615cd855b758adc658c0aac6a0"
 dependencies = [
- "cfg-if 1.0.0",
- "rand 0.8.4",
+ "cfg-if 0.1.10",
+ "rand 0.6.5",
  "static_assertions",
 ]
 
@@ -11992,7 +11996,7 @@ checksum = "e7141e445af09c8919f1d5f8a20dae0b20c3b57a45dee0d5823c6ed5d237f15a"
 dependencies = [
  "bitflags",
  "chrono",
- "rustc_version 0.4.0",
+ "rustc_version 0.2.3",
 ]
 
 [[package]]

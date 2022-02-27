@@ -231,9 +231,6 @@ parameter_types! {
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl PalletNftConfig for MockRuntime {
-	type RegistryId = RegistryId;
-	type TokenId = TokenId;
-	type AssetInfo = Vec<u8>;
 	type Event = Event;
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;

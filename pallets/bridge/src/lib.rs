@@ -116,13 +116,6 @@ pub use pallet::*;
 
 use chainbridge::types::ChainId;
 
-use common_traits::BigEndian;
-
-use pallet_nft::types::AssetId;
-
-use sp_std::vec;
-use sp_std::vec::Vec;
-
 // Runtime, system and frame primitives
 use frame_support::{
 	dispatch::DispatchResult,
@@ -136,8 +129,6 @@ use frame_system::{ensure_root, pallet_prelude::OriginFor};
 use sp_core::U256;
 
 use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
-
-use unique_assets::traits::Unique;
 
 // ----------------------------------------------------------------------------
 // Type aliases
@@ -328,54 +319,6 @@ pub mod pallet {
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfer an nft to a whitelisted destination chain.
-		///
-		/// The Source NFT is locked in bridge account rather than being burned.
-		#[pallet::weight(<T as Config>::WeightInfo::transfer_asset())]
-		#[transactional]
-		pub fn transfer_asset(
-			origin: OriginFor<T>,
-			recipient: Vec<u8>,
-			from_registry: T::RegistryId,
-			token_id: T::TokenId,
-			dest_id: ChainId,
-		) -> DispatchResultWithPostInfo
-		where
-			<T as pallet_bridge_mapping::Config>::Address:
-				From<<T as pallet_nft::Config>::RegistryId>,
-		{
-			let source = ensure_signed(origin)?;
-
-			// Get resource id from registry
-			let addr: T::Address = from_registry.clone().into();
-			let resource_id = <pallet_bridge_mapping::Pallet<T>>::name_of(addr)
-				.ok_or(Error::<T>::ResourceIdDoesNotExist)?;
-
-			// Charge additional fee for transferring the NFT token to the target chain
-			<pallet_fees::Pallet<T>>::burn_fee(
-				&source,
-				Self::get_nft_token_transfer_fee().saturated_into(),
-			)?;
-
-			// Lock asset by transferring to bridge account
-			let bridge_id = <chainbridge::Pallet<T>>::account_id();
-			let asset_id = AssetId(from_registry, token_id.clone());
-			<pallet_nft::Pallet<T> as Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId>>::transfer(
-				source, bridge_id, asset_id,
-			)?;
-
-			// Ethereum is big-endian
-			let tid = token_id.to_big_endian();
-			<chainbridge::Pallet<T>>::transfer_nonfungible(
-				dest_id,
-				resource_id.into(),
-				tid,
-				recipient,
-				vec![],
-			)?;
-
-			Ok(().into())
-		}
 
 		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
@@ -452,29 +395,6 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let source = T::BridgeOrigin::ensure_origin(origin)?;
 			<T as pallet::Config>::Currency::transfer(&source, &to, amount.into(), AllowDeath)?;
-
-			Ok(().into())
-		}
-
-		/// Receive a non-fungbile token
-		#[pallet::weight(<T as Config>::WeightInfo::receive_nonfungible())]
-		pub fn receive_nonfungible(
-			origin: OriginFor<T>,
-			to: T::AccountId,
-			token_id: T::TokenId,
-			_metadata: Vec<u8>,
-			resource_id: T::ResourceId,
-		) -> DispatchResultWithPostInfo {
-			let source = T::BridgeOrigin::ensure_origin(origin)?;
-
-			// Get registry from resource id
-			let registry_id = <pallet_bridge_mapping::Pallet<T>>::addr_of(resource_id)
-				.ok_or(Error::<T>::RegistryIdDoesNotExist)?;
-			let registry_id: T::RegistryId = registry_id.into();
-
-			// Transfer from bridge account to destination account
-			let asset_id = AssetId(registry_id, token_id);
-			<pallet_nft::Pallet<T> as Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId>>::transfer(source, to, asset_id)?;
 
 			Ok(().into())
 		}
