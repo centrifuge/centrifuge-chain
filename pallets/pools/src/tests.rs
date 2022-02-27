@@ -6,6 +6,7 @@ use frame_support::sp_std::convert::TryInto;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
+use sp_core::storage::StateVersion;
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -236,12 +237,12 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			})
 			.collect::<Vec<_>>();
 
-		let prev_root = frame_support::storage_root();
+		let prev_root = frame_support::storage_root(StateVersion::V0);
 		assert_eq!(
 			Pools::is_valid_solution(pool, &epoch, &full_solution).unwrap(),
 			PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated])
 		);
-		assert_eq!(prev_root, frame_support::storage_root())
+		assert_eq!(prev_root, frame_support::storage_root(StateVersion::V0))
 	});
 }
 
