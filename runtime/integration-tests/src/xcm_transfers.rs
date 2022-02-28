@@ -27,6 +27,7 @@ use development_runtime::{
 };
 use runtime_common::Balance;
 
+#[ignore]
 #[test]
 fn transfer_native_to_sibling() {
 	TestNet::reset();
@@ -84,6 +85,7 @@ fn transfer_native_to_sibling() {
 	});
 }
 
+#[ignore]
 #[test]
 fn transfer_usd_to_sibling() {
 	TestNet::reset();
@@ -159,6 +161,7 @@ fn transfer_usd_to_sibling() {
 	});
 }
 
+#[ignore]
 #[test]
 fn transfer_usd_to_development() {
 	TestNet::reset();
