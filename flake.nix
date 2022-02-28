@@ -20,9 +20,9 @@
       major = "0.10.9";
       version = "${major}-${commit-substr}";
 
-      # This evaluates to the first 6 digits of the git hash of this repo's HEAD
+      # This evaluates to the first 7 digits of the git hash of this repo's HEAD
       # commit, or to "dirty" if there are uncommitted changes.
-      commit-substr = builtins.substring 0 6 (inputs.self.rev or "dirty");
+      commit-substr = builtins.substring 0 7 (inputs.self.rev or "dirty");
 
       # This could be made into a list, to support multiple platforms
       system = "x86_64-linux";
