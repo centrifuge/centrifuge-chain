@@ -80,58 +80,52 @@
           && builtins.all (name: builtins.baseNameOf path != name) ignoreList;
     in
     {
-      packages.${system} = {
-        # This is the native package.
-        centrifuge-chain = nightlyRustPlatform.buildRustPackage {
-          pname = name;
-          inherit version;
+      defaultPackage.${system} = nightlyRustPlatform.buildRustPackage {
+        pname = name;
+        inherit version;
 
-          # This applies the srcFilter function to the current directory, so
-          # we don't include unnecessary files in the package.
-          src = pkgs.lib.cleanSourceWith {
-            src = ./.;
-            filter = srcFilter ./.;
-            name = "${name}-${version}-source";
-          };
-
-          # This is a hash of all the Cargo dependencies, for reproducibility.
-          cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
-
-          nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
-          buildInputs = [ pkgs.openssl ];
-
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-          PROTOC = "${pkgs.protobuf}/bin/protoc";
-          SKIP_WASM_BUILD = 1;
-
-
-          doCheck = false;
+        # This applies the srcFilter function to the current directory, so
+        # we don't include unnecessary files in the package.
+        src = pkgs.lib.cleanSourceWith {
+          src = ./.;
+          filter = srcFilter ./.;
+          name = "${name}-${version}-source";
         };
 
-        # This is the Docker image.
-        dockerImage = pkgs.dockerTools.buildLayeredImage {
-          name = "centrifugeio/${name}";
-          tag = version;
+        # This is a hash of all the Cargo dependencies, for reproducibility.
+        cargoSha256 = "sha256-ulzzofKBqw4RUwwBmFKvgfCZ1ZeuULvCHLEQVzZrKBk=";
 
-          contents = [
-            pkgs.busybox
-            inputs.self.defaultPackage.${system}
-          ];
+        nativeBuildInputs = with pkgs; [ clang git-mock pkg-config ];
+        buildInputs = [ pkgs.openssl ];
 
-          config = {
-            ExposedPorts = {
-              "30333/tcp" = { };
-              "9933/tcp" = { };
-              "9944/tcp" = { };
-            };
-            Volumes = {
-              "/data" = { };
-            };
-            Entrypoint = [ "centrifuge-chain" ];
-          };
-        };
+        LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+        PROTOC = "${pkgs.protobuf}/bin/protoc";
+        SKIP_WASM_BUILD = 1;
+
+
+        doCheck = false;
       };
 
-      defaultPackage.${system} = inputs.self.packages.${system}.centrifuge-chain;
+      packages.${system}.dockerImage = pkgs.dockerTools.buildLayeredImage {
+        name = "centrifugeio/${name}";
+        tag = version;
+
+        contents = [
+          pkgs.busybox
+          inputs.self.defaultPackage.${system}
+        ];
+
+        config = {
+          ExposedPorts = {
+            "30333/tcp" = { };
+            "9933/tcp" = { };
+            "9944/tcp" = { };
+          };
+          Volumes = {
+            "/data" = { };
+          };
+          Entrypoint = [ "centrifuge-chain" ];
+        };
+      };
     };
 }
