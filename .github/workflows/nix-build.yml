@@ -19,4 +19,7 @@ jobs:
           name: centrifuge-chain
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - name: Build centrifuge-chain
-        run: nix build --no-allow-dirty -L && git status
+        # The last bit is a work-around an issue in nix,
+        # which can be removed once 2.8 is released.
+        # Cf. https://github.com/NixOS/nix/pull/5758
+        run: nix build --no-allow-dirty -L .\?rev=$(git rev-parse HEAD)
