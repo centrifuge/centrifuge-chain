@@ -19,6 +19,8 @@
       name = "centrifuge-chain";
       major = "0.10.9";
       version = "${major}-${commit-substr}";
+      nightly-date = "2021-11-07";
+      nightly-sha256 = "sha256-eENaPaU6wpk8qAUg5PJPpvAmSVQNCbOI3ipUMhHmwXk=";
 
       # This evaluates to the first 7 digits of the git hash of this repo's HEAD
       # commit, or to "dirty" if there are uncommitted changes.
@@ -30,7 +32,13 @@
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
       nightlyRustPlatform = pkgs.makeRustPlatform {
-        inherit (inputs.fenix.packages.${system}.minimal) cargo rustc;
+        inherit
+          (inputs.fenix.packages.${system}.toolchainOf {
+            channel = "nightly";
+            date = nightly-date;
+            sha256 = nightly-sha256;
+          })
+          cargo rustc;
       };
 
       # This is a mock git program, which just returns the commit-substr value.
