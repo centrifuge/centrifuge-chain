@@ -1148,7 +1148,7 @@ construct_runtime!(
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
-		NftSales: pallet_nft_sales::{Pallet, Call, Event<T>} = 100,
+		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
