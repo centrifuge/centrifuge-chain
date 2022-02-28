@@ -19,7 +19,10 @@ use frame_support::pallet_prelude::Hooks;
 use frame_support::traits::Randomness;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H256;
-use sp_runtime::{traits::{BadOrigin, Hash, Header}, ModuleError};
+use sp_runtime::{
+	traits::{BadOrigin, Hash, Header},
+	ModuleError,
+};
 use std::time::Instant;
 
 fn setup_blocks(blocks: u64) {
@@ -104,13 +107,11 @@ fn pre_commit_fail_anchor_exists() {
 		// fails because of existing anchor
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 0,
-					message: Some("AnchorAlreadyExists"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 0,
+				message: Some("AnchorAlreadyExists"),
+			})
 		);
 	});
 }
@@ -133,13 +134,11 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 		// fails because of existing anchor
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 0,
-					message: Some("AnchorAlreadyExists"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 0,
+				message: Some("AnchorAlreadyExists"),
+			})
 		);
 	});
 }
@@ -167,13 +166,11 @@ fn pre_commit_fail_pre_commit_exists() {
 		// fail, pre-commit exists
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 4,
-					message: Some("PreCommitAlreadyExists"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 4,
+				message: Some("PreCommitAlreadyExists"),
+			})
 		);
 
 		// expire the pre-commit
@@ -209,13 +206,11 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 		// fail, pre-commit exists
 		assert_noop!(
 			Anchors::pre_commit(Origin::signed(2), anchor_id, signing_root),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 4,
-					message: Some("PreCommitAlreadyExists"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 4,
+				message: Some("PreCommitAlreadyExists"),
+			})
 		);
 
 		// expire the pre-commit
@@ -294,13 +289,11 @@ fn basic_commit() {
 				<Test as frame_system::Config>::Hashing::hash_of(&0),
 				2 // some arbitrary store until date that is less than the required minimum
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 1,
-					message: Some("AnchorStoreDateInPast"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 1,
+				message: Some("AnchorStoreDateInPast"),
+			})
 		);
 	});
 }
@@ -333,13 +326,11 @@ fn commit_fail_anchor_exists() {
 				<Test as frame_system::Config>::Hashing::hash_of(&0),
 				common::MILLISECS_PER_DAY + 1
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 0,
-					message: Some("AnchorAlreadyExists"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 0,
+				message: Some("AnchorAlreadyExists"),
+			})
 		);
 
 		// different acc
@@ -351,13 +342,11 @@ fn commit_fail_anchor_exists() {
 				<Test as frame_system::Config>::Hashing::hash_of(&0),
 				common::MILLISECS_PER_DAY + 1
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 0,
-					message: Some("AnchorAlreadyExists"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 0,
+				message: Some("AnchorAlreadyExists"),
+			})
 		);
 	});
 }
@@ -386,13 +375,11 @@ fn basic_pre_commit_commit() {
 				proof,
 				common::MILLISECS_PER_DAY + 1
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 6,
-					message: Some("InvalidPreCommitProof"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 6,
+				message: Some("InvalidPreCommitProof"),
+			})
 		);
 
 		// happy
@@ -464,13 +451,11 @@ fn pre_commit_commit_fail_from_another_acc() {
 				proof,
 				common::MILLISECS_PER_DAY + 1
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 5,
-					message: Some("NotOwnerOfPreCommit"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 5,
+				message: Some("NotOwnerOfPreCommit"),
+			})
 		);
 	});
 }
@@ -710,13 +695,11 @@ fn pre_commit_and_then_evict() {
 				Origin::signed(1),
 				Anchors::determine_pre_commit_eviction_bucket(block_height_0).unwrap()
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 10,
-					message: Some("EvictionNotPossible"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 10,
+				message: Some("EvictionNotPossible"),
+			})
 		);
 
 		// test that eviction works after expiration time
@@ -806,13 +789,11 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
 				proof,
 				common::MILLISECS_PER_DAY + 1
 			),
-			DispatchError::Module(
-				ModuleError{
-					index: 5,
-					error: 5,
-					message: Some("NotOwnerOfPreCommit"),
-				}
-			)
+			DispatchError::Module(ModuleError {
+				index: 5,
+				error: 5,
+				message: Some("NotOwnerOfPreCommit"),
+			})
 		);
 	});
 }

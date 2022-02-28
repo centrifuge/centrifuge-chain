@@ -20,7 +20,7 @@ use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
-use development_runtime::{CurrencyId};
+use development_runtime::CurrencyId;
 use runtime_common::AccountId;
 
 use crate::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};

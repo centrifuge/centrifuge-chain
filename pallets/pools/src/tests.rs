@@ -4,9 +4,9 @@ use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::Perquintill;
-use sp_core::storage::StateVersion;
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
