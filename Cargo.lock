@@ -5654,7 +5654,7 @@ dependencies = [
 [[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.17#4f9197b301e3916305036f2d3d75802887df544f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
@@ -5669,7 +5669,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.17#4f9197b301e3916305036f2d3d75802887df544f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "impl-trait-for-tuples",
@@ -5687,7 +5687,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.17#4f9197b301e3916305036f2d3d75802887df544f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "parity-scale-codec",
@@ -5701,7 +5701,7 @@ dependencies = [
 [[package]]
 name = "orml-xcm-support"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.17#4f9197b301e3916305036f2d3d75802887df544f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
 dependencies = [
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "orml-traits",
@@ -5715,7 +5715,7 @@ dependencies = [
 [[package]]
 name = "orml-xtokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.17#4f9197b301e3916305036f2d3d75802887df544f"
+source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=master#aac79b3b31953381669a2ffa9b3e9bfe48e87f38"
 dependencies = [
  "cumulus-primitives-core 0.1.0 (git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
