@@ -22,7 +22,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
       - name: Build Docker image
-        run: nix build -L .#dockerImage
+        run: nix build --no-allow-dirty -L .#dockerImage
       - name: List images
         run: docker images
       - name: Push image to Docker Hub
