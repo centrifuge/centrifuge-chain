@@ -17,9 +17,13 @@
   outputs = inputs:
     let
       name = "centrifuge-chain";
+      # This is the program version.
       major = "0.10.9";
+      # This adds a shortened Git commit hash to the version.
       version = "${major}-${commit-substr}";
+      # This selects a nightly Rust version, based on the date.
       nightly-date = "2021-11-07";
+      # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
       nightly-sha256 = "sha256-eENaPaU6wpk8qAUg5PJPpvAmSVQNCbOI3ipUMhHmwXk=";
 
       # This evaluates to the first 7 digits of the git hash of this repo's HEAD
@@ -31,6 +35,7 @@
 
       pkgs = inputs.nixpkgs.legacyPackages.${system};
 
+      # This instantiates a new Rust version based on nightly-date.
       nightlyRustPlatform = pkgs.makeRustPlatform {
         inherit
           (inputs.fenix.packages.${system}.toolchainOf {
