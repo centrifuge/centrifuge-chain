@@ -212,8 +212,8 @@ pub mod pallet {
 		/// An amount was repaid for a loan. [pool, loan, amount]
 		Repaid(PoolIdOf<T>, T::LoanId, T::Amount),
 
-		/// The NAV for a pool was updated. [pool, nav]
-		NAVUpdated(PoolIdOf<T>, T::Amount),
+		/// The NAV for a pool was updated. [pool, nav, update_type]
+		NAVUpdated(PoolIdOf<T>, T::Amount, NAVUpdateType),
 
 		/// A write-off group was added to a pool. [pool, write_off_group]
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
@@ -476,7 +476,11 @@ pub mod pallet {
 			// ensure signed so that caller pays for the update fees
 			ensure_signed(origin)?;
 			let (updated_nav, updated_loans) = Self::update_nav_of_pool(pool_id)?;
-			Self::deposit_event(Event::<T>::NAVUpdated(pool_id, updated_nav));
+			Self::deposit_event(Event::<T>::NAVUpdated(
+				pool_id,
+				updated_nav,
+				NAVUpdateType::Exact,
+			));
 
 			// if the total loans updated are more than max loans, we are charging lower txn fees for this pool nav calculation.
 			// there is nothing we can do right now. return Ok

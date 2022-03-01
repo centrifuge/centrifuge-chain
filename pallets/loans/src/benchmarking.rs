@@ -583,7 +583,7 @@ benchmarks! {
 		assert!(pool_nav.latest_nav > amount);
 		// updated time should be after_one_years
 		assert_eq!(pool_nav.last_updated, after_one_year/1000);
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest_nav).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest_nav, NAVUpdateType::Exact).into());
 	}
 }
 
