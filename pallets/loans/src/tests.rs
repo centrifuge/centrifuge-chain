@@ -999,7 +999,7 @@ macro_rules! test_pool_nav {
 				.expect("must be a Nav updated event");
 				assert_eq!(pool_id, got_pool_id);
 				assert_eq!(updated_nav, nav);
-				assert_eq!(exact, true);
+				assert_eq!(exact, NAVUpdateType::Exact);
 
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
@@ -1062,7 +1062,7 @@ macro_rules! test_pool_nav {
 						.and_then(|written_off_amount| debt.checked_sub(&written_off_amount))
 						.unwrap();
 				assert_eq!(expected_nav, updated_nav);
-				assert_eq!(exact, true);
+				assert_eq!(exact, NAVUpdateType::Exact);
 			})
 	};
 }
@@ -1510,7 +1510,7 @@ macro_rules! test_close_written_off_loan_type {
 				.expect("must be a Nav updated event");
 				assert_eq!(pool_id, got_pool_id);
 				assert_eq!(updated_nav, Zero::zero());
-				assert_eq!(exact, true);
+				assert_eq!(exact, NAVUpdateType::Exact);
 
 				// close loan now
 				close_test_loan::<MockRuntime>(borrower, pool_id, loan, asset);
