@@ -49,7 +49,7 @@ fn add_nft_not_owner() {
 		let owner: Origin = Origin::signed(SELLER);
 		let (class_id, instance_id) = prepared_nft(&owner);
 
-		let bad_actor = Origin::signed(BUYER);
+		let bad_actor = Origin::signed(BAD_ACTOR);
 		assert_noop!(
 			NftSales::add(
 				bad_actor,
@@ -62,6 +62,9 @@ fn add_nft_not_owner() {
 			),
 			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
 		);
+
+		// Verify that there are no nfts being sold by the bad actor
+		assert_eq!(NftSales::get_sold_by(BAD_ACTOR), vec![]);
 	});
 }
 
@@ -96,6 +99,9 @@ fn add_nft_works() {
 			NftSales::add(NftSales::origin(), class_id, instance_id, price),
 			DispatchError::from(nft_sales::Error::<Test>::AlreadyForSale)
 		);
+
+		// Verify that the nft is now listed in the vec of nfts sold by this seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![(class_id, instance_id)]);
 	});
 }
 
@@ -111,13 +117,19 @@ fn remove_nft_bad_actor() {
 		};
 
 		// Set it for sale in the NftSales
-		assert_ok!(NftSales::add(seller, class_id, instance_id, price,));
+		assert_ok!(NftSales::add(seller, class_id, instance_id, price));
+
+		// Verify that the nft is now listed in the vec of nfts sold by this seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![(class_id, instance_id)]);
 
 		let bad_actor = Origin::signed(BUYER);
 		assert_noop!(
 			NftSales::remove(bad_actor, class_id, instance_id),
 			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
 		);
+
+		// Verify that the nft is still listed in the vec of nfts sold by this seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![(class_id, instance_id)]);
 	});
 }
 
@@ -134,7 +146,13 @@ fn remove_nft_works() {
 		// Add it for sale
 		assert_ok!(NftSales::add(seller.clone(), class_id, instance_id, price));
 
+		// Verify that the nft is now listed in the vec of nfts sold by this seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![(class_id, instance_id)]);
+
 		assert_ok!(NftSales::remove(seller.clone(), class_id, instance_id));
+
+		// Verify that the nft no longer listed in the vec of nfts sold by the seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![]);
 
 		// Verify that try and remove it again fails with `NotForSale`
 		assert_noop!(
@@ -232,6 +250,9 @@ fn buy_nft_works() {
 			price.clone(),
 		));
 
+		// Verify that the nft is now listed in the vec of nfts sold by this seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![(class_id, instance_id)]);
+
 		// Verify that the buyer can buy the nft
 		let buyer: Origin = Origin::signed(BUYER);
 		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::Usd, &BUYER);
@@ -262,6 +283,9 @@ fn buy_nft_works() {
 			OrmlTokens::balance(price.currency, &BUYER),
 			buyer_initial_balance - price.amount
 		);
+
+		// Verify that the nft no longer listed in the vec of nfts sold by the seller
+		assert_eq!(NftSales::get_sold_by(SELLER), vec![]);
 	});
 }
 

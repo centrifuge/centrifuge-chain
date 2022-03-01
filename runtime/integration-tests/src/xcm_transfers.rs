@@ -34,7 +34,7 @@ fn transfer_native_to_sibling() {
 
 	let alice_initial_balance = native_amount(10);
 	let bob_initial_balance = native_amount(10);
-	let transfer_amount = native_amount(3);
+	let transfer_amount = native_amount(1);
 
 	Development::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
