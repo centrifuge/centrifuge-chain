@@ -2186,15 +2186,15 @@ pub mod pallet {
 			if let Some(changes) = &pool.scheduled_update {
 				if pool.require_redeem_fulfillments_before_updates == true {
 					let redemptions_were_fulfilled = match (epoch, solution) {
-						// (Some(ep), Some(sol)) => {
-						// 	ep.tranches
-						// 		.iter()
-						// 		.zip(sol.iter())
-						// 		.all(|(tranche, solution)| {
-						// 			solution.redeem_fulfillment == Perquintill::from_percent(100)
-						// 				|| tranche.redeem == Zero::zero()
-						// 		})
-						// }
+						(Some(ep), Some(sol)) => {
+							ep.tranches
+								.iter()
+								.zip(sol.iter())
+								.all(|(tranche, solution)| {
+									solution.redeem_fulfillment == Perquintill::from_percent(100)
+										|| tranche.redeem == Zero::zero()
+								})
+						}
 						_ => true,
 					};
 
