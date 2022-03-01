@@ -1523,20 +1523,24 @@ pub mod pallet {
 				})?;
 
 			// Update the total/available reserve for the new total value of the pool
-			let mut acc_reserve = pool.reserve.total_reserve;
-			let mut iter = executed_amounts.iter();
-			pool.reserve.total_reserve = loop {
-				if let Some((invest, redeem)) = iter.next() {
-					acc_reserve = acc_reserve
-						.checked_add(&invest)
-						.ok_or(ArithmeticError::Overflow)?;
-					acc_reserve = acc_reserve
-						.checked_sub(&redeem)
-						.ok_or(ArithmeticError::Underflow)?;
-				} else {
-					break acc_reserve;
-				}
-			};
+			let mut acc_investments = T::Balance::zero();
+			let mut acc_redemptions = T::Balance::zero();
+			for (invest, redeem) in executed_amounts.iter() {
+				acc_investments = acc_investments
+					.checked_add(&invest)
+					.ok_or(ArithmeticError::Overflow)?;
+				acc_redemptions = acc_redemptions
+					.checked_add(&redeem)
+					.ok_or(ArithmeticError::Overflow)?;
+			}
+			pool.reserve.total_reserve = pool
+				.reserve
+				.total_reserve
+				.checked_add(&acc_investments)
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_sub(&acc_redemptions)
+				.ok_or(ArithmeticError::Underflow)?;
+
 			pool.start_epoch()?;
 
 			let last_epoch_executed = pool.last_epoch_executed;
