@@ -109,6 +109,8 @@
       packages.${system}.dockerImage = pkgs.dockerTools.buildLayeredImage {
         name = "centrifugeio/${name}";
         tag = version;
+        # This uses the date of the last commit as the image creation date.
+        created = builtins.substring 0 8 inputs.self.lastModifiedDate;
 
         contents = [
           pkgs.busybox
