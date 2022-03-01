@@ -156,6 +156,7 @@ impl frame_support::traits::SortedMembers<u64> for One {
 
 impl nft_sales::Config for Test {
 	type Event = ();
+	type WeightInfo = ();
 	type Fungibles = OrmlTokens;
 	type NonFungibles = Uniques;
 	type ClassId = ClassId;

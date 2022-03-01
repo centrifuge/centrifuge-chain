@@ -18,8 +18,14 @@ frame-support = { git = "https://github.com/paritytech/substrate", default-featu
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
 
-# optional dependencies for benchmarking
+# Optional dependencies for benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.17" }
+pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.17" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.17" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "master" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "master" }
+common-types = { path = "../../libs/common-types", default-features = false, optional = true }
+runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
 
 [dev-dependencies]
 # Substrate crates & pallets
@@ -38,11 +44,24 @@ common-types = { path = "../../libs/common-types", default-features = false }
 
 [features]
 default = ['std']
-runtime-benchmarks = ["frame-benchmarking"]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "pallet-balances",
+    "pallet-uniques",
+    "common-types",
+    "runtime-common",
+    "orml-tokens",
+    "orml-traits",
+]
 std = [
     'codec/std',
+    'common-types/std',
     'frame-support/std',
     'frame-system/std',
     'sp-std/std',
-    'sp-runtime/std'
+    'sp-runtime/std',
+    'orml-tokens/std',
+    'orml-traits/std',
+    'pallet-balances/std',
+    'runtime-common/std',
 ]
