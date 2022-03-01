@@ -1265,3 +1265,195 @@ fn pool_parameters_should_be_constrained() {
 		));
 	});
 }
+
+#[test]
+fn pool_updates_are_only_executed_after_redemptions() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = Origin::signed(0);
+		let investor = Origin::signed(1);
+		let pool_id = 0;
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+
+		assert_ok!(Pools::create(
+			pool_owner.clone(),
+			pool_id,
+			vec![
+				TrancheInput {
+					interest_per_sec: None,
+					min_risk_buffer: None,
+					seniority: None
+				},
+				TrancheInput {
+					interest_per_sec: Some(
+						Rate::saturating_from_rational(10, 100)
+							/ Rate::saturating_from_integer(SECS_PER_YEAR)
+							+ One::one()
+					),
+					min_risk_buffer: Some(Perquintill::from_percent(10)),
+					seniority: None
+				}
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			pool_id,
+			ensure_signed(investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+			pool_id,
+			ensure_signed(investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+		)
+		.unwrap();
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		crate::Pool::<Test>::try_mutate(pool_id, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			// Updates require redemptions to be fulfilled first
+			maybe_pool
+				.as_mut()
+				.unwrap()
+				.require_redeem_fulfillments_before_updates = true;
+			Ok(())
+		})
+		.unwrap();
+
+		// Invest 500 in both tranches
+		assert_ok!(Pools::update_invest_order(
+			investor.clone(),
+			pool_id,
+			JUNIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::update_invest_order(
+			investor.clone(),
+			pool_id,
+			SENIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), pool_id));
+		assert_ok!(Pools::collect(
+			investor.clone(),
+			pool_id,
+			JUNIOR_TRANCHE_ID,
+			1
+		));
+
+		// Schedule an update to the senior tranche min risk buffer
+		assert_ok!(Pools::update(
+			pool_owner.clone(),
+			pool_id,
+			PoolUpdate {
+				tranches: Some(vec![
+					TrancheInput {
+						interest_per_sec: None,
+						min_risk_buffer: None,
+						seniority: None
+					},
+					TrancheInput {
+						interest_per_sec: Some(
+							Rate::saturating_from_rational(10, 100)
+								/ Rate::saturating_from_integer(SECS_PER_YEAR)
+								+ One::one()
+						),
+						min_risk_buffer: Some(Perquintill::from_percent(5)), // lowered to 5%
+						seniority: None
+					}
+				]),
+				min_epoch_time: None,
+				challenge_time: None,
+				max_nav_age: None,
+				min_update_delay: None,
+				require_redeem_fulfillments_before_updates: Some(true),
+			}
+		));
+
+		// Check that the update hasn't been executed yet
+		let pool = Pools::pool(pool_id).unwrap();
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].min_risk_buffer,
+			Perquintill::from_percent(10)
+		);
+
+		// Try to redeem everything, which cannot be fulfilled
+		assert_ok!(Pools::update_redeem_order(
+			investor.clone(),
+			pool_id,
+			JUNIOR_TRANCHE_ID,
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), pool_id));
+		assert_ok!(Pools::submit_solution(
+			pool_owner.clone(),
+			pool_id,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::from_percent(1),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+		assert_ok!(Pools::execute_epoch(pool_owner.clone(), pool_id));
+		assert_ok!(Pools::collect(
+			investor.clone(),
+			pool_id,
+			JUNIOR_TRANCHE_ID,
+			1
+		));
+		assert_ok!(Pools::collect(
+			investor.clone(),
+			pool_id,
+			SENIOR_TRANCHE_ID,
+			1
+		));
+
+		// Check that the update still hasn't been executed yet
+		assert_eq!(
+			Pools::pool(pool_id).unwrap().tranches[SENIOR_TRANCHE_ID as usize].min_risk_buffer,
+			Perquintill::from_percent(10)
+		);
+
+		// Update the redeem order to an amount that can actually be redeemed
+		assert_ok!(Pools::update_redeem_order(
+			investor.clone(),
+			pool_id,
+			JUNIOR_TRANCHE_ID,
+			0
+		));
+
+		assert_ok!(Pools::update_redeem_order(
+			investor.clone(),
+			pool_id,
+			SENIOR_TRANCHE_ID,
+			100
+		));
+		assert!(pool.scheduled_update.is_some());
+
+		assert_ok!(Pools::close_epoch(pool_owner.clone(), pool_id));
+		assert_ok!(Pools::collect(
+			investor.clone(),
+			pool_id,
+			SENIOR_TRANCHE_ID,
+			1
+		));
+
+		// Check that the update was executed
+		let pool = Pools::pool(pool_id).unwrap();
+		assert!(pool.scheduled_update.is_none());
+		assert_eq!(
+			pool.tranches[SENIOR_TRANCHE_ID as usize].min_risk_buffer,
+			Perquintill::from_percent(5)
+		);
+	});
+}

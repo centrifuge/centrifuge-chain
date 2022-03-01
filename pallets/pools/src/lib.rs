@@ -976,6 +976,9 @@ pub mod pallet {
 					}
 					pool.available_reserve = epoch_reserve;
 					pool.last_epoch_executed += One::one();
+
+					Self::execute_scheduled_update(pool_id, pool, None, None)?;
+
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 					return Ok(Some(T::WeightInfo::close_epoch_no_investments(
 						pool.tranches.len() as u32,
@@ -1502,9 +1505,10 @@ pub mod pallet {
 				}
 
 				if let Some(tranches) = &changes.tranches {
-					// TODO: update debt for all tranches first
-
 					for (tranche, new_tranche) in &mut pool.tranches.iter_mut().zip(tranches) {
+						// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
+						Self::update_tranche_debt(tranche);
+
 						tranche.min_risk_buffer =
 							new_tranche.min_risk_buffer.unwrap_or(Perquintill::zero());
 						tranche.interest_per_sec =
@@ -2167,19 +2171,36 @@ pub mod pallet {
 			pool.available_reserve = pool.total_reserve;
 
 			Self::rebalance_tranches(pool, &epoch, &executed_amounts)?;
+			Self::execute_scheduled_update(pool_id, pool, Some(epoch), Some(solution))?;
 
+			Ok(())
+		}
+
+		// If epoch and solution are none, then the epoch was a no-op
+		fn execute_scheduled_update(
+			pool_id: T::PoolId,
+			pool: &mut PoolDetailsOf<T>,
+			epoch: Option<&EpochExecutionInfoOf<T>>,
+			solution: Option<&[TrancheSolution]>,
+		) -> DispatchResult {
 			if let Some(changes) = &pool.scheduled_update {
 				if pool.require_redeem_fulfillments_before_updates == true {
+					let redemptions_were_fulfilled = match (epoch, solution) {
+						// (Some(ep), Some(sol)) => {
+						// 	ep.tranches
+						// 		.iter()
+						// 		.zip(sol.iter())
+						// 		.all(|(tranche, solution)| {
+						// 			solution.redeem_fulfillment == Perquintill::from_percent(100)
+						// 				|| tranche.redeem == Zero::zero()
+						// 		})
+						// }
+						_ => true,
+					};
+
 					// The pool update is only executed if for each tranche, the redeem fulfillment was 100% or there were no orders
 					// This makes sure that investors can fully redeem if they want before the update goes through
-					if epoch
-						.tranches
-						.iter()
-						.zip(solution.iter())
-						.all(|(tranche, solution)| {
-							solution.redeem_fulfillment == Perquintill::from_percent(100)
-								|| tranche.redeem == Zero::zero()
-						}) {
+					if redemptions_were_fulfilled {
 						Self::do_update_pool(&pool_id, &changes)?;
 					}
 				} else {
