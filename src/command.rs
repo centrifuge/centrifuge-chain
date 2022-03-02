@@ -48,9 +48,7 @@ trait IdentifyChain {
 
 impl IdentifyChain for dyn sc_service::ChainSpec {
 	fn identify(&self) -> ChainIdentity {
-		if self.id().starts_with("centrifuge")
-			|| self.id().starts_with("catalyst")
-		{
+		if self.id().starts_with("centrifuge") || self.id().starts_with("catalyst") {
 			ChainIdentity::Centrifuge
 		} else if self.id().starts_with("altair")
 			|| self.id().starts_with("charcoal")

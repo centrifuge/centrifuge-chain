@@ -217,7 +217,8 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 }
 
 pub fn catalyst_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..]).unwrap()
+	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..])
+		.unwrap()
 }
 
 pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
@@ -236,21 +237,27 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				vec![
 					(
 						//4cSqT4wpxaSUwwmJoGvz6pXX31T5iP8SRyxrQRExquaQScwP
-						hex!["30e105ac915a56bdf153e3a233bd767d538a3c76ba98dd4f3eae37487a804d24"].into(),
+						hex!["30e105ac915a56bdf153e3a233bd767d538a3c76ba98dd4f3eae37487a804d24"]
+							.into(),
 						//4dngEiVgGmMRjaxkQFu8badZrhEetEHu4nFgBmVoBqkrNYTK
-						hex!["6c3f266a8b74b0f5c1d9a93b2ec943b270003fea8218e89ab7ec4e9294a2584a"].unchecked_into(),
+						hex!["6c3f266a8b74b0f5c1d9a93b2ec943b270003fea8218e89ab7ec4e9294a2584a"]
+							.unchecked_into(),
 					),
 					(
 						//4gWsFAXX4NRAgs2nZQ68eLfSGPKdskz6psY2gSLVQvNr63H2
-						hex!["e4e4fab396035fc3c64b3a4127ac93687486fb21fbc5a69e14cae5c3e6025203"].into(),
+						hex!["e4e4fab396035fc3c64b3a4127ac93687486fb21fbc5a69e14cae5c3e6025203"]
+							.into(),
 						//4chcpyjgumhQV7rZvegpYf7bCf5xUVfmh6ufr1wuvWEbamsT
-						hex!["3c273686697bc47f164c5e1e80d4b9c7ce4c7b8cfdfcff069cceb0d9a128b920"].unchecked_into(),
+						hex!["3c273686697bc47f164c5e1e80d4b9c7ce4c7b8cfdfcff069cceb0d9a128b920"]
+							.unchecked_into(),
 					),
 					(
 						//4gmT8vkpH8KTpLiwt8CEdrmcF8w5nQFJmYgP56fmTzE58Fvw
-						hex!["f00481d4785faf42c44b77d59bd06b7edc0ed21f7ae00e5898fb43037e383049"].into(),
+						hex!["f00481d4785faf42c44b77d59bd06b7edc0ed21f7ae00e5898fb43037e383049"]
+							.into(),
 						//4fkLCjk2BZ2QZf21YALguTxAxNCx7KEud7LCjjknchN4cAXE
-						hex!["c2edaf71a4c09ade552fb2b078d9c346e509d7eb9c28356ad3f4f85f58bebe15"].unchecked_into(),
+						hex!["c2edaf71a4c09ade552fb2b078d9c346e509d7eb9c28356ad3f4f85f58bebe15"]
+							.unchecked_into(),
 					),
 				],
 				vec![
