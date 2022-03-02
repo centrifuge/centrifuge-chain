@@ -217,7 +217,7 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 }
 
 pub fn catalyst_config() -> CentrifugeChainSpec {
-	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/antares-spec-raw.json")[..])
+	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
 		.unwrap()
 }
 
