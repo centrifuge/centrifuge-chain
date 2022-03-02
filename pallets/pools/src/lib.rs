@@ -35,7 +35,7 @@ use sp_runtime::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
 		Saturating, Zero,
 	},
-	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
+	FixedPointNumber, FixedPointOperand, Perquintill, TokenError, TypeId,
 };
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
@@ -521,8 +521,6 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
-		/// Not enough funds in pool
-		NotEnoughFundsInPool,
 	}
 
 	#[pallet::call]
@@ -2312,11 +2310,11 @@ pub mod pallet {
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::NotEnoughFundsInPool)?;
+					.ok_or(TokenError::NoFunds)?;
 				pool.available_reserve = pool
 					.available_reserve
 					.checked_sub(&amount)
-					.ok_or(Error::<T>::NotEnoughFundsInPool)?;
+					.ok_or(TokenError::NoFunds)?;
 
 				let mut remaining_amount = amount;
 				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();
