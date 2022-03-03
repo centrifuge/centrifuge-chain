@@ -63,14 +63,14 @@ if [[ -f ${path_from_root} ]];
 then
   echo ""
 else
-  echo "Runtime benchmark script not started from expected root of '${path_from_root}'"
+  echo "Runtime benchmark script not started from expected root of './scripts/runtime_benchmarks.sh'"
   echo "Aborting!"
   exit 1
 fi
 
 # Build only once
 echo "Building chain with features: cargo build --release --features runtime-benchmarks"
-#cargo build --release --features runtime-benchmarks
+cargo build --release --features runtime-benchmarks
 check $?
 
 weight_path="${runtime_path}/src/weights"
@@ -103,8 +103,6 @@ do
     echo "pub mod ${array[2]};" >> "${build_path}/mod.rs"
     check $?
 done
-
-exit 1
 
 echo "Removing old weights in '${weight_path}'"
 rm -r ${weight_path}
