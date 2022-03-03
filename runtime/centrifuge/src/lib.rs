@@ -647,7 +647,7 @@ impl pallet_fees::Config for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {
