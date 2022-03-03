@@ -24,7 +24,7 @@ jobs:
           echo "Post cleanup"
           df -h
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install latest nightly
         uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
         with:
