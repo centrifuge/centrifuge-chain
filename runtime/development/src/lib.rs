@@ -21,7 +21,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureRoot, EnsureSigned,
 };
 use orml_traits::parameter_type_with_key;
 use orml_xcm_support::MultiNativeAsset;
@@ -823,6 +823,7 @@ impl pallet_pools::Config for Runtime {
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
+	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 }

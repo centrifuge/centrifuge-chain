@@ -31,7 +31,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect();
 
 		let pool = &PoolDetails {
-			owner: Zero::zero(),
 			currency: CurrencyId::Usd,
 			tranches,
 			current_epoch: Zero::zero(),
@@ -109,7 +108,6 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect();
 
 		let pool = &PoolDetails {
-			owner: Zero::zero(),
 			currency: CurrencyId::Usd,
 			tranches,
 			current_epoch: Zero::zero(),
@@ -203,7 +201,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			.collect();
 
 		let pool = &PoolDetails {
-			owner: Zero::zero(),
 			currency: CurrencyId::Usd,
 			tranches,
 			current_epoch: Zero::zero(),
@@ -294,7 +291,6 @@ fn pool_constraints_pass() {
 			.collect();
 
 		let pool = &PoolDetails {
-			owner: Zero::zero(),
 			currency: CurrencyId::Usd,
 			tranches,
 			current_epoch: Zero::zero(),
@@ -351,7 +347,8 @@ fn epoch() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
-		let pool_owner = Origin::signed(2);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
 		let borrower = 3;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
@@ -374,6 +371,7 @@ fn epoch() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -392,7 +390,7 @@ fn epoch() {
 			10_000 * CURRENCY
 		));
 		assert_ok!(Pools::set_metadata(
-			pool_owner.clone(),
+			pool_owner_origin.clone(),
 			0,
 			"QmUTwA6RTUb1FbJCeM1D4G4JaMHAbPehK6WwCfykJixjm3" // random IPFS hash, for test purposes
 				.as_bytes()
@@ -411,10 +409,10 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update(pool_owner.clone(), 0, 30 * 60, 1, 0));
+		assert_ok!(Pools::update(pool_owner_origin.clone(), 0, 30 * 60, 1, 0));
 
 		assert_err!(
-			Pools::close_epoch(pool_owner.clone(), 0),
+			Pools::close_epoch(pool_owner_origin.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
@@ -429,7 +427,7 @@ fn epoch() {
 		})
 		.unwrap();
 
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
@@ -518,7 +516,7 @@ fn epoch() {
 			SENIOR_TRANCHE_ID,
 			250 * CURRENCY
 		));
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
 		let senior_epoch = Pools::epoch(
@@ -552,7 +550,8 @@ fn submission_period() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
-		let pool_owner = Origin::signed(2);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
@@ -574,6 +573,7 @@ fn submission_period() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -615,7 +615,7 @@ fn submission_period() {
 		})
 		.unwrap();
 
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
@@ -638,7 +638,7 @@ fn submission_period() {
 			JUNIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
 		let epoch = <pallet::EpochExecution<mock::Test>>::try_get(0).unwrap();
@@ -669,7 +669,7 @@ fn submission_period() {
 
 		assert_err!(
 			Pools::submit_solution(
-				pool_owner.clone(),
+				pool_owner_origin.clone(),
 				0,
 				vec![
 					TrancheSolution {
@@ -705,7 +705,7 @@ fn submission_period() {
 		assert_eq!(partial_fulfilment_solution > existing_state_score, true);
 
 		assert_ok!(Pools::submit_solution(
-			pool_owner.clone(),
+			pool_owner_origin.clone(),
 			0,
 			vec![
 				TrancheSolution {
@@ -722,7 +722,7 @@ fn submission_period() {
 		// Can't submit the same solution twice
 		assert_err!(
 			Pools::submit_solution(
-				pool_owner.clone(),
+				pool_owner_origin.clone(),
 				0,
 				vec![
 					TrancheSolution {
@@ -740,7 +740,7 @@ fn submission_period() {
 
 		// Slight risk buffer improvement
 		assert_ok!(Pools::submit_solution(
-			pool_owner.clone(),
+			pool_owner_origin.clone(),
 			0,
 			vec![
 				TrancheSolution {
@@ -761,7 +761,8 @@ fn execute_info_removed_after_epoch_execute() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
-		let pool_owner = Origin::signed(2);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
@@ -784,6 +785,7 @@ fn execute_info_removed_after_epoch_execute() {
 			+ One::one();
 
 		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -829,10 +831,10 @@ fn execute_info_removed_after_epoch_execute() {
 			JUNIOR_TRANCHE_ID,
 			500 * CURRENCY
 		));
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		assert_ok!(Pools::submit_solution(
-			pool_owner.clone(),
+			pool_owner_origin.clone(),
 			0,
 			vec![
 				TrancheSolution {
@@ -848,7 +850,7 @@ fn execute_info_removed_after_epoch_execute() {
 
 		next_block();
 
-		assert_ok!(Pools::execute_epoch(pool_owner, 0));
+		assert_ok!(Pools::execute_epoch(pool_owner_origin, 0));
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
@@ -858,7 +860,8 @@ fn collect_tranche_tokens() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
-		let pool_owner = Origin::signed(2);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
 			0,
@@ -880,6 +883,7 @@ fn collect_tranche_tokens() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			0,
 			vec![
@@ -924,7 +928,7 @@ fn collect_tranche_tokens() {
 		.unwrap();
 
 		// Outstanding orders
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		// Outstanding collections
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 0);
@@ -982,7 +986,7 @@ fn collect_tranche_tokens() {
 			10 * CURRENCY
 		));
 
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), 0));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
@@ -996,6 +1000,7 @@ fn collect_tranche_tokens() {
 fn test_approve_and_remove_roles() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 1;
+		let pool_owner_origin = Origin::signed(pool_owner);
 
 		// Initialize pool with initial investmentslet senior_interest_rate = Rate::saturating_from_rational(10, 100)
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
@@ -1003,7 +1008,8 @@ fn test_approve_and_remove_roles() {
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
-			Origin::signed(pool_owner),
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
 			0,
 			vec![
 				TrancheInput {
@@ -1102,6 +1108,7 @@ fn invalid_tranche_id_is_err() {
 
 		assert_ok!(Pools::create(
 			senior_investor.clone(),
+			1_u64,
 			0,
 			vec![TrancheInput {
 				interest_per_sec: None,
@@ -1139,6 +1146,7 @@ fn updating_with_same_amount_is_err() {
 
 		assert_ok!(Pools::create(
 			senior_investor.clone(),
+			1_u64,
 			0,
 			vec![TrancheInput {
 				interest_per_sec: None,
@@ -1166,10 +1174,12 @@ fn updating_with_same_amount_is_err() {
 #[test]
 fn pool_parameters_should_be_constrained() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = Origin::signed(0);
+		let pool_owner = 0_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
 		let pool_id = 0;
 
 		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			pool_id,
 			vec![TrancheInput {
@@ -1187,7 +1197,7 @@ fn pool_parameters_should_be_constrained() {
 
 		assert_err!(
 			Pools::update(
-				pool_owner.clone(),
+				pool_owner_origin.clone(),
 				pool_id,
 				0,
 				realistic_challenge_time,
@@ -1197,7 +1207,7 @@ fn pool_parameters_should_be_constrained() {
 		);
 		assert_err!(
 			Pools::update(
-				pool_owner.clone(),
+				pool_owner_origin.clone(),
 				pool_id,
 				realistic_min_epoch_time,
 				0,
@@ -1207,7 +1217,7 @@ fn pool_parameters_should_be_constrained() {
 		);
 		assert_err!(
 			Pools::update(
-				pool_owner.clone(),
+				pool_owner_origin.clone(),
 				pool_id,
 				realistic_min_epoch_time,
 				realistic_challenge_time,
@@ -1217,7 +1227,7 @@ fn pool_parameters_should_be_constrained() {
 		);
 
 		assert_ok!(Pools::update(
-			pool_owner.clone(),
+			pool_owner_origin.clone(),
 			pool_id,
 			realistic_min_epoch_time,
 			realistic_challenge_time,
