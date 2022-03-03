@@ -120,7 +120,7 @@ pub mod pallet {
 	/// The active sales.
 	/// A sale is an entry identified by an NFT class and instance id.
 	#[pallet::storage]
-	#[pallet::getter(fn get_allowlisted)]
+	#[pallet::getter(fn get_sale)]
 	pub(super) type Sales<T: Config> = StorageDoubleMap<
 		_,
 		// The hasher for the first key
@@ -133,6 +133,27 @@ pub mod pallet {
 		T::InstanceId,
 		// The data regarding the sale
 		SaleOf<T>,
+	>;
+
+	/// Nft lookup by seller.
+	///
+	/// We use this storage to efficiently look up the NFTs being sold by
+	/// an account (seller).
+	#[pallet::storage]
+	pub type NftsBySeller<T: Config> = StorageNMap<
+		_,
+		// The keys
+		(
+			// The AccountId of the seller
+			NMapKey<Blake2_128Concat, T::AccountId>,
+			// The NFT ClassId
+			NMapKey<Blake2_128Concat, T::ClassId>,
+			// The NFT InstanceId
+			NMapKey<Blake2_128Concat, T::InstanceId>,
+		),
+		// The value; we don't need to store anything further in here
+		(),
+		ValueQuery,
 	>;
 
 	#[pallet::event]
@@ -213,8 +234,12 @@ pub mod pallet {
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &Self::account())?;
 
 			// Put the nft for sale
-			let sale = Sale { seller, price };
-			<Sales<T>>::insert(class_id, instance_id, sale.clone());
+			let sale = Sale {
+				seller: seller.clone(),
+				price,
+			};
+			Self::do_add(class_id, instance_id, sale.clone());
+
 			Self::deposit_event(Event::ForSale {
 				class_id,
 				instance_id,
@@ -242,14 +267,15 @@ pub mod pallet {
 			let who = ensure_signed(origin.clone())?;
 			let sale = <Sales<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
 
-			// Ensure that the buyer is not the seller of the NFT
+			// Ensure that the origin account is the seller of the NFT
 			ensure!(who == sale.seller, Error::<T>::NotOwner);
 
 			// Transfer the NFT back to the seller, i.e., the original owner of this NFT
 			T::NonFungibles::transfer(&class_id.into(), &instance_id.into(), &sale.seller)?;
 
-			// Remove the NFT from the active sales
-			<Sales<T>>::remove(class_id, instance_id);
+			// Remove the NFT
+			Self::do_remove(class_id, instance_id, sale.seller.clone());
+
 			Self::deposit_event(Event::Removed {
 				class_id,
 				instance_id,
@@ -305,7 +331,9 @@ pub mod pallet {
 				&buyer.clone(),
 			)?;
 
-			<Sales<T>>::remove(class_id, instance_id);
+			// Remove the NFT from the sales
+			Self::do_remove(class_id, instance_id, sale.seller.clone());
+
 			Self::deposit_event(Event::Sold {
 				class_id,
 				instance_id,
@@ -338,6 +366,18 @@ pub mod pallet {
 
 		pub fn account() -> T::AccountId {
 			T::PalletId::get().into_account()
+		}
+
+		// Add a new sale to the storage
+		fn do_add(class_id: T::ClassId, instance_id: T::InstanceId, sale: SaleOf<T>) {
+			<Sales<T>>::insert(class_id, instance_id, sale.clone());
+			NftsBySeller::<T>::insert((sale.seller, class_id, instance_id), ());
+		}
+
+		// Remove a sale from the storage
+		fn do_remove(class_id: T::ClassId, instance_id: T::InstanceId, seller: T::AccountId) {
+			<Sales<T>>::remove(class_id, instance_id);
+			NftsBySeller::<T>::remove((seller, class_id, instance_id));
 		}
 	}
 }
