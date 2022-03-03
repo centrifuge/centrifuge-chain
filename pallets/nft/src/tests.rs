@@ -19,51 +19,14 @@
 
 use crate::{
 	mock::{helpers::*, *},
-	types::AssetId,
 	*,
 };
 
 use codec::Encode;
 use frame_support::{assert_err, assert_ok};
 
-use runtime_common::{RegistryId, TokenId, MILLISECS_PER_DAY, NFT_PROOF_VALIDATION_FEE};
-use sp_core::{H160, U256};
+use runtime_common::{MILLISECS_PER_DAY, NFT_PROOF_VALIDATION_FEE};
 use sp_runtime::traits::{BadOrigin, Hash};
-
-// ----------------------------------------------------------------------------
-// Test unit cases for NFT features
-// ----------------------------------------------------------------------------
-
-#[test]
-fn mint() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
-			let asset_info = vec![];
-
-			// Mint to USER_A account (by USER_DEFAULT caller)
-			assert_ok!(Nft::mint(USER_DEFAULT, USER_A, asset_id, asset_info));
-		});
-}
-
-#[test]
-fn mint_err_duplicate_id() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let asset_id = AssetId(RegistryId(H160::zero()), TokenId(U256::zero()));
-
-			// First mint to USER_A account (by USER_DEFAULT caller)
-			assert_ok!(Nft::mint(USER_DEFAULT, USER_A, asset_id.clone(), vec![]));
-
-			// Then try to mint to USER_A account again (still by USER_DEFAULT caller)
-			assert_err!(
-				Nft::mint(USER_DEFAULT, USER_A, asset_id, vec![]),
-				Error::<MockRuntime>::AssetExists
-			);
-		});
-}
 
 // ----------------------------------------------------------------------------
 // Test unit cases for NFTs features

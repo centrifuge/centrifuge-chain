@@ -103,7 +103,7 @@ mod weights;
 // Export crate types and traits
 use crate::{
 	traits::WeightInfo,
-	types::{AssetId, BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
+	types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -112,13 +112,9 @@ pub use pallet::*;
 use chainbridge::types::ResourceId;
 
 use codec::FullCodec;
-use common_traits::BigEndian;
 use scale_info::TypeInfo;
 
-use frame_support::{
-	dispatch::{result::Result, DispatchError, DispatchResult, DispatchResultWithPostInfo},
-	ensure, Hashable,
-};
+use frame_support::{dispatch::DispatchResultWithPostInfo, ensure};
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 
@@ -129,8 +125,6 @@ use sp_runtime::traits::Member;
 
 use sp_std::fmt::Debug;
 use sp_std::vec::Vec;
-
-use unique_assets::traits::{Mintable, Unique};
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -147,7 +141,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use sp_core::U256;
 	use sp_runtime::SaturatedConversion;
 
 	// NFT pallet type declaration.

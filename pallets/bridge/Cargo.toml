@@ -34,7 +34,6 @@ common-traits = { path = "../../libs/common-traits", default-features = false }
 pallet-anchors = { path = "../anchors", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
-pallet-registry = { path = "../registry", default-features = false }
 pallet-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 proofs = { path = "../../libs/proofs", default-features = false }

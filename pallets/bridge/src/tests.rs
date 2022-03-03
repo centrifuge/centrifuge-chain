@@ -29,13 +29,14 @@ use crate::{
 
 use codec::Encode;
 
-use common_traits::BigEndian;
+use frame_support::{
+	assert_err, assert_noop, assert_ok,
+	traits::{LockableCurrency, WithdrawReasons},
+};
 
-use frame_support::{assert_err, assert_noop, assert_ok};
+use runtime_common::{CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
 
-use runtime_common::{TokenId, CFG, NATIVE_TOKEN_TRANSFER_FEE, NFT_TOKEN_TRANSFER_FEE};
-
-use sp_core::{blake2_256, H256, U256};
+use sp_core::{blake2_256, H256};
 
 use sp_runtime::DispatchError;
 
@@ -87,24 +88,27 @@ fn transfer_native() {
 			account_current_balance = Balances::free_balance(RELAYER_B);
 			assert_eq!(account_current_balance, RELAYER_B_INITIAL_BALANCE);
 
-			// TODO: seems not used anymore (compared with master branch)
-			// // Using account with enough balance for fee, but transfer blocked by a lock
-			// let lock_amount = 7990 * CFG;
-			// Balances::set_lock(*b"testlock", &RELAYER_A, lock_amount, WithdrawReasons::all());
-			// assert_err!(
-			//     Bridge::transfer_native(
-			//         Origin::signed(RELAYER_A),
-			//         amount.clone(),
-			//         recipient.clone(),
-			//         dest_chain,
-			//     ),
-			//     Error::<MockRuntime>::InsufficientBalance
-			// );
+			// Using account with enough balance for fee, but transfer blocked by a lock
+			let lock_amount = 7990 * CFG;
+			Balances::set_lock(
+				*b"testlock",
+				&RELAYER_A,
+				lock_amount,
+				WithdrawReasons::all(),
+			);
+			assert_err!(
+				Bridge::transfer_native(
+					Origin::signed(RELAYER_A),
+					amount.clone(),
+					recipient.clone(),
+					dest_chain,
+				),
+				Error::<MockRuntime>::InsufficientBalance
+			);
 
-			// Balances::remove_lock(*b"testlock", &RELAYER_A);
-			// account_current_balance = Balances::free_balance(RELAYER_A);
-			// assert_eq!(account_current_balance, ENDOWED_BALANCE);
-			// TODO : end
+			Balances::remove_lock(*b"testlock", &RELAYER_A);
+			account_current_balance = Balances::free_balance(RELAYER_A);
+			assert_eq!(account_current_balance, ENDOWED_BALANCE);
 
 			// Account balance of relayer A should be tantamount to the initial endowed value
 			account_current_balance = Balances::free_balance(RELAYER_A);
@@ -133,101 +137,6 @@ fn transfer_native() {
 			let amount_and_fees = amount + NATIVE_TOKEN_TRANSFER_FEE;
 			let account_expected_balance = ENDOWED_BALANCE - amount_and_fees;
 			assert_eq!(account_current_balance, account_expected_balance);
-		})
-}
-
-#[test]
-fn receive_nonfungible() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let dest_chain = 0;
-			let resource_id = NativeTokenId::get();
-			let recipient = RELAYER_A;
-			let owner = <chainbridge::Pallet<MockRuntime>>::account_id();
-			let origin = Origin::signed(owner);
-			let token_id = TokenId(U256::one());
-
-			// Create registry, map resource id, and mint nft
-			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
-
-			// Whitelist destination chain
-			assert_ok!(ChainBridge::whitelist_chain(
-				Origin::root(),
-				dest_chain.clone()
-			));
-
-			// Send nft from bridge account to user
-			assert_ok!(Bridge::receive_nonfungible(
-				origin,
-				recipient,
-				token_id.clone(),
-				vec![],
-				resource_id
-			));
-
-			// Recipient owns the nft now
-			assert_eq!(
-				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(registry_id, token_id),
-				Some(recipient)
-			);
-		})
-}
-
-#[test]
-fn transfer_nonfungible_asset() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let dest_chain = 0;
-			let resource_id = NativeTokenId::get();
-			let recipient = vec![1];
-			let owner = RELAYER_A;
-			let token_id = TokenId(U256::one());
-
-			// Create registry, map resource id, and mint nft
-			let registry_id = mock_nft::<MockRuntime>(owner, token_id.clone(), resource_id);
-
-			// Whitelist destination chain
-			assert_ok!(ChainBridge::whitelist_chain(
-				Origin::root(),
-				dest_chain.clone()
-			));
-
-			// Owner owns nft
-			assert_eq!(
-				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(
-					registry_id.clone(),
-					token_id.clone()
-				),
-				Some(owner)
-			);
-
-			// Transfer nonfungible through bridge
-			assert_ok!(Bridge::transfer_asset(
-				Origin::signed(owner),
-				recipient.clone(),
-				registry_id.clone(),
-				token_id.clone(),
-				dest_chain
-			));
-
-			// Now bridge module owns the nft
-			assert_eq!(
-				<pallet_nft::Pallet<MockRuntime>>::account_for_asset(registry_id, token_id.clone()),
-				Some(<chainbridge::Pallet<MockRuntime>>::account_id())
-			);
-
-			// Check that transfer event was emitted
-			let tid = token_id.to_big_endian();
-			expect_event(chainbridge::Event::NonFungibleTransfer(
-				dest_chain,
-				1,
-				resource_id,
-				tid,
-				recipient,
-				vec![],
-			));
 		})
 }
 

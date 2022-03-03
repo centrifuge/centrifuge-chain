@@ -6036,7 +6036,6 @@ dependencies = [
  "pallet-bridge-mapping",
  "pallet-fees",
  "pallet-nft",
- "pallet-registry",
  "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "parity-scale-codec",
  "proofs",
@@ -6659,32 +6658,6 @@ dependencies = [
  "sp-io 5.0.0",
  "sp-runtime 5.0.0",
  "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
-]
-
-[[package]]
-name = "pallet-registry"
-version = "2.0.0"
-dependencies = [
- "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.17)",
- "common-traits",
- "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "pallet-anchors",
- "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "pallet-fees",
- "pallet-nft",
- "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "parity-scale-codec",
- "proofs",
- "runtime-common",
- "scale-info",
- "sp-core 5.0.0",
- "sp-io 5.0.0",
- "sp-runtime 5.0.0",
- "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "unique-assets",
 ]
 
 [[package]]
