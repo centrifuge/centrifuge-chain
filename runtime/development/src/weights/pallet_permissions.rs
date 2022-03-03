@@ -16,7 +16,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --output=/tmp/runtime/development/src/weights/pallet_permissions.rs
-// --template=./scripts/frame-weight-template.hbs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -25,23 +25,14 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_permissions::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_permissions.
-pub trait WeightInfo {
-	fn add_permission_admin() -> Weight;
-	fn add_permission_editor() -> Weight;
-	fn rm_permission_admin() -> Weight;
-	fn rm_permission_editor() -> Weight;
-	fn purge_permissions() -> Weight;
-	fn admin_purge_permissions() -> Weight;
-}
 
 /// Weights for pallet_permissions using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn add_permission_admin() -> Weight {
-		(39_000_000 as Weight)
+		(40_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -51,7 +42,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn rm_permission_admin() -> Weight {
-		(39_000_000 as Weight)
+		(40_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -61,47 +52,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn purge_permissions() -> Weight {
-		(37_000_000 as Weight)
+		(32_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn admin_purge_permissions() -> Weight {
-		(37_000_000 as Weight)
+		(30_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn add_permission_admin() -> Weight {
-		(39_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn add_permission_editor() -> Weight {
-		(48_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn rm_permission_admin() -> Weight {
-		(39_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn rm_permission_editor() -> Weight {
-		(50_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn purge_permissions() -> Weight {
-		(37_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn admin_purge_permissions() -> Weight {
-		(37_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

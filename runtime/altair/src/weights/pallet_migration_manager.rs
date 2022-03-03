@@ -16,7 +16,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --output=/tmp/runtime/altair/src/weights/pallet_migration_manager.rs
-// --template=./scripts/frame-weight-template.hbs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -25,16 +25,8 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_migration_manager::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_migration_manager.
-pub trait WeightInfo {
-	fn finalize() -> Weight;
-	fn migrate_system_account(n: u32) -> Weight;
-	fn migrate_balances_issuance() -> Weight;
-	fn migrate_vesting_vesting(n: u32) -> Weight;
-	fn migrate_proxy_proxies(n: u32) -> Weight;
-}
 
 /// Weights for pallet_migration_manager using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
@@ -45,66 +37,30 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn migrate_system_account(n: u32) -> Weight {
-		(32_150_000 as Weight) // Standard Error: 5_000
-			.saturating_add((1_179_000 as Weight).saturating_mul(n as Weight))
+		(26_351_000 as Weight) // Standard Error: 13_000
+			.saturating_add((1_460_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
 	fn migrate_balances_issuance() -> Weight {
-		(32_000_000 as Weight)
+		(43_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn migrate_vesting_vesting(n: u32) -> Weight {
-		(57_733_000 as Weight) // Standard Error: 533_000
-			.saturating_add((48_583_000 as Weight).saturating_mul(n as Weight))
+		(104_633_000 as Weight) // Standard Error: 734_000
+			.saturating_add((43_476_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
 	}
 	fn migrate_proxy_proxies(n: u32) -> Weight {
-		(52_927_000 as Weight) // Standard Error: 630_000
-			.saturating_add((11_297_000 as Weight).saturating_mul(n as Weight))
+		(48_373_000 as Weight) // Standard Error: 306_000
+			.saturating_add((9_488_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn finalize() -> Weight {
-		(31_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn migrate_system_account(n: u32) -> Weight {
-		(32_150_000 as Weight) // Standard Error: 5_000
-			.saturating_add((1_179_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-	fn migrate_balances_issuance() -> Weight {
-		(32_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn migrate_vesting_vesting(n: u32) -> Weight {
-		(57_733_000 as Weight) // Standard Error: 533_000
-			.saturating_add((48_583_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
-	}
-	fn migrate_proxy_proxies(n: u32) -> Weight {
-		(52_927_000 as Weight) // Standard Error: 630_000
-			.saturating_add((11_297_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
 }

@@ -16,7 +16,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --output=/tmp/runtime/altair/src/weights/pallet_fees.rs
-// --template=./scripts/frame-weight-template.hbs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -25,24 +25,13 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_fees::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_fees.
-pub trait WeightInfo {
-	fn set_fee() -> Weight;
-}
 
 /// Weights for pallet_fees using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn set_fee() -> Weight {
 		(28_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn set_fee() -> Weight {
-		(28_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

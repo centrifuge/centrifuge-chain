@@ -28,7 +28,7 @@ mod impl_fungibles;
 mod mock;
 #[cfg(test)]
 mod tests;
-mod weights;
+pub mod weights;
 
 use frame_support::traits::{fungible, fungibles};
 use frame_support::traits::{Currency, LockableCurrency, ReservableCurrency};

@@ -16,7 +16,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --output=/tmp/runtime/development/src/weights/pallet_restricted_tokens.rs
-// --template=./scripts/frame-weight-template.hbs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -25,32 +25,19 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_restricted_tokens::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_restricted_tokens.
-pub trait WeightInfo {
-	fn transfer_native() -> Weight;
-	fn transfer_other() -> Weight;
-	fn transfer_keep_alive_native() -> Weight;
-	fn transfer_keep_alive_other() -> Weight;
-	fn transfer_all_native() -> Weight;
-	fn transfer_all_other() -> Weight;
-	fn force_transfer_native() -> Weight;
-	fn force_transfer_other() -> Weight;
-	fn set_balance_native() -> Weight;
-	fn set_balance_other() -> Weight;
-}
 
 /// Weights for pallet_restricted_tokens using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn transfer_native() -> Weight {
-		(98_000_000 as Weight)
+		(103_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn transfer_other() -> Weight {
-		(116_000_000 as Weight)
+		(114_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
@@ -60,7 +47,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn transfer_keep_alive_other() -> Weight {
-		(107_000_000 as Weight)
+		(92_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
@@ -70,22 +57,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn transfer_all_other() -> Weight {
-		(106_000_000 as Weight)
+		(103_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(6 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn force_transfer_native() -> Weight {
-		(93_000_000 as Weight)
+		(83_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn force_transfer_other() -> Weight {
-		(81_000_000 as Weight)
+		(80_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn set_balance_native() -> Weight {
-		(83_000_000 as Weight)
+		(82_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -93,59 +80,5 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(88_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn transfer_native() -> Weight {
-		(98_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn transfer_other() -> Weight {
-		(116_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn transfer_keep_alive_native() -> Weight {
-		(72_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn transfer_keep_alive_other() -> Weight {
-		(107_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn transfer_all_native() -> Weight {
-		(85_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn transfer_all_other() -> Weight {
-		(106_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn force_transfer_native() -> Weight {
-		(93_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn force_transfer_other() -> Weight {
-		(81_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn set_balance_native() -> Weight {
-		(83_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_balance_other() -> Weight {
-		(88_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
 }

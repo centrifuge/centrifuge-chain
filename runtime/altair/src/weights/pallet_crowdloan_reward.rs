@@ -16,7 +16,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --output=/tmp/runtime/altair/src/weights/pallet_crowdloan_reward.rs
-// --template=./scripts/frame-weight-template.hbs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -25,21 +25,14 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_crowdloan_reward::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_crowdloan_reward.
-pub trait WeightInfo {
-	fn initialize() -> Weight;
-	fn set_vesting_start() -> Weight;
-	fn set_vesting_period() -> Weight;
-	fn set_direct_payout_ratio() -> Weight;
-}
 
 /// Weights for pallet_crowdloan_reward using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn initialize() -> Weight {
-		(28_000_000 as Weight).saturating_add(T::DbWeight::get().writes(3 as Weight))
+		(27_000_000 as Weight).saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
 	fn set_vesting_start() -> Weight {
 		(24_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
@@ -48,22 +41,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		(24_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_direct_payout_ratio() -> Weight {
-		(25_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn initialize() -> Weight {
-		(28_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn set_vesting_start() -> Weight {
-		(24_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_vesting_period() -> Weight {
-		(24_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_direct_payout_ratio() -> Weight {
-		(25_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		(24_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 }

@@ -16,7 +16,7 @@
 // --wasm-execution=compiled
 // --heap-pages=4096
 // --output=/tmp/runtime/altair/src/weights/pallet_crowdloan_claim.rs
-// --template=./scripts/frame-weight-template.hbs
+// --template=./scripts/runtime-weight-template.hbs
 
 #![allow(unused_parens)]
 #![allow(unused_imports)]
@@ -25,96 +25,45 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_crowdloan_claim::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_crowdloan_claim.
-pub trait WeightInfo {
-	fn claim_reward_ed25519() -> Weight;
-	fn claim_reward_sr25519() -> Weight;
-	fn claim_reward_ecdsa() -> Weight;
-	fn initialize() -> Weight;
-	fn set_lease_start() -> Weight;
-	fn set_lease_period() -> Weight;
-	fn set_contributions_root() -> Weight;
-	fn set_locked_at() -> Weight;
-	fn set_crowdloan_trie_index() -> Weight;
-}
 
 /// Weights for pallet_crowdloan_claim using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn claim_reward_ed25519() -> Weight {
-		(315_000_000 as Weight)
+		(314_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn claim_reward_sr25519() -> Weight {
-		(321_000_000 as Weight)
+		(264_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn claim_reward_ecdsa() -> Weight {
-		(382_000_000 as Weight)
+		(383_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(12 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
 	fn initialize() -> Weight {
-		(45_000_000 as Weight)
+		(41_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(4 as Weight))
 			.saturating_add(T::DbWeight::get().writes(6 as Weight))
 	}
 	fn set_lease_start() -> Weight {
-		(24_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(21_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_lease_period() -> Weight {
-		(25_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(21_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_contributions_root() -> Weight {
-		(25_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
+		(22_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_locked_at() -> Weight {
 		(20_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn set_crowdloan_trie_index() -> Weight {
 		(21_000_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn claim_reward_ed25519() -> Weight {
-		(315_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-	}
-	fn claim_reward_sr25519() -> Weight {
-		(321_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-	}
-	fn claim_reward_ecdsa() -> Weight {
-		(382_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(12 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
-	}
-	fn initialize() -> Weight {
-		(45_000_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(4 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(6 as Weight))
-	}
-	fn set_lease_start() -> Weight {
-		(24_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_lease_period() -> Weight {
-		(25_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_contributions_root() -> Weight {
-		(25_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_locked_at() -> Weight {
-		(20_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
-	}
-	fn set_crowdloan_trie_index() -> Weight {
-		(21_000_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

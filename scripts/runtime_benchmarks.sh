@@ -30,7 +30,7 @@ run_benchmark() {
     --wasm-execution=compiled \
     --heap-pages=4096 \
     --output="${output}" \
-    --template=./scripts/frame-weight-template.hbs"
+    --template=./scripts/runtime-weight-template.hbs"
 
     echo "Running benchmark for pallet '${pallet}'"
     echo "${cmd}"
