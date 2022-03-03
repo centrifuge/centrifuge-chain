@@ -5537,7 +5537,6 @@ dependencies = [
  "pallet-bridge-mapping",
  "pallet-fees",
  "pallet-nft",
- "pallet-registry",
  "pallet-timestamp",
  "parity-scale-codec",
  "proofs",
@@ -6157,32 +6156,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-registry"
-version = "2.0.0"
-dependencies = [
- "chainbridge",
- "common-traits",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-anchors",
- "pallet-authorship",
- "pallet-balances",
- "pallet-fees",
- "pallet-nft",
- "pallet-timestamp",
- "parity-scale-codec",
- "proofs",
- "runtime-common",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
- "unique-assets",
 ]
 
 [[package]]

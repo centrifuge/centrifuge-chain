@@ -36,10 +36,7 @@ use frame_support::{
 
 use frame_system::EnsureSignedBy;
 use proofs::Proof;
-use runtime_common::{
-	types::{RegistryId, TokenId},
-	Balance, CFG, NFT_PROOF_VALIDATION_FEE,
-};
+use runtime_common::{Balance, CFG, NFT_PROOF_VALIDATION_FEE};
 
 use sp_core::{blake2_128, H256};
 
@@ -73,7 +70,6 @@ impl WeightInfo for MockWeightInfo {
 // Testing user identifiers
 pub(crate) const USER_A: u64 = 0x1;
 pub(crate) const USER_B: u64 = 0x2;
-pub(crate) const USER_DEFAULT: u64 = 0x0;
 
 // Initial balance for user A
 pub(crate) const USER_A_INITIAL_BALANCE: Balance = 100 * CFG;

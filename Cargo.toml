@@ -41,7 +41,6 @@ members = [
 	"pallets/nft-sales",
 	"pallets/pools",
 	"pallets/loans",
-	"pallets/registry",
 	"pallets/permissions",
 	"libs/common-traits",
 	"libs/common-types",
