@@ -49,6 +49,8 @@ use static_assertions::const_assert;
 /// common types for the runtime.
 pub use runtime_common::*;
 
+mod weights;
+
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));

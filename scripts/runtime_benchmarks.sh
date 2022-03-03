@@ -20,7 +20,7 @@ run_benchmark() {
   pallet=$1
   output=$2
 
-  cmd="target/release/centrifuge-chain benchmark benchmark \
+  cmd="target/release/centrifuge-chain benchmark \
     --chain="${chain}" \
     --steps=50 \
     --repeat=20 \
@@ -34,6 +34,7 @@ run_benchmark() {
 
     echo "Running benchmark for pallet '${pallet}'"
     echo "${cmd}"
+    ${cmd}
 }
 
 echo "Benchmarking pallets for runtime ${runtime}..."
@@ -102,6 +103,8 @@ do
     echo "pub mod ${array[2]};" >> "${build_path}/mod.rs"
     check $?
 done
+
+exit 1
 
 echo "Removing old weights in '${weight_path}'"
 rm -r ${weight_path}
