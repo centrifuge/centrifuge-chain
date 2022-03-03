@@ -715,7 +715,7 @@ impl pallet_fees::Config for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {
@@ -724,7 +724,7 @@ impl pallet_anchors::Config for Runtime {
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 }
@@ -742,7 +742,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxVestings = MigrationMaxVestings;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
-	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 	type FinalizedFilter = Everything;
 	type InactiveFilter = Everything;
 	type OngoingFilter = Everything;
@@ -758,7 +758,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -773,7 +773,7 @@ parameter_types! {
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
