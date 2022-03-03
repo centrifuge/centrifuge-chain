@@ -24,7 +24,6 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 
 # Centrifuge Chain dependencies
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.17" }
-pallet-bridge-mapping = { path = "../bridge-mapping", default-features = false }
 pallet-fees = { path = "../fees", default-features = false }
 pallet-nft = { path = "../nft", default-features = false }
 unique-assets = { git = "https://github.com/centrifuge/unique-assets", default-features = false, branch = "polkadot-v0.9.17" }
@@ -55,7 +54,6 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'chainbridge/std',
-    'pallet-bridge-mapping/std',
     'pallet-fees/std',
     'pallet-nft/std',
     'unique-assets/std',

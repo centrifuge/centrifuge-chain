@@ -44,8 +44,6 @@
 //! `Remark` - Event triggered a remark proposal is approved.
 //!
 //! ### Errors
-//! `ResourceIdDoesNotExist` - Resource id provided on initiating a transfer is not a key in bridges-names mapping.
-//! `RegistryIdDoesNotExist` - Registry id provided on receiving a transfer is not a key in bridges-names mapping.
 //! `InvalidTransfer` - Invalid transfer.
 //! `InsufficientBalance` - Not enough resources/assets for performing a transfer.
 //! `TotalAmountOverflow` - Total amount to be transfered overflows balance type size.
@@ -75,7 +73,6 @@
 //! ## Related Pallets
 //! This pallet is tightly coupled to the following pallets:
 //! - Substrate FRAME's [`balances` pallet](https://github.com/paritytech/substrate/tree/master/frame/balances).
-//! - Centrifuge Chain [`bridge_mapping` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/bridge-mapping).
 //! - Centrifuge Chain [`chainbrige` pallet](https://github.com/centrifuge/chainbridge-substrate).
 //! - Centrifuge Chain [`fees` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/fees).
 //! - Centrifuge Chain [`nft` pallet](https://github.com/centrifuge/centrifuge-chain/tree/master/pallets/nft).
@@ -125,8 +122,8 @@ use frame_support::{
 };
 
 use frame_system::{ensure_root, pallet_prelude::OriginFor};
-
 use sp_core::U256;
+use sp_std::vec::Vec;
 
 use sp_runtime::traits::{AccountIdConversion, CheckedAdd, CheckedSub, SaturatedConversion};
 
@@ -177,7 +174,6 @@ pub mod pallet {
 		frame_system::Config
 		+ chainbridge::Config
 		+ pallet_balances::Config
-		+ pallet_bridge_mapping::Config
 		+ pallet_fees::Config
 		+ pallet_nft::Config
 	{
@@ -291,12 +287,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Resource id provided on initiating a transfer is not a key in bridges-names mapping.
-		ResourceIdDoesNotExist,
-
-		/// Registry id provided on receiving a transfer is not a key in bridges-names mapping.
-		RegistryIdDoesNotExist,
-
 		/// Invalid transfer
 		InvalidTransfer,
 
@@ -319,7 +309,6 @@ pub mod pallet {
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-
 		/// Transfers some amount of the native token to some recipient on a (whitelisted) destination chain.
 		#[pallet::weight(<T as Config>::WeightInfo::transfer_native())]
 		#[transactional]

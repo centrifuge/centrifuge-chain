@@ -113,8 +113,8 @@ pub mod types {
 	/// A generic representation of a local address. A resource id points to this. It may be a
 	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
 	/// as an upper bound to store efficiently.
-	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Debug))]
+	#[derive(codec::Encode, codec::Decode, Default, Debug, Clone, PartialEq, Eq, TypeInfo)]
+	// #[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
 
 	/// Rate with 27 precision fixed point decimal

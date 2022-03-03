@@ -2286,7 +2286,6 @@ dependencies = [
  "pallet-babe 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "pallet-bridge",
- "pallet-bridge-mapping",
  "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
