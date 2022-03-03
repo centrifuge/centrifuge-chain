@@ -6,7 +6,7 @@ use frame_support::sp_std::convert::TryInto;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
-use sp_runtime::Perquintill;
+use sp_runtime::{Perquintill, TokenError};
 
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
@@ -466,6 +466,12 @@ fn epoch() {
 
 		// Borrow some money
 		next_block();
+		// Borrow more than pool reserve should fail NoFunds error
+		assert_noop!(
+			Pools::do_borrow(borrower.clone(), 0, pool.total_reserve + 1),
+			TokenError::NoFunds
+		);
+
 		assert_ok!(test_borrow(borrower.clone(), 0, 500 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();
