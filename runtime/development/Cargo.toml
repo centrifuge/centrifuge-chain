@@ -108,7 +108,7 @@ common-types = { path = "../../libs/common-types", default-features = false }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 
 # bridge pallets
-chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.16" }
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.17" }
 
 # our custom pallets
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }

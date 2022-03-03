@@ -263,7 +263,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				vec![
 					hex!["cc5615f974947b126361c494090dd621777896c3f606912d9c772bdffeda4924"].into(),
 				],
-				Some(10000000 * AIR),
+				Some(10000000 * CFG),
 				para_id,
 			)
 		},
@@ -296,7 +296,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(10000000 * AIR),
+				Some(10000000 * CFG),
 				para_id,
 			)
 		},

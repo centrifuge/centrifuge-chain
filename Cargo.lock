@@ -1126,25 +1126,6 @@ dependencies = [
 [[package]]
 name = "chainbridge"
 version = "0.0.2"
-source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.16#4176c14631a40b11c8fc1a901f6b5f4ca4bec07f"
-dependencies = [
- "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16)",
- "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16)",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core 4.1.0-dev",
- "sp-io 4.0.0",
- "sp-runtime 4.1.0-dev",
- "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16)",
- "substrate-wasm-builder-runner",
-]
-
-[[package]]
-name = "chainbridge"
-version = "0.0.2"
 source = "git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.17#fafba1792e54b9ea9b85baa63ff8f736d8ba7712"
 dependencies = [
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
@@ -2256,7 +2237,7 @@ dependencies = [
 name = "development-runtime"
 version = "0.10.2"
 dependencies = [
- "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.16)",
+ "chainbridge",
  "common-traits",
  "common-types",
  "cumulus-pallet-aura-ext",
@@ -6026,7 +6007,7 @@ dependencies = [
 name = "pallet-bridge"
 version = "2.0.0"
 dependencies = [
- "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.17)",
+ "chainbridge",
  "common-traits",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
@@ -6052,7 +6033,7 @@ dependencies = [
 name = "pallet-bridge-mapping"
 version = "2.0.0"
 dependencies = [
- "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.17)",
+ "chainbridge",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "pallet-anchors",
@@ -6486,7 +6467,7 @@ dependencies = [
 name = "pallet-nft"
 version = "2.0.0"
 dependencies = [
- "chainbridge 0.0.2 (git+https://github.com/centrifuge/chainbridge-substrate.git?branch=polkadot-v0.9.17)",
+ "chainbridge",
  "common-traits",
  "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
