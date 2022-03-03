@@ -2088,7 +2088,6 @@ dependencies = [
  "pallet-babe",
  "pallet-balances",
  "pallet-bridge",
- "pallet-bridge-mapping",
  "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",

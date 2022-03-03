@@ -1093,34 +1093,37 @@ impl orml_tokens::Config for Runtime {
 
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
-    pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"cent_nft_hash"));
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
 	//TODO rename xRAD to xCFG and create new mapping
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &blake2_128(b"xRAD"));
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
-	type BridgeOrigin = chainbridge::EnsureBridge<AccountId>;
-	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 	type Currency = Balances;
 	type Event = Event;
 	type NativeTokenId = NativeTokenId;
 	type NativeTokenTransferFee = NativeTokenTransferFee;
 	type NftTokenTransferFee = NftTransferFee;
-	type WeightInfo = MockWeightInfo;
+	type WeightInfo = ();
 }
 
 parameter_types! {
-    pub const ChainId: chainbridge::ChainId = 1;
-    pub const ProposalLifetime: u32 = 1000;
+	pub const ChainId: chainbridge::ChainId = 1;
+	pub const ProposalLifetime: u32 = 500;
 	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
 	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
 }
 
 impl chainbridge::Config for Runtime {
 	type Event = Event;
-	type AdminOrigin = pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 	type Proposal = Call;
 	type ChainId = ChainId;
 	type PalletId = ChainBridgePalletId;
@@ -1136,16 +1139,10 @@ parameter_types! {
 
 impl pallet_nft::Config for Runtime {
 	type Event = Event;
-	type ChainId = ChainId;
+	type ChainId = chainbridge::ChainId;
 	type ResourceId = chainbridge::ResourceId;
 	type HashId = HashId;
 	type NftProofValidationFee = NftProofValidationFee;
-	type WeightInfo = ();
-}
-
-impl pallet_bridge_mapping::Config for Runtime {
-	type Address = EthAddress;
-	type AdminOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type WeightInfo = ();
 }
 
@@ -1211,7 +1208,6 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		BridgeMapping: bridge_mapping::{Pallet, Call, Storage} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

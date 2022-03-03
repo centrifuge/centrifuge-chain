@@ -60,9 +60,7 @@ pub mod pallet {
 		/// This associated type represents anything that a resource id might map to.
 		/// On Ethereum, for instance, this may be a contract address for transferring
 		/// assets.
-		type Address: Parameter
-			+ Member
-			+ Default;
+		type Address: Parameter + Member + Default;
 
 		/// Admin is able to set/remove resource mappings.
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
