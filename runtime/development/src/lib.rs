@@ -75,6 +75,8 @@ use pallet_restricted_tokens::{
 /// common types for the runtime.
 pub use runtime_common::{Index, *};
 
+use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -91,7 +93,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1001,
+	spec_version: 1002,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -1091,6 +1093,61 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
+parameter_types! {
+	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	//TODO rename xRAD to xCFG and create new mapping
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
+}
+
+impl pallet_bridge::Config for Runtime {
+	type BridgePalletId = BridgePalletId;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type Currency = Balances;
+	type Event = Event;
+	type NativeTokenId = NativeTokenId;
+	type NativeTokenTransferFee = NativeTokenTransferFee;
+	type NftTokenTransferFee = NftTransferFee;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ChainId: chainbridge::ChainId = 1;
+	pub const ProposalLifetime: u32 = 500;
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
+}
+
+impl chainbridge::Config for Runtime {
+	type Event = Event;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type Proposal = Call;
+	type ChainId = ChainId;
+	type PalletId = ChainBridgePalletId;
+	type ProposalLifetime = ProposalLifetime;
+	type RelayerVoteThreshold = RelayerVoteThreshold;
+	/// A 75% majority of the council can update bridge settings.
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+}
+
+impl pallet_nft::Config for Runtime {
+	type Event = Event;
+	type ChainId = chainbridge::ChainId;
+	type ResourceId = chainbridge::ResourceId;
+	type HashId = HashId;
+	type NftProofValidationFee = NftProofValidationFee;
+	type WeightInfo = ();
+}
+
 // admin stuff
 impl pallet_sudo::Config for Runtime {
 	type Event = Event;
@@ -1151,6 +1208,8 @@ construct_runtime!(
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
+		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
+		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1161,6 +1220,7 @@ construct_runtime!(
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

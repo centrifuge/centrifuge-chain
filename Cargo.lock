@@ -2235,8 +2235,9 @@ dependencies = [
 
 [[package]]
 name = "development-runtime"
-version = "0.10.1"
+version = "0.10.2"
 dependencies = [
+ "chainbridge",
  "common-traits",
  "common-types",
  "cumulus-pallet-aura-ext",
@@ -2265,6 +2266,7 @@ dependencies = [
  "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "pallet-babe 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
+ "pallet-bridge",
  "pallet-claims",
  "pallet-collator-allowlist",
  "pallet-collator-selection",
@@ -2282,6 +2284,7 @@ dependencies = [
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
+ "pallet-nft",
  "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
@@ -6014,7 +6017,6 @@ dependencies = [
  "pallet-bridge-mapping",
  "pallet-fees",
  "pallet-nft",
- "pallet-registry",
  "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
  "parity-scale-codec",
  "proofs",
@@ -6637,32 +6639,6 @@ dependencies = [
  "sp-io 5.0.0",
  "sp-runtime 5.0.0",
  "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
-]
-
-[[package]]
-name = "pallet-registry"
-version = "2.0.0"
-dependencies = [
- "chainbridge",
- "common-traits",
- "frame-benchmarking 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "frame-system 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "pallet-anchors",
- "pallet-authorship 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "pallet-balances 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "pallet-fees",
- "pallet-nft",
- "pallet-timestamp 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "parity-scale-codec",
- "proofs",
- "runtime-common",
- "scale-info",
- "sp-core 5.0.0",
- "sp-io 5.0.0",
- "sp-runtime 5.0.0",
- "sp-std 4.0.0 (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17)",
- "unique-assets",
 ]
 
 [[package]]
@@ -14050,7 +14026,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee73e6e4924fe940354b8d4d98cad5231175d615cd855b758adc658c0aac6a0"
 dependencies = [
  "cfg-if 1.0.0",
- "rand 0.7.3",
+ "rand 0.6.5",
  "static_assertions",
 ]
 

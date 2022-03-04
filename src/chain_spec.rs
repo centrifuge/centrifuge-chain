@@ -263,7 +263,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				vec![
 					hex!["cc5615f974947b126361c494090dd621777896c3f606912d9c772bdffeda4924"].into(),
 				],
-				Some(10000000 * AIR),
+				Some(10000000 * CFG),
 				para_id,
 			)
 		},
@@ -296,7 +296,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
 				)],
 				endowed_accounts(),
-				Some(10000000 * AIR),
+				Some(10000000 * CFG),
 				para_id,
 			)
 		},
@@ -940,6 +940,28 @@ fn development_genesis(
 					)
 				})
 				.collect(),
+		},
+		bridge: development_runtime::BridgeConfig {
+			// Whitelist chains Ethereum - 0
+			chains: vec![0],
+			// Register resourceIDs
+			resources: vec![
+				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
+				(
+					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
+					hex!["50616c6c65744272696467652e7472616e73666572"]
+						.iter()
+						.cloned()
+						.collect(),
+				),
+			],
+			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+			relayers: vec![
+				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+			],
+			threshold: 1,
 		},
 		aura_ext: Default::default(),
 		aura: Default::default(),
