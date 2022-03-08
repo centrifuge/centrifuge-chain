@@ -17,10 +17,12 @@
 // Module imports and re-exports
 // ----------------------------------------------------------------------------
 
+use super::*;
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
-use sp_core::{blake2_256, keccak_256, H256};
+use sp_core::H256;
 use sp_runtime::sp_std::vec::Vec;
+use sp_std::vec;
 
 // Routines for building and validating proofs
 use proofs::{Hasher, Verifier};
@@ -81,7 +83,7 @@ impl Hasher for ProofVerifier {
 
 	// Hash the input data
 	fn hash(data: &[u8]) -> Self::Hash {
-		blake2_256(data).into()
+		sp_io::hashing::blake2_256(data).into()
 	}
 }
 
@@ -142,6 +144,6 @@ impl Hasher for BundleHasher {
 	type Hash = H256;
 
 	fn hash(data: &[u8]) -> Self::Hash {
-		keccak_256(data).into()
+		sp_io::hashing::keccak_256(data).into()
 	}
 }

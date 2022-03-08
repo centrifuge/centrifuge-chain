@@ -990,13 +990,16 @@ macro_rules! test_pool_nav {
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
-				let (got_pool_id, updated_nav) = match loan_event {
-					LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				let (got_pool_id, updated_nav, exact) = match loan_event {
+					LoanEvent::NAVUpdated(pool_id, update_nav, exact) => {
+						Some((pool_id, update_nav, exact))
+					}
 					_ => None,
 				}
 				.expect("must be a Nav updated event");
 				assert_eq!(pool_id, got_pool_id);
 				assert_eq!(updated_nav, nav);
+				assert_eq!(exact, NAVUpdateType::Exact);
 
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
@@ -1044,8 +1047,10 @@ macro_rules! test_pool_nav {
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
-				let (_pool_id, updated_nav) = match loan_event {
-					LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				let (_pool_id, updated_nav, exact) = match loan_event {
+					LoanEvent::NAVUpdated(pool_id, update_nav, exact) => {
+						Some((pool_id, update_nav, exact))
+					}
 					_ => None,
 				}
 				.expect("must be a Nav updated event");
@@ -1057,6 +1062,7 @@ macro_rules! test_pool_nav {
 						.and_then(|written_off_amount| debt.checked_sub(&written_off_amount))
 						.unwrap();
 				assert_eq!(expected_nav, updated_nav);
+				assert_eq!(exact, NAVUpdateType::Exact);
 			})
 	};
 }
@@ -1495,13 +1501,16 @@ macro_rules! test_close_written_off_loan_type {
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
-				let (got_pool_id, updated_nav) = match loan_event {
-					LoanEvent::NAVUpdated(pool_id, update_nav) => Some((pool_id, update_nav)),
+				let (got_pool_id, updated_nav, exact) = match loan_event {
+					LoanEvent::NAVUpdated(pool_id, update_nav, exact) => {
+						Some((pool_id, update_nav, exact))
+					}
 					_ => None,
 				}
 				.expect("must be a Nav updated event");
 				assert_eq!(pool_id, got_pool_id);
 				assert_eq!(updated_nav, Zero::zero());
+				assert_eq!(exact, NAVUpdateType::Exact);
 
 				// close loan now
 				close_test_loan::<MockRuntime>(borrower, pool_id, loan, asset);

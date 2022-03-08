@@ -26,7 +26,7 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-mod weights;
+pub mod weights;
 
 type BalanceOf<T> = <<T as pallet_vesting::Config>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,

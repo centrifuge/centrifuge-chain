@@ -1,8 +1,10 @@
+# Node Key Alice: `subkey inspect //Alice`
+# Node Key Bob: `subkey inspect //Bob`
 version: '3'
 services:
   node_alice:
     container_name: alice
-    image: "parity/polkadot:v0.9.16"
+    image: "parity/polkadot:v0.9.17"
     ports:
       - "30333:30333"
       - "9933:9933"
@@ -14,6 +16,7 @@ services:
         read_only: true
     command: >
       --chain=/chainspec.json
+      --node-key=e5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a
       --wasm-execution=compiled
       --execution=wasm
       --base-path=/data
@@ -29,7 +32,7 @@ services:
 
   node_bob:
     container_name: bob
-    image: "parity/polkadot:v0.9.16"
+    image: "parity/polkadot:v0.9.17"
     ports:
       - "30344:30333"
       - "9935:9933"
@@ -41,6 +44,7 @@ services:
         read_only: true
     command: >
       --chain=/chainspec.json
+      --node-key=398f0c28f98885e046333d4a41c19cee4c37368a9832c6502f6cfd182e2aef89
       --base-path=/data
       --wasm-execution=compiled
       --execution=wasm

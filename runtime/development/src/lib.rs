@@ -21,7 +21,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureRoot, EnsureSigned,
 };
 use orml_traits::parameter_type_with_key;
 use orml_xcm_support::MultiNativeAsset;
@@ -58,7 +58,7 @@ use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentAsSuperuser, ParentIsDefault,
+	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentAsSuperuser, ParentIsPreset,
 	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 };
@@ -74,6 +74,10 @@ use pallet_restricted_tokens::{
 };
 /// common types for the runtime.
 pub use runtime_common::{Index, *};
+
+use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+
+mod weights;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -91,7 +95,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge-devel"),
 	impl_name: create_runtime_str!("centrifuge-devel"),
 	authoring_version: 1,
-	spec_version: 1000,
+	spec_version: 1002,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -676,6 +680,20 @@ impl pallet_uniques::Config for Runtime {
 }
 
 parameter_types! {
+	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+}
+
+impl pallet_nft_sales::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = pallet_nft_sales::weights::SubstrateWeight<Self>;
+	type Fungibles = Tokens;
+	type NonFungibles = Uniques;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type PalletId = NftSalesPalletId;
+}
+
+parameter_types! {
 	// 5% of the proposal value need to be bonded. This will be returned
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 
@@ -732,7 +750,7 @@ impl pallet_fees::Config for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {
@@ -741,7 +759,7 @@ impl pallet_anchors::Config for Runtime {
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 }
@@ -814,6 +832,7 @@ impl pallet_pools::Config for Runtime {
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
+	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 }
@@ -831,7 +850,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxVestings = MigrationMaxVestings;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
-	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 	type FinalizedFilter = Everything;
 	type InactiveFilter = Everything;
 	type OngoingFilter = BaseFilter;
@@ -872,7 +891,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -887,7 +906,7 @@ parameter_types! {
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
@@ -964,7 +983,7 @@ impl pallet_permissions::Config for Runtime {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_permissions::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
 }
 
 pub struct Editors;
@@ -1053,7 +1072,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
-	type WeightInfo = pallet_restricted_tokens::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
 }
 
 parameter_type_with_key! {
@@ -1079,6 +1098,61 @@ impl orml_tokens::Config for Runtime {
 	type OnDust = ();
 	type MaxLocks = ORMLMaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+}
+
+parameter_types! {
+	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	//TODO rename xRAD to xCFG and create new mapping
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
+}
+
+impl pallet_bridge::Config for Runtime {
+	type BridgePalletId = BridgePalletId;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type Currency = Balances;
+	type Event = Event;
+	type NativeTokenId = NativeTokenId;
+	type NativeTokenTransferFee = NativeTokenTransferFee;
+	type NftTokenTransferFee = NftTransferFee;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ChainId: chainbridge::ChainId = 1;
+	pub const ProposalLifetime: u32 = 500;
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const RelayerVoteThreshold: u32 = DEFAULT_RELAYER_VOTE_THRESHOLD;
+}
+
+impl chainbridge::Config for Runtime {
+	type Event = Event;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type Proposal = Call;
+	type ChainId = ChainId;
+	type PalletId = ChainBridgePalletId;
+	type ProposalLifetime = ProposalLifetime;
+	type RelayerVoteThreshold = RelayerVoteThreshold;
+	/// A 75% majority of the council can update bridge settings.
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+}
+
+impl pallet_nft::Config for Runtime {
+	type Event = Event;
+	type ChainId = chainbridge::ChainId;
+	type ResourceId = chainbridge::ResourceId;
+	type HashId = HashId;
+	type NftProofValidationFee = NftProofValidationFee;
+	type WeightInfo = ();
 }
 
 // admin stuff
@@ -1139,7 +1213,10 @@ construct_runtime!(
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 97,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 98,
-		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>},
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 99,
+		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
+		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
+		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1150,6 +1227,7 @@ construct_runtime!(
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
@@ -1431,6 +1509,8 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type VersionWrapper = PolkadotXcm;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type ControllerOrigin = EnsureRoot<AccountId>;
+	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
 }
 
 /// Type for specifying how a `MultiLocation` can be converted into an `AccountId`. This is used
@@ -1438,7 +1518,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 /// `Transact` in order to determine the dispatch Origin.
 pub type LocationToAccountId = (
 	// The parent (Relay-chain) origin converts to the default `AccountId`.
-	ParentIsDefault<AccountId>,
+	ParentIsPreset<AccountId>,
 	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
@@ -1621,9 +1701,6 @@ impl_runtime_apis! {
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
-
-			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1646,12 +1723,10 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
-			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
-			add_benchmark!(params, batches, pallet_pools, Pools);
-			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
+			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1671,12 +1746,10 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
-			list_benchmark!(list, extra, pallet_pools, Pools);
-			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

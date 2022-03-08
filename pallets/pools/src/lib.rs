@@ -35,7 +35,7 @@ use sp_runtime::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub, One,
 		Saturating, Zero,
 	},
-	FixedPointNumber, FixedPointOperand, Perquintill, TypeId,
+	FixedPointNumber, FixedPointOperand, Perquintill, TokenError, TypeId,
 };
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
@@ -113,11 +113,10 @@ where
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
+pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
 where
 	MetaSize: Get<u32> + Copy,
 {
-	pub owner: AccountId,
 	pub currency: CurrencyId,
 	pub tranches: Vec<Tranche<Balance, Rate, Weight>>, // ordered junior => senior
 	pub current_epoch: EpochId,
@@ -245,7 +244,6 @@ type Seniority = u32;
 
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
-	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 	<T as Config>::EpochId,
 	<T as Config>::Balance,
@@ -388,6 +386,9 @@ pub mod pallet {
 		/// Max number of tranches
 		type MaxTranches: Get<u32>;
 
+		/// The origin permitted to create pools
+		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
+
 		/// Weight Information
 		type WeightInfo: WeightInfo;
 	}
@@ -434,7 +435,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was created. [pool, who]
+		/// A pool was created. [pool, admin]
 		Created(T::PoolId, T::AccountId),
 		/// A pool was updated. [pool]
 		Updated(T::PoolId),
@@ -550,12 +551,13 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::create(tranches.len() as u32))]
 		pub fn create(
 			origin: OriginFor<T>,
+			admin: T::AccountId,
 			pool_id: T::PoolId,
 			tranches: Vec<TrancheInput<T::InterestRate>>,
 			currency: T::CurrencyId,
 			max_reserve: T::Balance,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin)?;
+			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -585,7 +587,6 @@ pub mod pallet {
 			Pool::<T>::insert(
 				pool_id,
 				PoolDetails {
-					owner: owner.clone(),
 					currency,
 					tranches,
 					current_epoch: One::one(),
@@ -614,8 +615,8 @@ pub mod pallet {
 					scheduled_update_executed_after: None,
 				},
 			);
-			T::Permission::add_permission(pool_id, owner.clone(), PoolRole::PoolAdmin)?;
-			Self::deposit_event(Event::Created(pool_id, owner));
+			T::Permission::add_permission(pool_id, admin.clone(), PoolRole::PoolAdmin)?;
+			Self::deposit_event(Event::Created(pool_id, admin));
 			Ok(())
 		}
 
@@ -2396,11 +2397,11 @@ pub mod pallet {
 				pool.total_reserve = pool
 					.total_reserve
 					.checked_sub(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
+					.ok_or(TokenError::NoFunds)?;
 				pool.available_reserve = pool
 					.available_reserve
 					.checked_sub(&amount)
-					.ok_or(ArithmeticError::Overflow)?;
+					.ok_or(TokenError::NoFunds)?;
 
 				let mut remaining_amount = amount;
 				let tranches_senior_to_junior = &mut pool.tranches.iter_mut().rev();

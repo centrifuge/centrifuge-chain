@@ -24,6 +24,8 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use altair_runtime::constants::currency::AIR;
 use runtime_common::CFG;
+use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
+use serde::{Deserialize, Serialize};
 
 const POLKADOT_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
@@ -37,6 +39,23 @@ pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Pu
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
 		.expect("static values are valid; qed")
 		.public()
+}
+
+/// The extensions for the [`ChainSpec`].
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ChainSpecGroup, ChainSpecExtension)]
+#[serde(deny_unknown_fields)]
+pub struct Extensions {
+	/// The relay chain of the Parachain.
+	pub relay_chain: String,
+	/// The id of the Parachain.
+	pub para_id: u32,
+}
+
+impl Extensions {
+	/// Try to get the extension from the given `ChainSpec`.
+	pub fn try_get(chain_spec: &dyn sc_service::ChainSpec) -> Option<&Self> {
+		sc_chain_spec::get_extension(chain_spec.extensions())
+	}
 }
 
 pub fn get_altair_session_keys(keys: altair_runtime::AuraId) -> altair_runtime::SessionKeys {
@@ -185,6 +204,99 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 				)],
 				endowed_accounts(),
 				Some(100000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		None,
+		None,
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn catalyst_config() -> CentrifugeChainSpec {
+	CentrifugeChainSpec::from_json_bytes(&include_bytes!("../res/catalyst-spec-raw.json")[..])
+		.unwrap()
+}
+
+pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "NCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	CentrifugeChainSpec::from_genesis(
+		"Catalyst Testnet",
+		"catalyst_testnet",
+		ChainType::Live,
+		move || {
+			centrifuge_genesis(
+				//4fxfeWgBta4tHPX8Ab4LRvLATmQK1v6VLt1PzHruVYtkpD3R
+				hex!["cc5615f974947b126361c494090dd621777896c3f606912d9c772bdffeda4924"].into(),
+				vec![
+					(
+						//4cSqT4wpxaSUwwmJoGvz6pXX31T5iP8SRyxrQRExquaQScwP
+						hex!["30e105ac915a56bdf153e3a233bd767d538a3c76ba98dd4f3eae37487a804d24"]
+							.into(),
+						//4dngEiVgGmMRjaxkQFu8badZrhEetEHu4nFgBmVoBqkrNYTK
+						hex!["6c3f266a8b74b0f5c1d9a93b2ec943b270003fea8218e89ab7ec4e9294a2584a"]
+							.unchecked_into(),
+					),
+					(
+						//4gWsFAXX4NRAgs2nZQ68eLfSGPKdskz6psY2gSLVQvNr63H2
+						hex!["e4e4fab396035fc3c64b3a4127ac93687486fb21fbc5a69e14cae5c3e6025203"]
+							.into(),
+						//4chcpyjgumhQV7rZvegpYf7bCf5xUVfmh6ufr1wuvWEbamsT
+						hex!["3c273686697bc47f164c5e1e80d4b9c7ce4c7b8cfdfcff069cceb0d9a128b920"]
+							.unchecked_into(),
+					),
+					(
+						//4gmT8vkpH8KTpLiwt8CEdrmcF8w5nQFJmYgP56fmTzE58Fvw
+						hex!["f00481d4785faf42c44b77d59bd06b7edc0ed21f7ae00e5898fb43037e383049"]
+							.into(),
+						//4fkLCjk2BZ2QZf21YALguTxAxNCx7KEud7LCjjknchN4cAXE
+						hex!["c2edaf71a4c09ade552fb2b078d9c346e509d7eb9c28356ad3f4f85f58bebe15"]
+							.unchecked_into(),
+					),
+				],
+				vec![
+					hex!["cc5615f974947b126361c494090dd621777896c3f606912d9c772bdffeda4924"].into(),
+				],
+				Some(10000000 * CFG),
+				para_id,
+			)
+		},
+		vec![],
+		Some(
+			TelemetryEndpoints::new(vec![(POLKADOT_TELEMETRY_URL.to_string(), 0)])
+				.expect("Polkadot telemetry url is valid; qed"),
+		),
+		Some("catalyst"),
+		None,
+		Some(properties),
+		Default::default(),
+	)
+}
+
+pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
+	let mut properties = Properties::new();
+	properties.insert("tokenSymbol".into(), "NCFG".into());
+	properties.insert("tokenDecimals".into(), 18.into());
+
+	CentrifugeChainSpec::from_genesis(
+		"Catalyst Local",
+		"catalyst_local",
+		ChainType::Local,
+		move || {
+			centrifuge_genesis(
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				vec![(
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_from_seed::<altair_runtime::AuraId>("Alice"),
+				)],
+				endowed_accounts(),
+				Some(10000000 * CFG),
 				para_id,
 			)
 		},
@@ -828,6 +940,28 @@ fn development_genesis(
 					)
 				})
 				.collect(),
+		},
+		bridge: development_runtime::BridgeConfig {
+			// Whitelist chains Ethereum - 0
+			chains: vec![0],
+			// Register resourceIDs
+			resources: vec![
+				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
+				(
+					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
+					hex!["50616c6c65744272696467652e7472616e73666572"]
+						.iter()
+						.cloned()
+						.collect(),
+				),
+			],
+			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+			relayers: vec![
+				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+			],
+			threshold: 1,
 		},
 		aura_ext: Default::default(),
 		aura: Default::default(),

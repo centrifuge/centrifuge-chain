@@ -103,7 +103,7 @@ mod weights;
 // Export crate types and traits
 use crate::{
 	traits::WeightInfo,
-	types::{AssetId, BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
+	types::{BundleHasher, HasherHashOf, ProofVerifier, SystemHashOf},
 };
 
 // Re-export pallet components in crate namespace (for runtime construction)
@@ -112,13 +112,9 @@ pub use pallet::*;
 use chainbridge::types::ResourceId;
 
 use codec::FullCodec;
-use common_traits::BigEndian;
 use scale_info::TypeInfo;
 
-use frame_support::{
-	dispatch::{result::Result, DispatchError, DispatchResult, DispatchResultWithPostInfo},
-	ensure, Hashable,
-};
+use frame_support::{dispatch::DispatchResultWithPostInfo, ensure};
 
 use proofs::{hashing::bundled_hash_from_proofs, DepositAddress, Proof, Verifier};
 
@@ -128,8 +124,7 @@ use sp_core::H256;
 use sp_runtime::traits::Member;
 
 use sp_std::fmt::Debug;
-
-use unique_assets::traits::{Mintable, Unique};
+use sp_std::vec::Vec;
 
 // ----------------------------------------------------------------------------
 // Pallet module
@@ -146,7 +141,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use sp_core::U256;
 	use sp_runtime::SaturatedConversion;
 
 	// NFT pallet type declaration.
@@ -175,16 +169,6 @@ pub mod pallet {
 		+ pallet_anchors::Config
 		+ chainbridge::Config
 	{
-		/// the type used to identify nft registry
-		type RegistryId: Parameter + Member + Debug + Default + Copy + AsRef<[u8]> + From<[u8; 20]>;
-
-		/// type that represents nft token ID
-		/// From should always assume big endian
-		type TokenId: Parameter + Member + Default + Copy + BigEndian<Vec<u8>> + From<U256>;
-
-		/// The data type that is used to describe this type of asset.
-		type AssetInfo: Hashable + Member + Debug + Default + FullCodec + TypeInfo;
-
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -228,39 +212,8 @@ pub mod pallet {
 	// The macro generates a function on Pallet to deposit an event
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Ownership of the asset has been transferred to the account.
-		Transferred(AssetId<T::RegistryId, T::TokenId>, T::AccountId),
-
 		DepositAsset(T::Hash),
 	}
-
-	// ------------------------------------------------------------------------
-	// Pallet storage items
-	// ------------------------------------------------------------------------
-
-	/// A double mapping of registry ID and asset ID to the account that owns it.
-	#[pallet::storage]
-	#[pallet::getter(fn account_for_asset)]
-	pub type AccountForAsset<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::RegistryId,
-		Blake2_128Concat,
-		T::TokenId,
-		T::AccountId,
-	>;
-
-	/// A double mapping of registry ID and asset ID to an asset's info.
-	#[pallet::storage]
-	#[pallet::getter(fn asset)]
-	pub type Assets<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::RegistryId,
-		Blake2_128Concat,
-		T::TokenId,
-		T::AssetInfo,
-	>;
 
 	// ------------------------------------------------------------------------
 	// Pallet errors
@@ -268,15 +221,6 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// Thrown when there is an attempt to mint a duplicate asset.
-		AssetExists,
-
-		// Thrown when there is an attempt to transfer a nonexistent asset.
-		NonexistentAsset,
-
-		// Thrown when someone who is not the owner of a asset attempts to transfer or burn it.
-		NotAssetOwner,
-
 		/// Unable to recreate the anchor hash from the proofs and data provided.
 		InvalidProofs,
 
@@ -296,35 +240,6 @@ pub mod pallet {
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfer an asset to a new owner.
-		///
-		/// The dispatch origin for this call must be the asset owner.
-		///
-		/// - `dest_account`: Receiver of the asset.
-		/// - `asset_id`: The hash (calculated by the runtime system's hashing algorithm)
-		///   of the info that defines the asset to destroy.
-		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
-		pub fn transfer(
-			origin: OriginFor<T>,
-			dest_account: T::AccountId,
-			registry_id: T::RegistryId,
-			token_id: T::TokenId,
-		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin)?;
-
-			let asset_id = AssetId(registry_id, token_id);
-
-			<Self as Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId>>::transfer(
-				who,
-				dest_account.clone(),
-				asset_id.clone(),
-			)?;
-
-			Self::deposit_event(Event::Transferred(asset_id, dest_account));
-
-			Ok(().into())
-		}
-
 		/// Validates the proofs provided against the document root associated with the anchor_id.
 		/// Once the proofs are verified, we create a bundled hash (deposit_address + [proof[i].hash])
 		/// Bundled Hash is deposited to an DepositAsset event for bridging purposes.
@@ -402,58 +317,5 @@ impl<T: Config> Pallet<T> {
 		let mut result: SystemHashOf<T> = Default::default();
 		result.as_mut().copy_from_slice(&bundled_hash[..]);
 		result
-	}
-}
-
-// Implement unique trait for pallet
-impl<T: Config> Unique<AssetId<T::RegistryId, T::TokenId>, T::AccountId> for Pallet<T> {
-	fn owner_of(asset_id: AssetId<T::RegistryId, T::TokenId>) -> Option<T::AccountId> {
-		let (registry_id, token_id) = asset_id.destruct();
-		Self::account_for_asset(registry_id, token_id)
-	}
-
-	fn transfer(
-		caller: T::AccountId,
-		dest_account: T::AccountId,
-		asset_id: AssetId<T::RegistryId, T::TokenId>,
-	) -> DispatchResult {
-		let owner = Self::owner_of(asset_id.clone()).ok_or(Error::<T>::NonexistentAsset)?;
-		let (registry_id, token_id) = asset_id.destruct();
-
-		// Check that the caller is owner of asset
-		ensure!(caller == owner, Error::<T>::NotAssetOwner);
-
-		// Replace owner with destination account
-		AccountForAsset::<T>::insert(registry_id, token_id, dest_account);
-
-		Ok(())
-	}
-}
-
-// Implement mintable trait for pallet
-impl<T: Config> Mintable<AssetId<T::RegistryId, T::TokenId>, T::AssetInfo, T::AccountId>
-	for Pallet<T>
-{
-	/// Inserts an owner with a registry/token id.
-	/// Does not do any checks on the caller.
-	fn mint(
-		_caller: T::AccountId,
-		owner_account: T::AccountId,
-		asset_id: AssetId<T::RegistryId, T::TokenId>,
-		asset_info: T::AssetInfo,
-	) -> Result<(), DispatchError> {
-		let (registry_id, token_id) = asset_id.destruct();
-
-		// Ensure asset with id in registry does not already exist
-		ensure!(
-			!AccountForAsset::<T>::contains_key(registry_id.clone(), token_id.clone()),
-			Error::<T>::AssetExists
-		);
-
-		// Insert into storage
-		AccountForAsset::<T>::insert(registry_id.clone(), token_id.clone(), owner_account);
-		Assets::<T>::insert(registry_id, token_id, asset_info);
-
-		Ok(())
 	}
 }

@@ -49,6 +49,8 @@ use static_assertions::const_assert;
 /// common types for the runtime.
 pub use runtime_common::*;
 
+mod weights;
+
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -645,7 +647,7 @@ impl pallet_fees::Config for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {

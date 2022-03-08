@@ -24,7 +24,7 @@ use frame_support::{
 	traits::{GenesisBuild, SortedMembers},
 	PalletId,
 };
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::PoolLocator;
 use runtime_common::{
@@ -185,6 +185,7 @@ impl pallet_pools::Config for MockRuntime {
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type Permission = Permissions;
+	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();

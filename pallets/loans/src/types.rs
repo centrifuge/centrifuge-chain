@@ -76,6 +76,17 @@ pub enum LoanStatus {
 	Closed,
 }
 
+/// Information about how the nav was updated
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum NAVUpdateType {
+	/// NAV was fully recomputed to an exact value
+	Exact,
+	/// NAV was updated inexactly based on loan status changes
+	Inexact,
+}
+
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]

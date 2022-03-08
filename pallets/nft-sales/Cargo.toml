@@ -1,0 +1,67 @@
+[package]
+authors = ["Centrifuge <admin@centrifuge.io>"]
+description = 'NFT Sales pallet'
+edition = '2018'
+license = "LGPL-3.0"
+name = 'pallet-nft-sales'
+repository = "https://github.com/centrifuge/centrifuge-chain/pallets/nft-sales"
+version = '2.0.0'
+
+[package.metadata.docs.rs]
+targets = ['x86_64-unknown-linux-gnu']
+
+[dependencies]
+codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
+scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
+frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
+frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
+
+# Optional dependencies for benchmarking
+frame-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true , branch = "polkadot-v0.9.17" }
+pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.17" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.17" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "master" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "master" }
+common-types = { path = "../../libs/common-types", default-features = false, optional = true }
+runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
+
+[dev-dependencies]
+# Substrate crates & pallets
+sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.17" }
+pallet-balances = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
+
+# Orml crates
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "master" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "master" }
+
+# Local crates
+runtime-common = { path = "../../runtime/common", default-features = true }
+common-types = { path = "../../libs/common-types", default-features = false }
+
+[features]
+default = ['std']
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "pallet-balances",
+    "pallet-uniques",
+    "common-types",
+    "runtime-common",
+    "orml-tokens",
+    "orml-traits",
+]
+std = [
+    'codec/std',
+    'common-types/std',
+    'frame-support/std',
+    'frame-system/std',
+    'sp-std/std',
+    'sp-runtime/std',
+    'orml-tokens/std',
+    'orml-traits/std',
+    'pallet-balances/std',
+    'runtime-common/std',
+]

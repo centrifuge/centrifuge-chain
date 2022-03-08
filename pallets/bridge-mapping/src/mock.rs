@@ -25,7 +25,7 @@ use frame_support::{
 };
 use frame_system as system;
 use frame_system::EnsureSignedBy;
-use runtime_common::{Balance, EthAddress, RegistryId, TokenId};
+use runtime_common::{Balance, EthAddress};
 use sp_core::{blake2_128, H256};
 use sp_runtime::{
 	testing::Header,
@@ -151,9 +151,6 @@ parameter_types! {
 
 // Implement NFT pallet's configuration trait for the mock runtime
 impl pallet_nft::Config for Test {
-	type RegistryId = RegistryId;
-	type TokenId = TokenId;
-	type AssetInfo = Vec<u8>;
 	type Event = Event;
 	type ChainId = ChainId;
 	type ResourceId = ResourceId;

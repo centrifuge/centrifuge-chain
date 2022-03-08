@@ -160,6 +160,7 @@ pub mod types {
 		Eq,
 		codec::CompactAs,
 		Debug,
+		codec::MaxEncodedLen,
 		TypeInfo,
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
