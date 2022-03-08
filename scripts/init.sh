@@ -62,18 +62,21 @@ start-parachain)
   ;;
 
 onboard-parachain)
-  echo "NOTE: This command does NOT onboard the parachain; It only outputs the required parameters for the parachain to be onboarded."
+  echo "NOTE: This command onboards the parachain; Block production will start in a few minutes"
 
   genesis=$(./target/release/centrifuge-chain export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
-  # Extract the runtime id from $parachain.
-  # For example, 'development-local' becomes 'development', 'altair-local' becomes 'altair', etc.
-  runtime_id=$(echo $parachain | cut -d'-' -f 1)
+  wasm_location="${PWD}/${parachain}-${para_id}.wasm"
+  ./target/release/centrifuge-chain export-genesis-wasm --chain="${parachain}" > $wasm_location
 
   echo "Parachain Id:" $para_id
   echo "Genesis state:" $genesis
-  echo "WASM path:" "./target/release/wbuild/${runtime_id}-runtime/${runtime_id}_runtime.compact.wasm"
+  echo "WASM path:" "${parachain}-${para_id}.wasm"
+
+  cd scripts/js/onboard
+  yarn && yarn execute "//Alice" ${para_id} "${genesis}" $wasm_location
   ;;
 
 benchmark)
   ./scripts/run_benchmark.sh "${parachain}" "$2" "$3"
+  ;;
 esac
