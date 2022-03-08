@@ -77,6 +77,8 @@ pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
 
+mod weights;
+
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
@@ -748,7 +750,7 @@ impl pallet_fees::Config for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {
@@ -757,7 +759,7 @@ impl pallet_anchors::Config for Runtime {
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 }
@@ -843,7 +845,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxVestings = MigrationMaxVestings;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
-	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 	type FinalizedFilter = Everything;
 	type InactiveFilter = Everything;
 	type OngoingFilter = BaseFilter;
@@ -884,7 +886,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -899,7 +901,7 @@ parameter_types! {
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
@@ -976,7 +978,7 @@ impl pallet_permissions::Config for Runtime {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_permissions::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
 }
 
 pub struct Editors;
@@ -1065,7 +1067,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type PreFungibleTransfer = common_traits::Always;
 	type NativeFungible = Balances;
 	type NativeToken = NativeToken;
-	type WeightInfo = pallet_restricted_tokens::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
 }
 
 parameter_type_with_key! {
@@ -1694,9 +1696,6 @@ impl_runtime_apis! {
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
-
-			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1719,9 +1718,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
-			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
-			add_benchmark!(params, batches, pallet_pools, Pools);
-			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
@@ -1745,9 +1741,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
-			list_benchmark!(list, extra, pallet_pools, Pools);
-			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);

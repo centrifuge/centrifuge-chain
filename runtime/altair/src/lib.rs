@@ -48,6 +48,8 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
 pub mod constants;
+mod weights;
+
 /// Constant values used within the runtime.
 use constants::currency::*;
 
@@ -713,7 +715,7 @@ impl pallet_fees::Config for Runtime {
 	type Event = Event;
 	/// A straight majority of the council can change the fees.
 	type FeeChangeOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_fees::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_fees::SubstrateWeight<Self>;
 }
 
 impl pallet_anchors::Config for Runtime {
@@ -722,7 +724,7 @@ impl pallet_anchors::Config for Runtime {
 
 impl pallet_collator_allowlist::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = pallet_collator_allowlist::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collator_allowlist::SubstrateWeight<Self>;
 	type ValidatorId = AccountId;
 	type ValidatorRegistration = Session;
 }
@@ -740,7 +742,7 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxVestings = MigrationMaxVestings;
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
-	type WeightInfo = pallet_migration_manager::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 	type FinalizedFilter = Everything;
 	type InactiveFilter = Everything;
 	type OngoingFilter = Everything;
@@ -756,7 +758,7 @@ impl pallet_crowdloan_reward::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanRewardPalletId;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type WeightInfo = pallet_crowdloan_reward::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_reward::SubstrateWeight<Self>;
 }
 
 // Parameterize crowdloan claim pallet
@@ -771,7 +773,7 @@ parameter_types! {
 impl pallet_crowdloan_claim::Config for Runtime {
 	type Event = Event;
 	type PalletId = CrowdloanClaimPalletId;
-	type WeightInfo = pallet_crowdloan_claim::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_crowdloan_claim::SubstrateWeight<Self>;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
@@ -1046,7 +1048,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
-			add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
@@ -1066,7 +1067,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 
 			let storage_info = AllPalletsWithSystem::storage_info();

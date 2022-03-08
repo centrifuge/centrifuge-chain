@@ -148,7 +148,7 @@ runtime-common = { path = "runtime/common" }
 node-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 
 # benchmarking
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.17" }
 
 [build-dependencies]
 vergen = "3.0.4"
@@ -169,6 +169,7 @@ std = [
 	"sp-consensus-babe/std"
 ]
 runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
 	"altair-runtime/runtime-benchmarks",
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
