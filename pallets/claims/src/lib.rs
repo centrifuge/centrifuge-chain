@@ -327,7 +327,7 @@ pub mod pallet {
 		///
 		/// The extrinsic is validated by the custom \[`validate_unsigned`\] function below.
 		/// An unsigned transaction is free of fees. We need such an unsigned transaction
-		/// as some contributors may not have enought parachain tokens for claiming their
+		/// as some contributors may not have enough parachain tokens for claiming their
 		/// reward payout. The [`validate_unsigned`] function first checks the validity of
 		/// this transaction, so that to prevent potential frauds or attacks.
 		///
@@ -509,7 +509,7 @@ impl<T: Config> Pallet<T> {
 
 	// Verifies lexicographically-sorted proofs.
 	//
-	// This function essentially proceeds as follows, in order to verifiy proofs:
+	// This function essentially proceeds as follows, in order to verify proofs:
 	// 1. A leaf hash is first built, namely `Hash(account_id + amount)`, with the account and the amount
 	// 2. The leaf is then passed to iterator as the first accumulative value to the 'sorted_hash_of' function
 	// 3. Then 'sorted_hash_of' function hashes both 'hash1' and 'hash2' together, and the order depends on
