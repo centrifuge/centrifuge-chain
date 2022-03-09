@@ -52,7 +52,8 @@ benchmarks! {
 		let n in 1..T::MaxTranches::get();
 		let caller: T::AccountId = account("admin", 0, 0);
 		let tranches = build_bench_tranches::<T>(n);
-	}: create(RawOrigin::Signed(caller), POOL, tranches.clone(), CurrencyId::Usd, MAX_RESERVE)
+		let origin = RawOrigin::Signed(caller.clone());
+	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::Usd, MAX_RESERVE)
 	verify {
 		let pool = get_pool::<T>();
 		assert_tranches_match::<T>(&pool.tranches, &tranches);
@@ -388,7 +389,8 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 ) -> DispatchResult {
 	let tranches = build_bench_tranches::<T>(num_tranches);
 	Pallet::<T>::create(
-		RawOrigin::Signed(caller).into(),
+		RawOrigin::Signed(caller.clone()).into(),
+		caller,
 		POOL,
 		tranches,
 		CurrencyId::Usd,

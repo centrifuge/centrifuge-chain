@@ -227,6 +227,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
@@ -238,7 +239,6 @@ runtime-benchmarks = [
     "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
