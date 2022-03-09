@@ -98,6 +98,8 @@ parameter_types! {
 	pub const MaxTranches: TrancheId = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
+
+	pub const MaxRoles: u32 = u32::MAX;
 }
 impl pallet_permissions::Config for Test {
 	type Event = Event;
@@ -107,6 +109,7 @@ impl pallet_permissions::Config for Test {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
+	type MaxRolesPerLocation = MaxRoles;
 	type WeightInfo = ();
 }
 

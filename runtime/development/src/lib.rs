@@ -968,6 +968,9 @@ parameter_types! {
 	pub const MaxTranches: TrancheId = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
+
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxRolesPerPool: u32 = 1_000;
 }
 
 impl pallet_permissions::Config for Runtime {
@@ -978,6 +981,7 @@ impl pallet_permissions::Config for Runtime {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxRolesPerLocation = MaxRolesPerPool;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
 }
 

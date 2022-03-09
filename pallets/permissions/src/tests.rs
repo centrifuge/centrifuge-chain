@@ -377,3 +377,31 @@ fn trait_has_permission_permission_works() {
 			));
 		})
 }
+
+#[test]
+fn add_too_many_permissions_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			for who in 0..MaxRoles::get() {
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+					Origin::signed(1),
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
+					who.into(),
+					Location::PalletA,
+					Role::Organisation(OrganisationRole::SeniorExeutive)
+				));
+			}
+			let who = MaxRoles::get() + 1;
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::add_permission(
+					Origin::signed(1),
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
+					who.into(),
+					Location::PalletA,
+					Role::Organisation(OrganisationRole::SeniorExeutive)
+				),
+				PermissionsError::<MockRuntime>::TooManyRoles
+			);
+		})
+}

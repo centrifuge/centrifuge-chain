@@ -267,6 +267,7 @@ impl frame_system::Config for MockRuntime {
 
 parameter_types! {
 	pub const One: u64 = 1;
+	pub const MaxRoles: u32 = 10;
 }
 
 impl pallet_permissions::Config for MockRuntime {
@@ -276,6 +277,7 @@ impl pallet_permissions::Config for MockRuntime {
 	type Storage = Storage;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Editors;
+	type MaxRolesPerLocation = MaxRoles;
 	type WeightInfo = ();
 }
 
