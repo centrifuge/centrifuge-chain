@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use frame_support::assert_ok;
-use xcm_simulator::TestExt;
+use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 
@@ -27,7 +27,6 @@ use development_runtime::{
 };
 use runtime_common::Balance;
 
-#[ignore]
 #[test]
 fn transfer_native_to_sibling() {
 	TestNet::reset();
@@ -85,7 +84,6 @@ fn transfer_native_to_sibling() {
 	});
 }
 
-#[ignore]
 #[test]
 fn transfer_usd_to_sibling() {
 	TestNet::reset();
@@ -161,7 +159,6 @@ fn transfer_usd_to_sibling() {
 	});
 }
 
-#[ignore]
 #[test]
 fn transfer_usd_to_development() {
 	TestNet::reset();

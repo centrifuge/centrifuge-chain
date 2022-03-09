@@ -25,7 +25,6 @@ polkadot-primitives = {git = "https://github.com/paritytech/polkadot", branch = 
 polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
-xcm-simulator = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.17" }
 
 # Cumulus
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.17" }
@@ -38,9 +37,12 @@ orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-modu
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "master" }
 
 # Misc
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", branch="master" }
+xcm-emulator = { git = "https://github.com/NunoAlexandre/xcm-simulator", rev="bb08aefda9cecd39814fba7abae7b7b1c69019f5" }
 
 # Local
 runtime-common = { path = "../common" }
 development-runtime = { path = "../development" }
 common-traits = { path = "../../libs/common-traits" }
+
+[dev-dependencies]
+sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
