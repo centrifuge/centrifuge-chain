@@ -57,7 +57,9 @@ pub struct PoolDetails<
 	Balance: FixedPointOperand,
 {
 	/// Who paid the deposit for this pool (immutable)
-	pub depositor: AccountId,
+    pub depositor: AccountId,
+    /// Amount that was deposited to create this pool
+	pub deposit: Balance,
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
 	/// List of tranches, ordered junior to senior.
@@ -522,7 +524,7 @@ pub mod pallet {
 			// parameters are vetted somehow and rely on the
 			// admin as our depositor.
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
-			Self::take_deposit(&depositor)?;
+			let deposit = Self::take_deposit(&depositor)?;
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -541,6 +543,7 @@ pub mod pallet {
 				pool_id,
 				PoolDetails {
 					depositor,
+					deposit,
 					currency,
 					tranches,
 					epoch: EpochState {
@@ -1877,12 +1880,13 @@ pub mod pallet {
 			})
 		}
 
-		fn take_deposit(who: &T::AccountId) -> DispatchResult {
+		fn take_deposit(who: &T::AccountId) -> Result<T::Balance, DispatchError> {
 			let deposit = T::PoolDeposit::get();
 			Deposit::<T>::mutate(who, |total_deposit| {
 				*total_deposit += deposit;
 			});
-			T::Currency::reserve(who, deposit)
+			T::Currency::reserve(who, deposit)?;
+			Ok(deposit)
 		}
 	}
 }
