@@ -155,7 +155,7 @@ benchmarks! {
 		assert_eq!(T::Tokens::balance(currency, &caller), expected);
 	}
 
-	close_epoch_no_investments {
+	close_epoch_no_orders{
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
 		let admin: T::AccountId = account("admin", 0, 0);

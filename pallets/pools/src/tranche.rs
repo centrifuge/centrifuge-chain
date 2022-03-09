@@ -452,19 +452,19 @@ where
 					.ok_or(ArithmeticError::Overflow.into())
 			} else {
 				tranche.accrue(now)?;
-				let tranche_value = tranche.balance()?;
+				let tranche_balance = tranche.balance()?;
 
 				// Indicates that a tranche has been wiped out and/or a tranche has
 				// lost value due to defaults.
-				let tranche_value = if tranche_value > remaining_assets {
+				let tranche_value = if tranche_balance > remaining_assets {
 					let left_over_assets = remaining_assets;
 					remaining_assets = Zero::zero();
 					left_over_assets
 				} else {
 					remaining_assets = remaining_assets
-						.checked_sub(&tranche_value)
+						.checked_sub(&tranche_balance)
 						.expect("Tranche value smaller equal remaining assets. qed.");
-					tranche_value
+					tranche_balance
 				};
 				BalanceRatio::checked_from_rational(tranche_value, total_issuance)
 					.ok_or(ArithmeticError::Overflow.into())
@@ -575,14 +575,14 @@ where
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	pub fn oustanding_redemptions(&self) -> Vec<Balance> {
+	pub fn outstanding_redemptions(&self) -> Vec<Balance> {
 		self.tranches
 			.iter()
 			.map(|tranche| tranche.outstanding_redeem_orders)
 			.collect()
 	}
 
-	pub fn acc_oustanding_redemptions(&self) -> Result<Balance, DispatchError> {
+	pub fn acc_outstanding_redemptions(&self) -> Result<Balance, DispatchError> {
 		self.tranches
 			.iter()
 			.fold(Some(Balance::zero()), |sum, tranche| {
@@ -631,7 +631,7 @@ where
 			.collect()
 	}
 
-	pub fn senorities(&self) -> Vec<Seniority> {
+	pub fn seniorities(&self) -> Vec<Seniority> {
 		self.tranches
 			.iter()
 			.map(|tranche| tranche.seniority)

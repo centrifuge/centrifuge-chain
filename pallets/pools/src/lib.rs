@@ -83,7 +83,7 @@ where
 		Ok(())
 	}
 
-	fn start_epoch(&mut self) -> DispatchResult {
+	fn last_epoch_closed(&mut self) -> DispatchResult {
 		self.reserve.available_reserve = self.reserve.total_reserve;
 		self.last_epoch_executed += One::one();
 		Ok(())
@@ -860,7 +860,7 @@ pub mod pallet {
 		/// submission period, partial executions can be submitted
 		/// to be scored, and the best-scoring solution will
 		/// eventually be executed. See `submit_solution`.
-		#[pallet::weight(T::WeightInfo::close_epoch_no_investments(T::MaxTranches::get())
+		#[pallet::weight(T::WeightInfo::close_epoch_no_orders(T::MaxTranches::get())
                              .max(T::WeightInfo::close_epoch_no_execution(T::MaxTranches::get()))
                              .max(T::WeightInfo::close_epoch_execute(T::MaxTranches::get())))]
 		#[transactional]
@@ -910,7 +910,7 @@ pub mod pallet {
 				);
 
 				if pool.tranches.acc_outstanding_investments()?.is_zero()
-					&& pool.tranches.acc_oustanding_redemptions()?.is_zero()
+					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
 				{
 					pool.tranches.combine_with_mut_non_residual_top(
 						epoch_tranche_prices.iter().enumerate(),
@@ -934,11 +934,11 @@ pub mod pallet {
 						},
 					)?;
 
-					pool.start_epoch()?;
+					pool.last_epoch_closed()?;
 
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 
-					return Ok(Some(T::WeightInfo::close_epoch_no_investments(
+					return Ok(Some(T::WeightInfo::close_epoch_no_orders(
 						pool.tranches
 							.num_tranches()
 							.try_into()
@@ -1495,7 +1495,7 @@ pub mod pallet {
 			}
 
 			// In case we are not setting up a new pool (i.e. a tranche setup already exists) we check
-			// wether the changes are valid with respect to the existing setup.
+			// whether the changes are valid with respect to the existing setup.
 			if let Some(old_tranches) = old_tranches {
 				// For now, adding or removing tranches is not allowed, unless it's on pool creation.
 				// TODO: allow adding tranches as most senior, and removing most senior and empty (debt+reserve=0) tranches
@@ -1541,7 +1541,7 @@ pub mod pallet {
 				.checked_sub(&acc_redemptions)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			pool.start_epoch()?;
+			pool.last_epoch_closed()?;
 
 			let last_epoch_executed = pool.last_epoch_executed;
 			// Update tranche orders and add epoch solution state
