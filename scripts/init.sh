@@ -73,7 +73,7 @@ onboard-parachain)
   echo "WASM path:" "${parachain}-${para_id}.wasm"
 
   cd scripts/js/onboard
-  yarn && yarn execute "//Alice" ${para_id} "${genesis}" $wasm_location
+  yarn && yarn execute "ws://0.0.0.0:9944" "//Alice" ${para_id} "${genesis}" $wasm_location
   ;;
 
 benchmark)

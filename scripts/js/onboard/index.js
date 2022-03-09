@@ -3,18 +3,19 @@ const fs = require('fs')
 
 const run = async () => {
   try {
-    const wsProvider = new WsProvider('ws://0.0.0.0:9944');
+    console.log("Parsing Args ...")
+    // 0 & 1 are command context
+    const endpoint = process.argv[2];
+    const seed = process.argv[3];
+    const id = process.argv[4];
+    const header = process.argv[5];
+    const wasmFile = process.argv[6]
+
+    const wsProvider = new WsProvider(endpoint);
 
     const api = await ApiPromise.create({
       provider: wsProvider,
     });
-
-    console.log("Parsing Args ...")
-    // 0 & 1 are command context
-    const seed = process.argv[2];
-    const id = process.argv[3];
-    const header = process.argv[4];
-    const wasmFile = process.argv[5]
 
     const keyring = new Keyring({ type: "sr25519" });
     const alice = keyring.addFromUri(seed);
