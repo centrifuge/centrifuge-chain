@@ -233,7 +233,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	/// The means of storing the balances of an account.
 	type AccountStore = System;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
@@ -1049,6 +1049,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
+			add_benchmark!(params, batches, pallet_balances, Balances);
+
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1068,6 +1070,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
+			list_benchmark!(list, extra, pallet_balances, Balances);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

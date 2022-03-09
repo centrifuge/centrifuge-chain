@@ -233,12 +233,11 @@ runtime-benchmarks = [
     "pallet-collator-allowlist/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
-    "pallet-loans/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-permissions/runtime-benchmarks",
-    "pallet-pools/runtime-benchmarks",
     "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
+    "chainbridge/runtime-benchmarks"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
