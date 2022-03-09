@@ -157,6 +157,8 @@ parameter_types! {
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
+
+	pub const ZeroDeposit: Balance = 0;
 }
 
 impl pallet_pools::Config for MockRuntime {
@@ -169,6 +171,7 @@ impl pallet_pools::Config for MockRuntime {
 	type TrancheId = [u8; 16];
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
+	type Currency = Balances;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
 	type NAV = Loans;
@@ -185,6 +188,7 @@ impl pallet_pools::Config for MockRuntime {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
+	type PoolDeposit = ZeroDeposit;
 	type WeightInfo = ();
 	type TrancheWeight = runtime_common::TrancheWeight;
 }
