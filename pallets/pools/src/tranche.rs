@@ -595,6 +595,14 @@ where
 		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
 		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
 
+		// The desired order priority is:
+		// - Senior redemptions
+		// - Junior redemptions
+		// - Junior investments
+		// - Senior investments
+		// We ensure this by having a higher base weight for redemptions,
+		// increasing the redemption weights by seniority,
+		// and decreasing the investment weight by seniority.
 		self.tranches
 			.iter()
 			.map(|tranche| {
@@ -1025,6 +1033,14 @@ where
 		let n_tranches: u32 = self.tranches.len().try_into().expect("MaxTranches is u32");
 		let redeem_starts = 10u128.checked_pow(n_tranches).unwrap_or(u128::MAX);
 
+		// The desired order priority is:
+		// - Senior redemptions
+		// - Junior redemptions
+		// - Junior investments
+		// - Senior investments
+		// We ensure this by having a higher base weight for redemptions,
+		// increasing the redemption weights by seniority,
+		// and decreasing the investment weight by seniority.
 		self.tranches
 			.iter()
 			.map(|tranche| {
