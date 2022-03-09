@@ -250,7 +250,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	/// The means of storing the balances of an account.
 	type AccountStore = System;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
@@ -912,6 +912,7 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_balances, Balances);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -927,6 +928,7 @@ impl_runtime_apis! {
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_balances, Balances);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
