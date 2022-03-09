@@ -9,6 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+pub mod pallet_balances;
 pub mod pallet_collator_allowlist;
 pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;

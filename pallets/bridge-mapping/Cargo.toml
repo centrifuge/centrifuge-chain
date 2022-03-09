@@ -40,3 +40,4 @@ std = [
     'sp-runtime/std',
     'pallet-nft/std'
 ]
+
