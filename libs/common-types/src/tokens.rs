@@ -56,19 +56,21 @@ impl TokenMetadata for CurrencyId {
 #[macro_export]
 macro_rules! impl_tranche_token {
 	() => {
-		pub struct TrancheToken<T>(core::marker::PhantomData<T>);
+		pub struct TrancheToken<Config>(core::marker::PhantomData<(Config)>);
 
-		impl<T> pallet_pools::TrancheToken<T> for TrancheToken<T>
+		impl<Config>
+			common_traits::TrancheToken<Config::PoolId, Config::TrancheId, Config::CurrencyId>
+			for TrancheToken<Config>
 		where
-			T: Config,
-			<T as Config>::PoolId: Into<u64>,
-			<T as Config>::TrancheId: Into<u8>,
-			<T as Config>::CurrencyId: From<CurrencyId>,
+			Config: pallet_pools::Config,
+			Config::PoolId: Into<u64>,
+			Config::TrancheId: Into<u8>,
+			Config::CurrencyId: From<CurrencyId>,
 		{
 			fn tranche_token(
-				pool: <T as Config>::PoolId,
-				tranche: <T as Config>::TrancheId,
-			) -> <T as Config>::CurrencyId {
+				pool: Config::PoolId,
+				tranche: Config::TrancheId,
+			) -> Config::CurrencyId {
 				CurrencyId::Tranche(pool.into(), tranche.into()).into()
 			}
 		}

@@ -11,6 +11,9 @@
 // GNU General Public License for more details.
 
 use super::*;
+use frame_support::sp_runtime::traits::Convert;
+use sp_arithmetic::traits::Unsigned;
+use sp_runtime::ArithmeticError;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum PoolState {
@@ -91,6 +94,180 @@ pub enum UnhealthyState {
 pub enum EpochSolution<Balance> {
 	Healthy(HealthySolution<Balance>),
 	Unhealthy(UnhealthySolution<Balance>),
+}
+
+impl<Balance> EpochSolution<Balance> {
+	/// Calculates the score for a given solution. Should only be called inside the
+	/// `fn score_solution()` from the runtime, as there are no checks if solution
+	/// length matches tranche length.
+	///
+	/// Scores are calculated with the following function
+	///
+	/// Notation:
+	///  * X(a) -> A vector of a's, where each element is associated with a tranche
+	///  * ||X(a)||1 -> 1-Norm of a vector, i.e. the absolute sum over all elements
+	///
+	///  X = X(%-invest-fulfillments) * X(investments) * X(invest_tranche_weights)
+	///            + X(%-redeem-fulfillments) * X(redemptions) * X(redeem_tranche_weights)
+	///
+	///  score = ||X||1
+	///
+	/// Returns error upon overflow of `Balances`.
+	pub fn calculate_score<BalanceRatio, Weight>(
+		solution: &[TrancheSolution],
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	) -> Result<Balance, DispatchError>
+	where
+		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
+		Weight: Copy + From<u128> + Convert<Weight, Balance>,
+		BalanceRatio: Copy,
+	{
+		let (invest_score, redeem_score) = solution
+			.iter()
+			.zip(tranches.residual_top_slice())
+			.zip(tranches.calculate_weights())
+			.fold(
+				(Some(Balance::zero()), Some(Balance::zero())),
+				|(invest_score, redeem_score),
+				 ((solution, tranches), (invest_weight, redeem_weight))| {
+					(
+						invest_score.and_then(|score| {
+							solution
+								.invest_fulfillment
+								.mul_floor(tranches.invest)
+								.checked_mul(&Weight::convert(invest_weight))
+								.and_then(|score_tranche| score.checked_add(&score_tranche))
+						}),
+						redeem_score.and_then(|score| {
+							solution
+								.redeem_fulfillment
+								.mul_floor(tranches.redeem)
+								.checked_mul(&Weight::convert(redeem_weight))
+								.and_then(|score_tranche| score.checked_add(&score_tranche))
+						}),
+					)
+				},
+			);
+
+		invest_score
+			.zip(redeem_score)
+			.and_then(|(invest_score, redeem_score)| invest_score.checked_add(&redeem_score))
+			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	/// Scores a solution and returns a healthy solution as a result.
+	pub fn score_solution_healthy<BalanceRatio, Weight>(
+		solution: &[TrancheSolution],
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	) -> Result<EpochSolution<Balance>, DispatchError>
+	where
+		Balance: Zero + Copy + BaseArithmetic + Unsigned + From<u64>,
+		Weight: Copy + From<u128> + Convert<Weight, Balance>,
+		BalanceRatio: Copy,
+	{
+		let score = Self::calculate_score(solution, tranches)?;
+
+		Ok(EpochSolution::Healthy(HealthySolution {
+			solution: solution.to_vec(),
+			score,
+		}))
+	}
+
+	/// Scores an solution, that would bring a pool into an unhealthy state.
+	///
+	pub fn score_solution_unhealthy<BalanceRatio, Weight>(
+		solution: &[TrancheSolution],
+		tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+		reserve: Balance,
+		max_reserve: Balance,
+		state: &Vec<UnhealthyState>,
+	) -> Result<EpochSolution<Balance>, DispatchError>
+	where
+		Weight: Copy + From<u128>,
+		BalanceRatio: Copy + FixedPointNumber,
+		Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+	{
+		let risk_buffer_improvement_scores = if state
+			.contains(&UnhealthyState::MinRiskBufferViolated)
+		{
+			let risk_buffers = calculate_risk_buffers(
+				&tranches.supplies_with_fulfillment(solution)?,
+				&tranches.prices(),
+			)?;
+
+			// Score: 1 / (min risk buffer - risk buffer)
+			// A higher score means the distance to the min risk buffer is smaller
+			let non_junior_tranches =
+				tranches
+					.non_residual_tranches()
+					.ok_or(DispatchError::Other(
+						"Corrupted PoolState. Getting NonResidualTranches infailable.",
+					))?;
+			Some(
+				non_junior_tranches
+					.iter()
+					.zip(risk_buffers)
+					.map(|(tranche, risk_buffer)| {
+						tranche.min_risk_buffer.checked_sub(&risk_buffer).and_then(
+							|div: Perquintill| Some(div.saturating_reciprocal_mul(Balance::one())),
+						)
+					})
+					.collect::<Option<Vec<_>>>()
+					.ok_or(ArithmeticError::Overflow)?,
+			)
+		} else {
+			None
+		};
+
+		let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
+			let (acc_invest, acc_redeem) = solution.iter().zip(tranches.residual_top_slice()).fold(
+				(Some(Balance::zero()), Some(Balance::zero())),
+				|(acc_invest, acc_redeem), (solution, tranches)| {
+					(
+						acc_invest.and_then(|acc| {
+							solution
+								.invest_fulfillment
+								.mul_floor(tranches.invest)
+								.checked_add(&acc)
+						}),
+						acc_redeem.and_then(|acc| {
+							solution
+								.redeem_fulfillment
+								.mul_floor(tranches.redeem)
+								.checked_add(&acc)
+						}),
+					)
+				},
+			);
+
+			let acc_invest = acc_invest.ok_or(ArithmeticError::Overflow)?;
+			let acc_redeem = acc_redeem.ok_or(ArithmeticError::Overflow)?;
+
+			let new_reserve = reserve
+				.checked_add(&acc_invest)
+				.and_then(|value| value.checked_sub(&acc_redeem))
+				.and_then(|value| value.checked_sub(&max_reserve))
+				.ok_or(ArithmeticError::Overflow)?;
+
+			// Score: 1 / (new reserve - max reserve)
+			// A higher score means the distance to the max reserve is smaller
+			Some(
+				new_reserve
+					.checked_sub(&max_reserve)
+					.and_then(|reserve_diff| BalanceRatio::one().checked_div_int(reserve_diff))
+					.ok_or(ArithmeticError::Overflow)?,
+			)
+		} else {
+			None
+		};
+
+		Ok(EpochSolution::Unhealthy(UnhealthySolution {
+			state: state.to_vec(),
+			solution: solution.to_vec(),
+			risk_buffer_improvement_scores,
+			reserve_improvement_score,
+		}))
+	}
 }
 
 impl<Balance> EpochSolution<Balance>
@@ -214,6 +391,44 @@ where
 pub struct TrancheSolution {
 	pub invest_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,
+}
+
+pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(
+	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
+	solution: &[TrancheSolution],
+) -> Result<(Balance, Balance, Vec<Perquintill>), DispatchError>
+where
+	BalanceRatio: Copy + FixedPointNumber,
+	Balance: Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
+	Weight: Copy + From<u128>,
+{
+	let acc_invest: Balance = epoch_tranches
+		.residual_top_slice()
+		.iter()
+		.zip(solution)
+		.fold(Some(Balance::zero()), |sum, (tranche, solution)| {
+			sum.and_then(|sum| {
+				sum.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
+			})
+		})
+		.ok_or(ArithmeticError::Overflow)?;
+
+	let acc_redeem: Balance = epoch_tranches
+		.residual_top_slice()
+		.iter()
+		.zip(solution)
+		.fold(Some(Balance::zero()), |sum, (tranche, solution)| {
+			sum.and_then(|sum| {
+				sum.checked_add(&solution.redeem_fulfillment.mul_floor(tranche.redeem))
+			})
+		})
+		.ok_or(ArithmeticError::Overflow)?;
+
+	let new_tranche_supplies = epoch_tranches.supplies_with_fulfillment(solution)?;
+	let tranche_prices = epoch_tranches.prices();
+	let risk_buffers = calculate_risk_buffers(&new_tranche_supplies, &tranche_prices)?;
+
+	Ok((acc_invest, acc_redeem, risk_buffers))
 }
 
 #[cfg(test)]

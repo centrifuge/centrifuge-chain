@@ -160,7 +160,7 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-type Balance = u128;
+pub type Balance = u128;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
@@ -357,12 +357,12 @@ pub fn next_block_after(seconds: u64) {
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
-	Pools::do_borrow(borrower, pool_id, amount)
+	Pools::do_withdraw(borrower, pool_id, amount)
 }
 
 pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
-	Pools::do_payback(borrower, pool_id, amount)
+	Pools::do_deposit(borrower, pool_id, amount)
 }
 
 pub fn test_nav_up(pool_id: u64, amount: Balance) {
@@ -398,10 +398,10 @@ pub fn invest_close_and_collect(
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.last_epoch_closed;
+		.last_epoch_executed;
 
 	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, tranche_id, epoch as u32).map_err(|e| e.error)?;
+		Pools::collect(who, pool_id, tranche_id, epoch).map_err(|e| e.error)?;
 	}
 
 	Ok(())
