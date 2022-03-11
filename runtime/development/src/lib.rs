@@ -38,8 +38,8 @@ use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
+use sp_runtime::traits::{AccountIdConversion, Convert, Zero};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
-use sp_runtime::traits::{Convert, Zero};
 use sp_runtime::transaction_validity::{
 	TransactionPriority, TransactionSource, TransactionValidity,
 };
@@ -60,7 +60,8 @@ use xcm_builder::{
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentAsSuperuser, ParentIsPreset,
 	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue,
+	TakeWeightCredit,
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
@@ -76,6 +77,7 @@ use pallet_restricted_tokens::{
 pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+use runtime_common::xcm_fees::{ksm_per_second, native_per_second};
 
 mod weights;
 
@@ -1057,7 +1059,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Usd | CurrencyId::Native => true,
+			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
 					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
@@ -1104,6 +1106,8 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub ORMLMaxLocks: u32 = 2;
+
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -1113,7 +1117,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = ORMLMaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
@@ -1325,25 +1329,55 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<NativePerSecond, ()>,
-	FixedRateOfFungible<UsdPerSecond2000, ()>,
-	FixedRateOfFungible<UsdPerSecond3000, ()>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<NativePerSecond, ToTreasury>,
+	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<UsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<UsdPerSecondSibling, ToTreasury>,
 );
 
+pub struct ToTreasury;
+impl TakeRevenue for ToTreasury {
+	fn take_revenue(revenue: MultiAsset) {
+		if let MultiAsset {
+			id: Concrete(_location),
+			fun: Fungible(_amount),
+		} = revenue
+		{
+			// TODO(nuno): implement this
+		}
+	}
+}
+
 parameter_types! {
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
+
 	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(2000), GeneralKey(CurrencyId::Native.encode())),
+			X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
-		10_000,
+		native_per_second(),
 	);
 
-	pub UsdPerSecond2000: (AssetId, u128) = (
+	pub KUsdPerSecond: (AssetId, u128) = (
+		KUSDAssetId::get(),
+		// KUSD:KSM = 400:1
+		ksm_per_second() * 400
+	);
+	pub KUSDAssetId: AssetId = MultiLocation::new(
+		1,
+		X2(
+			Parachain(parachains::karura::ID),
+			GeneralKey(parachains::karura::KUSD_KEY.to_vec())
+		)
+	).into();
+
+	// TODO(nuno): consider removing this placeholder 'usd' token
+	pub UsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
+			X2(Parachain(2088), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
 		//TODO(nuno): we need to fine tune this value later on
 		200_000
@@ -1351,12 +1385,11 @@ parameter_types! {
 
 	/// We support this Trader for testing purposes when we spawn a sibling clone development
 	/// parachain with id 3000.
-	pub UsdPerSecond3000: (AssetId, u128) = (
+	pub UsdPerSecondSibling: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(3000), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
 		200_000
 	);
 }
@@ -1400,7 +1433,18 @@ pub struct CurrencyIdConvert;
 /// handle it on their side.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		Some(native_currency_location(id))
+		let x = match id {
+			CurrencyId::KSM => MultiLocation::parent(),
+			CurrencyId::KUSD => MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::karura::ID),
+					GeneralKey(parachains::karura::KUSD_KEY.into()),
+				),
+			),
+			_ => native_currency_location(id),
+		};
+		Some(x)
 	}
 }
 
@@ -1409,15 +1453,30 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 /// correctly convert their `MultiLocation` representation into our internal `CurrencyId` type.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
+		if location == MultiLocation::parent() {
+			return Ok(CurrencyId::KSM);
+		}
+
 		match location.clone() {
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} if para_id == 2000 || para_id == 3000 => match &key[..] {
-				[0] => Ok(CurrencyId::Native),
-				[1] => Ok(CurrencyId::Usd),
-				_ => Err(location.clone()),
-			},
+			} => {
+				match para_id {
+					// Local testing para ids
+					2088 | 3000 => match key[..] {
+						[0] => Ok(CurrencyId::Native),
+						[1] => Ok(CurrencyId::Usd),
+						_ => Err(location.clone()),
+					},
+
+					parachains::karura::ID => match &key[..] {
+						parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
+						_ => Err(location.clone()),
+					},
+					_ => Err(location.clone()),
+				}
+			}
 			_ => Err(location.clone()),
 		}
 	}
