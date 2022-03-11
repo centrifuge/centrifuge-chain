@@ -405,3 +405,62 @@ fn add_too_many_permissions_fails() {
 			);
 		})
 }
+
+#[test]
+fn permission_counting() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
+					.is_none()
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(1)
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(
+				Location::PalletA,
+				3,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(2)
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::rm_permission(
+				Location::PalletA,
+				3,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(1)
+			);
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::rm_permission(
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
+					.is_none(),
+			);
+		})
+}
