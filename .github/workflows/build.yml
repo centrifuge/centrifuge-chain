@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain]
+    branches: [nuno/xcm-ksud]
   pull_request:
 name: Build
 jobs:

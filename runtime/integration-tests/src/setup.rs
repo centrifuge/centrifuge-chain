@@ -8,8 +8,9 @@ pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
 /// Parachain Ids
-pub const PARA_ID_DEVELOPMENT: u32 = 2000;
+pub const PARA_ID_DEVELOPMENT: u32 = 2088;
 pub const PARA_ID_SIBLING: u32 = 3000;
+pub const PARA_ID_KARURA: u32 = 2000;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
@@ -89,8 +90,16 @@ pub fn native_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::Native)
 }
 
+pub fn kusd_amount(amount: Balance) -> Balance {
+	amount * dollar(CurrencyId::KUSD)
+}
+
 pub fn usd_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::Usd)
+}
+
+pub fn ksm_amount(amount: Balance) -> Balance {
+	amount * dollar(CurrencyId::KSM)
 }
 
 pub fn dollar(currency_id: CurrencyId) -> Balance {
@@ -99,6 +108,10 @@ pub fn dollar(currency_id: CurrencyId) -> Balance {
 
 pub fn sibling_account() -> AccountId {
 	parachain_account(PARA_ID_SIBLING.into())
+}
+
+pub fn karura_account() -> AccountId {
+	parachain_account(PARA_ID_KARURA.into())
 }
 
 pub fn development_account() -> AccountId {
