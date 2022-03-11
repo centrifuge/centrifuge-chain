@@ -41,25 +41,12 @@ use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<
-	AccountId,
-	CurrencyId,
-	EpochId,
-	Balance,
-	Rate,
-	MetaSize,
-	Weight,
-	TrancheId,
-	PoolId,
-> where
+pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 {
-	/// Who paid the deposit for this pool (immutable)
-    pub depositor: AccountId,
-    /// Amount that was deposited to create this pool
-	pub deposit: Balance,
 	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
 	/// List of tranches, ordered junior to senior.
@@ -104,8 +91,8 @@ pub struct PoolParameters {
 	pub max_nav_age: Moment,
 }
 
-impl<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
-	PoolDetails<AccountId, CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+	PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
 where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -180,9 +167,15 @@ pub struct OutstandingCollections<Balance> {
 	pub remaining_redeem_token: Balance,
 }
 
+/// Information about the deposit that has been taken to create a pool
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct PoolDeposit<AccountId, Balance> {
+	pub depositor: AccountId,
+	pub deposit: Balance,
+}
+
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
-	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 	<T as Config>::EpochId,
 	<T as Config>::Balance,
@@ -199,6 +192,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
 >;
+type PoolDepositOf<T> = PoolDeposit<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -377,9 +371,13 @@ pub mod pallet {
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfoOf<T>>;
 
 	#[pallet::storage]
-	#[pallet::getter(fn deposits)]
-	pub type Deposit<T: Config> =
+	#[pallet::getter(fn account_deposits)]
+	pub type AccountDeposit<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn pool_deposits)]
+	pub type PoolDeposit<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDepositOf<T>>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
@@ -524,7 +522,7 @@ pub mod pallet {
 			// parameters are vetted somehow and rely on the
 			// admin as our depositor.
 			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
-			let deposit = Self::take_deposit(&depositor)?;
+			Self::take_deposit(depositor, pool_id)?;
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -542,8 +540,6 @@ pub mod pallet {
 			Pool::<T>::insert(
 				pool_id,
 				PoolDetails {
-					depositor,
-					deposit,
 					currency,
 					tranches,
 					epoch: EpochState {
@@ -1880,13 +1876,14 @@ pub mod pallet {
 			})
 		}
 
-		fn take_deposit(who: &T::AccountId) -> Result<T::Balance, DispatchError> {
+		fn take_deposit(depositor: T::AccountId, pool: T::PoolId) -> DispatchResult {
 			let deposit = T::PoolDeposit::get();
-			Deposit::<T>::mutate(who, |total_deposit| {
+			T::Currency::reserve(&depositor, deposit)?;
+			AccountDeposit::<T>::mutate(&depositor, |total_deposit| {
 				*total_deposit += deposit;
 			});
-			T::Currency::reserve(who, deposit)?;
-			Ok(deposit)
+			PoolDeposit::<T>::insert(pool, PoolDepositOf::<T> { deposit, depositor });
+			Ok(())
 		}
 	}
 }

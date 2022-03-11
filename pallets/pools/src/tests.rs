@@ -42,8 +42,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		);
 
 		let pool = &PoolDetails {
-			depositor: Default::default(),
-			deposit: 0,
 			currency: CurrencyId::Usd,
 			tranches,
 			epoch: EpochState {
@@ -136,8 +134,6 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		);
 
 		let pool = &PoolDetails {
-			depositor: Default::default(),
-			deposit: 0,
 			currency: CurrencyId::Usd,
 			tranches,
 			epoch: EpochState {
@@ -239,8 +235,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		);
 
 		let pool = &PoolDetails {
-			depositor: Default::default(),
-			deposit: 0,
 			currency: CurrencyId::Usd,
 			tranches,
 			epoch: EpochState {
@@ -354,8 +348,6 @@ fn pool_constraints_pass() {
 		);
 
 		let pool = &PoolDetails {
-			depositor: Default::default(),
-			deposit: 0,
 			currency: CurrencyId::Usd,
 			tranches,
 			epoch: EpochState {
