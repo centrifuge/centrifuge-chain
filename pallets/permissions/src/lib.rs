@@ -63,6 +63,8 @@ pub mod pallet {
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
+		type MaxRolesPerLocation: Get<u32>;
+
 		type WeightInfo: WeightInfo;
 	}
 
@@ -82,6 +84,10 @@ pub mod pallet {
 		T::Storage,
 	>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn permission_count)]
+	pub type PermissionCount<T: Config> = StorageMap<_, Blake2_128Concat, T::Location, u32>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -98,6 +104,7 @@ pub mod pallet {
 		NoRoles,
 		NoEditor,
 		WrongParameters,
+		TooManyRoles,
 	}
 
 	#[pallet::call]
@@ -216,27 +223,26 @@ impl<T: Config> Pallet<T> {
 		who: T::AccountId,
 		role: T::Role,
 	) -> Result<(), DispatchError> {
-		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
-			{
-				let mut new_role = T::Storage::default();
-				new_role
-					.add(role.clone())
-					.map_err(|_| Error::<T>::WrongParameters)?;
+		PermissionCount::<T>::try_mutate(location.clone(), |perm_count| {
+			let num_permissions = perm_count.map_or(1, |count| count + 1);
+			if num_permissions > T::MaxRolesPerLocation::get() {
+				return Err(Error::<T>::TooManyRoles.into());
+			}
+			*perm_count = Some(num_permissions);
 
-				Permission::<T>::insert(who.clone(), location.clone(), new_role);
-				Ok(())
-			},
-			|mut roles| {
-				if !roles.exists(role.clone()) {
-					roles.add(role).map_err(|_| Error::<T>::WrongParameters)?;
-
-					Permission::<T>::insert(who.clone(), location, roles);
-					Ok(())
-				} else {
+			Permission::<T>::try_mutate(who.clone(), location.clone(), |maybe_roles| {
+				let mut roles = maybe_roles.take().unwrap_or_default();
+				if roles.exists(role.clone()) {
 					Err(Error::<T>::RoleAlreadyGiven.into())
+				} else {
+					roles
+						.add(role.clone())
+						.map_err(|_| Error::<T>::WrongParameters)?;
+					*maybe_roles = Some(roles);
+					Ok(())
 				}
-			},
-		)
+			})
+		})
 	}
 
 	fn do_rm_permission(
@@ -244,23 +250,29 @@ impl<T: Config> Pallet<T> {
 		who: T::AccountId,
 		role: T::Role,
 	) -> Result<(), DispatchError> {
-		Permission::<T>::try_get(who.clone(), location.clone()).map_or(
-			Err(Error::<T>::NoRoles.into()),
-			|mut roles| {
+		PermissionCount::<T>::try_mutate(location.clone(), |perm_count| {
+			let num_permissions = perm_count.map_or(0, |count| count - 1);
+			if num_permissions == 0 {
+				*perm_count = None;
+			} else {
+				*perm_count = Some(num_permissions);
+			}
+
+			Permission::<T>::try_mutate(who.clone(), location.clone(), |maybe_roles| {
+				let mut roles = maybe_roles.take().ok_or(Error::<T>::NoRoles)?;
 				if roles.exists(role.clone()) {
 					roles.rm(role).map_err(|_| Error::<T>::WrongParameters)?;
-
 					if roles.empty() {
-						Permission::<T>::remove(who, location);
+						*maybe_roles = None
 					} else {
-						Permission::<T>::insert(who, location, roles);
+						*maybe_roles = Some(roles)
 					}
 					Ok(())
 				} else {
 					Err(Error::<T>::RoleNotGiven.into())
 				}
-			},
-		)
+			})
+		})
 	}
 }
 

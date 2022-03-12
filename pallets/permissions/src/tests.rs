@@ -377,3 +377,90 @@ fn trait_has_permission_permission_works() {
 			));
 		})
 }
+
+#[test]
+fn add_too_many_permissions_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			for who in 0..MaxRoles::get() {
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+					Origin::signed(1),
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
+					who.into(),
+					Location::PalletA,
+					Role::Organisation(OrganisationRole::SeniorExeutive)
+				));
+			}
+			let who = MaxRoles::get() + 1;
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::add_permission(
+					Origin::signed(1),
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
+					who.into(),
+					Location::PalletA,
+					Role::Organisation(OrganisationRole::SeniorExeutive)
+				),
+				PermissionsError::<MockRuntime>::TooManyRoles
+			);
+		})
+}
+
+#[test]
+fn permission_counting() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
+					.is_none()
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(1)
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add_permission(
+				Location::PalletA,
+				3,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(2)
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::rm_permission(
+				Location::PalletA,
+				3,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(1)
+			);
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::rm_permission(
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
+					.is_none(),
+			);
+		})
+}
