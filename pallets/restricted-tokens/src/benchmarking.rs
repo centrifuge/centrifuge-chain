@@ -105,7 +105,7 @@ fn permission_for_tranche<T>(acc: T::AccountId, pool_id: PoolId, tranche_id: Tra
 where
 	T: frame_system::Config + pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
 {
-	<pallet_permissions::Pallet<T> as Permissions<T::AccountId>>::add_permission(
+	<pallet_permissions::Pallet<T> as Permissions<T::AccountId>>::add(
 		pool_id,
 		acc,
 		PoolRole::TrancheInvestor(tranche_id, u64::MAX),

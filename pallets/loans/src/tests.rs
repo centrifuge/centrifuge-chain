@@ -83,14 +83,14 @@ where
 		CurrencyId::Usd,
 	);
 	// add borrower role and price admin role
-	assert_ok!(pallet_permissions::Pallet::<T>::add_permission(
+	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
 		PoolRole::PoolAdmin,
 		borrower,
 		pool_id,
 		PoolRole::Borrower,
 	));
-	assert_ok!(pallet_permissions::Pallet::<T>::add_permission(
+	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
 		PoolRole::PoolAdmin,
 		borrower,
@@ -610,7 +610,7 @@ macro_rules! test_borrow_loan {
 				// written off loan cannot borrow
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					PoolRole::PoolAdmin,
 					risk_admin,
@@ -1003,7 +1003,7 @@ macro_rules! test_pool_nav {
 				assert_eq!(exact, NAVUpdateType::Exact);
 
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					PoolRole::PoolAdmin,
 					risk_admin,
@@ -1127,7 +1127,7 @@ fn test_add_write_off_groups() {
 			);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(pool_admin),
 				PoolRole::PoolAdmin,
 				risk_admin,
@@ -1211,7 +1211,7 @@ macro_rules! test_write_off_maturity_loan {
 
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					PoolRole::PoolAdmin,
 					risk_admin,
@@ -1303,7 +1303,7 @@ macro_rules! test_admin_write_off_loan_type {
 				// after one year
 				// caller should be admin, can write off before maturity
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					PoolRole::PoolAdmin,
 					risk_admin,
@@ -1424,7 +1424,7 @@ macro_rules! test_close_written_off_loan_type {
 
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					PoolRole::PoolAdmin,
 					risk_admin,
@@ -1606,7 +1606,7 @@ macro_rules! write_off_overflow {
 				let caller = 42;
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					PoolRole::PoolAdmin,
 					risk_admin,

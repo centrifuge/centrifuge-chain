@@ -250,8 +250,8 @@ where
 		match id {
 			CurrencyId::Usd => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has_permission(
+				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has(
 						pool_id,
 						recv,
 						PoolRole::TrancheInvestor(tranche_id, UNION),
