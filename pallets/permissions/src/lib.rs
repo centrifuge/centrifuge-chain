@@ -284,11 +284,7 @@ impl<T: Config> Permissions<T::AccountId> for Pallet<T> {
 		Permission::<T>::get(who, location).map_or(false, |roles| roles.exists(role))
 	}
 
-	fn add(
-		location: T::Location,
-		who: T::AccountId,
-		role: T::Role,
-	) -> Result<(), DispatchError> {
+	fn add(location: T::Location, who: T::AccountId, role: T::Role) -> Result<(), DispatchError> {
 		Pallet::<T>::do_add(location, who, role)
 	}
 

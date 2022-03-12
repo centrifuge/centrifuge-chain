@@ -177,12 +177,10 @@ fn user_purge_permission_ext_works() {
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
-			assert_ok!(
-				pallet_permissions::Pallet::<MockRuntime>::purge(
-					Origin::signed(2),
-					Location::PalletA
-				)
-			);
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::purge(
+				Origin::signed(2),
+				Location::PalletA
+			));
 
 			assert!(
 				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA).is_none()
@@ -230,13 +228,11 @@ fn admin_purge_permission_ext_works() {
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
-			assert_ok!(
-				pallet_permissions::Pallet::<MockRuntime>::admin_purge(
-					Origin::signed(1),
-					2,
-					Location::PalletA,
-				)
-			);
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::admin_purge(
+				Origin::signed(1),
+				2,
+				Location::PalletA,
+			));
 
 			assert!(
 				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA,).is_none()

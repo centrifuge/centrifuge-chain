@@ -251,11 +251,7 @@ where
 			CurrencyId::Usd => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has(
-						pool_id,
-						recv,
-						PoolRole::TrancheInvestor(tranche_id, UNION),
-					)
+					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
 			}
 			CurrencyId::Native => true,
 		}
