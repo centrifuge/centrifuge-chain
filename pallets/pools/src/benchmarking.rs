@@ -156,7 +156,7 @@ benchmarks! {
 		assert_eq!(T::Tokens::balance(currency, &caller), expected);
 	}
 
-	close_epoch_no_investments {
+	close_epoch_no_orders{
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
 		let admin: T::AccountId = account("admin", 0, 0);
@@ -327,11 +327,27 @@ fn assert_tranches_match<T: Config>(
 ) {
 	assert!(chain.len() == target.len());
 	for (chain, target) in chain.iter().zip(target.iter()) {
-		if let Some(interest_per_sec) = target.interest_per_sec {
-			assert!(chain.interest_per_sec == interest_per_sec);
-		}
-		if let Some(min_risk_buffer) = target.min_risk_buffer {
-			assert!(chain.min_risk_buffer == min_risk_buffer);
+		match chain.tranche_type {
+			TrancheType::Residual => {
+				assert!(target.interest_per_sec.is_none() && target.min_risk_buffer.is_none())
+			}
+			TrancheType::NonResidual {
+				interest_per_sec,
+				min_risk_buffer,
+			} => {
+				assert_eq!(
+					interest_per_sec,
+					target
+						.interest_per_sec
+						.expect("Interest rate for non-residual tranches must be set.")
+				);
+				assert_eq!(
+					min_risk_buffer,
+					target
+						.min_risk_buffer
+						.expect("Min risk buffer for non-residual tranches must be set.")
+				);
+			}
 		}
 	}
 }

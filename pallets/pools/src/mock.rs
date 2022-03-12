@@ -35,6 +35,7 @@ mod fake_nav {
 	#[frame_support::pallet]
 	pub mod pallet {
 		use super::*;
+		use crate::Moment;
 
 		#[pallet::config]
 		pub trait Config: frame_system::Config {
@@ -46,15 +47,19 @@ mod fake_nav {
 		pub struct Pallet<T>(_);
 
 		#[pallet::storage]
-		pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, Balance>;
+		pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, (Balance, Moment)>;
 
 		impl<T: Config> Pallet<T> {
 			pub fn value(pool_id: T::PoolId) -> Balance {
-				Nav::<T>::get(pool_id).unwrap_or(0)
+				Nav::<T>::get(pool_id).unwrap_or((0, 0)).0
 			}
 
-			pub fn update(pool_id: T::PoolId, balance: Balance) {
-				Nav::<T>::insert(pool_id, balance);
+			pub fn update(pool_id: T::PoolId, balance: Balance, now: Moment) {
+				Nav::<T>::insert(pool_id, (balance, now));
+			}
+
+			pub fn latest(pool_id: T::PoolId) -> (Balance, Moment) {
+				Nav::<T>::get(pool_id).unwrap_or((0, 0))
 			}
 		}
 	}
@@ -63,7 +68,7 @@ mod fake_nav {
 		type ClassId = ();
 		type Origin = ();
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
-			Some((Self::value(pool_id), 0))
+			Some(Self::latest(pool_id))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
@@ -158,7 +163,7 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-type Balance = u128;
+pub type Balance = u128;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
@@ -355,20 +360,32 @@ pub fn next_block_after(seconds: u64) {
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
-	Pools::do_borrow(borrower, pool_id, amount)
+	Pools::do_withdraw(borrower, pool_id, amount)
 }
 
 pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
-	Pools::do_payback(borrower, pool_id, amount)
+	Pools::do_deposit(borrower, pool_id, amount)
 }
 
 pub fn test_nav_up(pool_id: u64, amount: Balance) {
-	FakeNav::update(pool_id, FakeNav::value(pool_id) + amount);
+	FakeNav::update(
+		pool_id,
+		FakeNav::value(pool_id) + amount,
+		FakeNav::latest(pool_id).1,
+	);
 }
 
 pub fn test_nav_down(pool_id: u64, amount: Balance) {
-	FakeNav::update(pool_id, FakeNav::value(pool_id) - amount);
+	FakeNav::update(
+		pool_id,
+		FakeNav::value(pool_id) - amount,
+		FakeNav::latest(pool_id).1,
+	);
+}
+
+pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
+	FakeNav::update(pool_id, amount, now)
 }
 
 /// Assumes externalities are available
@@ -384,10 +401,10 @@ pub fn invest_close_and_collect(
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.last_epoch_closed;
+		.last_epoch_executed;
 
 	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, tranche_id, epoch as u32).map_err(|e| e.error)?;
+		Pools::collect(who, pool_id, tranche_id, epoch).map_err(|e| e.error)?;
 	}
 
 	Ok(())
