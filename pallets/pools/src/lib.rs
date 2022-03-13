@@ -363,10 +363,10 @@ pub mod pallet {
 			T::AccountId,
 			OutstandingCollections<T::Balance>,
 		),
-		/// An invest order was updated. [pool, account]
-		InvestOrderUpdated(T::PoolId, T::AccountId),
-		/// A redeem order was updated. [pool, account]
-		RedeemOrderUpdated(T::PoolId, T::AccountId),
+		/// An invest order was updated. [pool, tranche, account]
+		InvestOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
+		/// A redeem order was updated. [pool, tranche, account]
+		RedeemOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -709,7 +709,7 @@ pub mod pallet {
 				)
 			})?;
 
-			Self::deposit_event(Event::InvestOrderUpdated(pool_id, who));
+			Self::deposit_event(Event::InvestOrderUpdated(pool_id, tranche_id, who));
 			Ok(())
 		}
 
@@ -771,7 +771,7 @@ pub mod pallet {
 				)
 			})?;
 
-			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, who));
+			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, tranche_id, who));
 			Ok(())
 		}
 
