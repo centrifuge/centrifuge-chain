@@ -31,32 +31,32 @@ use sp_std::marker::PhantomData;
 /// Weights for pallet_permissions using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn add_permission_admin() -> Weight {
+	fn add_as_admin() -> Weight {
 		(70_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn add_permission_editor() -> Weight {
+	fn add_as_editor() -> Weight {
 		(55_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn rm_permission_admin() -> Weight {
+	fn remove_as_admin() -> Weight {
 		(45_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn rm_permission_editor() -> Weight {
+	fn remove_as_editor() -> Weight {
 		(56_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn purge_permissions() -> Weight {
+	fn purge() -> Weight {
 		(41_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn admin_purge_permissions() -> Weight {
+	fn admin_purge() -> Weight {
 		(41_000_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))

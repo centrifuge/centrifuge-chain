@@ -132,15 +132,15 @@ pub trait Permissions<AccountId> {
 	type Error;
 	type Ok;
 
-	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
+	fn has(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
 
-	fn add_permission(
+	fn add(
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
 	) -> Result<Self::Ok, Self::Error>;
 
-	fn rm_permission(
+	fn remove(
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,

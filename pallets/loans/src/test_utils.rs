@@ -38,8 +38,7 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 	who: T::AccountId,
 	role: PoolRole,
 ) {
-	PermissionsOf::<T>::add_permission(location, who, role)
-		.expect("adding permissions should not fail");
+	PermissionsOf::<T>::add(location, who, role).expect("adding permissions should not fail");
 }
 
 parameter_types! {

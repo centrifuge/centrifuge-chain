@@ -363,10 +363,10 @@ pub mod pallet {
 			T::AccountId,
 			OutstandingCollections<T::Balance>,
 		),
-		/// An invest order was updated. [pool, account]
-		InvestOrderUpdated(T::PoolId, T::AccountId),
-		/// A redeem order was updated. [pool, account]
-		RedeemOrderUpdated(T::PoolId, T::AccountId),
+		/// An invest order was updated. [pool, tranche, account]
+		InvestOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
+		/// A redeem order was updated. [pool, tranche, account]
+		RedeemOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -504,7 +504,7 @@ pub mod pallet {
 					metadata: None,
 				},
 			);
-			T::Permission::add_permission(pool_id, admin.clone(), PoolRole::PoolAdmin)?;
+			T::Permission::add(pool_id, admin.clone(), PoolRole::PoolAdmin)?;
 			Self::deposit_event(Event::Created(pool_id, admin));
 			Ok(())
 		}
@@ -526,7 +526,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
 				BadOrigin
 			);
 
@@ -560,7 +560,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
 				BadOrigin
 			);
 
@@ -592,7 +592,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has_permission(pool_id, who.clone(), PoolRole::LiquidityAdmin),
+				T::Permission::has(pool_id, who.clone(), PoolRole::LiquidityAdmin),
 				BadOrigin
 			);
 
@@ -620,7 +620,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has_permission(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
 				BadOrigin
 			);
 
@@ -676,7 +676,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::has_permission(
+				T::Permission::has(
 					pool_id,
 					who.clone(),
 					PoolRole::TrancheInvestor(tranche_id, Self::now())
@@ -709,7 +709,7 @@ pub mod pallet {
 				)
 			})?;
 
-			Self::deposit_event(Event::InvestOrderUpdated(pool_id, who));
+			Self::deposit_event(Event::InvestOrderUpdated(pool_id, tranche_id, who));
 			Ok(())
 		}
 
@@ -738,7 +738,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 
 			ensure!(
-				T::Permission::has_permission(
+				T::Permission::has(
 					pool_id,
 					who.clone(),
 					PoolRole::TrancheInvestor(tranche_id, Self::now())
@@ -771,7 +771,7 @@ pub mod pallet {
 				)
 			})?;
 
-			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, who));
+			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, tranche_id, who));
 			Ok(())
 		}
 

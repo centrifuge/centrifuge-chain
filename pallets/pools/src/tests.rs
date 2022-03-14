@@ -403,14 +403,14 @@ fn epoch() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let borrower = 3;
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -645,14 +645,14 @@ fn submission_period() {
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -854,14 +854,14 @@ fn execute_info_removed_after_epoch_execute() {
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -951,14 +951,14 @@ fn collect_tranche_tokens() {
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -1091,7 +1091,7 @@ fn invalid_tranche_id_is_err() {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(1, u64::MAX),
@@ -1125,7 +1125,7 @@ fn updating_with_same_amount_is_err() {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(0, u64::MAX),
@@ -1226,7 +1226,7 @@ fn updating_orders_updates_epoch() {
 		let pool_id = 0;
 		let jun_tranche_id = 0;
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),
@@ -1292,7 +1292,7 @@ fn no_order_is_err() {
 		let pool_id = 0;
 		let jun_tranche_id = 0;
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),
@@ -1330,7 +1330,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 		let pool_id = 0;
 		let jun_tranche_id = 0;
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),

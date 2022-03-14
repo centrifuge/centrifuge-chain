@@ -268,7 +268,7 @@ benchmarks! {
 	}: approve_role_for(RawOrigin::Signed(admin), POOL, role.clone(), account_lookups)
 	verify {
 		for account in accounts {
-			assert!(T::Permission::has_permission(POOL, account.into(), role.clone()));
+			assert!(T::Permission::has(POOL, account.into(), role.clone()));
 		}
 	}
 
@@ -280,7 +280,7 @@ benchmarks! {
 		Pallet::<T>::approve_role_for(RawOrigin::Signed(admin.clone()).into(), POOL, role.clone(), vec![account.clone().into()])?;
 	}: revoke_role_for(RawOrigin::Signed(admin), POOL, role.clone(), account.clone().into())
 	verify {
-		assert!(!T::Permission::has_permission(POOL, account.into(), role));
+		assert!(!T::Permission::has(POOL, account.into(), role));
 	}
 }
 

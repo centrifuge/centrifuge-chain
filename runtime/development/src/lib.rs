@@ -944,7 +944,7 @@ impl pallet_collator_selection::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 50;
-	pub const MaxWriteOffgroups: u32 = 10;
+	pub const MaxWriteOffGroups: u32 = 10;
 }
 
 impl pallet_loans::Config for Runtime {
@@ -960,14 +960,16 @@ impl pallet_loans::Config for Runtime {
 	type Permission = Permissions;
 	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffgroups;
+	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
 
 parameter_types! {
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: TrancheId = 5;
+
+	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
+	pub const MinDelay: Moment = 7 * SECONDS_PER_DAY;
 
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxRolesPerPool: u32 = 1_000;
@@ -1036,12 +1038,8 @@ where
 		match id {
 			CurrencyId::Usd | CurrencyId::Native => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has_permission(
-						pool_id,
-						recv,
-						PoolRole::TrancheInvestor(tranche_id, UNION),
-					)
+				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
 			}
 		}
 	}
