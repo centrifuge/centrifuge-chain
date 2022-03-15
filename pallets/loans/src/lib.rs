@@ -173,7 +173,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		Blake2_128Concat,
+		Twox64Concat,
 		T::LoanId,
 		LoanData<T::Rate, T::Amount, AssetOf<T>>,
 		OptionQuery,

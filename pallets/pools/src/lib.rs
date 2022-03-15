@@ -324,7 +324,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		TrancheLocator<T::PoolId, T::TrancheId>,
-		Blake2_128Concat,
+		Twox64Concat,
 		T::EpochId,
 		EpochDetails<T::BalanceRatio>,
 	>;
@@ -332,7 +332,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn epoch_targets)]
 	pub type EpochExecution<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfoOf<T>>;
+		StorageMap<_, Twox64Concat, T::PoolId, EpochExecutionInfoOf<T>>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
