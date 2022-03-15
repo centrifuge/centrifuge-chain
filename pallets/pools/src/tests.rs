@@ -56,6 +56,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			status: PoolStatus::Open,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -144,6 +145,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			status: PoolStatus::Open,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -241,6 +243,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			status: PoolStatus::Open,
 		};
 
 		let epoch = EpochExecutionInfo {
@@ -350,6 +353,7 @@ fn pool_constraints_pass() {
 			challenge_time: 0,
 			max_nav_age: 60,
 			metadata: None,
+			status: PoolStatus::Open,
 		};
 
 		let epoch = EpochExecutionInfo {

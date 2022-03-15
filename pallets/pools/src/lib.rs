@@ -54,6 +54,17 @@ where
 	pub min_epoch_time: Moment,
 	pub challenge_time: Moment,
 	pub max_nav_age: Moment,
+
+	pub status: PoolStatus,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum PoolStatus {
+	Open,
+	InSubmissionPeriod,
+	/// Repayments possible, else not possible
+	Frozen,
+	Closed,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -421,6 +432,8 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
+		/// Indicates that a pool is in a state that restricts actions
+		PoolNotOpen,
 	}
 
 	#[pallet::call]
@@ -486,11 +499,68 @@ pub mod pallet {
 						total_reserve: Zero::zero(),
 					},
 					metadata: None,
+					status: PoolStatus::Open,
 				},
 			);
 			T::Permission::add(pool_id, admin.clone(), PoolRole::PoolAdmin)?;
 			Self::deposit_event(Event::Created(pool_id, admin));
 			Ok(())
+		}
+
+		/// Close an open pool.
+		///
+		/// This will result in no more investements being possible.
+		/// The functionality of the pool as a reserve for the loans-pallet
+		/// is not affected by this. I.e. loans can still be created and withdraw and
+		/// deposits are possible.
+		#[pallet::weight(0)]
+		pub fn close(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			ensure!(
+				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
+				BadOrigin
+			);
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
+
+				pool.status = PoolStatus::Closed;
+				Ok(())
+			})
+		}
+
+		/// Close an open pool.
+		///
+		/// This will result in no more investements being possible.
+		/// The functionality of the pool as a reserve for the loans-pallet
+		/// is not affected by this. I.e. loans can still be created and withdraw and
+		/// deposits are possible.
+		#[pallet::weight(0)]
+		pub fn force_close(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.status = PoolStatus::Closed;
+				Ok(())
+			})
+		}
+
+		/// Unfreeze a pool via root.
+		///
+		/// A pool can only be unfrozen via root currently.
+		/// Freezing a pool leads to effectively locking the pool.
+		#[pallet::weight(0)]
+		pub fn force_unfreeze(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			ensure_root(origin)?;
+
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.status = PoolStatus::Open;
+				Ok(())
+			})
 		}
 
 		/// Update per-pool configuration settings.
@@ -524,6 +594,8 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
+
 				pool.min_epoch_time = min_epoch_time;
 				pool.challenge_time = challenge_time;
 				pool.max_nav_age = max_nav_age;
@@ -555,6 +627,9 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
+
 				pool.metadata = Some(checked_meta);
 				Self::deposit_event(Event::MetadataSet(pool_id, metadata));
 				Ok(())
@@ -582,6 +657,9 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
+
 				pool.reserve.max_reserve = max_reserve;
 				Self::deposit_event(Event::MaxReserveSet(pool_id));
 				Ok(())
@@ -615,6 +693,8 @@ pub mod pallet {
 					EpochExecution::<T>::try_get(pool_id).is_err(),
 					Error::<T>::InSubmissionPeriod
 				);
+
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
 
 				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
 
@@ -829,10 +909,8 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				ensure!(
-					!EpochExecution::<T>::contains_key(pool_id),
-					Error::<T>::InSubmissionPeriod
-				);
+
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
 
 				let now = Self::now();
 				ensure!(
@@ -860,14 +938,15 @@ pub mod pallet {
 					.tranches
 					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
 
-				// If closing the epoch would wipe out a tranche, the close is invalid.
-				// TODO: This should instead put the pool into an error state
-				ensure!(
-					!epoch_tranche_prices
-						.iter()
-						.any(|price| *price == Zero::zero()),
-					Error::<T>::WipedOut
-				);
+				// If closing the epoch would wipe out a tranche, we put the pool into a
+				// freeze.
+				if epoch_tranche_prices
+					.iter()
+					.any(|price| *price == Zero::zero())
+				{
+					pool.status = PoolStatus::Frozen;
+					return Err(Error::<T>::WipedOut.into());
+				}
 
 				if pool.tranches.acc_outstanding_investments()?.is_zero()
 					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
@@ -977,6 +1056,7 @@ pub mod pallet {
 						Self::score_solution(&pool, &epoch, &no_execution_solution)?;
 					epoch.best_submission = Some(existing_state_solution);
 					EpochExecution::<T>::insert(pool_id, epoch);
+					pool.status = PoolStatus::InSubmissionPeriod;
 
 					Ok(Some(T::WeightInfo::close_epoch_no_execution(
 						pool.tranches
@@ -1087,6 +1167,7 @@ pub mod pallet {
 
 					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, epoch.epoch));
+					pool.status = PoolStatus::Open;
 					Ok(())
 				})?;
 
@@ -1691,8 +1772,8 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let now = Self::now();
 
+				let now = Self::now();
 				pool.reserve.total_reserve = pool
 					.reserve
 					.total_reserve
@@ -1742,8 +1823,10 @@ pub mod pallet {
 			let pool_account = PoolLocator { pool_id }.into_account();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				let now = Self::now();
 
+				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
+
+				let now = Self::now();
 				pool.reserve.total_reserve = pool
 					.reserve
 					.total_reserve
