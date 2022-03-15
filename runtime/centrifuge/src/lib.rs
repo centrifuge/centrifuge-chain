@@ -173,7 +173,7 @@ impl frame_system::Config for Runtime {
 	/// A function that is invoked when an account has been determined to be dead.
 	/// All resources should be cleaned up associated with the given account.
 	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
+	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
@@ -893,6 +893,9 @@ impl_runtime_apis! {
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
+			use frame_system_benchmarking::Pallet as SystemBench;
+
+			impl frame_system_benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -913,7 +916,7 @@ impl_runtime_apis! {
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_balances, Balances);
-			add_benchmark!(params, batches, frame_system, System);
+			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -925,12 +928,13 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
+			use frame_system_benchmarking::Pallet as SystemBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, frame_system, System);
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
