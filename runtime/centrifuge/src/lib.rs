@@ -913,6 +913,7 @@ impl_runtime_apis! {
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_balances, Balances);
+			add_benchmark!(params, batches, frame_system, System);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -929,6 +930,7 @@ impl_runtime_apis! {
 
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, frame_system, System);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
