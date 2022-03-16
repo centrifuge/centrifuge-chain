@@ -16,7 +16,7 @@ mod solution;
 #[cfg(test)]
 mod tests;
 mod tranche;
-mod weights;
+pub mod weights;
 
 use codec::HasCompact;
 use common_traits::Permissions;
@@ -57,7 +57,6 @@ where
 	/// Details about the reserve (unused capital) in the pool.
 	pub reserve: ReserveDetails<Balance>,
 }
-
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {
 	/// Investments will be allowed up to this amount.
@@ -237,7 +236,13 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		type PoolId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
 
 		type TrancheId: Member
 			+ Parameter
@@ -463,7 +468,7 @@ pub mod pallet {
 		///
 		/// The caller will be given the `PoolAdmin` role for
 		/// the created pool. Additional administrators can be
-		/// added with `approve_role_for`.
+		/// added with the Permissions pallet.
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
@@ -596,7 +601,7 @@ pub mod pallet {
 		/// The caller must have the `LiquidityAdmin` role in
 		/// order to invoke this extrinsic. This role is not
 		/// given to the pool creator by default, and must be
-		/// added with `approve_role_for` before this
+		/// added with the Permissions pallet before this
 		/// extrinsic can be called.
 		#[pallet::weight(T::WeightInfo::set_max_reserve())]
 		pub fn set_max_reserve(
@@ -627,6 +632,7 @@ pub mod pallet {
 		/// passed in. This configuration must contain the same
 		/// number of tranches that the pool was created with.
 		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[transactional]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
