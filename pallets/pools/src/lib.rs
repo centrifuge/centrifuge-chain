@@ -1400,7 +1400,7 @@ pub mod pallet {
 			order: UserOrder<T::Balance, T::EpochId>,
 			end_epoch: T::EpochId,
 		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			let epoch_idx = order.epoch;
+			let mut epoch_idx = order.epoch;
 			let mut outstanding = OutstandingCollections {
 				payout_currency_amount: Zero::zero(),
 				payout_token_amount: Zero::zero(),
@@ -1422,6 +1422,7 @@ pub mod pallet {
 					Self::parse_redeem_executions(&epoch, &mut outstanding)?;
 				}
 
+				epoch_idx = epoch_idx + One::one();
 				all_calculated = outstanding.remaining_invest_currency == Zero::zero()
 					&& outstanding.remaining_redeem_token == Zero::zero();
 			}
