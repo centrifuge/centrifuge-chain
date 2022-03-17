@@ -1047,6 +1047,7 @@ impl_runtime_apis! {
 			//       benches is needed or benchmarks allow some kind of pre-setup logic
 			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_multisig, Multisig);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1088,9 +1089,10 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			// TODO: See below
+			// TODO: See above
 			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_multisig, Multisig);
 
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }

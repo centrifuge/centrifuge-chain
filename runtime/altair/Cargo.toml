@@ -89,7 +89,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-f
 pallet-utility = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
-pallet_session_benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
+pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true,  branch = "polkadot-v0.9.17" }
 pallet-identity = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
@@ -189,7 +189,8 @@ runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
-    "pallet-session-benchmarking/runtime-benchmarks",
+    "pallet-session-benchmarking",
+    "pallet-multisig/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
