@@ -186,6 +186,7 @@ std = [
 ]
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
