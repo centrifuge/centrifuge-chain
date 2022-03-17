@@ -1030,7 +1030,6 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
-			use pallet_session_benchmarking::Pallet as SessionBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1046,7 +1045,10 @@ impl_runtime_apis! {
 			//       as collator. But our runtimes restrict this. A PR to the cumulus
 			//       benches is needed or benchmarks allow some kind of pre-setup logic
 			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
+			// TODO: Not working as benches depend on pallet-staking which we don't use
+			//       Not sure how to fix TBH.
+			// use pallet_session_benchmarking::Pallet as SessionBench;
+			// list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_multisig, Multisig);
 			list_benchmark!(list, extra, pallet_proxy, Proxy);
 			list_benchmark!(list, extra, pallet_utility, Utility);
@@ -1061,10 +1063,8 @@ impl_runtime_apis! {
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
-			use pallet_session_benchmarking::Pallet as SessionBench;
 
 			impl frame_system_benchmarking::Config for Runtime {}
-			impl pallet_session_benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1093,6 +1093,10 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			// TODO: See above
 			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
+			// TODO: See above
+			// use pallet_session_benchmarking::Pallet as SessionBench;
+			// impl pallet_session_benchmarking::Config for Runtime {}
+			// list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_multisig, Multisig);
 			add_benchmark!(params, batches, pallet_proxy, Proxy);
