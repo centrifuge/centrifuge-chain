@@ -1057,6 +1057,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
 			list_benchmark!(list, extra, pallet_democracy, Democracy);
 			list_benchmark!(list, extra, pallet_identity, Identity);
+			list_benchmark!(list, extra, pallet_vesting, Vesting);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1111,6 +1112,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_elections_phragmen, Elections);
 			add_benchmark!(params, batches, pallet_democracy, Democracy);
 			add_benchmark!(params, batches, pallet_identity, Identity);
+			add_benchmark!(params, batches, pallet_vesting, Vesting);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
