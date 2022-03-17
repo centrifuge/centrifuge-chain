@@ -1055,6 +1055,9 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
+			// TODO: See below
+			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
+
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1078,6 +1081,10 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			// TODO: Not working as benches expect everbody to be whitelisted to register
+			//       as collator. But our runtimes restrict this. A PR to the cumulus
+			//       benches is needed or benchmarks allow some kind of pre-setup logic
+			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
