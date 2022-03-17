@@ -1054,6 +1054,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_utility, Utility);
 			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
 			list_benchmark!(list, extra, pallet_collective, Council);
+			list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1105,6 +1106,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_utility, Utility);
 			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
 			add_benchmark!(params, batches, pallet_collective, Council);
+			add_benchmark!(params, batches, pallet_elections_phragmen, Elections);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
