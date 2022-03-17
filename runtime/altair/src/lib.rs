@@ -1094,17 +1094,12 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-
+			// Note: Only add working benches here. Commenting out will still
+			//       result in the runtime_benchmarks.sh script trying to
+			//       the benches for the given pallet.
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_balances, Balances);
-			// TODO: See above
-			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
-			// TODO: See above
-			// use pallet_session_benchmarking::Pallet as SessionBench;
-			// impl pallet_session_benchmarking::Config for Runtime {}
-			// list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
-			// add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_multisig, Multisig);
 			add_benchmark!(params, batches, pallet_proxy, Proxy);
 			add_benchmark!(params, batches, pallet_utility, Utility);
@@ -1118,8 +1113,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_uniques, Uniques);
 			add_benchmark!(params, batches, pallet_fees, Fees);
-			// TODO: See above
-			// add_benchmark!(params, batches, pallet_anchors, Anchor);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
