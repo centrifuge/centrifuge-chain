@@ -196,6 +196,7 @@ runtime-benchmarks = [
     "pallet-scheduler/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-elections-phragmen/runtime-benchmarks",
+    "pallet-democracy/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
