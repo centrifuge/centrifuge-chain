@@ -200,6 +200,7 @@ runtime-benchmarks = [
     "pallet-identity/runtime-benchmarks",
     "pallet-vesting/runtime-benchmarks",
     "pallet-treasury/runtime-benchmarks",
+    "pallet-preimage/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
