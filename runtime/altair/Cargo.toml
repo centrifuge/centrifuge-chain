@@ -191,6 +191,8 @@ runtime-benchmarks = [
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-session-benchmarking",
     "pallet-multisig/runtime-benchmarks",
+    "pallet-proxy/runtime-benchmarks",
+    "pallet-utility/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",

@@ -1048,6 +1048,8 @@ impl_runtime_apis! {
 			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
 			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_multisig, Multisig);
+			list_benchmark!(list, extra, pallet_proxy, Proxy);
+			list_benchmark!(list, extra, pallet_utility, Utility);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1093,6 +1095,8 @@ impl_runtime_apis! {
 			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_multisig, Multisig);
+			add_benchmark!(params, batches, pallet_proxy, Proxy);
+			add_benchmark!(params, batches, pallet_utility, Utility);
 
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
