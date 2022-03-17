@@ -1022,13 +1022,46 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
+
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_session_benchmarking::Pallet as SessionBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_migration_manager, Migration);
+			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
+			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
+			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
+			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			// TODO: Not working as benches expect everbody to be whitelisted to register
+			//       as collator. But our runtimes restrict this. A PR to the cumulus
+			//       benches is needed or benchmarks allow some kind of pre-setup logic
+			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
+			list_benchmark!(list, extra, pallet_session, SessionBench::<Runtime>);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
+		}
+
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_session_benchmarking::Pallet as SessionBench;
 
 			impl frame_system_benchmarking::Config for Runtime {}
+			impl pallet_session_benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1057,38 +1090,11 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			// TODO: See below
 			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
+			add_benchmark!(params, batches, pallet_session, SessionBench::<Runtime>);
 
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
-		}
-
-		fn benchmark_metadata(extra: bool) -> (
-			Vec<frame_benchmarking::BenchmarkList>,
-			Vec<frame_support::traits::StorageInfo>,
-		) {
-			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
-			use frame_support::traits::StorageInfoTrait;
-			use frame_system_benchmarking::Pallet as SystemBench;
-
-			let mut list = Vec::<BenchmarkList>::new();
-
-			list_benchmark!(list, extra, pallet_fees, Fees);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
-			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
-			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
-			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			// TODO: Not working as benches expect everbody to be whitelisted to register
-			//       as collator. But our runtimes restrict this. A PR to the cumulus
-			//       benches is needed or benchmarks allow some kind of pre-setup logic
-			// list_benchmark!(list, extra, pallet_collator_selection, CollatorSelection);
-
-			let storage_info = AllPalletsWithSystem::storage_info();
-
-			return (list, storage_info)
 		}
 	}
 }
