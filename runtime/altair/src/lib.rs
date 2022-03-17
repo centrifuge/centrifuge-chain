@@ -1060,6 +1060,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_vesting, Vesting);
 			list_benchmark!(list, extra, pallet_treasury, Treasury);
 			list_benchmark!(list, extra, pallet_preimage, Preimage);
+			list_benchmark!(list, extra, pallet_uniques, Uniques);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1117,6 +1118,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_vesting, Vesting);
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
 			add_benchmark!(params, batches, pallet_preimage, Preimage);
+			add_benchmark!(params, batches, pallet_uniques, Uniques);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
