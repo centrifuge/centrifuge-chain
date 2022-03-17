@@ -1033,14 +1033,9 @@ impl_runtime_apis! {
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			list_benchmark!(list, extra, pallet_fees, Fees);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
-			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
-			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
-			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
-			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			list_benchmark!(list, extra, pallet_balances, Balances);
 			// TODO: Not working as benches expect everbody to be whitelisted to register
 			//       as collator. But our runtimes restrict this. A PR to the cumulus
 			//       benches is needed or benchmarks allow some kind of pre-setup logic
@@ -1061,6 +1056,13 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_treasury, Treasury);
 			list_benchmark!(list, extra, pallet_preimage, Preimage);
 			list_benchmark!(list, extra, pallet_uniques, Uniques);
+			list_benchmark!(list, extra, pallet_fees, Fees);
+			// TODO: Currently no benchmarking implemented
+			// list_benchmark!(list, extra, pallet_anchors, Anchor);
+			list_benchmark!(list, extra, pallet_crowdloan_claim, CrowdloanClaim);
+			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
+			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
+			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1092,14 +1094,10 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, pallet_fees, Fees);
-			add_benchmark!(params, batches, pallet_migration_manager, Migration);
-			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
-			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
-			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
-			add_benchmark!(params, batches, pallet_balances, Balances);
+
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
+			add_benchmark!(params, batches, pallet_balances, Balances);
 			// TODO: See above
 			//add_benchmark!(params, batches, pallet_collator_selection, CollatorSelection);
 			// TODO: See above
@@ -1119,6 +1117,13 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
 			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_uniques, Uniques);
+			add_benchmark!(params, batches, pallet_fees, Fees);
+			// TODO: See above
+			// add_benchmark!(params, batches, pallet_anchors, Anchor);
+			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
+			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
+			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
+			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
