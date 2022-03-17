@@ -193,6 +193,7 @@ runtime-benchmarks = [
     "pallet-multisig/runtime-benchmarks",
     "pallet-proxy/runtime-benchmarks",
     "pallet-utility/runtime-benchmarks",
+    "pallet-scheduler/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
