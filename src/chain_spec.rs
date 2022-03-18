@@ -778,18 +778,25 @@ fn altair_genesis(
 	id: ParaId,
 ) -> altair_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
-	let balances = match total_issuance {
+	let (balances, token_balances) = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as altair_runtime::Balance)
-				.unwrap_or(0 as altair_runtime::Balance);
-			endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, balance_per_endowed))
-				.collect()
+				.checked_div(num_endowed_accounts as development_runtime::Balance)
+				.unwrap_or(0 as development_runtime::Balance);
+			(
+				endowed_accounts
+					.iter()
+					.cloned()
+					.map(|k| (k, balance_per_endowed))
+					.collect(),
+				endowed_accounts
+					.iter()
+					.cloned()
+					.map(|k| (k, development_runtime::CurrencyId::Usd, balance_per_endowed))
+					.collect(),
+			)
 		}
-		None => vec![],
+		None => (vec![], vec![]),
 	};
 
 	altair_runtime::GenesisConfig {
@@ -799,11 +806,15 @@ fn altair_genesis(
 				.to_vec(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
+		orml_tokens: altair_runtime::OrmlTokensConfig {
+			balances: token_balances,
+		},
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {
 			members: Default::default(),
 			phantom: Default::default(),
 		},
+
 		fees: altair_runtime::FeesConfig {
 			initial_fees: vec![(
 				// Anchoring state rent fee per day
