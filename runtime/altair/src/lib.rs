@@ -189,7 +189,7 @@ impl pallet_timestamp::Config for Runtime {
 	type Moment = Moment;
 	type OnTimestampSet = ();
 	type MinimumPeriod = MinimumPeriod;
-	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_timestamp::SubstrateWeight<Self>;
 }
 
 // money stuff
@@ -305,7 +305,7 @@ impl pallet_multisig::Config for Runtime {
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
 	type MaxSignatories = MaxSignatories;
-	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_multisig::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -383,7 +383,7 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = MaxProxies;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_proxy::SubstrateWeight<Self>;
 	type MaxPending = MaxPending;
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
@@ -394,7 +394,7 @@ impl pallet_utility::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type PalletsOrigin = OriginCaller;
-	type WeightInfo = pallet_utility::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_utility::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -413,7 +413,7 @@ impl pallet_scheduler::Config for Runtime {
 	type ScheduleOrigin = EnsureRoot<AccountId>;
 	type MaxScheduledPerBlock = MaxScheduledPerBlock;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_scheduler::SubstrateWeight<Self>;
 	type PreimageProvider = Preimage;
 	type NoPreimagePostponement = NoPreimagePostponement;
 }
@@ -425,8 +425,8 @@ parameter_types! {
 }
 
 impl pallet_preimage::Config for Runtime {
-	type WeightInfo = ();
 	type Event = Event;
+	type WeightInfo = weights::pallet_preimage::SubstrateWeight<Self>;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;
 	type MaxSize = PreimageMaxSize;
@@ -463,7 +463,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MaxProposals = CouncilMaxProposals;
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Self>;
+	type WeightInfo =  weights::pallet_collective::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -584,7 +584,7 @@ impl pallet_democracy::Config for Runtime {
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MaxVotes = MaxVotes;
-	type WeightInfo = pallet_democracy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_democracy::SubstrateWeight<Self>;
 	type MaxProposals = MaxProposals;
 }
 
@@ -610,7 +610,7 @@ impl pallet_identity::Config for Runtime {
 	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
 	type RegistrarOrigin =
 		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
-	type WeightInfo = pallet_identity::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_identity::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -622,7 +622,7 @@ impl pallet_vesting::Config for Runtime {
 	type Currency = Balances;
 	type BlockNumberToBalance = ConvertInto;
 	type MinVestedTransfer = MinVestedTransfer;
-	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_vesting::SubstrateWeight<Self>;
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
 
@@ -671,7 +671,7 @@ impl pallet_treasury::Config for Runtime {
 	type PalletId = TreasuryPalletId;
 	// we burn and dont handle the unbalance
 	type BurnDestination = ();
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
 	type SpendFunds = ();
 	type MaxApprovals = MaxApprovals;
 }
@@ -706,7 +706,7 @@ impl pallet_uniques::Config for Runtime {
 	type StringLimit = Limit;
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
-	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_uniques::SubstrateWeight<Self>;
 }
 
 // our pallets
