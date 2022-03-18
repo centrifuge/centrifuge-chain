@@ -97,6 +97,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			LoanData {
 				borrowed_amount: Zero::zero(),
+				repaid_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
 				accumulated_rate: One::one(),
 				principal_debt: Zero::zero(),
@@ -375,6 +376,11 @@ impl<T: Config> Pallet<T> {
 				// ensure amount is not more than current debt
 				let repay_amount = amount.min(debt);
 
+				let new_repaid_amount = loan_info
+					.repaid_amount
+					.checked_add(&amount)
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
+
 				// calculate new principal debt with repaid amount
 				let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
 					debt,
@@ -384,6 +390,7 @@ impl<T: Config> Pallet<T> {
 				.ok_or(Error::<T>::ValueOverflow)?;
 
 				loan_info.last_updated = now;
+				loan_info.repaid_amount = new_repaid_amount;
 				loan_info.accumulated_rate = accumulated_rate;
 				loan_info.principal_debt = principal_debt;
 				let new_pv = loan_info
