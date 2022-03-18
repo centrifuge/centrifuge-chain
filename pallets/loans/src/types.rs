@@ -110,7 +110,7 @@ pub struct LoanData<Rate, Amount, Asset> {
 
 	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
 	pub(crate) accumulated_rate: Rate,
-	
+
 	// total borrowed and repaid on this loan
 	pub(crate) borrowed_amount: Amount,
 	pub(crate) repaid_amount: Amount,
