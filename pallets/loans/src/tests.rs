@@ -718,10 +718,10 @@ macro_rules! test_repay_loan {
 				assert_eq!(loan_data.repaid_amount, Amount::from_inner(0));
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
-				
+
 				// check loan data
 				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
-				.expect("LoanData should be present");
+					.expect("LoanData should be present");
 				// accumulated rate is now rate per sec
 				assert_eq!(
 					loan_data.accumulated_rate,
