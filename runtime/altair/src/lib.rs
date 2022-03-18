@@ -463,7 +463,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type MaxProposals = CouncilMaxProposals;
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo =  weights::pallet_collective::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_collective::SubstrateWeight<Self>;
 }
 
 parameter_types! {
