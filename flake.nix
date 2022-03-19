@@ -18,9 +18,7 @@
     let
       name = "centrifuge-chain";
       # This is the program version.
-      major = "0.10.9";
-      # This adds a shortened Git commit hash to the version.
-      version = "${major}-${commit-substr}";
+      version = "0.10.9";
       # This selects a nightly Rust version, based on the date.
       nightly-date = "2021-11-07";
       # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
@@ -89,7 +87,7 @@
         src = pkgs.lib.cleanSourceWith {
           src = ./.;
           filter = srcFilter ./.;
-          name = "${name}-${version}-source";
+          name = "${name}-source";
         };
 
         # This is a hash of all the Cargo dependencies, for reproducibility.
