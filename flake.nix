@@ -70,8 +70,6 @@
             "cloudbuild.yaml"
             "codecov.yml"
             "docker-compose.yml"
-            "flake.lock"
-            "flake.nix"
             "rustfmt.toml"
           ];
         in
