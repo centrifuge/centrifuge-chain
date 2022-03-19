@@ -24,10 +24,6 @@
       # This is the hash of the Rust toolchain at nightly-date, required for reproducibility.
       nightly-sha256 = "sha256-eENaPaU6wpk8qAUg5PJPpvAmSVQNCbOI3ipUMhHmwXk=";
 
-      # This evaluates to the first 7 digits of the git hash of this repo's HEAD
-      # commit, or to "dirty" if there are uncommitted changes.
-      commit-substr = builtins.substring 0 7 (inputs.self.rev or "dirty");
-
       # This could be made into a list, to support multiple platforms
       system = "x86_64-linux";
 
@@ -47,9 +43,15 @@
       # This is a mock git program, which just returns the commit-substr value.
       # It is called when the build process calls git. Instead of the real git,
       # it will find this one.
-      git-mock = pkgs.writeShellScriptBin "git" ''
-        echo ${commit-substr}
-      '';
+      git-mock =
+        let
+          # This evaluates to the first 7 digits of the git hash of this repo's HEAD
+          # commit, or to "dirty" if there are uncommitted changes.
+          commit-substr = builtins.substring 0 7 (inputs.self.rev or "dirty");
+        in
+        pkgs.writeShellScriptBin "git" ''
+          echo ${commit-substr}
+        '';
 
       # srcFilter is used to keep out of the build non-source files,
       # so that we only trigger a rebuild when necessary.
