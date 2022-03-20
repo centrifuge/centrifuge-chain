@@ -34,7 +34,7 @@ pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
-use sp_runtime::traits::{AccountIdConversion, Member};
+use sp_runtime::traits::{AccountIdConversion, CheckedMul, Member};
 use sp_runtime::{DispatchError, FixedPointNumber};
 use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
@@ -131,6 +131,16 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
+		/// A fixed-point number which represents
+		/// the normalized debt.
+		type NormalizedDebt: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ TypeInfo
+			+ FixedPointNumber
+			+ CheckedMul;
+
 		type InterestAccrual: InterestAccrualT<Self::Rate, Self::Amount>;
 
 		/// Weight info trait for extrinsics
@@ -177,7 +187,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanData<T::Rate, T::Amount, AssetOf<T>>,
+		LoanData<T::Rate, T::Amount, AssetOf<T>, T::NormalizedDebt>,
 		OptionQuery,
 	>;
 
@@ -245,7 +255,7 @@ pub mod pallet {
 		ValueOverflow,
 
 		/// Emits when principal debt calculation failed due to overflow
-		PrincipalDebtOverflow,
+		NormalizedDebtOverflow,
 
 		/// Emits when tries to update an active loan
 		LoanIsActive,

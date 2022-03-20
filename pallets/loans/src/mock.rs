@@ -280,6 +280,7 @@ impl pallet_loans::Config for MockRuntime {
 	type Pool = Pools;
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
+	type NormalizedDebt = Amount;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;

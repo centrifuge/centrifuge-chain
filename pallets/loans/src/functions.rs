@@ -99,9 +99,7 @@ impl<T: Config> Pallet<T> {
 				borrowed_amount: Zero::zero(),
 				repaid_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
-				accumulated_rate: One::one(),
-				principal_debt: Zero::zero(),
-				last_updated: timestamp,
+				normalized_debt: Zero::zero(),
 				status: LoanStatus::Created,
 				loan_type: Default::default(),
 				admin_written_off: false,
@@ -168,10 +166,10 @@ impl<T: Config> Pallet<T> {
 				);
 
 				// ensure debt is all paid
-				// we just need to ensure principal debt is zero
+				// we just need to ensure normalized debt is zero
 				// if not, we check if the loan is written of 100%
 				let written_off = match (
-					loan_info.principal_debt == Zero::zero(),
+					loan_info.normalized_debt == Zero::zero(),
 					loan_info.write_off_index,
 				) {
 					// debt is cleared
@@ -264,37 +262,36 @@ impl<T: Config> Pallet<T> {
 					.present_value(&vec![])
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-				// calculate accumulated rate and outstanding debt
-				let (accumulated_rate, debt) =
-					loan_info.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
-
 				let new_borrowed_amount = loan_info
 					.borrowed_amount
 					.checked_add(&amount)
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
+					.ok_or(ArithmeticError::Overflow)?;
 
-				// calculate new principal debt with adjustment amount
-				let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
-					debt,
+				// calculate new normalized debt with adjustment amount
+				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
 					math::Adjustment::Inc(amount),
-					accumulated_rate,
 				)
-				.ok_or(Error::<T>::PrincipalDebtOverflow)?;
+				.ok_or(Error::<T>::NormalizedDebtOverflow)?;
 
 				// update loan
 				let first_borrow = loan_info.borrowed_amount == Zero::zero();
+
 				if first_borrow {
 					loan_info.origination_date = now;
 				}
+
 				loan_info.borrowed_amount = new_borrowed_amount;
-				loan_info.last_updated = now;
-				loan_info.accumulated_rate = accumulated_rate;
-				loan_info.principal_debt = principal_debt;
+				loan_info.normalized_debt = normalized_debt;
+
 				let new_pv = loan_info
 					.present_value(&vec![])
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+
 				T::Pool::withdraw(pool_id, owner, amount.into())?;
+
 				*maybe_loan_info = Some(loan_info);
 				Ok(first_borrow)
 			},
@@ -314,12 +311,12 @@ impl<T: Config> Pallet<T> {
 				true => new_pv
 					.checked_sub(&old_pv)
 					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff))
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
+					.ok_or(ArithmeticError::Overflow),
 				// repay since new pv is less than old
 				false => old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff))
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+					.ok_or(ArithmeticError::Underflow),
 			}?;
 			nav.latest_nav = new_nav;
 			*maybe_nav_details = Some(nav);
@@ -379,25 +376,26 @@ impl<T: Config> Pallet<T> {
 				let new_repaid_amount = loan_info
 					.repaid_amount
 					.checked_add(&amount)
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
+					.ok_or(ArithmeticError::Overflow)?;
 
-				// calculate new principal debt with repaid amount
-				let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
-					debt,
+				// calculate new normalized debt with repaid amount
+				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
 					math::Adjustment::Dec(repay_amount),
-					accumulated_rate,
 				)
 				.ok_or(Error::<T>::ValueOverflow)?;
 
-				loan_info.last_updated = now;
 				loan_info.repaid_amount = new_repaid_amount;
-				loan_info.accumulated_rate = accumulated_rate;
-				loan_info.principal_debt = principal_debt;
+				loan_info.normalized_debt = normalized_debt;
+
 				let new_pv = loan_info
 					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+
 				T::Pool::deposit(pool_id, owner, repay_amount.into())?;
+
 				*maybe_loan_info = Some(loan_info);
 				Ok(repay_amount)
 			},
@@ -427,12 +425,14 @@ impl<T: Config> Pallet<T> {
 					return Ok(Zero::zero());
 				}
 
-				let (acc_rate, _debt) =
-					loan_data.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
-				loan_data.last_updated = now;
-				loan_data.accumulated_rate = acc_rate;
+				let debt = T::InterestAccrual::get_current_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
+				)
+				.ok_or(Error::<T>::LoanAccrueFailed)?;
+
 				let present_value = loan_data
-					.present_value(write_off_groups)
+					.present_value(debt, write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				*maybe_loan_data = Some(loan_data);
 				Ok(present_value)

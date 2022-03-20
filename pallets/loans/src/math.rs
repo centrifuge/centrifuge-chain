@@ -39,12 +39,12 @@ pub fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
 	B::checked_from_rational(a.into_inner(), A::accuracy())
 }
 
-/// calculates the debt using debt=principal_debt * cumulative_rate
+/// calculates the debt using debt=normalized_debt * cumulative_rate
 pub fn debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
-	principal_debt: Amount,
+	normalized_debt: Amount,
 	accumulated_rate: Rate,
 ) -> Option<Amount> {
-	convert::<Rate, Amount>(accumulated_rate).and_then(|rate| principal_debt.checked_mul(&rate))
+	convert::<Rate, Amount>(accumulated_rate).and_then(|rate| normalized_debt.checked_mul(&rate))
 }
 
 pub enum Adjustment<Amount: FixedPointNumber> {
@@ -54,7 +54,7 @@ pub enum Adjustment<Amount: FixedPointNumber> {
 
 /// calculates the principal debt after the adjustment
 /// current_debt and cumulative_rate must be latest
-pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
+pub fn calculate_normalized_debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
 	current_debt: Amount,
 	adjustment: Adjustment<Amount>,
 	cumulative_rate: Rate,

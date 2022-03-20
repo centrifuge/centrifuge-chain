@@ -20,7 +20,7 @@ mod tests;
 type Moment = u64;
 
 pub enum Adjustment<Amount: FixedPointNumber> {
-	Increase(Amount),
+	reaserease(Amount),
 	Decrease(Amount),
 }
 
@@ -106,6 +106,9 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when the debt calculation failed
 		DebtCalculationFailed,
+
+		/// Emits when the interest rate was not used
+		NoSuchRate,
 	}
 
 	// TODO: add permissionless extrinsic to update any rate
@@ -140,8 +143,24 @@ pub mod pallet {
 			normalized_debt: T::NormalizedDebt,
 			adjustment: Adjustment<T::Amount>,
 		) -> Result<T::Amount, DispatchError> {
-			// let new_normalized_debt: T::Amount = 0u64.into();
-			Ok(normalized_debt.into())
+			let rate =
+				Rates::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
+
+			let debt = Self::calculate_debt(normalized_debt, rate.cumulative_rate)
+				.ok_or(Error::<T>::DebtCalculationFailed)?;
+
+			let new_normalized_debt =
+				convert::<Rate, Amount>(rate.cumulative_rate).and_then(|rate| {
+					// Apply adjustment to debt
+					match adjustment {
+						Increase(amount) => debt.checked_add(&amount),
+						Decrease(amount) => debt.checked_sub(&amount),
+					}
+					// Calculate normalized debt = debt / cumulative_rate
+					.and_then(|debt| debt.checked_div(&rate))
+				});
+
+			Ok(new_normalized_debt)
 		}
 
 		/// Calculates the debt using debt = normalized_debt * cumulative_rate
@@ -155,6 +174,17 @@ pub mod pallet {
 					.checked_mul(&rate)
 					.and_then(|debt| Self::convert::<T::NormalizedDebt, T::Amount>(debt))
 			})
+		}
+
+		fn calculate_cumulative_rate<Rate: FixedPointNumber>(
+			interest_rate_per_sec: Rate,
+			cumulative_rate: Rate,
+			last_updated: Moment,
+		) -> Option<Rate> {
+			// cumulative_rate * interest_rate_per_sec ^ (now - last_updated)
+			let time_difference_secs = Self::now() - last_updated;
+			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
+				.and_then(|v| v.checked_mul(&cumulative_rate))
 		}
 
 		/// converts a fixed point from A precision to B precision
