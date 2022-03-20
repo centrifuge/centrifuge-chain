@@ -161,27 +161,27 @@ where
 	}
 
 	/// accrues rate and current debt from last updated until now
-	pub(crate) fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
-		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
-		let maybe_rate = match self.borrowed_amount == Zero::zero() {
-			true => Some(self.rate_per_sec),
-			false => math::calculate_accumulated_rate::<Rate>(
-				self.rate_per_sec,
-				self.accumulated_rate,
-				now,
-				self.last_updated,
-			),
-		};
+	// pub(crate) fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
+	// 	// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
+	// 	let maybe_rate = match self.borrowed_amount == Zero::zero() {
+	// 		true => Some(self.rate_per_sec),
+	// 		false => math::calculate_accumulated_rate::<Rate>(
+	// 			self.rate_per_sec,
+	// 			self.accumulated_rate,
+	// 			now,
+	// 			self.last_updated,
+	// 		),
+	// 	};
 
-		// calculate the current outstanding debt
-		let maybe_debt = maybe_rate
-			.and_then(|acc_rate| math::debt::<Amount, Rate>(self.normalized_debt, acc_rate));
+	// 	// calculate the current outstanding debt
+	// 	let maybe_debt = maybe_rate
+	// 		.and_then(|acc_rate| math::debt::<Amount, Rate>(self.normalized_debt, acc_rate));
 
-		match (maybe_rate, maybe_debt) {
-			(Some(rate), Some(debt)) => Some((rate, debt)),
-			_ => None,
-		}
-	}
+	// 	match (maybe_rate, maybe_debt) {
+	// 		(Some(rate), Some(debt)) => Some((rate, debt)),
+	// 		_ => None,
+	// 	}
+	// }
 
 	/// returns the ceiling amount for the loan based on the loan type
 	pub(crate) fn ceiling(&self, now: u64) -> Amount {

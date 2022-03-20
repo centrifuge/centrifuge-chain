@@ -3,8 +3,9 @@ use codec::{Decode, Encode};
 use common_traits::InterestAccrual;
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
+use sp_arithmetic::traits::checked_pow;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedMul},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -20,7 +21,7 @@ mod tests;
 type Moment = u64;
 
 pub enum Adjustment<Amount: FixedPointNumber> {
-	reaserease(Amount),
+	Increase(Amount),
 	Decrease(Amount),
 }
 
@@ -88,7 +89,10 @@ pub mod pallet {
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ FixedPointNumber
+			+ FixedPointOperand
 			+ From<Self::NormalizedDebt>
+			+ CheckedAdd
+			+ CheckedSub
 			+ TypeInfo;
 
 		type Time: UnixTime;
@@ -106,6 +110,9 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when the debt calculation failed
 		DebtCalculationFailed,
+
+		/// Emits when the debt adjustment failed
+		DebtAdjustmentFailed,
 
 		/// Emits when the interest rate was not used
 		NoSuchRate,
@@ -125,15 +132,22 @@ pub mod pallet {
 						last_updated: Self::now(),
 					};
 					Rates::<T>::insert(interest_rate_per_sec, &new_rate);
-					new_rate
+					new_rate.cumulative_rate
 				}
 				Ok(rate) => {
+					let new_cumulative_rate = Self::calculate_cumulative_rate(
+						interest_rate_per_sec,
+						rate.cumulative_rate,
+						rate.last_updated,
+					)
+					.ok_or(Error::<T>::DebtCalculationFailed)?;
 					// TODO: this should update the rate
-					rate
+
+					new_cumulative_rate
 				}
 			};
 
-			let debt = Self::calculate_debt(normalized_debt, rate.cumulative_rate)
+			let debt = Self::calculate_debt(normalized_debt, rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
 			Ok(debt)
 		}
@@ -150,15 +164,17 @@ pub mod pallet {
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
 
 			let new_normalized_debt =
-				convert::<Rate, Amount>(rate.cumulative_rate).and_then(|rate| {
-					// Apply adjustment to debt
-					match adjustment {
-						Increase(amount) => debt.checked_add(&amount),
-						Decrease(amount) => debt.checked_sub(&amount),
-					}
-					// Calculate normalized debt = debt / cumulative_rate
-					.and_then(|debt| debt.checked_div(&rate))
-				});
+				Self::convert::<T::InterestRate, T::Amount>(rate.cumulative_rate)
+					.and_then(|rate| {
+						// Apply adjustment to debt
+						match adjustment {
+							Adjustment::Increase(amount) => debt.checked_add(&amount),
+							Adjustment::Decrease(amount) => debt.checked_sub(&amount),
+						}
+						// Calculate normalized debt = debt / cumulative_rate
+						.and_then(|debt| debt.checked_div_int(rate))
+					})
+					.ok_or(Error::<T>::DebtAdjustmentFailed)?;
 
 			Ok(new_normalized_debt)
 		}
