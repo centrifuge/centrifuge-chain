@@ -5937,7 +5937,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-interest-rates"
+name = "pallet-interest-accrual"
 version = "0.1.0"
 dependencies = [
  "bitflags",

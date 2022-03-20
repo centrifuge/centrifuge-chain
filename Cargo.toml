@@ -42,7 +42,7 @@ members = [
 	"pallets/pools",
 	"pallets/loans",
 	"pallets/permissions",
-	"pallets/interest-rates",
+	"pallets/interest-accrual",
 	"libs/common-traits",
 	"libs/common-types",
 	"libs/proofs",
