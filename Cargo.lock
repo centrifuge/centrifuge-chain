@@ -5937,6 +5937,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-interest-rates"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "common-traits",
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
