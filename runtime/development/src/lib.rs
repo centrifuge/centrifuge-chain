@@ -958,6 +958,7 @@ impl pallet_loans::Config for Runtime {
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type Permission = Permissions;
+	type InterestAccrual = InterestAccrual;
 	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
@@ -1106,6 +1107,15 @@ parameter_types! {
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
+impl pallet_interest_accrual::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type InterestRate = Rate;
+	type NormalizedDebt = Amount;
+	type Amount = Amount;
+	type Time = Timestamp;
+}
+
 impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
@@ -1214,6 +1224,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

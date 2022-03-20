@@ -2123,6 +2123,7 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-interest-accrual",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
