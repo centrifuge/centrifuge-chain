@@ -255,11 +255,17 @@ impl<T: Config> Pallet<T> {
 				let ceiling = loan_info.ceiling(now);
 				ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
 
+				let old_debt = T::InterestAccrual::get_current_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
+				)
+				.ok_or(Error::<T>::LoanAccrueFailed)?;
+
 				// get previous present value so that we can update the nav accordingly
 				// we already know that that loan is not written off,
 				// means we wont need to have write off groups. so save a DB read and pass empty
 				let old_pv = loan_info
-					.present_value(&vec![])
+					.present_value(old_debt, &vec![])
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				let new_borrowed_amount = loan_info
@@ -285,8 +291,14 @@ impl<T: Config> Pallet<T> {
 				loan_info.borrowed_amount = new_borrowed_amount;
 				loan_info.normalized_debt = normalized_debt;
 
+				let new_debt = T::InterestAccrual::get_current_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
+				)
+				.ok_or(Error::<T>::LoanAccrueFailed)?;
+
 				let new_pv = loan_info
-					.present_value(&vec![])
+					.present_value(new_debt, &vec![])
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
@@ -360,10 +372,16 @@ impl<T: Config> Pallet<T> {
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
+				let old_debt = T::InterestAccrual::get_current_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
+				)
+				.ok_or(Error::<T>::LoanAccrueFailed)?;
+
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 				let old_pv = loan_info
-					.present_value(&write_off_groups)
+					.present_value(old_debt, &write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate new accumulated rate
@@ -389,8 +407,14 @@ impl<T: Config> Pallet<T> {
 				loan_info.repaid_amount = new_repaid_amount;
 				loan_info.normalized_debt = normalized_debt;
 
+				let new_debt = T::InterestAccrual::get_current_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
+				)
+				.ok_or(Error::<T>::LoanAccrueFailed)?;
+
 				let new_pv = loan_info
-					.present_value(&write_off_groups)
+					.present_value(new_debt, &write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
@@ -417,11 +441,11 @@ impl<T: Config> Pallet<T> {
 		LoanInfo::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_data| -> Result<T::Amount, DispatchError> {
-				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan_info| -> Result<T::Amount, DispatchError> {
+				let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
 				// if the loan is not active, then skip updating and return PV as zero
-				if loan_data.status != LoanStatus::Active {
-					*maybe_loan_data = Some(loan_data);
+				if loan_info.status != LoanStatus::Active {
+					*maybe_loan_info = Some(loan_info);
 					return Ok(Zero::zero());
 				}
 
@@ -431,10 +455,10 @@ impl<T: Config> Pallet<T> {
 				)
 				.ok_or(Error::<T>::LoanAccrueFailed)?;
 
-				let present_value = loan_data
+				let present_value = loan_info
 					.present_value(debt, write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
-				*maybe_loan_data = Some(loan_data);
+				*maybe_loan_info = Some(loan_info);
 				Ok(present_value)
 			},
 		)
@@ -506,11 +530,11 @@ impl<T: Config> Pallet<T> {
 		LoanInfo::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_data| -> Result<u32, DispatchError> {
-				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan_info| -> Result<u32, DispatchError> {
+				let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
 				// ensure loan is active
 				ensure!(
-					loan_data.status == LoanStatus::Active,
+					loan_info.status == LoanStatus::Active,
 					Error::<T>::LoanNotActive
 				);
 
@@ -525,16 +549,16 @@ impl<T: Config> Pallet<T> {
 						write_off_groups
 							.get(index as usize)
 							.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
-						loan_data.admin_written_off = true;
+						loan_info.admin_written_off = true;
 						Ok(index)
 					}
 					None => {
 						// non-admin is trying to write off but admin already did. So error out
-						if loan_data.admin_written_off {
+						if loan_info.admin_written_off {
 							return Err(Error::<T>::WrittenOffByAdmin.into());
 						}
 
-						let maturity_date = loan_data
+						let maturity_date = loan_info
 							.loan_type
 							.maturity_date()
 							.ok_or(Error::<T>::LoanTypeInvalid)?;
@@ -549,29 +573,35 @@ impl<T: Config> Pallet<T> {
 					}
 				}?;
 
+				let debt = T::InterestAccrual::get_current_debt(
+					loan_info.rate_per_sec,
+					loan_info.normalized_debt,
+				)
+				.ok_or(Error::<T>::LoanAccrueFailed)?;
+
 				// get old present value accounting for any write offs
-				let old_pv = loan_data
-					.present_value(&write_off_groups)
+				let old_pv = loan_info
+					.present_value(debt, &write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// accrue and calculate the new present value with current chosen write off
 				let (accumulated_rate, _current_debt) =
-					loan_data.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
+					loan_info.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
-				loan_data.accumulated_rate = accumulated_rate;
-				loan_data.last_updated = now;
-				loan_data.write_off_index = Some(write_off_group_index);
+				loan_info.accumulated_rate = accumulated_rate;
+				loan_info.last_updated = now;
+				loan_info.write_off_index = Some(write_off_group_index);
 
 				// calculate updated write off adjusted present value
-				let new_pv = loan_data
-					.present_value(&write_off_groups)
+				let new_pv = loan_info
+					.present_value(debt, &write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// update nav
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
 				// update loan data
-				*maybe_loan_data = Some(loan_data);
+				*maybe_loan_info = Some(loan_info);
 				Ok(write_off_group_index)
 			},
 		)
