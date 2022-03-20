@@ -546,7 +546,7 @@ macro_rules! test_borrow_loan {
 						&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap(),
 					)
 					.unwrap();
-				assert_eq!(loan_data.principal_debt, p_debt);
+				assert_eq!(loan_data.normalized_debt, p_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
@@ -580,7 +580,7 @@ macro_rules! test_borrow_loan {
 						&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap(),
 					)
 					.unwrap();
-				assert_eq!(loan_data.principal_debt, p_debt);
+				assert_eq!(loan_data.normalized_debt, p_debt);
 
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 930 * USD);
@@ -701,7 +701,7 @@ macro_rules! test_repay_loan {
 						&math::convert::<Rate, Amount>(loan_data.accumulated_rate).unwrap(),
 					)
 					.unwrap();
-				assert_eq!(loan_data.principal_debt, p_debt);
+				assert_eq!(loan_data.normalized_debt, p_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
@@ -731,7 +731,7 @@ macro_rules! test_repay_loan {
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 				assert_eq!(loan_data.repaid_amount, Amount::from_inner(20 * USD));
 				// principal debt should still be more than 30 due to interest
-				assert!(loan_data.principal_debt > Amount::from_inner(30 * USD));
+				assert!(loan_data.normalized_debt > Amount::from_inner(30 * USD));
 				// pool should have 30 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 970 * USD);
@@ -787,7 +787,7 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.checked_div(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
 					.unwrap();
-				assert_eq!(loan_data.principal_debt, p_debt);
+				assert_eq!(loan_data.normalized_debt, p_debt);
 
 				// debt after 3000 seconds
 				Timestamp::set_timestamp(3001 * 1000);
@@ -824,7 +824,7 @@ macro_rules! test_repay_loan {
 				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanData should be present");
 				assert_eq!(loan_data.status, LoanStatus::Closed);
-				assert_eq!(loan_data.principal_debt, Zero::zero());
+				assert_eq!(loan_data.normalized_debt, Zero::zero());
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 				assert_eq!(loan_data.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero

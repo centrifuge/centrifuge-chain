@@ -90,7 +90,7 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanData<Rate, Amount, Asset> {
+pub struct LoanData<Rate, Amount, Asset, NormalizedDebt> {
 	pub(crate) asset: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
 	pub(crate) status: LoanStatus,
@@ -101,15 +101,8 @@ pub struct LoanData<Rate, Amount, Asset> {
 	// time at which first borrow occurred
 	pub(crate) origination_date: u64,
 
-	// principal debt used to calculate the current outstanding debt.
-	// principal debt will change on every borrow and repay.
-	// Called principal debt instead of pie or normalized debt as mentioned here - https://docs.makerdao.com/smart-contract-modules/rates-module
-	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with the accumulated interest rate
-	pub(crate) principal_debt: Amount,
-	pub(crate) last_updated: u64,
-
-	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
-	pub(crate) accumulated_rate: Rate,
+	// normalized debt used to calculate the current outstanding debt.
+	pub(crate) normalized_debt: NormalizedDebt,
 
 	// total borrowed and repaid on this loan
 	pub(crate) borrowed_amount: Amount,
@@ -125,7 +118,7 @@ pub struct LoanData<Rate, Amount, Asset> {
 	pub(crate) admin_written_off: bool,
 }
 
-impl<Rate, Amount, Asset> LoanData<Rate, Amount, Asset>
+impl<Rate, Amount, Asset, NormalizedDebt> LoanData<Rate, Amount, Asset, NormalizedDebt>
 where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
@@ -135,22 +128,20 @@ where
 	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
 	pub(crate) fn present_value(
 		&self,
+		debt: Amount,
 		write_off_groups: &Vec<WriteOffGroup<Rate>>,
 	) -> Option<Amount> {
-		// calculate current debt and present value
-		math::debt(self.principal_debt, self.accumulated_rate)
-			.and_then(|debt| {
-				// if the debt is written off, write off accordingly
-				self.write_off_index.map_or(Some(debt), |index| {
-					write_off_groups
-						.get(index as usize)
-						// convert rate to amount
-						.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
-						// calculate write off amount
-						.and_then(|write_off_percentage| debt.checked_mul(&write_off_percentage))
-						// calculate debt after written off
-						.and_then(|write_off_amount| debt.checked_sub(&write_off_amount))
-				})
+		// if the debt is written off, write off accordingly
+		self.write_off_index
+			.map_or(Some(debt), |index| {
+				write_off_groups
+					.get(index as usize)
+					// convert rate to amount
+					.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
+					// calculate write off amount
+					.and_then(|write_off_percentage| debt.checked_mul(&write_off_percentage))
+					// calculate debt after written off
+					.and_then(|write_off_amount| debt.checked_sub(&write_off_amount))
 			})
 			.and_then(|debt| match self.loan_type {
 				LoanType::BulletLoan(bl) => bl.present_value(
@@ -184,7 +175,7 @@ where
 
 		// calculate the current outstanding debt
 		let maybe_debt = maybe_rate
-			.and_then(|acc_rate| math::debt::<Amount, Rate>(self.principal_debt, acc_rate));
+			.and_then(|acc_rate| math::debt::<Amount, Rate>(self.normalized_debt, acc_rate));
 
 		match (maybe_rate, maybe_debt) {
 			(Some(rate), Some(debt)) => Some((rate, debt)),

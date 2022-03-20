@@ -959,6 +959,7 @@ impl pallet_loans::Config for Runtime {
 	type Pool = Pools;
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
+	type NormalizedDebt = common_traits::InterestAccrual::NormalizedDebt;
 	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
