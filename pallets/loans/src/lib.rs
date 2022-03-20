@@ -17,7 +17,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::Permissions as PermissionsT;
+use common_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
 pub use common_types::PoolRole;
 use frame_support::dispatch::DispatchResult;
@@ -130,6 +130,8 @@ pub mod pallet {
 			Role = PoolRole,
 			Error = DispatchError,
 		>;
+
+		type InterestAccrual: InterestAccrualT<Self::Rate, Self::Amount>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;

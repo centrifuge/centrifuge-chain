@@ -94,10 +94,6 @@ pub mod pallet {
 			+ TypeInfo;
 
 		type Time: UnixTime;
-
-		/// The Id of this pallet
-		#[pallet::constant]
-		type PalletId: Get<PalletId>;
 	}
 
 	#[pallet::storage]
@@ -146,8 +142,8 @@ pub mod pallet {
 			normalized_debt: T::NormalizedDebt,
 			adjustment: Adjustment<T::Amount>,
 		) -> Result<T::Amount, DispatchError> {
-			let new_normalized_debt: T::Amount = 0u64.into();
-			Ok(new_normalized_debt)
+			// let new_normalized_debt: T::Amount = 0u64.into();
+			Ok(normalized_debt.into())
 		}
 
 		/// Calculates the debt using debt = normalized_debt * cumulative_rate
