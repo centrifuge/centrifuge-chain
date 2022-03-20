@@ -56,7 +56,8 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
-		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>}
 	}
 );
 
@@ -232,6 +233,15 @@ impl pallet_uniques::Config for MockRuntime {
 	type WeightInfo = ();
 }
 
+impl pallet_interest_accrual::Config for MockRuntime {
+	type Event = Event;
+	type Balance = Balance;
+	type InterestRate = Rate;
+	type NormalizedDebt = Amount;
+	type Amount = Amount;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: TrancheId = 5;
@@ -269,6 +279,7 @@ impl pallet_loans::Config for MockRuntime {
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type Permission = Permissions;
+	type InterestAccrual = InterestAccrual;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;

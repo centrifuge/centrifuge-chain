@@ -42,7 +42,6 @@ pub struct RateDetails<InterestRate, Moment> {
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
-	use frame_support::PalletId;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -81,15 +80,14 @@ pub mod pallet {
 			+ Default
 			+ Copy
 			+ TypeInfo
-			+ CheckedMul
-			+ FixedPointNumber<Inner = Self::Amount>;
+			+ FixedPointNumber
+			+ CheckedMul;
 
 		/// The amount type
 		type Amount: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ FixedPointNumber
-			+ From<u64>
 			+ From<Self::NormalizedDebt>
 			+ TypeInfo;
 
@@ -155,7 +153,7 @@ pub mod pallet {
 			Self::convert::<T::InterestRate, T::NormalizedDebt>(cumulative_rate).and_then(|rate| {
 				normalized_debt
 					.checked_mul(&rate)
-					.and_then(|debt| Some(debt.into()))
+					.and_then(|debt| Self::convert::<T::NormalizedDebt, T::Amount>(debt))
 			})
 		}
 
