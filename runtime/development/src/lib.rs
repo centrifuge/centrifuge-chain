@@ -14,7 +14,7 @@ use frame_support::{
 		Nothing, U128CurrencyToVote,
 	},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, WEIGHT_PER_SECOND},
 		DispatchClass, Weight,
 	},
 	PalletId, RuntimeDebug,
@@ -104,6 +104,20 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 	state_version: 0,
 };
+
+pub const MICROUNIT: Balance = 1_000_000;
+
+pub const MILLICENTS: Balance = 1_000 * MICROUNIT;
+pub const CENTS: Balance = 1_000 * MILLICENTS; // assume this is worth about a cent.
+pub const DOLLARS: Balance = 100 * CENTS;
+
+pub fn roc_per_second() -> u128 {
+	let base_weight = Balance::from(ExtrinsicBaseWeight::get());
+	let base_tx_fee = DOLLARS / 1000;
+	let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+	let fee_per_second = base_tx_per_second * base_tx_fee;
+	fee_per_second / 100
+}
 
 /// Native version.
 #[cfg(any(feature = "std", test))]
@@ -1304,39 +1318,48 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
+	FixedRateOfFungible<RocPerSecond, ()>,
 	FixedRateOfFungible<NativePerSecond, ()>,
+	FixedRateOfFungible<NativeNewPerSecond, ()>,
 	FixedRateOfFungible<UsdPerSecond2000, ()>,
 	FixedRateOfFungible<UsdPerSecond3000, ()>,
 );
 
 parameter_types! {
+	pub RocPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), roc_per_second());
 	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(2000), GeneralKey(CurrencyId::Native.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
-		10_000,
+		// Native:ROC = 80:1
+		roc_per_second() * 80
+		// 10_000
 	);
-
+	pub NativeNewPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(CurrencyId::Native.encode()))
+		).into(),
+		// Native:ROC = 80:1
+		roc_per_second() * 80
+	);
 	pub UsdPerSecond2000: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
+            X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
-		200_000
+		// Usd_2000:ROC = 100:1
+		roc_per_second() * 100
 	);
 
-	/// We support this Trader for testing purposes when we spawn a sibling clone development
-	/// parachain with id 3000.
 	pub UsdPerSecond3000: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(3000), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
-		200_000
+		// Usd_3000:ROC = 100:1
+		roc_per_second() * 100
 	);
 }
 
