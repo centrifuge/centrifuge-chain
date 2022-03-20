@@ -1098,15 +1098,6 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
-parameter_types! {
-	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
-	//TODO rename xRAD to xCFG and create new mapping
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
-	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
-	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
-}
-
 impl pallet_interest_accrual::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -1114,6 +1105,15 @@ impl pallet_interest_accrual::Config for Runtime {
 	type NormalizedDebt = Amount;
 	type Amount = Amount;
 	type Time = Timestamp;
+}
+
+parameter_types! {
+	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	//TODO rename xRAD to xCFG and create new mapping
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
 
 impl pallet_bridge::Config for Runtime {
