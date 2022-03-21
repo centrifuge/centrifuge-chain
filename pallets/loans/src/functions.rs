@@ -378,7 +378,7 @@ impl<T: Config> Pallet<T> {
 
 				let new_repaid_amount = loan_info
 					.repaid_amount
-					.checked_add(&amount)
+					.checked_add(&repay_amount)
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
 				// calculate new principal debt with repaid amount
