@@ -393,7 +393,7 @@ impl<T: Config> Pallet<T> {
 
 				let new_repaid_amount = loan_info
 					.repaid_amount
-					.checked_add(&amount)
+					.checked_add(&repay_amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
 				// calculate new normalized debt with repaid amount
