@@ -41,7 +41,7 @@ mod tokens;
 //       and/or the TrancheId type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<Moment = u64, TrancheId = u8> {
+pub enum PoolRole<TrancheId, Moment = u64> {
 	PoolAdmin,
 	Borrower,
 	PricingAdmin,
@@ -65,18 +65,17 @@ bitflags::bitflags! {
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-pub struct TrancheInvestors<Now, MinDelay, MaxTranches, TrancheId, Moment> {
+pub struct TrancheInvestors<Now, MinDelay, TrancheId, Moment> {
 	info: Vec<TrancheInvestorInfo<TrancheId, Moment>>,
-	max_tranches: TrancheId,
-	_phantom: PhantomData<(Now, MinDelay, MaxTranches)>,
+	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
 /// The structure that we store in the pallet-permissions storage
 /// This here implements trait Properties.
 #[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
-pub struct PermissionRoles<Now, MaxTranches, MinDelay, TrancheId = u8, Moment = u64> {
+pub struct PermissionRoles<Now, MinDelay, TrancheId, Moment = u64> {
 	admin: AdminRoles,
-	tranche_investor: TrancheInvestors<Now, MaxTranches, MinDelay, TrancheId, Moment>,
+	tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, Moment>,
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
@@ -85,10 +84,9 @@ pub struct TrancheInvestorInfo<TrancheId, Moment> {
 	permissioned_till: Moment,
 }
 
-impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Default
-	for TrancheInvestors<Now, MaxTranches, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, Moment> Default
+	for TrancheInvestors<Now, MinDelay, TrancheId, Moment>
 where
-	MaxTranches: Get<TrancheId>,
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
@@ -97,16 +95,13 @@ where
 	fn default() -> Self {
 		Self {
 			info: Vec::default(),
-			max_tranches: MaxTranches::get(),
 			_phantom: Default::default(),
 		}
 	}
 }
 
-impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Default
-	for PermissionRoles<Now, MaxTranches, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, Moment> Default for PermissionRoles<Now, MinDelay, TrancheId, Moment>
 where
-	MaxTranches: Get<TrancheId>,
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord,
@@ -115,8 +110,7 @@ where
 	fn default() -> Self {
 		Self {
 			admin: AdminRoles::empty(),
-			tranche_investor:
-				TrancheInvestors::<Now, MaxTranches, MinDelay, TrancheId, Moment>::default(),
+			tranche_investor: TrancheInvestors::<Now, MinDelay, TrancheId, Moment>::default(),
 		}
 	}
 }
@@ -126,16 +120,15 @@ where
 /// This UNION shall reflect that and explain to the reader why it is passed here.
 pub const UNION: u64 = 0;
 
-impl<Now, MaxTranches, MinDelay, TrancheId, Moment> Properties
-	for PermissionRoles<Now, MaxTranches, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, Moment> Properties
+	for PermissionRoles<Now, MinDelay, TrancheId, Moment>
 where
-	MaxTranches: Get<TrancheId>,
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	TrancheId: PartialEq + PartialOrd,
 {
-	type Property = PoolRole<Moment, TrancheId>;
+	type Property = PoolRole<TrancheId, Moment>;
 	type Error = ();
 	type Ok = ();
 
@@ -180,10 +173,8 @@ where
 	}
 }
 
-impl<Now, MaxTranches, MinDelay, TrancheId, Moment>
-	TrancheInvestors<Now, MaxTranches, MinDelay, TrancheId, Moment>
+impl<Now, MinDelay, TrancheId, Moment> TrancheInvestors<Now, MinDelay, TrancheId, Moment>
 where
-	MaxTranches: Get<TrancheId>,
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
@@ -210,10 +201,6 @@ where
 	}
 
 	pub fn contains(&self, tranche: TrancheId) -> bool {
-		if tranche >= self.max_tranches {
-			return false;
-		}
-
 		self.info
 			.iter()
 			.position(|info| {
@@ -223,10 +210,6 @@ where
 	}
 
 	pub fn remove(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
-		if tranche >= self.max_tranches {
-			return Err(());
-		}
-
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
 			let valid_till = &self.info[index].permissioned_till;
 			let now = Now::now().as_secs().into();
@@ -244,10 +227,6 @@ where
 	}
 
 	pub fn insert(&mut self, tranche: TrancheId, delta: Moment) -> Result<(), ()> {
-		if tranche >= self.max_tranches {
-			return Err(());
-		}
-
 		let validity = self.validity(delta)?;
 
 		if let Some(index) = self.info.iter().position(|info| info.tranche_id == tranche) {
