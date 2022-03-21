@@ -412,14 +412,14 @@ fn epoch() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -455,13 +455,13 @@ fn epoch() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -488,26 +488,26 @@ fn epoch() {
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			1
 		));
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 
 		assert_eq!(
 			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, JUNIOR_TRANCHE_ID),
+				CurrencyId::Tranche(0, JuniorTrancheId::get()),
 				&0,
 			),
 			500 * CURRENCY,
 		);
 		assert_eq!(
 			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, SENIOR_TRANCHE_ID),
+				CurrencyId::Tranche(0, SeniorTrancheId::get()),
 				&1,
 			),
 			500 * CURRENCY,
@@ -605,13 +605,13 @@ fn epoch() {
 		assert_ok!(Pools::update_redeem_order(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
-		let senior_epoch = Pools::epoch(SENIOR_TRANCHE_ID, pool.last_epoch_executed).unwrap();
+		let senior_epoch = Pools::epoch(SeniorTrancheId::get(), pool.last_epoch_executed).unwrap();
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
 		assert_eq!(
@@ -649,14 +649,14 @@ fn submission_period() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -685,13 +685,13 @@ fn submission_period() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -711,14 +711,14 @@ fn submission_period() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			1
 		));
 
@@ -726,7 +726,7 @@ fn submission_period() {
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -858,14 +858,14 @@ fn execute_info_removed_after_epoch_execute() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -907,8 +907,16 @@ fn execute_info_removed_after_epoch_execute() {
 		invest_close_and_collect(
 			0,
 			vec![
-				(junior_investor.clone(), JUNIOR_TRANCHE_ID, 500 * CURRENCY),
-				(senior_investor.clone(), SENIOR_TRANCHE_ID, 500 * CURRENCY),
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
 			],
 		)
 		.unwrap();
@@ -917,7 +925,7 @@ fn execute_info_removed_after_epoch_execute() {
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -955,14 +963,14 @@ fn collect_tranche_tokens() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -993,13 +1001,13 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -1022,7 +1030,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
@@ -1034,13 +1042,13 @@ fn collect_tranche_tokens() {
 			0
 		);
 
-		assert_eq!(Pools::order(SENIOR_TRANCHE_ID, 0,), None);
+		assert_eq!(Pools::order(SeniorTrancheId::get(), 0,), None);
 
 		assert_noop!(
 			Pools::update_invest_order(
 				senior_investor.clone(),
 				0,
-				TrancheLoc::Id(SENIOR_TRANCHE_ID),
+				TrancheLoc::Id(SeniorTrancheId::get()),
 				10 * CURRENCY
 			),
 			Error::<Test>::CollectRequired
@@ -1049,21 +1057,21 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			1
 		));
 
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			TrancheLoc::Id(SENIOR_TRANCHE_ID),
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			10 * CURRENCY
 		));
 
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			10 * CURRENCY
 		));
 
@@ -1071,7 +1079,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 	});
@@ -1086,7 +1094,7 @@ fn invalid_tranche_id_is_err() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1103,7 +1111,7 @@ fn invalid_tranche_id_is_err() {
 			Pools::update_invest_order(
 				junior_investor.clone(),
 				0,
-				TrancheLoc::Id(SENIOR_TRANCHE_ID),
+				TrancheLoc::Id(SeniorTrancheId::get()),
 				500 * CURRENCY
 			),
 			Error::<Test>::InvalidTrancheId
@@ -1113,7 +1121,7 @@ fn invalid_tranche_id_is_err() {
 			Pools::update_redeem_order(
 				junior_investor.clone(),
 				0,
-				TrancheLoc::Id(SENIOR_TRANCHE_ID),
+				TrancheLoc::Id(SeniorTrancheId::get()),
 				500 * CURRENCY
 			),
 			Error::<Test>::InvalidTrancheId
@@ -1130,7 +1138,7 @@ fn updating_with_same_amount_is_err() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1146,7 +1154,7 @@ fn updating_with_same_amount_is_err() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -1154,7 +1162,7 @@ fn updating_with_same_amount_is_err() {
 			Pools::update_invest_order(
 				junior_investor.clone(),
 				0,
-				TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+				TrancheLoc::Id(JuniorTrancheId::get()),
 				500 * CURRENCY
 			),
 			Error::<Test>::NoNewOrder
@@ -1235,7 +1243,7 @@ fn updating_orders_updates_epoch() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1255,17 +1263,17 @@ fn updating_orders_updates_epoch() {
 
 		next_block();
 
-		assert_eq!(Pools::order(JUNIOR_TRANCHE_ID, jun_invest_id), None);
+		assert_eq!(Pools::order(JuniorTrancheId::get(), jun_invest_id), None);
 
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			pool_id,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
 		assert_eq!(
-			Pools::order(JUNIOR_TRANCHE_ID, jun_invest_id)
+			Pools::order(JuniorTrancheId::get(), jun_invest_id)
 				.unwrap()
 				.epoch,
 			2
@@ -1285,7 +1293,7 @@ fn no_order_is_err() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1307,7 +1315,7 @@ fn no_order_is_err() {
 			Pools::collect(
 				junior_investor.clone(),
 				pool_id,
-				TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+				TrancheLoc::Id(JuniorTrancheId::get()),
 				2
 			),
 			Error::<Test>::NoOutstandingOrder
@@ -1327,7 +1335,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1345,7 +1353,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			pool_id,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -1358,7 +1366,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 			Pools::collect(
 				junior_investor.clone(),
 				pool_id,
-				TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+				TrancheLoc::Id(JuniorTrancheId::get()),
 				2
 			),
 			Error::<Test>::EpochNotExecutedYet
@@ -1367,7 +1375,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			pool_id,
-			TrancheLoc::Id(JUNIOR_TRANCHE_ID),
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 	})

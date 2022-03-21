@@ -316,7 +316,7 @@ where
 			//         up, even if we remove tranches.
 			// * pool-id: The pool id is ensured to be unique on-chain
 			//
-			// -> tranche id = Twox128::hash(Twox128::hash(pool_id) + salt)
+			// -> tranche id = Twox128::hash(salt)
 			let hash_input = salt.encode();
 			let id = Twox128::hash(hash_input.as_slice());
 			ids.push(id.into());
