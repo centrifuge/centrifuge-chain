@@ -962,7 +962,7 @@ where
 		// Calculate the new total asset value for each tranche
 		// This uses the current state of the tranches, rather than the cached epoch-close-time values.
 		let mut total_assets = total_assets;
-		let tranche_assets = self.combine_with_mut_residual_top(
+		let tranche_assets = self.combine_with_mut_non_residual_top(
 			executed_amounts.iter().rev(),
 			|tranche, (invest, redeem)| {
 				tranche.accrue(now)?;
@@ -993,7 +993,7 @@ where
 		// Rebalance tranches based on the new tranche asset values and ratios
 		let mut remaining_nav = pool_nav;
 		let mut remaining_reserve = pool_total_reserve;
-		self.combine_with_mut_residual_top(
+		self.combine_with_mut_non_residual_top(
 			tranche_ratios.iter().rev().zip(tranche_assets.iter()),
 			|tranche, (ratio, value)| {
 				tranche.ratio = *ratio;
