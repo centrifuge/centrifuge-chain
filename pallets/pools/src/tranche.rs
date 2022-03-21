@@ -23,8 +23,7 @@ use super::*;
 use common_traits::TrancheToken as TrancheTokenT;
 #[cfg(test)]
 use common_types::CurrencyId;
-use frame_support::sp_runtime::ArithmeticError;
-use frame_support::sp_std::convert::TryInto;
+use frame_support::{sp_runtime::ArithmeticError, sp_std::convert::TryInto, StorageHasher};
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};
 
@@ -42,6 +41,8 @@ pub(super) type TranchesOf<T> = Tranches<
 	<T as Config>::InterestRate,
 	<T as Config>::TrancheWeight,
 	<T as Config>::CurrencyId,
+	<T as Config>::TrancheId,
+	<T as Config>::PoolId,
 >;
 
 /// Types alias for Tranche
@@ -72,7 +73,7 @@ impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
 	}
 }
 
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum TrancheType<Rate> {
 	Residual,
 	NonResidual {
@@ -237,36 +238,36 @@ where
 pub type TrancheIndex = u64;
 
 // The salt type for tranches
-pub type TrancheSalt = (TrancheIndex, [u8; 16]);
+pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Tranches<Balance, Rate, Weight, Currency, TrancheId> {
+pub struct Tranches<Balance, Rate, Weight, Currency, TrancheId, PoolId> {
 	tranches: Vec<Tranche<Balance, Rate, Weight, Currency>>,
 	ids: Vec<TrancheId>,
-	salt: TrancheSalt,
+	salt: TrancheSalt<PoolId>,
 }
 
-impl<Balance, Rate, Weight, CurrencyId, TrancheId>
-	Tranches<Balance, Rate, Weight, CurrencyId, TrancheId>
+impl<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>
+	Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>
 where
 	CurrencyId: Copy,
 	Balance: Zero + Copy + BaseArithmetic + FixedPointOperand + Unsigned + From<u64>,
 	Weight: Copy + From<u128>,
 	Rate: One + Copy + FixedPointNumber<Inner = Balance>,
-	TrancheId: Clone + From<[u8; 16]>,
+	TrancheId: Clone + From<[u8; 16]> + sp_std::cmp::PartialEq,
+	PoolId: Copy + Encode,
 {
-	pub fn from_input<
-		PoolId: Copy + Encode,
-		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
-	>(
-		pool_id: PoolId,
+	pub fn from_input<TrancheToken>(
+		pool: PoolId,
 		tranche_inputs: Vec<TrancheInput<Rate>>,
 		now: Moment,
-	) -> Result<Self, DispatchError> {
+	) -> Result<Self, DispatchError>
+	where
+		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
+	{
 		let mut tranches = Vec::with_capacity(tranche_inputs.len());
 		let mut ids = Vec::with_capacity(tranche_inputs.len());
-		let pool_hash = Twox128::hash(pool_id.encode().as_slice());
-		let mut salt = (0, pool_hash);
+		let mut salt = (0, pool);
 
 		for (index, (tranche_type, seniority)) in tranche_inputs.into_iter().enumerate() {
 			// Generate ids after the following schema:
@@ -274,9 +275,8 @@ where
 			//         up, even if we remove tranches.
 			// * pool-id: The pool id is ensured to be unique on-chain
 			//
-			// -> tranche id = Twox128::hash(Twox128::hash(pool_id) + salt)
-			let mut hash_input = salt.encode();
-			hash_input.extend_from_slice(pool_hash.as_slice());
+			// -> tranche id = Twox128::hash(salt)
+			let hash_input = salt.encode();
 			let id = Twox128::hash(hash_input.as_slice());
 
 			ids.push(id.into());
@@ -284,8 +284,8 @@ where
 				tranche_type,
 				// seniority increases as index since the order is from junior to senior
 				seniority: seniority
-					.unwrap_or(id.try_into().map_err(|_| ArithmeticError::Overflow)?),
-				currency: TrancheToken::tranche_token(pool_id, id),
+					.unwrap_or(index.try_into().map_err(|_| ArithmeticError::Overflow)?),
+				currency: TrancheToken::tranche_token(pool, id.into()),
 				outstanding_invest_orders: Zero::zero(),
 				outstanding_redeem_orders: Zero::zero(),
 				debt: Zero::zero(),
@@ -296,10 +296,10 @@ where
 			});
 
 			salt = (
-				(index.checked_add(1).map_err(|| ArithmeticError::Overflow)?)
+				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
 					.try_into()
 					.map_err(|_| ArithmeticError::Overflow)?,
-				pool_hash,
+				pool,
 			);
 		}
 
@@ -310,38 +310,60 @@ where
 		})
 	}
 
-	pub fn new<PoolId: Copy + Encode>(
+	pub fn new<TrancheToken>(
 		pool: PoolId,
 		tranches: Vec<Tranche<Balance, Rate, Weight, CurrencyId>>,
-	) -> Self {
+	) -> Result<Self, DispatchError>
+	where
+		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
+	{
 		let mut ids = Vec::with_capacity(tranches.len());
-		let pool_hash = Twox128::hash(pool.encode().as_slice());
-		let mut salt = (0, pool_hash);
+		let mut salt = (0, pool);
 
-		for (index, tranche_type) in tranches.iter().enumerate() {
+		for (index, _tranche) in tranches.iter().enumerate() {
 			// Generate ids after the following schema:
 			// * salt: The salt is a counter in our case that will always go
 			//         up, even if we remove tranches.
 			// * pool-id: The pool id is ensured to be unique on-chain
 			//
 			// -> tranche id = Twox128::hash(Twox128::hash(pool_id) + salt)
-			let mut hash_input = salt.encode();
-			hash_input.extend_from_slice(pool_hash.as_slice());
+			let hash_input = salt.encode();
 			let id = Twox128::hash(hash_input.as_slice());
 			ids.push(id.into());
 			salt = (
-				(index.checked_add(1).map_err(|| ArithmeticError::Overflow)?)
+				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
 					.try_into()
 					.map_err(|_| ArithmeticError::Overflow)?,
-				pool_hash,
+				pool,
 			);
 		}
 
-		Self {
+		Ok(Self {
 			tranches,
 			ids,
 			salt,
+		})
+	}
+
+	pub fn get_id(&self, tranche_index: TrancheIndex) -> Option<TrancheId> {
+		let index: Option<usize> = tranche_index.try_into().ok();
+		if let Some(index) = index {
+			if let Some(id) = self.ids.get(index) {
+				Some(id.clone())
+			} else {
+				None
+			}
+		} else {
+			None
 		}
+	}
+
+	pub fn get_index(&self, id: &TrancheId) -> Option<TrancheIndex> {
+		self.ids
+			.iter()
+			.position(|curr_id| curr_id == id)
+			.map(|index| index.try_into().ok())
+			.flatten()
 	}
 
 	fn next_id(&mut self) -> Result<TrancheId, DispatchError> {
@@ -351,18 +373,21 @@ where
 				.salt
 				.0
 				.checked_add(1)
-				.map_err(|| ArithmeticError::Overflow)?)
+				.ok_or(ArithmeticError::Overflow)?)
 			.try_into()
 			.map_err(|_| ArithmeticError::Overflow)?,
 			self.salt.1,
 		);
-		Ok(id)
+		Ok(id.into())
 	}
 
 	fn create_tranche<TrancheToken>(
 		&mut self,
 		index: TrancheIndex,
 		id: TrancheId,
+		tranche_type: TrancheType<Rate>,
+		seniority: Option<Seniority>,
+		now: Moment,
 	) -> Result<Tranche<Balance, Rate, Weight, CurrencyId>, DispatchError>
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
@@ -372,7 +397,7 @@ where
 			// seniority increases as index since the order is from junior to senior
 			seniority: seniority
 				.unwrap_or(index.try_into().map_err(|_| ArithmeticError::Overflow)?),
-			currency: TrancheToken::tranche_token(pool_id, id),
+			currency: TrancheToken::tranche_token(self.salt.1, id),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
@@ -388,31 +413,39 @@ where
 		&mut self,
 		at: TrancheIndex,
 		tranche: TrancheInput<Rate>,
+		now: Moment,
 	) -> DispatchResult
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 	{
 		self.remove(at)?;
-		self.add::<TrancheToken>(at, tranche)
+		self.add::<TrancheToken>(at, tranche, now)
 	}
 
 	pub fn add<TrancheToken>(
 		&mut self,
 		at: TrancheIndex,
 		tranche: TrancheInput<Rate>,
+		now: Moment,
 	) -> DispatchResult
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 	{
-		ensure!(
-			self.tranches.len() <= at.try_into().is_ok(),
-			ArithmeticError::Overflow
-		);
+		let at_usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+		ensure!(self.tranches.len() <= at_usize, ArithmeticError::Overflow);
 
+		let (tranche_type, maybe_seniority) = tranche;
 		let id = self.next_id()?;
+		let new_tranche = self.create_tranche::<TrancheToken>(
+			at,
+			id.clone(),
+			tranche_type,
+			maybe_seniority,
+			now,
+		)?;
 		if at == 0 {
 			ensure!(
-				tranche.0 == TrancheType::Residual,
+				tranche_type == TrancheType::Residual,
 				DispatchError::Other(
 					"Top tranche must be a residual one. This should be catched somewhere else"
 				)
@@ -422,47 +455,44 @@ where
 			//       But as we can not be sure, that this is always the case for future compiler versions
 			//       better be safe than sorry.
 			if self.tranches.len() == 0 {
-				self.tranches.push(self.create_tranche(at, id.clone())?);
+				self.tranches.push(new_tranche);
 				self.ids.push(id);
 			} else {
-				self.tranches
-					.insert(0, self.create_tranche(at, id.clone())?);
+				self.tranches.insert(0, new_tranche);
 				self.ids.insert(0, id);
 			}
-		} else if self.tranches.len() == at {
-			let tranche = self.create_tranche(at, id.clone())?;
+		} else if self.tranches.len() == at_usize {
 			ensure!(
 				self.tranches
-					.get(at - 1)
+					.get(at_usize - 1)
 					.expect(
 						"at is equal to len and is not zero. An element before at must exist. qed."
 					)
 					.tranche_type
-					.is_valid_next(&tranche.tranche_type),
+					.valid_next_tranche(&new_tranche.tranche_type),
 				DispatchError::Other(
 					"Invalid next tranche type. This should be catched somewhere else."
 				)
 			);
 
-			self.tranches.push(tranche);
+			self.tranches.push(new_tranche);
 			self.ids.push(id);
 		} else {
-			let tranche = self.create_tranche(at, id.clone())?;
 			ensure!(
 				self.tranches
-					.get(at - 1)
+					.get(at_usize - 1)
 					.expect(
 						"at is equal to len and is not zero. An element before at must exist. qed."
 					)
 					.tranche_type
-					.is_valid_next(&tranche.tranche_type),
+					.valid_next_tranche(&new_tranche.tranche_type),
 				DispatchError::Other(
 					"Invalid next tranche type. This should be catched somewhere else."
 				)
 			);
 
-			let at: usize = at.try_into().map_err(|| ArithmeticError::Overflow)?;
-			self.tranches.insert(at, tranche);
+			let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
+			self.tranches.insert(at, new_tranche);
 			self.ids.insert(at, id);
 		}
 
@@ -470,7 +500,7 @@ where
 	}
 
 	pub fn remove(&mut self, at: TrancheIndex) -> DispatchResult {
-		let at: usize = at.try_into().map_err(|| ArithmeticError::Overflow)?;
+		let at: usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
 		ensure!(
 			self.tranches.len() < at,
 			DispatchError::Other(
