@@ -39,14 +39,14 @@ use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
+pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
 where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 {
 	pub currency: CurrencyId,
-	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId>, // ordered junior => senior
+	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>, // ordered junior => senior
 	pub current_epoch: EpochId,
 	pub last_epoch_closed: Moment,
 	pub last_epoch_executed: EpochId,
@@ -64,8 +64,8 @@ pub struct ReserveDetails<Balance> {
 	pub total_reserve: Balance,
 }
 
-impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
-	PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight>
+impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
+	PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
 where
 	MetaSize: Get<u32> + Copy,
 	Rate: FixedPointNumber<Inner = Balance>,
@@ -161,6 +161,8 @@ type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::InterestRate,
 	<T as Config>::MaxSizeMetadata,
 	<T as Config>::TrancheWeight,
+	<T as Config>::TrancheId,
+	<T as Config>::PoolId,
 >;
 type UserOrderOf<T> = UserOrder<<T as Config>::Balance, <T as Config>::EpochId>;
 type EpochExecutionInfoOf<T> = EpochExecutionInfo<
@@ -233,7 +235,8 @@ pub mod pallet {
 			+ MaxEncodedLen
 			+ Into<usize>
 			+ TypeInfo
-			+ TryFrom<usize>;
+			+ TryFrom<usize>
+			+ From<[u8; 16]>;
 
 		type EpochId: Member
 			+ Parameter
@@ -472,9 +475,7 @@ pub mod pallet {
 			Self::is_valid_tranche_change(None, &tranches)?;
 
 			let now = Self::now();
-			let tranches = Tranches::from_input::<T::PoolId, T::TrancheId, T::TrancheToken>(
-				pool_id, tranches, now,
-			)?;
+			let tranches = Tranches::from_input::<T::TrancheToken>(pool_id, tranches, now)?;
 
 			Pool::<T>::insert(
 				pool_id,
