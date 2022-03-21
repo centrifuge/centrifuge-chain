@@ -14,7 +14,7 @@ use sp_std::vec::Vec;
 pub enum CurrencyId {
 	Native,
 	Usd,
-	Tranche(u64, u8),
+	Tranche(u64, [u8; 16]),
 }
 
 impl TokenMetadata for CurrencyId {
@@ -23,7 +23,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::Native => b"Native currency".to_vec(),
 			CurrencyId::Usd => b"USD stable coin".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => format_runtime_string!(
-				"Tranche token of pool {} and tranche {}",
+				"Tranche token of pool {} and tranche {:?}",
 				pool_id,
 				tranche_id,
 			)
@@ -37,7 +37,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::Native => b"CFG".to_vec(),
 			CurrencyId::Usd => b"USD".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				format_runtime_string!("TT:{}:{}", pool_id, tranche_id)
+				format_runtime_string!("TT:{}:{:?}", pool_id, tranche_id)
 					.as_ref()
 					.to_vec()
 			}
@@ -64,7 +64,7 @@ macro_rules! impl_tranche_token {
 		where
 			Config: pallet_pools::Config,
 			Config::PoolId: Into<u64>,
-			Config::TrancheId: Into<u8>,
+			Config::TrancheId: Into<[u8; 16]>,
 			Config::CurrencyId: From<CurrencyId>,
 		{
 			fn tranche_token(

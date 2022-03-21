@@ -57,20 +57,10 @@ pub(super) type TrancheOf<T> = Tranche<
 pub type Seniority = u32;
 pub type TrancheInput<Rate> = (TrancheType<Rate>, Option<Seniority>);
 
-/// A representation of a tranche identifier that can be used as a storage key
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct TrancheLocator<PoolId, TrancheId> {
-	pub pool_id: PoolId,
-	pub tranche_id: TrancheId,
-}
-
-impl<PoolId, TrancheId> TrancheLocator<PoolId, TrancheId> {
-	pub(super) fn new(pool_id: PoolId, tranche_id: TrancheId) -> Self {
-		TrancheLocator {
-			pool_id,
-			tranche_id,
-		}
-	}
+pub enum TrancheLoc<TrancheId> {
+	Index(TrancheIndex),
+	Id(TrancheId),
 }
 
 #[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -142,7 +132,7 @@ where
 		Self {
 			tranche_type: TrancheType::Residual,
 			seniority: 1,
-			currency: CurrencyId::Tranche(0, 0),
+			currency: CurrencyId::Tranche(0, [0u8; 16]),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
@@ -345,25 +335,92 @@ where
 		})
 	}
 
-	pub fn get_id(&self, tranche_index: TrancheIndex) -> Option<TrancheId> {
-		let index: Option<usize> = tranche_index.try_into().ok();
-		if let Some(index) = index {
-			if let Some(id) = self.ids.get(index) {
-				Some(id.clone())
-			} else {
-				None
+	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {
+		match id {
+			TrancheLoc::Id(id) => Some(id),
+			TrancheLoc::Index(index) => {
+				let index: Option<usize> = index.try_into().ok();
+				if let Some(index) = index {
+					if let Some(id) = self.ids.get(index) {
+						Some(id.clone())
+					} else {
+						None
+					}
+				} else {
+					None
+				}
 			}
-		} else {
-			None
 		}
 	}
 
-	pub fn get_index(&self, id: &TrancheId) -> Option<TrancheIndex> {
-		self.ids
-			.iter()
-			.position(|curr_id| curr_id == id)
-			.map(|index| index.try_into().ok())
-			.flatten()
+	pub fn tranche_index(&self, id: &TrancheLoc<TrancheId>) -> Option<TrancheIndex> {
+		match id {
+			TrancheLoc::Index(index) => Some(*index),
+			TrancheLoc::Id(id) => self
+				.ids
+				.iter()
+				.position(|curr_id| curr_id == id)
+				.map(|index| index.try_into().ok())
+				.flatten(),
+		}
+	}
+
+	pub fn get_mut_tranche(
+		&mut self,
+		id: TrancheLoc<TrancheId>,
+	) -> Option<&mut Tranche<Balance, Rate, Weight, CurrencyId>> {
+		match id {
+			TrancheLoc::Index(index) => {
+				let index: Option<usize> = index.try_into().ok();
+				if let Some(index) = index {
+					self.tranches.get_mut(index)
+				} else {
+					None
+				}
+			}
+			TrancheLoc::Id(id) => {
+				let index = self.tranche_index(&TrancheLoc::Id(id));
+				if let Some(index) = index {
+					let index: Option<usize> = index.try_into().ok();
+					if let Some(index) = index {
+						self.tranches.get_mut(index)
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+		}
+	}
+
+	pub fn get_tranche(
+		&self,
+		id: TrancheLoc<TrancheId>,
+	) -> Option<&Tranche<Balance, Rate, Weight, CurrencyId>> {
+		match id {
+			TrancheLoc::Index(index) => {
+				let index: Option<usize> = index.try_into().ok();
+				if let Some(index) = index {
+					self.tranches.get(index)
+				} else {
+					None
+				}
+			}
+			TrancheLoc::Id(id) => {
+				let index = self.tranche_index(&TrancheLoc::Id(id));
+				if let Some(index) = index {
+					let index: Option<usize> = index.try_into().ok();
+					if let Some(index) = index {
+						self.tranches.get(index)
+					} else {
+						None
+					}
+				} else {
+					None
+				}
+			}
+		}
 	}
 
 	fn next_id(&mut self) -> Result<TrancheId, DispatchError> {
@@ -526,12 +583,18 @@ where
 		Ok(())
 	}
 
+	pub fn ids_non_resiudal_top(&self) -> Vec<TrancheId> {
+		let mut res = Vec::with_capacity(self.tranches.len());
+		self.ids.iter().rev().for_each(|id| res.push(id.clone()));
+		res
+	}
+
 	pub fn combine_non_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in &self.tranches {
+		for tranche in self.tranches.iter().rev() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -543,7 +606,7 @@ where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in &mut self.tranches {
+		for tranche in self.tranches.iter_mut().rev() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -560,7 +623,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().zip(with.into_iter());
+		let iter = self.tranches.iter().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -580,7 +643,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter_mut().zip(with.into_iter());
+		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -590,12 +653,16 @@ where
 		Ok(res)
 	}
 
+	pub fn ids_residual_top(&self) -> Vec<TrancheId> {
+		self.ids.clone()
+	}
+
 	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
 	where
 		F: FnMut(&Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter().rev() {
+		for tranche in self.tranches.iter() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -607,7 +674,7 @@ where
 		F: FnMut(&mut Tranche<Balance, Rate, Weight, CurrencyId>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter_mut().rev() {
+		for tranche in self.tranches.iter_mut() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -624,8 +691,7 @@ where
 		I: IntoIterator<Item = W>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		// TODO: Would be nice to error out when with is larger than tranches...
-		let iter = self.tranches.iter().rev().zip(with.into_iter());
+		let iter = self.tranches.iter().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -646,7 +712,7 @@ where
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		// TODO: Would be nice to error out when with is larger than tranches...
-		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
+		let iter = self.tranches.iter_mut().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
@@ -1062,7 +1128,7 @@ where
 		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in &self.tranches {
+		for tranche in self.tranches.iter().rev() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1076,7 +1142,7 @@ where
 		) -> Result<R, DispatchError>,
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in &mut self.tranches {
+		for tranche in &mut self.tranches.iter_mut().rev() {
 			let r = f(tranche)?;
 			res.push(r)
 		}
@@ -1084,78 +1150,6 @@ where
 	}
 
 	pub fn combine_with_non_residual_top<R, I, W, F>(
-		&self,
-		with: I,
-		mut f: F,
-	) -> Result<Vec<R>, DispatchError>
-	where
-		F: FnMut(
-			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
-			W,
-		) -> Result<R, DispatchError>,
-		I: IntoIterator<Item = W>,
-	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter().zip(with.into_iter());
-
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
-		}
-
-		Ok(res)
-	}
-
-	pub fn combine_with_mut_non_residual_top<R, W, I, F>(
-		&mut self,
-		with: I,
-		mut f: F,
-	) -> Result<Vec<R>, DispatchError>
-	where
-		F: FnMut(
-			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
-			W,
-		) -> Result<R, DispatchError>,
-		I: IntoIterator<Item = W>,
-	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		let iter = self.tranches.iter_mut().zip(with.into_iter());
-
-		for (tranche, w) in iter {
-			let r = f(tranche, w)?;
-			res.push(r);
-		}
-
-		Ok(res)
-	}
-
-	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
-	where
-		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
-	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter().rev() {
-			let r = f(tranche)?;
-			res.push(r)
-		}
-		Ok(res)
-	}
-
-	pub fn combine_mut_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
-	where
-		F: FnMut(
-			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
-		) -> Result<R, DispatchError>,
-	{
-		let mut res = Vec::with_capacity(self.tranches.len());
-		for tranche in self.tranches.iter_mut().rev() {
-			let r = f(tranche)?;
-			res.push(r)
-		}
-		Ok(res)
-	}
-
-	pub fn combine_with_residual_top<R, I, W, F>(
 		&self,
 		with: I,
 		mut f: F,
@@ -1178,7 +1172,7 @@ where
 		Ok(res)
 	}
 
-	pub fn combine_with_mut_residual_top<R, W, I, F>(
+	pub fn combine_with_mut_non_residual_top<R, W, I, F>(
 		&mut self,
 		with: I,
 		mut f: F,
@@ -1192,6 +1186,78 @@ where
 	{
 		let mut res = Vec::with_capacity(self.tranches.len());
 		let iter = self.tranches.iter_mut().rev().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn combine_residual_top<R, F>(&self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(&EpochExecutionTranche<Balance, BalanceRatio, Weight>) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in self.tranches.iter() {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_mut_residual_top<R, F>(&mut self, mut f: F) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+		) -> Result<R, DispatchError>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		for tranche in self.tranches.iter_mut() {
+			let r = f(tranche)?;
+			res.push(r)
+		}
+		Ok(res)
+	}
+
+	pub fn combine_with_residual_top<R, I, W, F>(
+		&self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			W,
+		) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		let iter = self.tranches.iter().zip(with.into_iter());
+
+		for (tranche, w) in iter {
+			let r = f(tranche, w)?;
+			res.push(r);
+		}
+
+		Ok(res)
+	}
+
+	pub fn combine_with_mut_residual_top<R, W, I, F>(
+		&mut self,
+		with: I,
+		mut f: F,
+	) -> Result<Vec<R>, DispatchError>
+	where
+		F: FnMut(
+			&mut EpochExecutionTranche<Balance, BalanceRatio, Weight>,
+			W,
+		) -> Result<R, DispatchError>,
+		I: IntoIterator<Item = W>,
+	{
+		let mut res = Vec::with_capacity(self.tranches.len());
+		let iter = self.tranches.iter_mut().zip(with.into_iter());
 
 		for (tranche, w) in iter {
 			let r = f(tranche, w)?;
