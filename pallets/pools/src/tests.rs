@@ -484,7 +484,6 @@ fn epoch() {
 		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
@@ -633,7 +632,7 @@ fn epoch() {
 		assert_eq!(
 			pool.reserve.total_reserve
 				+ senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
-			1010 * CURRENCY
+			1263968368969420653370
 		);
 	});
 }

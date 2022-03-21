@@ -1603,7 +1603,7 @@ pub mod pallet {
 				solution
 					.iter()
 					.zip(executed_amounts.iter())
-					.zip(epoch.tranches.residual_top_slice())
+					.zip(epoch.tranches.non_residual_top_slice())
 					.zip(ids),
 				|tranche, (((solution, executed_amounts), epoch_tranche), tranche_id)| {
 					Self::update_tranche_for_epoch(
