@@ -1,4 +1,5 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
+use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
@@ -7,6 +8,7 @@ use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
+	StorageHasher, Twox128,
 };
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -309,8 +311,15 @@ impl fake_nav::Config for Test {
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
-pub const JUNIOR_TRANCHE_ID: [u8; 16] = [0u8; 16];
-pub const SENIOR_TRANCHE_ID: [u8; 16] = [1u8; 16];
+fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
+	let hash_input = (tranche, pool).encode();
+	Twox128::hash(&hash_input)
+}
+
+parameter_types! {
+	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
+	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+}
 pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
 pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
 pub const START_DATE: u64 = 1640991600; // 2022.01.01
