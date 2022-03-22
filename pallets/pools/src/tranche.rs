@@ -224,10 +224,42 @@ where
 	}
 }
 
-// The index type for tranches
+/// The index type for tranches
+///
+/// The `TrancheIndex` can be seen as an normal index into a vector, just
+/// specified here as new-type to make this clear. U64 in order to keep the public api
+/// clear.
+/// In contrast to a `TrancheId` a `TrancheIndex` is not unique and does NOT refer to a
+/// specific tranche, but rather to a specific tranche-location in the tranche-structure
+/// of a pool.
+//
+// Example:
+//
+// Given the following tranche structure:
+// ----
+// Tranche-A     -> Index: 0, Id: Twox128::hash(pool_id + 0)
+// Tranche-B     -> Index: 1, Id: Twox128::hash(pool_id + 1)
+// Tranche-C     -> Index: 2, Id: Twox128::hash(pool_id + 2)
+// ----
+//
+// Now replacing Tranche-B with Tranche-D
+// ----
+// Tranche-A     -> Index: 0, Id: Twox128::hash(pool_id + 0)
+// Tranche-D     -> Index: 1, Id: Twox128::hash(pool_id + 3)
+// Tranche-C     -> Index: 2, Id: Twox128::hash(pool_id + 2)
+// ----
+//
+// One can see, that the index of Tranche-B and Tranche-D are equal
+// but their ids will be different.
 pub type TrancheIndex = u64;
 
-// The salt type for tranches
+/// The salt type for tranches
+///
+/// This type is used to generate unique but deterministic ids
+/// for tranches of a pool.
+///
+/// The assumption for uniqueness only holds as long as pool-ids
+/// are not reusable!
 pub type TrancheSalt<PoolId> = (TrancheIndex, PoolId);
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
