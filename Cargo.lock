@@ -6185,6 +6185,7 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
+ "rand 0.8.5",
  "rev_slice",
  "runtime-common",
  "scale-info",
