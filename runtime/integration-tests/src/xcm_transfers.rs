@@ -22,7 +22,10 @@ use crate::setup::{
 	development_account, karura_account, ksm_amount, kusd_amount, native_amount, sibling_account,
 	usd_amount, CurrencyId, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
 };
-use development_runtime::{Balances, KsmPerSecond, KUsdPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond, XTokens};
+use development_runtime::{
+	Balances, KUsdPerSecond, KsmPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond,
+	XTokens,
+};
 use runtime_common::Balance;
 
 #[test]
