@@ -6,6 +6,7 @@ use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
 use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use pallet_pools::TrancheLoc;
 use rand::Rng;
 use runtime_common::Rate;
 use sp_core::storage::StateVersion;
