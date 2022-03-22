@@ -583,7 +583,7 @@ where
 		Ok(())
 	}
 
-	pub fn ids_non_resiudal_top(&self) -> Vec<TrancheId> {
+	pub fn ids_non_residual_top(&self) -> Vec<TrancheId> {
 		let mut res = Vec::with_capacity(self.tranches.len());
 		self.ids.iter().rev().for_each(|id| res.push(id.clone()));
 		res
@@ -749,7 +749,7 @@ where
 		// we are gonna reverse the order
 		// such that prices are calculated from most senior to junior
 		// there by all the remaining assets are given to the most junior tranche
-		let mut prices = self.combine_mut_residual_top(|tranche| {
+		let mut prices = self.combine_mut_non_residual_top(|tranche| {
 			let total_issuance = Tokens::total_issuance(tranche.currency);
 
 			if pool_is_zero || total_issuance == Zero::zero() {
@@ -1275,7 +1275,7 @@ where
 		&self,
 		fulfillments: &[TrancheSolution],
 	) -> Result<Vec<Balance>, DispatchError> {
-		self.combine_with_non_residual_top(fulfillments, |tranche, solution| {
+		self.combine_with_residual_top(fulfillments, |tranche, solution| {
 			tranche
 				.supply
 				.checked_add(&solution.invest_fulfillment.mul_floor(tranche.invest))
