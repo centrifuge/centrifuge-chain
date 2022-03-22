@@ -7,7 +7,10 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{
+		Contains, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
+		U128CurrencyToVote,
+	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -18,6 +21,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use orml_traits::parameter_type_with_key;
 
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
@@ -53,6 +57,10 @@ mod weights;
 /// Constant values used within the runtime.
 use constants::currency::*;
 
+pub use common_types::CurrencyId;
+use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
+
 /// common types for the runtime.
 pub use runtime_common::*;
 
@@ -72,7 +80,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1009,
+	spec_version: 1010,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -808,6 +816,124 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxTranches: TrancheId = 5;
+
+	// How much time should lapse before a tranche investor can be removed
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MinDelay: Moment = 7 * SECONDS_PER_DAY;
+
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxRolesPerPool: u32 = 1_000;
+}
+
+impl pallet_permissions::Config for Runtime {
+	type Event = Event;
+	type Location = PoolId;
+	type Role = PoolRole<Moment, TrancheId>;
+	type Storage =
+		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Editors = Editors;
+	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxRolesPerLocation = MaxRolesPerPool;
+	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Self>;
+}
+
+pub struct Editors;
+impl
+	Contains<(
+		AccountId,
+		Option<PoolRole<Moment, TrancheId>>,
+		PoolId,
+		PoolRole<Moment, TrancheId>,
+	)> for Editors
+{
+	fn contains(
+		t: &(
+			AccountId,
+			Option<PoolRole<Moment, TrancheId>>,
+			PoolId,
+			PoolRole<Moment, TrancheId>,
+		),
+	) -> bool {
+		let (_editor, maybe_role, _pool, role) = t;
+		if let Some(with_role) = maybe_role {
+			match *with_role {
+				PoolRole::PoolAdmin => true,
+				PoolRole::MemberListAdmin => match *role {
+					PoolRole::TrancheInvestor(_, _) => true,
+					_ => false,
+				},
+				_ => false,
+			}
+		} else {
+			false
+		}
+	}
+}
+
+parameter_types! {
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
+}
+
+impl pallet_restricted_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PreExtrTransfer = common_traits::Always;
+	type PreFungiblesInspect = FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
+	type PreFungiblesMutate = common_traits::Always;
+	type PreFungiblesMutateHold = common_traits::Always;
+	type PreFungiblesTransfer = common_traits::Always;
+	type Fungibles = OrmlTokens;
+	type PreCurrency = common_traits::Always;
+	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
+	type PreFungibleMutate = common_traits::Always;
+	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleTransfer = common_traits::Always;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
+}
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			CurrencyId::Native => ExistentialDeposit::get(),
+			_ => 0,
+		}
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = IBalance;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+	type MaxLocks = MaxLocks;
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
+}
+
+parameter_types! {
+	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
+}
+
+impl pallet_nft_sales::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
+	type Fungibles = Tokens;
+	type NonFungibles = Uniques;
+	type ClassId = ClassId;
+	type InstanceId = InstanceId;
+	type PalletId = NftSalesPalletId;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -856,9 +982,16 @@ construct_runtime!(
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		CollatorAllowlist: pallet_collator_allowlist::{Pallet, Call, Storage, Config<T>, Event<T>} = 95,
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 96,
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
+		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
+
+		// 3rd party pallets
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
+
 	}
 );
 
@@ -891,26 +1024,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	SchedulerMigrationV3,
 >;
-
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV3;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v3()
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		Scheduler::pre_migrate_to_v3()
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		Scheduler::post_migrate_to_v3()
-	}
-}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -1064,6 +1178,9 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
+			list_benchmark!(list, extra, pallet_permissions, Permissions);
+			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1117,12 +1234,16 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
+			add_benchmark!(params, batches, pallet_permissions, Permissions);
+			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
+			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
 		}
 	}
 }
+
 struct CheckInherents;
 
 impl cumulus_pallet_parachain_system::CheckInherents<Block> for CheckInherents {
