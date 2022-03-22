@@ -16,7 +16,6 @@ use core::time::Duration;
 use frame_support::parameter_types;
 
 parameter_types! {
-	pub const MaxTranches: u8 = 32;
 	pub const MinDelay: u64 = 4;
 }
 
@@ -43,60 +42,83 @@ impl UnixTime for Now {
 	}
 }
 
-// The exists call does not care what is passed as moment. This type shall reflect that
+/// The exists call does not care what is passed as moment. This type shall reflect that
 const UNION: u64 = 0u64;
+/// The tranceh id type we use in our runtime-common. But we don't want a dependency here.
+type TrancheId = [u8; 16];
+
+fn into_tranche_id(val: u8) -> TrancheId {
+	[val; 16]
+}
 
 #[test]
 fn permission_roles_work() {
-	assert!(PermissionRoles::<Now, MaxTranches, MinDelay>::default().empty());
+	assert!(PermissionRoles::<Now, MinDelay, TrancheId>::default().empty());
 
-	let mut roles = PermissionRoles::<Now, MaxTranches, MinDelay>::default();
+	let mut roles = PermissionRoles::<Now, MinDelay, TrancheId>::default();
 
 	// Updating works only when increasing permissions
-	assert!(roles.add(PoolRole::TrancheInvestor(30, 10)).is_ok());
-	assert!(roles.add(PoolRole::TrancheInvestor(30, 9)).is_err());
-	assert!(roles.add(PoolRole::TrancheInvestor(30, 11)).is_ok());
+	assert!(roles
+		.add(PoolRole::TrancheInvestor(into_tranche_id(30), 10))
+		.is_ok());
+	assert!(roles
+		.add(PoolRole::TrancheInvestor(into_tranche_id(30), 9))
+		.is_err());
+	assert!(roles
+		.add(PoolRole::TrancheInvestor(into_tranche_id(30), 11))
+		.is_ok());
 
 	// Test zero-tranche handling
-	assert!(!roles.exists(PoolRole::TrancheInvestor(0, UNION)));
+	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(0, MinDelay::get()))
+		.add(PoolRole::TrancheInvestor(
+			into_tranche_id(0),
+			MinDelay::get()
+		))
 		.is_ok());
-	assert!(roles.exists(PoolRole::TrancheInvestor(0, UNION)));
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
 
 	// Removing before MinDelay fails
-	assert!(roles.rm(PoolRole::TrancheInvestor(0, 0)).is_err());
-	Now::pass(1);
-	assert!(roles.exists(PoolRole::TrancheInvestor(0, UNION)));
 	assert!(roles
-		.rm(PoolRole::TrancheInvestor(0, MinDelay::get() - 1))
+		.rm(PoolRole::TrancheInvestor(into_tranche_id(0), 0))
 		.is_err());
-	assert!(roles.exists(PoolRole::TrancheInvestor(0, UNION)));
+	Now::pass(1);
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
+	assert!(roles
+		.rm(PoolRole::TrancheInvestor(
+			into_tranche_id(0),
+			MinDelay::get() - 1
+		))
+		.is_err());
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
 	Now::set(0);
 
 	// Removing after MinDelay works (i.e. this is after min_delay the account will be invalid)
 	assert!(roles
-		.rm(PoolRole::TrancheInvestor(0, MinDelay::get()))
+		.rm(PoolRole::TrancheInvestor(
+			into_tranche_id(0),
+			MinDelay::get()
+		))
 		.is_ok());
 	Now::pass(6);
-	assert!(!roles.exists(PoolRole::TrancheInvestor(0, UNION)));
+	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
 	Now::set(0);
 
 	// Multiple tranches work
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(1, MinDelay::get()))
+		.add(PoolRole::TrancheInvestor(
+			into_tranche_id(1),
+			MinDelay::get()
+		))
 		.is_ok());
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(2, MinDelay::get()))
+		.add(PoolRole::TrancheInvestor(
+			into_tranche_id(2),
+			MinDelay::get()
+		))
 		.is_ok());
-	assert!(roles.exists(PoolRole::TrancheInvestor(1, UNION)));
-	assert!(roles.exists(PoolRole::TrancheInvestor(2, UNION)));
-
-	// MaxTranches works
-	assert!(roles
-		.add(PoolRole::TrancheInvestor(32, MinDelay::get()))
-		.is_err());
-	assert!(!roles.exists(PoolRole::TrancheInvestor(32, UNION)));
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(1), UNION)));
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(2), UNION)));
 
 	// Adding roles works normally
 	assert!(roles.add(PoolRole::LiquidityAdmin).is_ok());
@@ -106,20 +128,26 @@ fn permission_roles_work() {
 
 	// Role exists for as long as permission is given
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(8, MinDelay::get() + 2))
+		.add(PoolRole::TrancheInvestor(
+			into_tranche_id(8),
+			MinDelay::get() + 2
+		))
 		.is_ok());
-	assert!(roles.exists(PoolRole::TrancheInvestor(8, UNION)));
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(8), UNION)));
 	Now::pass(MinDelay::get() + 2);
-	assert!(roles.exists(PoolRole::TrancheInvestor(8, UNION)));
+	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(8), UNION)));
 	Now::pass(1);
-	assert!(!roles.exists(PoolRole::TrancheInvestor(8, UNION)));
+	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(8), UNION)));
 	Now::set(0);
 
 	// Role must be added for at least min_delay
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(5, MinDelay::get() - 1))
+		.add(PoolRole::TrancheInvestor(
+			into_tranche_id(5),
+			MinDelay::get() - 1
+		))
 		.is_err());
-	assert!(!roles.exists(PoolRole::TrancheInvestor(5, UNION)));
+	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(5), UNION)));
 
 	// Removing roles work normally for Non-TrancheInvestor roles
 	assert!(roles.rm(PoolRole::LiquidityAdmin).is_ok());
