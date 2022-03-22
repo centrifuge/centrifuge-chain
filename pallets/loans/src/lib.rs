@@ -141,7 +141,7 @@ pub mod pallet {
 			+ FixedPointNumber
 			+ CheckedMul;
 
-		type InterestAccrual: InterestAccrualT<Self::Rate, Self::Amount>;
+		type InterestAccrual: InterestAccrualT<Self::Rate, Self::Amount, NormalizedDebt = Self::NormalizedDebt>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
