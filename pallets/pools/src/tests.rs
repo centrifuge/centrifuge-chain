@@ -6,6 +6,7 @@ use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
 use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use rand::Rng;
 use runtime_common::Rate;
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
@@ -1376,8 +1377,16 @@ fn collecting_over_last_exec_epoch_is_err() {
 #[test]
 fn tranche_ids_are_unique() {
 	new_test_ext().execute_with(|| {
-		let pool_id_0 = 0u64;
-		let pool_id_1 = 1u64;
+		let mut rng = rand::thread_rng();
+
+		let pool_id_0: u64 = rng.gen();
+
+		let pool_id_1: u64 = loop {
+			let id = rng.gen::<u64>();
+			if id != pool_id_0 {
+				break id;
+			}
+		};
 
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
@@ -1460,7 +1469,8 @@ fn tranche_ids_are_unique() {
 #[test]
 fn same_pool_id_not_possible() {
 	new_test_ext().execute_with(|| {
-		let pool_id_1 = 0u64;
+		let mut rng = rand::thread_rng();
+		let pool_id_1: u64 = rng.gen();
 
 		assert_ok!(Pools::create(
 			Origin::signed(0),
