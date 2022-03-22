@@ -164,7 +164,7 @@ impl pallet_pools::Config for MockRuntime {
 	type BalanceRatio = Rate;
 	type InterestRate = Rate;
 	type PoolId = PoolId;
-	type TrancheId = u8;
+	type TrancheId = [u8; 16];
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
 	type Tokens = Tokens;
@@ -233,8 +233,7 @@ impl pallet_uniques::Config for MockRuntime {
 }
 
 parameter_types! {
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxTranches: TrancheId = 5;
+	pub const MaxTranches: u8 = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
 
@@ -243,9 +242,8 @@ parameter_types! {
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Location = u64;
-	type Role = PoolRole<Moment>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Role = PoolRole;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type MaxRolesPerLocation = MaxRoles;

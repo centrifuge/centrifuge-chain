@@ -14,15 +14,17 @@
 //! Module provides testing utilities for benchmarking and tests.
 use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
+use codec::Encode;
 use common_traits::{Permissions, PoolNAV};
 use common_types::CurrencyId;
 use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use frame_support::{assert_ok, parameter_types};
+use frame_support::{assert_ok, parameter_types, StorageHasher, Twox128};
 use frame_system::RawOrigin;
 use pallet_pools::PoolLocator;
+use pallet_pools::TrancheLoc;
 use pallet_pools::TrancheType;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};
 use runtime_common::CFG as CURRENCY;
@@ -41,9 +43,14 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 	PermissionsOf::<T>::add(location, who, role).expect("adding permissions should not fail");
 }
 
+fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
+	let hash_input = (tranche, pool).encode();
+	Twox128::hash(&hash_input)
+}
+
 parameter_types! {
-	pub const JuniorTrancheId: u8 = 0;
-	pub const SeniorTrancheId: u8 = 1;
+	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
+	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
 }
 
 pub(crate) fn create_nft_class<T>(
@@ -89,7 +96,6 @@ pub(crate) fn create<T>(
 	T: pallet_pools::Config + frame_system::Config + pallet_loans::Config,
 	<T as pallet_pools::Config>::Balance: From<u128>,
 	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_pools::Config>::TrancheId: From<u8>,
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
@@ -128,13 +134,13 @@ pub(crate) fn create<T>(
 	assert_ok!(PoolPallet::<T>::update_invest_order(
 		RawOrigin::Signed(junior_investor.clone()).into(),
 		pool_id,
-		JuniorTrancheId::get().into(),
+		TrancheLoc::Id(JuniorTrancheId::get().into()),
 		(500 * CURRENCY).into(),
 	));
 	assert_ok!(PoolPallet::<T>::update_invest_order(
 		RawOrigin::Signed(senior_investor.clone()).into(),
 		pool_id,
-		SeniorTrancheId::get().into(),
+		TrancheLoc::Id(SeniorTrancheId::get().into()),
 		(500 * CURRENCY).into(),
 	));
 	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
@@ -150,14 +156,14 @@ pub(crate) fn create<T>(
 
 	// TODO(ved) do disbursal manually for now
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), 1).into(),
+		CurrencyId::Tranche(pool_id.into(), JuniorTrancheId::get()).into(),
 		&pool_account,
 		&junior_investor,
 		(500 * CURRENCY).into(),
 		false
 	));
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), 0).into(),
+		CurrencyId::Tranche(pool_id.into(), SeniorTrancheId::get()).into(),
 		&pool_account,
 		&senior_investor,
 		(500 * CURRENCY).into(),

@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.10"
+version = "0.10.11"
 dependencies = [
  "common-traits",
  "common-types",
@@ -906,7 +906,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.10"
+version = "0.10.11"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -6185,6 +6185,7 @@ dependencies = [
  "pallet-restricted-tokens",
  "pallet-timestamp",
  "parity-scale-codec",
+ "rand 0.8.5",
  "rev_slice",
  "runtime-common",
  "scale-info",
