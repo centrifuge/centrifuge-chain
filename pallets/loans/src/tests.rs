@@ -811,10 +811,19 @@ macro_rules! test_repay_loan {
 				);
 				assert_ok!(res);
 
-				// repay the interest
-				let repay_amount = debt;
+				// repay more than the interest
+				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+					.expect("LoanData should be present");
+				let repaid_amount_pre = loan_data.repaid_amount;
+
+				let repay_amount = debt + Amount::from_inner(10 * USD);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
+
+				// only the debt should have been repaid
+				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+					.expect("LoanData should be present");
+				assert_eq!(loan_data.repaid_amount - repaid_amount_pre, debt);
 
 				// close loan
 				let res = Loans::close(Origin::signed(borrower), pool_id, loan_id);
