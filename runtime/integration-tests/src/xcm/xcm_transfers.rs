@@ -23,8 +23,10 @@ use crate::xcm::setup::{
 };
 use crate::xcm::test_net::{Development, Karura, TestNet, Sibling};
 
-// use crate::chain::Development::{Balances, KsmPerSecond, KUsdPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond, XTokens};
-use development_runtime::{Balances, KsmPerSecond, KUsdPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond, XTokens};
+use development_runtime::{
+	Balances, KUsdPerSecond, KsmPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond,
+	XTokens,
+};
 use runtime_common::Balance;
 
 #[test]
