@@ -90,19 +90,19 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranche_a = Tranche {
 			outstanding_invest_orders: 10,
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [1u8; 16]),
+			currency: CurrencyId::Tranche(0, [0u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [2u8; 16]),
+			currency: CurrencyId::Tranche(0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [3u8; 16]),
+			currency: CurrencyId::Tranche(0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
@@ -186,8 +186,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				interest_per_sec: Rate::one(),
 				min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
 			},
-			outstanding_invest_orders: 100,
-			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -195,8 +193,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				interest_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.2),
 			},
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -204,14 +200,10 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				interest_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.1),
 			},
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			tranche_type: TrancheType::Residual,
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranches =
@@ -221,12 +213,13 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			tranches
 				.residual_top_slice()
 				.iter()
-				.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.zip(vec![5, 5, 5, 35]) // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(|(tranche, value)| EpochExecutionTranche {
 					supply: value,
 					price: One::one(),
 					invest: tranche.outstanding_invest_orders,
 					redeem: tranche.outstanding_redeem_orders,
+					min_risk_buffer: tranche.min_risk_buffer(),
 					..Default::default()
 				})
 				.collect(),
@@ -632,7 +625,7 @@ fn epoch() {
 		assert_eq!(
 			pool.reserve.total_reserve
 				+ senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
-			1263968368969420653370
+			1010 * CURRENCY
 		);
 	});
 }

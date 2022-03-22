@@ -885,10 +885,10 @@ pub mod pallet {
 				if pool.tranches.acc_outstanding_investments()?.is_zero()
 					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
 				{
-					pool.tranches.combine_with_mut_non_residual_top(
+					pool.tranches.combine_with_mut_residual_top(
 						epoch_tranche_prices
 							.iter()
-							.zip(pool.tranches.ids_non_resiudal_top()),
+							.zip(pool.tranches.ids_residual_top()),
 						|tranche, (price, tranche_id)| {
 							Self::update_tranche_for_epoch(
 								pool_id,
@@ -918,7 +918,7 @@ pub mod pallet {
 					.into());
 				}
 
-				let epoch_tranches = pool.tranches.combine_with_non_residual_top(
+				let epoch_tranches = pool.tranches.combine_with_residual_top(
 					epoch_tranche_prices.iter(),
 					|tranche, price| {
 						let supply = tranche
@@ -955,7 +955,7 @@ pub mod pallet {
 
 				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
 
-				let full_execution_solution = pool.tranches.combine_non_residual_top(|_| {
+				let full_execution_solution = pool.tranches.combine_residual_top(|_| {
 					Ok(TrancheSolution {
 						invest_fulfillment: Perquintill::one(),
 						redeem_fulfillment: Perquintill::one(),
@@ -979,7 +979,7 @@ pub mod pallet {
 					.into())
 				} else {
 					// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
-					let no_execution_solution = pool.tranches.combine_non_residual_top(|_| {
+					let no_execution_solution = pool.tranches.combine_residual_top(|_| {
 						Ok(TrancheSolution {
 							invest_fulfillment: Perquintill::zero(),
 							redeem_fulfillment: Perquintill::zero(),
@@ -1566,7 +1566,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch
 				.tranches
-				.combine_with_non_residual_top(solution, |tranche, solution| {
+				.combine_with_residual_top(solution, |tranche, solution| {
 					Ok((
 						solution.invest_fulfillment.mul_floor(tranche.invest),
 						solution.redeem_fulfillment.mul_floor(tranche.redeem),
@@ -1595,14 +1595,14 @@ pub mod pallet {
 			pool.last_epoch_closed()?;
 
 			let last_epoch_executed = pool.last_epoch_executed;
-			let ids = pool.tranches.ids_non_resiudal_top();
+			let ids = pool.tranches.ids_residual_top();
 
 			// Update tranche orders and add epoch solution state
-			pool.tranches.combine_with_mut_non_residual_top(
+			pool.tranches.combine_with_mut_residual_top(
 				solution
 					.iter()
 					.zip(executed_amounts.iter())
-					.zip(epoch.tranches.non_residual_top_slice())
+					.zip(epoch.tranches.residual_top_slice())
 					.zip(ids),
 				|tranche, (((solution, executed_amounts), epoch_tranche), tranche_id)| {
 					Self::update_tranche_for_epoch(
@@ -1622,17 +1622,18 @@ pub mod pallet {
 				.total_reserve
 				.checked_add(&epoch.nav)
 				.ok_or(ArithmeticError::Overflow)?;
-			let tranche_ratios = epoch.tranches.combine_with_non_residual_top(
+			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				executed_amounts.iter(),
 				|tranche, (invest, redeem)| {
 					tranche
 						.supply
 						.checked_add(invest)
-						.and_then(|value| value.checked_sub(redeem))
+						.ok_or(ArithmeticError::Overflow)?
+						.checked_sub(redeem)
+						.ok_or(ArithmeticError::Underflow.into())
 						.map(|tranche_asset| {
 							Perquintill::from_rational(tranche_asset, total_assets)
 						})
-						.ok_or(ArithmeticError::Overflow.into())
 				},
 			)?;
 
