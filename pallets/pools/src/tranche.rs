@@ -509,7 +509,7 @@ where
 			);
 
 			// NOTE: The std lib actually does allow to insert on a zero index for an empty vec.
-			//       But as we can not be sure, that this is always the case for future compiler versions
+			//       But as we can not be sure, that this is always the case for future rust versions
 			//       better be safe than sorry.
 			if self.tranches.len() == 0 {
 				self.tranches.push(new_tranche);
@@ -567,7 +567,7 @@ where
 
 		if at == 0 {
 			// NOTE: The std lib actually does allow to remove on a zero index for an empty vec.
-			//       But as we can not be sure, that this is always the case for future compiler versions
+			//       But as we can not be sure, that this is always the case for future rust versions
 			//       better be safe than sorry.
 			if self.tranches.len() == 0 {
 				// No-op
