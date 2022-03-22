@@ -65,7 +65,7 @@ where
 			CurrencyId = CurrencyId,
 			Balance = u128,
 			PoolId = PoolId,
-			TrancheId = u8,
+			TrancheId = [u8; 16],
 			EpochId = u32,
 		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>

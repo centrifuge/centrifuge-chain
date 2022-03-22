@@ -41,7 +41,7 @@ mod tokens;
 //       and/or the TrancheId type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<TrancheId, Moment = u64> {
+pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	PoolAdmin,
 	Borrower,
 	PricingAdmin,
