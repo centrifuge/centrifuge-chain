@@ -287,49 +287,24 @@ where
 	where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 	{
-		let mut tranches = Vec::with_capacity(tranche_inputs.len());
-		let mut ids = Vec::with_capacity(tranche_inputs.len());
-		let mut salt = (0, pool);
-
-		for (index, (tranche_type, seniority)) in tranche_inputs.into_iter().enumerate() {
-			// Generate ids after the following schema:
-			// * salt: The salt is a counter in our case that will always go
-			//         up, even if we remove tranches.
-			// * pool-id: The pool id is ensured to be unique on-chain
-			//
-			// -> tranche id = Twox128::hash(salt)
-			let hash_input = salt.encode();
-			let id = Twox128::hash(hash_input.as_slice());
-
-			ids.push(id.into());
-			tranches.push(Tranche {
-				tranche_type,
-				// seniority increases as index since the order is from junior to senior
-				seniority: seniority
-					.unwrap_or(index.try_into().map_err(|_| ArithmeticError::Overflow)?),
-				currency: TrancheToken::tranche_token(pool, id.into()),
-				outstanding_invest_orders: Zero::zero(),
-				outstanding_redeem_orders: Zero::zero(),
-				debt: Zero::zero(),
-				reserve: Zero::zero(),
-				ratio: Perquintill::zero(),
-				last_updated_interest: now,
-				_phantom: Default::default(),
-			});
-
-			salt = (
-				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
-					.try_into()
-					.map_err(|_| ArithmeticError::Overflow)?,
-				pool,
-			);
-		}
-
-		Ok(Self {
+		let tranches = Vec::with_capacity(tranche_inputs.len());
+		let ids = Vec::with_capacity(tranche_inputs.len());
+		let salt = (0, pool);
+		let mut tranches = Tranches {
 			tranches,
 			ids,
 			salt,
-		})
+		};
+
+		for (index, tranche_input) in tranche_inputs.into_iter().enumerate() {
+			tranches.add::<TrancheToken>(
+				index.try_into().map_err(|_| ArithmeticError::Overflow)?,
+				tranche_input,
+				now,
+			)?;
+		}
+
+		Ok(tranches)
 	}
 
 	pub fn new<TrancheToken>(
@@ -343,15 +318,14 @@ where
 		let mut salt = (0, pool);
 
 		for (index, _tranche) in tranches.iter().enumerate() {
-			// Generate ids after the following schema:
-			// * salt: The salt is a counter in our case that will always go
-			//         up, even if we remove tranches.
-			// * pool-id: The pool id is ensured to be unique on-chain
-			//
-			// -> tranche id = Twox128::hash(salt)
-			let hash_input = salt.encode();
-			let id = Twox128::hash(hash_input.as_slice());
-			ids.push(id.into());
+			ids.push(Tranches::<
+				Balance,
+				Rate,
+				Weight,
+				CurrencyId,
+				TrancheId,
+				PoolId,
+			>::id_from_salt(salt));
 			salt = (
 				(index.checked_add(1).ok_or(ArithmeticError::Overflow)?)
 					.try_into()
@@ -455,8 +429,22 @@ where
 		}
 	}
 
+	/// Defines how a given salt will be transformed into
+	/// a TrancheId.
+	fn id_from_salt(salt: TrancheSalt<PoolId>) -> TrancheId {
+		Twox128::hash(salt.encode().as_slice()).into()
+	}
+
+	/// Generate ids after the following schema:
+	/// * salt: The salt is a counter in our case that will always go
+	///         up, even if we remove tranches.
+	/// * pool-id: The pool id is ensured to be unique on-chain
+	///
+	/// -> tranche id = Twox128::hash(salt)
 	fn next_id(&mut self) -> Result<TrancheId, DispatchError> {
-		let id = Twox128::hash(self.salt.encode().as_slice());
+		let id = Tranches::<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>::id_from_salt(
+			self.salt,
+		);
 		self.salt = (
 			(self
 				.salt
@@ -467,7 +455,7 @@ where
 			.map_err(|_| ArithmeticError::Overflow)?,
 			self.salt.1,
 		);
-		Ok(id.into())
+		Ok(id)
 	}
 
 	fn create_tranche<TrancheToken>(
@@ -521,7 +509,12 @@ where
 		TrancheToken: TrancheTokenT<PoolId, TrancheId, CurrencyId>,
 	{
 		let at_usize = at.try_into().map_err(|_| ArithmeticError::Overflow)?;
-		ensure!(self.tranches.len() <= at_usize, ArithmeticError::Overflow);
+		ensure!(
+			self.tranches.len() <= at_usize,
+			DispatchError::Other(
+				"Must add tranches either in between others or at the end. This should be catched somewhere else."
+			)
+		);
 
 		let (tranche_type, maybe_seniority) = tranche;
 		let id = self.next_id()?;
