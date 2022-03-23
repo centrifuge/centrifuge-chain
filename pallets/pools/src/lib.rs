@@ -54,6 +54,7 @@ where
 	pub min_epoch_time: Moment,
 	pub challenge_time: Moment,
 	pub max_nav_age: Moment,
+	pub min_submission_time: Moment,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -137,6 +138,7 @@ pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight> {
 	max_reserve: Balance,
 	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 	best_submission: Option<EpochSolution<Balance>>,
+	min_submission_period_end: Moment,
 	challenge_period_end: Option<Moment>,
 }
 
@@ -275,6 +277,14 @@ pub mod pallet {
 		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
 
+		/// Default min submission time.
+		///
+		/// The submission time is used
+		/// to determine after which period a
+		/// pool does accept a zero-fulfillment
+		/// solution as valid.
+		type DefaultMinSubmissionTime: Get<u64>;
+
 		/// Min epoch time lower bound
 		type MinEpochTimeLowerBound: Get<u64>;
 
@@ -283,6 +293,9 @@ pub mod pallet {
 
 		/// Max NAV age upper bound
 		type MaxNAVAgeUpperBound: Get<u64>;
+
+		/// Min submission time lower bound
+		type MinSubmissionTimeLowerBound: Get<u64>;
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -493,6 +506,10 @@ pub mod pallet {
 						T::DefaultMaxNAVAge::get(),
 						T::MaxNAVAgeUpperBound::get(),
 					),
+					min_submission_time: sp_std::cmp::max(
+						T::DefaultMinSubmissionTime::get(),
+						T::MinSubmissionTimeLowerBound::get(),
+					),
 					reserve: ReserveDetails {
 						max_reserve,
 						available_reserve: Zero::zero(),
@@ -520,6 +537,7 @@ pub mod pallet {
 			min_epoch_time: u64,
 			challenge_time: u64,
 			max_nav_age: u64,
+			min_submission_time: u64,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
@@ -530,7 +548,8 @@ pub mod pallet {
 			ensure!(
 				min_epoch_time >= T::MinEpochTimeLowerBound::get()
 					&& challenge_time >= T::ChallengeTimeLowerBound::get()
-					&& max_nav_age <= T::MaxNAVAgeUpperBound::get(),
+					&& max_nav_age <= T::MaxNAVAgeUpperBound::get()
+					&& min_submission_time >= T::MinSubmissionTimeLowerBound::get(),
 				Error::<T>::PoolParameterBoundViolated
 			);
 
@@ -540,6 +559,7 @@ pub mod pallet {
 				pool.min_epoch_time = min_epoch_time;
 				pool.challenge_time = challenge_time;
 				pool.max_nav_age = max_nav_age;
+				pool.min_submission_time = min_submission_time;
 				Self::deposit_event(Event::Updated(pool_id));
 				Ok(())
 			})
@@ -950,6 +970,7 @@ pub mod pallet {
 					max_reserve: pool.reserve.max_reserve,
 					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
+					min_submission_period_end: now.saturating_add(pool.min_submission_time),
 					challenge_period_end: None,
 				};
 
@@ -1023,21 +1044,39 @@ pub mod pallet {
 			EpochExecution::<T>::try_mutate(pool_id, |epoch| {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+				let now = Self::now();
 
 				let new_solution = Self::score_solution(&pool, &epoch, &solution)?;
 				if let Some(ref previous_solution) = epoch.best_submission {
-					ensure!(
-						&new_solution > previous_solution,
-						Error::<T>::NotNewBestSubmission
-					);
+					// We only accept this state of no previous valid
+					// solution has been submitted as this would mean
+					// the pool can make progress without the need to
+					// accept a zero-fulfillment solution.
+					if now >= epoch.min_submission_period_end
+						&& epoch.challenge_period_end.is_none()
+					{
+						// At this point we will accept solutions as best solutions
+						// if they are equal to the previous one. This will
+						// allow zero-fulfillment solutions to be submitted as valid
+						// and hence prevent blocking the pool if only a zero-fulfillment
+						// solution can close an epoch.
+						ensure!(
+							&new_solution >= previous_solution,
+							Error::<T>::NotNewBestSubmission
+						);
+					} else {
+						ensure!(
+							&new_solution > previous_solution,
+							Error::<T>::NotNewBestSubmission
+						);
+					}
 				}
 
 				epoch.best_submission = Some(new_solution.clone());
 
 				// Challenge period starts when the first new solution has been submitted
 				if epoch.challenge_period_end.is_none() {
-					epoch.challenge_period_end =
-						Some(Self::now().saturating_add(pool.challenge_time));
+					epoch.challenge_period_end = Some(now.saturating_add(pool.challenge_time));
 				}
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
