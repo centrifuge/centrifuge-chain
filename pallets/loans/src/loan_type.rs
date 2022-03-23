@@ -31,7 +31,7 @@ where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
 {
-	pub(crate) fn maturity_date(&self) -> Option<u64> {
+	pub(crate) fn maturity_date(&self) -> Option<Moment> {
 		match self {
 			LoanType::BulletLoan(bl) => Some(bl.maturity_date),
 			LoanType::CreditLine(_) => None,
@@ -39,7 +39,7 @@ where
 		}
 	}
 
-	pub(crate) fn is_valid(&self, now: u64) -> bool {
+	pub(crate) fn is_valid(&self, now: Moment) -> bool {
 		match self {
 			LoanType::BulletLoan(bl) => bl.is_valid(now),
 			LoanType::CreditLine(cl) => cl.is_valid(),
@@ -75,7 +75,7 @@ pub struct BulletLoan<Rate, Amount> {
 	loss_given_default: Rate,
 	value: Amount,
 	discount_rate: Rate,
-	maturity_date: u64,
+	maturity_date: Moment,
 }
 
 impl<Rate, Amount> BulletLoan<Rate, Amount>
@@ -90,7 +90,7 @@ where
 		loss_given_default: Rate,
 		value: Amount,
 		discount_rate: Rate,
-		maturity_date: u64,
+		maturity_date: Moment,
 	) -> Self {
 		Self {
 			advance_rate,
@@ -108,8 +108,8 @@ where
 	pub(crate) fn present_value(
 		&self,
 		debt: Amount,
-		origination_date: u64,
-		now: u64,
+		origination_date: Moment,
+		now: Moment,
 		rate_per_sec: Rate,
 	) -> Option<Amount> {
 		math::maturity_based_present_value(
@@ -125,7 +125,7 @@ where
 	}
 
 	/// validates the bullet loan parameters
-	pub(crate) fn is_valid(&self, now: u64) -> bool {
+	pub(crate) fn is_valid(&self, now: Moment) -> bool {
 		vec![
 			// discount should always be >= 1
 			self.discount_rate >= One::one(),
@@ -197,7 +197,7 @@ pub struct CreditLineWithMaturity<Rate, Amount> {
 	loss_given_default: Rate,
 	value: Amount,
 	discount_rate: Rate,
-	maturity_date: u64,
+	maturity_date: Moment,
 }
 
 impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
@@ -208,7 +208,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 		loss_given_default: Rate,
 		value: Amount,
 		discount_rate: Rate,
-		maturity_date: u64,
+		maturity_date: Moment,
 	) -> Self {
 		Self {
 			advance_rate,
@@ -226,8 +226,8 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	pub(crate) fn present_value(
 		&self,
 		debt: Amount,
-		origination: u64,
-		now: u64,
+		origination: Moment,
+		now: Moment,
 		rate_per_sec: Rate,
 	) -> Option<Amount>
 	where
@@ -247,7 +247,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	}
 
 	/// validates credit line loan parameters
-	pub(crate) fn is_valid(&self, now: u64) -> bool {
+	pub(crate) fn is_valid(&self, now: Moment) -> bool {
 		vec![
 			// discount should always be >= 1
 			self.discount_rate >= One::one(),

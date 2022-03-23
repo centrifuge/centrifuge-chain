@@ -280,3 +280,6 @@ pub struct PoolLocator<PoolId> {
 impl<PoolId> TypeId for PoolLocator<PoolId> {
 	const TYPE_ID: [u8; 4] = *b"pool";
 }
+
+// Type that indicates a point in time
+pub type Moment = u64;

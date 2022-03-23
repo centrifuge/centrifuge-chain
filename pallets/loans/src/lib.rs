@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::PoolRole;
+pub use common_types::{Moment, PoolRole};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -328,7 +328,7 @@ pub mod pallet {
 
 			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
 			LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
-			let now = Self::time_now();
+			let now = Self::now();
 			PoolNAV::<T>::insert(
 				pool_id,
 				NAVDetails {
@@ -576,7 +576,7 @@ pub mod pallet {
 impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	type ClassId = T::ClassId;
 	type Origin = T::Origin;
-	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, u64)> {
+	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, Moment)> {
 		PoolNAV::<T>::get(pool_id)
 			.map(|nav_details| (nav_details.latest_nav, nav_details.last_updated))
 	}
