@@ -91,29 +91,38 @@ pub enum NAVUpdateType {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanData<Rate, Amount, Asset> {
-	pub(crate) borrowed_amount: Amount,
+	pub(crate) asset: Asset,
+	pub(crate) loan_type: LoanType<Rate, Amount>,
+	pub(crate) status: LoanStatus,
+
+	// interest rate per second
 	pub(crate) rate_per_sec: Rate,
-	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
-	pub(crate) accumulated_rate: Rate,
+
+	// time at which first borrow occurred
+	pub(crate) origination_date: u64,
+
 	// principal debt used to calculate the current outstanding debt.
 	// principal debt will change on every borrow and repay.
 	// Called principal debt instead of pie or normalized debt as mentioned here - https://docs.makerdao.com/smart-contract-modules/rates-module
 	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with the accumulated interest rate
 	pub(crate) principal_debt: Amount,
 	pub(crate) last_updated: u64,
-	// time at which first borrow occurred
-	pub(crate) origination_date: u64,
-	pub(crate) asset: Asset,
-	pub(crate) status: LoanStatus,
-	pub(crate) loan_type: LoanType<Rate, Amount>,
 
-	// whether the loan written off by admin
-	// if so, we wont update the write off group on this loan further from permission less call
-	pub(crate) admin_written_off: bool,
+	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
+	pub(crate) accumulated_rate: Rate,
+
+	// total borrowed and repaid on this loan
+	pub(crate) borrowed_amount: Amount,
+	pub(crate) repaid_amount: Amount,
+
 	// write off group index in the vec of write off groups
 	// none, the loan is not written off yet
 	// some(index), loan is written off and write off details are found under the given index
 	pub(crate) write_off_index: Option<u32>,
+
+	// whether the loan written off by admin
+	// if so, we wont update the write off group on this loan further from permission less call
+	pub(crate) admin_written_off: bool,
 }
 
 impl<Rate, Amount, Asset> LoanData<Rate, Amount, Asset>

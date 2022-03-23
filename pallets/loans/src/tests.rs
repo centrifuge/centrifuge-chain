@@ -715,6 +715,7 @@ macro_rules! test_repay_loan {
 				// repay 20 after 1000 seconds
 				Timestamp::set_timestamp(1001 * 1000);
 				let repay_amount = Amount::from_inner(20 * USD);
+				assert_eq!(loan_data.repaid_amount, Amount::from_inner(0));
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
@@ -728,6 +729,7 @@ macro_rules! test_repay_loan {
 				);
 				assert_eq!(loan_data.last_updated, 1001);
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
+				assert_eq!(loan_data.repaid_amount, Amount::from_inner(20 * USD));
 				// principal debt should still be more than 30 due to interest
 				assert!(loan_data.principal_debt > Amount::from_inner(30 * USD));
 				// pool should have 30 less token
@@ -756,6 +758,7 @@ macro_rules! test_repay_loan {
 				// nav should be updated to latest present value
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
 				let pv = loan_data.present_value(&vec![]).unwrap();
+				assert_eq!(loan_data.repaid_amount, Amount::from_inner(50 * USD));
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay the interest
@@ -808,10 +811,19 @@ macro_rules! test_repay_loan {
 				);
 				assert_ok!(res);
 
-				// repay the interest
-				let repay_amount = debt;
+				// repay more than the interest
+				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+					.expect("LoanData should be present");
+				let repaid_amount_pre = loan_data.repaid_amount;
+
+				let repay_amount = debt + Amount::from_inner(10 * USD);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
+
+				// only the debt should have been repaid
+				let loan_data = LoanInfo::<MockRuntime>::get(pool_id, loan_id)
+					.expect("LoanData should be present");
+				assert_eq!(loan_data.repaid_amount - repaid_amount_pre, debt);
 
 				// close loan
 				let res = Loans::close(Origin::signed(borrower), pool_id, loan_id);
