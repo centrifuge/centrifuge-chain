@@ -168,14 +168,14 @@ pub mod pallet {
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
-	#[pallet::getter(fn get_loan_info)]
-	pub(crate) type LoanInfo<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn get_loan)]
+	pub(crate) type Loan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanData<T::Rate, T::Amount, AssetOf<T>>,
+		LoanDetails<T::Rate, T::Amount, AssetOf<T>>,
 		OptionQuery,
 	>;
 
@@ -515,7 +515,7 @@ pub mod pallet {
 		/// Write off an unhealthy loan
 		///
 		/// `write_off_loan` will find the best write off group available based on the overdue days since maturity.
-		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// Loan is accrued, NAV is update accordingly, and updates the Loan with new write off index.
 		/// Cannot update a loan that was written off by admin.
 		/// Cannot write off a healthy loan or loan type that do not have maturity date.
 		///
@@ -551,7 +551,7 @@ pub mod pallet {
 		/// Write off an loan from admin origin
 		///
 		/// `admin_write_off_loan` will write off a loan with write off group associated with index passed.
-		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// Loan is accrued, NAV is update accordingly, and updates the Loan with new write off index.
 		/// AdminOrigin can write off a healthy loan as well.
 		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
 		/// Admin can write off loan with any index potentially going up the index or down.

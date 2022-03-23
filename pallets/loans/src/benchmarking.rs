@@ -348,10 +348,10 @@ benchmarks! {
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced(pool_id, loan_id).into());
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan_info.loan_type, loan_type);
-		assert_eq!(loan_info.status, LoanStatus::Active);
-		assert_eq!(loan_info.rate_per_sec, rp);
+		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan.loan_type, loan_type);
+		assert_eq!(loan.status, LoanStatus::Active);
+		assert_eq!(loan.rate_per_sec, rp);
 	}
 
 	add_write_off_group {
@@ -439,9 +439,9 @@ benchmarks! {
 		check_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, loan_owner_balance);
 
 		// current debt should not be zero
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan_info.status, LoanStatus::Active);
-		assert!(loan_info.present_value(&vec![]).unwrap() > Zero::zero());
+		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan.status, LoanStatus::Active);
+		assert!(loan.present_value(&vec![]).unwrap() > Zero::zero());
 	}
 
 	write_off {
@@ -462,9 +462,9 @@ benchmarks! {
 	verify {
 		let index = 4u32;
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff(pool_id, loan_id, index).into());
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan_info.write_off_index, Some(index));
-		assert!(!loan_info.admin_written_off);
+		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan.write_off_index, Some(index));
+		assert!(!loan.admin_written_off);
 	}
 
 	admin_write_off {
@@ -485,9 +485,9 @@ benchmarks! {
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, loan_id, index)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff(pool_id, loan_id, index).into());
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan_info.write_off_index, Some(index));
-		assert!(loan_info.admin_written_off);
+		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan.write_off_index, Some(index));
+		assert!(loan.admin_written_off);
 	}
 
 	repay_and_close {
@@ -516,8 +516,8 @@ benchmarks! {
 		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_accuont) > pool_reserve_balance);
 
 		// Loan should be closed
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan_info.status, LoanStatus::Closed);
+		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan.status, LoanStatus::Closed);
 
 		// asset owner must be loan owner
 		expect_asset_owner::<T>(asset, loan_owner);
@@ -552,8 +552,8 @@ benchmarks! {
 		check_free_token_balance::<T>(CurrencyId::Usd, &pool_account, pool_reserve_balance);
 
 		// Loan should be closed
-		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan_info.status, LoanStatus::Closed);
+		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
+		assert_eq!(loan.status, LoanStatus::Closed);
 
 		// asset owner must be loan owner
 		expect_asset_owner::<T>(asset, loan_owner);

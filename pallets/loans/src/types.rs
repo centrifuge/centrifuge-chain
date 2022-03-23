@@ -90,7 +90,7 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanData<Rate, Amount, Asset> {
+pub struct LoanDetails<Rate, Amount, Asset> {
 	pub(crate) asset: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
 	pub(crate) status: LoanStatus,
@@ -125,7 +125,7 @@ pub struct LoanData<Rate, Amount, Asset> {
 	pub(crate) admin_written_off: bool,
 }
 
-impl<Rate, Amount, Asset> LoanData<Rate, Amount, Asset>
+impl<Rate, Amount, Asset> LoanDetails<Rate, Amount, Asset>
 where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,

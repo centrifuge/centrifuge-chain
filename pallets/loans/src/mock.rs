@@ -18,6 +18,7 @@
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_types::CurrencyId;
+use common_types::PoolLocator;
 use common_types::{PermissionRoles, PoolRole, TimeProvider};
 use frame_support::{
 	parameter_types,
@@ -26,7 +27,6 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use common_types::PoolLocator;
 use runtime_common::{
 	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,

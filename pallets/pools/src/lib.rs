@@ -21,7 +21,7 @@ mod weights;
 use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
-use common_types::{PoolRole, PoolLocator};
+use common_types::{PoolLocator, PoolRole};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};

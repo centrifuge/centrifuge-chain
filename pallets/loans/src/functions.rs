@@ -14,9 +14,9 @@
 //! Module provides loan related functions
 use super::*;
 use crate::weights::WeightInfo;
+use common_types::PoolLocator;
 use frame_support::weights::Weight;
 use sp_runtime::ArithmeticError;
-use common_types::PoolLocator;
 
 impl<T: Config> Pallet<T> {
 	// calculates write off group weight for count number of write off groups looped
@@ -79,11 +79,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock asset nft
-		T::NonFungible::transfer(
-			&asset_class_id.into(),
-			&instance_id.into(),
-			&pool_account,
-		)?;
+		T::NonFungible::transfer(&asset_class_id.into(), &instance_id.into(), &pool_account)?;
 		let timestamp = Self::time_now();
 
 		// update the next token nonce
@@ -93,10 +89,10 @@ impl<T: Config> Pallet<T> {
 		NextLoanId::<T>::set(next_loan_id);
 
 		// create loan info
-		LoanInfo::<T>::insert(
+		Loan::<T>::insert(
 			pool_id,
 			loan_id,
-			LoanData {
+			LoanDetails {
 				borrowed_amount: Zero::zero(),
 				repaid_amount: Zero::zero(),
 				rate_per_sec: Zero::zero(),
@@ -120,14 +116,11 @@ impl<T: Config> Pallet<T> {
 		rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Amount>,
 	) -> DispatchResult {
-		LoanInfo::<T>::try_mutate(pool_id, loan_id, |maybe_loan_info| -> DispatchResult {
-			let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
+		Loan::<T>::try_mutate(pool_id, loan_id, |maybe_loan| -> DispatchResult {
+			let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
 
 			// ensure loan is created
-			ensure!(
-				loan_info.status == LoanStatus::Created,
-				Error::<T>::LoanIsActive
-			);
+			ensure!(loan.status == LoanStatus::Created, Error::<T>::LoanIsActive);
 
 			// ensure loan_type is valid
 			let now = Self::time_now();
@@ -137,10 +130,10 @@ impl<T: Config> Pallet<T> {
 			ensure!(rate_per_sec >= One::one(), Error::<T>::LoanValueInvalid);
 
 			// update the loan info
-			loan_info.rate_per_sec = rate_per_sec;
-			loan_info.status = LoanStatus::Active;
-			loan_info.loan_type = loan_type;
-			*maybe_loan_info = Some(loan_info);
+			loan.rate_per_sec = rate_per_sec;
+			loan.status = LoanStatus::Active;
+			loan.loan_type = loan_type;
+			*maybe_loan = Some(loan);
 
 			Ok(())
 		})
@@ -156,25 +149,20 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
-		LoanInfo::<T>::try_mutate(
+		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_info| -> Result<ClosedLoan<T>, DispatchError> {
-				let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan| -> Result<ClosedLoan<T>, DispatchError> {
+				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
-				ensure!(
-					loan_info.status == LoanStatus::Active,
-					Error::<T>::LoanNotActive
-				);
+				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
 				// ensure debt is all paid
 				// we just need to ensure principal debt is zero
 				// if not, we check if the loan is written of 100%
-				let written_off = match (
-					loan_info.principal_debt == Zero::zero(),
-					loan_info.write_off_index,
-				) {
+				let written_off = match (loan.principal_debt == Zero::zero(), loan.write_off_index)
+				{
 					// debt is cleared
 					(true, _) => Ok(false),
 					// debt not cleared and loan not written off
@@ -192,7 +180,7 @@ impl<T: Config> Pallet<T> {
 				}?;
 
 				// transfer asset to owner
-				let asset = loan_info.asset;
+				let asset = loan.asset;
 				let (asset_class_id, instance_id) = asset.destruct();
 				T::NonFungible::transfer(&asset_class_id.into(), &instance_id.into(), &owner)?;
 
@@ -207,8 +195,8 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				// update loan status
-				loan_info.status = LoanStatus::Closed;
-				*maybe_loan_info = Some(loan_info);
+				loan.status = LoanStatus::Closed;
+				*maybe_loan = Some(loan);
 				Ok(ClosedLoan { asset, written_off })
 			},
 		)
@@ -225,27 +213,24 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
-		LoanInfo::<T>::try_mutate(
+		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_info| -> Result<bool, DispatchError> {
-				let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan| -> Result<bool, DispatchError> {
+				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
-				ensure!(
-					loan_info.status == LoanStatus::Active,
-					Error::<T>::LoanNotActive
-				);
+				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
 				// ensure loan is not written off
 				ensure!(
-					loan_info.write_off_index.is_none(),
+					loan.write_off_index.is_none(),
 					Error::<T>::WrittenOffByAdmin
 				);
 
 				// ensure maturity date has not passed if the loan has a maturity date
 				let now: u64 = Self::time_now();
-				let valid = match loan_info.loan_type.maturity_date() {
+				let valid = match loan.loan_type.maturity_date() {
 					Some(md) => md > now,
 					None => true,
 				};
@@ -255,21 +240,21 @@ impl<T: Config> Pallet<T> {
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
 				// check for ceiling threshold
-				let ceiling = loan_info.ceiling(now);
+				let ceiling = loan.ceiling(now);
 				ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
 
 				// get previous present value so that we can update the nav accordingly
 				// we already know that that loan is not written off,
 				// means we wont need to have write off groups. so save a DB read and pass empty
-				let old_pv = loan_info
+				let old_pv = loan
 					.present_value(&vec![])
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate accumulated rate and outstanding debt
 				let (accumulated_rate, debt) =
-					loan_info.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
+					loan.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
-				let new_borrowed_amount = loan_info
+				let new_borrowed_amount = loan
 					.borrowed_amount
 					.checked_add(&amount)
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
@@ -283,20 +268,20 @@ impl<T: Config> Pallet<T> {
 				.ok_or(Error::<T>::PrincipalDebtOverflow)?;
 
 				// update loan
-				let first_borrow = loan_info.borrowed_amount == Zero::zero();
+				let first_borrow = loan.borrowed_amount == Zero::zero();
 				if first_borrow {
-					loan_info.origination_date = now;
+					loan.origination_date = now;
 				}
-				loan_info.borrowed_amount = new_borrowed_amount;
-				loan_info.last_updated = now;
-				loan_info.accumulated_rate = accumulated_rate;
-				loan_info.principal_debt = principal_debt;
-				let new_pv = loan_info
+				loan.borrowed_amount = new_borrowed_amount;
+				loan.last_updated = now;
+				loan.accumulated_rate = accumulated_rate;
+				loan.principal_debt = principal_debt;
+				let new_pv = loan
 					.present_value(&vec![])
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::withdraw(pool_id, owner, amount.into())?;
-				*maybe_loan_info = Some(loan_info);
+				*maybe_loan = Some(loan);
 				Ok(first_borrow)
 			},
 		)
@@ -342,42 +327,39 @@ impl<T: Config> Pallet<T> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
-		LoanInfo::<T>::try_mutate(
+		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_info| -> Result<T::Amount, DispatchError> {
-				let mut loan_info = maybe_loan_info.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan| -> Result<T::Amount, DispatchError> {
+				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
-				ensure!(
-					loan_info.status == LoanStatus::Active,
-					Error::<T>::LoanNotActive
-				);
+				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
 				let now: u64 = Self::time_now();
 
 				// ensure current time is more than origination time
 				// this is mainly to deal with how we calculate debt while trying to repay
 				// therefore we do not let users repay at same instant origination happened
-				ensure!(now > loan_info.origination_date, Error::<T>::RepayTooEarly);
+				ensure!(now > loan.origination_date, Error::<T>::RepayTooEarly);
 
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-				let old_pv = loan_info
+				let old_pv = loan
 					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// calculate new accumulated rate
 				let (accumulated_rate, debt) =
-					loan_info.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
+					loan.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
 				// ensure amount is not more than current debt
 				let repay_amount = amount.min(debt);
 
-				let new_repaid_amount = loan_info
+				let new_repaid_amount = loan
 					.repaid_amount
 					.checked_add(&repay_amount)
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
@@ -390,16 +372,16 @@ impl<T: Config> Pallet<T> {
 				)
 				.ok_or(Error::<T>::ValueOverflow)?;
 
-				loan_info.last_updated = now;
-				loan_info.repaid_amount = new_repaid_amount;
-				loan_info.accumulated_rate = accumulated_rate;
-				loan_info.principal_debt = principal_debt;
-				let new_pv = loan_info
+				loan.last_updated = now;
+				loan.repaid_amount = new_repaid_amount;
+				loan.accumulated_rate = accumulated_rate;
+				loan.principal_debt = principal_debt;
+				let new_pv = loan
 					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::deposit(pool_id, owner, repay_amount.into())?;
-				*maybe_loan_info = Some(loan_info);
+				*maybe_loan = Some(loan);
 				Ok(repay_amount)
 			},
 		)
@@ -417,25 +399,24 @@ impl<T: Config> Pallet<T> {
 		now: u64,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Amount, DispatchError> {
-		LoanInfo::<T>::try_mutate(
+		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_data| -> Result<T::Amount, DispatchError> {
-				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan| -> Result<T::Amount, DispatchError> {
+				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
 				// if the loan is not active, then skip updating and return PV as zero
-				if loan_data.status != LoanStatus::Active {
-					*maybe_loan_data = Some(loan_data);
+				if loan.status != LoanStatus::Active {
+					*maybe_loan = Some(loan);
 					return Ok(Zero::zero());
 				}
 
-				let (acc_rate, _debt) =
-					loan_data.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
-				loan_data.last_updated = now;
-				loan_data.accumulated_rate = acc_rate;
-				let present_value = loan_data
+				let (acc_rate, _debt) = loan.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
+				loan.last_updated = now;
+				loan.accumulated_rate = acc_rate;
+				let present_value = loan
 					.present_value(write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
-				*maybe_loan_data = Some(loan_data);
+				*maybe_loan = Some(loan);
 				Ok(present_value)
 			},
 		)
@@ -448,7 +429,7 @@ impl<T: Config> Pallet<T> {
 		let now = Self::time_now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;
-		let nav = LoanInfo::<T>::iter_key_prefix(pool_id).try_fold(
+		let nav = Loan::<T>::iter_key_prefix(pool_id).try_fold(
 			Zero::zero(),
 			|sum, loan_id| -> Result<T::Amount, DispatchError> {
 				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now, &write_off_groups)?;
@@ -504,16 +485,13 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		override_write_off_index: Option<u32>,
 	) -> Result<u32, DispatchError> {
-		LoanInfo::<T>::try_mutate(
+		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan_data| -> Result<u32, DispatchError> {
-				let mut loan_data = maybe_loan_data.take().ok_or(Error::<T>::MissingLoan)?;
+			|maybe_loan| -> Result<u32, DispatchError> {
+				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
 				// ensure loan is active
-				ensure!(
-					loan_data.status == LoanStatus::Active,
-					Error::<T>::LoanNotActive
-				);
+				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
 				let now = Self::time_now();
 
@@ -526,16 +504,16 @@ impl<T: Config> Pallet<T> {
 						write_off_groups
 							.get(index as usize)
 							.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
-						loan_data.admin_written_off = true;
+						loan.admin_written_off = true;
 						Ok(index)
 					}
 					None => {
 						// non-admin is trying to write off but admin already did. So error out
-						if loan_data.admin_written_off {
+						if loan.admin_written_off {
 							return Err(Error::<T>::WrittenOffByAdmin.into());
 						}
 
-						let maturity_date = loan_data
+						let maturity_date = loan
 							.loan_type
 							.maturity_date()
 							.ok_or(Error::<T>::LoanTypeInvalid)?;
@@ -551,20 +529,20 @@ impl<T: Config> Pallet<T> {
 				}?;
 
 				// get old present value accounting for any write offs
-				let old_pv = loan_data
+				let old_pv = loan
 					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// accrue and calculate the new present value with current chosen write off
 				let (accumulated_rate, _current_debt) =
-					loan_data.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
+					loan.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
-				loan_data.accumulated_rate = accumulated_rate;
-				loan_data.last_updated = now;
-				loan_data.write_off_index = Some(write_off_group_index);
+				loan.accumulated_rate = accumulated_rate;
+				loan.last_updated = now;
+				loan.write_off_index = Some(write_off_group_index);
 
 				// calculate updated write off adjusted present value
-				let new_pv = loan_data
+				let new_pv = loan
 					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
@@ -572,7 +550,7 @@ impl<T: Config> Pallet<T> {
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
 				// update loan data
-				*maybe_loan_data = Some(loan_data);
+				*maybe_loan = Some(loan);
 				Ok(write_off_group_index)
 			},
 		)

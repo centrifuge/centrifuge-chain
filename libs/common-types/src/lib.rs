@@ -20,11 +20,11 @@ use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
 use frame_support::sp_runtime::traits::Saturating;
 use frame_support::traits::{Get, UnixTime};
-use sp_runtime::TypeId;
 use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::TypeId;
 ///! Common-types of the Centrifuge chain.
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
