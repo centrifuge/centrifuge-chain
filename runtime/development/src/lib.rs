@@ -966,8 +966,7 @@ impl pallet_loans::Config for Runtime {
 }
 
 parameter_types! {
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxTranches: TrancheId = 5;
+	pub const MaxTranches: u32 = 5;
 
 	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
@@ -980,9 +979,8 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Location = PoolId;
-	type Role = PoolRole<Moment, TrancheId>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Role = PoolRole<TrancheId, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type MaxRolesPerLocation = MaxRolesPerPool;
@@ -993,17 +991,17 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<PoolRole<Moment, TrancheId>>,
+		Option<PoolRole<TrancheId, Moment>>,
 		PoolId,
-		PoolRole<Moment, TrancheId>,
+		PoolRole<TrancheId, Moment>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<PoolRole<Moment, TrancheId>>,
+			Option<PoolRole<TrancheId, Moment>>,
 			PoolId,
-			PoolRole<Moment, TrancheId>,
+			PoolRole<TrancheId, Moment>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;
