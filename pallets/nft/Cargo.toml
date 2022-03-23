@@ -45,6 +45,7 @@ sp-std = { git = "https://github.com/paritytech/substrate", default-features = f
 
 [features]
 default = ['std']
+runtime-benchmarks = ["chainbridge/runtime-benchmarks"]
 std = [
     'codec/std',
     'frame-support/std',

@@ -9,8 +9,25 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+pub mod frame_system;
+pub mod pallet_balances;
 pub mod pallet_collator_allowlist;
+pub mod pallet_collective;
 pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;
+pub mod pallet_democracy;
 pub mod pallet_fees;
+pub mod pallet_identity;
 pub mod pallet_migration_manager;
+pub mod pallet_multisig;
+pub mod pallet_nft_sales;
+pub mod pallet_permissions;
+pub mod pallet_preimage;
+pub mod pallet_proxy;
+pub mod pallet_restricted_tokens;
+pub mod pallet_scheduler;
+pub mod pallet_timestamp;
+pub mod pallet_treasury;
+pub mod pallet_uniques;
+pub mod pallet_utility;
+pub mod pallet_vesting;

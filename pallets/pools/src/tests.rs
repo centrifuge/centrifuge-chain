@@ -3,7 +3,9 @@ use crate::mock::*;
 use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
+use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use runtime_common::Rate;
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::{Perquintill, TokenError};
@@ -11,24 +13,29 @@ use sp_runtime::{Perquintill, TokenError};
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches: Vec<_> = std::iter::repeat(Tranche {
-			outstanding_redeem_orders: 10,
-			..Default::default()
-		})
-		.take(4)
-		.collect();
-
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
+		let tranches = Tranches::new(
+			std::iter::repeat(Tranche {
+				outstanding_redeem_orders: 10,
 				..Default::default()
 			})
-			.collect();
+			.take(4)
+			.collect(),
+		);
+
+		let epoch_tranches = EpochExecutionTranches::new(
+			tranches
+				.residual_top_slice()
+				.iter()
+				.zip(vec![80, 20, 5, 5]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, value)| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
@@ -36,9 +43,11 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 40,
-			available_reserve: Zero::zero(),
-			total_reserve: 39,
+			reserve: ReserveDetails {
+				max_reserve: 40,
+				available_reserve: Zero::zero(),
+				total_reserve: 39,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -52,8 +61,8 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 0,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -61,6 +70,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 
 		let full_solution = pool
 			.tranches
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -69,7 +79,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			.collect::<Vec<_>>();
 
 		assert_noop!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution),
+			Pools::inspect_solution(pool, &epoch, &full_solution),
 			Error::<Test>::InsufficientCurrency
 		);
 	});
@@ -81,35 +91,42 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranche_a = Tranche {
 			outstanding_invest_orders: 10,
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 0),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 1),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 2),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
+			currency: CurrencyId::Tranche(0, 3),
 			..Default::default()
 		};
-		let tranches = vec![tranche_a, tranche_b, tranche_c, tranche_d];
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				..Default::default()
-			})
-			.collect();
+		let tranches = Tranches::new(vec![tranche_a, tranche_b, tranche_c, tranche_d]);
+		let epoch_tranches = EpochExecutionTranches::new(
+			tranches
+				.residual_top_slice()
+				.iter()
+				.zip(vec![80, 20, 15, 15]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, value)| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
@@ -117,9 +134,11 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 5,
-			available_reserve: Zero::zero(),
-			total_reserve: 40,
+			reserve: ReserveDetails {
+				max_reserve: 5,
+				available_reserve: Zero::zero(),
+				total_reserve: 40,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -133,8 +152,8 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 90,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -142,6 +161,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 
 		let full_solution = pool
 			.tranches
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -150,20 +170,15 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			.collect::<Vec<_>>();
 
 		assert_eq!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution),
+			Pools::inspect_solution(pool, &epoch, &full_solution),
 			Ok(PoolState::Unhealthy(vec![
 				UnhealthyState::MaxReserveViolated
 			]))
 		);
 
-		assert_ok!(Pools::is_valid_solution(
-			&PoolDetails {
-				max_reserve: 100,
-				..pool.clone()
-			},
-			&epoch,
-			&full_solution
-		));
+		let mut details = pool.clone();
+		details.reserve.max_reserve = 100;
+		assert_ok!(Pools::inspect_solution(&details, &epoch, &full_solution));
 	});
 }
 
@@ -171,42 +186,54 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: Rate::one(),
+				min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
+			},
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.2),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.2),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.1),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.1),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			min_risk_buffer: Perquintill::zero(),
+			tranche_type: TrancheType::Residual,
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
-		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
+		let tranches = Tranches::new(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
 
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche, value)| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				..Default::default()
-			})
-			.collect();
+		let epoch_tranches = EpochExecutionTranches::new(
+			tranches
+				.residual_top_slice()
+				.iter()
+				.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche, value)| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
@@ -214,9 +241,11 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 150,
-			available_reserve: Zero::zero(),
-			total_reserve: 50,
+			reserve: ReserveDetails {
+				max_reserve: 150,
+				available_reserve: Zero::zero(),
+				total_reserve: 50,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -230,8 +259,8 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 0,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -239,6 +268,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let full_solution = pool
 			.tranches
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -248,7 +278,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 
 		let prev_root = frame_support::storage_root(StateVersion::V0);
 		assert_eq!(
-			Pools::is_valid_solution(pool, &epoch, &full_solution).unwrap(),
+			Pools::inspect_solution(pool, &epoch, &full_solution).unwrap(),
 			PoolState::Unhealthy(vec![UnhealthyState::MinRiskBufferViolated])
 		);
 		assert_eq!(prev_root, frame_support::storage_root(StateVersion::V0))
@@ -259,48 +289,63 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.2),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.2),
+			},
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 3,
+			currency: CurrencyId::Tranche(0, 3),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.1),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.1),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 30,
 			seniority: 2,
+			currency: CurrencyId::Tranche(0, 2),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
-			min_risk_buffer: Perquintill::from_float(0.05),
+			tranche_type: TrancheType::NonResidual {
+				interest_per_sec: One::one(),
+				min_risk_buffer: Perquintill::from_float(0.05),
+			},
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 1,
+			currency: CurrencyId::Tranche(0, 1),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
-			min_risk_buffer: Perquintill::zero(),
+			tranche_type: TrancheType::Residual,
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 0,
+			currency: CurrencyId::Tranche(0, 0),
 			..Default::default()
 		};
-		let tranches = vec![tranche_d, tranche_c, tranche_b, tranche_a];
-
-		let epoch_tranches = tranches
-			.iter()
-			.zip(vec![80, 70, 35, 20])
-			.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
-			.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
-				supply: value,
-				price: One::one(),
-				invest: tranche.outstanding_invest_orders,
-				redeem: tranche.outstanding_redeem_orders,
-				seniority: tranche_id.try_into().unwrap(),
-				..Default::default()
-			})
-			.collect();
+		let tranches = Tranches::new(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
+		let epoch_tranches = EpochExecutionTranches::new(
+			tranches
+				.residual_top_slice()
+				.iter()
+				.zip(vec![80, 70, 35, 20])
+				.enumerate() // no IntoIterator for arrays, so we use a vec here. Meh.
+				.map(|(tranche_id, (tranche, value))| EpochExecutionTranche {
+					supply: value,
+					price: One::one(),
+					invest: tranche.outstanding_invest_orders,
+					redeem: tranche.outstanding_redeem_orders,
+					seniority: tranche_id.try_into().unwrap(),
+					..Default::default()
+				})
+				.collect(),
+		);
 
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
@@ -308,9 +353,11 @@ fn pool_constraints_pass() {
 			current_epoch: Zero::zero(),
 			last_epoch_closed: 0,
 			last_epoch_executed: Zero::zero(),
-			max_reserve: 150,
-			available_reserve: Zero::zero(),
-			total_reserve: 50,
+			reserve: ReserveDetails {
+				max_reserve: 150,
+				available_reserve: Zero::zero(),
+				total_reserve: 50,
+			},
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
@@ -324,8 +371,8 @@ fn pool_constraints_pass() {
 		let epoch = EpochExecutionInfo {
 			epoch: Zero::zero(),
 			nav: 145,
-			reserve: pool.total_reserve,
-			max_reserve: pool.max_reserve,
+			reserve: pool.reserve.total_reserve,
+			max_reserve: pool.reserve.max_reserve,
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
@@ -333,6 +380,7 @@ fn pool_constraints_pass() {
 
 		let full_solution = pool
 			.tranches
+			.residual_top_slice()
 			.iter()
 			.map(|_| TrancheSolution {
 				invest_fulfillment: Perquintill::one(),
@@ -340,14 +388,18 @@ fn pool_constraints_pass() {
 			})
 			.collect::<Vec<_>>();
 
-		assert_ok!(Pools::is_valid_solution(pool, &epoch, &full_solution));
+		assert_ok!(Pools::inspect_solution(pool, &epoch, &full_solution));
 
 		assert_eq!(
-			Pools::calculate_risk_buffers(&vec![3, 1], &vec![One::one(), One::one()]).unwrap(),
+			crate::calculate_risk_buffers::<u128, runtime_common::Rate>(
+				&vec![3, 1],
+				&vec![One::one(), One::one()]
+			)
+			.unwrap(),
 			vec![Perquintill::zero(), Perquintill::from_float(0.75),]
 		);
 		assert_eq!(
-			pool.tranches.calculate_weight(pool.tranches.len() as u32),
+			pool.tranches.calculate_weights(),
 			vec![
 				(10_000.into(), 100_000.into()),
 				(1000.into(), 1_000_000.into()),
@@ -367,14 +419,14 @@ fn epoch() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let borrower = 3;
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -391,16 +443,14 @@ fn epoch() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -462,30 +512,57 @@ fn epoch() {
 			SENIOR_TRANCHE_ID,
 			1
 		));
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			0,
+			JUNIOR_TRANCHE_ID,
+			1
+		));
+
+		assert_eq!(
+			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
+				CurrencyId::Tranche(0, 0),
+				&0,
+			),
+			500 * CURRENCY,
+		);
+		assert_eq!(
+			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
+				CurrencyId::Tranche(0, 1),
+				&1,
+			),
+			500 * CURRENCY,
+		);
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].interest_per_sec,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec(),
 			Rate::from_inner(1_000000003170979198376458650)
 		);
-		assert_eq!(pool.available_reserve, 1000 * CURRENCY);
-		assert_eq!(pool.total_reserve, 1000 * CURRENCY);
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
+		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);
+		assert_eq!(pool.reserve.total_reserve, 1000 * CURRENCY);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].ratio,
-			Perquintill::from_float(0.5)
-		);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
-		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].ratio,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].ratio,
 			Perquintill::from_float(0.5)
 		);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].ratio,
+			Perquintill::from_float(0.5)
+		);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		);
 
@@ -493,7 +570,7 @@ fn epoch() {
 		next_block();
 		// Borrow more than pool reserve should fail NoFunds error
 		assert_noop!(
-			Pools::do_borrow(borrower.clone(), 0, pool.total_reserve + 1),
+			Pools::do_withdraw(borrower.clone(), 0, pool.reserve.total_reserve + 1),
 			TokenError::NoFunds
 		);
 
@@ -501,23 +578,23 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve,
 			250 * CURRENCY
 		);
-		assert_eq!(pool.available_reserve, 500 * CURRENCY);
-		assert_eq!(pool.total_reserve, 500 * CURRENCY);
+		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
+		assert_eq!(pool.reserve.total_reserve, 500 * CURRENCY);
 
 		// Repay (with made up interest) after a month.
 		next_block_after(60 * 60 * 24 * 30);
@@ -525,15 +602,23 @@ fn epoch() {
 		assert_ok!(test_payback(borrower.clone(), 0, 510 * CURRENCY));
 
 		let pool = Pools::pool(0).unwrap();
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
 		assert_eq!(
-			pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
 			500 * CURRENCY
 		); // not yet rebalanced
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
-		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY); // there's interest in here now
-		assert_eq!(pool.available_reserve, 500 * CURRENCY);
-		assert_eq!(pool.total_reserve, 1010 * CURRENCY);
+		assert_eq!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY
+		); // there's interest in here now
+		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
+		assert_eq!(pool.reserve.total_reserve, 1010 * CURRENCY);
 
 		// Senior investor tries to redeem
 		next_block();
@@ -554,19 +639,26 @@ fn epoch() {
 			pool.last_epoch_executed,
 		)
 		.unwrap();
-		assert_eq!(pool.tranches[JUNIOR_TRANCHE_ID as usize].debt, 0);
-		assert!(pool.tranches[JUNIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY);
+		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
+		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_redeem_orders,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize]
+				.outstanding_redeem_orders,
 			0
 		);
-		assert_eq!(pool.tranches[SENIOR_TRANCHE_ID as usize].debt, 0);
-		assert_eq!(pool.available_reserve, pool.total_reserve);
-		assert!(pool.total_reserve > 750 * CURRENCY);
-		assert!(pool.total_reserve < 800 * CURRENCY);
-		assert!(pool.tranches[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY);
 		assert_eq!(
-			pool.total_reserve + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			0
+		);
+		assert_eq!(pool.reserve.available_reserve, pool.reserve.total_reserve);
+		assert!(pool.reserve.total_reserve > 750 * CURRENCY);
+		assert!(pool.reserve.total_reserve < 800 * CURRENCY);
+		assert!(
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY
+		);
+		assert_eq!(
+			pool.reserve.total_reserve
+				+ senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
 		);
 	});
@@ -580,14 +672,14 @@ fn submission_period() {
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -596,7 +688,7 @@ fn submission_period() {
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+		let senior_interest_rate = Rate::saturating_from_rational(10u128, 100u128)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
@@ -604,16 +696,14 @@ fn submission_period() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None,
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -670,13 +760,13 @@ fn submission_period() {
 		// Not allowed as it breaks the min risk buffer, and the current state isn't broken
 		let epoch = <pallet::EpochExecution<mock::Test>>::try_get(0).unwrap();
 		let existing_state_score = Pools::score_solution(
-			&0,
+			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&epoch.clone().best_submission.unwrap().solution(),
 		)
 		.unwrap();
 		let new_solution_score = Pools::score_solution(
-			&0,
+			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&vec![
 				TrancheSolution {
@@ -714,7 +804,7 @@ fn submission_period() {
 
 		// Allowed as 1% redemption keeps the risk buffer healthy
 		let partial_fulfilment_solution = Pools::score_solution(
-			&0,
+			&crate::Pool::<Test>::try_get(0).unwrap(),
 			&epoch,
 			&vec![
 				TrancheSolution {
@@ -791,14 +881,14 @@ fn execute_info_removed_after_epoch_execute() {
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -816,16 +906,14 @@ fn execute_info_removed_after_epoch_execute() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None,
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None,
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -890,14 +978,14 @@ fn collect_tranche_tokens() {
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
 		)
 		.unwrap();
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
@@ -906,7 +994,7 @@ fn collect_tranche_tokens() {
 
 		// Initialize pool with initial investments
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+		let senior_interest_rate = Rate::saturating_from_rational(10u128, 100u128)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
 		assert_ok!(Pools::create(
@@ -914,16 +1002,14 @@ fn collect_tranche_tokens() {
 			pool_owner.clone(),
 			0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
@@ -969,18 +1055,21 @@ fn collect_tranche_tokens() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].outstanding_invest_orders,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize]
+				.outstanding_invest_orders,
 			0
 		);
 
-		let order = Pools::order(
-			TrancheLocator {
-				pool_id: 0,
-				tranche_id: SENIOR_TRANCHE_ID,
-			},
-			0,
+		assert_eq!(
+			Pools::order(
+				TrancheLocator {
+					pool_id: 0,
+					tranche_id: SENIOR_TRANCHE_ID,
+				},
+				0,
+			),
+			None
 		);
-		assert_eq!(order.invest, 0);
 
 		assert_noop!(
 			Pools::update_invest_order(
@@ -1018,105 +1107,8 @@ fn collect_tranche_tokens() {
 			junior_investor.clone(),
 			0,
 			JUNIOR_TRANCHE_ID,
-			2
+			1
 		));
-	});
-}
-
-#[test]
-fn test_approve_and_remove_roles() {
-	new_test_ext().execute_with(|| {
-		let pool_owner = 1;
-		let pool_owner_origin = Origin::signed(pool_owner);
-
-		// Initialize pool with initial investmentslet senior_interest_rate = Rate::saturating_from_rational(10, 100)
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
-		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
-			/ Rate::saturating_from_integer(SECS_PER_YEAR)
-			+ One::one();
-		assert_ok!(Pools::create(
-			pool_owner_origin.clone(),
-			pool_owner.clone(),
-			0,
-			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(senior_interest_rate),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				},
-			],
-			CurrencyId::Usd,
-			10_000 * CURRENCY
-		));
-
-		let pool_id = 0;
-		assert!(<Pools as PoolInspect<u64>>::pool_exists(pool_id));
-		assert!(<Test as Config>::Permission::has_permission(
-			pool_id,
-			pool_owner,
-			PoolRole::PoolAdmin
-		));
-
-		// setup test cases
-		for (role, sources) in vec![
-			(PoolRole::PoolAdmin, vec![2, 3]),
-			(PoolRole::Borrower, vec![4, 5]),
-			(PoolRole::PricingAdmin, vec![6, 7]),
-			(PoolRole::MemberListAdmin, vec![8, 9]),
-			(PoolRole::RiskAdmin, vec![10, 11]),
-			(PoolRole::LiquidityAdmin, vec![12, 13]),
-		] {
-			// they should not have a role first
-			let targets: Vec<u64> = sources
-				.iter()
-				.map(|admin| {
-					<<Test as frame_system::Config>::Lookup as StaticLookup>::unlookup(*admin)
-				})
-				.collect();
-
-			targets.iter().for_each(|acc| {
-				assert!(!<Test as Config>::Permission::has_permission(
-					pool_id, *acc, role
-				))
-			});
-
-			// approve role for all the accounts
-			assert_ok!(Pools::approve_role_for(
-				Origin::signed(pool_owner),
-				pool_id,
-				role,
-				sources.clone()
-			));
-
-			// they should have role now
-			targets.iter().for_each(|acc| {
-				assert!(<Test as Config>::Permission::has_permission(
-					pool_id, *acc, role
-				))
-			});
-
-			sources.iter().for_each(|source| {
-				// revoke roles
-				assert_ok!(Pools::revoke_role_for(
-					Origin::signed(pool_owner),
-					pool_id,
-					role,
-					*source
-				));
-			});
-
-			// they should not have role now
-			targets.iter().for_each(|acc| {
-				assert!(!<Test as Config>::Permission::has_permission(
-					pool_id, *acc, role
-				))
-			});
-		}
 	});
 }
 
@@ -1126,7 +1118,7 @@ fn invalid_tranche_id_is_err() {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(1, u64::MAX),
@@ -1137,11 +1129,7 @@ fn invalid_tranche_id_is_err() {
 			senior_investor.clone(),
 			1_u64,
 			0,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1164,7 +1152,7 @@ fn updating_with_same_amount_is_err() {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
 			PoolRole::TrancheInvestor(0, u64::MAX),
@@ -1175,11 +1163,7 @@ fn updating_with_same_amount_is_err() {
 			senior_investor.clone(),
 			1_u64,
 			0,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1209,11 +1193,7 @@ fn pool_parameters_should_be_constrained() {
 			pool_owner_origin.clone(),
 			pool_owner.clone(),
 			pool_id,
-			vec![TrancheInput {
-				interest_per_sec: None,
-				min_risk_buffer: None,
-				seniority: None
-			},],
+			vec![(TrancheType::Residual, None)],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
@@ -1224,13 +1204,8 @@ fn pool_parameters_should_be_constrained() {
 
 		assert_err!(
 			Pools::update(
-<<<<<<< HEAD
-				pool_owner.clone(),
-=======
 				pool_owner_origin.clone(),
 				pool_id,
->>>>>>> 04ebc0475a467af829cb3462c0271fdd8802f0a9
-				0,
 				PoolUpdate {
 					tranches: None,
 					min_epoch_time: Some(0),
@@ -1244,14 +1219,8 @@ fn pool_parameters_should_be_constrained() {
 		);
 		assert_err!(
 			Pools::update(
-<<<<<<< HEAD
-				pool_owner.clone(),
-=======
 				pool_owner_origin.clone(),
 				pool_id,
-				realistic_min_epoch_time,
->>>>>>> 04ebc0475a467af829cb3462c0271fdd8802f0a9
-				0,
 				PoolUpdate {
 					tranches: None,
 					min_epoch_time: Some(realistic_min_epoch_time),
@@ -1265,9 +1234,8 @@ fn pool_parameters_should_be_constrained() {
 		);
 		assert_err!(
 			Pools::update(
-<<<<<<< HEAD
-				pool_owner.clone(),
-				0,
+				pool_owner_origin.clone(),
+				pool_id,
 				PoolUpdate {
 					tranches: None,
 					min_epoch_time: Some(realistic_min_epoch_time),
@@ -1276,21 +1244,13 @@ fn pool_parameters_should_be_constrained() {
 					min_update_delay: None,
 					require_redeem_fulfillments_before_updates: None,
 				}
-=======
-				pool_owner_origin.clone(),
-				pool_id,
-				realistic_min_epoch_time,
-				realistic_challenge_time,
-				7 * 24 * 60 * 60
->>>>>>> 04ebc0475a467af829cb3462c0271fdd8802f0a9
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
 
 		assert_ok!(Pools::update(
-<<<<<<< HEAD
-			pool_owner.clone(),
-			0,
+			pool_owner_origin.clone(),
+			pool_id,
 			PoolUpdate {
 				tranches: None,
 				min_epoch_time: Some(realistic_min_epoch_time),
@@ -1304,196 +1264,418 @@ fn pool_parameters_should_be_constrained() {
 }
 
 #[test]
-fn pool_updates_are_only_executed_after_redemptions() {
+fn updating_orders_updates_epoch() {
 	new_test_ext().execute_with(|| {
-		let pool_owner = Origin::signed(0);
-		let investor = Origin::signed(1);
+		let jun_invest_id = 0u64;
+		let junior_investor = Origin::signed(jun_invest_id);
+		let pool_owner = 99u64;
+		let pool_admin = Origin::signed(pool_owner);
 		let pool_id = 0;
-		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			pool_id,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
 
 		assert_ok!(Pools::create(
-			pool_owner.clone(),
+			pool_admin.clone(),
+			pool_owner,
 			pool_id,
+			vec![(TrancheType::Residual, None)],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		next_block();
+		test_nav_update(0, 10 * CURRENCY, START_DATE + DefaultMaxNAVAge::get() + 1);
+
+		assert_ok!(Pools::close_epoch(pool_admin.clone(), pool_id));
+
+		next_block();
+
+		assert_eq!(Pools::order(JuniorTrancheId::get(), jun_invest_id), None);
+
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+
+		assert_eq!(
+			Pools::order(JuniorTrancheId::get(), jun_invest_id)
+				.unwrap()
+				.epoch,
+			2
+		);
+	});
+}
+
+#[test]
+fn no_order_is_err() {
+	new_test_ext().execute_with(|| {
+		let jun_invest_id = 0u64;
+		let junior_investor = Origin::signed(jun_invest_id);
+		let pool_owner = 99u64;
+		let pool_admin = Origin::signed(pool_owner);
+		let pool_id = 0;
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			pool_id,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		assert_ok!(Pools::create(
+			pool_admin.clone(),
+			pool_owner,
+			pool_id,
+			vec![(TrancheType::Residual, None)],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		next_block();
+		test_nav_update(0, 10 * CURRENCY, START_DATE + DefaultMaxNAVAge::get() + 1);
+
+		assert_ok!(Pools::close_epoch(pool_admin.clone(), pool_id));
+
+		assert_noop!(
+			Pools::collect(
+				junior_investor.clone(),
+				pool_id,
+				TrancheLoc::Id(JuniorTrancheId::get()),
+				2
+			),
+			Error::<Test>::NoOutstandingOrder
+		);
+	})
+}
+
+#[test]
+fn collecting_over_last_exec_epoch_is_err() {
+	new_test_ext().execute_with(|| {
+		let jun_invest_id = 0u64;
+		let junior_investor = Origin::signed(jun_invest_id);
+		let pool_owner = 99u64;
+		let pool_admin = Origin::signed(pool_owner);
+		let pool_id = 0;
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			pool_id,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		assert_ok!(Pools::create(
+			pool_admin.clone(),
+			pool_owner,
+			pool_id,
+			vec![(TrancheType::Residual, None)],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		next_block();
+
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+
+		test_nav_update(0, 10 * CURRENCY, START_DATE + DefaultMaxNAVAge::get() + 1);
+		assert_ok!(Pools::close_epoch(pool_admin.clone(), pool_id));
+
+		next_block();
+
+		assert_noop!(
+			Pools::collect(
+				junior_investor.clone(),
+				pool_id,
+				TrancheLoc::Id(JuniorTrancheId::get()),
+				2
+			),
+			Error::<Test>::EpochNotExecutedYet
+		);
+
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			1
+		));
+	})
+}
+
+#[test]
+fn tranche_ids_are_unique() {
+	new_test_ext().execute_with(|| {
+		let mut rng = rand::thread_rng();
+
+		let pool_id_0: u64 = rng.gen();
+
+		let pool_id_1: u64 = loop {
+			let id = rng.gen::<u64>();
+			if id != pool_id_0 {
+				break id;
+			}
+		};
+
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_0,
 			vec![
-				TrancheInput {
-					interest_per_sec: None,
-					min_risk_buffer: None,
-					seniority: None
-				},
-				TrancheInput {
-					interest_per_sec: Some(
-						Rate::saturating_from_rational(10, 100)
-							/ Rate::saturating_from_integer(SECS_PER_YEAR)
-							+ One::one()
-					),
-					min_risk_buffer: Some(Perquintill::from_percent(10)),
-					seniority: None
-				}
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
 			],
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
 
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
-			pool_id,
-			ensure_signed(investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
-		)
-		.unwrap();
-
-		<<Test as Config>::Permission as PermissionsT<u64>>::add_permission(
-			pool_id,
-			ensure_signed(investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
-		)
-		.unwrap();
-
-		// Force min_epoch_time and challenge time to 0 without using update
-		crate::Pool::<Test>::try_mutate(pool_id, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
-			// Updates require redemptions to be fulfilled first
-			maybe_pool
-				.as_mut()
-				.unwrap()
-				.require_redeem_fulfillments_before_updates = true;
-			Ok(())
-		})
-		.unwrap();
-
-		// Invest 500 in both tranches
-		assert_ok!(Pools::update_invest_order(
-			investor.clone(),
-			pool_id,
-			JUNIOR_TRANCHE_ID,
-			500 * CURRENCY
-		));
-		assert_ok!(Pools::update_invest_order(
-			investor.clone(),
-			pool_id,
-			SENIOR_TRANCHE_ID,
-			500 * CURRENCY
-		));
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), pool_id));
-		assert_ok!(Pools::collect(
-			investor.clone(),
-			pool_id,
-			JUNIOR_TRANCHE_ID,
-			1
-		));
-
-		// Schedule an update to the senior tranche min risk buffer
-		assert_ok!(Pools::update(
-			pool_owner.clone(),
-			pool_id,
-			PoolUpdate {
-				tranches: Some(vec![
-					TrancheInput {
-						interest_per_sec: None,
-						min_risk_buffer: None,
-						seniority: None
-					},
-					TrancheInput {
-						interest_per_sec: Some(
-							Rate::saturating_from_rational(10, 100)
-								/ Rate::saturating_from_integer(SECS_PER_YEAR)
-								+ One::one()
-						),
-						min_risk_buffer: Some(Perquintill::from_percent(5)), // lowered to 5%
-						seniority: None
-					}
-				]),
-				min_epoch_time: None,
-				challenge_time: None,
-				max_nav_age: None,
-				min_update_delay: None,
-				require_redeem_fulfillments_before_updates: Some(true),
-			}
-		));
-
-		// Check that the update hasn't been executed yet
-		let pool = Pools::pool(pool_id).unwrap();
-		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].min_risk_buffer,
-			Perquintill::from_percent(10)
-		);
-
-		// Try to redeem everything, which cannot be fulfilled
-		assert_ok!(Pools::update_redeem_order(
-			investor.clone(),
-			pool_id,
-			JUNIOR_TRANCHE_ID,
-			500 * CURRENCY
-		));
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), pool_id));
-		assert_ok!(Pools::submit_solution(
-			pool_owner.clone(),
-			pool_id,
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_1,
 			vec![
-				TrancheSolution {
-					invest_fulfillment: Perquintill::zero(),
-					redeem_fulfillment: Perquintill::from_percent(1),
-				},
-				TrancheSolution {
-					invest_fulfillment: Perquintill::zero(),
-					redeem_fulfillment: Perquintill::zero(),
-				}
-			]
-		));
-		assert_ok!(Pools::execute_epoch(pool_owner.clone(), pool_id));
-		assert_ok!(Pools::collect(
-			investor.clone(),
-=======
-			pool_owner_origin.clone(),
->>>>>>> 04ebc0475a467af829cb3462c0271fdd8802f0a9
-			pool_id,
-			JUNIOR_TRANCHE_ID,
-			1
-		));
-		assert_ok!(Pools::collect(
-			investor.clone(),
-			pool_id,
-			SENIOR_TRANCHE_ID,
-			1
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
 		));
 
-		// Check that the update still hasn't been executed yet
-		assert_eq!(
-			Pools::pool(pool_id).unwrap().tranches[SENIOR_TRANCHE_ID as usize].min_risk_buffer,
-			Perquintill::from_percent(10)
+		let pool_ids_0 = Pools::pool(pool_id_0).unwrap().tranches.ids_residual_top();
+		let pool_ids_1 = Pools::pool(pool_id_1).unwrap().tranches.ids_residual_top();
+
+		pool_ids_0
+			.iter()
+			.zip(pool_ids_1.iter())
+			.for_each(|(id_of_0, id_of_1)| assert_ne!(id_of_0, id_of_1))
+	})
+}
+
+#[test]
+fn same_pool_id_not_possible() {
+	new_test_ext().execute_with(|| {
+		let mut rng = rand::thread_rng();
+		let pool_id_1: u64 = rng.gen();
+
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_1,
+			vec![(TrancheType::Residual, None),],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_1,
+				vec![(TrancheType::Residual, None),],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::PoolInUse
+		);
+	})
+}
+
+#[test]
+fn valid_tranche_structure_is_enforced() {
+	new_test_ext().execute_with(|| {
+		let pool_id_0 = 0u64;
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate + One::one(), // More residual MUST have smaller interest than above tranche
+							min_risk_buffer: Perquintill::from_percent(20),
+						},
+						None
+					)
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidTrancheStructure
 		);
 
-		// Update the redeem order to an amount that can actually be redeemed
-		assert_ok!(Pools::update_redeem_order(
-			investor.clone(),
-			pool_id,
-			JUNIOR_TRANCHE_ID,
-			0
-		));
-
-		assert_ok!(Pools::update_redeem_order(
-			investor.clone(),
-			pool_id,
-			SENIOR_TRANCHE_ID,
-			100
-		));
-		assert!(pool.scheduled_update.is_some());
-
-		assert_ok!(Pools::close_epoch(pool_owner.clone(), pool_id));
-		assert_ok!(Pools::collect(
-			investor.clone(),
-			pool_id,
-			SENIOR_TRANCHE_ID,
-			1
-		));
-
-		// Check that the update was executed
-		let pool = Pools::pool(pool_id).unwrap();
-		assert!(pool.scheduled_update.is_none());
-		assert_eq!(
-			pool.tranches[SENIOR_TRANCHE_ID as usize].min_risk_buffer,
-			Perquintill::from_percent(5)
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(TrancheType::Residual, None),
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					)
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidTrancheStructure
 		);
-	});
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(TrancheType::Residual, None), // Must start with residual
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					)
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidJuniorTranche
+		);
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(TrancheType::Residual, None), // Intermediate Residual not ok
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(0),
+						},
+						None
+					),
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidTrancheStructure
+		);
+	})
 }

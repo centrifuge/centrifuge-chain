@@ -179,7 +179,7 @@ impl frame_system::Config for Runtime {
 	/// A function that is invoked when an account has been determined to be dead.
 	/// All resources should be cleaned up associated with the given account.
 	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
+	type SystemWeightInfo = weights::frame_system::SubstrateWeight<Runtime>;
 	type SS58Prefix = SS58Prefix;
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
@@ -257,7 +257,7 @@ impl pallet_balances::Config for Runtime {
 	type ExistentialDeposit = ExistentialDeposit;
 	/// The means of storing the balances of an account.
 	type AccountStore = System;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_balances::SubstrateWeight<Self>;
 	type MaxLocks = MaxLocks;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
@@ -685,7 +685,7 @@ parameter_types! {
 
 impl pallet_nft_sales::Config for Runtime {
 	type Event = Event;
-	type WeightInfo = pallet_nft_sales::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
 	type Fungibles = Tokens;
 	type NonFungibles = Uniques;
 	type ClassId = ClassId;
@@ -949,7 +949,7 @@ impl pallet_collator_selection::Config for Runtime {
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 50;
-	pub const MaxWriteOffgroups: u32 = 10;
+	pub const MaxWriteOffGroups: u32 = 10;
 }
 
 impl pallet_loans::Config for Runtime {
@@ -965,14 +965,19 @@ impl pallet_loans::Config for Runtime {
 	type Permission = Permissions;
 	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffgroups;
+	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
 
 parameter_types! {
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MaxTranches: TrancheId = 5;
+
+	// How much time should lapse before a tranche investor can be removed
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MinDelay: Moment = 30 * SECONDS_PER_DAY;
+	pub const MinDelay: Moment = 7 * SECONDS_PER_DAY;
+
+	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
+	pub const MaxRolesPerPool: u32 = 1_000;
 }
 
 impl pallet_permissions::Config for Runtime {
@@ -983,6 +988,7 @@ impl pallet_permissions::Config for Runtime {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
+	type MaxRolesPerLocation = MaxRolesPerPool;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
 }
 
@@ -1037,12 +1043,8 @@ where
 		match id {
 			CurrencyId::Usd | CurrencyId::Native => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has_permission(
-						pool_id,
-						recv,
-						PoolRole::TrancheInvestor(tranche_id, UNION),
-					)
+				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
 			}
 		}
 	}
@@ -1248,10 +1250,20 @@ impl orml_xtokens::Config for Runtime {
 	type BaseXcmWeight = BaseXcmWeight;
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
+	type MinXcmFee = ParachainMinFee;
 }
 
 parameter_types! {
 	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+}
+
+parameter_type_with_key! {
+	pub ParachainMinFee: |location: MultiLocation| -> u128 {
+		#[allow(clippy::match_ref_pats)] // false positive
+		match (location.parents, location.first_interior()) {
+			_ => u128::MAX,
+		}
+	};
 }
 
 pub struct AccountIdToMultiLocation;
@@ -1701,6 +1713,9 @@ impl_runtime_apis! {
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
 			use frame_benchmarking::{Benchmarking, BenchmarkBatch, TrackedStorageKey, add_benchmark};
+			use frame_system_benchmarking::Pallet as SystemBench;
+
+			impl frame_system_benchmarking::Config for Runtime {}
 
 			// you can whitelist any storage keys you do not want to track here
 			let whitelist: Vec<TrackedStorageKey> = vec![
@@ -1727,6 +1742,9 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
+			add_benchmark!(params, batches, pallet_balances, Balances);
+			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
+
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1738,7 +1756,7 @@ impl_runtime_apis! {
 		) {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			use frame_system_benchmarking::Pallet as SystemBench;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1750,6 +1768,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
+			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

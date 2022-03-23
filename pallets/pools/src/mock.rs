@@ -1,4 +1,5 @@
-use crate::{self as pallet_pools, Config, DispatchResult, Error};
+use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
+use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
@@ -7,6 +8,7 @@ use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
+	StorageHasher, Twox128,
 };
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -24,7 +26,7 @@ common_types::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type TrancheId = u8;
+type TrancheId = [u8; 16];
 type Moment = u64;
 mod fake_nav {
 	use super::Balance;
@@ -35,6 +37,7 @@ mod fake_nav {
 	#[frame_support::pallet]
 	pub mod pallet {
 		use super::*;
+		use crate::Moment;
 
 		#[pallet::config]
 		pub trait Config: frame_system::Config {
@@ -46,15 +49,19 @@ mod fake_nav {
 		pub struct Pallet<T>(_);
 
 		#[pallet::storage]
-		pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, Balance>;
+		pub type Nav<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, (Balance, Moment)>;
 
 		impl<T: Config> Pallet<T> {
 			pub fn value(pool_id: T::PoolId) -> Balance {
-				Nav::<T>::get(pool_id).unwrap_or(0)
+				Nav::<T>::get(pool_id).unwrap_or((0, 0)).0
 			}
 
-			pub fn update(pool_id: T::PoolId, balance: Balance) {
-				Nav::<T>::insert(pool_id, balance);
+			pub fn update(pool_id: T::PoolId, balance: Balance, now: Moment) {
+				Nav::<T>::insert(pool_id, (balance, now));
+			}
+
+			pub fn latest(pool_id: T::PoolId) -> (Balance, Moment) {
+				Nav::<T>::get(pool_id).unwrap_or((0, 0))
 			}
 		}
 	}
@@ -63,7 +70,7 @@ mod fake_nav {
 		type ClassId = ();
 		type Origin = ();
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
-			Some((Self::value(pool_id), 0))
+			Some(Self::latest(pool_id))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
@@ -95,18 +102,18 @@ frame_support::construct_runtime!(
 parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxTranches: TrancheId = 5;
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
+
+	pub const MaxRoles: u32 = u32::MAX;
 }
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Location = u64;
-	type Role = PoolRole<Moment, TrancheId>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Role = PoolRole<TrancheId, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
+	type MaxRolesPerLocation = MaxRoles;
 	type WeightInfo = ();
 }
 
@@ -155,7 +162,7 @@ impl pallet_timestamp::Config for Test {
 	type WeightInfo = ();
 }
 
-type Balance = u128;
+pub type Balance = u128;
 
 parameter_type_with_key! {
 	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
@@ -227,7 +234,7 @@ impl pallet_restricted_tokens::Config for Test {
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<u64, Location = u64, Role = PoolRole>,
+	P: PermissionsT<u64, Location = u64, Role = PoolRole<TrancheId>>,
 {
 	type Result = bool;
 
@@ -242,12 +249,8 @@ where
 		match id {
 			CurrencyId::Usd => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has_permission(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has_permission(
-						pool_id,
-						recv,
-						PoolRole::TrancheInvestor(tranche_id, UNION),
-					)
+				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
+					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
 			}
 			CurrencyId::Native => true,
 		}
@@ -256,13 +259,12 @@ where
 
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const MaxTranches: u32 = 5;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
 	pub const DefaultChallengeTime: u64 = 1;
 	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
-	pub const DefaultMinUpdateDelay: u64 = 0; // no delay
-	pub const DefaultRequireRedeemFulfillmentsBeforeUpdates: bool = false;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1;
@@ -291,9 +293,6 @@ impl Config for Test {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
-	type DefaultMinUpdateDelay = DefaultMinUpdateDelay;
-	type DefaultRequireRedeemFulfillmentsBeforeUpdates =
-		DefaultRequireRedeemFulfillmentsBeforeUpdates;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
 	type PoolCreateOrigin = EnsureSigned<u64>;
@@ -312,8 +311,17 @@ impl fake_nav::Config for Test {
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
-pub const JUNIOR_TRANCHE_ID: u8 = 0;
-pub const SENIOR_TRANCHE_ID: u8 = 1;
+fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
+	let hash_input = (tranche, pool).encode();
+	Twox128::hash(&hash_input)
+}
+
+parameter_types! {
+	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
+	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+}
+pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
+pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
 pub const START_DATE: u64 = 1640991600; // 2022.01.01
 pub const SECONDS: u64 = 1000;
 
@@ -357,20 +365,32 @@ pub fn next_block_after(seconds: u64) {
 
 pub fn test_borrow(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_up(pool_id, amount);
-	Pools::do_borrow(borrower, pool_id, amount)
+	Pools::do_withdraw(borrower, pool_id, amount)
 }
 
 pub fn test_payback(borrower: u64, pool_id: u64, amount: Balance) -> DispatchResult {
 	test_nav_down(pool_id, amount);
-	Pools::do_payback(borrower, pool_id, amount)
+	Pools::do_deposit(borrower, pool_id, amount)
 }
 
 pub fn test_nav_up(pool_id: u64, amount: Balance) {
-	FakeNav::update(pool_id, FakeNav::value(pool_id) + amount);
+	FakeNav::update(
+		pool_id,
+		FakeNav::value(pool_id) + amount,
+		FakeNav::latest(pool_id).1,
+	);
 }
 
 pub fn test_nav_down(pool_id: u64, amount: Balance) {
-	FakeNav::update(pool_id, FakeNav::value(pool_id) - amount);
+	FakeNav::update(
+		pool_id,
+		FakeNav::value(pool_id) - amount,
+		FakeNav::latest(pool_id).1,
+	);
+}
+
+pub fn test_nav_update(pool_id: u64, amount: Balance, now: Moment) {
+	FakeNav::update(pool_id, amount, now)
 }
 
 /// Assumes externalities are available
@@ -379,17 +399,17 @@ pub fn invest_close_and_collect(
 	investments: Vec<(Origin, TrancheId, Balance)>,
 ) -> DispatchResult {
 	for (who, tranche_id, investment) in investments.clone() {
-		Pools::update_invest_order(who, pool_id, tranche_id, investment)?;
+		Pools::update_invest_order(who, pool_id, TrancheLoc::Id(tranche_id), investment)?;
 	}
 
 	Pools::close_epoch(Origin::signed(10), pool_id).map_err(|e| e.error)?;
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.last_epoch_closed;
+		.last_epoch_executed;
 
 	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, tranche_id, epoch as u32).map_err(|e| e.error)?;
+		Pools::collect(who, pool_id, TrancheLoc::Id(tranche_id), epoch).map_err(|e| e.error)?;
 	}
 
 	Ok(())

@@ -38,95 +38,95 @@ benchmarks! {
 		<T as pallet_permissions::Config>::Location: From<u64>,
 	}
 
-	add_permission_admin {
+	add_as_admin {
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
 		let pool_id = 0;
-	}:add_permission(RawOrigin::Root, with_role.into(), acc.clone(), pool_id.into(), role.into())
+	}:add(RawOrigin::Root, with_role.into(), acc.clone(), pool_id.into(), role.into())
 	verify {
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc, role.into()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc, role.into()));
 	}
 
-	add_permission_editor {
+	add_as_editor {
 		// setup pool admin
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
 		let pool_id = 0;
-		let res = PermissionsPallet::<T>::add_permission(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc.clone(), role.into()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc.clone(), role.into()));
 
 		// setup borrower through pool admin
 		let acc2 = admin::<T>(1);
 		let role = PoolRole::Borrower;
-	}:add_permission(RawOrigin::Signed(acc.clone()), with_role.into(), acc2.clone(), pool_id.into(), role.into())
+	}:add(RawOrigin::Signed(acc.clone()), with_role.into(), acc2.clone(), pool_id.into(), role.into())
 	verify {
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc2, role.into()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc2, role.into()));
 	}
 
-	rm_permission_admin {
+	remove_as_admin {
 		// setup pool admin
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
 		let pool_id = 0;
-		let res = PermissionsPallet::<T>::add_permission(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc.clone(), role.into()));
-	}:rm_permission(RawOrigin::Root, with_role.into(), acc.clone(), pool_id.into(), role.into())
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc.clone(), role.into()));
+	}:remove(RawOrigin::Root, with_role.into(), acc.clone(), pool_id.into(), role.into())
 	verify {
-		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc, role.into()));
+		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc, role.into()));
 	}
 
-	rm_permission_editor {
+	remove_as_editor {
 		// setup pool admin
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
 		let pool_id = 0;
-		let res = PermissionsPallet::<T>::add_permission(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc.clone(), role.into()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc.clone(), role.into()));
 
 		// setup borrower through pool admin
 		let acc2 = admin::<T>(1);
 		let role = PoolRole::Borrower;
-		let res = PermissionsPallet::<T>::add_permission(RawOrigin::Signed(acc.clone()).into(), with_role.into(), acc2.clone(), pool_id.into(), role.into());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Signed(acc.clone()).into(), with_role.into(), acc2.clone(), pool_id.into(), role.into());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc2.clone(), role.into()));
-	}:rm_permission(RawOrigin::Signed(acc), with_role.into(), acc2.clone(), pool_id.into(), role.into())
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc2.clone(), role.into()));
+	}:remove(RawOrigin::Signed(acc), with_role.into(), acc2.clone(), pool_id.into(), role.into())
 	verify {
-		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc2, role.into()));
+		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc2, role.into()));
 	}
 
-	purge_permissions {
+	purge {
 		// setup pool admin
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
 		let pool_id = 0;
-		let res = PermissionsPallet::<T>::add_permission(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc.clone(), role.into()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc.clone(), role.into()));
 	}:_(RawOrigin::Signed(acc.clone()), pool_id.into())
 	verify {
-		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc, role.into()));
+		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc, role.into()));
 	}
 
-	admin_purge_permissions {
+	admin_purge {
 		// setup pool admin
 		let acc = admin::<T>(0);
 		let with_role = PoolRole::PoolAdmin;
 		let role = PoolRole::PoolAdmin;
 		let pool_id = 0;
-		let res = PermissionsPallet::<T>::add_permission(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
+		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.into(), acc.clone(), pool_id.into(), role.into());
 		assert_ok!(res);
-		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc.clone(), role.into()));
+		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc.clone(), role.into()));
 	}:_(RawOrigin::Root, acc.clone(), pool_id.into())
 	verify {
-		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has_permission(pool_id.into(), acc, role.into()));
+		assert!(!<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.into(), acc, role.into()));
 	}
 }
 

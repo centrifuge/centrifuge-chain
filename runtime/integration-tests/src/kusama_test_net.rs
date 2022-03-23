@@ -18,7 +18,7 @@ use frame_support::traits::GenesisBuild;
 use polkadot_primitives::v1::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
-use xcm_simulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
+use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
 use development_runtime::CurrencyId;
 use runtime_common::AccountId;
@@ -36,6 +36,7 @@ decl_test_relay_chain! {
 decl_test_parachain! {
 	pub struct Development {
 		Runtime = development_runtime::Runtime,
+		Origin = development_runtime::Origin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_DEVELOPMENT),
@@ -45,6 +46,7 @@ decl_test_parachain! {
 decl_test_parachain! {
 	pub struct Sibling {
 		Runtime = development_runtime::Runtime,
+		Origin = development_runtime::Origin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_SIBLING),

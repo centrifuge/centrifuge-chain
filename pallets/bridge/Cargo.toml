@@ -44,6 +44,7 @@ runtime-common = { path = "../../runtime/common", default_features = false }
 
 [features]
 default = ['std']
+runtime-benchmarks = ["chainbridge/runtime-benchmarks"]
 std = [
     'codec/std',
     'frame-support/std',

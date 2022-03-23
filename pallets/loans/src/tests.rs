@@ -26,7 +26,6 @@ use crate::test_utils::{
 use common_types::CurrencyId;
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
-use frame_system::RawOrigin;
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
 use pallet_pools::PoolLocator;
@@ -69,8 +68,9 @@ where
 			TrancheId = u8,
 			EpochId = u32,
 		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
-		+ frame_system::Config<AccountId = u64>
-		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>,
+		+ frame_system::Config<AccountId = u64, Origin = Origin>
+		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>
+		+ pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
 	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
 {
 	let pool_admin = PoolAdmin::get();
@@ -83,17 +83,19 @@ where
 		CurrencyId::Usd,
 	);
 	// add borrower role and price admin role
-	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(pool_admin).into(),
+	assert_ok!(pallet_permissions::Pallet::<T>::add(
+		Origin::signed(pool_admin),
+		PoolRole::PoolAdmin,
+		borrower,
 		pool_id,
 		PoolRole::Borrower,
-		vec![<T::Lookup as StaticLookup>::unlookup(borrower)]
 	));
-	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(pool_admin).into(),
+	assert_ok!(pallet_permissions::Pallet::<T>::add(
+		Origin::signed(pool_admin),
+		PoolRole::PoolAdmin,
+		borrower,
 		pool_id,
 		PoolRole::PricingAdmin,
-		vec![<T::Lookup as StaticLookup>::unlookup(borrower)]
 	));
 	let pr_pool_id: PoolIdOf<T> = pool_id.into();
 	let loan_nft_class_id =
@@ -509,6 +511,7 @@ macro_rules! test_borrow_loan {
 		TestExternalitiesBuilder::default()
 			.build()
 			.execute_with(|| {
+				let pool_admin = PoolAdmin::get();
 				let borrower = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
@@ -607,15 +610,12 @@ macro_rules! test_borrow_loan {
 				// written off loan cannot borrow
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-					RawOrigin::Signed(PoolAdmin::get()).into(),
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(pool_admin),
+					PoolRole::PoolAdmin,
+					risk_admin,
 					pool_id,
 					PoolRole::RiskAdmin,
-					vec![
-						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-							risk_admin
-						)
-					]
 				));
 				for group in vec![(3, 0), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -875,6 +875,7 @@ macro_rules! test_pool_nav {
 		TestExternalitiesBuilder::default()
 			.build()
 			.execute_with(|| {
+				let pool_admin: u64 = PoolAdmin::get();
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
@@ -1002,15 +1003,12 @@ macro_rules! test_pool_nav {
 				assert_eq!(exact, NAVUpdateType::Exact);
 
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-					RawOrigin::Signed(PoolAdmin::get()).into(),
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(pool_admin),
+					PoolRole::PoolAdmin,
+					risk_admin,
 					pool_id,
 					PoolRole::RiskAdmin,
-					vec![
-						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-							risk_admin
-						)
-					]
 				));
 				// write off the loan and check for updated nav
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
@@ -1129,15 +1127,12 @@ fn test_add_write_off_groups() {
 			);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
-			assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-				RawOrigin::Signed(pool_admin).into(),
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+				Origin::signed(pool_admin),
+				PoolRole::PoolAdmin,
+				risk_admin,
 				pool_id,
 				PoolRole::RiskAdmin,
-				vec![
-					<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-						risk_admin
-					)
-				]
 			));
 
 			// fetch write off groups
@@ -1216,15 +1211,12 @@ macro_rules! test_write_off_maturity_loan {
 
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-					RawOrigin::Signed(pool_admin).into(),
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(pool_admin),
+					PoolRole::PoolAdmin,
+					risk_admin,
 					pool_id,
 					PoolRole::RiskAdmin,
-					vec![
-						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-							risk_admin
-						)
-					]
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
 					let res = Loans::add_write_off_group(
@@ -1311,15 +1303,12 @@ macro_rules! test_admin_write_off_loan_type {
 				// after one year
 				// caller should be admin, can write off before maturity
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-					RawOrigin::Signed(pool_admin).into(),
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(pool_admin),
+					PoolRole::PoolAdmin,
+					risk_admin,
 					pool_id,
 					PoolRole::RiskAdmin,
-					vec![
-						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-							risk_admin
-						)
-					]
 				));
 
 				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
@@ -1435,15 +1424,12 @@ macro_rules! test_close_written_off_loan_type {
 
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-					RawOrigin::Signed(pool_admin).into(),
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(pool_admin),
+					PoolRole::PoolAdmin,
+					risk_admin,
 					pool_id,
 					PoolRole::RiskAdmin,
-					vec![
-						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-							risk_admin
-						)
-					]
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1620,15 +1606,12 @@ macro_rules! write_off_overflow {
 				let caller = 42;
 				// add write off groups
 				let risk_admin = RiskAdmin::get();
-				assert_ok!(pallet_pools::Pallet::<MockRuntime>::approve_role_for(
-					RawOrigin::Signed(pool_admin).into(),
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(pool_admin),
+					PoolRole::PoolAdmin,
+					risk_admin,
 					pool_id,
 					PoolRole::RiskAdmin,
-					vec![
-						<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
-							risk_admin
-						)
-					]
 				));
 				//for group in vec![(3, 10), (313503982334601, 20)] {
 				for group in vec![(3, 10), (313503982334601, 15), (10, 20), (10, 30)] {

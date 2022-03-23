@@ -242,6 +242,8 @@ parameter_types! {
 	pub const MaxTranches: TrancheId = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
+
+	pub const MaxRoles: u32 = u32::MAX;
 }
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
@@ -251,13 +253,14 @@ impl pallet_permissions::Config for MockRuntime {
 		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type MaxRolesPerLocation = MaxRoles;
 	type WeightInfo = ();
 }
 
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
 	pub const MaxLoansPerPool: u64 = 200;
-	pub const MaxWriteOffgroups: u32 = 10;
+	pub const MaxWriteOffGroups: u32 = 10;
 }
 
 impl pallet_loans::Config for MockRuntime {
@@ -273,7 +276,7 @@ impl pallet_loans::Config for MockRuntime {
 	type Permission = Permissions;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
-	type MaxWriteOffGroups = MaxWriteOffgroups;
+	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
 
 // USD currencyId

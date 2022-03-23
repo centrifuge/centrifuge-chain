@@ -21,12 +21,11 @@
 use codec::{Decode, Encode};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
-use frame_support::sp_runtime::ArithmeticError;
 use frame_support::Parameter;
 use frame_support::RuntimeDebug;
 use impl_trait_for_tuples::impl_for_tuples;
 use sp_runtime::traits::{
-	AtLeast32BitUnsigned, Bounded, CheckedAdd, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
+	AtLeast32BitUnsigned, Bounded, MaybeDisplay, MaybeMallocSizeOf, MaybeSerialize,
 	MaybeSerializeDeserialize, Member, Zero,
 };
 use sp_runtime::DispatchError;
@@ -133,15 +132,15 @@ pub trait Permissions<AccountId> {
 	type Error;
 	type Ok;
 
-	fn has_permission(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
+	fn has(location: Self::Location, who: AccountId, role: Self::Role) -> bool;
 
-	fn add_permission(
+	fn add(
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
 	) -> Result<Self::Ok, Self::Error>;
 
-	fn rm_permission(
+	fn remove(
 		location: Self::Location,
 		who: AccountId,
 		role: Self::Role,
@@ -211,92 +210,15 @@ pub trait TokenMetadata {
 	fn decimals(&self) -> u8;
 }
 
-/// A means of weighting a tranche. This can be used
-/// in order to determine how much importance a tranche has
-pub trait TrancheWeigher {
-	type External;
-	type Weight;
-
-	fn calculate_weight(&self, input: Self::External) -> Self::Weight;
-}
-
-/// Implementation for a vec of TrancheWeigher
-impl<T: TrancheWeigher> TrancheWeigher for Vec<T>
-where
-	T::External: Clone,
-{
-	type Weight = Vec<T::Weight>;
-	type External = T::External;
-
-	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
-		let mut weights = Vec::with_capacity(self.len());
-		self.iter()
-			.for_each(|tranche| weights.push(tranche.calculate_weight(input.clone())));
-
-		weights
-	}
-}
-
-/// Implementation for a vec of TrancheWeigher
-impl<T: TrancheWeigher> TrancheWeigher for &[T]
-where
-	T::External: Clone,
-{
-	type Weight = Vec<T::Weight>;
-	type External = T::External;
-
-	fn calculate_weight(&self, input: Self::External) -> Self::Weight {
-		let mut weights = Vec::with_capacity(self.len());
-		self.iter()
-			.for_each(|tranche| weights.push(tranche.calculate_weight(input.clone())));
-
-		weights
-	}
-}
-
-pub trait Tranche {
-	type Supply;
-	type Value;
-	type Price;
-
-	fn supply(&self) -> Self::Supply;
-
-	fn value(&self) -> Self::Value;
-
-	fn price(&self) -> Self::Price;
-}
-
-impl<T: Tranche> Tranche for Vec<T>
-where
-	T::Value: Zero + CheckedAdd,
-{
-	type Supply = Vec<T::Supply>;
-	type Value = Result<T::Value, ArithmeticError>;
-	type Price = Vec<T::Price>;
-
-	fn supply(&self) -> Self::Supply {
-		let mut supplies = Vec::with_capacity(self.len());
-
-		self.iter()
-			.for_each(|tranche| supplies.push(tranche.supply()));
-
-		supplies
-	}
-
-	fn price(&self) -> Self::Price {
-		let mut prices = Vec::with_capacity(self.len());
-
-		self.iter().for_each(|tranche| prices.push(tranche.price()));
-
-		prices
-	}
-
-	fn value(&self) -> Self::Value {
-		self.iter().fold(Ok(Zero::zero()), |sum, tranche| {
-			sum.and_then(|sum| {
-				sum.checked_add(&tranche.value())
-					.ok_or(ArithmeticError::Overflow)
-			})
-		})
-	}
+/// Trait for converting a pool+tranche ID pair to a CurrencyId
+///
+/// This should be implemented in the runtime to convert from the
+/// PoolId and TrancheId types to a CurrencyId that represents that
+/// tranche.
+///
+/// The pool epoch logic assumes that every tranche has a UNIQUE
+/// currency, but nothing enforces that. Failure to ensure currency
+/// uniqueness will almost certainly cause some wild bugs.
+pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
+	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }

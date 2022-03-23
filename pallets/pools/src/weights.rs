@@ -44,7 +44,7 @@ pub trait WeightInfo {
 	fn update_invest_order() -> Weight;
 	fn update_redeem_order() -> Weight;
 	fn collect(n: u32) -> Weight;
-	fn close_epoch_no_investments(n: u32) -> Weight;
+	fn close_epoch_no_orders(n: u32) -> Weight;
 	fn close_epoch_no_execution(n: u32) -> Weight;
 	fn close_epoch_execute(n: u32) -> Weight;
 	fn submit_solution(n: u32) -> Weight;
@@ -103,7 +103,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes(3 as Weight))
 	}
-	fn close_epoch_no_investments(n: u32) -> Weight {
+	fn close_epoch_no_orders(n: u32) -> Weight {
 		(95_307_000 as Weight)
 			// Standard Error: 2_725_000
 			.saturating_add((11_842_000 as Weight).saturating_mul(n as Weight))
@@ -208,7 +208,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
 	}
-	fn close_epoch_no_investments(n: u32) -> Weight {
+	fn close_epoch_no_orders(n: u32) -> Weight {
 		(95_307_000 as Weight)
 			// Standard Error: 2_725_000
 			.saturating_add((11_842_000 as Weight).saturating_mul(n as Weight))

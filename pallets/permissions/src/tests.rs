@@ -18,11 +18,11 @@ use frame_support::{assert_noop, assert_ok};
 use pallet_permissions::{Permissions, Properties};
 
 #[test]
-fn add_permission_ext_works() {
+fn add_ext_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -30,7 +30,7 @@ fn add_permission_ext_works() {
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -38,7 +38,7 @@ fn add_permission_ext_works() {
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -61,11 +61,11 @@ fn add_permission_ext_works() {
 }
 
 #[test]
-fn add_permission_ext_fails() {
+fn add_ext_fails() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -74,7 +74,7 @@ fn add_permission_ext_fails() {
 			));
 
 			assert_noop!(
-				pallet_permissions::Pallet::<MockRuntime>::add_permission(
+				pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
@@ -87,11 +87,11 @@ fn add_permission_ext_fails() {
 }
 
 #[test]
-fn rm_permission_ext_works() {
+fn remove_ext_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -99,7 +99,7 @@ fn rm_permission_ext_works() {
 				Role::Xcm(XcmRole::Sender)
 			));
 
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::rm_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::remove(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -114,12 +114,12 @@ fn rm_permission_ext_works() {
 }
 
 #[test]
-fn rm_permission_ext_fails() {
+fn remove_ext_fails() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
 			assert_noop!(
-				pallet_permissions::Pallet::<MockRuntime>::rm_permission(
+				pallet_permissions::Pallet::<MockRuntime>::remove(
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
@@ -129,7 +129,7 @@ fn rm_permission_ext_fails() {
 				PermissionsError::<MockRuntime>::NoRoles
 			);
 
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -138,7 +138,7 @@ fn rm_permission_ext_fails() {
 			));
 
 			assert_noop!(
-				pallet_permissions::Pallet::<MockRuntime>::rm_permission(
+				pallet_permissions::Pallet::<MockRuntime>::remove(
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
@@ -161,7 +161,7 @@ fn user_purge_permission_ext_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -169,7 +169,7 @@ fn user_purge_permission_ext_works() {
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -177,12 +177,10 @@ fn user_purge_permission_ext_works() {
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
-			assert_ok!(
-				pallet_permissions::Pallet::<MockRuntime>::purge_permissions(
-					Origin::signed(2),
-					Location::PalletA
-				)
-			);
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::purge(
+				Origin::signed(2),
+				Location::PalletA
+			));
 
 			assert!(
 				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA).is_none()
@@ -196,7 +194,7 @@ fn user_purge_permission_ext_fails() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_noop!(
-				pallet_permissions::Pallet::<MockRuntime>::purge_permissions(
+				pallet_permissions::Pallet::<MockRuntime>::purge(
 					Origin::signed(2),
 					Location::PalletA
 				),
@@ -214,7 +212,7 @@ fn admin_purge_permission_ext_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -222,7 +220,7 @@ fn admin_purge_permission_ext_works() {
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
-			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add_permission(
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
@@ -230,13 +228,11 @@ fn admin_purge_permission_ext_works() {
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
-			assert_ok!(
-				pallet_permissions::Pallet::<MockRuntime>::admin_purge_permissions(
-					Origin::signed(1),
-					2,
-					Location::PalletA,
-				)
-			);
+			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::admin_purge(
+				Origin::signed(1),
+				2,
+				Location::PalletA,
+			));
 
 			assert!(
 				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA,).is_none()
@@ -250,7 +246,7 @@ fn admin_purge_permission_ext_fails() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_noop!(
-				pallet_permissions::Pallet::<MockRuntime>::admin_purge_permissions(
+				pallet_permissions::Pallet::<MockRuntime>::admin_purge(
 					Origin::signed(1),
 					2,
 					Location::PalletA,
@@ -265,20 +261,20 @@ fn admin_purge_permission_ext_fails() {
 }
 
 #[test]
-fn trait_add_permission_fails() {
+fn trait_add_fails() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
-			>>::add_permission(
+			>>::add(
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
 			assert_noop!(
-				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add(
 					Location::PalletA,
 					2,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -289,7 +285,7 @@ fn trait_add_permission_fails() {
 }
 
 #[test]
-fn trait_add_permission_works() {
+fn trait_add_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
@@ -300,7 +296,7 @@ fn trait_add_permission_works() {
 			));
 
 			assert_noop!(
-				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add_permission(
+				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add(
 					Location::PalletA,
 					2,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -311,7 +307,7 @@ fn trait_add_permission_works() {
 }
 
 #[test]
-fn trait_rm_permission_fails() {
+fn trait_remove_fails() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
@@ -327,13 +323,13 @@ fn trait_rm_permission_fails() {
 }
 
 #[test]
-fn trait_rm_permission_works() {
+fn trait_remove_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
-			>>::add_permission(
+			>>::add(
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -348,13 +344,13 @@ fn trait_rm_permission_works() {
 }
 
 #[test]
-fn trait_has_permission_permission_works() {
+fn trait_has_permission_works() {
 	TestExternalitiesBuilder::default()
 		.build(|| {})
 		.execute_with(|| {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
-			>>::add_permission(
+			>>::add(
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -362,7 +358,7 @@ fn trait_has_permission_permission_works() {
 
 			assert!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
-			>>::has_permission(
+			>>::has(
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
@@ -370,10 +366,97 @@ fn trait_has_permission_permission_works() {
 
 			assert!(!<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
-			>>::has_permission(
+			>>::has(
 				Location::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
+		})
+}
+
+#[test]
+fn add_too_many_permissions_fails() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			for who in 0..MaxRoles::get() {
+				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(1),
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
+					who.into(),
+					Location::PalletA,
+					Role::Organisation(OrganisationRole::SeniorExeutive)
+				));
+			}
+			let who = MaxRoles::get() + 1;
+			assert_noop!(
+				pallet_permissions::Pallet::<MockRuntime>::add(
+					Origin::signed(1),
+					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
+					who.into(),
+					Location::PalletA,
+					Role::Organisation(OrganisationRole::SeniorExeutive)
+				),
+				PermissionsError::<MockRuntime>::TooManyRoles
+			);
+		})
+}
+
+#[test]
+fn permission_counting() {
+	TestExternalitiesBuilder::default()
+		.build(|| {})
+		.execute_with(|| {
+			assert!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
+					.is_none()
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add(
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(1)
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::add(
+				Location::PalletA,
+				3,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(2)
+			);
+
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::remove(
+				Location::PalletA,
+				3,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert_eq!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				Some(1)
+			);
+			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
+				AccountId,
+			>>::remove(
+				Location::PalletA,
+				2,
+				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
+			));
+			assert!(
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
+					.is_none(),
+			);
 		})
 }

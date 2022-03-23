@@ -184,11 +184,11 @@ mod dummy {
 				let who = ensure_signed(origin)?;
 
 				ensure!(
-					!T::Permission::has_permission(location.clone(), who.clone(), role.clone()),
+					!T::Permission::has(location.clone(), who.clone(), role.clone()),
 					Error::<T>::AlreadyCleared
 				);
 
-				T::Permission::add_permission(location, who, role)?;
+				T::Permission::add(location, who, role)?;
 
 				Ok(())
 			}
@@ -202,11 +202,11 @@ mod dummy {
 				let who = ensure_signed(origin)?;
 
 				ensure!(
-					T::Permission::has_permission(location.clone(), who.clone(), role.clone()),
+					T::Permission::has(location.clone(), who.clone(), role.clone()),
 					Error::<T>::NotCleared
 				);
 
-				T::Permission::rm_permission(location, who, role)?;
+				T::Permission::remove(location, who, role)?;
 
 				Ok(())
 			}
@@ -267,6 +267,7 @@ impl frame_system::Config for MockRuntime {
 
 parameter_types! {
 	pub const One: u64 = 1;
+	pub const MaxRoles: u32 = 10;
 }
 
 impl pallet_permissions::Config for MockRuntime {
@@ -276,6 +277,7 @@ impl pallet_permissions::Config for MockRuntime {
 	type Storage = Storage;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = Editors;
+	type MaxRolesPerLocation = MaxRoles;
 	type WeightInfo = ();
 }
 
