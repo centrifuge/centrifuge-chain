@@ -16,6 +16,7 @@ use super::*;
 use crate::weights::WeightInfo;
 use frame_support::weights::Weight;
 use sp_runtime::ArithmeticError;
+use common_types::PoolLocator;
 
 impl<T: Config> Pallet<T> {
 	// calculates write off group weight for count number of write off groups looped
@@ -70,7 +71,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// create new loan nft
-		let loan_pallet_account: T::AccountId = T::LoansPalletId::get().into_account();
+		let pool_account = PoolLocator { pool_id }.into_account();
 		let nonce = NextLoanId::<T>::get();
 		let loan_id: T::LoanId = nonce.into();
 		let loan_class_id =
@@ -81,7 +82,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::transfer(
 			&asset_class_id.into(),
 			&instance_id.into(),
-			&loan_pallet_account,
+			&pool_account,
 		)?;
 		let timestamp = Self::time_now();
 

@@ -23,7 +23,7 @@ use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
 use frame_support::{assert_ok, parameter_types, StorageHasher, Twox128};
 use frame_system::RawOrigin;
-use pallet_pools::PoolLocator;
+use common_types::PoolLocator;
 use pallet_pools::TrancheLoc;
 use pallet_pools::TrancheType;
 use pallet_pools::{Pallet as PoolPallet, Pool as PoolStorage};

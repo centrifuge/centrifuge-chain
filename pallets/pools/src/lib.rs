@@ -21,7 +21,7 @@ mod weights;
 use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
-use common_types::PoolRole;
+use common_types::{PoolRole, PoolLocator};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -32,10 +32,13 @@ use sp_runtime::{
 	traits::{
 		AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, One, Saturating, Zero,
 	},
-	FixedPointNumber, FixedPointOperand, Perquintill, TokenError, TypeId,
+	FixedPointNumber, FixedPointOperand, Perquintill, TokenError,
 };
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
+
+// Type that indicates a point in time
+pub type Moment = u64;
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
@@ -110,16 +113,6 @@ where
 	}
 }
 
-/// A representation of a pool identifier that can be converted to an account address
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct PoolLocator<PoolId> {
-	pub pool_id: PoolId,
-}
-
-impl<PoolId> TypeId for PoolLocator<PoolId> {
-	const TYPE_ID: [u8; 4] = *b"pool";
-}
-
 /// The result of epoch execution of a given tranch within a pool
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
 pub struct EpochDetails<BalanceRatio> {
@@ -148,9 +141,6 @@ pub struct OutstandingCollections<Balance> {
 	pub remaining_invest_currency: Balance,
 	pub remaining_redeem_token: Balance,
 }
-
-// Type that indicates a point in time
-type Moment = u64;
 
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<

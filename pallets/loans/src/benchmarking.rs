@@ -315,8 +315,9 @@ benchmarks! {
 		let loan_id: T::LoanId = 1u128.into();
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Created(pool_id, loan_id, asset).into());
 
-		// asset owner must be loan account
-		expect_asset_owner::<T>(asset, loan_account);
+		// asset owner must be pool account
+		let pool_account = pool_account::<T>(pool_id.into());
+		expect_asset_owner::<T>(asset, pool_account);
 
 		// loan owner must be caller
 		let loan_asset = Asset(loan_class_id, loan_id);
@@ -510,9 +511,9 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Closed(pool_id, loan_id, asset).into());
 		// pool reserve should have more 1000 USD. this is with interest
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
+		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account) > pool_reserve_balance);
+		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_accuont) > pool_reserve_balance);
 
 		// Loan should be closed
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
@@ -521,7 +522,7 @@ benchmarks! {
 		// asset owner must be loan owner
 		expect_asset_owner::<T>(asset, loan_owner);
 
-		// loan nft owner is loan account
+		// loan nft owner is pool account
 		let loan_asset = Asset(loan_class_id, loan_id);
 		expect_asset_owner::<T>(loan_asset, loan_account);
 	}
@@ -546,9 +547,9 @@ benchmarks! {
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Closed(pool_id, loan_id, asset).into());
 		// pool reserve should have 900 USD since loan is written off 100%
-		let pool_reserve_account = pool_account::<T>(pool_id.into());
+		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
+		check_free_token_balance::<T>(CurrencyId::Usd, &pool_account, pool_reserve_balance);
 
 		// Loan should be closed
 		let loan_info = LoanInfo::<T>::get(pool_id, loan_id).expect("loan info should be present");
@@ -557,7 +558,7 @@ benchmarks! {
 		// asset owner must be loan owner
 		expect_asset_owner::<T>(asset, loan_owner);
 
-		// loan nft owner is loan account
+		// loan nft owner is pool account
 		let loan_asset = Asset(loan_class_id, loan_id);
 		expect_asset_owner::<T>(loan_asset, loan_account);
 	}

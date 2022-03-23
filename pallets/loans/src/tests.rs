@@ -28,7 +28,7 @@ use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use pallet_pools::PoolLocator;
+use common_types::PoolLocator;
 use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
@@ -123,8 +123,9 @@ where
 	assert_eq!(loan_data.asset, asset);
 	assert_eq!(loan_data.status, LoanStatus::Created);
 
-	// asset owner is loan pallet
-	expect_asset_owner::<T>(asset, Loans::account_id());
+	// asset owner is pool pallet
+	let pool_account = PoolLocator { pool_id }.into_account();
+	expect_asset_owner::<T>(asset, pool_account);
 
 	// pool should be initialised
 	assert_eq!(
@@ -854,7 +855,7 @@ macro_rules! test_repay_loan {
 				// owner account should own the asset NFT
 				expect_asset_owner::<MockRuntime>(asset, borrower);
 
-				// Loan account should own the loan NFT
+				// pool account should own the loan NFT
 				expect_asset_owner::<MockRuntime>(loan, Loans::account_id());
 
 				// check nav

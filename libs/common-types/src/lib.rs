@@ -20,6 +20,8 @@ use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
 use frame_support::sp_runtime::traits::Saturating;
 use frame_support::traits::{Get, UnixTime};
+use sp_runtime::TypeId;
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -267,4 +269,14 @@ impl<T> TypeInfo for TimeProvider<T> {
 			.docs(&["A wrapper around a T that provides a trait Time implementation. Should be filtered out."])
 			.composite(Fields::unit())
 	}
+}
+
+/// A representation of a pool identifier that can be converted to an account address
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolLocator<PoolId> {
+	pub pool_id: PoolId,
+}
+
+impl<PoolId> TypeId for PoolLocator<PoolId> {
+	const TYPE_ID: [u8; 4] = *b"pool";
 }
