@@ -255,7 +255,7 @@ impl<T: Config> Pallet<T> {
 				let ceiling = loan_info.ceiling(now);
 				ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
 
-				let old_debt = T::InterestAccrual::get_current_debt(
+				let old_debt = T::InterestAccrual::current_debt(
 					loan_info.rate_per_sec,
 					loan_info.normalized_debt,
 				)
@@ -291,7 +291,7 @@ impl<T: Config> Pallet<T> {
 				loan_info.borrowed_amount = new_borrowed_amount;
 				loan_info.normalized_debt = normalized_debt;
 
-				let new_debt = T::InterestAccrual::get_current_debt(
+				let new_debt = T::InterestAccrual::current_debt(
 					loan_info.rate_per_sec,
 					loan_info.normalized_debt,
 				)
@@ -372,7 +372,7 @@ impl<T: Config> Pallet<T> {
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
-				let old_debt = T::InterestAccrual::get_current_debt(
+				let old_debt = T::InterestAccrual::current_debt(
 					loan_info.rate_per_sec,
 					loan_info.normalized_debt,
 				)
@@ -407,7 +407,7 @@ impl<T: Config> Pallet<T> {
 				loan_info.repaid_amount = new_repaid_amount;
 				loan_info.normalized_debt = normalized_debt;
 
-				let new_debt = T::InterestAccrual::get_current_debt(
+				let new_debt = T::InterestAccrual::current_debt(
 					loan_info.rate_per_sec,
 					loan_info.normalized_debt,
 				)
@@ -449,7 +449,7 @@ impl<T: Config> Pallet<T> {
 					return Ok(Zero::zero());
 				}
 
-				let debt = T::InterestAccrual::get_current_debt(
+				let debt = T::InterestAccrual::current_debt(
 					loan_info.rate_per_sec,
 					loan_info.normalized_debt,
 				)
@@ -573,7 +573,7 @@ impl<T: Config> Pallet<T> {
 					}
 				}?;
 
-				let debt = T::InterestAccrual::get_current_debt(
+				let debt = T::InterestAccrual::current_debt(
 					loan_info.rate_per_sec,
 					loan_info.normalized_debt,
 				)

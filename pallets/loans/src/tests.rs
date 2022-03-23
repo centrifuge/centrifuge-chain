@@ -539,7 +539,6 @@ macro_rules! test_borrow_loan {
 				// accumulated rate is now rate per sec
 				assert_eq!(loan_data.rate_per_sec, rate);
 				assert_eq!(loan_data.accumulated_rate, rate);
-				assert_eq!(loan_data.last_updated, 1);
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 				let p_debt = borrow_amount
 					.checked_div(
@@ -570,7 +569,6 @@ macro_rules! test_borrow_loan {
 					loan_data.accumulated_rate,
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
-				assert_eq!(loan_data.last_updated, 1001);
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(70 * USD));
 				let c_debt = math::debt(p_debt, loan_data.accumulated_rate).unwrap();
 				let p_debt = c_debt
@@ -694,7 +692,6 @@ macro_rules! test_repay_loan {
 					.expect("LoanData should be present");
 				// accumulated rate is now rate per sec
 				assert_eq!(loan_data.accumulated_rate, rate);
-				assert_eq!(loan_data.last_updated, 1);
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 				let p_debt = borrow_amount
 					.checked_div(
@@ -727,7 +724,6 @@ macro_rules! test_repay_loan {
 					loan_data.accumulated_rate,
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
-				assert_eq!(loan_data.last_updated, 1001);
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
 				assert_eq!(loan_data.repaid_amount, Amount::from_inner(20 * USD));
 				// principal debt should still be more than 30 due to interest
@@ -835,7 +831,6 @@ macro_rules! test_repay_loan {
 				assert_eq!(loan_data.status, LoanStatus::Closed);
 				assert_eq!(loan_data.normalized_debt, Zero::zero());
 				assert_eq!(loan_data.borrowed_amount, Amount::from_inner(50 * USD));
-				assert_eq!(loan_data.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
 				let pv = loan_data.present_value(&vec![]).unwrap();
