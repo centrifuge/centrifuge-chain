@@ -132,7 +132,7 @@ pub trait InterestAccrual<InterestRate, Amount> {
 	type Adjustment;
 
 	/// Calculate the current debt using normalized debt * cumulative rate
-	fn get_current_debt(
+	fn current_debt(
 		interest_rate_per_sec: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<Amount, DispatchError>;

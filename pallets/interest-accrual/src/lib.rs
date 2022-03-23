@@ -8,6 +8,7 @@ use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
+use sp_runtime::ArithmeticError;
 
 pub use pallet::*;
 
@@ -121,7 +122,7 @@ pub mod pallet {
 	// TODO: add permissionless extrinsic to update any rate
 
 	impl<T: Config> Pallet<T> {
-		pub fn do_get_current_debt(
+		pub fn get_current_debt(
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::NormalizedDebt,
 		) -> Result<T::Amount, DispatchError> {
@@ -139,8 +140,7 @@ pub mod pallet {
 						interest_rate_per_sec,
 						rate.cumulative_rate,
 						rate.last_updated,
-					)
-					.ok_or(Error::<T>::DebtCalculationFailed)?;
+					).map_err(|_| Error::<T>::DebtCalculationFailed)?;
 					// TODO: this should update the rate
 
 					new_cumulative_rate
@@ -196,11 +196,16 @@ pub mod pallet {
 			interest_rate_per_sec: Rate,
 			cumulative_rate: Rate,
 			last_updated: Moment,
-		) -> Option<Rate> {
+		) -> Result<Rate, DispatchError> {
 			// cumulative_rate * interest_rate_per_sec ^ (now - last_updated)
-			let time_difference_secs = Self::now() - last_updated;
+			let time_difference_secs = Self::now()
+				.checked_sub(last_updated)
+				.ok_or(ArithmeticError::Underflow)?;
+
 			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-				.and_then(|v| v.checked_mul(&cumulative_rate))
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_mul(&cumulative_rate)
+				.ok_or(ArithmeticError::Overflow.into())
 		}
 
 		/// converts a fixed point from A precision to B precision
@@ -223,11 +228,11 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Amount> for Pallet<T> {
 	type NormalizedDebt = T::NormalizedDebt;
 	type Adjustment = Adjustment<T::Amount>;
 
-	fn get_current_debt(
+	fn current_debt(
 		interest_rate_per_sec: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<T::Amount, DispatchError> {
-		Pallet::<T>::do_get_current_debt(interest_rate_per_sec, normalized_debt)
+		Pallet::<T>::get_current_debt(interest_rate_per_sec, normalized_debt)
 	}
 
 	fn adjust_normalized_debt(
