@@ -435,8 +435,8 @@ pub mod pallet {
 			amount: T::Amount,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let repaid_amount = Self::repay_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, repaid_amount));
+			let total_repaid = Self::repay_amount(pool_id, loan_id, owner, amount)?;
+			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, total_repaid));
 			Ok(())
 		}
 

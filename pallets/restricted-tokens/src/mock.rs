@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 pub use crate as pallet_restricted_tokens;
+use common_types::{Moment};
 use common_traits::{PreConditions, TokenMetadata};
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
@@ -31,7 +32,6 @@ pub type AccountId = u64;
 pub type Balance = u64;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
-pub type Moment = u64;
 pub const POOL_PALLET_ID: AccountId = 999u64;
 pub const MIN_HOLD_PERIOD: Moment = 10;
 static mut TIME: Moment = 0;

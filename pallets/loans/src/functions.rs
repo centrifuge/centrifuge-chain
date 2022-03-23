@@ -93,8 +93,8 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			LoanDetails {
-				borrowed_amount: Zero::zero(),
-				repaid_amount: Zero::zero(),
+				total_borrowed: Zero::zero(),
+				total_repaid: Zero::zero(),
 				rate_per_sec: Zero::zero(),
 				accumulated_rate: One::one(),
 				principal_debt: Zero::zero(),
@@ -254,8 +254,8 @@ impl<T: Config> Pallet<T> {
 				let (accumulated_rate, debt) =
 					loan.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
 
-				let new_borrowed_amount = loan
-					.borrowed_amount
+				let new_total_borrowed = loan
+					.total_borrowed
 					.checked_add(&amount)
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
@@ -268,11 +268,11 @@ impl<T: Config> Pallet<T> {
 				.ok_or(Error::<T>::PrincipalDebtOverflow)?;
 
 				// update loan
-				let first_borrow = loan.borrowed_amount == Zero::zero();
+				let first_borrow = loan.total_borrowed == Zero::zero();
 				if first_borrow {
 					loan.origination_date = now;
 				}
-				loan.borrowed_amount = new_borrowed_amount;
+				loan.total_borrowed = new_total_borrowed;
 				loan.last_updated = now;
 				loan.accumulated_rate = accumulated_rate;
 				loan.principal_debt = principal_debt;
@@ -359,8 +359,8 @@ impl<T: Config> Pallet<T> {
 				// ensure amount is not more than current debt
 				let repay_amount = amount.min(debt);
 
-				let new_repaid_amount = loan
-					.repaid_amount
+				let new_total_repaid = loan
+					.total_repaid
 					.checked_add(&repay_amount)
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
@@ -373,7 +373,7 @@ impl<T: Config> Pallet<T> {
 				.ok_or(Error::<T>::ValueOverflow)?;
 
 				loan.last_updated = now;
-				loan.repaid_amount = new_repaid_amount;
+				loan.total_repaid = new_total_repaid;
 				loan.accumulated_rate = accumulated_rate;
 				loan.principal_debt = principal_debt;
 				let new_pv = loan

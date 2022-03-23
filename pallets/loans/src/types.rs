@@ -112,8 +112,8 @@ pub struct LoanDetails<Rate, Amount, Asset> {
 	pub(crate) accumulated_rate: Rate,
 
 	// total borrowed and repaid on this loan
-	pub(crate) borrowed_amount: Amount,
-	pub(crate) repaid_amount: Amount,
+	pub(crate) total_borrowed: Amount,
+	pub(crate) total_repaid: Amount,
 
 	// write off group index in the vec of write off groups
 	// none, the loan is not written off yet
@@ -172,7 +172,7 @@ where
 	/// accrues rate and current debt from last updated until now
 	pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Amount)> {
 		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
-		let maybe_rate = match self.borrowed_amount == Zero::zero() {
+		let maybe_rate = match self.total_borrowed == Zero::zero() {
 			true => Some(self.rate_per_sec),
 			false => math::calculate_accumulated_rate::<Rate>(
 				self.rate_per_sec,
@@ -195,7 +195,7 @@ where
 	/// returns the ceiling amount for the loan based on the loan type
 	pub(crate) fn ceiling(&self, now: Moment) -> Amount {
 		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.ceiling(self.borrowed_amount),
+			LoanType::BulletLoan(bl) => bl.ceiling(self.total_borrowed),
 			LoanType::CreditLine(cl) => {
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt

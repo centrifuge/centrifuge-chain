@@ -139,8 +139,8 @@ where
 	/// calculates ceiling for bullet loan,
 	/// ceiling = advance_rate * collateral_value - borrowed
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling
-	pub(crate) fn ceiling(&self, borrowed_amount: Amount) -> Option<Amount> {
-		math::ceiling(self.advance_rate, self.value, borrowed_amount)
+	pub(crate) fn ceiling(&self, total_borrowed: Amount) -> Option<Amount> {
+		math::ceiling(self.advance_rate, self.value, total_borrowed)
 	}
 }
 

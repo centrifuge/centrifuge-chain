@@ -539,7 +539,7 @@ macro_rules! test_borrow_loan {
 				assert_eq!(loan.rate_per_sec, rate);
 				assert_eq!(loan.accumulated_rate, rate);
 				assert_eq!(loan.last_updated, 1);
-				assert_eq!(loan.borrowed_amount, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
 				let p_debt = borrow_amount
 					.checked_div(&math::convert::<Rate, Amount>(loan.accumulated_rate).unwrap())
 					.unwrap();
@@ -568,7 +568,7 @@ macro_rules! test_borrow_loan {
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
 				assert_eq!(loan.last_updated, 1001);
-				assert_eq!(loan.borrowed_amount, Amount::from_inner(70 * USD));
+				assert_eq!(loan.total_borrowed, Amount::from_inner(70 * USD));
 				let c_debt = math::debt(p_debt, loan.accumulated_rate).unwrap();
 				let p_debt = c_debt
 					.checked_add(&borrow_amount)
@@ -690,7 +690,7 @@ macro_rules! test_repay_loan {
 				// accumulated rate is now rate per sec
 				assert_eq!(loan.accumulated_rate, rate);
 				assert_eq!(loan.last_updated, 1);
-				assert_eq!(loan.borrowed_amount, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
 				let p_debt = borrow_amount
 					.checked_div(&math::convert::<Rate, Amount>(loan.accumulated_rate).unwrap())
 					.unwrap();
@@ -708,7 +708,7 @@ macro_rules! test_repay_loan {
 				// repay 20 after 1000 seconds
 				Timestamp::set_timestamp(1001 * 1000);
 				let repay_amount = Amount::from_inner(20 * USD);
-				assert_eq!(loan.repaid_amount, Amount::from_inner(0));
+				assert_eq!(loan.total_repaid, Amount::from_inner(0));
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
@@ -721,8 +721,8 @@ macro_rules! test_repay_loan {
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
 				assert_eq!(loan.last_updated, 1001);
-				assert_eq!(loan.borrowed_amount, Amount::from_inner(50 * USD));
-				assert_eq!(loan.repaid_amount, Amount::from_inner(20 * USD));
+				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_repaid, Amount::from_inner(20 * USD));
 				// principal debt should still be more than 30 due to interest
 				assert!(loan.principal_debt > Amount::from_inner(30 * USD));
 				// pool should have 30 less token
@@ -751,7 +751,7 @@ macro_rules! test_repay_loan {
 				// nav should be updated to latest present value
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
 				let pv = loan.present_value(&vec![]).unwrap();
-				assert_eq!(loan.repaid_amount, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_repaid, Amount::from_inner(50 * USD));
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay the interest
@@ -807,7 +807,7 @@ macro_rules! test_repay_loan {
 				// repay more than the interest
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
-				let repaid_amount_pre = loan.repaid_amount;
+				let total_repaid_pre = loan.total_repaid;
 
 				let repay_amount = debt + Amount::from_inner(10 * USD);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
@@ -816,7 +816,7 @@ macro_rules! test_repay_loan {
 				// only the debt should have been repaid
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
-				assert_eq!(loan.repaid_amount - repaid_amount_pre, debt);
+				assert_eq!(loan.total_repaid - total_repaid_pre, debt);
 
 				// close loan
 				let res = Loans::close(Origin::signed(borrower), pool_id, loan_id);
@@ -827,7 +827,7 @@ macro_rules! test_repay_loan {
 					.expect("LoanDetails should be present");
 				assert_eq!(loan.status, LoanStatus::Closed);
 				assert_eq!(loan.principal_debt, Zero::zero());
-				assert_eq!(loan.borrowed_amount, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
 				assert_eq!(loan.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
