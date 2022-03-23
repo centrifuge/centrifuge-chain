@@ -11,8 +11,8 @@
 // GNU General Public License for more details.
 
 pub use crate as pallet_restricted_tokens;
-use common_types::{Moment};
 use common_traits::{PreConditions, TokenMetadata};
+use common_types::Moment;
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
 use frame_support::traits::{Everything, GenesisBuild};
