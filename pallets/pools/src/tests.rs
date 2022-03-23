@@ -1671,3 +1671,595 @@ fn valid_tranche_structure_is_enforced() {
 		);
 	})
 }
+
+#[test]
+fn zero_solution_before_min_submission_end_is_err() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			),
+			Error::<Test>::NotNewBestSubmission
+		);
+
+		next_block();
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+	});
+}
+
+#[test]
+fn zero_solution_after_min_submission_end_is_ok() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		next_block();
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+	});
+}
+
+#[test]
+fn zero_solution_after_min_submission_end_but_with_valid_solution_before_is_err() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::from_float(0.10),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+
+		next_block();
+
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			),
+			Error::<Test>::NotNewBestSubmission
+		);
+	});
+}
+
+#[test]
+fn solution_after_min_submission_end_and_with_previous_zero_solution_is_ok() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		next_block();
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+
+		next_block();
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::from_float(0.10),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		),);
+	});
+}
+
+#[test]
+fn min_epoch_time_is_respected() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			),
+			Error::<Test>::NotNewBestSubmission
+		);
+
+		next_block();
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+
+		// TODO: this currently is no error as we denote the times in secsonds
+		//       and not in blocks. THis needs to be solved in a seperate PR
+		/*
+		assert_noop!(
+			Pools::execute_epoch(pool_owner_origin.clone(), 0),
+			Error::<Test>::ChallengeTimeHasNotPassed
+		);
+		next_block();
+		assert_ok!(Pools::execute_epoch(pool_owner_origin, 0));
+		 */
+	});
+}
