@@ -55,6 +55,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
+			min_submission_time: 0,
 			metadata: None,
 		};
 
@@ -66,6 +67,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
+			min_submission_period_end: 0,
 		};
 
 		let full_solution = pool
@@ -143,6 +145,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
+			min_submission_time: 0,
 			metadata: None,
 		};
 
@@ -154,6 +157,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
+			min_submission_period_end: 0,
 		};
 
 		let full_solution = pool
@@ -240,6 +244,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
+			min_submission_time: 0,
 			metadata: None,
 		};
 
@@ -251,6 +256,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
+			min_submission_period_end: 0,
 		};
 
 		let full_solution = pool
@@ -349,6 +355,7 @@ fn pool_constraints_pass() {
 			min_epoch_time: 0,
 			challenge_time: 0,
 			max_nav_age: 60,
+			min_submission_time: 0,
 			metadata: None,
 		};
 
@@ -360,6 +367,7 @@ fn pool_constraints_pass() {
 			tranches: epoch_tranches,
 			best_submission: None,
 			challenge_period_end: None,
+			min_submission_period_end: 0,
 		};
 
 		let full_solution = pool
@@ -459,7 +467,14 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update(pool_owner_origin.clone(), 0, 30 * 60, 1, 0));
+		assert_ok!(Pools::update(
+			pool_owner_origin.clone(),
+			0,
+			30 * 60,
+			1,
+			0,
+			1
+		));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner_origin.clone(), 0),
@@ -1182,6 +1197,7 @@ fn pool_parameters_should_be_constrained() {
 		let realistic_min_epoch_time = 24 * 60 * 60; // 24 hours
 		let realistic_challenge_time = 30 * 60; // 30 mins
 		let realistic_max_nav_age = 1 * 60; // 1 min
+		let realistic_min_submission_time = 30 * 60; // 30 mins
 
 		assert_err!(
 			Pools::update(
@@ -1189,7 +1205,8 @@ fn pool_parameters_should_be_constrained() {
 				pool_id,
 				0,
 				realistic_challenge_time,
-				realistic_max_nav_age
+				realistic_max_nav_age,
+				realistic_min_submission_time
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
@@ -1199,7 +1216,8 @@ fn pool_parameters_should_be_constrained() {
 				pool_id,
 				realistic_min_epoch_time,
 				0,
-				realistic_max_nav_age
+				realistic_max_nav_age,
+				realistic_min_submission_time
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
@@ -1209,7 +1227,19 @@ fn pool_parameters_should_be_constrained() {
 				pool_id,
 				realistic_min_epoch_time,
 				realistic_challenge_time,
-				7 * 24 * 60 * 60
+				7 * 24 * 60 * 60,
+				realistic_min_submission_time,
+			),
+			Error::<Test>::PoolParameterBoundViolated
+		);
+		assert_err!(
+			Pools::update(
+				pool_owner_origin.clone(),
+				pool_id,
+				realistic_min_epoch_time,
+				realistic_challenge_time,
+				realistic_challenge_time,
+				0,
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
@@ -1219,7 +1249,8 @@ fn pool_parameters_should_be_constrained() {
 			pool_id,
 			realistic_min_epoch_time,
 			realistic_challenge_time,
-			realistic_max_nav_age
+			realistic_max_nav_age,
+			realistic_min_submission_time
 		));
 	});
 }
