@@ -147,11 +147,13 @@ parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
 	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
+	pub const DefaultMinSubmissionTime: u64 = 0; // disable min submission checks
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 0; // disable bound
 	pub const ChallengeTimeLowerBound: u64 = 0; // disable bound
 	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // disable bound
+	pub const MinSubmissionTimeLowerBound: u64 = 0; // disable bound
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -185,6 +187,8 @@ impl pallet_pools::Config for MockRuntime {
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();
 	type TrancheWeight = runtime_common::TrancheWeight;
+	type DefaultMinSubmissionTime = DefaultMinSubmissionTime;
+	type MinSubmissionTimeLowerBound = MinSubmissionTimeLowerBound;
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
