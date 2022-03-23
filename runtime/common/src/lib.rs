@@ -130,7 +130,7 @@ pub mod types {
 	pub type ClassId = u64;
 
 	/// A representation of a tranche identifier
-	pub type TrancheId = u8;
+	pub type TrancheId = [u8; 16];
 
 	/// A representation of a tranche weight, used to weight
 	/// importance of a tranche

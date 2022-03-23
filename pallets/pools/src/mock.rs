@@ -1,4 +1,5 @@
-use crate::{self as pallet_pools, Config, DispatchResult, Error};
+use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
+use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
@@ -7,6 +8,7 @@ use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
+	StorageHasher, Twox128,
 };
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -24,7 +26,7 @@ common_types::impl_tranche_token!();
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type TrancheId = u8;
+type TrancheId = [u8; 16];
 type Moment = u64;
 mod fake_nav {
 	use super::Balance;
@@ -100,8 +102,6 @@ frame_support::construct_runtime!(
 parameter_types! {
 	pub const One: u64 = 1;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
-	pub const MaxTranches: TrancheId = 5;
-	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
 	pub const MinDelay: Moment = 0;
 
 	pub const MaxRoles: u32 = u32::MAX;
@@ -109,9 +109,8 @@ parameter_types! {
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Location = u64;
-	type Role = PoolRole<Moment, TrancheId>;
-	type Storage =
-		PermissionRoles<TimeProvider<Timestamp>, MaxTranches, MinDelay, TrancheId, Moment>;
+	type Role = PoolRole<TrancheId, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type MaxRolesPerLocation = MaxRoles;
@@ -235,7 +234,7 @@ impl pallet_restricted_tokens::Config for Test {
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<u64, Location = u64, Role = PoolRole>,
+	P: PermissionsT<u64, Location = u64, Role = PoolRole<TrancheId>>,
 {
 	type Result = bool;
 
@@ -260,6 +259,7 @@ where
 
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
+	pub const MaxTranches: u32 = 5;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
@@ -311,8 +311,17 @@ impl fake_nav::Config for Test {
 
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
-pub const JUNIOR_TRANCHE_ID: u8 = 0;
-pub const SENIOR_TRANCHE_ID: u8 = 1;
+fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
+	let hash_input = (tranche, pool).encode();
+	Twox128::hash(&hash_input)
+}
+
+parameter_types! {
+	pub JuniorTrancheId: [u8; 16] = create_tranche_id(0, 0);
+	pub SeniorTrancheId: [u8; 16] = create_tranche_id(0, 1);
+}
+pub const JUNIOR_TRANCHE_INDEX: u8 = 0u8;
+pub const SENIOR_TRANCHE_INDEX: u8 = 1u8;
 pub const START_DATE: u64 = 1640991600; // 2022.01.01
 pub const SECONDS: u64 = 1000;
 
@@ -390,7 +399,7 @@ pub fn invest_close_and_collect(
 	investments: Vec<(Origin, TrancheId, Balance)>,
 ) -> DispatchResult {
 	for (who, tranche_id, investment) in investments.clone() {
-		Pools::update_invest_order(who, pool_id, tranche_id, investment)?;
+		Pools::update_invest_order(who, pool_id, TrancheLoc::Id(tranche_id), investment)?;
 	}
 
 	Pools::close_epoch(Origin::signed(10), pool_id).map_err(|e| e.error)?;
@@ -400,7 +409,7 @@ pub fn invest_close_and_collect(
 		.last_epoch_executed;
 
 	for (who, tranche_id, _) in investments {
-		Pools::collect(who, pool_id, tranche_id, epoch).map_err(|e| e.error)?;
+		Pools::collect(who, pool_id, TrancheLoc::Id(tranche_id), epoch).map_err(|e| e.error)?;
 	}
 
 	Ok(())

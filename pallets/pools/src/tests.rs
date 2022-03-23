@@ -1,10 +1,12 @@
 use super::*;
+use crate::mock::TrancheToken as TT;
 use crate::mock::*;
 use common_traits::Permissions as PermissionsT;
 use common_types::CurrencyId;
 use frame_support::sp_std::convert::TryInto;
 use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
+use rand::Rng;
 use runtime_common::Rate;
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
@@ -13,14 +15,16 @@ use sp_runtime::{Perquintill, TokenError};
 #[test]
 fn core_constraints_currency_available_cant_cover_redemptions() {
 	new_test_ext().execute_with(|| {
-		let tranches = Tranches::new(
+		let tranches = Tranches::new::<TT<Test>>(
+			0,
 			std::iter::repeat(Tranche {
 				outstanding_redeem_orders: 10,
 				..Default::default()
 			})
 			.take(4)
 			.collect(),
-		);
+		)
+		.unwrap();
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
@@ -87,28 +91,29 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranche_a = Tranche {
 			outstanding_invest_orders: 10,
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, 0),
+			currency: CurrencyId::Tranche(0, [0u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, 1),
+			currency: CurrencyId::Tranche(0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, 2),
+			currency: CurrencyId::Tranche(0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, 3),
+			currency: CurrencyId::Tranche(0, [3u8; 16]),
 			..Default::default()
 		};
-		let tranches = Tranches::new(vec![tranche_a, tranche_b, tranche_c, tranche_d]);
+		let tranches =
+			Tranches::new::<TT<Test>>(0, vec![tranche_a, tranche_b, tranche_c, tranche_d]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -182,8 +187,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				interest_per_sec: Rate::one(),
 				min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
 			},
-			outstanding_invest_orders: 100,
-			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -191,8 +194,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				interest_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.2),
 			},
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: 20,
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -200,28 +201,26 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 				interest_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.1),
 			},
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			tranche_type: TrancheType::Residual,
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			..Default::default()
 		};
-		let tranches = Tranches::new(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
+		let tranches =
+			Tranches::new::<TT<Test>>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
 				.iter()
-				.zip(vec![5, 5, 20, 80]) // no IntoIterator for arrays, so we use a vec here. Meh.
+				.zip(vec![5, 5, 5, 35]) // no IntoIterator for arrays, so we use a vec here. Meh.
 				.map(|(tranche, value)| EpochExecutionTranche {
 					supply: value,
 					price: One::one(),
 					invest: tranche.outstanding_invest_orders,
 					redeem: tranche.outstanding_redeem_orders,
+					min_risk_buffer: tranche.min_risk_buffer(),
 					..Default::default()
 				})
 				.collect(),
@@ -284,7 +283,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 3,
-			currency: CurrencyId::Tranche(0, 3),
+			currency: CurrencyId::Tranche(0, [3u8; 16]),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -295,7 +294,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 30,
 			seniority: 2,
-			currency: CurrencyId::Tranche(0, 2),
+			currency: CurrencyId::Tranche(0, [2u8; 16]),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -306,7 +305,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 1,
-			currency: CurrencyId::Tranche(0, 1),
+			currency: CurrencyId::Tranche(0, [1u8; 16]),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
@@ -314,10 +313,11 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 0,
-			currency: CurrencyId::Tranche(0, 0),
+			currency: CurrencyId::Tranche(0, [0u8; 16]),
 			..Default::default()
 		};
-		let tranches = Tranches::new(vec![tranche_d, tranche_c, tranche_b, tranche_a]);
+		let tranches =
+			Tranches::new::<TT<Test>>(0, vec![tranche_d, tranche_c, tranche_b, tranche_a]).unwrap();
 		let epoch_tranches = EpochExecutionTranches::new(
 			tranches
 				.residual_top_slice()
@@ -406,14 +406,14 @@ fn epoch() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -449,13 +449,13 @@ fn epoch() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -478,30 +478,29 @@ fn epoch() {
 		.unwrap();
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			1
 		));
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 
 		assert_eq!(
 			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, 0),
+				CurrencyId::Tranche(0, JuniorTrancheId::get()),
 				&0,
 			),
 			500 * CURRENCY,
 		);
 		assert_eq!(
 			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, 1),
+				CurrencyId::Tranche(0, SeniorTrancheId::get()),
 				&1,
 			),
 			500 * CURRENCY,
@@ -509,33 +508,33 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].interest_per_sec(),
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].interest_per_sec(),
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);
 		assert_eq!(pool.reserve.total_reserve, 1000 * CURRENCY);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve,
 			500 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].ratio,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].ratio,
 			Perquintill::from_float(0.5)
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].ratio,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].ratio,
 			Perquintill::from_float(0.5)
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
 			500 * CURRENCY
 		);
 
@@ -551,19 +550,19 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			250 * CURRENCY
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve,
 			250 * CURRENCY
 		);
 		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
@@ -576,19 +575,20 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_ID as usize].reserve,
+			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve,
 			500 * CURRENCY
 		); // not yet rebalanced
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
 		assert!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve > 500 * CURRENCY
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve
+				> 500 * CURRENCY
 		); // there's interest in here now
 		assert_eq!(pool.reserve.available_reserve, 500 * CURRENCY);
 		assert_eq!(pool.reserve.total_reserve, 1010 * CURRENCY);
@@ -598,36 +598,30 @@ fn epoch() {
 		assert_ok!(Pools::update_redeem_order(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			250 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
-		let senior_epoch = Pools::epoch(
-			TrancheLocator {
-				pool_id: 0,
-				tranche_id: SENIOR_TRANCHE_ID,
-			},
-			pool.last_epoch_executed,
-		)
-		.unwrap();
+		let senior_epoch = Pools::epoch(SeniorTrancheId::get(), pool.last_epoch_executed).unwrap();
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize]
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize]
 				.outstanding_redeem_orders,
 			0
 		);
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].debt,
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
 			0
 		);
 		assert_eq!(pool.reserve.available_reserve, pool.reserve.total_reserve);
 		assert!(pool.reserve.total_reserve > 750 * CURRENCY);
 		assert!(pool.reserve.total_reserve < 800 * CURRENCY);
 		assert!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize].reserve > 250 * CURRENCY
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].reserve
+				> 250 * CURRENCY
 		);
 		assert_eq!(
 			pool.reserve.total_reserve
@@ -648,14 +642,14 @@ fn submission_period() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -684,13 +678,13 @@ fn submission_period() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -710,14 +704,14 @@ fn submission_period() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			1
 		));
 
@@ -725,7 +719,7 @@ fn submission_period() {
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -857,14 +851,14 @@ fn execute_info_removed_after_epoch_execute() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -906,8 +900,16 @@ fn execute_info_removed_after_epoch_execute() {
 		invest_close_and_collect(
 			0,
 			vec![
-				(junior_investor.clone(), JUNIOR_TRANCHE_ID, 500 * CURRENCY),
-				(senior_investor.clone(), SENIOR_TRANCHE_ID, 500 * CURRENCY),
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
 			],
 		)
 		.unwrap();
@@ -916,7 +918,7 @@ fn execute_info_removed_after_epoch_execute() {
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
@@ -954,14 +956,14 @@ fn collect_tranche_tokens() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JUNIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SENIOR_TRANCHE_ID, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -992,13 +994,13 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -1021,34 +1023,25 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 		// assert_eq!(Tokens::free_balance(junior_token, &0), 500 * CURRENCY);
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_ID as usize]
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize]
 				.outstanding_invest_orders,
 			0
 		);
 
-		assert_eq!(
-			Pools::order(
-				TrancheLocator {
-					pool_id: 0,
-					tranche_id: SENIOR_TRANCHE_ID,
-				},
-				0,
-			),
-			None
-		);
+		assert_eq!(Pools::order(SeniorTrancheId::get(), 0,), None);
 
 		assert_noop!(
 			Pools::update_invest_order(
 				senior_investor.clone(),
 				0,
-				SENIOR_TRANCHE_ID,
+				TrancheLoc::Id(SeniorTrancheId::get()),
 				10 * CURRENCY
 			),
 			Error::<Test>::CollectRequired
@@ -1057,21 +1050,21 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			1
 		));
 
 		assert_ok!(Pools::update_invest_order(
 			senior_investor.clone(),
 			0,
-			SENIOR_TRANCHE_ID,
+			TrancheLoc::Id(SeniorTrancheId::get()),
 			10 * CURRENCY
 		));
 
 		assert_ok!(Pools::update_redeem_order(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			10 * CURRENCY
 		));
 
@@ -1079,7 +1072,7 @@ fn collect_tranche_tokens() {
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			0,
-			JUNIOR_TRANCHE_ID,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
 	});
@@ -1094,7 +1087,7 @@ fn invalid_tranche_id_is_err() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(1, u64::MAX),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1108,12 +1101,22 @@ fn invalid_tranche_id_is_err() {
 		));
 
 		assert_noop!(
-			Pools::update_invest_order(junior_investor.clone(), 0, 1, 500 * CURRENCY),
+			Pools::update_invest_order(
+				junior_investor.clone(),
+				0,
+				TrancheLoc::Id(SeniorTrancheId::get()),
+				500 * CURRENCY
+			),
 			Error::<Test>::InvalidTrancheId
 		);
 
 		assert_noop!(
-			Pools::update_redeem_order(junior_investor.clone(), 0, 1, 500 * CURRENCY),
+			Pools::update_redeem_order(
+				junior_investor.clone(),
+				0,
+				TrancheLoc::Id(SeniorTrancheId::get()),
+				500 * CURRENCY
+			),
 			Error::<Test>::InvalidTrancheId
 		);
 	});
@@ -1128,7 +1131,7 @@ fn updating_with_same_amount_is_err() {
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			0,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(0, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1144,12 +1147,17 @@ fn updating_with_same_amount_is_err() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			0,
-			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
 		assert_noop!(
-			Pools::update_invest_order(junior_investor.clone(), 0, 0, 500 * CURRENCY),
+			Pools::update_invest_order(
+				junior_investor.clone(),
+				0,
+				TrancheLoc::Id(JuniorTrancheId::get()),
+				500 * CURRENCY
+			),
 			Error::<Test>::NoNewOrder
 		);
 	});
@@ -1224,12 +1232,11 @@ fn updating_orders_updates_epoch() {
 		let pool_owner = 99u64;
 		let pool_admin = Origin::signed(pool_owner);
 		let pool_id = 0;
-		let jun_tranche_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1249,34 +1256,19 @@ fn updating_orders_updates_epoch() {
 
 		next_block();
 
-		assert_eq!(
-			Pools::order(
-				TrancheLocator {
-					pool_id,
-					tranche_id: jun_tranche_id
-				},
-				jun_invest_id
-			),
-			None
-		);
+		assert_eq!(Pools::order(JuniorTrancheId::get(), jun_invest_id), None);
 
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			pool_id,
-			jun_tranche_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
 		assert_eq!(
-			Pools::order(
-				TrancheLocator {
-					pool_id,
-					tranche_id: jun_tranche_id
-				},
-				jun_invest_id
-			)
-			.unwrap()
-			.epoch,
+			Pools::order(JuniorTrancheId::get(), jun_invest_id)
+				.unwrap()
+				.epoch,
 			2
 		);
 	});
@@ -1290,12 +1282,11 @@ fn no_order_is_err() {
 		let pool_owner = 99u64;
 		let pool_admin = Origin::signed(pool_owner);
 		let pool_id = 0;
-		let jun_tranche_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1314,7 +1305,12 @@ fn no_order_is_err() {
 		assert_ok!(Pools::close_epoch(pool_admin.clone(), pool_id));
 
 		assert_noop!(
-			Pools::collect(junior_investor.clone(), pool_id, jun_tranche_id, 2),
+			Pools::collect(
+				junior_investor.clone(),
+				pool_id,
+				TrancheLoc::Id(JuniorTrancheId::get()),
+				2
+			),
 			Error::<Test>::NoOutstandingOrder
 		);
 	})
@@ -1328,12 +1324,11 @@ fn collecting_over_last_exec_epoch_is_err() {
 		let pool_owner = 99u64;
 		let pool_admin = Origin::signed(pool_owner);
 		let pool_id = 0;
-		let jun_tranche_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
 			pool_id,
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(jun_tranche_id, u64::MAX),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
 		)
 		.unwrap();
 
@@ -1351,7 +1346,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
 			pool_id,
-			jun_tranche_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			500 * CURRENCY
 		));
 
@@ -1361,15 +1356,287 @@ fn collecting_over_last_exec_epoch_is_err() {
 		next_block();
 
 		assert_noop!(
-			Pools::collect(junior_investor.clone(), pool_id, jun_tranche_id, 2),
+			Pools::collect(
+				junior_investor.clone(),
+				pool_id,
+				TrancheLoc::Id(JuniorTrancheId::get()),
+				2
+			),
 			Error::<Test>::EpochNotExecutedYet
 		);
 
 		assert_ok!(Pools::collect(
 			junior_investor.clone(),
 			pool_id,
-			jun_tranche_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
 			1
 		));
+	})
+}
+
+#[test]
+fn tranche_ids_are_unique() {
+	new_test_ext().execute_with(|| {
+		let mut rng = rand::thread_rng();
+
+		let pool_id_0: u64 = rng.gen();
+
+		let pool_id_1: u64 = loop {
+			let id = rng.gen::<u64>();
+			if id != pool_id_0 {
+				break id;
+			}
+		};
+
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_1,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		let pool_ids_0 = Pools::pool(pool_id_0).unwrap().tranches.ids_residual_top();
+		let pool_ids_1 = Pools::pool(pool_id_1).unwrap().tranches.ids_residual_top();
+
+		pool_ids_0
+			.iter()
+			.zip(pool_ids_1.iter())
+			.for_each(|(id_of_0, id_of_1)| assert_ne!(id_of_0, id_of_1))
+	})
+}
+
+#[test]
+fn same_pool_id_not_possible() {
+	new_test_ext().execute_with(|| {
+		let mut rng = rand::thread_rng();
+		let pool_id_1: u64 = rng.gen();
+
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_1,
+			vec![(TrancheType::Residual, None),],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_1,
+				vec![(TrancheType::Residual, None),],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::PoolInUse
+		);
+	})
+}
+
+#[test]
+fn valid_tranche_structure_is_enforced() {
+	new_test_ext().execute_with(|| {
+		let pool_id_0 = 0u64;
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate + One::one(), // More residual MUST have smaller interest than above tranche
+							min_risk_buffer: Perquintill::from_percent(20),
+						},
+						None
+					)
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidTrancheStructure
+		);
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(TrancheType::Residual, None),
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					)
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidTrancheStructure
+		);
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(TrancheType::Residual, None), // Must start with residual
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					)
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidJuniorTranche
+		);
+
+		assert_noop!(
+			Pools::create(
+				Origin::signed(0),
+				0,
+				pool_id_0,
+				vec![
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					),
+					(TrancheType::Residual, None), // Intermediate Residual not ok
+					(
+						TrancheType::NonResidual {
+							interest_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(0),
+						},
+						None
+					),
+				],
+				CurrencyId::Usd,
+				10_000 * CURRENCY
+			),
+			Error::<Test>::InvalidTrancheStructure
+		);
 	})
 }
