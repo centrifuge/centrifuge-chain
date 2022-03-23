@@ -4,11 +4,11 @@ use common_traits::InterestAccrual;
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
+use sp_runtime::ArithmeticError;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
-use sp_runtime::ArithmeticError;
 
 pub use pallet::*;
 
@@ -140,7 +140,8 @@ pub mod pallet {
 						interest_rate_per_sec,
 						rate.cumulative_rate,
 						rate.last_updated,
-					).map_err(|_| Error::<T>::DebtCalculationFailed)?;
+					)
+					.map_err(|_| Error::<T>::DebtCalculationFailed)?;
 					// TODO: this should update the rate
 
 					new_cumulative_rate
