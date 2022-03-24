@@ -148,8 +148,43 @@ parameter_types! {
 
 const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
 
+
+// Our base filter
+//
+// Once the standalone version of this chain has been migrated to a parachain on Polkadot,
+// we disable all calls expect:
+//   * System.SetCode
+//   * Council
+//   * Democracy
+pub struct BaseFilter;
+
+impl frame_support::traits::Contains<Call> for BaseFilter {
+    fn contains(c: &Call) -> bool {
+        matches!(
+			c,
+			// Calls for runtime upgrade
+			| Call::System(frame_system::Call::set_code{..})
+			| Call::System(frame_system::Call::set_code_without_checks{..})
+            // Council-related calls
+            | Call::Council(..)
+            // Democracy-related calls
+            | Call::Democracy(..)
+			// Calls that are present in each block
+			| Call::ParachainSystem(
+				cumulus_pallet_parachain_system::Call::set_validation_data{..}
+			)
+			| Call::Timestamp(pallet_timestamp::Call::set{..})
+		)
+    }
+
+    fn sorted_members() -> Vec<Call> {
+        // NOTE: trying to just implement `contains(Call)`
+        Vec::new()
+    }
+}
+
 impl frame_system::Trait for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = BaseFilter;
     /// The ubiquitous origin type.
     type Origin = Origin;
 	/// The aggregated dispatch type that is available for extrinsics.
