@@ -116,8 +116,8 @@ impl<T: Config> Pallet<T> {
 		rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Amount>,
 	) -> DispatchResult {
-		Loan::<T>::try_mutate(pool_id, loan_id, |maybe_loan| -> DispatchResult {
-			let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
+		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
+			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 			// ensure loan is created
 			ensure!(loan.status == LoanStatus::Created, Error::<T>::LoanIsActive);
@@ -133,7 +133,6 @@ impl<T: Config> Pallet<T> {
 			loan.rate_per_sec = rate_per_sec;
 			loan.status = LoanStatus::Active;
 			loan.loan_type = loan_type;
-			*maybe_loan = Some(loan);
 
 			Ok(())
 		})
@@ -152,8 +151,8 @@ impl<T: Config> Pallet<T> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan| -> Result<ClosedLoan<T>, DispatchError> {
-				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
+			|loan| -> Result<ClosedLoan<T>, DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
 				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
@@ -196,7 +195,6 @@ impl<T: Config> Pallet<T> {
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
-				*maybe_loan = Some(loan);
 				Ok(ClosedLoan { asset, written_off })
 			},
 		)
@@ -216,8 +214,8 @@ impl<T: Config> Pallet<T> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan| -> Result<bool, DispatchError> {
-				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
+			|loan| -> Result<bool, DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
 				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
@@ -281,7 +279,6 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::withdraw(pool_id, owner, amount.into())?;
-				*maybe_loan = Some(loan);
 				Ok(first_borrow)
 			},
 		)
@@ -295,6 +292,7 @@ impl<T: Config> Pallet<T> {
 		// calculate new diff from the old and new present value and update the nav accordingly
 		PoolNAV::<T>::try_mutate(pool_id, |maybe_nav_details| -> Result<(), DispatchError> {
 			let mut nav = maybe_nav_details.take().unwrap_or_default();
+
 			let new_nav = match new_pv > old_pv {
 				// borrow
 				true => new_pv
@@ -330,8 +328,8 @@ impl<T: Config> Pallet<T> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan| -> Result<T::Amount, DispatchError> {
-				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
+			|loan| -> Result<T::Amount, DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
 				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
@@ -381,7 +379,6 @@ impl<T: Config> Pallet<T> {
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 				T::Pool::deposit(pool_id, owner, repay_amount.into())?;
-				*maybe_loan = Some(loan);
 				Ok(repay_amount)
 			},
 		)
@@ -402,11 +399,11 @@ impl<T: Config> Pallet<T> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan| -> Result<T::Amount, DispatchError> {
-				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
+			|loan| -> Result<T::Amount, DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+
 				// if the loan is not active, then skip updating and return PV as zero
 				if loan.status != LoanStatus::Active {
-					*maybe_loan = Some(loan);
 					return Ok(Zero::zero());
 				}
 
@@ -416,7 +413,6 @@ impl<T: Config> Pallet<T> {
 				let present_value = loan
 					.present_value(write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
-				*maybe_loan = Some(loan);
 				Ok(present_value)
 			},
 		)
@@ -488,8 +484,9 @@ impl<T: Config> Pallet<T> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|maybe_loan| -> Result<u32, DispatchError> {
-				let mut loan = maybe_loan.take().ok_or(Error::<T>::MissingLoan)?;
+			|loan| -> Result<u32, DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+
 				// ensure loan is active
 				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
@@ -549,8 +546,6 @@ impl<T: Config> Pallet<T> {
 				// update nav
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
-				// update loan data
-				*maybe_loan = Some(loan);
 				Ok(write_off_group_index)
 			},
 		)
