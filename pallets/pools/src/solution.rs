@@ -393,6 +393,26 @@ pub struct TrancheSolution {
 	pub redeem_fulfillment: Perquintill,
 }
 
+impl TrancheSolution {
+	pub fn full(num_tranches: usize) -> Vec<TrancheSolution> {
+		sp_std::iter::repeat(TrancheSolution {
+			invest_fulfillment: Perquintill::one(),
+			redeem_fulfillment: Perquintill::one(),
+		})
+		.take(num_tranches)
+		.collect()
+	}
+
+	pub fn zero(num_tranches: usize) -> Vec<TrancheSolution> {
+		sp_std::iter::repeat(TrancheSolution {
+			invest_fulfillment: Perquintill::zero(),
+			redeem_fulfillment: Perquintill::zero(),
+		})
+		.take(num_tranches)
+		.collect()
+	}
+}
+
 pub fn calculate_solution_parameters<Balance, BalanceRatio, Rate, Weight, Currency>(
 	epoch_tranches: &EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 	solution: &[TrancheSolution],

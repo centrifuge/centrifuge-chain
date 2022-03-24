@@ -62,8 +62,6 @@ where
 pub enum PoolStatus {
 	Open,
 	InSubmissionPeriod,
-	/// Repayments possible, else not possible
-	Frozen,
 	Closed,
 }
 
@@ -548,21 +546,6 @@ pub mod pallet {
 			})
 		}
 
-		/// Unfreeze a pool via root.
-		///
-		/// A pool can only be unfrozen via root currently.
-		/// Freezing a pool leads to effectively locking the pool.
-		#[pallet::weight(0)]
-		pub fn force_unfreeze(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
-			ensure_root(origin)?;
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.status = PoolStatus::Open;
-				Ok(())
-			})
-		}
-
 		/// Update per-pool configuration settings.
 		///
 		/// This sets the minimum epoch length, epoch solution challenge
@@ -755,6 +738,7 @@ pub mod pallet {
 						),
 						BadOrigin
 					);
+					ensure!(pool.status != PoolStatus::Closed, Error::<T>::PoolNotOpen);
 
 					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
 						let order = if let Some(order) = active_order {
@@ -820,6 +804,7 @@ pub mod pallet {
 						),
 						BadOrigin
 					);
+					ensure!(pool.status != PoolStatus::Closed, Error::<T>::PoolNotOpen);
 
 					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
 						let order = if let Some(order) = active_order {
@@ -927,7 +912,7 @@ pub mod pallet {
 				);
 
 				let nav = nav_amount.into();
-				let submission_period_epoch = pool.current_epoch;
+				let closed_epoch = pool.current_epoch;
 				let total_assets = nav
 					.checked_add(&pool.reserve.total_reserve)
 					.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
@@ -937,52 +922,6 @@ pub mod pallet {
 				let epoch_tranche_prices = pool
 					.tranches
 					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
-
-				// If closing the epoch would wipe out a tranche, we put the pool into a
-				// freeze.
-				if epoch_tranche_prices
-					.iter()
-					.any(|price| *price == Zero::zero())
-				{
-					pool.status = PoolStatus::Frozen;
-					return Err(Error::<T>::WipedOut.into());
-				}
-
-				if pool.tranches.acc_outstanding_investments()?.is_zero()
-					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
-				{
-					pool.tranches.combine_with_mut_residual_top(
-						epoch_tranche_prices
-							.iter()
-							.zip(pool.tranches.ids_residual_top()),
-						|tranche, (price, tranche_id)| {
-							Self::update_tranche_for_epoch(
-								pool_id,
-								tranche_id,
-								submission_period_epoch,
-								tranche,
-								TrancheSolution {
-									invest_fulfillment: Perquintill::zero(),
-									redeem_fulfillment: Perquintill::zero(),
-								},
-								(Zero::zero(), Zero::zero()),
-								price.clone(),
-							)
-						},
-					)?;
-
-					pool.last_epoch_closed()?;
-
-					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
-
-					return Ok(Some(T::WeightInfo::close_epoch_no_orders(
-						pool.tranches
-							.num_tranches()
-							.try_into()
-							.expect("MaxTranches is u32. qed."),
-					))
-					.into());
-				}
 
 				let epoch_tranches = pool.tranches.combine_with_residual_top(
 					epoch_tranche_prices.iter(),
@@ -1010,7 +949,7 @@ pub mod pallet {
 				)?;
 
 				let mut epoch = EpochExecutionInfo {
-					epoch: submission_period_epoch,
+					epoch: closed_epoch,
 					nav,
 					reserve: pool.reserve.total_reserve,
 					max_reserve: pool.reserve.max_reserve,
@@ -1019,52 +958,51 @@ pub mod pallet {
 					challenge_period_end: None,
 				};
 
-				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
+				Self::deposit_event(Event::EpochClosed(pool_id, closed_epoch));
 
-				let full_execution_solution = pool.tranches.combine_residual_top(|_| {
-					Ok(TrancheSolution {
-						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::one(),
+				// If closing the epoch would wipe out a tranche, we put the pool into a
+				// partially wiped out state.
+				//
+				// The following logic ensures that a partial solution is generated if one of the tranches
+				// is wiped out and the solution adheres to:
+				//   * No investments in any tranche are possible
+				//   * No redemptions out of the wiped out tranche are possible
+				let mut partial_solution = Vec::with_capacity(pool.tranches.num_tranches());
+				if epoch_tranche_prices
+					.iter()
+					.map(|price| {
+						if price == &T::BalanceRatio::zero() {
+							partial_solution.push(TrancheSolution {
+								invest_fulfillment: Perquintill::zero(),
+								redeem_fulfillment: Perquintill::zero(),
+							});
+							true
+						} else {
+							TrancheSolution {
+								invest_fulfillment: Perquintill::zero(),
+								redeem_fulfillment: Perquintill::one(),
+							};
+							false
+						}
 					})
-				})?;
-
-				let inspection_full_solution =
-					Self::inspect_solution(pool, &epoch, &full_execution_solution);
-				if inspection_full_solution.is_ok()
-					&& inspection_full_solution.expect("is_ok() == true. qed.")
-						== PoolState::Healthy
+					.any(|wiped_out| wiped_out)
 				{
-					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
-					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
-					Ok(Some(T::WeightInfo::close_epoch_execute(
-						pool.tranches
-							.num_tranches()
-							.try_into()
-							.expect("MaxTranches is u32. qed."),
-					))
-					.into())
+					pool.status = PoolStatus::Closed;
+					Self::try_executing_epoch_with(
+						pool_id,
+						closed_epoch,
+						pool,
+						&mut epoch,
+						partial_solution,
+					)
 				} else {
-					// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
-					let no_execution_solution = pool.tranches.combine_residual_top(|_| {
-						Ok(TrancheSolution {
-							invest_fulfillment: Perquintill::zero(),
-							redeem_fulfillment: Perquintill::zero(),
-						})
-					})?;
-
-					let existing_state_solution =
-						Self::score_solution(&pool, &epoch, &no_execution_solution)?;
-					epoch.best_submission = Some(existing_state_solution);
-					EpochExecution::<T>::insert(pool_id, epoch);
-					pool.status = PoolStatus::InSubmissionPeriod;
-
-					Ok(Some(T::WeightInfo::close_epoch_no_execution(
-						pool.tranches
-							.num_tranches()
-							.try_into()
-							.expect("MaxTranches is u32. qed."),
-					))
-					.into())
+					Self::try_executing_epoch_with(
+						pool_id,
+						closed_epoch,
+						pool,
+						&mut epoch,
+						TrancheSolution::full(pool.tranches.num_tranches()),
+					)
 				}
 			})
 		}
@@ -1087,9 +1025,52 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
+			// Ensure we are not attacked by a large iteration that our weights are not
+			// prepared for
+			ensure!(
+				solution.len()
+					<= T::MaxTranches::get()
+						.try_into()
+						.map_err(|_| ArithmeticError::Overflow)?,
+				Error::<T>::InvalidSolution
+			);
+
 			EpochExecution::<T>::try_mutate(pool_id, |epoch| {
 				let epoch = epoch.as_mut().ok_or(Error::<T>::NotInSubmissionPeriod)?;
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+				// The following logic ensures that a solution is provided that adheres to:
+				//   * No investments in any tranche are possible
+				//   * No redemptions out of the wiped out tranche are possible
+				if pool.status == PoolStatus::Closed {
+					ensure!(
+						solution
+							.iter()
+							.any(|tranche_solution| tranche_solution.invest_fulfillment
+								!= Zero::zero()),
+						Error::<T>::InvalidSolution
+					);
+
+					ensure!(
+						epoch
+							.tranches
+							.residual_top_slice()
+							.iter()
+							.map(|tranche_info| tranche_info.price)
+							.zip(solution.iter())
+							.map(|(tranche_price, tranche_solution)| {
+								if tranche_price == T::BalanceRatio::zero()
+									&& tranche_solution.redeem_fulfillment != Perquintill::zero()
+								{
+									true
+								} else {
+									false
+								}
+							})
+							.any(|invalid| invalid),
+						Error::<T>::InvalidSolution
+					);
+				}
 
 				let new_solution = Self::score_solution(&pool, &epoch, &solution)?;
 				if let Some(ref previous_solution) = epoch.best_submission {
@@ -1625,6 +1606,52 @@ pub mod pallet {
 				);
 			}
 			Ok(())
+		}
+
+		fn try_executing_epoch_with(
+			pool_id: T::PoolId,
+			epoch_id: T::EpochId,
+			pool: &mut PoolDetailsOf<T>,
+			epoch: &mut EpochExecutionInfoOf<T>,
+			solution: Vec<TrancheSolution>,
+		) -> DispatchResultWithPostInfo {
+			let inspection_solution = Self::inspect_solution(pool, &epoch, &solution);
+			if inspection_solution.is_ok()
+				&& inspection_solution.expect("is_ok() == true. qed.") == PoolState::Healthy
+			{
+				Self::do_execute_epoch(pool_id, pool, &epoch, &solution)?;
+				Self::deposit_event(Event::EpochExecuted(pool_id, epoch_id));
+				Ok(Some(T::WeightInfo::close_epoch_execute(
+					pool.tranches
+						.num_tranches()
+						.try_into()
+						.expect("MaxTranches is u32. qed."),
+				))
+				.into())
+			} else {
+				// Any new submission needs to improve on the existing state (which is defined as a total fulfilment of 0%)
+				let existing_state_solution = Self::score_solution(
+					&pool,
+					&epoch,
+					&TrancheSolution::zero(pool.tranches.num_tranches()),
+				)?;
+				epoch.best_submission = Some(existing_state_solution);
+				EpochExecution::<T>::insert(pool_id, epoch);
+
+				// The closed state has stricter requirements thatn the in-submission-period
+				// state. Hence, the former takes precedence over the later
+				if pool.status != PoolStatus::Closed {
+					pool.status = PoolStatus::InSubmissionPeriod
+				}
+
+				Ok(Some(T::WeightInfo::close_epoch_no_execution(
+					pool.tranches
+						.num_tranches()
+						.try_into()
+						.expect("MaxTranches is u32. qed."),
+				))
+				.into())
+			}
 		}
 
 		fn do_execute_epoch(
