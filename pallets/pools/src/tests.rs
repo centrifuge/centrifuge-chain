@@ -1391,7 +1391,6 @@ fn tranche_ids_are_unique() {
 				break id;
 			}
 		};
-
 		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
@@ -1427,7 +1426,6 @@ fn tranche_ids_are_unique() {
 			CurrencyId::Usd,
 			10_000 * CURRENCY
 		));
-
 		assert_ok!(Pools::create(
 			Origin::signed(0),
 			0,
@@ -1463,10 +1461,10 @@ fn tranche_ids_are_unique() {
 		let pool_ids_0 = Pools::pool(pool_id_0).unwrap().tranches.ids_residual_top();
 		let pool_ids_1 = Pools::pool(pool_id_1).unwrap().tranches.ids_residual_top();
 
-		pool_ids_0
+		assert!(pool_ids_0
 			.iter()
 			.zip(pool_ids_1.iter())
-			.for_each(|(id_of_0, id_of_1)| assert_ne!(id_of_0, id_of_1))
+			.all(|(id_of_0, id_of_1)| id_of_0 != id_of_1));
 	})
 }
 
@@ -1641,6 +1639,162 @@ fn valid_tranche_structure_is_enforced() {
 				10_000 * CURRENCY
 			),
 			Error::<Test>::InvalidTrancheStructure
+		);
+	})
+}
+
+#[test]
+fn solution_with_more_than_max_tranches_is_invalid() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+		let pool_id_1 = 0u64;
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			pool_id_1,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			pool_id_1,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		assert_ok!(Pools::create(
+			Origin::signed(0),
+			0,
+			pool_id_1,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(pool_id_1, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			pool_id_1,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			pool_id_1,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				pool_id_1,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(),
+						redeem_fulfillment: Perquintill::one(),
+					}
+				]
+			),
+			Error::<Test>::InvalidSolution
 		);
 	})
 }

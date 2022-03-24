@@ -507,10 +507,8 @@ pub mod pallet {
 
 		/// Close an open pool.
 		///
-		/// This will result in no more investements being possible.
-		/// The functionality of the pool as a reserve for the loans-pallet
-		/// is not affected by this. I.e. loans can still be created and withdraw and
-		/// deposits are possible.
+		/// This will result in no more investment being possible and no more withdraws.
+		/// Redeemptions can be possible, if the price of a tranche is not zero.
 		#[pallet::weight(0)]
 		pub fn close(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -518,32 +516,17 @@ pub mod pallet {
 				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
 				BadOrigin
 			);
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-
-				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
-
-				pool.status = PoolStatus::Closed;
-				Ok(())
-			})
+			Self::do_close_pool(pool_id)
 		}
 
-		/// Close an open pool.
+		/// Force close an open pool.
 		///
-		/// This will result in no more investements being possible.
-		/// The functionality of the pool as a reserve for the loans-pallet
-		/// is not affected by this. I.e. loans can still be created and withdraw and
-		/// deposits are possible.
+		/// This will result in no more investment being possible and no more withdraws.
+		/// Redeemptions can be possible, if the price of a tranche is not zero.
 		#[pallet::weight(0)]
 		pub fn force_close(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
 			ensure_root(origin)?;
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.status = PoolStatus::Closed;
-				Ok(())
-			})
+			Self::do_close_pool(pool_id)
 		}
 
 		/// Update per-pool configuration settings.
@@ -1169,6 +1152,14 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
+		}
+
+		pub fn do_close_pool(pool_id: T::PoolId) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.status = PoolStatus::Closed;
+				Ok(())
+			})
 		}
 
 		/// Scores a solution.
