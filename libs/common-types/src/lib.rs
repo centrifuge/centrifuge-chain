@@ -20,9 +20,11 @@ use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
 use frame_support::sp_runtime::traits::Saturating;
 use frame_support::traits::{Get, UnixTime};
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_runtime::TypeId;
 ///! Common-types of the Centrifuge chain.
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
@@ -268,3 +270,16 @@ impl<T> TypeInfo for TimeProvider<T> {
 			.composite(Fields::unit())
 	}
 }
+
+/// A representation of a pool identifier that can be converted to an account address
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolLocator<PoolId> {
+	pub pool_id: PoolId,
+}
+
+impl<PoolId> TypeId for PoolLocator<PoolId> {
+	const TYPE_ID: [u8; 4] = *b"pool";
+}
+
+// Type that indicates a point in time
+pub type Moment = u64;

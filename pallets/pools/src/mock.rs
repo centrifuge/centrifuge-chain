@@ -1,7 +1,7 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PreConditions};
-use common_types::CurrencyId;
+use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::SortedMembers;
@@ -27,7 +27,6 @@ common_types::impl_tranche_token!();
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type TrancheId = [u8; 16];
-type Moment = u64;
 mod fake_nav {
 	use super::Balance;
 	use codec::HasCompact;
