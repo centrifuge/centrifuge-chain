@@ -170,9 +170,6 @@ impl frame_support::traits::Filter<Call> for BaseFilter {
             // Democracy-related calls
             Call::Democracy(..) |
 			// Calls that are present in each block
-			Call::ParachainSystem(
-				cumulus_pallet_parachain_system::Call::set_validation_data{..}
-			) |
 			Call::Timestamp(pallet_timestamp::Call::set{..})
 		)
     }
