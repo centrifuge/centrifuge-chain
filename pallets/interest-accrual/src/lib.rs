@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
 use common_traits::InterestAccrual;
+use common_types::{Adjustment, Moment};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::checked_pow;
@@ -17,14 +18,6 @@ mod mock;
 
 #[cfg(test)]
 mod tests;
-
-// Type that indicates a point in time
-type Moment = u64;
-
-pub enum Adjustment<Amount: FixedPointNumber> {
-	Increase(Amount),
-	Decrease(Amount),
-}
 
 // Type aliases
 type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate, Moment>;
@@ -225,9 +218,8 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> InterestAccrual<T::InterestRate, T::Amount> for Pallet<T> {
+impl<T: Config> InterestAccrual<T::InterestRate, T::Amount, Adjustment<T::Amount>> for Pallet<T> {
 	type NormalizedDebt = T::NormalizedDebt;
-	type Adjustment = Adjustment<T::Amount>;
 
 	fn current_debt(
 		interest_rate_per_sec: T::InterestRate,
@@ -239,7 +231,7 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Amount> for Pallet<T> {
 	fn adjust_normalized_debt(
 		interest_rate_per_sec: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
-		adjustment: Self::Adjustment,
+		adjustment: Adjustment<T::Amount>,
 	) -> Result<T::Amount, DispatchError> {
 		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_sec, normalized_debt, adjustment)
 	}

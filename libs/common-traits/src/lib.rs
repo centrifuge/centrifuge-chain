@@ -127,9 +127,8 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 }
 
 /// A trait that can be used to calculate interest accrual for debt
-pub trait InterestAccrual<InterestRate, Amount> {
+pub trait InterestAccrual<InterestRate, Amount, Adjustment> {
 	type NormalizedDebt;
-	type Adjustment;
 
 	/// Calculate the current debt using normalized debt * cumulative rate
 	fn current_debt(
@@ -141,7 +140,7 @@ pub trait InterestAccrual<InterestRate, Amount> {
 	fn adjust_normalized_debt(
 		interest_rate_per_sec: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
-		adjustment: Self::Adjustment,
+		adjustment: Adjustment,
 	) -> Result<Amount, DispatchError>;
 }
 

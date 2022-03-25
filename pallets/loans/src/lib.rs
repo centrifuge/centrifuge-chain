@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use common_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::{Moment, PoolRole};
+pub use common_types::{Adjustment, Moment, PoolRole};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -144,6 +144,7 @@ pub mod pallet {
 		type InterestAccrual: InterestAccrualT<
 			Self::Rate,
 			Self::Amount,
+			Adjustment<Self::Amount>,
 			NormalizedDebt = Self::NormalizedDebt,
 		>;
 

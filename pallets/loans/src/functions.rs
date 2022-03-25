@@ -14,7 +14,7 @@
 //! Module provides loan related functions
 use super::*;
 use crate::weights::WeightInfo;
-use common_types::PoolLocator;
+use common_types::{Adjustment, PoolLocator};
 use frame_support::weights::Weight;
 use sp_runtime::ArithmeticError;
 
@@ -158,10 +158,8 @@ impl<T: Config> Pallet<T> {
 				// ensure debt is all paid
 				// we just need to ensure normalized debt is zero
 				// if not, we check if the loan is written of 100%
-				let written_off = match (
-					loan.normalized_debt == Zero::zero(),
-					loan.write_off_index,
-				) {
+				let written_off = match (loan.normalized_debt == Zero::zero(), loan.write_off_index)
+				{
 					// debt is cleared
 					(true, _) => Ok(false),
 					// debt not cleared and loan not written off
@@ -223,7 +221,7 @@ impl<T: Config> Pallet<T> {
 			ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
 
 			let old_debt =
-				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt).ok_or(Error::<T>::LoanAccrueFailed)?;
+				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 			// get previous present value so that we can update the nav accordingly
 			// we already know that that loan is not written off,
@@ -241,9 +239,8 @@ impl<T: Config> Pallet<T> {
 			let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
 				loan.rate_per_sec,
 				loan.normalized_debt,
-				math::Adjustment::Inc(amount),
-			)
-			.ok_or(Error::<T>::NormalizedDebtOverflow)?;
+				Adjustment::Increase(amount),
+			)?;
 
 			// update loan
 			let first_borrow = loan.total_borrowed == Zero::zero();
@@ -256,8 +253,7 @@ impl<T: Config> Pallet<T> {
 			loan.normalized_debt = normalized_debt;
 
 			let new_debt =
-				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)
-					.ok_or(Error::<T>::LoanAccrueFailed)?;
+				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 			let new_pv = loan
 				.present_value(new_debt, &vec![])
@@ -330,11 +326,8 @@ impl<T: Config> Pallet<T> {
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
-				let old_debt = T::InterestAccrual::current_debt(
-					loan.rate_per_sec,
-					loan.normalized_debt,
-				)
-				.ok_or(Error::<T>::LoanAccrueFailed)?;
+				let old_debt =
+					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
@@ -358,16 +351,14 @@ impl<T: Config> Pallet<T> {
 				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
 					loan.rate_per_sec,
 					loan.normalized_debt,
-					math::Adjustment::Dec(repay_amount),
-				)
-				.ok_or(Error::<T>::ValueOverflow)?;
+					Adjustment::Decrease(repay_amount),
+				)?;
 
 				loan.total_repaid = new_total_repaid;
 				loan.normalized_debt = normalized_debt;
 
 				let new_debt =
-					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)
-						.ok_or(Error::<T>::LoanAccrueFailed)?;
+					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 				let new_pv = loan
 					.present_value(new_debt, &write_off_groups)
@@ -404,8 +395,7 @@ impl<T: Config> Pallet<T> {
 				}
 
 				let debt =
-					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)
-						.ok_or(Error::<T>::LoanAccrueFailed)?;
+					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 				let present_value = loan
 					.present_value(debt, write_off_groups)
@@ -524,9 +514,7 @@ impl<T: Config> Pallet<T> {
 				}
 			}?;
 
-			let debt =
-				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)
-					.ok_or(Error::<T>::LoanAccrueFailed)?;
+			let debt = T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 			// get old present value accounting for any write offs
 			let old_pv = loan
