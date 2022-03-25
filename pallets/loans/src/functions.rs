@@ -234,9 +234,9 @@ impl<T: Config> Pallet<T> {
 			// ensure borrow amount is positive
 			ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
-			// check for ceiling threshold
-			let ceiling = loan.ceiling(now);
-			ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
+			// check for max borrow amount
+			let max_borrow_amount = loan.max_borrow_amount(now);
+			ensure!(amount <= max_borrow_amount, Error::<T>::LoanCeilingReached);
 
 			// get previous present value so that we can update the nav accordingly
 			// we already know that that loan is not written off,

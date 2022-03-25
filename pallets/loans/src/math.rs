@@ -176,9 +176,9 @@ pub(crate) fn valid_write_off_group<Rate>(
 	Ok(index)
 }
 
-/// calculates ceiling for a loan,
-/// ceiling = advance_rate * collateral_value - debt
-pub(crate) fn ceiling<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+/// calculates max_borrow_amount for a loan,
+/// max_borrow_amount = advance_rate * collateral_value - debt
+pub(crate) fn max_borrow_amount<Rate: FixedPointNumber, Amount: FixedPointNumber>(
 	advance_rate: Rate,
 	value: Amount,
 	debt: Amount,

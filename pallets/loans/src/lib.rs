@@ -236,7 +236,7 @@ pub mod pallet {
 		/// Emits when loan doesn't exist.
 		MissingLoan,
 
-		/// Emits when the borrowed amount is more than ceiling
+		/// Emits when the borrowed amount is more than max_borrow_amount
 		LoanCeilingReached,
 
 		/// Emits when an operation lead to the number overflow
@@ -392,7 +392,7 @@ pub mod pallet {
 		/// Transfers borrow amount to the loan owner.
 		///
 		/// LoanStatus must be active.
-		/// Total Borrowed amount(Previously borrowed + requested) should not exceed ceiling set for the loan.
+		/// Total Borrowed amount(Previously borrowed + requested) should not exceed max_borrow_amount set for the loan.
 		/// Loan should still be healthy. If loan type supports maturity, then maturity date should not have passed.
 		/// Loan should not be written off.
 		/// Rate accumulation will start after the first borrow

@@ -192,22 +192,24 @@ where
 		}
 	}
 
-	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self, now: Moment) -> Amount {
+	/// returns the max_borrow_amount amount for the loan based on the loan type
+	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Amount {
 		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.ceiling(self.total_borrowed),
+			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
 			LoanType::CreditLine(cl) => {
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt
-				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
+				self.accrue(now)
+					.and_then(|(_, debt)| cl.max_borrow_amount(debt))
 			}
 			LoanType::CreditLineWithMaturity(clm) => {
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt
-				self.accrue(now).and_then(|(_, debt)| clm.ceiling(debt))
+				self.accrue(now)
+					.and_then(|(_, debt)| clm.max_borrow_amount(debt))
 			}
 		}
-		// always fallback to zero ceiling
+		// always fallback to zero max_borrow_amount
 		.unwrap_or(Zero::zero())
 	}
 }

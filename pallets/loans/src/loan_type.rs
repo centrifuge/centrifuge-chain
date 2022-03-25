@@ -136,11 +136,11 @@ where
 		.all(|is_positive| is_positive)
 	}
 
-	/// calculates ceiling for bullet loan,
-	/// ceiling = advance_rate * collateral_value - borrowed
+	/// calculates max_borrow_amount for bullet loan,
+	/// max_borrow_amount = advance_rate * collateral_value - borrowed
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling
-	pub(crate) fn ceiling(&self, total_borrowed: Amount) -> Option<Amount> {
-		math::ceiling(self.advance_rate, self.value, total_borrowed)
+	pub(crate) fn max_borrow_amount(&self, total_borrowed: Amount) -> Option<Amount> {
+		math::max_borrow_amount(self.advance_rate, self.value, total_borrowed)
 	}
 }
 
@@ -175,15 +175,15 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 		true
 	}
 
-	/// calculates ceiling for credit line loan,
-	/// ceiling = advance_rate * collateral_value - debt
+	/// calculates max_borrow_amount for credit line loan,
+	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub(crate) fn ceiling(&self, debt: Amount) -> Option<Amount>
+	pub(crate) fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
 		Amount: FixedPointNumber,
 	{
-		math::ceiling(self.advance_rate, self.value, debt)
+		math::max_borrow_amount(self.advance_rate, self.value, debt)
 	}
 }
 
@@ -258,15 +258,15 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 		.all(|is_positive| is_positive)
 	}
 
-	/// calculates ceiling for credit line loan,
-	/// ceiling = advance_rate * collateral_value - debt
+	/// calculates max_borrow_amount for credit line loan,
+	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub(crate) fn ceiling(&self, debt: Amount) -> Option<Amount>
+	pub(crate) fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
 		Amount: FixedPointNumber,
 	{
-		math::ceiling(self.advance_rate, self.value, debt)
+		math::max_borrow_amount(self.advance_rate, self.value, debt)
 	}
 }
 
@@ -308,21 +308,24 @@ mod tests {
 	}
 
 	#[test]
-	fn test_credit_line_ceiling() {
+	fn test_credit_line_max_borrow_amount() {
 		let ad = Rate::saturating_from_rational(80, 100);
 		let value = Amount::from_inner(100 * CURRENCY);
 		let cl = CreditLine::new(ad, value);
 
 		// debt can be more
 		let debt = Amount::from_inner(120 * CURRENCY);
-		assert_eq!(cl.ceiling(debt), None);
+		assert_eq!(cl.max_borrow_amount(debt), None);
 
 		// debt can be same
 		let debt = Amount::from_inner(80 * CURRENCY);
-		assert_eq!(cl.ceiling(debt), Some(Amount::from_inner(0)));
+		assert_eq!(cl.max_borrow_amount(debt), Some(Amount::from_inner(0)));
 
 		// debt can be less
 		let debt = Amount::from_inner(70 * CURRENCY);
-		assert_eq!(cl.ceiling(debt), Some(Amount::from_inner(10 * CURRENCY)));
+		assert_eq!(
+			cl.max_borrow_amount(debt),
+			Some(Amount::from_inner(10 * CURRENCY))
+		);
 	}
 }

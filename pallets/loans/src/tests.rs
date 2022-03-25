@@ -205,7 +205,7 @@ fn price_test_loan<T>(
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(loan.rate_per_sec, rp);
 	assert_eq!(loan.loan_type, loan_type);
-	assert_eq!(loan.ceiling(0), Amount::from_inner(100 * USD));
+	assert_eq!(loan.max_borrow_amount(0), Amount::from_inner(100 * USD));
 	assert_eq!(loan.write_off_index, None);
 	assert!(!loan.admin_written_off);
 }
@@ -585,7 +585,7 @@ macro_rules! test_borrow_loan {
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
-				// try to borrow more than ceiling
+				// try to borrow more than max_borrow_amount
 				// borrow another 40 after 1000 seconds
 				Timestamp::set_timestamp(2001 * 1000);
 				let borrow_amount = Amount::from_inner(40 * USD);
@@ -876,7 +876,7 @@ fn test_repay_credit_line_loan() {
 }
 
 macro_rules! test_pool_nav {
-	($price_loan:ident,$moving_ceiling:expr,$admin_write_off:expr,$pv_1:expr,$pv_200:expr) => {
+	($price_loan:ident,$moving_max_borrow_amount:expr,$admin_write_off:expr,$pv_1:expr,$pv_200:expr) => {
 		TestExternalitiesBuilder::default()
 			.build()
 			.execute_with(|| {
@@ -925,9 +925,9 @@ macro_rules! test_pool_nav {
 				// present value should be 50.05
 				assert_eq!(nav, $pv_200);
 
-				if $moving_ceiling {
-					// can borrow upto ceiling
-					// ceiling = 125 * 0.8 - debt
+				if $moving_max_borrow_amount {
+					// can borrow upto max_borrow_amount
+					// max_borrow_amount = 125 * 0.8 - debt
 					// check present value
 					let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 						.expect("LoanDetails should be present");
@@ -937,7 +937,7 @@ macro_rules! test_pool_nav {
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 
-					// cannot borrow more than ceiling, 1
+					// cannot borrow more than max_borrow_amount, 1
 					let borrow_amount = Amount::from_inner(1 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
@@ -971,7 +971,7 @@ macro_rules! test_pool_nav {
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 
-					// cannot borrow more than ceiling, 1
+					// cannot borrow more than max_borrow_amount, 1
 					let borrow_amount = Amount::from_inner(1 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
