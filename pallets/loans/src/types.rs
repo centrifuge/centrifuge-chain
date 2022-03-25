@@ -72,7 +72,7 @@ pub enum LoanStatus {
 	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
-	// loan is closed and asset nft is transferred back to borrower and loan nft is transferred back to loan module
+	// loan is closed and collateral nft is transferred back to borrower and loan nft is transferred back to pool account
 	Closed,
 }
 

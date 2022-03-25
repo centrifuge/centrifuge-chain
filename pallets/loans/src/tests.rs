@@ -598,7 +598,7 @@ macro_rules! test_borrow_loan {
 				Timestamp::set_timestamp(2001 * 1000);
 				let borrow_amount = Amount::from_inner(40 * USD);
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+				assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 				// try to borrow after maturity date
 				let mut now = 2001;
@@ -950,7 +950,7 @@ macro_rules! test_pool_nav {
 					let borrow_amount = Amount::from_inner(1 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 					// payback 50 and borrow more later
 					let repay_amount = Amount::from_inner(50 * USD);
@@ -966,7 +966,7 @@ macro_rules! test_pool_nav {
 					let borrow_amount = Amount::from_inner(50 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 					// borrow 40 maybe
 					let borrow_amount = Amount::from_inner(40 * USD);
@@ -984,7 +984,7 @@ macro_rules! test_pool_nav {
 					let borrow_amount = Amount::from_inner(1 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 				}
 
 				// let the maturity has passed 2 years + 10 day

@@ -92,7 +92,7 @@ impl<T: Config> Pallet<T> {
 			.ok_or(Error::<T>::NftTokenNonceOverflowed)?;
 		NextLoanId::<T>::set(next_loan_id);
 
-		// create loan info
+		// create loan
 		Loan::<T>::insert(
 			pool_id,
 			loan_id,
@@ -243,7 +243,10 @@ impl<T: Config> Pallet<T> {
 
 			// check for max borrow amount
 			let max_borrow_amount = loan.max_borrow_amount(now);
-			ensure!(amount <= max_borrow_amount, Error::<T>::LoanCeilingReached);
+			ensure!(
+				amount <= max_borrow_amount,
+				Error::<T>::MaxBorrowAmountExceeded
+			);
 
 			// get previous present value so that we can update the nav accordingly
 			// we already know that that loan is not written off,
