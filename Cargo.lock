@@ -9193,6 +9193,7 @@ dependencies = [
  "xcm",
  "xcm-builder",
  "xcm-emulator",
+ "xcm-executor",
 ]
 
 [[package]]

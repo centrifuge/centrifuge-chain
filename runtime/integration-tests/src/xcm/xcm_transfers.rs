@@ -381,6 +381,36 @@ fn transfer_ksm_to_relay_chain() {
 	});
 }
 
+#[test]
+fn currency_id_convert_air() {
+	use development_runtime::CurrencyIdConvert;
+	use xcm_executor::traits::Convert as C1;
+	use sp_runtime::traits::Convert as C2;
+	use sp_runtime::codec::Encode;
+
+	let air_location: MultiLocation = MultiLocation::new(
+		1,
+		X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
+	);
+
+	assert_eq!(
+		CurrencyId::Native.encode(),
+		vec![0]
+	);
+
+	assert_eq!(
+		<CurrencyIdConvert as C1<_,_>>::convert(air_location.clone()),
+		Ok(CurrencyId::Native),
+	);
+
+	Development::execute_with(|| {
+		assert_eq!(
+			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
+			Some(air_location)
+		)
+	});
+}
+
 // The fee associated with transferring Native tokens
 fn native_fee() -> Balance {
 	let (_asset, fee) = NativePerSecond::get();
