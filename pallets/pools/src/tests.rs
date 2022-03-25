@@ -8,6 +8,7 @@ use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use rand::Rng;
 use runtime_common::Rate;
+use sp_arithmetic::traits::checked_pow;
 use sp_core::storage::StateVersion;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::{Perquintill, TokenError};
@@ -806,25 +807,6 @@ fn submission_period() {
 				}
 			]
 		));
-
-		// Can't submit the same solution twice
-		assert_err!(
-			Pools::submit_solution(
-				pool_owner_origin.clone(),
-				0,
-				vec![
-					TrancheSolution {
-						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::from_float(0.01),
-					},
-					TrancheSolution {
-						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::one(),
-					}
-				]
-			),
-			Error::<Test>::NotNewBestSubmission
-		);
 
 		// Slight risk buffer improvement
 		assert_ok!(Pools::submit_solution(
@@ -1796,5 +1778,519 @@ fn solution_with_more_than_max_tranches_is_invalid() {
 			),
 			Error::<Test>::InvalidSolution
 		);
+	})
+}
+
+#[test]
+fn pool_is_in_status_submission_period() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(PoolStatus::InSubmissionPeriod, pool.status);
+	})
+}
+
+#[test]
+fn pool_status_closed_works() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		assert_ok!(Pools::do_withdraw(pool_owner, 0, 1000 * CURRENCY));
+
+		next_block_after(SECS_PER_YEAR);
+		// Only increase the value for senior tranche for one year
+		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
+		//       for us, as we simply have the same debt if this happens
+		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
+		test_nav_up(0, total_interest.checked_mul_int(500 * CURRENCY).unwrap());
+
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			senior_investor.clone(),
+			0,
+			TrancheLoc::Id(SeniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(PoolStatus::Closed(CloseManner::Forced), pool.status);
+
+		assert_ok!(Pools::do_deposit(pool_owner, 0, 500 * CURRENCY));
+
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::one(), // Redemptions from the wiped tranche are blocked
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			),
+			Error::<Test>::InvalidSolution
+		);
+
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(), // Investments are blocked
+						redeem_fulfillment: Perquintill::zero(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			),
+			Error::<Test>::InvalidSolution
+		);
+
+		assert_noop!(
+			Pools::submit_solution(
+				pool_owner_origin.clone(),
+				0,
+				vec![
+					TrancheSolution {
+						invest_fulfillment: Perquintill::zero(),
+						redeem_fulfillment: Perquintill::zero(),
+					},
+					TrancheSolution {
+						invest_fulfillment: Perquintill::one(), // Investments are blocked
+						redeem_fulfillment: Perquintill::zero(),
+					}
+				]
+			),
+			Error::<Test>::InvalidSolution
+		);
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::one(), // Redeeming from the ok tranche works
+				}
+			]
+		),);
+	})
+}
+
+#[test]
+fn pool_status_recovers_of_force_closed() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		assert_ok!(Pools::do_withdraw(pool_owner, 0, 1000 * CURRENCY));
+
+		next_block_after(SECS_PER_YEAR);
+		// Only increase the value for senior tranche for one year
+		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
+		test_nav_up(0, total_interest.checked_mul_int(500 * CURRENCY).unwrap());
+
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Forced));
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
+		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Forced));
+
+		next_block_after(SECS_PER_YEAR);
+		// increase the value for both tranches for one year. Junior should now be unequal zero.
+		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
+		test_nav_up(0, total_interest.checked_mul_int(1000 * CURRENCY).unwrap());
+
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		assert_noop!(
+			Pools::close_epoch(pool_owner_origin.clone(), 0),
+			Error::<Test>::InSubmissionPeriod
+		);
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(pool.status, PoolStatus::InSubmissionPeriod);
+		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(pool.status, PoolStatus::Open);
+	})
+}
+
+#[test]
+fn pool_status_stays_closed_when_closed_intentionally() {
+	new_test_ext().execute_with(|| {
+		let junior_investor = Origin::signed(0);
+		let senior_investor = Origin::signed(1);
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			0,
+			ensure_signed(senior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			10_000 * CURRENCY
+		));
+
+		// Force min_epoch_time and challenge time to 0 without using update
+		// as this breaks the runtime-defined pool
+		// parameter bounds and update will not allow this.
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().challenge_time = 0;
+			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			Ok(())
+		})
+		.unwrap();
+
+		invest_close_and_collect(
+			0,
+			vec![
+				(
+					junior_investor.clone(),
+					JuniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+				(
+					senior_investor.clone(),
+					SeniorTrancheId::get(),
+					500 * CURRENCY,
+				),
+			],
+		)
+		.unwrap();
+
+		assert_ok!(Pools::do_withdraw(pool_owner, 0, 1000 * CURRENCY));
+
+		next_block_after(SECS_PER_YEAR);
+		// Only increase the value for senior tranche for one year
+		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
+		test_nav_up(0, total_interest.checked_mul_int(1000 * CURRENCY).unwrap());
+
+		// Closing intenionally
+		assert_ok!(Pools::close(pool_owner_origin.clone(), 0));
+
+		// Attempt to redeem everything
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			0,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			500 * CURRENCY
+		));
+		assert_ok!(Pools::do_deposit(pool_owner, 0, 500 * CURRENCY));
+
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Intentionally));
+
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::from_percent(10),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::zero(),
+					redeem_fulfillment: Perquintill::zero(),
+				}
+			]
+		));
+
+		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
+		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Intentionally));
 	})
 }

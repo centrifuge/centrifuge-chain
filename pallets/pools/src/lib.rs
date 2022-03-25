@@ -62,7 +62,40 @@ where
 pub enum PoolStatus {
 	Open,
 	InSubmissionPeriod,
-	Closed,
+	Closed(CloseManner),
+}
+
+impl PoolStatus {
+	pub fn closed(&self) -> bool {
+		match self {
+			PoolStatus::Closed(_) => true,
+			PoolStatus::InSubmissionPeriod | PoolStatus::Open => false,
+		}
+	}
+
+	pub fn force_closed(&self) -> bool {
+		match self {
+			PoolStatus::Closed(CloseManner::Forced) => true,
+			PoolStatus::InSubmissionPeriod
+			| PoolStatus::Open
+			| PoolStatus::Closed(CloseManner::Intentionally) => false,
+		}
+	}
+
+	pub fn intentional_closed(&self) -> bool {
+		match self {
+			PoolStatus::Closed(CloseManner::Intentionally) => true,
+			PoolStatus::InSubmissionPeriod
+			| PoolStatus::Open
+			| PoolStatus::Closed(CloseManner::Forced) => false,
+		}
+	}
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum CloseManner {
+	Forced,
+	Intentionally,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -529,6 +562,17 @@ pub mod pallet {
 			Self::do_close_pool(pool_id)
 		}
 
+		/// Force open an open pool.
+		#[pallet::weight(0)]
+		pub fn force_open(origin: OriginFor<T>, pool_id: T::PoolId) -> DispatchResult {
+			ensure_root(origin)?;
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+				pool.status = PoolStatus::Open;
+				Ok(())
+			})
+		}
+
 		/// Update per-pool configuration settings.
 		///
 		/// This sets the minimum epoch length, epoch solution challenge
@@ -721,7 +765,7 @@ pub mod pallet {
 						),
 						BadOrigin
 					);
-					ensure!(pool.status != PoolStatus::Closed, Error::<T>::PoolNotOpen);
+					ensure!(!pool.status.closed(), Error::<T>::PoolNotOpen);
 
 					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
 						let order = if let Some(order) = active_order {
@@ -762,6 +806,15 @@ pub mod pallet {
 		/// amount is less than the current order, the balance
 		/// willbe transferred from the pool to the calling
 		/// account.
+		///
+		/// NOTE:
+		/// If the pool status is `PoolStatus::Closed(CloseManner::Forced)`
+		/// then it CAN be possible that no redemptions for a tranche are
+		/// possible as the tranche has been wiped out. Updating once
+		/// order although will still work.
+		///
+		/// In this case, the solution logic ensures that solutions enforce
+		/// this behaviour.  
 		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
@@ -787,7 +840,6 @@ pub mod pallet {
 						),
 						BadOrigin
 					);
-					ensure!(pool.status != PoolStatus::Closed, Error::<T>::PoolNotOpen);
 
 					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
 						let order = if let Some(order) = active_order {
@@ -877,8 +929,10 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-
-				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
+				ensure!(
+					EpochExecution::<T>::try_get(pool_id).ok().is_none(),
+					Error::<T>::InSubmissionPeriod
+				);
 
 				let now = Self::now();
 				ensure!(
@@ -970,7 +1024,7 @@ pub mod pallet {
 					})
 					.any(|wiped_out| wiped_out)
 				{
-					pool.status = PoolStatus::Closed;
+					pool.status = PoolStatus::Closed(CloseManner::Forced);
 					Self::try_executing_epoch_with(
 						pool_id,
 						closed_epoch,
@@ -1025,12 +1079,12 @@ pub mod pallet {
 				// The following logic ensures that a solution is provided that adheres to:
 				//   * No investments in any tranche are possible
 				//   * No redemptions out of the wiped out tranche are possible
-				if pool.status == PoolStatus::Closed {
+				if pool.status.closed() {
 					ensure!(
 						solution
 							.iter()
-							.any(|tranche_solution| tranche_solution.invest_fulfillment
-								!= Zero::zero()),
+							.all(|tranche_solution| tranche_solution.invest_fulfillment
+								== Zero::zero()),
 						Error::<T>::InvalidSolution
 					);
 
@@ -1045,12 +1099,12 @@ pub mod pallet {
 								if tranche_price == T::BalanceRatio::zero()
 									&& tranche_solution.redeem_fulfillment != Perquintill::zero()
 								{
-									true
-								} else {
 									false
+								} else {
+									true
 								}
 							})
-							.any(|invalid| invalid),
+							.all(|valid| valid),
 						Error::<T>::InvalidSolution
 					);
 				}
@@ -1058,7 +1112,7 @@ pub mod pallet {
 				let new_solution = Self::score_solution(&pool, &epoch, &solution)?;
 				if let Some(ref previous_solution) = epoch.best_submission {
 					ensure!(
-						&new_solution > previous_solution,
+						&new_solution >= previous_solution,
 						Error::<T>::NotNewBestSubmission
 					);
 				}
@@ -1117,7 +1171,6 @@ pub mod pallet {
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
-				// TODO: Write a test for the `expect` in case we allow the removal of pools at some point
 				Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 					let pool = pool
 						.as_mut()
@@ -1131,7 +1184,6 @@ pub mod pallet {
 
 					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
 					Self::deposit_event(Event::EpochExecuted(pool_id, epoch.epoch));
-					pool.status = PoolStatus::Open;
 					Ok(())
 				})?;
 
@@ -1157,7 +1209,7 @@ pub mod pallet {
 		pub fn do_close_pool(pool_id: T::PoolId) -> DispatchResult {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.status = PoolStatus::Closed;
+				pool.status = PoolStatus::Closed(CloseManner::Intentionally);
 				Ok(())
 			})
 		}
@@ -1631,7 +1683,7 @@ pub mod pallet {
 
 				// The closed state has stricter requirements thatn the in-submission-period
 				// state. Hence, the former takes precedence over the later
-				if pool.status != PoolStatus::Closed {
+				if !pool.status.closed() {
 					pool.status = PoolStatus::InSubmissionPeriod
 				}
 
@@ -1651,9 +1703,15 @@ pub mod pallet {
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
 		) -> DispatchResult {
+			let mut partially_wiped = false;
 			let executed_amounts: Vec<(T::Balance, T::Balance)> = epoch
 				.tranches
 				.combine_with_residual_top(solution, |tranche, solution| {
+					// Utilise this iteration to retrieve the latest wiped status
+					if tranche.price == Zero::zero() {
+						partially_wiped = true;
+					}
+
 					Ok((
 						solution.invest_fulfillment.mul_floor(tranche.invest),
 						solution.redeem_fulfillment.mul_floor(tranche.redeem),
@@ -1731,6 +1789,17 @@ pub mod pallet {
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
 			)?;
+
+			// Ensure the pool is open if he is not wiped
+			//
+			// This enables the possibility for a pool to
+			// recover from a closed state.
+			//
+			// We do NOT reopen the pool if we closed it
+			// intentionally.
+			if !pool.status.intentional_closed() && !partially_wiped {
+				pool.status = PoolStatus::Open;
+			}
 
 			Ok(())
 		}

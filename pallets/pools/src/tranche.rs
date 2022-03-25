@@ -769,7 +769,6 @@ where
 		Tokens: Inspect<AccountId, AssetId = CurrencyId, Balance = Balance>,
 	{
 		let mut remaining_assets = total_assets;
-		let pool_is_zero = total_assets == Zero::zero();
 
 		// we are gonna reverse the order
 		// such that prices are calculated from most senior to junior
@@ -777,7 +776,7 @@ where
 		let mut prices = self.combine_mut_non_residual_top(|tranche| {
 			let total_issuance = Tokens::total_issuance(tranche.currency);
 
-			if pool_is_zero || total_issuance == Zero::zero() {
+			if total_issuance == Zero::zero() {
 				Ok(One::one())
 			} else if tranche.tranche_type == TrancheType::Residual {
 				BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
