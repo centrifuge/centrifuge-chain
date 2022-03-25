@@ -184,21 +184,21 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: Rate::one(),
+				interest_rate_per_sec: Rate::one(),
 				min_risk_buffer: Perquintill::from_float(0.4), // Violates constraint here
 			},
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
+				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.2),
 			},
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
+				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.1),
 			},
 			..Default::default()
@@ -277,7 +277,7 @@ fn pool_constraints_pass() {
 	new_test_ext().execute_with(|| {
 		let tranche_a = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
+				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.2),
 			},
 			outstanding_invest_orders: 100,
@@ -288,7 +288,7 @@ fn pool_constraints_pass() {
 		};
 		let tranche_b = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
+				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.1),
 			},
 			outstanding_invest_orders: Zero::zero(),
@@ -299,7 +299,7 @@ fn pool_constraints_pass() {
 		};
 		let tranche_c = Tranche {
 			tranche_type: TrancheType::NonResidual {
-				interest_per_sec: One::one(),
+				interest_rate_per_sec: One::one(),
 				min_risk_buffer: Perquintill::from_float(0.05),
 			},
 			outstanding_invest_orders: Zero::zero(),
@@ -430,7 +430,7 @@ fn epoch() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -508,7 +508,7 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].interest_per_sec(),
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].interest_rate_per_sec(),
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);
@@ -666,7 +666,7 @@ fn submission_period() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -876,7 +876,7 @@ fn execute_info_removed_after_epoch_execute() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -980,7 +980,7 @@ fn collect_tranche_tokens() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -1400,21 +1400,21 @@ fn tranche_ids_are_unique() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
 				),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
 				),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -1432,21 +1432,21 @@ fn tranche_ids_are_unique() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
 				),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
 				),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -1513,21 +1513,21 @@ fn valid_tranche_structure_is_enforced() {
 					(TrancheType::Residual, None),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
 					),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
 					),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate + One::one(), // More residual MUST have smaller interest than above tranche
+							interest_rate_per_sec: senior_interest_rate + One::one(), // More residual MUST have smaller interest than above tranche
 							min_risk_buffer: Perquintill::from_percent(20),
 						},
 						None
@@ -1549,21 +1549,21 @@ fn valid_tranche_structure_is_enforced() {
 					(TrancheType::Residual, None),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
 					),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
 					),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
@@ -1583,7 +1583,7 @@ fn valid_tranche_structure_is_enforced() {
 				vec![
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
@@ -1591,14 +1591,14 @@ fn valid_tranche_structure_is_enforced() {
 					(TrancheType::Residual, None), // Must start with residual
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
 					),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
@@ -1619,7 +1619,7 @@ fn valid_tranche_structure_is_enforced() {
 					(TrancheType::Residual, None),
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(10),
 						},
 						None
@@ -1627,7 +1627,7 @@ fn valid_tranche_structure_is_enforced() {
 					(TrancheType::Residual, None), // Intermediate Residual not ok
 					(
 						TrancheType::NonResidual {
-							interest_per_sec: senior_interest_rate,
+							interest_rate_per_sec: senior_interest_rate,
 							min_risk_buffer: Perquintill::from_percent(0),
 						},
 						None
