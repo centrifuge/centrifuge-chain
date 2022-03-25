@@ -29,7 +29,7 @@ impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
 
 /// ClosedLoan holds the collateral reference of the loan and if loan was written off
 pub(crate) struct ClosedLoan<T: pallet::Config> {
-	pub(crate) asset: AssetOf<T>,
+	pub(crate) collateral: AssetOf<T>,
 	// Whether the loan has been 100% written off
 	pub(crate) written_off: bool,
 }
@@ -91,7 +91,7 @@ pub enum NAVUpdateType {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanDetails<Rate, Amount, Asset> {
-	pub(crate) asset: Asset,
+	pub(crate) collateral: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
 	pub(crate) status: LoanStatus,
 

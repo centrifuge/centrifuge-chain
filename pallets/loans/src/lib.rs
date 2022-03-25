@@ -352,12 +352,12 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			asset: AssetOf<T>,
+			collateral: AssetOf<T>,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
-			let loan_id = Self::create_loan(pool_id, owner, asset)?;
-			Self::deposit_event(Event::<T>::Created(pool_id, loan_id, asset));
+			let loan_id = Self::create_loan(pool_id, owner, collateral)?;
+			Self::deposit_event(Event::<T>::Created(pool_id, loan_id, collateral));
 			Ok(())
 		}
 
@@ -381,8 +381,8 @@ pub mod pallet {
 			loan_id: T::LoanId,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let ClosedLoan { asset, written_off } = Self::close_loan(pool_id, loan_id, owner)?;
-			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, asset));
+			let ClosedLoan { collateral, written_off } = Self::close_loan(pool_id, loan_id, owner)?;
+			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, collateral));
 			match written_off {
 				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
 				false => Ok(Some(T::WeightInfo::repay_and_close()).into()),
