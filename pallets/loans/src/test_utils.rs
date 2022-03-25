@@ -152,7 +152,7 @@ pub(crate) fn create<T>(
 	));
 
 	let pool = PoolStorage::<T>::get(pool_id).unwrap();
-	assert_eq!(pool.reserve.available_reserve, (1000 * CURRENCY).into());
+	assert_eq!(pool.reserve.available, (1000 * CURRENCY).into());
 
 	// TODO(ved) do disbursal manually for now
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
