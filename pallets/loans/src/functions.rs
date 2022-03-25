@@ -80,7 +80,6 @@ impl<T: Config> Pallet<T> {
 
 		// lock asset nft
 		T::NonFungible::transfer(&asset_class_id.into(), &instance_id.into(), &pool_account)?;
-		let timestamp = Self::now();
 
 		// update the next token nonce
 		let next_loan_id = nonce
@@ -217,17 +216,16 @@ impl<T: Config> Pallet<T> {
 
 			// check for ceiling threshold
 			let now = Self::now();
-			let ceiling = loan.ceiling(now);
-			ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
-
 			let old_debt =
 				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+			let ceiling = loan.ceiling(old_debt);
+			ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
 
 			// get previous present value so that we can update the nav accordingly
 			// we already know that that loan is not written off,
 			// means we wont need to have write off groups. so save a DB read and pass empty
 			let old_pv = loan
-				.present_value(old_debt, &vec![])
+				.present_value(old_debt, &vec![], now)
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 			let new_total_borrowed = loan
@@ -256,7 +254,7 @@ impl<T: Config> Pallet<T> {
 				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 			let new_pv = loan
-				.present_value(new_debt, &vec![])
+				.present_value(new_debt, &vec![], now)
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 			Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
@@ -326,21 +324,18 @@ impl<T: Config> Pallet<T> {
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
+				// TODO: this should calculate debt at the last NAV update
 				let old_debt =
 					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 				let old_pv = loan
-					.present_value(old_debt, &write_off_groups)
+					.present_value(old_debt, &write_off_groups, now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-				// calculate new accumulated rate
-				let (accumulated_rate, debt) =
-					loan.accrue(now).ok_or(Error::<T>::LoanAccrueFailed)?;
-
 				// ensure amount is not more than current debt
-				let repay_amount = amount.min(debt);
+				let repay_amount = amount.min(old_debt);
 
 				let new_total_repaid = loan
 					.total_repaid
@@ -361,7 +356,7 @@ impl<T: Config> Pallet<T> {
 					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
 				let new_pv = loan
-					.present_value(new_debt, &write_off_groups)
+					.present_value(new_debt, &write_off_groups, now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
 
@@ -380,7 +375,6 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn accrue_and_update_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		now: Moment,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Amount, DispatchError> {
 		Loan::<T>::try_mutate(
@@ -397,8 +391,10 @@ impl<T: Config> Pallet<T> {
 				let debt =
 					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
+				let now: Moment = Self::now();
+
 				let present_value = loan
-					.present_value(debt, write_off_groups)
+					.present_value(debt, write_off_groups, now)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				Ok(present_value)
@@ -410,13 +406,12 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn update_nav_of_pool(
 		pool_id: PoolIdOf<T>,
 	) -> Result<(T::Amount, Moment), DispatchError> {
-		let now = Self::now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;
 		let nav = Loan::<T>::iter_key_prefix(pool_id).try_fold(
 			Zero::zero(),
 			|sum, loan_id| -> Result<T::Amount, DispatchError> {
-				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now, &write_off_groups)?;
+				let pv = Self::accrue_and_update_loan(pool_id, loan_id, &write_off_groups)?;
 				updated_loans += 1;
 				sum.checked_add(&pv)
 					.ok_or(Error::<T>::LoanAccrueFailed.into())
@@ -426,7 +421,7 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			NAVDetails {
 				latest_nav: nav,
-				last_updated: now,
+				last_updated: Self::now(),
 			},
 		);
 		Ok((nav, updated_loans))
@@ -475,11 +470,6 @@ impl<T: Config> Pallet<T> {
 			// ensure loan is active
 			ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
-			let maturity_date = loan
-				.loan_type
-				.maturity_date()
-				.ok_or(Error::<T>::LoanTypeInvalid)?;
-
 			// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
 			let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 			let write_off_group_index = match override_write_off_index {
@@ -516,16 +506,18 @@ impl<T: Config> Pallet<T> {
 
 			let debt = T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
 
+			let now: Moment = Self::now();
+
 			// get old present value accounting for any write offs
 			let old_pv = loan
-				.present_value(debt, &write_off_groups)
+				.present_value(debt, &write_off_groups, now)
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 			loan.write_off_index = Some(write_off_group_index);
 
 			// calculate updated write off adjusted present value
 			let new_pv = loan
-				.present_value(debt, &write_off_groups)
+				.present_value(debt, &write_off_groups, now)
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 			// update nav
