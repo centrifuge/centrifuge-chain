@@ -158,8 +158,8 @@ const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_
 //   * Democracy
 pub struct BaseFilter;
 
-impl frame_support::traits::Contains<Call> for BaseFilter {
-    fn contains(c: &Call) -> bool {
+impl frame_support::traits::Filter<Call> for BaseFilter {
+    fn filter(c: &Call) -> bool {
         matches!(
 			c,
 			// Calls for runtime upgrade
@@ -175,11 +175,6 @@ impl frame_support::traits::Contains<Call> for BaseFilter {
 			) |
 			Call::Timestamp(pallet_timestamp::Call::set{..})
 		)
-    }
-
-    fn sorted_members() -> Vec<Call> {
-        // NOTE: trying to just implement `contains(Call)`
-        Vec::new()
     }
 }
 
