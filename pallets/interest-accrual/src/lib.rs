@@ -150,7 +150,7 @@ pub mod pallet {
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::NormalizedDebt,
 			adjustment: Adjustment<T::Amount>,
-		) -> Result<T::Amount, DispatchError> {
+		) -> Result<T::NormalizedDebt, DispatchError> {
 			let rate =
 				Rates::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
 
@@ -166,7 +166,11 @@ pub mod pallet {
 							Adjustment::Decrease(amount) => debt.checked_sub(&amount),
 						}
 						// Calculate normalized debt = debt / cumulative_rate
-						.and_then(|debt| debt.checked_div_int(rate))
+						.and_then(|debt| {
+							debt.checked_div_int(rate).and_then(|normalized_debt| {
+								Self::convert::<T::Amount, T::NormalizedDebt>(normalized_debt)
+							})
+						})
 					})
 					.ok_or(Error::<T>::DebtAdjustmentFailed)?;
 
@@ -232,7 +236,7 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Amount, Adjustment<T::Amount
 		interest_rate_per_sec: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment<T::Amount>,
-	) -> Result<T::Amount, DispatchError> {
+	) -> Result<Self::NormalizedDebt, DispatchError> {
 		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_sec, normalized_debt, adjustment)
 	}
 }

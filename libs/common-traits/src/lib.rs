@@ -141,7 +141,7 @@ pub trait InterestAccrual<InterestRate, Amount, Adjustment> {
 		interest_rate_per_sec: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
-	) -> Result<Amount, DispatchError>;
+	) -> Result<Self::NormalizedDebt, DispatchError>;
 }
 
 pub trait Permissions<AccountId> {

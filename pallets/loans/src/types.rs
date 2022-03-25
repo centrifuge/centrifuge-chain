@@ -130,6 +130,7 @@ where
 		&self,
 		debt: Amount,
 		write_off_groups: &Vec<WriteOffGroup<Rate>>,
+		now: Moment,
 	) -> Option<Amount> {
 		// if the debt is written off, write off accordingly
 		self.write_off_index
@@ -144,19 +145,13 @@ where
 					.and_then(|write_off_amount| debt.checked_sub(&write_off_amount))
 			})
 			.and_then(|debt| match self.loan_type {
-				LoanType::BulletLoan(bl) => bl.present_value(
-					debt,
-					self.origination_date,
-					self.last_updated,
-					self.rate_per_sec,
-				),
+				LoanType::BulletLoan(bl) => {
+					bl.present_value(debt, self.origination_date, now, self.rate_per_sec)
+				}
 				LoanType::CreditLine(cl) => cl.present_value(debt),
-				LoanType::CreditLineWithMaturity(clm) => clm.present_value(
-					debt,
-					self.origination_date,
-					self.last_updated,
-					self.rate_per_sec,
-				),
+				LoanType::CreditLineWithMaturity(clm) => {
+					clm.present_value(debt, self.origination_date, now, self.rate_per_sec)
+				}
 			})
 	}
 
@@ -184,19 +179,11 @@ where
 	// }
 
 	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self, now: Moment) -> Amount {
+	pub(crate) fn ceiling(&self, debt: Amount) -> Amount {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.ceiling(self.total_borrowed),
-			LoanType::CreditLine(cl) => {
-				// we need to accrue and calculate the latest debt
-				// calculate accumulated rate and outstanding debt
-				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
-			}
-			LoanType::CreditLineWithMaturity(clm) => {
-				// we need to accrue and calculate the latest debt
-				// calculate accumulated rate and outstanding debt
-				self.accrue(now).and_then(|(_, debt)| clm.ceiling(debt))
-			}
+			LoanType::CreditLine(cl) => cl.ceiling(debt),
+			LoanType::CreditLineWithMaturity(clm) => clm.ceiling(debt),
 		}
 		// always fallback to zero ceiling
 		.unwrap_or(Zero::zero())
