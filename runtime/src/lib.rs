@@ -163,17 +163,17 @@ impl frame_support::traits::Contains<Call> for BaseFilter {
         matches!(
 			c,
 			// Calls for runtime upgrade
-			| Call::System(frame_system::Call::set_code{..})
-			| Call::System(frame_system::Call::set_code_without_checks{..})
+			Call::System(frame_system::Call::set_code{..}) |
+			Call::System(frame_system::Call::set_code_without_checks{..}) |
             // Council-related calls
-            | Call::Council(..)
+            Call::Council(..) |
             // Democracy-related calls
-            | Call::Democracy(..)
+            Call::Democracy(..) |
 			// Calls that are present in each block
-			| Call::ParachainSystem(
+			Call::ParachainSystem(
 				cumulus_pallet_parachain_system::Call::set_validation_data{..}
-			)
-			| Call::Timestamp(pallet_timestamp::Call::set{..})
+			) |
+			Call::Timestamp(pallet_timestamp::Call::set{..})
 		)
     }
 
