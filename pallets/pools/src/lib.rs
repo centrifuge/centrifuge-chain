@@ -1004,26 +1004,27 @@ pub mod pallet {
 				// is wiped out and the solution adheres to:
 				//   * No investments in any tranche are possible
 				//   * No redemptions out of the wiped out tranche are possible
-				let mut partial_solution = Vec::with_capacity(pool.tranches.num_tranches());
-				if epoch_tranche_prices
+				let mut partially_wiped = false;
+				let partial_solution = epoch_tranche_prices
 					.iter()
 					.map(|price| {
 						if price == &T::BalanceRatio::zero() {
-							partial_solution.push(TrancheSolution {
+							partially_wiped = true;
+
+							TrancheSolution {
 								invest_fulfillment: Perquintill::zero(),
 								redeem_fulfillment: Perquintill::zero(),
-							});
-							true
+							}
 						} else {
 							TrancheSolution {
 								invest_fulfillment: Perquintill::zero(),
 								redeem_fulfillment: Perquintill::one(),
-							};
-							false
+							}
 						}
 					})
-					.any(|wiped_out| wiped_out)
-				{
+					.collect();
+
+				if partially_wiped {
 					pool.status = PoolStatus::Closed(CloseManner::Forced);
 					Self::try_executing_epoch_with(
 						pool_id,

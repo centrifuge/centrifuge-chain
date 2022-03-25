@@ -2124,6 +2124,8 @@ fn pool_status_recovers_of_force_closed() {
 		test_nav_up(0, total_interest.checked_mul_int(500 * CURRENCY).unwrap());
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+
+		// The NAV has not gone up as expected. SO we must be in a forced close mode
 		let pool = crate::Pool::<Test>::try_get(0).unwrap();
 		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Forced));
 		assert_ok!(Pools::submit_solution(
@@ -2141,12 +2143,16 @@ fn pool_status_recovers_of_force_closed() {
 			]
 		));
 		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
+		let pool = crate::Pool::<Test>::try_get(0).unwrap();
 		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Forced));
 
 		next_block_after(SECS_PER_YEAR);
 		// increase the value for both tranches for one year. Junior should now be unequal zero.
 		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
-		test_nav_up(0, total_interest.checked_mul_int(1000 * CURRENCY).unwrap());
+		test_nav_up(
+			0,
+			total_interest.checked_mul_int(1000 * CURRENCY).unwrap() - 1000 * CURRENCY,
+		);
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 		assert_noop!(
