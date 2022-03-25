@@ -328,16 +328,6 @@ impl TestExternalitiesBuilder {
 		// add pool account with 1000 balance with currencyId 1
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
-				(
-					PoolLocator { pool_id: 0 }.into_account(),
-					CurrencyId::Tranche(0, JuniorTrancheId::get()),
-					100_000 * CURRENCY,
-				),
-				(
-					PoolLocator { pool_id: 0 }.into_account(),
-					CurrencyId::Tranche(0, SeniorTrancheId::get()),
-					100_000 * CURRENCY,
-				),
 				(7, USD, 100 * CURRENCY),
 				(SeniorInvestor::get(), USD, 1000 * CURRENCY),
 				(JuniorInvestor::get(), USD, 1000 * CURRENCY),
