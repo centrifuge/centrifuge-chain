@@ -7,8 +7,8 @@ cmd=$1
 parachain="${PARA_CHAIN_SPEC:-altair-local}"
 # The parachain Id we want to use
 para_id="${PARA_ID:-2000}"
-# The parachain path for data storage
-parachain_dir=/tmp/centrifuge-chain-${para_id}
+# The tmp base directory
+base_dir=/tmp/centrifuge-chain
 # Option to use the Docker image to export state & wasm
 docker_onboard="${DOCKER_ONBOARD:-false}"
 cc_docker_image_tag="${PARA_DOCKER_IMAGE_TAG:-parachain-latest}"
@@ -42,6 +42,9 @@ start-parachain)
   printf "\nBuilding parachain with runtime '$parachain' and id '$para_id'...\n"
   cargo build --release
 
+  parachain_dir=$base_dir/parachain/${para_id}
+  mkdir -p $parachain_dir;
+
   if [ "$2" == "purge" ]; then
     echo "purging parachain..."
     rm -rf $parachain_dir
@@ -67,7 +70,10 @@ start-parachain)
 onboard-parachain)
   echo "NOTE: This command onboards the parachain; Block production will start in a few minutes"
 
-   wasm_location="${PWD}/${parachain}-${para_id}.wasm"
+   onboard_dir="$base_dir/onboard"
+   mkdir -p $onboard_dir
+
+   wasm_location="$onboard_dir/${parachain}-${para_id}.wasm"
     if [ "$docker_onboard" == "true" ]; then
       genesis=$(docker run -it centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-state --chain="${parachain}" --parachain-id="${para_id}")
       docker run -it centrifugeio/centrifuge-chain:${cc_docker_image_tag} export-genesis-wasm --chain="${parachain}" > $wasm_location

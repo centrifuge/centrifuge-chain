@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use common_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::PoolRole;
+pub use common_types::{Moment, PoolRole};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -184,14 +184,14 @@ pub mod pallet {
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
-	#[pallet::getter(fn get_loan_info)]
-	pub(crate) type LoanInfo<T: Config> = StorageDoubleMap<
+	#[pallet::getter(fn get_loan)]
+	pub(crate) type Loan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanData<T::Rate, T::Amount, AssetOf<T>, T::NormalizedDebt>,
+		LoanDetails<T::Rate, T::Amount, AssetOf<T>, T::NormalizedDebt>,
 		OptionQuery,
 	>;
 
@@ -344,7 +344,7 @@ pub mod pallet {
 
 			PoolToLoanNftClass::<T>::insert(pool_id, loan_nft_class_id);
 			LoanNftClassToPool::<T>::insert(loan_nft_class_id, pool_id);
-			let now = Self::time_now();
+			let now = Self::now();
 			PoolNAV::<T>::insert(
 				pool_id,
 				NAVDetails {
@@ -451,8 +451,8 @@ pub mod pallet {
 			amount: T::Amount,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let repaid_amount = Self::repay_amount(pool_id, loan_id, owner, amount)?;
-			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, repaid_amount));
+			let total_repaid = Self::repay_amount(pool_id, loan_id, owner, amount)?;
+			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, total_repaid));
 			Ok(())
 		}
 
@@ -531,7 +531,7 @@ pub mod pallet {
 		/// Write off an unhealthy loan
 		///
 		/// `write_off_loan` will find the best write off group available based on the overdue days since maturity.
-		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// Loan is accrued, NAV is update accordingly, and updates the Loan with new write off index.
 		/// Cannot update a loan that was written off by admin.
 		/// Cannot write off a healthy loan or loan type that do not have maturity date.
 		///
@@ -567,7 +567,7 @@ pub mod pallet {
 		/// Write off an loan from admin origin
 		///
 		/// `admin_write_off_loan` will write off a loan with write off group associated with index passed.
-		/// Loan is accrued, NAV is update accordingly, and updates the LoanInfo with new write off index.
+		/// Loan is accrued, NAV is update accordingly, and updates the Loan with new write off index.
 		/// AdminOrigin can write off a healthy loan as well.
 		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
 		/// Admin can write off loan with any index potentially going up the index or down.
@@ -592,7 +592,7 @@ pub mod pallet {
 impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	type ClassId = T::ClassId;
 	type Origin = T::Origin;
-	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, u64)> {
+	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, Moment)> {
 		PoolNAV::<T>::get(pool_id)
 			.map(|nav_details| (nav_details.latest_nav, nav_details.last_updated))
 	}
