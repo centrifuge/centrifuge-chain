@@ -210,9 +210,9 @@ pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumbe
 	debt: Amount,
 	now: u64,
 	maturity_date: u64,
-	interest_per_sec: Rate,
+	interest_rate_per_sec: Rate,
 ) -> Option<Amount> {
-	checked_pow(interest_per_sec, (maturity_date - now) as usize)
+	checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)
 		.and_then(|acc_rate| convert(acc_rate))
 		.and_then(|acc_rate| debt.checked_mul(&acc_rate))
 }

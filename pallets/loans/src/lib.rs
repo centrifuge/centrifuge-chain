@@ -381,7 +381,10 @@ pub mod pallet {
 			loan_id: T::LoanId,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let ClosedLoan { collateral, written_off } = Self::close_loan(pool_id, loan_id, owner)?;
+			let ClosedLoan {
+				collateral,
+				written_off,
+			} = Self::close_loan(pool_id, loan_id, owner)?;
 			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, collateral));
 			match written_off {
 				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),

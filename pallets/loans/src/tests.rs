@@ -261,8 +261,12 @@ where
 	(rp, loan_type)
 }
 
-fn close_test_loan<T>(owner: T::AccountId, pool_id: T::PoolId, loan: AssetOf<T>, collateral: AssetOf<T>)
-where
+fn close_test_loan<T>(
+	owner: T::AccountId,
+	pool_id: T::PoolId,
+	loan: AssetOf<T>,
+	collateral: AssetOf<T>,
+) where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
@@ -311,7 +315,11 @@ fn test_create() {
 
 			// missing owner
 			let instance_id = 100u128.into();
-			let res = Loans::create(Origin::signed(owner2), pool_id, Asset(collateral.0, instance_id));
+			let res = Loans::create(
+				Origin::signed(owner2),
+				pool_id,
+				Asset(collateral.0, instance_id),
+			);
 			assert_err!(res, Error::<MockRuntime>::NFTOwnerNotFound);
 
 			// trying to issue a loan with loan nft
@@ -666,7 +674,8 @@ macro_rules! test_repay_loan {
 			.execute_with(|| {
 				let borrower: u64 = Borrower::get();
 				// successful issue
-				let (pool_id, loan_nft, collateral_nft) = issue_test_loan::<MockRuntime>(0, borrower);
+				let (pool_id, loan_nft, collateral_nft) =
+					issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);

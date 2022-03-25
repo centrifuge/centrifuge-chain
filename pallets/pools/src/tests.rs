@@ -508,7 +508,8 @@ fn epoch() {
 
 		let pool = Pools::pool(0).unwrap();
 		assert_eq!(
-			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].interest_rate_per_sec(),
+			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize]
+				.interest_rate_per_sec(),
 			Rate::from_inner(1_000000003170979198376458650)
 		);
 		assert_eq!(pool.reserve.available_reserve, 1000 * CURRENCY);

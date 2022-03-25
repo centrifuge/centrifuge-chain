@@ -79,7 +79,11 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock collateral nft
-		T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &pool_account)?;
+		T::NonFungible::transfer(
+			&collateral_class_id.into(),
+			&instance_id.into(),
+			&pool_account,
+		)?;
 		let timestamp = Self::now();
 
 		// update the next token nonce
@@ -195,7 +199,10 @@ impl<T: Config> Pallet<T> {
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
-				Ok(ClosedLoan { collateral, written_off })
+				Ok(ClosedLoan {
+					collateral,
+					written_off,
+				})
 			},
 		)
 	}

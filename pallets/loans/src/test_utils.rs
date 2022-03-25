@@ -121,7 +121,7 @@ pub(crate) fn create<T>(
 			(TrancheType::Residual, None),
 			(
 				TrancheType::NonResidual {
-					interest_per_sec: One::one(),
+					interest_rate_per_sec: One::one(),
 					min_risk_buffer: Perquintill::from_percent(10),
 				},
 				None
