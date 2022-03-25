@@ -2,7 +2,7 @@ name: build
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, nuno/disable-almost-all-calls]
 jobs:
   build:
     runs-on: ubuntu-latest
