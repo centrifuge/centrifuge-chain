@@ -48,7 +48,7 @@ pub struct NAVDetails<Amount> {
 	pub(crate) latest_nav: Amount,
 
 	// this is the last time when the nav was calculated for the entire pool
-	pub(crate) last_updated: u64,
+	pub(crate) last_updated: Moment,
 }
 
 /// The data structure for storing a specific write off group
@@ -90,7 +90,7 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanData<Rate, Amount, Asset, NormalizedDebt> {
+pub struct LoanDetails<Rate, Amount, Asset, NormalizedDebt> {
 	pub(crate) asset: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
 	pub(crate) status: LoanStatus,
@@ -99,14 +99,14 @@ pub struct LoanData<Rate, Amount, Asset, NormalizedDebt> {
 	pub(crate) rate_per_sec: Rate,
 
 	// time at which first borrow occurred
-	pub(crate) origination_date: u64,
+	pub(crate) origination_date: Moment,
 
 	// normalized debt used to calculate the current outstanding debt.
 	pub(crate) normalized_debt: NormalizedDebt,
 
 	// total borrowed and repaid on this loan
-	pub(crate) borrowed_amount: Amount,
-	pub(crate) repaid_amount: Amount,
+	pub(crate) total_borrowed: Amount,
+	pub(crate) total_repaid: Amount,
 
 	// write off group index in the vec of write off groups
 	// none, the loan is not written off yet
@@ -118,7 +118,7 @@ pub struct LoanData<Rate, Amount, Asset, NormalizedDebt> {
 	pub(crate) admin_written_off: bool,
 }
 
-impl<Rate, Amount, Asset, NormalizedDebt> LoanData<Rate, Amount, Asset, NormalizedDebt>
+impl<Rate, Amount, Asset, NormalizedDebt> LoanDetails<Rate, Amount, Asset, NormalizedDebt>
 where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
@@ -163,7 +163,7 @@ where
 	/// accrues rate and current debt from last updated until now
 	// pub(crate) fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
 	// 	// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
-	// 	let maybe_rate = match self.borrowed_amount == Zero::zero() {
+	// 	let maybe_rate = match self.total_borrowed == Zero::zero() {
 	// 		true => Some(self.rate_per_sec),
 	// 		false => math::calculate_accumulated_rate::<Rate>(
 	// 			self.rate_per_sec,
@@ -184,9 +184,9 @@ where
 	// }
 
 	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self, now: u64) -> Amount {
+	pub(crate) fn ceiling(&self, now: Moment) -> Amount {
 		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.ceiling(self.borrowed_amount),
+			LoanType::BulletLoan(bl) => bl.ceiling(self.total_borrowed),
 			LoanType::CreditLine(cl) => {
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt
