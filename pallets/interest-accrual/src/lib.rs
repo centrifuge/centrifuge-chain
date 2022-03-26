@@ -1,3 +1,58 @@
+// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge Chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+//! # Interest Accrual Pallet
+//!
+//! A pallet for calculating interest accrual on debt.
+//! It keeps track of different buckets of interest rates and is optimized
+//! for many loans per interest bucket. This implementation is inspired
+//! by [jug.sol](https://github.com/makerdao/dss/blob/master/src/jug.sol)
+//! from Multi Collateral Dai.
+//!
+//! It works by defining debt = normalized debt * accumulated rate.
+//! When the first loan for an interest rate is created, the accumulated
+//! rate is set to 1.0. The normalized debt is then calculated, which is
+//! the debt at t=0, using debt / accumulated rate.
+//!
+//! Over time, the accumulated rate grows based on the interest rate per second.
+//! Any time the accumulated rate is updated for an interest rate group,
+//! this indirectly updates the debt of all loans outstanding using this
+//! interest rate.
+//!
+//!       ar = accumulated rate
+//!       nd = normalized debt
+//!       
+//!       │
+//!   2.0 │                                *
+//!       │                           *****
+//!       │                      ******
+//!       │                  *****
+//!   1.5 │              *****
+//!       │        *******
+//!       │     ****
+//!       │  ****
+//!   1.0 │ **
+//!       │
+//!       │
+//!       └──────────────────────────────────
+//!       │              │
+//!                       
+//!       borrow 10      borrow 20
+//!       ar   = 1.0     ar   = 1.5
+//!       nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
+//!       debt = 10      debt = 35
+//!
+
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
 use common_traits::InterestAccrual;
@@ -26,10 +81,7 @@ type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate, Moment>;
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct RateDetails<InterestRate, Moment> {
-	// chi in MCD Rates
-	pub cumulative_rate: InterestRate,
-
-	// when cumulative_rate was last updated
+	pub accumulated_rate: InterestRate,
 	pub last_updated: Moment,
 }
 
@@ -104,10 +156,8 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when the debt calculation failed
 		DebtCalculationFailed,
-
 		/// Emits when the debt adjustment failed
 		DebtAdjustmentFailed,
-
 		/// Emits when the interest rate was not used
 		NoSuchRate,
 	}
@@ -122,22 +172,23 @@ pub mod pallet {
 			let rate = match Rates::<T>::try_get(interest_rate_per_sec) {
 				Err(_) => {
 					let new_rate = RateDetails {
-						cumulative_rate: T::InterestRate::saturating_from_rational(100, 100).into(),
+						accumulated_rate: T::InterestRate::saturating_from_rational(100, 100)
+							.into(),
 						last_updated: Self::now(),
 					};
 					Rates::<T>::insert(interest_rate_per_sec, &new_rate);
-					new_rate.cumulative_rate
+					new_rate.accumulated_rate
 				}
 				Ok(rate) => {
-					let new_cumulative_rate = Self::calculate_cumulative_rate(
+					let new_accumulated_rate = Self::calculate_accumulated_rate(
 						interest_rate_per_sec,
-						rate.cumulative_rate,
+						rate.accumulated_rate,
 						rate.last_updated,
 					)
 					.map_err(|_| Error::<T>::DebtCalculationFailed)?;
 					// TODO: this should update the rate
 
-					new_cumulative_rate
+					new_accumulated_rate
 				}
 			};
 
@@ -154,18 +205,18 @@ pub mod pallet {
 			let rate =
 				Rates::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
 
-			let debt = Self::calculate_debt(normalized_debt, rate.cumulative_rate)
+			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
 
 			let new_normalized_debt =
-				Self::convert::<T::InterestRate, T::Amount>(rate.cumulative_rate)
+				Self::convert::<T::InterestRate, T::Amount>(rate.accumulated_rate)
 					.and_then(|rate| {
 						// Apply adjustment to debt
 						match adjustment {
 							Adjustment::Increase(amount) => debt.checked_add(&amount),
 							Adjustment::Decrease(amount) => debt.checked_sub(&amount),
 						}
-						// Calculate normalized debt = debt / cumulative_rate
+						// Calculate normalized debt = debt / accumulated_rate
 						.and_then(|debt| {
 							debt.checked_div_int(rate).and_then(|normalized_debt| {
 								Self::convert::<T::Amount, T::NormalizedDebt>(normalized_debt)
@@ -177,32 +228,32 @@ pub mod pallet {
 			Ok(new_normalized_debt)
 		}
 
-		/// Calculates the debt using debt = normalized_debt * cumulative_rate
+		/// Calculates the debt using debt = normalized_debt * accumulated_rate
 		fn calculate_debt(
 			normalized_debt: T::NormalizedDebt,
-			cumulative_rate: T::InterestRate,
+			accumulated_rate: T::InterestRate,
 		) -> Option<T::Amount> {
 			// TODO: isn't there a better way of doing this, without the convert?
-			Self::convert::<T::InterestRate, T::NormalizedDebt>(cumulative_rate).and_then(|rate| {
+			Self::convert::<T::InterestRate, T::NormalizedDebt>(accumulated_rate).and_then(|rate| {
 				normalized_debt
 					.checked_mul(&rate)
 					.and_then(|debt| Self::convert::<T::NormalizedDebt, T::Amount>(debt))
 			})
 		}
 
-		fn calculate_cumulative_rate<Rate: FixedPointNumber>(
+		fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 			interest_rate_per_sec: Rate,
-			cumulative_rate: Rate,
+			accumulated_rate: Rate,
 			last_updated: Moment,
 		) -> Result<Rate, DispatchError> {
-			// cumulative_rate * interest_rate_per_sec ^ (now - last_updated)
+			// accumulated_rate * interest_rate_per_sec ^ (now - last_updated)
 			let time_difference_secs = Self::now()
 				.checked_sub(last_updated)
 				.ok_or(ArithmeticError::Underflow)?;
 
 			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
 				.ok_or(ArithmeticError::Overflow)?
-				.checked_mul(&cumulative_rate)
+				.checked_mul(&accumulated_rate)
 				.ok_or(ArithmeticError::Overflow.into())
 		}
 
