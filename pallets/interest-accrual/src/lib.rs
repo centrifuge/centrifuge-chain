@@ -167,32 +167,35 @@ pub mod pallet {
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::NormalizedDebt,
 		) -> Result<T::Amount, DispatchError> {
-			Rate::<T>::try_mutate(interest_rate_per_sec, |rate_details| -> Result<T::Amount, DispatchError> {
-				let rate = if let Some(rate) = rate_details {
-					let new_accumulated_rate = Self::calculate_accumulated_rate(
-						interest_rate_per_sec,
-						rate.accumulated_rate,
-						rate.last_updated,
-					)
-					.map_err(|_| Error::<T>::DebtCalculationFailed)?;
+			Rate::<T>::try_mutate(
+				interest_rate_per_sec,
+				|rate_details| -> Result<T::Amount, DispatchError> {
+					let rate = if let Some(rate) = rate_details {
+						let new_accumulated_rate = Self::calculate_accumulated_rate(
+							interest_rate_per_sec,
+							rate.accumulated_rate,
+							rate.last_updated,
+						)
+						.map_err(|_| Error::<T>::DebtCalculationFailed)?;
 
-					rate.accumulated_rate = new_accumulated_rate;
-					rate.last_updated = Self::now();
+						rate.accumulated_rate = new_accumulated_rate;
+						rate.last_updated = Self::now();
 
-					rate
-				} else {
-					*rate_details = Some(RateDetails {
-						accumulated_rate: T::InterestRate::saturating_from_rational(100, 100)
-							.into(),
-						last_updated: Self::now(),
-					});
-					rate_details.as_mut().expect("RateDetails now Some. qed.")
-				};
+						rate
+					} else {
+						*rate_details = Some(RateDetails {
+							accumulated_rate: T::InterestRate::saturating_from_rational(100, 100)
+								.into(),
+							last_updated: Self::now(),
+						});
+						rate_details.as_mut().expect("RateDetails now Some. qed.")
+					};
 
-				let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
-					.ok_or(Error::<T>::DebtCalculationFailed)?;
-				Ok(debt)
-			})
+					let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
+						.ok_or(Error::<T>::DebtCalculationFailed)?;
+					Ok(debt)
+				},
+			)
 		}
 
 		pub fn do_adjust_normalized_debt(
