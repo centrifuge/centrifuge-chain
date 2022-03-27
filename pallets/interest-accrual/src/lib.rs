@@ -29,28 +29,26 @@
 //! this indirectly updates the debt of all loans outstanding using this
 //! interest rate.
 //!
-//!       ar = accumulated rate
-//!       nd = normalized debt
+//!                    ar = accumulated rate
+//!                    nd = normalized debt
 //!       
-//!       │
-//!   2.0 │                                *
-//!       │                           *****
-//!       │                      ******
-//!       │                  *****
-//!   1.5 │              *****
-//!       │        *******
-//!       │     ****
-//!       │  ****
-//!   1.0 │ **
-//!       │
-//!       │
-//!       └──────────────────────────────────
-//!       │              │
-//!                       
-//!       borrow 10      borrow 20
-//!       ar   = 1.0     ar   = 1.5
-//!       nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
-//!       debt = 10      debt = 35
+//!            │
+//!        2.0 │                             ****
+//!            │                         ****
+//!            │                     ****
+//!            │                 ****
+//!   ar   1.5 │             ****
+//!            │         ****
+//!            │      ****
+//!            │   ****
+//!        1.0 │ **
+//!            └──────────────────────────────────
+//!            │              │
+//!                            
+//!            borrow 10      borrow 20
+//!            ar   = 1.0     ar   = 1.5
+//!            nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
+//!            debt = 10      debt = 35
 //!
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -146,7 +144,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn get_sale)]
-	pub(super) type Rates<T: Config> =
+	pub(super) type Rate<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InterestRate, RateDetailsOf<T>, OptionQuery>;
 
 	#[pallet::event]
@@ -169,32 +167,32 @@ pub mod pallet {
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::NormalizedDebt,
 		) -> Result<T::Amount, DispatchError> {
-			let rate = match Rates::<T>::try_get(interest_rate_per_sec) {
-				Err(_) => {
-					let new_rate = RateDetails {
-						accumulated_rate: T::InterestRate::saturating_from_rational(100, 100)
-							.into(),
-						last_updated: Self::now(),
-					};
-					Rates::<T>::insert(interest_rate_per_sec, &new_rate);
-					new_rate.accumulated_rate
-				}
-				Ok(rate) => {
+			Rate::<T>::try_mutate(interest_rate_per_sec, |rate_details| -> Result<T::Amount, DispatchError> {
+				let rate = if let Some(rate) = rate_details {
 					let new_accumulated_rate = Self::calculate_accumulated_rate(
 						interest_rate_per_sec,
 						rate.accumulated_rate,
 						rate.last_updated,
 					)
 					.map_err(|_| Error::<T>::DebtCalculationFailed)?;
-					// TODO: this should update the rate
 
-					new_accumulated_rate
-				}
-			};
+					rate.accumulated_rate = new_accumulated_rate;
+					rate.last_updated = Self::now();
 
-			let debt = Self::calculate_debt(normalized_debt, rate)
-				.ok_or(Error::<T>::DebtCalculationFailed)?;
-			Ok(debt)
+					rate
+				} else {
+					*rate_details = Some(RateDetails {
+						accumulated_rate: T::InterestRate::saturating_from_rational(100, 100)
+							.into(),
+						last_updated: Self::now(),
+					});
+					rate_details.as_mut().expect("RateDetails now Some. qed.")
+				};
+
+				let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
+					.ok_or(Error::<T>::DebtCalculationFailed)?;
+				Ok(debt)
+			})
 		}
 
 		pub fn do_adjust_normalized_debt(
@@ -203,7 +201,7 @@ pub mod pallet {
 			adjustment: Adjustment<T::Amount>,
 		) -> Result<T::NormalizedDebt, DispatchError> {
 			let rate =
-				Rates::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
+				Rate::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
 
 			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
