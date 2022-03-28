@@ -67,7 +67,7 @@ pub enum TrancheLoc<TrancheId> {
 pub enum TrancheType<Rate> {
 	Residual,
 	NonResidual {
-		interest_per_sec: Rate,
+		interest_rate_per_sec: Rate,
 		min_risk_buffer: Perquintill,
 	},
 }
@@ -92,11 +92,11 @@ where
 			(TrancheType::NonResidual { .. }, TrancheType::Residual) => false,
 			(
 				TrancheType::NonResidual {
-					interest_per_sec: ref interest_prev,
+					interest_rate_per_sec: ref interest_prev,
 					..
 				},
 				TrancheType::NonResidual {
-					interest_per_sec: ref interest_next,
+					interest_rate_per_sec: ref interest_next,
 					..
 				},
 			) => interest_prev >= interest_next,
@@ -180,7 +180,7 @@ where
 
 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
 		let delta = now - self.last_updated_interest;
-		let interest = self.interest_per_sec();
+		let interest = self.interest_rate_per_sec();
 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
 		//       for us, as we simply have the same debt if this happens
 		let total_interest = checked_pow(
@@ -202,19 +202,19 @@ where
 		match &self.tranche_type {
 			TrancheType::Residual => Perquintill::zero(),
 			TrancheType::NonResidual {
-				interest_per_sec: ref _interest_per_sec,
+				interest_rate_per_sec: ref _interest_rate_per_sec,
 				ref min_risk_buffer,
 			} => min_risk_buffer.clone(),
 		}
 	}
 
-	pub fn interest_per_sec(&self) -> Rate {
+	pub fn interest_rate_per_sec(&self) -> Rate {
 		match &self.tranche_type {
 			TrancheType::Residual => One::one(),
 			TrancheType::NonResidual {
-				ref interest_per_sec,
+				ref interest_rate_per_sec,
 				min_risk_buffer: ref _min_risk_buffer,
-			} => interest_per_sec.clone(),
+			} => interest_rate_per_sec.clone(),
 		}
 	}
 

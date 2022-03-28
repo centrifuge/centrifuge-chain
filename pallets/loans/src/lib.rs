@@ -196,28 +196,20 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A pool was initialised. [pool]
 		PoolInitialised(PoolIdOf<T>),
-
-		/// A loan was created for an asset. [pool, loan, asset]
+		/// A loan was created. [pool, loan, collateral]
 		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
-
-		/// A loan was closed. [pool, loan, asset]
+		/// A loan was closed. [pool, loan, collateral]
 		Closed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
-
 		/// A loan was priced. [pool, loan]
 		Priced(PoolIdOf<T>, T::LoanId),
-
 		/// An amount was borrowed for a loan. [pool, loan, amount]
 		Borrowed(PoolIdOf<T>, T::LoanId, T::Amount),
-
 		/// An amount was repaid for a loan. [pool, loan, amount]
 		Repaid(PoolIdOf<T>, T::LoanId, T::Amount),
-
 		/// The NAV for a pool was updated. [pool, nav, update_type]
 		NAVUpdated(PoolIdOf<T>, T::Amount, NAVUpdateType),
-
 		/// A write-off group was added to a pool. [pool, write_off_group]
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
-
 		/// A loan was written off. [pool, loan, write_off_group]
 		WrittenOff(PoolIdOf<T>, T::LoanId, u32),
 	}
@@ -226,83 +218,59 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// Emits when pool doesn't exist
 		PoolMissing,
-
 		/// Emits when pool is not initialised
 		PoolNotInitialised,
-
 		/// Emits when pool is already initialised
 		PoolAlreadyInitialised,
-
 		/// Emits when loan doesn't exist.
 		MissingLoan,
-
-		/// Emits when the borrowed amount is more than ceiling
-		LoanCeilingReached,
-
+		/// Emits when the borrowed amount is more than max_borrow_amount
+		MaxBorrowAmountExceeded,
 		/// Emits when an operation lead to the number overflow
 		ValueOverflow,
-
 		/// Emits when principal debt calculation failed due to overflow
 		PrincipalDebtOverflow,
-
 		/// Emits when tries to update an active loan
 		LoanIsActive,
-
 		/// Emits when loan type given is not valid
 		LoanTypeInvalid,
-
 		/// Emits when operation is done on an inactive loan
 		LoanNotActive,
-
 		// Emits when borrow and repay happens in the same block
 		RepayTooEarly,
-
 		/// Emits when the NFT owner is not found
 		NFTOwnerNotFound,
-
 		/// Emits when nft owner doesn't match the expected owner
 		NotAssetOwner,
-
 		/// Emits when the nft is not an acceptable asset
 		NotAValidAsset,
-
 		/// Emits when the nft token nonce is overflowed
 		NftTokenNonceOverflowed,
-
 		/// Emits when loan amount not repaid but trying to close loan
 		LoanNotRepaid,
-
 		/// Emits when maturity has passed and borrower tried to borrow more
 		LoanMaturityDatePassed,
-
 		/// Emits when a loan data value is invalid
 		LoanValueInvalid,
-
 		/// Emits when loan accrue calculation failed
 		LoanAccrueFailed,
-
 		/// Emits when loan present value calculation failed
 		LoanPresentValueFailed,
-
 		/// Emits when trying to write off of a healthy loan
 		LoanHealthy,
-
 		/// Emits when trying to write off loan that was written off by admin already
 		WrittenOffByAdmin,
-
 		/// Emits when there is no valid write off group available for unhealthy loan
 		NoValidWriteOffGroup,
-
 		/// Emits when there is no valid write off groups associated with given index
 		InvalidWriteOffGroupIndex,
-
 		/// Emits when new write off group is invalid
 		InvalidWriteOffGroup,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Initiates a new pool
+		/// Initialises a new pool
 		///
 		/// `initialise_pool` checks if pool is not initialised yet and then adds the loan nft class id.
 		/// All the Loan NFTs will be created into this Class. So loan account *should* be able to mint new NFTs into the class.
@@ -340,24 +308,24 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Create a new loan against the asset provided
+		/// Create a new loan against the collateral provided
 		///
-		/// `create_loan` transfers the asset(collateral) from the owner to self and issues a new loan nft to the owner
-		/// caller *must* be the owner of the asset.
+		/// `create_loan` transfers the collateral nft from the owner to self and issues a new loan nft to the owner
+		/// caller *must* be the owner of the collateral.
 		/// LoanStatus is set to created and needs to be priced by an admin origin to start borrowing.
 		/// Loan cannot be closed until the status has changed to Priced.
-		/// Asset NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
+		/// Collateral NFT class cannot be another Loan NFT class. Means, you cannot collateralise a Loan.
 		#[pallet::weight(<T as Config>::WeightInfo::create())]
 		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
-			asset: AssetOf<T>,
+			collateral: AssetOf<T>,
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_role!(pool_id, origin, PoolRole::Borrower);
-			let loan_id = Self::create_loan(pool_id, owner, asset)?;
-			Self::deposit_event(Event::<T>::Created(pool_id, loan_id, asset));
+			let loan_id = Self::create_loan(pool_id, owner, collateral)?;
+			Self::deposit_event(Event::<T>::Created(pool_id, loan_id, collateral));
 			Ok(())
 		}
 
@@ -367,8 +335,8 @@ pub mod pallet {
 		/// 1. When the outstanding is fully paid off
 		/// 2. When loan is written off 100%
 		/// Loan status is moved to Closed
-		/// Asset/Collateral is transferred back to the loan owner.
-		/// LoanNFT is transferred back to LoanAccount.
+		/// Collateral NFT is transferred back to the loan owner.
+		/// Loan NFT is transferred back to LoanAccount.
 		#[pallet::weight(
 			<T as Config>::WeightInfo::repay_and_close().max(
 				<T as Config>::WeightInfo::write_off_and_close()
@@ -381,8 +349,11 @@ pub mod pallet {
 			loan_id: T::LoanId,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let ClosedLoan { asset, written_off } = Self::close_loan(pool_id, loan_id, owner)?;
-			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, asset));
+			let ClosedLoan {
+				collateral,
+				written_off,
+			} = Self::close_loan(pool_id, loan_id, owner)?;
+			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, collateral));
 			match written_off {
 				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
 				false => Ok(Some(T::WeightInfo::repay_and_close()).into()),
@@ -392,7 +363,7 @@ pub mod pallet {
 		/// Transfers borrow amount to the loan owner.
 		///
 		/// LoanStatus must be active.
-		/// Total Borrowed amount(Previously borrowed + requested) should not exceed ceiling set for the loan.
+		/// Borrow amount should not exceed max_borrow_amount set for the loan.
 		/// Loan should still be healthy. If loan type supports maturity, then maturity date should not have passed.
 		/// Loan should not be written off.
 		/// Rate accumulation will start after the first borrow
