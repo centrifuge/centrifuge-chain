@@ -21,7 +21,8 @@ use crate::mock::{
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
-	assert_last_event, create, create_nft_class, expect_asset_owner, initialise_test_pool, mint_nft,
+	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
+	initialise_test_pool, mint_nft,
 };
 use common_types::CurrencyId;
 use common_types::PoolLocator;
@@ -287,11 +288,11 @@ fn close_test_loan<T>(
 	assert_eq!(loan_id, got_loan_id);
 	assert_eq!(collateral, got_collateral);
 
-	// check collateral owner
+	// check that collateral nft was returned
 	expect_asset_owner::<T>(collateral, owner);
 
-	// check loan owner
-	expect_asset_owner::<T>(loan, Loans::account_id());
+	// check that loan nft was burned
+	expect_asset_to_be_burned::<T>(loan);
 
 	// check loan status as Closed
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
@@ -859,7 +860,7 @@ macro_rules! test_repay_loan {
 				expect_asset_owner::<MockRuntime>(collateral_nft, borrower);
 
 				// pool account should own the loan NFT
-				expect_asset_owner::<MockRuntime>(loan_nft, Loans::account_id());
+				expect_asset_to_be_burned::<MockRuntime>(loan_nft);
 
 				// check nav
 				let res = Loans::update_nav_of_pool(pool_id);

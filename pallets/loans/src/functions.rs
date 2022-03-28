@@ -191,15 +191,9 @@ impl<T: Config> Pallet<T> {
 				let (collateral_class_id, instance_id) = collateral.destruct();
 				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
 
-				// transfer loan nft to loan pallet
-				// ideally we should burn this but we do not have a function to burn them yet.
-				// TODO(ved): burn loan nft so that deposit for loan account is returned
+				// burn loan nft
 				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::transfer(
-					&loan_class_id.into(),
-					&loan_id.into(),
-					&Self::account_id(),
-				)?;
+				T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
