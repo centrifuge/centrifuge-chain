@@ -306,15 +306,15 @@ impl<T: Config> Pallet<T> {
 				// borrow
 				true => new_pv
 					.checked_sub(&old_pv)
-					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff))
+					.and_then(|positive_diff| nav.latest.checked_add(&positive_diff))
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
 				false => old_pv
 					.checked_sub(&new_pv)
-					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff))
+					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
 			}?;
-			nav.latest_nav = new_nav;
+			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
 			Self::deposit_event(Event::<T>::NAVUpdated(
 				pool_id,
@@ -451,7 +451,7 @@ impl<T: Config> Pallet<T> {
 		PoolNAV::<T>::insert(
 			pool_id,
 			NAVDetails {
-				latest_nav: nav,
+				latest: nav,
 				last_updated: now,
 			},
 		);

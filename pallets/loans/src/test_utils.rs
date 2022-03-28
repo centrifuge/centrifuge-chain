@@ -191,7 +191,7 @@ where
 	)
 	.expect("initialisation of pool should not fail");
 	let nav = pallet_loans::PoolNAV::<T>::get(pool_id).unwrap();
-	assert!(nav.latest_nav == Zero::zero());
+	assert!(nav.latest == Zero::zero());
 	class_id
 }
 

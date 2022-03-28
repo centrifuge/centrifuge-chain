@@ -581,10 +581,10 @@ benchmarks! {
 	verify {
 		let pool_nav = PoolNAV::<T>::get(pool_id).expect("pool nav should be present");
 		// pool nav should more than 100 USD(due to interest)
-		assert!(pool_nav.latest_nav > amount);
+		assert!(pool_nav.latest > amount);
 		// updated time should be after_one_years
 		assert_eq!(pool_nav.last_updated, after_one_year/1000);
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest_nav, NAVUpdateType::Exact).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest, NAVUpdateType::Exact).into());
 	}
 }
 

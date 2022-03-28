@@ -45,7 +45,7 @@ pub struct NAVDetails<Amount> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest_nav: Amount,
+	pub(crate) latest: Amount,
 
 	// this is the last time when the nav was calculated for the entire pool
 	pub(crate) last_updated: Moment,

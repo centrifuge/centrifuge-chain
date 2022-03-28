@@ -300,7 +300,7 @@ pub mod pallet {
 			PoolNAV::<T>::insert(
 				pool_id,
 				NAVDetails {
-					latest_nav: Default::default(),
+					latest: Default::default(),
 					last_updated: now,
 				},
 			);
@@ -548,8 +548,7 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	type ClassId = T::ClassId;
 	type Origin = T::Origin;
 	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, Moment)> {
-		PoolNAV::<T>::get(pool_id)
-			.map(|nav_details| (nav_details.latest_nav, nav_details.last_updated))
+		PoolNAV::<T>::get(pool_id).map(|nav_details| (nav_details.latest, nav_details.last_updated))
 	}
 
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
