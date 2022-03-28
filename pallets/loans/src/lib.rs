@@ -420,12 +420,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			rate_per_sec: T::Rate,
+			interest_rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
-			Self::price_loan(pool_id, loan_id, rate_per_sec, loan_type)?;
+			Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
 			Self::deposit_event(Event::<T>::Priced(pool_id, loan_id));
 			Ok(())
 		}

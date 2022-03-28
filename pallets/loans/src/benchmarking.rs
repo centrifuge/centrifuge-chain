@@ -238,14 +238,14 @@ fn activate_test_loan_with_defaults<T: Config>(
 		// collateral value
 		Amount::from_inner(125 * CURRENCY).into(),
 		// 4%
-		math::rate_per_sec(Rate::saturating_from_rational(4, 100))
+		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100))
 			.unwrap()
 			.into(),
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
 	// interest rate is 5%
-	let rp: T::Rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100))
+	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100))
 		.unwrap()
 		.into();
 	LoansPallet::<T>::price(
@@ -338,12 +338,12 @@ benchmarks! {
 			// collateral value
 			Amount::from_inner(125 * CURRENCY).into(),
 			// 4%
-			math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap().into(),
+			math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap().into(),
 			// 2 years
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let rp: T::Rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
+		let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
 		let loan_id: T::LoanId = 1u128.into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
@@ -351,7 +351,7 @@ benchmarks! {
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan.loan_type, loan_type);
 		assert_eq!(loan.status, LoanStatus::Active);
-		assert_eq!(loan.rate_per_sec, rp);
+		assert_eq!(loan.interest_rate_per_sec, rp);
 	}
 
 	add_write_off_group {

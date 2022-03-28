@@ -110,11 +110,11 @@ where
 		debt: Amount,
 		origination_date: Option<Moment>,
 		now: Moment,
-		rate_per_sec: Rate,
+		interest_rate_per_sec: Rate,
 	) -> Option<Amount> {
 		math::maturity_based_present_value(
 			debt,
-			rate_per_sec,
+			interest_rate_per_sec,
 			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,
@@ -228,7 +228,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 		debt: Amount,
 		origination_date: Option<Moment>,
 		now: Moment,
-		rate_per_sec: Rate,
+		interest_rate_per_sec: Rate,
 	) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
@@ -236,7 +236,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	{
 		math::maturity_based_present_value(
 			debt,
-			rate_per_sec,
+			interest_rate_per_sec,
 			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,

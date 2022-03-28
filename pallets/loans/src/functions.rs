@@ -42,13 +42,15 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn check_loan_owner(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		owner: T::AccountId,
+		expected_owner: T::AccountId,
 	) -> Result<AssetOf<T>, DispatchError> {
 		let loan_class_id =
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::PoolNotInitialised)?;
-		let got = T::NonFungible::owner(&loan_class_id.into(), &loan_id.into())
+
+		let actual_owner = T::NonFungible::owner(&loan_class_id.into(), &loan_id.into())
 			.ok_or(Error::<T>::NFTOwnerNotFound)?;
-		ensure!(got == owner, Error::<T>::NotAssetOwner);
+		ensure!(actual_owner == expected_owner, Error::<T>::NotAssetOwner);
+
 		Ok(Asset(loan_class_id, loan_id))
 	}
 
@@ -71,7 +73,6 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// create new loan nft
-		let pool_account = PoolLocator { pool_id }.into_account();
 		let nonce = NextLoanId::<T>::get();
 		let loan_id: T::LoanId = nonce.into();
 		let loan_class_id =
@@ -79,6 +80,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock collateral nft
+		let pool_account = PoolLocator { pool_id }.into_account();
 		T::NonFungible::transfer(
 			&collateral_class_id.into(),
 			&instance_id.into(),
@@ -100,7 +102,7 @@ impl<T: Config> Pallet<T> {
 				collateral,
 				loan_type: Default::default(),
 				status: LoanStatus::Created,
-				rate_per_sec: Zero::zero(),
+				interest_rate_per_sec: Zero::zero(),
 				origination_date: None,
 				principal_debt: Zero::zero(),
 				accumulated_rate: One::one(),
@@ -117,7 +119,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn price_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		rate_per_sec: T::Rate,
+		interest_rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Amount>,
 	) -> DispatchResult {
 		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
@@ -130,11 +132,14 @@ impl<T: Config> Pallet<T> {
 			let now = Self::now();
 			ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
 
-			// ensure rate_per_sec >= one
-			ensure!(rate_per_sec >= One::one(), Error::<T>::LoanValueInvalid);
+			// ensure interest_rate_per_sec >= one
+			ensure!(
+				interest_rate_per_sec >= One::one(),
+				Error::<T>::LoanValueInvalid
+			);
 
 			// update the loan info
-			loan.rate_per_sec = rate_per_sec;
+			loan.interest_rate_per_sec = interest_rate_per_sec;
 			loan.status = LoanStatus::Active;
 			loan.loan_type = loan_type;
 

@@ -96,7 +96,7 @@ pub struct LoanDetails<Rate, Amount, Asset> {
 	pub(crate) status: LoanStatus,
 
 	// interest rate per second
-	pub(crate) rate_per_sec: Rate,
+	pub(crate) interest_rate_per_sec: Rate,
 
 	// time at which first borrow occurred
 	pub(crate) origination_date: Option<Moment>,
@@ -157,14 +157,14 @@ where
 					debt,
 					self.origination_date,
 					self.last_updated,
-					self.rate_per_sec,
+					self.interest_rate_per_sec,
 				),
 				LoanType::CreditLine(cl) => cl.present_value(debt),
 				LoanType::CreditLineWithMaturity(clm) => clm.present_value(
 					debt,
 					self.origination_date,
 					self.last_updated,
-					self.rate_per_sec,
+					self.interest_rate_per_sec,
 				),
 			})
 	}
@@ -173,9 +173,9 @@ where
 	pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Amount)> {
 		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
 		let maybe_rate = match self.total_borrowed == Zero::zero() {
-			true => Some(self.rate_per_sec),
+			true => Some(self.interest_rate_per_sec),
 			false => math::calculate_accumulated_rate::<Rate>(
-				self.rate_per_sec,
+				self.interest_rate_per_sec,
 				self.accumulated_rate,
 				now,
 				self.last_updated,
