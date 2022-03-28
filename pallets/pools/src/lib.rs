@@ -1027,7 +1027,7 @@ pub mod pallet {
 				let new_solution = Self::score_solution(&pool, &epoch, &solution)?;
 				if let Some(ref previous_solution) = epoch.best_submission {
 					ensure!(
-						&new_solution > previous_solution,
+						&new_solution >= previous_solution,
 						Error::<T>::NotNewBestSubmission
 					);
 				}
