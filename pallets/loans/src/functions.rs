@@ -86,7 +86,6 @@ impl<T: Config> Pallet<T> {
 			&instance_id.into(),
 			&pool_account,
 		)?;
-		let timestamp = Self::now();
 
 		// update the next token nonce
 		let next_loan_id = nonce
@@ -106,7 +105,7 @@ impl<T: Config> Pallet<T> {
 				origination_date: None,
 				principal_debt: Zero::zero(),
 				accumulated_rate: One::one(),
-				last_updated: timestamp,
+				last_updated: Self::now(),
 				total_borrowed: Zero::zero(),
 				total_repaid: Zero::zero(),
 				admin_written_off: false,
@@ -187,7 +186,7 @@ impl<T: Config> Pallet<T> {
 					}
 				}?;
 
-				// transfer asset to owner
+				// transfer collateral nft to owner
 				let collateral = loan.collateral;
 				let (collateral_class_id, instance_id) = collateral.destruct();
 				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
