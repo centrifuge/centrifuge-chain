@@ -44,23 +44,37 @@ where
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 {
+	/// Currency that the pool is denominated in.
 	pub currency: CurrencyId,
-	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>, // ordered junior => senior
+	/// List of tranches, ordered junior to senior.
+	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>,
+	/// Current epoch that is ongoing.
 	pub current_epoch: EpochId,
+	/// Last epoch that was closed.
 	pub last_epoch_closed: Moment,
+	/// Last epoch that was executed.
 	pub last_epoch_executed: EpochId,
+	/// Details about the reserve (unused capital) in the pool.
 	pub reserve: ReserveDetails<Balance>,
+	/// Metadata that specifies the pool.
 	pub metadata: Option<BoundedVec<u8, MetaSize>>,
+	/// Minimum duration for an epoch.
 	pub min_epoch_time: Moment,
+	/// Minimum duration after submission of the first solution
+	/// that the epoch can be executed.
 	pub challenge_time: Moment,
+	/// Maximum time between the NAV update and the epoch closing.
 	pub max_nav_age: Moment,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {
-	pub max_reserve: Balance,
-	pub available_reserve: Balance,
-	pub total_reserve: Balance,
+	/// Investments will be allowed up to this amount.
+	pub max: Balance,
+	/// Current total amount of currency in the pool reserve.
+	pub total: Balance,
+	/// Current reserve that is available for originations.
+	pub available: Balance,
 }
 
 impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
@@ -76,13 +90,13 @@ where
 		self.last_epoch_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
 		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
-		self.reserve.available_reserve = Zero::zero();
+		self.reserve.available = Zero::zero();
 
 		Ok(())
 	}
 
 	fn last_epoch_closed(&mut self) -> DispatchResult {
-		self.reserve.available_reserve = self.reserve.total_reserve;
+		self.reserve.available = self.reserve.total;
 		self.last_epoch_executed += One::one();
 		Ok(())
 	}
@@ -481,9 +495,9 @@ pub mod pallet {
 						T::MaxNAVAgeUpperBound::get(),
 					),
 					reserve: ReserveDetails {
-						max_reserve,
-						available_reserve: Zero::zero(),
-						total_reserve: Zero::zero(),
+						max: max_reserve,
+						available: Zero::zero(),
+						total: Zero::zero(),
 					},
 					metadata: None,
 				},
@@ -582,7 +596,7 @@ pub mod pallet {
 
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-				pool.reserve.max_reserve = max_reserve;
+				pool.reserve.max = max_reserve;
 				Self::deposit_event(Event::MaxReserveSet(pool_id));
 				Ok(())
 			})
@@ -851,7 +865,7 @@ pub mod pallet {
 				let nav = nav_amount.into();
 				let submission_period_epoch = pool.current_epoch;
 				let total_assets = nav
-					.checked_add(&pool.reserve.total_reserve)
+					.checked_add(&pool.reserve.total)
 					.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
 
 				pool.end_epoch(now)?;
@@ -933,8 +947,8 @@ pub mod pallet {
 				let mut epoch = EpochExecutionInfo {
 					epoch: submission_period_epoch,
 					nav,
-					reserve: pool.reserve.total_reserve,
-					max_reserve: pool.reserve.max_reserve,
+					reserve: pool.reserve.total,
+					max_reserve: pool.reserve.max,
 					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
 					challenge_period_end: None,
@@ -1175,7 +1189,7 @@ pub mod pallet {
 			Self::validate_pool_constraints(
 				PoolState::Healthy,
 				new_reserve,
-				pool.reserve.max_reserve,
+				pool.reserve.max,
 				&pool.tranches.min_risk_buffers(),
 				&risk_buffers,
 			)
@@ -1572,9 +1586,9 @@ pub mod pallet {
 					.checked_add(&redeem)
 					.ok_or(ArithmeticError::Overflow)?;
 			}
-			pool.reserve.total_reserve = pool
+			pool.reserve.total = pool
 				.reserve
-				.total_reserve
+				.total
 				.checked_add(&acc_investments)
 				.ok_or(ArithmeticError::Overflow)?
 				.checked_sub(&acc_redemptions)
@@ -1607,7 +1621,7 @@ pub mod pallet {
 
 			let total_assets = pool
 				.reserve
-				.total_reserve
+				.total
 				.checked_add(&epoch.nav)
 				.ok_or(ArithmeticError::Overflow)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
@@ -1627,7 +1641,7 @@ pub mod pallet {
 
 			pool.tranches.rebalance_tranches(
 				Self::now(),
-				pool.reserve.total_reserve,
+				pool.reserve.total,
 				epoch.nav,
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
@@ -1693,9 +1707,9 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();
 
-				pool.reserve.total_reserve = pool
+				pool.reserve.total = pool
 					.reserve
-					.total_reserve
+					.total
 					.checked_add(&amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
@@ -1744,14 +1758,14 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();
 
-				pool.reserve.total_reserve = pool
+				pool.reserve.total = pool
 					.reserve
-					.total_reserve
+					.total
 					.checked_sub(&amount)
 					.ok_or(TokenError::NoFunds)?;
-				pool.reserve.available_reserve = pool
+				pool.reserve.available = pool
 					.reserve
-					.available_reserve
+					.available
 					.checked_sub(&amount)
 					.ok_or(TokenError::NoFunds)?;
 

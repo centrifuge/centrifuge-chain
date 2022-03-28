@@ -100,10 +100,10 @@ where
 	let pr_pool_id: PoolIdOf<T> = pool_id.into();
 	let loan_nft_class_id =
 		initialise_test_pool::<T>(pr_pool_id, 1, pool_admin, Some(Loans::account_id()));
-	let asset_class = create_nft_class::<T>(2, borrower.clone(), None);
-	let instance_id = mint_nft::<T>(borrower.clone(), asset_class);
-	let asset = Asset(asset_class, instance_id);
-	let res = Loans::create(Origin::signed(borrower), pool_id, asset);
+	let collateral_class = create_nft_class::<T>(2, borrower.clone(), None);
+	let instance_id = mint_nft::<T>(borrower.clone(), collateral_class);
+	let collateral = Asset(collateral_class, instance_id);
+	let res = Loans::create(Origin::signed(borrower), pool_id, collateral);
 	assert_ok!(res);
 
 	// post issue checks
@@ -115,24 +115,24 @@ where
 
 	// event should be emitted
 	assert_last_event::<MockRuntime, <MockRuntime as pallet_loans::Config>::Event>(
-		LoanEvent::Created(pool_id, loan_id, asset).into(),
+		LoanEvent::Created(pool_id, loan_id, collateral).into(),
 	);
 	let loan = Loans::get_loan(pool_id, loan_id).expect("LoanDetails should be present");
 
-	// asset is same as we sent before
-	assert_eq!(loan.asset, asset);
+	// collateral is same as we sent before
+	assert_eq!(loan.collateral, collateral);
 	assert_eq!(loan.status, LoanStatus::Created);
 
-	// asset owner is pool pallet
+	// collateral nft owner is pool pallet
 	let pool_account = PoolLocator { pool_id }.into_account();
-	expect_asset_owner::<T>(asset, pool_account);
+	expect_asset_owner::<T>(collateral, pool_account);
 
 	// pool should be initialised
 	assert_eq!(
 		loan_nft_class_id,
 		Loans::get_loan_nft_class(pool_id).expect("Loan class should be created")
 	);
-	(pool_id, Asset(loan_nft_class_id, loan_id), asset)
+	(pool_id, Asset(loan_nft_class_id, loan_id), collateral)
 }
 
 fn default_bullet_loan_params() -> LoanType<Rate, Amount> {
@@ -205,7 +205,7 @@ fn price_test_loan<T>(
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(loan.rate_per_sec, rp);
 	assert_eq!(loan.loan_type, loan_type);
-	assert_eq!(loan.ceiling(0), Amount::from_inner(100 * USD));
+	assert_eq!(loan.max_borrow_amount(0), Amount::from_inner(100 * USD));
 	assert_eq!(loan.write_off_index, None);
 	assert!(!loan.admin_written_off);
 }
@@ -261,8 +261,12 @@ where
 	(rp, loan_type)
 }
 
-fn close_test_loan<T>(owner: T::AccountId, pool_id: T::PoolId, loan: AssetOf<T>, asset: AssetOf<T>)
-where
+fn close_test_loan<T>(
+	owner: T::AccountId,
+	pool_id: T::PoolId,
+	loan: AssetOf<T>,
+	collateral: AssetOf<T>,
+) where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64>,
@@ -273,18 +277,18 @@ where
 	let res = Loans::close(Origin::signed(owner), pool_id, loan_id);
 	assert_ok!(res);
 
-	let (got_pool_id, got_loan_id, got_asset) =
+	let (got_pool_id, got_loan_id, got_collateral) =
 		match fetch_loan_event(last_event()).expect("should be a loan event") {
-			LoanEvent::Closed(pool_id, loan_id, asset) => Some((pool_id, loan_id, asset)),
+			LoanEvent::Closed(pool_id, loan_id, collateral) => Some((pool_id, loan_id, collateral)),
 			_ => None,
 		}
 		.expect("must be a Loan close event");
 	assert_eq!(pool_id, got_pool_id);
 	assert_eq!(loan_id, got_loan_id);
-	assert_eq!(asset, got_asset);
+	assert_eq!(collateral, got_collateral);
 
-	// check asset owner
-	expect_asset_owner::<T>(asset, owner);
+	// check collateral owner
+	expect_asset_owner::<T>(collateral, owner);
 
 	// check loan owner
 	expect_asset_owner::<T>(loan, Loans::account_id());
@@ -302,16 +306,20 @@ fn test_create() {
 			let borrower: u64 = Borrower::get();
 
 			// successful issue
-			let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
+			let (pool_id, loan, collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			// wrong owner
 			let owner2 = 2;
-			let res = Loans::create(Origin::signed(owner2), pool_id, asset);
+			let res = Loans::create(Origin::signed(owner2), pool_id, collateral);
 			assert_err!(res, Error::<MockRuntime>::NotAssetOwner);
 
 			// missing owner
 			let instance_id = 100u128.into();
-			let res = Loans::create(Origin::signed(owner2), pool_id, Asset(asset.0, instance_id));
+			let res = Loans::create(
+				Origin::signed(owner2),
+				pool_id,
+				Asset(collateral.0, instance_id),
+			);
 			assert_err!(res, Error::<MockRuntime>::NFTOwnerNotFound);
 
 			// trying to issue a loan with loan nft
@@ -328,7 +336,7 @@ fn test_price_bullet_loan() {
 			let borrower: u64 = Borrower::get();
 
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+			let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			let loan_id = loan.1;
 
@@ -388,7 +396,7 @@ fn test_price_credit_line_with_maturity_loan() {
 			let borrower: u64 = Borrower::get();
 
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+			let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			let loan_id = loan.1;
 
@@ -448,7 +456,7 @@ fn test_price_credit_line_loan() {
 			let borrower: u64 = Borrower::get();
 
 			// successful issue
-			let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+			let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
 			let loan_id = loan.1;
 
@@ -479,13 +487,13 @@ macro_rules! test_close_loan {
 			.execute_with(|| {
 				let borrower = Borrower::get();
 				// successful issue
-				let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let (pool_id, loan, collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
 				// successful activation
 				$price_loan::<MockRuntime>(borrower, pool_id, loan.1);
 
 				// successful close of loan
-				close_test_loan::<MockRuntime>(borrower, pool_id, loan, asset);
+				close_test_loan::<MockRuntime>(borrower, pool_id, loan, collateral);
 			})
 	};
 }
@@ -513,7 +521,7 @@ macro_rules! test_borrow_loan {
 				let pool_admin = PoolAdmin::get();
 				let borrower = Borrower::get();
 				// successful issue
-				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
@@ -583,12 +591,12 @@ macro_rules! test_borrow_loan {
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
-				// try to borrow more than ceiling
+				// try to borrow more than max_borrow_amount
 				// borrow another 40 after 1000 seconds
 				Timestamp::set_timestamp(2001 * 1000);
 				let borrow_amount = Amount::from_inner(40 * USD);
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-				assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+				assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 				// try to borrow after maturity date
 				let mut now = 2001;
@@ -664,7 +672,8 @@ macro_rules! test_repay_loan {
 			.execute_with(|| {
 				let borrower: u64 = Borrower::get();
 				// successful issue
-				let (pool_id, loan_nft, asset_nft) = issue_test_loan::<MockRuntime>(0, borrower);
+				let (pool_id, loan_nft, collateral_nft) =
+					issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
@@ -840,8 +849,8 @@ macro_rules! test_repay_loan {
 				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
-				// owner account should own the asset NFT
-				expect_asset_owner::<MockRuntime>(asset_nft, borrower);
+				// owner account should own the collateral NFT
+				expect_asset_owner::<MockRuntime>(collateral_nft, borrower);
 
 				// pool account should own the loan NFT
 				expect_asset_owner::<MockRuntime>(loan_nft, Loans::account_id());
@@ -872,14 +881,14 @@ fn test_repay_credit_line_loan() {
 }
 
 macro_rules! test_pool_nav {
-	($price_loan:ident,$moving_ceiling:expr,$admin_write_off:expr,$pv_1:expr,$pv_200:expr) => {
+	($price_loan:ident,$moving_max_borrow_amount:expr,$admin_write_off:expr,$pv_1:expr,$pv_200:expr) => {
 		TestExternalitiesBuilder::default()
 			.build()
 			.execute_with(|| {
 				let pool_admin: u64 = PoolAdmin::get();
 				let borrower: u64 = Borrower::get();
 				// successful issue
-				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
@@ -921,9 +930,9 @@ macro_rules! test_pool_nav {
 				// present value should be 50.05
 				assert_eq!(nav, $pv_200);
 
-				if $moving_ceiling {
-					// can borrow upto ceiling
-					// ceiling = 125 * 0.8 - debt
+				if $moving_max_borrow_amount {
+					// can borrow upto max_borrow_amount
+					// max_borrow_amount = 125 * 0.8 - debt
 					// check present value
 					let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 						.expect("LoanDetails should be present");
@@ -933,11 +942,11 @@ macro_rules! test_pool_nav {
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 
-					// cannot borrow more than ceiling, 1
+					// cannot borrow more than max_borrow_amount, 1
 					let borrow_amount = Amount::from_inner(1 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 					// payback 50 and borrow more later
 					let repay_amount = Amount::from_inner(50 * USD);
@@ -953,7 +962,7 @@ macro_rules! test_pool_nav {
 					let borrow_amount = Amount::from_inner(50 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 					// borrow 40 maybe
 					let borrow_amount = Amount::from_inner(40 * USD);
@@ -967,11 +976,11 @@ macro_rules! test_pool_nav {
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 
-					// cannot borrow more than ceiling, 1
+					// cannot borrow more than max_borrow_amount, 1
 					let borrow_amount = Amount::from_inner(1 * USD);
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
-					assert_err!(res, Error::<MockRuntime>::LoanCeilingReached);
+					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 				}
 
 				// let the maturity has passed 2 years + 10 day
@@ -1179,7 +1188,7 @@ macro_rules! test_write_off_maturity_loan {
 				let pool_admin = PoolAdmin::get();
 				let borrower: u64 = Borrower::get();
 				// successful issue
-				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);

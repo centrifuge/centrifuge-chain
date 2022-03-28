@@ -55,18 +55,18 @@ impl<T: Config> Pallet<T> {
 	/// issues a new loan nft and returns the LoanID
 	pub(crate) fn create_loan(
 		pool_id: PoolIdOf<T>,
-		asset_owner: T::AccountId,
-		asset: AssetOf<T>,
+		collateral_owner: T::AccountId,
+		collateral: AssetOf<T>,
 	) -> Result<T::LoanId, sp_runtime::DispatchError> {
 		// check if the nft belongs to owner
-		let (asset_class_id, instance_id) = asset.destruct();
-		let owner = T::NonFungible::owner(&asset_class_id.into(), &instance_id.into())
+		let (collateral_class_id, instance_id) = collateral.destruct();
+		let owner = T::NonFungible::owner(&collateral_class_id.into(), &instance_id.into())
 			.ok_or(Error::<T>::NFTOwnerNotFound)?;
-		ensure!(owner == asset_owner, Error::<T>::NotAssetOwner);
+		ensure!(owner == collateral_owner, Error::<T>::NotAssetOwner);
 
 		// check if the registry is not an loan nft registry
 		ensure!(
-			!LoanNftClassToPool::<T>::contains_key(asset_class_id),
+			!LoanNftClassToPool::<T>::contains_key(collateral_class_id),
 			Error::<T>::NotAValidAsset
 		);
 
@@ -78,8 +78,12 @@ impl<T: Config> Pallet<T> {
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::PoolNotInitialised)?;
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
-		// lock asset nft
-		T::NonFungible::transfer(&asset_class_id.into(), &instance_id.into(), &pool_account)?;
+		// lock collateral nft
+		T::NonFungible::transfer(
+			&collateral_class_id.into(),
+			&instance_id.into(),
+			&pool_account,
+		)?;
 
 		// update the next token nonce
 		let next_loan_id = nonce
@@ -87,7 +91,7 @@ impl<T: Config> Pallet<T> {
 			.ok_or(Error::<T>::NftTokenNonceOverflowed)?;
 		NextLoanId::<T>::set(next_loan_id);
 
-		// create loan info
+		// create loan
 		Loan::<T>::insert(
 			pool_id,
 			loan_id,
@@ -100,7 +104,7 @@ impl<T: Config> Pallet<T> {
 				loan_type: Default::default(),
 				admin_written_off: false,
 				write_off_index: None,
-				asset,
+				collateral,
 				origination_date: 0,
 			},
 		);
@@ -176,9 +180,9 @@ impl<T: Config> Pallet<T> {
 				}?;
 
 				// transfer asset to owner
-				let asset = loan.asset;
-				let (asset_class_id, instance_id) = asset.destruct();
-				T::NonFungible::transfer(&asset_class_id.into(), &instance_id.into(), &owner)?;
+				let collateral = loan.collateral;
+				let (collateral_class_id, instance_id) = collateral.destruct();
+				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
 
 				// transfer loan nft to loan pallet
 				// ideally we should burn this but we do not have a function to burn them yet.
@@ -192,7 +196,10 @@ impl<T: Config> Pallet<T> {
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
-				Ok(ClosedLoan { asset, written_off })
+				Ok(ClosedLoan {
+					collateral,
+					written_off,
+				})
 			},
 		)
 	}
@@ -214,12 +221,32 @@ impl<T: Config> Pallet<T> {
 			// ensure loan is active
 			ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
-			// check for ceiling threshold
-			let now = Self::now();
+			// ensure loan is not written off
+			ensure!(
+				loan.write_off_index.is_none(),
+				Error::<T>::WrittenOffByAdmin
+			);
+
+			// ensure maturity date has not passed if the loan has a maturity date
+			let now: Moment = Self::now();
+			let valid = match loan.loan_type.maturity_date() {
+				Some(md) => md > now,
+				None => true,
+			};
+			ensure!(valid, Error::<T>::LoanMaturityDatePassed);
+
+			// ensure borrow amount is positive
+			ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
+
+			// check for max borrow amount
 			let old_debt =
 				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
-			let ceiling = loan.ceiling(old_debt);
-			ensure!(amount <= ceiling, Error::<T>::LoanCeilingReached);
+
+			let max_borrow_amount = loan.max_borrow_amount(old_debt);
+			ensure!(
+				amount <= max_borrow_amount,
+				Error::<T>::MaxBorrowAmountExceeded
+			);
 
 			// get previous present value so that we can update the nav accordingly
 			// we already know that that loan is not written off,

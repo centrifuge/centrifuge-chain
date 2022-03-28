@@ -29,7 +29,7 @@ impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
 
 /// ClosedLoan holds the collateral reference of the loan and if loan was written off
 pub(crate) struct ClosedLoan<T: pallet::Config> {
-	pub(crate) asset: AssetOf<T>,
+	pub(crate) collateral: AssetOf<T>,
 	// Whether the loan has been 100% written off
 	pub(crate) written_off: bool,
 }
@@ -72,7 +72,7 @@ pub enum LoanStatus {
 	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
-	// loan is closed and asset nft is transferred back to borrower and loan nft is transferred back to loan module
+	// loan is closed and collateral nft is transferred back to borrower and loan nft is transferred back to pool account
 	Closed,
 }
 
@@ -91,7 +91,7 @@ pub enum NAVUpdateType {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanDetails<Rate, Amount, Asset, NormalizedDebt> {
-	pub(crate) asset: Asset,
+	pub(crate) collateral: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
 	pub(crate) status: LoanStatus,
 
@@ -178,14 +178,14 @@ where
 	// 	}
 	// }
 
-	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self, debt: Amount) -> Amount {
+	/// returns the max borrow amount for the loan based on the loan type
+	pub(crate) fn max_borrow_amount(&self, debt: Amount) -> Amount {
 		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.ceiling(self.total_borrowed),
-			LoanType::CreditLine(cl) => cl.ceiling(debt),
-			LoanType::CreditLineWithMaturity(clm) => clm.ceiling(debt),
+			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
+			LoanType::CreditLine(cl) => cl.max_borrow_amount(debt),
+			LoanType::CreditLineWithMaturity(clm) => clm.max_borrow_amount(debt),
 		}
-		// always fallback to zero ceiling
+		// always fallback to zero max_borrow_amount
 		.unwrap_or(Zero::zero())
 	}
 }

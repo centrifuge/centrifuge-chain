@@ -329,16 +329,16 @@ fn assert_tranches_match<T: Config>(
 	for (chain, target) in chain.iter().zip(target.iter()) {
 		match chain.tranche_type {
 			TrancheType::Residual => {
-				assert!(target.interest_per_sec.is_none() && target.min_risk_buffer.is_none())
+				assert!(target.interest_rate_per_sec.is_none() && target.min_risk_buffer.is_none())
 			}
 			TrancheType::NonResidual {
-				interest_per_sec,
+				interest_rate_per_sec,
 				min_risk_buffer,
 			} => {
 				assert_eq!(
-					interest_per_sec,
+					interest_rate_per_sec,
 					target
-						.interest_per_sec
+						.interest_rate_per_sec
 						.expect("Interest rate for non-residual tranches must be set.")
 				);
 				assert_eq!(
@@ -429,7 +429,7 @@ fn build_bench_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::Int
 		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
 	let mut tranches: Vec<_> = (1..num_tranches)
 		.map(|tranche_id| TrancheInput {
-			interest_per_sec: Some(
+			interest_rate_per_sec: Some(
 				senior_interest_rate * T::InterestRate::saturating_from_integer(tranche_id)
 					+ One::one(),
 			),
@@ -440,7 +440,7 @@ fn build_bench_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::Int
 	tranches.insert(
 		0,
 		TrancheInput {
-			interest_per_sec: None,
+			interest_rate_per_sec: None,
 			min_risk_buffer: None,
 			seniority: None,
 		},
