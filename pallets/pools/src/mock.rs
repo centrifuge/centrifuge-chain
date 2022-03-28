@@ -264,13 +264,11 @@ parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 1;
 	pub const DefaultChallengeTime: u64 = 1;
 	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
-	pub const DefaultMinSubmissionTime: u64 = 1;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1;
 	pub const ChallengeTimeLowerBound: u64 = 1;
 	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
-	pub const MinSubmissionTimeLowerBound: u64 = 1;
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -294,10 +292,8 @@ impl Config for Test {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
-	type DefaultMinSubmissionTime = DefaultMinSubmissionTime;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
-	type MinSubmissionTimeLowerBound = MinSubmissionTimeLowerBound;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type Permission = Permissions;
