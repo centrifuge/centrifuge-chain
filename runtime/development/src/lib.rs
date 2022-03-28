@@ -792,13 +792,11 @@ parameter_types! {
 	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
 	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
 	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
-	pub const DefaultMinSubmissionTime: u64 = 1;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1; // do not allow multiple epochs closed in 1 block
 	pub const ChallengeTimeLowerBound: u64 = 1; // do not allow submission and execution in 1 block
 	pub const MaxNAVAgeUpperBound: u64 = 60 * 60; // 1 hour
-	pub const MinSubmissionTimeLowerBound: u64 = 1;
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -823,11 +821,9 @@ impl pallet_pools::Config for Runtime {
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
-	type DefaultMinSubmissionTime = DefaultMinSubmissionTime;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
 	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
-	type MinSubmissionTimeLowerBound = MinSubmissionTimeLowerBound;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
