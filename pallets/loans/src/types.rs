@@ -99,7 +99,7 @@ pub struct LoanDetails<Rate, Amount, Asset> {
 	pub(crate) rate_per_sec: Rate,
 
 	// time at which first borrow occurred
-	pub(crate) origination_date: Moment,
+	pub(crate) origination_date: Option<Moment>,
 
 	// principal debt used to calculate the current outstanding debt.
 	// principal debt will change on every borrow and repay.

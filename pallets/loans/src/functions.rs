@@ -97,18 +97,18 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			LoanDetails {
+				collateral,
+				loan_type: Default::default(),
+				status: LoanStatus::Created,
+				rate_per_sec: Zero::zero(),
+				origination_date: None,
+				principal_debt: Zero::zero(),
+				accumulated_rate: One::one(),
+				last_updated: timestamp,
 				total_borrowed: Zero::zero(),
 				total_repaid: Zero::zero(),
-				rate_per_sec: Zero::zero(),
-				accumulated_rate: One::one(),
-				principal_debt: Zero::zero(),
-				last_updated: timestamp,
-				status: LoanStatus::Created,
-				loan_type: Default::default(),
 				admin_written_off: false,
 				write_off_index: None,
-				collateral,
-				origination_date: 0,
 			},
 		);
 		Ok(loan_id)
@@ -274,7 +274,7 @@ impl<T: Config> Pallet<T> {
 			// update loan
 			let first_borrow = loan.total_borrowed == Zero::zero();
 			if first_borrow {
-				loan.origination_date = now;
+				loan.origination_date = Some(now);
 			}
 			loan.total_borrowed = new_total_borrowed;
 			loan.last_updated = now;
@@ -344,7 +344,12 @@ impl<T: Config> Pallet<T> {
 				// ensure current time is more than origination time
 				// this is mainly to deal with how we calculate debt while trying to repay
 				// therefore we do not let users repay at same instant origination happened
-				ensure!(now > loan.origination_date, Error::<T>::RepayTooEarly);
+				ensure!(
+					now > loan
+						.origination_date
+						.expect("Active loan should have an origination date"),
+					Error::<T>::RepayTooEarly
+				);
 
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);

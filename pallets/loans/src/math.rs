@@ -14,6 +14,7 @@
 //! Module provides all the interest and rate related calculations
 use crate::math::Adjustment::{Dec, Inc};
 use crate::WriteOffGroup;
+pub use common_types::Moment;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::{ArithmeticError, DispatchError};
@@ -22,8 +23,8 @@ use sp_runtime::{ArithmeticError, DispatchError};
 pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 	rate_per_sec: Rate,
 	current_accumulated_rate: Rate,
-	now: u64,
-	last_updated: u64,
+	now: Moment,
+	last_updated: Moment,
 ) -> Option<Rate> {
 	let pow = now - last_updated;
 	checked_pow(rate_per_sec, pow as usize).and_then(|v| v.checked_mul(&current_accumulated_rate))
@@ -70,14 +71,14 @@ pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber
 
 /// returns the seconds in a given normal day
 #[inline]
-pub(crate) fn seconds_per_day() -> u64 {
+pub(crate) fn seconds_per_day() -> Moment {
 	3600 * 24
 }
 
 /// returns the seconds in a given normal year(365 days)
 /// https://docs.centrifuge.io/learn/interest-rate-methodology/
 #[inline]
-pub(crate) fn seconds_per_year() -> u64 {
+pub(crate) fn seconds_per_year() -> Moment {
 	seconds_per_day() * 365
 }
 
@@ -94,8 +95,8 @@ pub fn rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Option<Rate
 /// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
 pub fn bullet_loan_risk_adjusted_expected_cash_flow<Amount, Rate>(
 	debt: Amount,
-	now: u64,
-	maturity_date: u64,
+	now: Moment,
+	maturity_date: Moment,
 	rate_per_sec: Rate,
 	expected_loss_over_asset_maturity: Rate,
 ) -> Option<Amount>
@@ -129,8 +130,8 @@ where
 /// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
 pub fn bullet_loan_present_value<Amount, Rate>(
 	expected_cash_flow: Amount,
-	now: u64,
-	maturity_date: u64,
+	now: Moment,
+	maturity_date: Moment,
 	discount_rate: Rate,
 ) -> Option<Amount>
 where
@@ -153,14 +154,14 @@ where
 /// we want to preserve the index of the group,
 /// we also pick the group that has the highest overdue days found in the vector
 pub(crate) fn valid_write_off_group<Rate>(
-	maturity_date: u64,
-	now: u64,
-	groups: &[WriteOffGroup<Rate>],
+	maturity_date: Moment,
+	now: Moment,
+	write_off_groups: &[WriteOffGroup<Rate>],
 ) -> Result<Option<u32>, DispatchError> {
 	let mut index = None;
 	let mut highest_overdue_days = 0;
 	let seconds_per_day = seconds_per_day();
-	for (idx, group) in groups.iter().enumerate() {
+	for (idx, group) in write_off_groups.iter().enumerate() {
 		let overdue_days = group.overdue_days;
 		let offset = overdue_days
 			.checked_mul(seconds_per_day)
@@ -195,10 +196,10 @@ pub(crate) fn max_borrow_amount<Rate: FixedPointNumber, Amount: FixedPointNumber
 pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 	pd: Rate,
 	lgd: Rate,
-	origination: u64,
-	maturity: u64,
+	origination_date: Moment,
+	maturity_date: Moment,
 ) -> Option<Rate> {
-	Rate::saturating_from_rational(maturity - origination, seconds_per_year())
+	Rate::saturating_from_rational(maturity_date - origination_date, seconds_per_year())
 		.checked_mul(&pd)
 		.and_then(|val| val.checked_mul(&lgd))
 		.and_then(|tel| Some(tel.min(One::one())))
@@ -208,8 +209,8 @@ pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 #[inline]
 pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
 	debt: Amount,
-	now: u64,
-	maturity_date: u64,
+	now: Moment,
+	maturity_date: Moment,
 	interest_rate_per_sec: Rate,
 ) -> Option<Amount> {
 	checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)
@@ -222,8 +223,8 @@ pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumbe
 pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
 	ra_ecf: Amount,
 	discount_rate: Rate,
-	maturity: u64,
-	now: u64,
+	maturity: Moment,
+	now: Moment,
 ) -> Option<Amount> {
 	// calculate accumulated discount rate
 	checked_pow(discount_rate, (maturity - now) as usize)
@@ -238,10 +239,14 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 	discount_rate: Rate,
 	probability_of_default: Rate,
 	loss_given_default: Rate,
-	origination_date: u64,
-	maturity_date: u64,
-	now: u64,
+	origination_date: Option<Moment>,
+	maturity_date: Moment,
+	now: Moment,
 ) -> Option<Amount> {
+	if origination_date.is_none() {
+		return Some(Amount::zero());
+	}
+
 	// check if maturity is in the past
 	if now > maturity_date {
 		return Some(debt);
@@ -251,7 +256,7 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 	term_expected_loss(
 		probability_of_default,
 		loss_given_default,
-		origination_date,
+		origination_date.expect("Origination date should be set"),
 		maturity_date,
 	)
 	.and_then(|tel| Rate::one().checked_sub(&tel).and_then(|diff| convert(diff)))
@@ -321,7 +326,7 @@ mod tests {
 		let accumulated_rate = Rate::from(1);
 
 		// moment values
-		let last_updated = 0u64;
+		let last_updated: Moment = 0u64 as Moment;
 		// after half a year
 		let now = (3600 * 24 * 365) / 2;
 
@@ -440,7 +445,7 @@ mod tests {
 		let sec_per_day = seconds_per_day();
 
 		// maturity date in days and current time offset to maturity date  and resultant index from the group
-		let tests: Vec<(u64, u64, Option<u32>)> = vec![
+		let tests: Vec<(Moment, Moment, Option<u32>)> = vec![
 			// day 0, and now is at zero, index is None
 			(0, 0, None),
 			(0, 1, None),

@@ -108,7 +108,7 @@ where
 	pub(crate) fn present_value(
 		&self,
 		debt: Amount,
-		origination_date: Moment,
+		origination_date: Option<Moment>,
 		now: Moment,
 		rate_per_sec: Rate,
 	) -> Option<Amount> {
@@ -226,7 +226,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	pub(crate) fn present_value(
 		&self,
 		debt: Amount,
-		origination: Moment,
+		origination_date: Option<Moment>,
 		now: Moment,
 		rate_per_sec: Rate,
 	) -> Option<Amount>
@@ -240,7 +240,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,
-			origination,
+			origination_date,
 			self.maturity_date,
 			now,
 		)
