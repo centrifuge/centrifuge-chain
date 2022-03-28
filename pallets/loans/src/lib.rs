@@ -247,7 +247,6 @@ pub mod pallet {
 		ValueOverflow,
 		/// Emits when principal debt calculation failed due to overflow
 		NormalizedDebtOverflow,
-
 		/// Emits when tries to update an active loan
 		LoanIsActive,
 		/// Emits when loan type given is not valid
