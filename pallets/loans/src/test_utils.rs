@@ -22,7 +22,7 @@ use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use frame_support::{assert_ok, parameter_types, StorageHasher, Twox128};
+use frame_support::{assert_ok, parameter_types, Blake2_128, StorageHasher};
 use frame_system::RawOrigin;
 use pallet_pools::TrancheLoc;
 use pallet_pools::TrancheType;
@@ -45,7 +45,7 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
-	Twox128::hash(&hash_input)
+	Blake2_128::hash(&hash_input)
 }
 
 parameter_types! {
