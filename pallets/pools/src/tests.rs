@@ -803,24 +803,21 @@ fn submission_period() {
 			]
 		));
 
-		// Can't submit the same solution twice
-		assert_err!(
-			Pools::submit_solution(
-				pool_owner_origin.clone(),
-				0,
-				vec![
-					TrancheSolution {
-						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::from_float(0.01),
-					},
-					TrancheSolution {
-						invest_fulfillment: Perquintill::one(),
-						redeem_fulfillment: Perquintill::one(),
-					}
-				]
-			),
-			Error::<Test>::NotNewBestSubmission
-		);
+		// Can submit the same solution twice
+		assert_ok!(Pools::submit_solution(
+			pool_owner_origin.clone(),
+			0,
+			vec![
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::from_float(0.01),
+				},
+				TrancheSolution {
+					invest_fulfillment: Perquintill::one(),
+					redeem_fulfillment: Perquintill::one(),
+				}
+			]
+		));
 
 		// Slight risk buffer improvement
 		assert_ok!(Pools::submit_solution(
