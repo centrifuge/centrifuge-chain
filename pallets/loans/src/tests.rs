@@ -21,7 +21,8 @@ use crate::mock::{
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
 use crate::test_utils::{
-	assert_last_event, create, create_nft_class, expect_asset_owner, initialise_test_pool, mint_nft,
+	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
+	initialise_test_pool, mint_nft,
 };
 use common_types::CurrencyId;
 use common_types::PoolLocator;
@@ -146,7 +147,7 @@ fn default_bullet_loan_params() -> LoanType<Rate, Amount> {
 		// collateral value
 		Amount::from_inner(125 * USD),
 		// 4%
-		math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 		// 2 years
 		math::seconds_per_year() * 2,
 	))
@@ -172,7 +173,7 @@ fn default_credit_line_with_maturity_params() -> LoanType<Rate, Amount> {
 		// collateral value
 		Amount::from_inner(125 * USD),
 		// 4%
-		math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 		// 2 years
 		math::seconds_per_year() * 2,
 	))
@@ -203,7 +204,7 @@ fn price_test_loan<T>(
 	// check loan status as Activated
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
-	assert_eq!(loan.rate_per_sec, rp);
+	assert_eq!(loan.interest_rate_per_sec, rp);
 	assert_eq!(loan.loan_type, loan_type);
 	assert_eq!(loan.max_borrow_amount(0), Amount::from_inner(100 * USD));
 	assert_eq!(loan.write_off_index, None);
@@ -222,7 +223,7 @@ where
 {
 	let loan_type = default_bullet_loan_params();
 	// interest rate is 5%
-	let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+	let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
 	(rp, loan_type)
 }
@@ -239,7 +240,7 @@ where
 {
 	let loan_type = default_credit_line_params();
 	// interest rate is 5%
-	let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+	let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
 	(rp, loan_type)
 }
@@ -256,7 +257,7 @@ where
 {
 	let loan_type = default_credit_line_with_maturity_params();
 	// interest rate is 5%
-	let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+	let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 	price_test_loan::<T>(admin, pool_id, loan_id, rp, loan_type);
 	(rp, loan_type)
 }
@@ -287,11 +288,11 @@ fn close_test_loan<T>(
 	assert_eq!(loan_id, got_loan_id);
 	assert_eq!(collateral, got_collateral);
 
-	// check collateral owner
+	// check that collateral nft was returned
 	expect_asset_owner::<T>(collateral, owner);
 
-	// check loan owner
-	expect_asset_owner::<T>(loan, Loans::account_id());
+	// check that loan nft was burned
+	expect_asset_to_be_burned::<T>(loan);
 
 	// check loan status as Closed
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
@@ -351,16 +352,16 @@ fn test_price_bullet_loan() {
 				// collateral value
 				Amount::from_inner(125 * USD),
 				// 4%
-				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity date in the past
 				1,
 			));
-			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100 * 1000);
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
-			// rate_per_sec is invalid
+			// interest_rate_per_sec is invalid
 			let loan_type = LoanType::BulletLoan(BulletLoan::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
@@ -371,7 +372,7 @@ fn test_price_bullet_loan() {
 				// collateral value
 				Amount::from_inner(125 * USD),
 				// 4%
-				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity in 2 years
 				math::seconds_per_year() * 2,
 			));
@@ -411,16 +412,16 @@ fn test_price_credit_line_with_maturity_loan() {
 				// collateral value
 				Amount::from_inner(125 * USD),
 				// 4%
-				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity date in the past
 				1,
 			));
-			let rp = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
+			let rp = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap();
 			Timestamp::set_timestamp(100 * 1000);
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
-			// rate_per_sec is invalid
+			// interest_rate_per_sec is invalid
 			let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
@@ -431,7 +432,7 @@ fn test_price_credit_line_with_maturity_loan() {
 				// collateral value
 				Amount::from_inner(125 * USD),
 				// 4%
-				math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
+				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity in 2 years
 				math::seconds_per_year() * 2,
 			));
@@ -460,7 +461,7 @@ fn test_price_credit_line_loan() {
 
 			let loan_id = loan.1;
 
-			// rate_per_sec is invalid
+			// interest_rate_per_sec is invalid
 			let loan_type = LoanType::CreditLine(CreditLine::new(
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
@@ -544,7 +545,7 @@ macro_rules! test_borrow_loan {
 					.expect("LoanDetails should be present");
 
 				// accumulated rate is now rate per sec
-				assert_eq!(loan.rate_per_sec, rate);
+				assert_eq!(loan.interest_rate_per_sec, rate);
 				assert_eq!(loan.last_updated, 1);
 				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
 				let p_debt = borrow_amount
@@ -763,9 +764,11 @@ macro_rules! test_repay_loan {
 				// 50 for 1000 seconds
 				let amount = Amount::from_inner(50 * USD);
 				let p_debt = amount
-					.checked_div(&math::convert::<Rate, Amount>(loan.rate_per_sec).unwrap())
+					.checked_div(
+						&math::convert::<Rate, Amount>(loan.interest_rate_per_sec).unwrap(),
+					)
 					.unwrap();
-				let rate_after_1000 = checked_pow(loan.rate_per_sec, 1001).unwrap();
+				let rate_after_1000 = checked_pow(loan.interest_rate_per_sec, 1001).unwrap();
 				let debt_after_1000 = p_debt
 					.checked_mul(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
 					.unwrap();
@@ -776,7 +779,7 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.checked_div(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
 					.unwrap();
-				let rate_after_2000 = checked_pow(loan.rate_per_sec, 2001).unwrap();
+				let rate_after_2000 = checked_pow(loan.interest_rate_per_sec, 2001).unwrap();
 				let debt_after_2000 = p_debt
 					.checked_mul(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
 					.unwrap();
@@ -789,7 +792,7 @@ macro_rules! test_repay_loan {
 
 				// debt after 3000 seconds
 				Timestamp::set_timestamp(3001 * 1000);
-				let rate_after_3000 = checked_pow(loan.rate_per_sec, 3001).unwrap();
+				let rate_after_3000 = checked_pow(loan.interest_rate_per_sec, 3001).unwrap();
 				let debt = p_debt
 					.checked_mul(&math::convert::<Rate, Amount>(rate_after_3000).unwrap())
 					.unwrap();
@@ -853,7 +856,7 @@ macro_rules! test_repay_loan {
 				expect_asset_owner::<MockRuntime>(collateral_nft, borrower);
 
 				// pool account should own the loan NFT
-				expect_asset_owner::<MockRuntime>(loan_nft, Loans::account_id());
+				expect_asset_to_be_burned::<MockRuntime>(loan_nft);
 
 				// check nav
 				let res = Loans::update_nav_of_pool(pool_id);

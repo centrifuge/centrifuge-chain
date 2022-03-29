@@ -45,7 +45,7 @@ pub struct NAVDetails<Amount> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest_nav: Amount,
+	pub(crate) latest: Amount,
 
 	// this is the last time when the nav was calculated for the entire pool
 	pub(crate) last_updated: Moment,
@@ -96,10 +96,10 @@ pub struct LoanDetails<Rate, Amount, Asset, NormalizedDebt> {
 	pub(crate) status: LoanStatus,
 
 	// interest rate per second
-	pub(crate) rate_per_sec: Rate,
+	pub(crate) interest_rate_per_sec: Rate,
 
 	// time at which first borrow occurred
-	pub(crate) origination_date: Moment,
+	pub(crate) origination_date: Option<Moment>,
 
 	// normalized debt used to calculate the current outstanding debt.
 	pub(crate) normalized_debt: NormalizedDebt,
@@ -146,22 +146,22 @@ where
 			})
 			.and_then(|debt| match self.loan_type {
 				LoanType::BulletLoan(bl) => {
-					bl.present_value(debt, self.origination_date, now, self.rate_per_sec)
+					bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
 				}
 				LoanType::CreditLine(cl) => cl.present_value(debt),
 				LoanType::CreditLineWithMaturity(clm) => {
-					clm.present_value(debt, self.origination_date, now, self.rate_per_sec)
+					clm.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
 				}
 			})
 	}
 
 	/// accrues rate and current debt from last updated until now
-	// pub(crate) fn accrue(&self, now: u64) -> Option<(Rate, Amount)> {
+	// pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Amount)> {
 	// 	// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
 	// 	let maybe_rate = match self.total_borrowed == Zero::zero() {
-	// 		true => Some(self.rate_per_sec),
+	// 		true => Some(self.interest_rate_per_sec),
 	// 		false => math::calculate_accumulated_rate::<Rate>(
-	// 			self.rate_per_sec,
+	// 			self.interest_rate_per_sec,
 	// 			self.accumulated_rate,
 	// 			now,
 	// 			self.last_updated,
@@ -170,7 +170,7 @@ where
 
 	// 	// calculate the current outstanding debt
 	// 	let maybe_debt = maybe_rate
-	// 		.and_then(|acc_rate| math::debt::<Amount, Rate>(self.normalized_debt, acc_rate));
+	// 		.and_then(|acc_rate| math::debt::<Amount, Rate>(self.principal_debt, acc_rate));
 
 	// 	match (maybe_rate, maybe_debt) {
 	// 		(Some(rate), Some(debt)) => Some((rate, debt)),
@@ -178,7 +178,7 @@ where
 	// 	}
 	// }
 
-	/// returns the max borrow amount for the loan based on the loan type
+	/// returns the max_borrow_amount amount for the loan based on the loan type
 	pub(crate) fn max_borrow_amount(&self, debt: Amount) -> Amount {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),

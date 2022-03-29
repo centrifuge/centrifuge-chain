@@ -42,13 +42,15 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn check_loan_owner(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		owner: T::AccountId,
+		expected_owner: T::AccountId,
 	) -> Result<AssetOf<T>, DispatchError> {
 		let loan_class_id =
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::PoolNotInitialised)?;
-		let got = T::NonFungible::owner(&loan_class_id.into(), &loan_id.into())
+
+		let actual_owner = T::NonFungible::owner(&loan_class_id.into(), &loan_id.into())
 			.ok_or(Error::<T>::NFTOwnerNotFound)?;
-		ensure!(got == owner, Error::<T>::NotAssetOwner);
+		ensure!(actual_owner == expected_owner, Error::<T>::NotAssetOwner);
+
 		Ok(Asset(loan_class_id, loan_id))
 	}
 
@@ -71,7 +73,6 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// create new loan nft
-		let pool_account = PoolLocator { pool_id }.into_account();
 		let nonce = NextLoanId::<T>::get();
 		let loan_id: T::LoanId = nonce.into();
 		let loan_class_id =
@@ -79,6 +80,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock collateral nft
+		let pool_account = PoolLocator { pool_id }.into_account();
 		T::NonFungible::transfer(
 			&collateral_class_id.into(),
 			&instance_id.into(),
@@ -96,16 +98,16 @@ impl<T: Config> Pallet<T> {
 			pool_id,
 			loan_id,
 			LoanDetails {
+				collateral,
+				loan_type: Default::default(),
+				status: LoanStatus::Created,
+				interest_rate_per_sec: Zero::zero(),
+				origination_date: None,
+				normalized_debt: Zero::zero(),
 				total_borrowed: Zero::zero(),
 				total_repaid: Zero::zero(),
-				rate_per_sec: Zero::zero(),
-				normalized_debt: Zero::zero(),
-				status: LoanStatus::Created,
-				loan_type: Default::default(),
 				admin_written_off: false,
 				write_off_index: None,
-				collateral,
-				origination_date: 0,
 			},
 		);
 		Ok(loan_id)
@@ -114,7 +116,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn price_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		rate_per_sec: T::Rate,
+		interest_rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Amount>,
 	) -> DispatchResult {
 		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
@@ -127,11 +129,14 @@ impl<T: Config> Pallet<T> {
 			let now = Self::now();
 			ensure!(loan_type.is_valid(now), Error::<T>::LoanValueInvalid);
 
-			// ensure rate_per_sec >= one
-			ensure!(rate_per_sec >= One::one(), Error::<T>::LoanValueInvalid);
+			// ensure interest_rate_per_sec >= one
+			ensure!(
+				interest_rate_per_sec >= One::one(),
+				Error::<T>::LoanValueInvalid
+			);
 
 			// update the loan info
-			loan.rate_per_sec = rate_per_sec;
+			loan.interest_rate_per_sec = interest_rate_per_sec;
 			loan.status = LoanStatus::Active;
 			loan.loan_type = loan_type;
 
@@ -179,20 +184,14 @@ impl<T: Config> Pallet<T> {
 					}
 				}?;
 
-				// transfer asset to owner
+				// transfer collateral nft to owner
 				let collateral = loan.collateral;
 				let (collateral_class_id, instance_id) = collateral.destruct();
 				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
 
-				// transfer loan nft to loan pallet
-				// ideally we should burn this but we do not have a function to burn them yet.
-				// TODO(ved): burn loan nft so that deposit for loan account is returned
+				// burn loan nft
 				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::transfer(
-					&loan_class_id.into(),
-					&loan_id.into(),
-					&Self::account_id(),
-				)?;
+				T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
@@ -240,7 +239,7 @@ impl<T: Config> Pallet<T> {
 
 			// check for max borrow amount
 			let old_debt =
-				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
 
 			let max_borrow_amount = loan.max_borrow_amount(old_debt);
 			ensure!(
@@ -262,7 +261,7 @@ impl<T: Config> Pallet<T> {
 
 			// calculate new normalized debt with adjustment amount
 			let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-				loan.rate_per_sec,
+				loan.interest_rate_per_sec,
 				loan.normalized_debt,
 				Adjustment::Increase(amount),
 			)?;
@@ -271,14 +270,14 @@ impl<T: Config> Pallet<T> {
 			let first_borrow = loan.total_borrowed == Zero::zero();
 
 			if first_borrow {
-				loan.origination_date = now;
+				loan.origination_date = Some(now);
 			}
 
 			loan.total_borrowed = new_total_borrowed;
 			loan.normalized_debt = normalized_debt;
 
 			let new_debt =
-				T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
 
 			let new_pv = loan
 				.present_value(new_debt, &vec![], now)
@@ -304,15 +303,15 @@ impl<T: Config> Pallet<T> {
 				// borrow
 				true => new_pv
 					.checked_sub(&old_pv)
-					.and_then(|positive_diff| nav.latest_nav.checked_add(&positive_diff))
-					.ok_or(ArithmeticError::Overflow),
+					.and_then(|positive_diff| nav.latest.checked_add(&positive_diff))
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
 				false => old_pv
 					.checked_sub(&new_pv)
-					.and_then(|negative_diff| nav.latest_nav.checked_sub(&negative_diff))
-					.ok_or(ArithmeticError::Underflow),
+					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
+					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
 			}?;
-			nav.latest_nav = new_nav;
+			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
 			Self::deposit_event(Event::<T>::NAVUpdated(
 				pool_id,
@@ -346,14 +345,21 @@ impl<T: Config> Pallet<T> {
 				// ensure current time is more than origination time
 				// this is mainly to deal with how we calculate debt while trying to repay
 				// therefore we do not let users repay at same instant origination happened
-				ensure!(now > loan.origination_date, Error::<T>::RepayTooEarly);
+				ensure!(
+					now > loan
+						.origination_date
+						.expect("Active loan should have an origination date"),
+					Error::<T>::RepayTooEarly
+				);
 
 				// ensure repay amount is positive
 				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
 
 				// TODO: this should calculate debt at the last NAV update
-				let old_debt =
-					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+				let old_debt = T::InterestAccrual::current_debt(
+					loan.interest_rate_per_sec,
+					loan.normalized_debt,
+				)?;
 
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
@@ -371,7 +377,7 @@ impl<T: Config> Pallet<T> {
 
 				// calculate new normalized debt with repaid amount
 				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-					loan.rate_per_sec,
+					loan.interest_rate_per_sec,
 					loan.normalized_debt,
 					Adjustment::Decrease(repay_amount),
 				)?;
@@ -379,8 +385,10 @@ impl<T: Config> Pallet<T> {
 				loan.total_repaid = new_total_repaid;
 				loan.normalized_debt = normalized_debt;
 
-				let new_debt =
-					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+				let new_debt = T::InterestAccrual::current_debt(
+					loan.interest_rate_per_sec,
+					loan.normalized_debt,
+				)?;
 
 				let new_pv = loan
 					.present_value(new_debt, &write_off_groups, now)
@@ -415,8 +423,10 @@ impl<T: Config> Pallet<T> {
 					return Ok(Zero::zero());
 				}
 
-				let debt =
-					T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+				let debt = T::InterestAccrual::current_debt(
+					loan.interest_rate_per_sec,
+					loan.normalized_debt,
+				)?;
 
 				let now: Moment = Self::now();
 
@@ -447,7 +457,7 @@ impl<T: Config> Pallet<T> {
 		PoolNAV::<T>::insert(
 			pool_id,
 			NAVDetails {
-				latest_nav: nav,
+				latest: nav,
 				last_updated: Self::now(),
 			},
 		);
@@ -531,7 +541,8 @@ impl<T: Config> Pallet<T> {
 				}
 			}?;
 
-			let debt = T::InterestAccrual::current_debt(loan.rate_per_sec, loan.normalized_debt)?;
+			let debt =
+				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
 
 			let now: Moment = Self::now();
 

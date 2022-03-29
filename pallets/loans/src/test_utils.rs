@@ -22,7 +22,7 @@ use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use frame_support::{assert_ok, parameter_types, StorageHasher, Twox128};
+use frame_support::{assert_ok, parameter_types, Blake2_128, StorageHasher};
 use frame_system::RawOrigin;
 use pallet_pools::TrancheLoc;
 use pallet_pools::TrancheType;
@@ -45,7 +45,7 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
-	Twox128::hash(&hash_input)
+	Blake2_128::hash(&hash_input)
 }
 
 parameter_types! {
@@ -191,7 +191,7 @@ where
 	)
 	.expect("initialisation of pool should not fail");
 	let nav = pallet_loans::PoolNAV::<T>::get(pool_id).unwrap();
-	assert!(nav.latest_nav == Zero::zero());
+	assert!(nav.latest == Zero::zero());
 	class_id
 }
 
@@ -216,5 +216,15 @@ pub(crate) fn expect_asset_owner<T: frame_system::Config + pallet_loans::Config>
 		<T as pallet_loans::Config>::NonFungible::owner(&class_id.into(), &instance_id.into())
 			.unwrap(),
 		owner
+	);
+}
+
+pub(crate) fn expect_asset_to_be_burned<T: frame_system::Config + pallet_loans::Config>(
+	asset: AssetOf<T>,
+) {
+	let (class_id, instance_id) = asset.destruct();
+	assert_eq!(
+		<T as pallet_loans::Config>::NonFungible::owner(&class_id.into(), &instance_id.into()),
+		None
 	);
 }
