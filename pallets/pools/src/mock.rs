@@ -8,7 +8,7 @@ use frame_support::traits::SortedMembers;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
-	StorageHasher, Twox128,
+	Blake2_128, StorageHasher,
 };
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -312,7 +312,7 @@ pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
-	Twox128::hash(&hash_input)
+	Blake2_128::hash(&hash_input)
 }
 
 parameter_types! {
