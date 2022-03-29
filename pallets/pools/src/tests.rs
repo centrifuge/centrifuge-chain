@@ -1814,9 +1814,9 @@ fn min_challenge_time_is_respected() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1927,9 +1927,9 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -2145,9 +2145,9 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
