@@ -7,7 +7,6 @@ pub use pallet::*;
 pub use solution::*;
 pub use tranche::*;
 pub use weights::*;
-// pub use types::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
