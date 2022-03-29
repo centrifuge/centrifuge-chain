@@ -1674,7 +1674,7 @@ fn triger_challange_period_with_zero_solution() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
