@@ -117,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 245,
+    spec_version: 246,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -148,8 +148,35 @@ parameter_types! {
 
 const_assert!(AvailableBlockRatio::get().deconstruct() >= AVERAGE_ON_INITIALIZE_WEIGHT.deconstruct());
 
+
+// Our base filter
+//
+// Once the standalone version of this chain has been migrated to a parachain on Polkadot,
+// we disable all calls expect:
+//   * System.SetCode
+//   * Council
+//   * Democracy
+pub struct BaseFilter;
+
+impl frame_support::traits::Filter<Call> for BaseFilter {
+    fn filter(c: &Call) -> bool {
+        matches!(
+			c,
+			// Calls for runtime upgrade
+			Call::System(frame_system::Call::set_code{..}) |
+			Call::System(frame_system::Call::set_code_without_checks{..}) |
+      // Council-related calls
+      Call::Council(..) |
+      // Democracy-related calls
+      Call::Democracy(..) |
+			// Calls that are present in each block
+			Call::Timestamp(pallet_timestamp::Call::set{..})
+		)
+    }
+}
+
 impl frame_system::Trait for Runtime {
-    type BaseCallFilter = ();
+    type BaseCallFilter = BaseFilter;
     /// The ubiquitous origin type.
     type Origin = Origin;
 	/// The aggregated dispatch type that is available for extrinsics.
