@@ -1147,11 +1147,12 @@ pub mod pallet {
 				PoolState::Unhealthy(states) => EpochSolution::score_solution_unhealthy(
 					solution,
 					&epoch.tranches,
-					epoch.max_reserve,
 					epoch.reserve,
+					epoch.max_reserve,
 					&states,
 				),
 			}
+			.map_err(|_| Error::<T>::InvalidSolution.into())
 		}
 
 		pub(crate) fn inspect_solution(
@@ -1174,15 +1175,15 @@ pub mod pallet {
 					// is not enough balance in the tranches to realize the redeemptions.
 					// We convert this at the pool level into an InsufficientCurrency error.
 					if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
-						Error::<T>::InsufficientCurrency.into()
+						Error::<T>::InsufficientCurrency
 					} else {
-						e
+						Error::<T>::InvalidSolution
 					}
 				})?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
-				.ok_or(ArithmeticError::Overflow)?;
+				.ok_or(Error::<T>::InvalidSolution)?;
 
 			// Mostly a sanity check. This is catched above.
 			ensure!(
