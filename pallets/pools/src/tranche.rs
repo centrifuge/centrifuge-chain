@@ -432,7 +432,7 @@ where
 	/// Defines how a given salt will be transformed into
 	/// a TrancheId.
 	fn id_from_salt(salt: TrancheSalt<PoolId>) -> TrancheId {
-		Twox128::hash(salt.encode().as_slice()).into()
+		Blake2_128::hash(salt.encode().as_slice()).into()
 	}
 
 	/// Generate ids after the following schema:

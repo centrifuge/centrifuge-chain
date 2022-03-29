@@ -1028,7 +1028,7 @@ pub mod pallet {
 				let new_solution = Self::score_solution(&pool, &epoch, &solution)?;
 				if let Some(ref previous_solution) = epoch.best_submission {
 					ensure!(
-						&new_solution > previous_solution,
+						&new_solution >= previous_solution,
 						Error::<T>::NotNewBestSubmission
 					);
 				}
@@ -1079,11 +1079,19 @@ pub mod pallet {
 					Error::<T>::NoSolutionAvailable
 				);
 
+				// The challenge period is some if we have submitted at least one valid
+				// solution since going into submission period. Hence, if it is none
+				// no solution beside the injected zero-solution is available.
 				ensure!(
-					match epoch.challenge_period_end {
-						Some(challenge_period_end) => challenge_period_end <= Self::now(),
-						None => false,
-					},
+					epoch.challenge_period_end.is_some(),
+					Error::<T>::NoSolutionAvailable
+				);
+
+				ensure!(
+					epoch
+						.challenge_period_end
+						.expect("Challenge period is some. qed.")
+						<= Self::now(),
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
