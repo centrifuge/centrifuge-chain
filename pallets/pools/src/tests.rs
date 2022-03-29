@@ -2115,7 +2115,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
