@@ -405,7 +405,8 @@ pub fn invest_close_and_collect(
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.last_epoch_executed;
+		.epoch
+		.last_executed;
 
 	for (who, tranche_id, _) in investments {
 		Pools::collect(who, pool_id, TrancheLoc::Id(tranche_id), epoch).map_err(|e| e.error)?;

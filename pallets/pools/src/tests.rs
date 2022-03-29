@@ -44,17 +44,21 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
-			current_epoch: Zero::zero(),
-			last_epoch_closed: 0,
-			last_epoch_executed: Zero::zero(),
+			epoch: EpochState {
+				current: Zero::zero(),
+				last_closed: 0,
+				last_executed: Zero::zero(),
+			},
 			reserve: ReserveDetails {
 				max: 40,
 				available: Zero::zero(),
 				total: 39,
 			},
-			min_epoch_time: 0,
-			challenge_time: 0,
-			max_nav_age: 60,
+			parameters: PoolParameters {
+				min_epoch_time: 0,
+				challenge_time: 0,
+				max_nav_age: 60,
+			},
 			metadata: None,
 		};
 
@@ -132,17 +136,21 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
-			current_epoch: Zero::zero(),
-			last_epoch_closed: 0,
-			last_epoch_executed: Zero::zero(),
+			epoch: EpochState {
+				current: Zero::zero(),
+				last_closed: 0,
+				last_executed: Zero::zero(),
+			},
 			reserve: ReserveDetails {
 				max: 5,
 				available: Zero::zero(),
 				total: 40,
 			},
-			min_epoch_time: 0,
-			challenge_time: 0,
-			max_nav_age: 60,
+			parameters: PoolParameters {
+				min_epoch_time: 0,
+				challenge_time: 0,
+				max_nav_age: 60,
+			},
 			metadata: None,
 		};
 
@@ -229,17 +237,21 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
-			current_epoch: Zero::zero(),
-			last_epoch_closed: 0,
-			last_epoch_executed: Zero::zero(),
+			epoch: EpochState {
+				current: Zero::zero(),
+				last_closed: 0,
+				last_executed: Zero::zero(),
+			},
 			reserve: ReserveDetails {
 				max: 150,
 				available: Zero::zero(),
 				total: 50,
 			},
-			min_epoch_time: 0,
-			challenge_time: 0,
-			max_nav_age: 60,
+			parameters: PoolParameters {
+				min_epoch_time: 0,
+				challenge_time: 0,
+				max_nav_age: 60,
+			},
 			metadata: None,
 		};
 
@@ -338,17 +350,21 @@ fn pool_constraints_pass() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
-			current_epoch: Zero::zero(),
-			last_epoch_closed: 0,
-			last_epoch_executed: Zero::zero(),
+			epoch: EpochState {
+				current: Zero::zero(),
+				last_closed: 0,
+				last_executed: Zero::zero(),
+			},
 			reserve: ReserveDetails {
 				max: 150,
 				available: Zero::zero(),
 				total: 50,
 			},
-			min_epoch_time: 0,
-			challenge_time: 0,
-			max_nav_age: 60,
+			parameters: PoolParameters {
+				min_epoch_time: 0,
+				challenge_time: 0,
+				max_nav_age: 60,
+			},
 			metadata: None,
 		};
 
@@ -470,9 +486,9 @@ fn epoch() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -605,7 +621,7 @@ fn epoch() {
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
 		let pool = Pools::pool(0).unwrap();
-		let senior_epoch = Pools::epoch(SeniorTrancheId::get(), pool.last_epoch_executed).unwrap();
+		let senior_epoch = Pools::epoch(SeniorTrancheId::get(), pool.epoch.last_executed).unwrap();
 		assert_eq!(pool.tranches.residual_tranche().unwrap().debt, 0);
 		assert!(pool.tranches.residual_tranche().unwrap().reserve > 500 * CURRENCY);
 		assert_eq!(
@@ -692,9 +708,9 @@ fn submission_period() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -887,9 +903,9 @@ fn execute_info_removed_after_epoch_execute() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1005,9 +1021,9 @@ fn collect_tranche_tokens() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1688,9 +1704,9 @@ fn triger_challange_period_with_zero_solution() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
