@@ -38,7 +38,7 @@ jobs:
       name: "Build binary"
       script: TARGET=build-client travis_wait 180 ./ci/script.sh
     - stage: "Build runtime"
-#      if: (NOT type IN (pull_request)) AND (branch = master || tag IS present)
+      if: (NOT type IN (pull_request)) AND (branch = master || tag IS present)
       script: TARGET=build-runtime travis_wait 180 ./ci/script.sh
 
 addons:
