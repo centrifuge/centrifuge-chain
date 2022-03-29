@@ -300,7 +300,7 @@ pub mod pallet {
 			PoolNAV::<T>::insert(
 				pool_id,
 				NAVDetails {
-					latest_nav: Default::default(),
+					latest: Default::default(),
 					last_updated: now,
 				},
 			);
@@ -420,12 +420,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			rate_per_sec: T::Rate,
+			interest_rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Amount>,
 		) -> DispatchResult {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
-			Self::price_loan(pool_id, loan_id, rate_per_sec, loan_type)?;
+			Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
 			Self::deposit_event(Event::<T>::Priced(pool_id, loan_id));
 			Ok(())
 		}
@@ -548,8 +548,7 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
 	type ClassId = T::ClassId;
 	type Origin = T::Origin;
 	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, Moment)> {
-		PoolNAV::<T>::get(pool_id)
-			.map(|nav_details| (nav_details.latest_nav, nav_details.last_updated))
+		PoolNAV::<T>::get(pool_id).map(|nav_details| (nav_details.latest, nav_details.last_updated))
 	}
 
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
