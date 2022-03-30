@@ -59,9 +59,9 @@ benchmarks! {
 		assert_tranches_match::<T>(&pool.tranches, &tranches);
 		assert_eq!(pool.available_reserve, Zero::zero());
 		assert_eq!(pool.total_reserve, Zero::zero());
-		assert_eq!(pool.min_epoch_time, T::DefaultMinEpochTime::get());
-		assert_eq!(pool.challenge_time, T::DefaultChallengeTime::get());
-		assert_eq!(pool.max_nav_age, T::DefaultMaxNAVAge::get());
+		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
+		assert_eq!(pool.parameters.challenge_time, T::DefaultChallengeTime::get());
+		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
 		assert_eq!(pool.metadata, None);
 	}
 
@@ -71,9 +71,9 @@ benchmarks! {
 	}: update(RawOrigin::Signed(caller), POOL, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_HOUR)
 	verify {
 		let pool = get_pool::<T>();
-		assert_eq!(pool.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.challenge_time, SECS_PER_HOUR);
-		assert_eq!(pool.max_nav_age, SECS_PER_HOUR);
+		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+		assert_eq!(pool.parameters.challenge_time, SECS_PER_HOUR);
+		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
 
 	set_metadata {
@@ -296,8 +296,8 @@ fn populate_epochs<T: Config<PoolId = u64, TrancheId = u8, EpochId = u32>>(
 	let current_epoch = num_epochs + 1;
 	Pool::<T>::try_mutate(POOL, |pool| -> DispatchResult {
 		let pool = pool.as_mut().unwrap();
-		pool.last_epoch_executed = num_epochs;
-		pool.current_epoch = current_epoch;
+		pool.epoch.last_executed = num_epochs;
+		pool.epoch.current = current_epoch;
 		Ok(())
 	})?;
 	let details = EpochDetails {

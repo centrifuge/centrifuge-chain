@@ -44,27 +44,18 @@ where
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 {
-	/// Currency that the pool is denominated in.
+	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
 	/// List of tranches, ordered junior to senior.
 	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>,
-	/// Current epoch that is ongoing.
-	pub current_epoch: EpochId,
-	/// Last epoch that was closed.
-	pub last_epoch_closed: Moment,
-	/// Last epoch that was executed.
-	pub last_epoch_executed: EpochId,
-	/// Details about the reserve (unused capital) in the pool.
-	pub reserve: ReserveDetails<Balance>,
+	/// Details about the parameters of the pool.
+	pub parameters: PoolParameters,
 	/// Metadata that specifies the pool.
 	pub metadata: Option<BoundedVec<u8, MetaSize>>,
-	/// Minimum duration for an epoch.
-	pub min_epoch_time: Moment,
-	/// Minimum duration after submission of the first solution
-	/// that the epoch can be executed.
-	pub challenge_time: Moment,
-	/// Maximum time between the NAV update and the epoch closing.
-	pub max_nav_age: Moment,
+	/// Details about the epochs of the pool.
+	pub epoch: EpochState<EpochId>,
+	/// Details about the reserve (unused capital) in the pool.
+	pub reserve: ReserveDetails<Balance>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -77,6 +68,27 @@ pub struct ReserveDetails<Balance> {
 	pub available: Balance,
 }
 
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct EpochState<EpochId> {
+	/// Current epoch that is ongoing.
+	pub current: EpochId,
+	/// Last epoch that was closed.
+	pub last_closed: Moment,
+	/// Last epoch that was executed.
+	pub last_executed: EpochId,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolParameters {
+	/// Minimum duration for an epoch.
+	pub min_epoch_time: Moment,
+	/// Minimum duration after submission of the first solution
+	/// that the epoch can be executed.
+	pub challenge_time: Moment,
+	/// Maximum time between the NAV update and the epoch closing.
+	pub max_nav_age: Moment,
+}
+
 impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
 	PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
 where
@@ -85,9 +97,9 @@ where
 	Balance: FixedPointOperand,
 	EpochId: BaseArithmetic,
 {
-	pub fn end_epoch(&mut self, now: Moment) -> DispatchResult {
-		self.current_epoch += One::one();
-		self.last_epoch_closed = now;
+	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
+		self.epoch.current += One::one();
+		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
 		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
 		self.reserve.available = Zero::zero();
@@ -95,9 +107,9 @@ where
 		Ok(())
 	}
 
-	fn last_epoch_closed(&mut self) -> DispatchResult {
+	fn execute_previous_epoch(&mut self) -> DispatchResult {
 		self.reserve.available = self.reserve.total;
-		self.last_epoch_executed += One::one();
+		self.epoch.last_executed += One::one();
 		Ok(())
 	}
 }
@@ -479,21 +491,25 @@ pub mod pallet {
 				PoolDetails {
 					currency,
 					tranches,
-					current_epoch: One::one(),
-					last_epoch_closed: now,
-					last_epoch_executed: Zero::zero(),
-					min_epoch_time: sp_std::cmp::max(
-						T::DefaultMinEpochTime::get(),
-						T::MinEpochTimeLowerBound::get(),
-					),
-					challenge_time: sp_std::cmp::max(
-						T::DefaultChallengeTime::get(),
-						T::ChallengeTimeLowerBound::get(),
-					),
-					max_nav_age: sp_std::cmp::min(
-						T::DefaultMaxNAVAge::get(),
-						T::MaxNAVAgeUpperBound::get(),
-					),
+					epoch: EpochState {
+						current: One::one(),
+						last_closed: now,
+						last_executed: Zero::zero(),
+					},
+					parameters: PoolParameters {
+						min_epoch_time: sp_std::cmp::max(
+							T::DefaultMinEpochTime::get(),
+							T::MinEpochTimeLowerBound::get(),
+						),
+						challenge_time: sp_std::cmp::max(
+							T::DefaultChallengeTime::get(),
+							T::ChallengeTimeLowerBound::get(),
+						),
+						max_nav_age: sp_std::cmp::min(
+							T::DefaultMaxNAVAge::get(),
+							T::MaxNAVAgeUpperBound::get(),
+						),
+					},
 					reserve: ReserveDetails {
 						max: max_reserve,
 						available: Zero::zero(),
@@ -538,9 +554,9 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
-				pool.min_epoch_time = min_epoch_time;
-				pool.challenge_time = challenge_time;
-				pool.max_nav_age = max_nav_age;
+				pool.parameters.min_epoch_time = min_epoch_time;
+				pool.parameters.challenge_time = challenge_time;
+				pool.parameters.max_nav_age = max_nav_age;
 				Self::deposit_event(Event::Updated(pool_id));
 				Ok(())
 			})
@@ -700,7 +716,7 @@ pub mod pallet {
 
 						ensure!(
 							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.current_epoch,
+								|| order.epoch == pool.epoch.current,
 							Error::<T>::CollectRequired
 						);
 
@@ -765,7 +781,7 @@ pub mod pallet {
 
 						ensure!(
 							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.current_epoch,
+								|| order.epoch == pool.epoch.current,
 							Error::<T>::CollectRequired
 						);
 
@@ -850,7 +866,7 @@ pub mod pallet {
 
 				let now = Self::now();
 				ensure!(
-					now.saturating_sub(pool.last_epoch_closed) >= pool.min_epoch_time,
+					now.saturating_sub(pool.epoch.last_closed) >= pool.parameters.min_epoch_time,
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
@@ -858,17 +874,17 @@ pub mod pallet {
 					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
 
 				ensure!(
-					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
+					now.saturating_sub(nav_last_updated.into()) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
 
 				let nav = nav_amount.into();
-				let submission_period_epoch = pool.current_epoch;
+				let submission_period_epoch = pool.epoch.current;
 				let total_assets = nav
 					.checked_add(&pool.reserve.total)
 					.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
 
-				pool.end_epoch(now)?;
+				pool.start_next_epoch(now)?;
 
 				let epoch_tranche_prices = pool
 					.tranches
@@ -906,7 +922,7 @@ pub mod pallet {
 						},
 					)?;
 
-					pool.last_epoch_closed()?;
+					pool.execute_previous_epoch()?;
 
 					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
 
@@ -1038,7 +1054,7 @@ pub mod pallet {
 				// Challenge period starts when the first new solution has been submitted
 				if epoch.challenge_period_end.is_none() {
 					epoch.challenge_period_end =
-						Some(Self::now().saturating_add(pool.challenge_time));
+						Some(Self::now().saturating_add(pool.parameters.challenge_time));
 				}
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
@@ -1253,7 +1269,7 @@ pub mod pallet {
 				.ok_or(DispatchError::from(ArithmeticError::Overflow))?;
 
 			ensure!(
-				end_epoch <= pool.last_epoch_executed,
+				end_epoch <= pool.epoch.last_executed,
 				Error::<T>::EpochNotExecutedYet
 			);
 
@@ -1292,7 +1308,7 @@ pub mod pallet {
 					UserOrder {
 						invest: collections.remaining_invest_currency,
 						redeem: collections.remaining_redeem_token,
-						epoch: pool.current_epoch,
+						epoch: pool.epoch.current,
 					},
 				);
 			} else {
@@ -1338,7 +1354,7 @@ pub mod pallet {
 				&mut outstanding,
 			)?;
 
-			order.epoch = pool.current_epoch;
+			order.epoch = pool.epoch.current;
 			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
@@ -1365,7 +1381,7 @@ pub mod pallet {
 				&mut outstanding,
 			)?;
 
-			order.epoch = pool.current_epoch;
+			order.epoch = pool.epoch.current;
 			T::Tokens::transfer(tranche.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
@@ -1603,9 +1619,9 @@ pub mod pallet {
 				.checked_sub(&acc_redemptions)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			pool.last_epoch_closed()?;
+			pool.execute_previous_epoch()?;
 
-			let last_epoch_executed = pool.last_epoch_executed;
+			let last_epoch_executed = pool.epoch.last_executed;
 			let ids = pool.tranches.ids_residual_top();
 
 			// Update tranche orders and add epoch solution state
