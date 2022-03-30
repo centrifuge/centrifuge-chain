@@ -385,7 +385,7 @@ impl InstanceFilter<Call> for ProxyType {
 			ProxyType::NonProxy => {
 				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, Call::Proxy(..))
-			},
+			}
 			ProxyType::Borrower => matches!(
 				c,
 				Call::Loans(pallet_loans::Call::create{..}) |
@@ -411,7 +411,7 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
 				Call::Pools(pallet_pools::Call::execute_epoch{..})
-			)
+			),
 		}
 	}
 
