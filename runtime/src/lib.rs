@@ -117,7 +117,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     // and set impl_version to 0. If only runtime
     // implementation changes and behavior does not, then leave spec_version as
     // is and increment impl_version.
-    spec_version: 246,
+    spec_version: 247,
     impl_version: 0,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 1,
@@ -161,16 +161,19 @@ pub struct BaseFilter;
 impl frame_support::traits::Filter<Call> for BaseFilter {
     fn filter(c: &Call) -> bool {
         matches!(
-			c,
-			// Calls for runtime upgrade
-			Call::System(frame_system::Call::set_code{..}) |
-			Call::System(frame_system::Call::set_code_without_checks{..}) |
-      // Council-related calls
-      Call::Council(..) |
-      // Democracy-related calls
-      Call::Democracy(..) |
-			// Calls that are present in each block
-			Call::Timestamp(pallet_timestamp::Call::set{..})
+            c,
+            // Calls for runtime upgrade
+            Call::System(frame_system::Call::set_code{..}) |
+            Call::System(frame_system::Call::set_code_without_checks{..}) |
+            // Council-related calls
+            Call::Council(..) |
+            // Democracy-related calls
+            Call::Democracy(..) |
+            // Calls that are present in each block
+            Call::Timestamp(pallet_timestamp::Call::set{..}) |
+            // Mandatory Extrinsics
+            Call::FinalityTracker(..) |
+            Call::Authorship(..)
 		)
     }
 }
