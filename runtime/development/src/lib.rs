@@ -363,8 +363,6 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
-	Borrower,
-	Investor,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
