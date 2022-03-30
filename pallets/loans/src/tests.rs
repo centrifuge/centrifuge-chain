@@ -201,7 +201,7 @@ fn price_test_loan<T>(
 	assert_eq!(pool_id, got_pool_id);
 	assert_eq!(loan_id, got_loan_id);
 
-	// check loan status as Priced
+	// check loan status as Active
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(loan.interest_rate_per_sec, rp);
