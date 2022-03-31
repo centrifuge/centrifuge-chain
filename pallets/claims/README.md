@@ -77,7 +77,7 @@ impl pallet_claims::Config for MyRuntime {
 construct_runtime! {
     …
 
-    Claims: pallet_claims::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+    Claims: pallet_claims::{Pallet, Call, Config<T>, Storage, Event<T>},
 }
 ```
 

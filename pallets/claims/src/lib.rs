@@ -39,7 +39,6 @@
 //! - `Currency` -  Expected currency of the reward claim.
 //! - `Event` -  Overarching type for pallet events.
 //! - `MinimalPayoutAmount` -  Minimal reward payout amount that can be claimed.
-//! - `Longevity` -  Expected longevity of a validated unsigned extrinsic.
 //! - `PalletId` -  Constant configuration parameter to store the module identifier for the pallet.
 //! - `WeightInfo` -  Pallet's transaction weights, calculated using runtime benchmarking.
 //!
