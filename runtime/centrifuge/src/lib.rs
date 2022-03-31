@@ -680,7 +680,7 @@ impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 	type AdminOrigin =
-	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
 	type Currency = Balances;
 	type Event = Event;
 	type NativeTokenId = NativeTokenId;
@@ -698,17 +698,16 @@ parameter_types! {
 
 impl chainbridge::Config for Runtime {
 	type Event = Event;
+	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin =
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 	type Proposal = Call;
 	type ChainId = ChainId;
 	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
-	/// A 75% majority of the council can update bridge settings.
 	type WeightInfo = ();
 }
-
 
 // Parameterize claims pallet
 parameter_types! {
