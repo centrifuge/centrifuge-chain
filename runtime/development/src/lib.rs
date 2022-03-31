@@ -805,10 +805,8 @@ impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Tokens;
 	type Event = Event;
-	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
-	type UnsignedPriority = UnsignedPriority;
 	type WeightInfo = ();
 }
 

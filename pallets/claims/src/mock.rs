@@ -99,7 +99,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
-		Claims: pallet_claims::{Pallet, Call, Config, Storage, Event<T>, ValidateUnsigned},
+		Claims: pallet_claims::{Pallet, Call, Config, Storage, Event<T>},
 	}
 );
 
@@ -171,13 +171,11 @@ impl SortedMembers<u64> for One {
 
 // Implement claims pallet configuration trait for the mock runtime
 impl Config for MockRuntime {
-	type Event = Event;
-	type PalletId = ClaimsPalletId;
-	type Longevity = Longevity;
-	type UnsignedPriority = UnsignedPriority;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Currency = Balances;
+	type Event = Event;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
+	type PalletId = ClaimsPalletId;
 	type WeightInfo = ();
 }
 

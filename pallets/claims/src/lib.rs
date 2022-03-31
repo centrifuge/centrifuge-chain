@@ -41,7 +41,6 @@
 //! - `MinimalPayoutAmount` -  Minimal reward payout amount that can be claimed.
 //! - `Longevity` -  Expected longevity of a validated unsigned extrinsic.
 //! - `PalletId` -  Constant configuration parameter to store the module identifier for the pallet.
-//! - `UnsignedPriority` -  A configuration for base priority of unsigned transactions.
 //! - `WeightInfo` -  Pallet's transaction weights, calculated using runtime benchmarking.
 //!
 //! ### Events
@@ -111,12 +110,8 @@ use frame_system::ensure_root;
 use sp_core::Encode;
 
 use sp_runtime::{
-	sp_std::{convert::TryInto, vec::Vec},
+	sp_std::vec::Vec,
 	traits::{AccountIdConversion, CheckedSub, Hash, SaturatedConversion},
-	transaction_validity::{
-		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity,
-		ValidTransaction,
-	},
 };
 
 // Re-export weight information in crate namespace
@@ -190,11 +185,6 @@ pub mod pallet {
 		/// Associated type for Event enum
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-		/// Expected longevity of a validated unsigned extrinsic.
-		///
-		/// This parameter is used to determine the longevity of `claim` transaction
-		type Longevity: Get<Self::BlockNumber>;
-
 		/// Minimal amount that can be claimed for a reward payout.
 		///
 		/// This constant is set via [`parameter_types`](https://substrate.dev/docs/en/knowledgebase/runtime/macros#parameter_types)
@@ -209,12 +199,6 @@ pub mod pallet {
 		// macro in the [`runtime/lib.rs`] file.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
-
-		/// A configuration for base priority of unsigned transactions.
-		///
-		/// This is exposed so that it can be tuned for particular runtime, when
-		/// multiple pallets send unsigned transactions.
-		type UnsignedPriority: Get<TransactionPriority>;
 
 		/// Weight information for extrinsics in this pallet
 		type WeightInfo: PalletWeightInfo;
@@ -325,12 +309,6 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Claims tokens awarded through Tinlake investments.
 		///
-		/// The extrinsic is validated by the custom \[`validate_unsigned`\] function below.
-		/// An unsigned transaction is free of fees. We need such an unsigned transaction
-		/// as some contributors may not have enough parachain tokens for claiming their
-		/// reward payout. The [`validate_unsigned`] function first checks the validity of
-		/// this transaction, so that to prevent potential frauds or attacks.
-		///
 		/// # <weight>
 		/// - Based on hashes length
 		/// # </weight>
@@ -341,7 +319,7 @@ pub mod pallet {
 			amount: T::Balance,
 			sorted_hashes: Vec<T::Hash>,
 		) -> DispatchResultWithPostInfo {
-			ensure_none(origin)?;
+			ensure_signed(origin)?;
 
 			ensure!(
 				Self::verify_proofs(&account_id, &amount, &sorted_hashes),
@@ -421,45 +399,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 	}
-
-	// ------------------------------------------------------------------------
-	// Pallet unsigned transactions validation
-	// ------------------------------------------------------------------------
-
-	#[pallet::validate_unsigned]
-	impl<T: Config> ValidateUnsigned for Pallet<T> {
-		type Call = Call<T>;
-
-		/// Validate unsigned transactions
-		///
-		/// Unsigned transactions are generally disallowed. However, since a contributor
-		/// claiming a reward payout may not have the necessary tokens on the parachain to
-		/// pay the fees of the claim, this `claim` transactions must be unsigned.
-		/// Here, we make sure such unsigned, and remember, feeless unsigned transactions
-		/// can be used for malicious spams or Deny of Service (DoS) attacks.
-		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::claim {
-				account_id,
-				amount,
-				sorted_hashes,
-			} = call
-			{
-				// Check that proofs are valid with a root that exists in the root hash storage
-				if Self::verify_proofs(account_id, amount, sorted_hashes.into()) {
-					return ValidTransaction::with_tag_prefix("RadClaims")
-						.priority(T::UnsignedPriority::get())
-						.and_provides((account_id, amount, sorted_hashes))
-						.longevity(TryInto::<u64>::try_into(T::Longevity::get()).unwrap_or(64_u64))
-						.propagate(true)
-						.build();
-				}
-				return InvalidTransaction::BadProof.into();
-			}
-
-			InvalidTransaction::Call.into()
-		}
-	}
-} // end of 'pallet' module
+}
 
 // ----------------------------------------------------------------------------
 // Pallet implementation block

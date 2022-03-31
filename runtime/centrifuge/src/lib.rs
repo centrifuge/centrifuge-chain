@@ -737,10 +737,8 @@ impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Balances;
 	type Event = Event;
-	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
-	type UnsignedPriority = UnsignedPriority;
 	type WeightInfo = ();
 }
 
@@ -791,10 +789,10 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
+		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 93,
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
 
 		// 3rd party pallets
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
@@ -820,6 +818,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	// Disable paying the fees for now
+	// TODO(nuno|miki): Enable once we drop Sudo
 	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
