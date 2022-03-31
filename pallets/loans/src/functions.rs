@@ -122,8 +122,12 @@ impl<T: Config> Pallet<T> {
 		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
 			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
-			// ensure loan is created
-			ensure!(loan.status == LoanStatus::Created, Error::<T>::LoanIsActive);
+			// ensure loan is created or priced but not yet borrowed against
+			ensure!(
+				loan.status == LoanStatus::Created
+					|| loan.status == LoanStatus::Active && loan.total_borrowed == Zero::zero(),
+				Error::<T>::LoanIsActive
+			);
 
 			// ensure loan_type is valid
 			let now = Self::now();
