@@ -775,7 +775,6 @@ fn centrifuge_genesis(
 			resources: vec![
 				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
 				(
-					// TODO(all): Adapt these values
 					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
 					hex!["50616c6c65744272696467652e7472616e73666572"]
 						.iter()
