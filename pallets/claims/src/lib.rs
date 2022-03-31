@@ -341,7 +341,6 @@ pub mod pallet {
 			amount: T::Balance,
 			sorted_hashes: Vec<T::Hash>,
 		) -> DispatchResultWithPostInfo {
-			// Ensures that this function can only be called via an unsigned transaction
 			ensure_none(origin)?;
 
 			ensure!(
@@ -351,7 +350,7 @@ pub mod pallet {
 
 			let claimed = Self::get_claimed_amount(&account_id);
 
-			// Payout = amount - claim
+			// Payout = amount - claimed
 			let payout = amount
 				.checked_sub(&claimed)
 				.ok_or(Error::<T>::InsufficientBalance)?;
