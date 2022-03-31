@@ -1151,6 +1151,7 @@ parameter_types! {
 
 impl chainbridge::Config for Runtime {
 	type Event = Event;
+	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin =
 		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 	type Proposal = Call;
@@ -1158,7 +1159,6 @@ impl chainbridge::Config for Runtime {
 	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
-	/// A 75% majority of the council can update bridge settings.
 	type WeightInfo = ();
 }
 

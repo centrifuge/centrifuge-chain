@@ -1001,6 +1001,7 @@ dependencies = [
 name = "centrifuge-runtime"
 version = "0.10.1"
 dependencies = [
+ "chainbridge",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -1024,6 +1025,7 @@ dependencies = [
  "pallet-authorship",
  "pallet-babe",
  "pallet-balances",
+ "pallet-bridge",
  "pallet-claims",
  "pallet-collective",
  "pallet-democracy",
@@ -1035,6 +1037,7 @@ dependencies = [
  "pallet-indices",
  "pallet-membership",
  "pallet-multisig",
+ "pallet-nft",
  "pallet-offences",
  "pallet-preimage",
  "pallet-proxy",

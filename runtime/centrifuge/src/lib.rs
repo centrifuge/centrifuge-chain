@@ -654,6 +654,61 @@ impl pallet_anchors::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+}
+
+impl pallet_nft::Config for Runtime {
+	type Event = Event;
+	type ChainId = chainbridge::ChainId;
+	type ResourceId = chainbridge::ResourceId;
+	type HashId = HashId;
+	type NftProofValidationFee = NftProofValidationFee;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	//TODO create new mapping (< copied from 'development', need to figure out what this means)
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xCFG"));
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
+}
+
+impl pallet_bridge::Config for Runtime {
+	type BridgePalletId = BridgePalletId;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type Currency = Balances;
+	type Event = Event;
+	type NativeTokenId = NativeTokenId;
+	type NativeTokenTransferFee = NativeTokenTransferFee;
+	type NftTokenTransferFee = NftTransferFee;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ChainId: chainbridge::ChainId = 1;
+	pub const ProposalLifetime: u32 = 500;
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const RelayerVoteThreshold: u32 = chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+}
+
+impl chainbridge::Config for Runtime {
+	type Event = Event;
+	/// A 75% majority of the council can update bridge settings.
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type Proposal = Call;
+	type ChainId = ChainId;
+	type PalletId = ChainBridgePalletId;
+	type ProposalLifetime = ProposalLifetime;
+	type RelayerVoteThreshold = RelayerVoteThreshold;
+	type WeightInfo = ();
+}
+
 // Parameterize claims pallet
 parameter_types! {
 	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
@@ -722,6 +777,11 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
+		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
+		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
+
+		// 3rd party pallets
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
 
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,

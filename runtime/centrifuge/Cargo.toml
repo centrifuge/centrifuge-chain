@@ -96,11 +96,17 @@ pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-featur
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 
-runtime-common = { path = "../common", default-features = false }
 
+# Our pallets and modules
+runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-bridge = { path = "../../pallets/bridge", default-features = false }
+pallet-nft = { path = "../../pallets/nft", default-features = false }
+
+# bridge pallets
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.17" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -175,6 +181,9 @@ std = [
     "runtime-common/std",
     "polkadot-runtime-common/std",
     "pallet-preimage/std",
+    "chainbridge/std",
+    "pallet-bridge/std",
+    "pallet-nft/std",
 ]
 
 runtime-benchmarks = [
@@ -188,7 +197,8 @@ runtime-benchmarks = [
     "xcm-builder/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
     "pallet-society/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks"
+    "pallet-balances/runtime-benchmarks",
+    "chainbridge/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
