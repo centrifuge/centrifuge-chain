@@ -15,7 +15,7 @@ use fudge::primitives::Chain;
 use tokio::runtime::Handle;
 
 #[tokio::test]
-async fn token_price_stays_zero() {
+async fn env_works() {
 	logs::init_logs();
 	let manager = env::task_manager(Handle::current());
 	let mut env = env::test_env_default(manager.spawn_handle());
