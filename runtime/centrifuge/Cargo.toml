@@ -83,6 +83,7 @@ pallet-preimage = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-proxy = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-session = { git = "https://github.com/paritytech/substrate",  default-features = false, features = ["historical"] , branch = "polkadot-v0.9.17" }
+pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true,  branch = "polkadot-v0.9.17" }
 pallet-staking = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
@@ -94,7 +95,6 @@ pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-f
 pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
-pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 
 
 # Our pallets and modules
@@ -178,7 +178,6 @@ std = [
     "pallet-anchors/std",
     "pallet-claims/std",
     "pallet-sudo/std",
-    "pallet-society/std",
     "runtime-common/std",
     "polkadot-runtime-common/std",
     "pallet-preimage/std",
@@ -190,6 +189,8 @@ std = [
 
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
+    "pallet-session-benchmarking",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
@@ -198,7 +199,6 @@ runtime-benchmarks = [
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
     "pallet-collective/runtime-benchmarks",
-    "pallet-society/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",

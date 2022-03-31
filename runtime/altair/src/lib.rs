@@ -1230,7 +1230,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
-			// add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
