@@ -782,7 +782,6 @@ fn centrifuge_genesis(
 						.collect(),
 				),
 			],
-			// TODO(all): Adapt these values
 			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
 			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
 			relayers: vec![
