@@ -768,6 +768,30 @@ fn centrifuge_genesis(
 		aura: Default::default(),
 		democracy: Default::default(),
 		parachain_system: Default::default(),
+		bridge: centrifuge_runtime::BridgeConfig {
+			// Whitelist chains Ethereum - 0
+			chains: vec![0],
+			// Register resourceIDs
+			resources: vec![
+				// xCFG ResourceID to PalletBridge.transfer method (for incoming txs)
+				(
+					// TODO(all): Adapt these values
+					hex!["00000000000000000000000000000009e974040e705c10fb4de576d6cc261900"],
+					hex!["50616c6c65744272696467652e7472616e73666572"]
+						.iter()
+						.cloned()
+						.collect(),
+				),
+			],
+			// TODO(all): Adapt these values
+			// Dev Alice - 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY
+			// Sample Endowed1 - 5GVimUaccBq1XbjZ99Zmm8aytG6HaPCjkZGKSHC1vgrsQsLQ
+			relayers: vec![
+				hex!["d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d"].into(),
+				hex!["c405224448dcd4259816b09cfedbd8df0e6796b16286ea18efa2d6343da5992e"].into(),
+			],
+			threshold: 1,
+		},
 	}
 }
 
