@@ -794,7 +794,7 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
-		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 93,
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
 
 		// 3rd party pallets
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
