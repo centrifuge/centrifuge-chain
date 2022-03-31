@@ -142,7 +142,6 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	//TODO(reviews): Are we fine with Everything on dev, despite a possible migration taking place?
 	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
