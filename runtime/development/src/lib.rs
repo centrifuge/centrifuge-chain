@@ -363,6 +363,8 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
+	Borrower,
+	Investor,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -384,6 +386,32 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, Call::Proxy(..))
 			}
+			ProxyType::Borrower => matches!(
+				c,
+				Call::Loans(pallet_loans::Call::create{..}) |
+				Call::Loans(pallet_loans::Call::borrow{..}) |
+				Call::Loans(pallet_loans::Call::repay{..}) |
+				Call::Loans(pallet_loans::Call::write_off{..}) |
+				Call::Loans(pallet_loans::Call::close{..}) |
+				// Borrowers should be able to close and execute an epoch
+				// in order to get liquidity from repayments in previous epochs.
+				Call::Loans(pallet_loans::Call::update_nav{..}) |
+				Call::Pools(pallet_pools::Call::close_epoch{..}) |
+				Call::Pools(pallet_pools::Call::submit_solution{..}) |
+				Call::Pools(pallet_pools::Call::execute_epoch{..})
+			),
+			ProxyType::Investor => matches!(
+				c,
+				Call::Pools(pallet_pools::Call::update_invest_order{..}) |
+				Call::Pools(pallet_pools::Call::update_redeem_order{..}) |
+				Call::Pools(pallet_pools::Call::collect{..}) |
+				// Investors should be able to close and execute an epoch
+				// in order to get their orders fulfilled.
+				Call::Loans(pallet_loans::Call::update_nav{..}) |
+				Call::Pools(pallet_pools::Call::close_epoch{..}) |
+				Call::Pools(pallet_pools::Call::submit_solution{..}) |
+				Call::Pools(pallet_pools::Call::execute_epoch{..})
+			),
 		}
 	}
 
