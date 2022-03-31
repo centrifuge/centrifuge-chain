@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::PARA_ID;
+use crate::chain::centrifuge::{Runtime as CentrifugeRuntime, PARA_ID};
 use crate::rocc::utils::*;
 use fudge::primitives::Chain;
 use tokio::runtime::Handle;
@@ -20,7 +20,23 @@ async fn token_price_stays_zero() {
 	let manager = env::task_manager(Handle::current());
 	let mut env = env::test_env_default(manager.spawn_handle());
 
-	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> { Ok(()) })
-		.unwrap();
-	env::pass_n(1, &mut env).unwrap()
+	let num_blocks = 10;
+	let mut block_before = 0;
+
+	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> {
+		block_before = frame_system::Pallet::<CentrifugeRuntime>::block_number();
+		Ok(())
+	})
+	.unwrap();
+
+	env::pass_n(num_blocks, &mut env).unwrap();
+
+	let mut block_after = 0;
+	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> {
+		block_after = frame_system::Pallet::<CentrifugeRuntime>::block_number();
+		Ok(())
+	})
+	.unwrap();
+
+	assert_eq!(block_before + num_blocks as u32, block_after)
 }

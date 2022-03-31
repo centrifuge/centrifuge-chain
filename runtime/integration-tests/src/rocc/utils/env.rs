@@ -122,7 +122,7 @@ fn test_env(
 		provider.insert_storage(
 			polkadot_runtime_parachains::configuration::GenesisConfig::<RelayRt>::default()
 				.build_storage()
-				.expect("GenesisBuild must not fail at this stage."),
+				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
 		if let Some(storage) = relay_storage {
@@ -229,10 +229,10 @@ fn test_env(
 }
 
 pub fn task_manager(tokio_handle: Handle) -> TaskManager {
-	TaskManager::new(tokio_handle, None).unwrap()
+	TaskManager::new(tokio_handle, None).expect("ESSENTIAL: TaskManager must exist for tests.")
 }
 
-// Pass n_blocks on the parachain!-side
+/// Pass n_blocks on the parachain-side!
 pub fn pass_n(n: u64, env: &mut TestEnv) -> Result<(), ()> {
 	for _ in 0..n {
 		env.evolve()?;
