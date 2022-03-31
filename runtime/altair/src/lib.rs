@@ -127,7 +127,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = frame_support::traits::Everything;
+	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -751,9 +751,6 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
-	type FinalizedFilter = Everything;
-	type InactiveFilter = Everything;
-	type OngoingFilter = Everything;
 }
 
 // Parameterize crowdloan reward pallet configuration

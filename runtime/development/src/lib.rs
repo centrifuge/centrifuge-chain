@@ -142,7 +142,8 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Migration;
+	//TODO(reviews): Are we fine with Everything on dev, despite a possible migration taking place?
+	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -874,9 +875,6 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
-	type FinalizedFilter = Everything;
-	type InactiveFilter = Everything;
-	type OngoingFilter = BaseFilter;
 }
 
 // our base filter
