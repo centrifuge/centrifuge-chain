@@ -197,11 +197,11 @@ fn price_test_loan<T>(
 		LoanEvent::Priced(pool_id, loan_id) => Some((pool_id, loan_id)),
 		_ => None,
 	}
-	.expect("must be a Loan issue activated event");
+	.expect("must be a Loan issue priced event");
 	assert_eq!(pool_id, got_pool_id);
 	assert_eq!(loan_id, got_loan_id);
 
-	// check loan status as Activated
+	// check loan status as Active
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(loan.interest_rate_per_sec, rp);
@@ -380,12 +380,12 @@ fn test_price_bullet_loan() {
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
-			// successful activation
+			// successful pricing
 			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
-			// cannot activate an already activated loan
+			// pricing an active but non borrowed against loan should be possible
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_err!(res, Error::<MockRuntime>::LoanIsActive);
+			assert_ok!(res);
 		})
 }
 
@@ -440,12 +440,12 @@ fn test_price_credit_line_with_maturity_loan() {
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
-			// successful activation
+			// successful pricing
 			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
-			// cannot activate an already activated loan
+			// pricing an active but non borrowed against loan should be possible
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_err!(res, Error::<MockRuntime>::LoanIsActive);
+			assert_ok!(res);
 		})
 }
 
@@ -472,12 +472,12 @@ fn test_price_credit_line_loan() {
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
 			assert_err!(res, Error::<MockRuntime>::LoanValueInvalid);
 
-			// successful activation
+			// successful pricing
 			let (rate, loan_type) = price_bullet_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
-			// cannot activate an already activated loan
+			// pricing an active but non borrowed against loan should be possible
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan.1, rate, loan_type);
-			assert_err!(res, Error::<MockRuntime>::LoanIsActive);
+			assert_ok!(res);
 		})
 }
 
@@ -490,7 +490,7 @@ macro_rules! test_close_loan {
 				// successful issue
 				let (pool_id, loan, collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 
-				// successful activation
+				// successful pricing
 				$price_loan::<MockRuntime>(borrower, pool_id, loan.1);
 
 				// successful close of loan
@@ -530,7 +530,7 @@ macro_rules! test_borrow_loan {
 				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
-				// successful activation
+				// successful pricing
 				let loan_id = loan.1;
 				let (rate, loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
@@ -539,6 +539,16 @@ macro_rules! test_borrow_loan {
 				let borrow_amount = Amount::from_inner(50 * USD);
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
+
+				// pricing an active loan with non zero borrowed amount should not be possible
+				let res = Loans::price(
+					Origin::signed(borrower),
+					pool_id,
+					loan_id,
+					math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap(),
+					default_credit_line_params(),
+				);
+				assert_err!(res, Error::<MockRuntime>::LoanIsActive);
 
 				// check loan data
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
@@ -685,7 +695,7 @@ macro_rules! test_repay_loan {
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan_nft.1;
 
-				// successful activation
+				// successful pricing
 				let (rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
@@ -904,7 +914,7 @@ macro_rules! test_pool_nav {
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan.1;
 
-				// successful activation
+				// successful pricing
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// present value should still be zero
@@ -1204,7 +1214,7 @@ macro_rules! test_write_off_maturity_loan {
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan.1;
 
-				// successful activation
+				// successful pricing
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
@@ -1308,7 +1318,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 				let loan_id = loan.1;
 
-				// successful activation
+				// successful pricing
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
@@ -1423,7 +1433,7 @@ macro_rules! test_close_written_off_loan_type {
 
 				let loan_id = loan.1;
 
-				// successful activation
+				// successful pricing
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow 50
@@ -1554,7 +1564,7 @@ macro_rules! repay_too_early {
 
 				let loan_id = loan.1;
 
-				// successful activation
+				// successful pricing
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow amount
@@ -1616,7 +1626,7 @@ macro_rules! write_off_overflow {
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan.1;
 
-				// successful activation
+				// successful pricing
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 				// after one year
 				// anyone can trigger the call
