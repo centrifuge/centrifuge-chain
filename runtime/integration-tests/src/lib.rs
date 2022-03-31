@@ -13,7 +13,7 @@
 
 #![cfg(test)]
 
-mod rocc;
+mod pools;
 mod xcm;
 
 /// Re-exports the correct runtimes that we run the integration tests with

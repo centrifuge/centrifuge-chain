@@ -9,8 +9,8 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Runtime as CentrifugeRuntime, PARA_ID};
-use crate::rocc::utils::*;
+use crate::chain::centrifuge::{Runtime, PARA_ID};
+use crate::pools::utils::*;
 use fudge::primitives::Chain;
 use tokio::runtime::Handle;
 
@@ -24,7 +24,7 @@ async fn env_works() {
 	let mut block_before = 0;
 
 	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> {
-		block_before = frame_system::Pallet::<CentrifugeRuntime>::block_number();
+		block_before = frame_system::Pallet::<Runtime>::block_number();
 		Ok(())
 	})
 	.unwrap();
@@ -33,7 +33,7 @@ async fn env_works() {
 
 	let mut block_after = 0;
 	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> {
-		block_after = frame_system::Pallet::<CentrifugeRuntime>::block_number();
+		block_after = frame_system::Pallet::<Runtime>::block_number();
 		Ok(())
 	})
 	.unwrap();
