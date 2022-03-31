@@ -9,18 +9,25 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::PARA_ID;
-use crate::rocc::utils::*;
-use fudge::primitives::Chain;
-use tokio::runtime::Handle;
 
-#[tokio::test]
-async fn token_price_stays_zero() {
-	logs::init_logs();
-	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(manager.spawn_handle());
+use std::sync::atomic::{AtomicUsize, Ordering};
+static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
-	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> { Ok(()) })
-		.unwrap();
-	env::pass_n(1, &mut env).unwrap()
+const UNINITIALIZED: usize = 0;
+const INITIALIZING: usize = 1;
+const INITIALIZED: usize = 2;
+
+pub fn init_logs() {
+	if GLOBAL_INIT
+		.compare_exchange(
+			UNINITIALIZED,
+			INITIALIZING,
+			Ordering::SeqCst,
+			Ordering::SeqCst,
+		)
+		.is_ok()
+	{
+		GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
+		tracing_subscriber::fmt::init();
+	}
 }

@@ -9,18 +9,6 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::PARA_ID;
-use crate::rocc::utils::*;
-use fudge::primitives::Chain;
-use tokio::runtime::Handle;
 
-#[tokio::test]
-async fn token_price_stays_zero() {
-	logs::init_logs();
-	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(manager.spawn_handle());
-
-	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> { Ok(()) })
-		.unwrap();
-	env::pass_n(1, &mut env).unwrap()
-}
+pub mod env;
+pub mod logs;

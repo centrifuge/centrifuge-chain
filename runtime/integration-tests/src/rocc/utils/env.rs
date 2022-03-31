@@ -26,11 +26,12 @@ use fudge::{
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::SpawnTaskHandle;
+use sc_service::{SpawnTaskHandle, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::sync::Arc;
+use tokio::runtime::Handle;
 
 /// The type that CreatesInherentDataProviders for the relay-chain.
 /// As a new-type here as otherwise the TestEnv is badly
@@ -75,7 +76,7 @@ type Dp = Box<dyn DigestCreator + Send + Sync>;
 pub struct TestEnv {
 	#[fudge::relaychain]
 	relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
-	#[fudge::parachain(2031)]
+	#[fudge::parachain(2000)]
 	centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
 }
 
@@ -115,6 +116,13 @@ fn test_env(
 			RelayRtApi,
 			WasmExecutor<sp_io::SubstrateHostFunctions>,
 		>::with_code(RelayCode.unwrap());
+
+		// We need to HostConfiguration and use the default here.
+		provider.insert_storage(
+			polkadot_runtime_parachains::configuration::GenesisConfig::<RelayRt>::default()
+				.build_storage()
+				.expect("GenesisBuild must not fail at this stage."),
+		);
 
 		if let Some(storage) = relay_storage {
 			provider.insert_storage(storage);
@@ -217,4 +225,17 @@ fn test_env(
 	};
 
 	TestEnv::new(relay, centrifuge).unwrap()
+}
+
+pub fn task_manager(tokio_handle: Handle) -> TaskManager {
+	TaskManager::new(tokio_handle, None).unwrap()
+}
+
+// Pass n_blocks on the parachain!-side
+pub fn pass_n(n: u64, env: &mut TestEnv) -> Result<(), ()> {
+	for _ in 0..n {
+		env.evolve()?;
+	}
+
+	Ok(())
 }
