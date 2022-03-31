@@ -111,6 +111,21 @@ parameter_types! {
 		.build_or_panic();
 	pub const SS58Prefix: u8 = 36;
 }
+
+parameter_types! {
+	pub const MigrationMaxAccounts: u32 = 100;
+	pub const MigrationMaxVestings: u32 = 10;
+	pub const MigrationMaxProxies: u32 = 10;
+}
+
+impl pallet_migration_manager::Config for Runtime {
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxVestings = MigrationMaxVestings;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type Event = Event;
+	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
+}
+
 // our base filter
 // allow base system calls needed for block production and runtime upgrade
 // other calls will be disallowed
@@ -779,6 +794,7 @@ construct_runtime!(
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 93,
 
 		// 3rd party pallets
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,

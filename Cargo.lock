@@ -1036,6 +1036,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-indices",
  "pallet-membership",
+ "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft",
  "pallet-offences",

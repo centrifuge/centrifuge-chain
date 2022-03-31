@@ -104,6 +104,7 @@ pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
+pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
 
 # bridge pallets
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.17" }
@@ -184,6 +185,7 @@ std = [
     "chainbridge/std",
     "pallet-bridge/std",
     "pallet-nft/std",
+    "pallet-migration-manager/std",
 ]
 
 runtime-benchmarks = [
@@ -199,6 +201,7 @@ runtime-benchmarks = [
     "pallet-society/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
+    "pallet-migration-manager/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
