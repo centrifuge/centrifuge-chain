@@ -1,3 +1,4 @@
+#![feature(stmt_expr_attributes)]
 // Copyright 2021 Centrifuge GmbH (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
@@ -10,7 +11,6 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
 #![cfg(test)]
 
 mod pools;
