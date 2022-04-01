@@ -9,9 +9,14 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use crate::chain::centrifuge;
 use crate::chain::centrifuge::{Runtime, PARA_ID};
+use crate::pools::utils::accounts::Keyring;
+use crate::pools::utils::extrinsics::ext_centrifuge;
 use crate::pools::utils::*;
+use codec::Encode;
 use fudge::primitives::Chain;
+use pallet_balances::Call as BalancesCall;
 use tokio::runtime::Handle;
 
 #[tokio::test]
@@ -40,5 +45,16 @@ async fn env_works() {
 #[tokio::test]
 async fn create_pool() {
 	let manager = env::task_manager(Handle::current());
-	let env = env::test_env_default(manager.spawn_handle());
+	let mut env = env::test_env_default(manager.spawn_handle());
+
+	let to: centrifuge::Address = centrifuge::Address::Id(Keyring::Bob.to_account_id().into());
+	let xt = ext_centrifuge(
+		&env,
+		Keyring::Alice,
+		centrifuge::Call::Balances(BalancesCall::transfer {
+			dest: to,
+			value: 100 * centrifuge::CFG,
+		}),
+	);
+	env.append_extrinsic(Chain::Para(PARA_ID), xt.encode());
 }
