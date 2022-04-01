@@ -10,5 +10,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+pub mod accounts;
 pub mod env;
 pub mod logs;

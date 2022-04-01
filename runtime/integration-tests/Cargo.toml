@@ -7,12 +7,15 @@ license = "LGPL-3.0"
 homepage = "https://centrifuge.io/"
 repository = "https://github.com/centrifuge/centrifuge-chain"
 
+[env]
+RUST_LOG = "INFO"
 
 [dependencies]
 fudge = { git = "https://github.com/centrifuge/fudge", tag = "v0.0.2-polkadot-v0.9.17"}
 tokio = { version = "1.15", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 
 # Substrate
 ## Substrate-Frame
@@ -26,6 +29,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkad
 sp-authorship = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
+sp-tracing = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 ## Substrate-Client
 sc-service = { git = "https://github.com/paritytech/substrate", features = ["db", "test-helpers"], branch = "polkadot-v0.9.17" }
