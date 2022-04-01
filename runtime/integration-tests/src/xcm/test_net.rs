@@ -23,23 +23,26 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use development_runtime::CurrencyId;
 use runtime_common::AccountId;
 
-use crate::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};
+use crate::{
+	chain::centrifuge::PARA_ID,
+	xcm::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING},
+};
 
 decl_test_relay_chain! {
-	pub struct KusamaNet {
-		Runtime = kusama_runtime::Runtime,
-		XcmConfig = kusama_runtime::xcm_config::XcmConfig,
-		new_ext = kusama_ext(),
+	pub struct RelayNet {
+		Runtime = crate::chain::relay::Runtime,
+		XcmConfig = crate::chain::relay::xcm_config::XcmConfig,
+		new_ext = relay_ext(),
 	}
 }
 
 decl_test_parachain! {
-	pub struct Development {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_DEVELOPMENT),
+	pub struct Centrifuge {
+		Runtime = crate::chain::centrifuge::Runtime,
+		Origin = crate::chain::centrifuge::Origin,
+		XcmpMessageHandler = crate::chain::centrifuge::XcmpQueue,
+		DmpMessageHandler = crate::chain::centrifuge::DmpQueue,
+		new_ext = para_ext(PARA_ID),
 	}
 }
 
@@ -55,21 +58,21 @@ decl_test_parachain! {
 
 decl_test_network! {
 	pub struct TestNet {
-		relay_chain = KusamaNet,
+		relay_chain = RelayNet,
 		parachains = vec![
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `PARA_ID_DEVELOPMENT`
-			(2000, Development),
+			// Be sure to use `PARA_ID`
+			(2000, Centrifuge),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
 		],
 	}
 }
 
-pub fn kusama_ext() -> sp_io::TestExternalities {
-	use kusama_runtime::{Runtime, System};
+pub fn relay_ext() -> sp_io::TestExternalities {
+	use crate::chain::relay::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
@@ -78,10 +81,7 @@ pub fn kusama_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(AccountId::from(ALICE), native_amount(2002)),
-			(
-				ParaId::from(PARA_ID_DEVELOPMENT).into_account(),
-				native_amount(7),
-			),
+			(ParaId::from(PARA_ID).into_account(), native_amount(7)),
 			(
 				ParaId::from(PARA_ID_SIBLING).into_account(),
 				native_amount(7),
