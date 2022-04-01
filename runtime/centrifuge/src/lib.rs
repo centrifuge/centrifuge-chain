@@ -67,7 +67,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1001,
+	spec_version: 1002,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -111,6 +111,21 @@ parameter_types! {
 		.build_or_panic();
 	pub const SS58Prefix: u8 = 36;
 }
+
+parameter_types! {
+	pub const MigrationMaxAccounts: u32 = 100;
+	pub const MigrationMaxVestings: u32 = 10;
+	pub const MigrationMaxProxies: u32 = 10;
+}
+
+impl pallet_migration_manager::Config for Runtime {
+	type MigrationMaxAccounts = MigrationMaxAccounts;
+	type MigrationMaxVestings = MigrationMaxVestings;
+	type MigrationMaxProxies = MigrationMaxProxies;
+	type Event = Event;
+	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
+}
+
 // our base filter
 // allow base system calls needed for block production and runtime upgrade
 // other calls will be disallowed
@@ -532,7 +547,7 @@ parameter_types! {
 	pub const VotingPeriod: BlockNumber = 7 * DAYS;
 	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
 	pub const InstantAllowed: bool = false;
-	pub const MinimumDeposit: Balance = 500 * CFG;
+	pub const MinimumDeposit: Balance = 1000 * CFG;
 	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
 	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
 	pub const MaxProposals: u32 = 100;
@@ -654,6 +669,61 @@ impl pallet_anchors::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const NftProofValidationFee: u128 = NFT_PROOF_VALIDATION_FEE;
+}
+
+impl pallet_nft::Config for Runtime {
+	type Event = Event;
+	type ChainId = chainbridge::ChainId;
+	type ResourceId = chainbridge::ResourceId;
+	type HashId = HashId;
+	type NftProofValidationFee = NftProofValidationFee;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	//TODO create new mapping (< copied from 'development', need to figure out what this means)
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xCFG"));
+	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
+	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
+}
+
+impl pallet_bridge::Config for Runtime {
+	type BridgePalletId = BridgePalletId;
+	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+	type Currency = Balances;
+	type Event = Event;
+	type NativeTokenId = NativeTokenId;
+	type NativeTokenTransferFee = NativeTokenTransferFee;
+	type NftTokenTransferFee = NftTransferFee;
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const ChainId: chainbridge::ChainId = 1;
+	pub const ProposalLifetime: u32 = 500;
+	pub const ChainBridgePalletId: PalletId = PalletId(*b"chnbrdge");
+	pub const RelayerVoteThreshold: u32 = chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+}
+
+impl chainbridge::Config for Runtime {
+	type Event = Event;
+	/// A 75% majority of the council can update bridge settings.
+	type AdminOrigin =
+		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+	type Proposal = Call;
+	type ChainId = ChainId;
+	type PalletId = ChainBridgePalletId;
+	type ProposalLifetime = ProposalLifetime;
+	type RelayerVoteThreshold = RelayerVoteThreshold;
+	type WeightInfo = ();
+}
+
 // Parameterize claims pallet
 parameter_types! {
 	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
@@ -667,10 +737,8 @@ impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Balances;
 	type Event = Event;
-	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
-	type UnsignedPriority = UnsignedPriority;
 	type WeightInfo = ();
 }
 
@@ -721,7 +789,13 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
+		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
+		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
+		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
+		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
+
+		// 3rd party pallets
+		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
 
 		// admin stuff
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
@@ -744,6 +818,7 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	// Disable paying the fees for now
+	// TODO(nuno|miki): We need to enable this before we push the sudo removal one
 	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
@@ -914,9 +989,10 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			add_benchmark!(params, batches, pallet_fees, Fees);
-			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_balances, Balances);
+			add_benchmark!(params, batches, pallet_fees, Fees);
+			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -932,9 +1008,10 @@ impl_runtime_apis! {
 
 			let mut list = Vec::<BenchmarkList>::new();
 
-			list_benchmark!(list, extra, pallet_fees, Fees);
-			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_migration_manager, Migration);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
