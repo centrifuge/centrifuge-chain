@@ -16,7 +16,6 @@ use tokio::runtime::Handle;
 
 #[tokio::test]
 async fn env_works() {
-	logs::init_logs();
 	let manager = env::task_manager(Handle::current());
 	let mut env = env::test_env_default(manager.spawn_handle());
 
@@ -39,4 +38,10 @@ async fn env_works() {
 	.unwrap();
 
 	assert_eq!(block_before + num_blocks as u32, block_after)
+}
+
+#[tokio::test]
+async fn create_pool() {
+	let manager = env::task_manager(Handle::current());
+	let mut env = env::test_env_default(manager.spawn_handle());
 }

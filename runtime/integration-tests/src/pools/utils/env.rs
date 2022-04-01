@@ -14,6 +14,7 @@ use crate::chain::centrifuge::{
 	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
+use crate::pools::utils::logs;
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::{
@@ -77,7 +78,7 @@ type Dp = Box<dyn DigestCreator + Send + Sync>;
 pub struct TestEnv {
 	#[fudge::relaychain]
 	relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
-	#[fudge::parachain(2000)]
+	#[fudge::parachain(PARA_ID)]
 	centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
 }
 
@@ -110,6 +111,7 @@ fn test_env(
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
 ) -> TestEnv {
+	logs::init_logs();
 	// Build relay-chain builder
 	let relay = {
 		let mut provider = EnvProvider::<
