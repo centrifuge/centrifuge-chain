@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.3"
+version = "0.10.4"
 dependencies = [
  "chainbridge",
  "cumulus-pallet-aura-ext",
