@@ -9,16 +9,17 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge;
-use crate::chain::centrifuge::{Runtime, PARA_ID};
-use crate::pools::utils::accounts::Keyring;
-use crate::pools::utils::extrinsics::ext_centrifuge;
+use crate::chain::centrifuge::Runtime;
 use crate::pools::utils::*;
-use codec::Encode;
-use fudge::primitives::Chain;
-use pallet_balances::Call as BalancesCall;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
 
 #[tokio::test]
-async fn create_pool() {}
+async fn create_pool() {
+	let manager = env::task_manager(Handle::current());
+	let mut genesis = Storage::default();
+	env::default_balances::<Runtime>(&mut genesis);
+	let _env = env::test_env_with_centrifuge_storage(manager.spawn_handle(), genesis);
+
+	// TODO: Next PR actually create pool
+}
