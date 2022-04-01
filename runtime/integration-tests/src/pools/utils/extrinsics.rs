@@ -68,7 +68,7 @@ pub fn ext_relay(
 	let genesis_hash = client
 		.block_hash(0)
 		.expect("ESSENTIAL: Genesis MUST be avilable.")
-		.unwrap();
+		.expect("ESSENTIAL: Genesis MUST be avilable.");
 	let best_block_id = RelayBlockId::number(client.chain_info().best_number);
 	let (spec_version, tx_version) = {
 		let version = client.runtime_version_at(&best_block_id).unwrap();
