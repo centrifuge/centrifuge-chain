@@ -67,7 +67,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1002,
+	spec_version: 1003,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -137,14 +137,18 @@ impl Contains<Call> for BaseFilter {
 			c,
 			// Calls from Sudo
 			Call::Sudo(..)
-			// Calls for runtime upgrade
-			| Call::System(frame_system::Call::set_code{..})
-			| Call::System(frame_system::Call::set_code_without_checks{..})
+			| Call::System{..}
 			// Calls that are present in each block
 			| Call::ParachainSystem(
 				cumulus_pallet_parachain_system::Call::set_validation_data{..}
 			)
 			| Call::Timestamp(pallet_timestamp::Call::set{..})
+			// Enable Governance
+			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..}
+			| Call::Identity{..}
+			| Call::Proxy{..}
+			| Call::Utility{..}
+			| Call::Multisig{..}
 		)
 	}
 }
@@ -817,9 +821,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	// Disable paying the fees for now
-	// TODO(nuno|miki): We need to enable this before we push the sudo removal one
-	// pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic = generic::UncheckedExtrinsic<Address, Call, Signature, SignedExtra>;
@@ -833,26 +835,7 @@ pub type Executive = frame_executive::Executive<
 	frame_system::ChainContext<Runtime>,
 	Runtime,
 	AllPalletsWithSystem,
-	SchedulerMigrationV3,
 >;
-
-// Migration for scheduler pallet to move from a plain Call to a CallOrHash.
-pub struct SchedulerMigrationV3;
-impl frame_support::traits::OnRuntimeUpgrade for SchedulerMigrationV3 {
-	fn on_runtime_upgrade() -> frame_support::weights::Weight {
-		Scheduler::migrate_v2_to_v3()
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn pre_upgrade() -> Result<(), &'static str> {
-		Scheduler::pre_migrate_to_v3()
-	}
-
-	#[cfg(feature = "try-runtime")]
-	fn post_upgrade() -> Result<(), &'static str> {
-		Scheduler::post_migrate_to_v3()
-	}
-}
 
 #[cfg(not(feature = "disable-runtime-api"))]
 impl_runtime_apis! {
@@ -964,6 +947,37 @@ impl_runtime_apis! {
 
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
+
+		fn benchmark_metadata(extra: bool) -> (
+			Vec<frame_benchmarking::BenchmarkList>,
+			Vec<frame_support::traits::StorageInfo>,
+		) {
+			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+			use frame_support::traits::StorageInfoTrait;
+			use frame_system_benchmarking::Pallet as SystemBench;
+
+			let mut list = Vec::<BenchmarkList>::new();
+
+			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
+			list_benchmark!(list, extra, pallet_balances, Balances);
+			list_benchmark!(list, extra, pallet_multisig, Multisig);
+			list_benchmark!(list, extra, pallet_proxy, Proxy);
+			list_benchmark!(list, extra, pallet_utility, Utility);
+			list_benchmark!(list, extra, pallet_scheduler, Scheduler);
+			list_benchmark!(list, extra, pallet_collective, Council);
+			list_benchmark!(list, extra, pallet_democracy, Democracy);
+			list_benchmark!(list, extra, pallet_identity, Identity);
+			list_benchmark!(list, extra, pallet_vesting, Vesting);
+			list_benchmark!(list, extra, pallet_preimage, Preimage);
+			list_benchmark!(list, extra, pallet_fees, Fees);
+			list_benchmark!(list, extra, pallet_migration_manager, Migration);
+
+			let storage_info = AllPalletsWithSystem::storage_info();
+
+			return (list, storage_info)
+		}
+
 		fn dispatch_benchmark(
 				config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString>{
@@ -990,32 +1004,22 @@ impl_runtime_apis! {
 			let params = (&config, &whitelist);
 
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
+			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_balances, Balances);
+			add_benchmark!(params, batches, pallet_multisig, Multisig);
+			add_benchmark!(params, batches, pallet_proxy, Proxy);
+			add_benchmark!(params, batches, pallet_utility, Utility);
+			add_benchmark!(params, batches, pallet_scheduler, Scheduler);
+			add_benchmark!(params, batches, pallet_collective, Council);
+			add_benchmark!(params, batches, pallet_democracy, Democracy);
+			add_benchmark!(params, batches, pallet_identity, Identity);
+			add_benchmark!(params, batches, pallet_vesting, Vesting);
+			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
-		}
-
-		fn benchmark_metadata(extra: bool) -> (
-			Vec<frame_benchmarking::BenchmarkList>,
-			Vec<frame_support::traits::StorageInfo>,
-		) {
-			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
-			use frame_support::traits::StorageInfoTrait;
-			use frame_system_benchmarking::Pallet as SystemBench;
-
-			let mut list = Vec::<BenchmarkList>::new();
-
-			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
-			list_benchmark!(list, extra, pallet_balances, Balances);
-			list_benchmark!(list, extra, pallet_fees, Fees);
-			list_benchmark!(list, extra, pallet_migration_manager, Migration);
-
-			let storage_info = AllPalletsWithSystem::storage_info();
-
-			return (list, storage_info)
 		}
 	}
 }
