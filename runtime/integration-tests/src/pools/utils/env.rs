@@ -12,9 +12,11 @@
 
 //! Utilities to create a relay-chain-parachain setup
 use crate::chain::centrifuge::{
-	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
+	Block as CentrifugeBlock, CurrencyId, RuntimeApi as CentrifugeRtApi, PARA_ID,
+	WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
+use crate::pools::utils::accounts::default_accounts;
 use crate::pools::utils::logs;
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
@@ -32,7 +34,7 @@ use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::{SpawnTaskHandle, TaskManager};
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
-use sp_runtime::{generic::BlockId, DigestItem, Storage};
+use sp_runtime::{generic::BlockId, AccountId32, DigestItem, Storage};
 use std::sync::Arc;
 use tokio::runtime::Handle;
 
@@ -119,13 +121,21 @@ fn test_env(
 			RelayBlock,
 			RelayRtApi,
 			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::with_code(RelayCode.unwrap());
+		>::empty();
 
 		// We need to HostConfiguration and use the default here.
 		provider.insert_storage(
 			polkadot_runtime_parachains::configuration::GenesisConfig::<RelayRt>::default()
 				.build_storage()
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+		);
+
+		provider.insert_storage(
+			frame_system::GenesisConfig {
+				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
+			}
+			.build_storage::<RelayRt>()
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
 		if let Some(storage) = relay_storage {
@@ -143,8 +153,8 @@ fn test_env(
 			let client = clone_client.clone();
 			let parent_header = client
 				.header(&BlockId::Hash(parent.clone()))
-				.unwrap()
-				.unwrap();
+				.expect("ESSENTIAL: Relay CIDP must not fail.")
+				.expect("ESSENTIAL: Relay CIDP must not fail.");
 
 			async move {
 				let uncles =
@@ -193,7 +203,17 @@ fn test_env(
 			CentrifugeBlock,
 			CentrifugeRtApi,
 			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::with_code(CentrifugeCode.unwrap());
+		>::empty();
+
+		provider.insert_storage(
+			frame_system::GenesisConfig {
+				code: CentrifugeCode
+					.expect("ESSENTIAL: Centrifuge WASM is some.")
+					.to_vec(),
+			}
+			.build_storage::<RelayRt>()
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+		);
 
 		if let Some(storage) = centrifuge_storage {
 			provider.insert_storage(storage);
@@ -218,7 +238,10 @@ fn test_env(
 						timestamp.current_time(),
 						std::time::Duration::from_secs(6),
 					);
-				let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
+				let inherent = inherent_builder_clone
+					.parachain_inherent()
+					.await
+					.expect("ESSENTIAL: ParachainInherent from RelayBuilder must not fail.");
 				let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
 				Ok((timestamp, slot, relay_para_inherent))
 			}
@@ -228,7 +251,8 @@ fn test_env(
 		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(handle.clone(), backend, client, cidp, dp)
 	};
 
-	TestEnv::new(relay, centrifuge).unwrap()
+	TestEnv::new(relay, centrifuge)
+		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 
 pub fn task_manager(tokio_handle: Handle) -> TaskManager {
@@ -242,4 +266,55 @@ pub fn pass_n(n: u64, env: &mut TestEnv) -> Result<(), ()> {
 	}
 
 	Ok(())
+}
+
+pub fn default_native_balances<Runtime>(storage: &mut Storage)
+where
+	Runtime: pallet_balances::Config,
+	Runtime::Balance: From<u128>,
+	Runtime::AccountId: From<AccountId32>,
+{
+	pallet_balances::GenesisConfig::<Runtime> {
+		balances: default_accounts()
+			.iter()
+			.map(|acc| (acc.clone().into(), (1000 * runtime_common::CFG).into()))
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+pub fn default_usd_balances<Runtime>(storage: &mut Storage)
+where
+	Runtime: orml_tokens::Config,
+	Runtime::Balance: From<u128>,
+	Runtime::AccountId: From<AccountId32>,
+	Runtime::CurrencyId: From<CurrencyId>,
+{
+	orml_tokens::GenesisConfig::<Runtime> {
+		balances: default_accounts()
+			.iter()
+			.map(|acc| {
+				(
+					acc.clone().into(),
+					CurrencyId::Usd.into(),
+					(1000 * runtime_common::CFG).into(),
+				)
+			})
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+pub fn default_balances<Runtime>(storage: &mut Storage)
+where
+	Runtime: orml_tokens::Config + pallet_balances::Config,
+	<Runtime as orml_tokens::Config>::Balance: From<u128>,
+	<Runtime as pallet_balances::Config>::Balance: From<u128>,
+	Runtime::AccountId: From<AccountId32>,
+	Runtime::CurrencyId: From<CurrencyId>,
+{
+	default_native_balances::<Runtime>(storage);
+	default_usd_balances::<Runtime>(storage);
 }

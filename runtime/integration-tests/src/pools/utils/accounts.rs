@@ -15,12 +15,12 @@
 pub use sp_core::sr25519;
 use sp_core::{
 	sr25519::{Pair, Public, Signature},
-	ByteArray, Pair as PairT, H256,
+	Pair as PairT,
 };
 use sp_runtime::AccountId32;
 
 /// Set of test accounts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::EnumIter)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Keyring {
 	Admin,
 	TrancheInvestor(u32),
@@ -34,14 +34,6 @@ pub enum Keyring {
 }
 
 impl Keyring {
-	pub fn to_h256_public(self) -> H256 {
-		Public::from(self).as_array_ref().into()
-	}
-
-	pub fn to_raw_public_vec(self) -> Vec<u8> {
-		Public::from(self).to_raw_vec()
-	}
-
 	pub fn to_account_id(self) -> AccountId32 {
 		self.public().0.into()
 	}
@@ -65,11 +57,6 @@ impl Keyring {
 
 		Pair::from_string(&format!("//{}", path.as_str()), None)
 			.expect("static values are known good; qed")
-	}
-
-	/// Returns an iterator over all test accounts.
-	pub fn iter() -> impl Iterator<Item = Keyring> {
-		<Self as strum::IntoEnumIterator>::iter()
 	}
 
 	pub fn public(self) -> Public {
@@ -108,6 +95,12 @@ impl From<Keyring> for sp_runtime::MultiSigner {
 	}
 }
 
+impl From<Keyring> for sp_runtime::MultiAddress<AccountId32, ()> {
+	fn from(x: Keyring) -> Self {
+		sp_runtime::MultiAddress::Id(x.into())
+	}
+}
+
 #[derive(Debug)]
 pub struct ParseKeyringError;
 
@@ -134,6 +127,28 @@ impl std::str::FromStr for Keyring {
 	}
 }
 
+pub fn default_accounts() -> Vec<AccountId32> {
+	vec![
+		Keyring::Admin.to_account_id(),
+		Keyring::Alice.to_account_id(),
+		Keyring::Bob.to_account_id(),
+		Keyring::Ferdie.to_account_id(),
+		Keyring::Charlie.to_account_id(),
+		Keyring::Dave.to_account_id(),
+		Keyring::Eve.to_account_id(),
+		Keyring::TrancheInvestor(0).to_account_id(),
+		Keyring::TrancheInvestor(1).to_account_id(),
+		Keyring::TrancheInvestor(2).to_account_id(),
+		Keyring::TrancheInvestor(3).to_account_id(),
+		Keyring::TrancheInvestor(4).to_account_id(),
+		Keyring::TrancheInvestor(5).to_account_id(),
+		Keyring::TrancheInvestor(6).to_account_id(),
+		Keyring::TrancheInvestor(7).to_account_id(),
+		Keyring::TrancheInvestor(8).to_account_id(),
+		Keyring::TrancheInvestor(9).to_account_id(),
+	]
+}
+
 impl From<Keyring> for AccountId32 {
 	fn from(k: Keyring) -> Self {
 		k.to_account_id()
@@ -155,12 +170,6 @@ impl From<Keyring> for Pair {
 impl From<Keyring> for [u8; 32] {
 	fn from(k: Keyring) -> Self {
 		k.pair().public().0
-	}
-}
-
-impl From<Keyring> for H256 {
-	fn from(k: Keyring) -> Self {
-		k.pair().public().0.into()
 	}
 }
 

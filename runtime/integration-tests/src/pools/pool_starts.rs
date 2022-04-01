@@ -17,6 +17,7 @@ use crate::pools::utils::*;
 use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_balances::Call as BalancesCall;
+use sp_runtime::Storage;
 use tokio::runtime::Handle;
 
 #[tokio::test]
@@ -45,6 +46,9 @@ async fn env_works() {
 #[tokio::test]
 async fn create_pool() {
 	let manager = env::task_manager(Handle::current());
+	let mut genesis = Storage::default();
+	env::default_balances::<Runtime>(&mut genesis);
+	//let mut env = env::test_env_with_centrifuge_storage(manager.spawn_handle(), genesis);
 	let mut env = env::test_env_default(manager.spawn_handle());
 
 	let to: centrifuge::Address = centrifuge::Address::Id(Keyring::Bob.to_account_id().into());
@@ -56,5 +60,13 @@ async fn create_pool() {
 			value: 100 * centrifuge::CFG,
 		}),
 	);
-	env.append_extrinsic(Chain::Para(PARA_ID), xt.encode());
+	env.append_extrinsic(Chain::Para(PARA_ID), xt.encode())
+		.unwrap();
+	env.evolve().unwrap();
+
+	let _info = env
+		.with_state(Chain::Para(PARA_ID), || {
+			frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id())
+		})
+		.unwrap();
 }
