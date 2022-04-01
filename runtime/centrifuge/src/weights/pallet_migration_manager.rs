@@ -32,33 +32,33 @@ use sp_std::marker::PhantomData;
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn finalize() -> Weight {
-		(10_000_000 as Weight)
+		(24_312_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn migrate_system_account(n: u32) -> Weight {
-		(9_225_000 as Weight) // Standard Error: 1_000
-			.saturating_add((618_000 as Weight).saturating_mul(n as Weight))
+		(26_880_000 as Weight) // Standard Error: 3_000
+			.saturating_add((1_531_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
 	fn migrate_balances_issuance() -> Weight {
-		(14_000_000 as Weight)
+		(29_370_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
 	fn migrate_vesting_vesting(n: u32) -> Weight {
-		(17_280_000 as Weight) // Standard Error: 489_000
-			.saturating_add((23_769_000 as Weight).saturating_mul(n as Weight))
+		(123_598_000 as Weight) // Standard Error: 255_000
+			.saturating_add((52_115_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().reads((3 as Weight).saturating_mul(n as Weight)))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((3 as Weight).saturating_mul(n as Weight)))
 	}
 	fn migrate_proxy_proxies(n: u32) -> Weight {
-		(17_007_000 as Weight) // Standard Error: 265_000
-			.saturating_add((5_137_000 as Weight).saturating_mul(n as Weight))
+		(105_861_000 as Weight) // Standard Error: 130_000
+			.saturating_add((10_633_000 as Weight).saturating_mul(n as Weight))
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))

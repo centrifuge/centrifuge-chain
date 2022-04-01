@@ -31,31 +31,32 @@ use sp_std::marker::PhantomData;
 /// Weights for frame_system using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	fn remark(_b: u32) -> Weight {
-		(2_035_000 as Weight)
-	}
-	fn remark_with_event(b: u32) -> Weight {
+	fn remark(b: u32) -> Weight {
 		(0 as Weight) // Standard Error: 0
 			.saturating_add((1_000 as Weight).saturating_mul(b as Weight))
 	}
+	fn remark_with_event(b: u32) -> Weight {
+		(0 as Weight) // Standard Error: 0
+			.saturating_add((3_000 as Weight).saturating_mul(b as Weight))
+	}
 	fn set_heap_pages() -> Weight {
-		(3_000_000 as Weight)
+		(6_212_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
 	fn set_storage(i: u32) -> Weight {
-		(0 as Weight) // Standard Error: 0
-			.saturating_add((450_000 as Weight).saturating_mul(i as Weight))
+		(0 as Weight) // Standard Error: 2_000
+			.saturating_add((1_006_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(i as Weight)))
 	}
 	fn kill_storage(i: u32) -> Weight {
-		(0 as Weight) // Standard Error: 0
-			.saturating_add((290_000 as Weight).saturating_mul(i as Weight))
+		(0 as Weight) // Standard Error: 2_000
+			.saturating_add((686_000 as Weight).saturating_mul(i as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(i as Weight)))
 	}
 	fn kill_prefix(p: u32) -> Weight {
-		(0 as Weight) // Standard Error: 0
-			.saturating_add((776_000 as Weight).saturating_mul(p as Weight))
+		(0 as Weight) // Standard Error: 2_000
+			.saturating_add((1_462_000 as Weight).saturating_mul(p as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(p as Weight)))
 	}
 }
