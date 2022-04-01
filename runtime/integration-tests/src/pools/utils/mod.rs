@@ -12,4 +12,5 @@
 
 pub mod accounts;
 pub mod env;
+pub mod extrinsics;
 pub mod logs;

@@ -78,9 +78,9 @@ type Dp = Box<dyn DigestCreator + Send + Sync>;
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
-	relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
+	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
 	#[fudge::parachain(PARA_ID)]
-	centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
+	pub centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
 }
 
 #[allow(unused)]

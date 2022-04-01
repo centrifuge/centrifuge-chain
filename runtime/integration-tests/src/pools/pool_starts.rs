@@ -20,7 +20,7 @@ async fn env_works() {
 	let mut env = env::test_env_default(manager.spawn_handle());
 
 	let num_blocks = 10;
-	let mut block_before = env
+	let block_before = env
 		.with_state(Chain::Para(PARA_ID), || {
 			frame_system::Pallet::<Runtime>::block_number()
 		})
@@ -28,7 +28,7 @@ async fn env_works() {
 
 	env::pass_n(num_blocks, &mut env).unwrap();
 
-	let mut block_after = env
+	let block_after = env
 		.with_state(Chain::Para(PARA_ID), || {
 			frame_system::Pallet::<Runtime>::block_number()
 		})
@@ -40,5 +40,5 @@ async fn env_works() {
 #[tokio::test]
 async fn create_pool() {
 	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(manager.spawn_handle());
+	let env = env::test_env_default(manager.spawn_handle());
 }
