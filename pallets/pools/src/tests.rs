@@ -1196,15 +1196,6 @@ fn pool_parameters_should_be_constrained() {
 				pool_owner_origin.clone(),
 				pool_id,
 				realistic_min_epoch_time,
-				realistic_max_nav_age
-			),
-			Error::<Test>::PoolParameterBoundViolated
-		);
-		assert_err!(
-			Pools::update(
-				pool_owner_origin.clone(),
-				pool_id,
-				realistic_min_epoch_time,
 				7 * 24 * 60 * 60
 			),
 			Error::<Test>::PoolParameterBoundViolated
