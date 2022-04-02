@@ -1,29 +1,29 @@
 // Copyright 2021 Centrifuge GmbH (centrifuge.io).
 // This file is part of Centrifuge chain project.
-
+//
 // Centrifuge is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version (see http://www.gnu.org/licenses).
-
 // Centrifuge is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
 use frame_support::assert_ok;
 use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 
-use crate::kusama_test_net::{Development, Sibling, TestNet};
+use crate::xcm::test_net::{Centrifuge, Sibling, TestNet};
 use orml_traits::MultiCurrency;
 
-use crate::setup::{
-	development_account, native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
-	PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
+use crate::chain::centrifuge::{
+	Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond2000, XTokens, PARA_ID,
 };
-use development_runtime::{
-	Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond2000, XTokens,
+use crate::xcm::setup::{
+	development_account, native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
+	PARA_ID_SIBLING,
 };
 use runtime_common::Balance;
 
@@ -35,7 +35,7 @@ fn transfer_native_to_sibling() {
 	let bob_initial_balance = native_amount(10);
 	let transfer_amount = native_amount(1);
 
-	Development::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
 	});
@@ -44,7 +44,7 @@ fn transfer_native_to_sibling() {
 		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
 	});
 
-	Development::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::Native,
@@ -92,7 +92,7 @@ fn transfer_usd_to_sibling() {
 	let bob_initial_balance = usd_amount(10);
 	let transfer_amount = usd_amount(7);
 
-	Development::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::Usd,
 			&ALICE.into(),
@@ -117,7 +117,7 @@ fn transfer_usd_to_sibling() {
 		);
 	});
 
-	Development::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::Usd,
@@ -180,7 +180,7 @@ fn transfer_usd_to_development() {
 		);
 	});
 
-	Development::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::Usd,
 			&BOB.into(),
@@ -207,7 +207,7 @@ fn transfer_usd_to_development() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_DEVELOPMENT),
+						Parachain(PARA_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -231,7 +231,7 @@ fn transfer_usd_to_development() {
 		);
 	});
 
-	Development::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),

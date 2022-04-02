@@ -156,7 +156,7 @@ parameter_types! {
 
 // Implement frame system pallet configuration for mock runtime
 impl frame_system::Config for MockRuntime {
-	type BaseCallFilter = Migration;
+	type BaseCallFilter = BaseFilter;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type Origin = Origin;
@@ -199,9 +199,6 @@ impl pallet_migration_manager::Config for MockRuntime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = ();
-	type FinalizedFilter = Everything;
-	type InactiveFilter = BaseFilter;
-	type OngoingFilter = BaseFilter;
 }
 
 // our base filter

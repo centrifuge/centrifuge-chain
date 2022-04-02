@@ -142,7 +142,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Migration;
+	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -800,15 +800,13 @@ parameter_types! {
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
-// Implement claims pallet configuration trait for the mock runtime
+// Implement claims pallet configuration trait for the centrifuge runtime
 impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Tokens;
 	type Event = Event;
-	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
-	type UnsignedPriority = UnsignedPriority;
 	type WeightInfo = ();
 }
 
@@ -874,9 +872,6 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
-	type FinalizedFilter = Everything;
-	type InactiveFilter = Everything;
-	type OngoingFilter = BaseFilter;
 }
 
 // our base filter
@@ -1165,6 +1160,7 @@ parameter_types! {
 
 impl chainbridge::Config for Runtime {
 	type Event = Event;
+	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin =
 		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 	type Proposal = Call;
@@ -1172,7 +1168,6 @@ impl chainbridge::Config for Runtime {
 	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
-	/// A 75% majority of the council can update bridge settings.
 	type WeightInfo = ();
 }
 
@@ -1240,7 +1235,7 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
+		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
@@ -1773,7 +1768,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
-			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
@@ -1799,7 +1793,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			// list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
