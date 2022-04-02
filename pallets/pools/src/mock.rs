@@ -261,6 +261,8 @@ parameter_types! {
 	pub const MaxTranches: u32 = 5;
 
 	pub const ChallengeTime: u64 = 1;
+	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
@@ -291,6 +293,8 @@ impl Config for Test {
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
+	type MinUpdateDelay = MinUpdateDelay;
+	type RequireRedeemFulfillmentsBeforeUpdates = RequireRedeemFulfillmentsBeforeUpdates;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;

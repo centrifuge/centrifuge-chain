@@ -144,6 +144,8 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
 	pub const ChallengeTime: u64 = 0; // disable challenge period
+	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
@@ -174,6 +176,8 @@ impl pallet_pools::Config for MockRuntime {
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
+	type MinUpdateDelay = MinUpdateDelay;
+	type RequireRedeemFulfillmentsBeforeUpdates = RequireRedeemFulfillmentsBeforeUpdates;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;

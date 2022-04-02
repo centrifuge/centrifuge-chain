@@ -471,7 +471,15 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update(pool_owner_origin.clone(), 0, 30 * 60, 0));
+		assert_ok!(Pools::update(
+			pool_owner_origin.clone(),
+			0,
+			PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(30 * 60),
+				max_nav_age: Change::NewValue(0),
+			}
+		));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner_origin.clone(), 0),
@@ -1188,15 +1196,26 @@ fn pool_parameters_should_be_constrained() {
 		let realistic_max_nav_age = 1 * 60; // 1 min
 
 		assert_err!(
-			Pools::update(pool_owner_origin.clone(), pool_id, 0, realistic_max_nav_age),
+			Pools::update(
+				pool_owner_origin.clone(),
+				pool_id,
+				PoolChanges {
+					tranches: Change::NoChange,
+					min_epoch_time: Change::NewValue(0),
+					max_nav_age: Change::NewValue(realistic_max_nav_age),
+				}
+			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
 		assert_err!(
 			Pools::update(
 				pool_owner_origin.clone(),
 				pool_id,
-				realistic_min_epoch_time,
-				7 * 24 * 60 * 60
+				PoolChanges {
+					tranches: Change::NoChange,
+					min_epoch_time: Change::NewValue(realistic_min_epoch_time),
+					max_nav_age: Change::NewValue(7 * 24 * 60 * 60),
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
@@ -1204,8 +1223,11 @@ fn pool_parameters_should_be_constrained() {
 		assert_ok!(Pools::update(
 			pool_owner_origin.clone(),
 			pool_id,
-			realistic_min_epoch_time,
-			realistic_max_nav_age
+			PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(realistic_min_epoch_time),
+				max_nav_age: Change::NewValue(realistic_max_nav_age),
+			}
 		));
 	});
 }
