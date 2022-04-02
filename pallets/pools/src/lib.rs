@@ -73,7 +73,7 @@ pub struct ReserveDetails<Balance> {
 pub struct EpochState<EpochId> {
 	/// Current epoch that is ongoing.
 	pub current: EpochId,
-	/// Last epoch that was closed.
+	/// Time when the last epoch was closed.
 	pub last_closed: Moment,
 	/// Last epoch that was executed.
 	pub last_executed: EpochId,
@@ -459,6 +459,8 @@ pub mod pallet {
 		NoScheduledUpdate,
 		/// Scheduled time for this update is in the future
 		ScheduledTimeHasNotPassed,
+		/// In the last executed epoch, not all redemptions were fulfilled
+		RedemptionsHaveNotBeenFulfilled,
 	}
 
 	#[pallet::call]
@@ -616,8 +618,32 @@ pub mod pallet {
 			);
 
 			if T::RequireRedeemFulfillmentsBeforeUpdates::get() == true {
-				// TODO: check if, if required, redemptions were fulfilled in last epoch
-				// (and last epoch was closed after scheduled time)
+				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+				ensure!(
+					Self::now() >= pool.epoch.last_closed,
+					Error::<T>::ScheduledTimeHasNotPassed
+				);
+
+				let epochs: Vec<EpochDetails<T::BalanceRatio>> = pool
+					.tranches
+					.ids_residual_top()
+					.iter()
+					.map(|tranche_id| {
+						Epoch::<T>::try_get(&tranche_id, pool.epoch.last_executed)
+							.map_err(|_| Error::<T>::EpochNotExecutedYet)
+					})
+					.collect::<Result<Vec<_>, _>>()?;
+
+				let redemptions_were_fulfilled = epochs
+					.iter()
+					.all(|epoch| epoch.redeem_fulfillment == Perquintill::from_percent(100));
+
+				ensure!(
+					redemptions_were_fulfilled,
+					Error::<T>::RedemptionsHaveNotBeenFulfilled
+				);
+
 				Self::do_update_pool(&pool_id, &update.changes)?;
 			} else {
 				Self::do_update_pool(&pool_id, &update.changes)?;
