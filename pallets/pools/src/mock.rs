@@ -260,14 +260,15 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 	pub const MaxTranches: u32 = 5;
 
+	pub const ChallengeTime: u64 = 1;
+
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
-	pub const DefaultChallengeTime: u64 = 1;
 	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1;
-	pub const ChallengeTimeLowerBound: u64 = 1;
+	pub const MinEpochTimeUpperBound: u64 = 24 * 60 * 60;
 	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
 
 	// Pool metadata limit
@@ -289,11 +290,11 @@ impl Config for Test {
 	type NAV = FakeNav;
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
+	type ChallengeTime = ChallengeTime;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
-	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type Permission = Permissions;

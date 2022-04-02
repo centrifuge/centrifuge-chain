@@ -60,7 +60,6 @@ benchmarks! {
 		assert_eq!(pool.available_reserve, Zero::zero());
 		assert_eq!(pool.total_reserve, Zero::zero());
 		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
-		assert_eq!(pool.parameters.challenge_time, T::DefaultChallengeTime::get());
 		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
 		assert_eq!(pool.metadata, None);
 	}
@@ -72,7 +71,6 @@ benchmarks! {
 	verify {
 		let pool = get_pool::<T>();
 		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.parameters.challenge_time, SECS_PER_HOUR);
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
 

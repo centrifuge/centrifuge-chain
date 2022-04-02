@@ -82,9 +82,6 @@ pub struct EpochState<EpochId> {
 pub struct PoolParameters {
 	/// Minimum duration for an epoch.
 	pub min_epoch_time: Moment,
-	/// Minimum duration after submission of the first solution
-	/// that the epoch can be executed.
-	pub challenge_time: Moment,
 	/// Maximum time between the NAV update and the epoch closing.
 	pub max_nav_age: Moment,
 }
@@ -146,14 +143,14 @@ pub struct EpochDetails<BalanceRatio> {
 
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight> {
+pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber> {
 	epoch: EpochId,
 	nav: Balance,
 	reserve: Balance,
 	max_reserve: Balance,
 	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 	best_submission: Option<EpochSolution<Balance>>,
-	challenge_period_end: Option<Moment>,
+	challenge_period_end: Option<BlockNumber>,
 }
 
 /// The outstanding collections for an account
@@ -182,6 +179,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::BalanceRatio,
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
+	<T as frame_system::Config>::BlockNumber,
 >;
 
 #[frame_support::pallet]
@@ -279,22 +277,16 @@ pub mod pallet {
 
 		type Time: UnixTime;
 
-		/// Default min epoch time
+		/// Challenge time
+		type ChallengeTime: Get<<Self as frame_system::Config>::BlockNumber>;
+
+		/// Pool parameter defaults
 		type DefaultMinEpochTime: Get<u64>;
-
-		/// Default challenge time
-		type DefaultChallengeTime: Get<u64>;
-
-		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
 
-		/// Min epoch time lower bound
+		/// Pool parameter bounds
 		type MinEpochTimeLowerBound: Get<u64>;
-
-		/// Challenge time lower bound
-		type ChallengeTimeLowerBound: Get<u64>;
-
-		/// Max NAV age upper bound
+		type MinEpochTimeUpperBound: Get<u64>;
 		type MaxNAVAgeUpperBound: Get<u64>;
 
 		/// Max size of Metadata
@@ -497,13 +489,12 @@ pub mod pallet {
 						last_executed: Zero::zero(),
 					},
 					parameters: PoolParameters {
-						min_epoch_time: sp_std::cmp::max(
-							T::DefaultMinEpochTime::get(),
-							T::MinEpochTimeLowerBound::get(),
-						),
-						challenge_time: sp_std::cmp::max(
-							T::DefaultChallengeTime::get(),
-							T::ChallengeTimeLowerBound::get(),
+						min_epoch_time: sp_std::cmp::min(
+							sp_std::cmp::max(
+								T::DefaultMinEpochTime::get(),
+								T::MinEpochTimeLowerBound::get(),
+							),
+							T::MinEpochTimeUpperBound::get(),
 						),
 						max_nav_age: sp_std::cmp::min(
 							T::DefaultMaxNAVAge::get(),
@@ -535,7 +526,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			min_epoch_time: u64,
-			challenge_time: u64,
 			max_nav_age: u64,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
@@ -546,7 +536,7 @@ pub mod pallet {
 
 			ensure!(
 				min_epoch_time >= T::MinEpochTimeLowerBound::get()
-					&& challenge_time >= T::ChallengeTimeLowerBound::get()
+					&& min_epoch_time <= T::MinEpochTimeUpperBound::get()
 					&& max_nav_age <= T::MaxNAVAgeUpperBound::get(),
 				Error::<T>::PoolParameterBoundViolated
 			);
@@ -555,7 +545,6 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				pool.parameters.min_epoch_time = min_epoch_time;
-				pool.parameters.challenge_time = challenge_time;
 				pool.parameters.max_nav_age = max_nav_age;
 				Self::deposit_event(Event::Updated(pool_id));
 				Ok(())
@@ -1053,8 +1042,10 @@ pub mod pallet {
 
 				// Challenge period starts when the first new solution has been submitted
 				if epoch.challenge_period_end.is_none() {
-					epoch.challenge_period_end =
-						Some(Self::now().saturating_add(pool.parameters.challenge_time));
+					epoch.challenge_period_end = Some(
+						<frame_system::Pallet<T>>::block_number()
+							.saturating_add(T::ChallengeTime::get()),
+					);
 				}
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
@@ -1107,7 +1098,7 @@ pub mod pallet {
 					epoch
 						.challenge_period_end
 						.expect("Challenge period is some. qed.")
-						<= Self::now(),
+						<= <frame_system::Pallet<T>>::block_number(),
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
