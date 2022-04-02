@@ -1,5 +1,17 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+//
+// This file is part of the Centrifuge chain project.
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System, PARA_ID};
 use common_traits::TokenMetadata;
-pub use development_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
 use frame_support::traits::GenesisBuild;
 use runtime_common::Balance;
 
@@ -8,7 +20,6 @@ pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
 /// Parachain Ids
-pub const PARA_ID_DEVELOPMENT: u32 = 2000;
 pub const PARA_ID_SIBLING: u32 = 3000;
 
 pub struct ExtBuilder {
@@ -20,7 +31,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: PARA_ID_DEVELOPMENT,
+			parachain_id: PARA_ID,
 		}
 	}
 }
@@ -102,7 +113,7 @@ pub fn sibling_account() -> AccountId {
 }
 
 pub fn development_account() -> AccountId {
-	parachain_account(PARA_ID_DEVELOPMENT.into())
+	parachain_account(PARA_ID.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {

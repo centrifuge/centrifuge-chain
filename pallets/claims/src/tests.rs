@@ -20,7 +20,7 @@
 // Imports and dependencies
 // ----------------------------------------------------------------------------
 
-use crate::{self as pallet_rad_claims, mock::*, *};
+use crate::{mock::*, *};
 
 use frame_support::{assert_noop, assert_ok};
 
@@ -208,20 +208,14 @@ fn claim() {
 			// Random sorted hashes
 			let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
 
-			// Bad origin, signed vs unsigned
+			// proof validation error - roothash not stored
 			assert_noop!(
 				Claims::claim(
-					Origin::signed(USER_B),
+					Origin::signed(0),
 					USER_B,
 					amount,
 					one_sorted_hashes.to_vec()
 				),
-				BadOrigin
-			);
-
-			// proof validation error - roothash not stored
-			assert_noop!(
-				Claims::claim(Origin::none(), USER_B, amount, one_sorted_hashes.to_vec()),
 				Error::<MockRuntime>::InvalidProofs
 			);
 
@@ -237,7 +231,12 @@ fn claim() {
 
 			// Minimum payout not met
 			assert_noop!(
-				Claims::claim(Origin::none(), USER_B, 4 * CFG, one_sorted_hashes.to_vec()),
+				Claims::claim(
+					Origin::signed(0),
+					USER_B,
+					4 * CFG,
+					one_sorted_hashes.to_vec()
+				),
 				Error::<MockRuntime>::UnderMinPayout
 			);
 
@@ -251,7 +250,7 @@ fn claim() {
 			// Claims Module Account does not have enough balance
 			assert_noop!(
 				Claims::claim(
-					Origin::none(),
+					Origin::signed(0),
 					USER_B,
 					10001 * CFG,
 					one_sorted_hashes.to_vec()
@@ -265,7 +264,7 @@ fn claim() {
 
 			let account_balance = <pallet_balances::Pallet<MockRuntime>>::free_balance(USER_B);
 			assert_ok!(Claims::claim(
-				Origin::none(),
+				Origin::signed(0),
 				USER_B,
 				amount,
 				one_sorted_hashes.to_vec()
@@ -283,73 +282,13 @@ fn claim() {
 				past_root_hash
 			));
 			assert_noop!(
-				Claims::claim(Origin::none(), USER_B, 50 * CFG, one_sorted_hashes.to_vec()),
+				Claims::claim(
+					Origin::signed(0),
+					USER_B,
+					50 * CFG,
+					one_sorted_hashes.to_vec()
+				),
 				Error::<MockRuntime>::InsufficientBalance
 			);
-		});
-}
-
-#[test]
-fn validate_unsigned_check() {
-	TestExternalitiesBuilder::default()
-		.build()
-		.execute_with(|| {
-			let amount: u128 = 100 * CFG;
-			let sorted_hashes_long: [H256; 31] = [
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-				[0; 32].into(),
-			];
-
-			// Abuse DDoS attach check
-			let inner_long = pallet_rad_claims::Call::claim {
-				account_id: USER_B,
-				amount: amount,
-				sorted_hashes: sorted_hashes_long.to_vec(),
-			};
-			assert_noop!(
-				<Claims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner_long),
-				InvalidTransaction::BadProof
-			);
-
-			// Two-leaf tree success
-			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
-			let one_sorted_hashes: [H256; 1] = [[0; 32].into()];
-			let root_hash = pre_calculate_single_root(&USER_B, &amount, &one_sorted_hashes[0]);
-			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
-			let inner = pallet_rad_claims::Call::claim {
-				account_id: USER_B,
-				amount: amount,
-				sorted_hashes: one_sorted_hashes.to_vec(),
-			};
-			assert_ok!(<Claims as sp_runtime::traits::ValidateUnsigned>::pre_dispatch(&inner));
 		});
 }

@@ -9,17 +9,25 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-pub mod frame_system;
-pub mod pallet_balances;
-pub mod pallet_collective;
-pub mod pallet_democracy;
-pub mod pallet_fees;
-pub mod pallet_identity;
-pub mod pallet_migration_manager;
-pub mod pallet_multisig;
-pub mod pallet_preimage;
-pub mod pallet_proxy;
-pub mod pallet_scheduler;
-pub mod pallet_timestamp;
-pub mod pallet_utility;
-pub mod pallet_vesting;
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
+
+const UNINITIALIZED: usize = 0;
+const INITIALIZING: usize = 1;
+const INITIALIZED: usize = 2;
+
+pub fn init_logs() {
+	if GLOBAL_INIT
+		.compare_exchange(
+			UNINITIALIZED,
+			INITIALIZING,
+			Ordering::SeqCst,
+			Ordering::SeqCst,
+		)
+		.is_ok()
+	{
+		GLOBAL_INIT.store(INITIALIZED, Ordering::SeqCst);
+		tracing_subscriber::fmt::init();
+	}
+}

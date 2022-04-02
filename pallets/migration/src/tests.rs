@@ -4,7 +4,6 @@ use crate::test_data::balances_total_issuance::TOTAL_ISSUANCE;
 use crate::test_data::proxy_proxies::PROXY_PROXIES;
 use crate::test_data::system_account::*;
 use crate::test_data::vesting_vesting::VESTING_VESTING;
-use frame_support::traits::Contains;
 use frame_support::{assert_noop, BoundedVec};
 use frame_system::AccountInfo;
 use pallet_balances::AccountData;
@@ -23,25 +22,7 @@ fn finalize_works() {
 			// We need to actually trigger storage to change status to Status::Ongoing
 			helper_migrate_total_issuance();
 
-			assert!(
-				!<<MockRuntime as frame_system::Config>::BaseCallFilter as Contains<Call>>::contains(
-					&Call::Balances(pallet_balances::Call::transfer{
-						dest: crate::mock::get_account(),
-						value: 1000
-					})
-				)
-			);
-
 			pallet_migration_manager::Pallet::<MockRuntime>::finalize(Origin::root()).unwrap();
-
-			assert!(
-				<<MockRuntime as frame_system::Config>::BaseCallFilter as Contains<Call>>::contains(
-					&Call::Balances(pallet_balances::Call::transfer {
-						dest: crate::mock::get_account(),
-						value: 1000
-					})
-				)
-			);
 
 			assert_noop!(
 				pallet_migration_manager::Pallet::<MockRuntime>::finalize(Origin::root()),
