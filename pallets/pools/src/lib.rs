@@ -423,14 +423,10 @@ pub mod pallet {
 		NotInSubmissionPeriod,
 		/// Insufficient currency available for desired operation
 		InsufficientCurrency,
-		/// Insufficient reserve available for desired operation
-		InsufficientReserve,
 		/// Risk Buffer validation failed
 		RiskBufferViolated,
 		/// The NAV was not available
 		NoNAV,
-		/// Generic error for invalid input data provided
-		InvalidData,
 		/// Epoch needs to be executed before you can collect
 		EpochNotExecutedYet,
 		/// There's no outstanding order that could be collected
@@ -459,6 +455,10 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
+		/// No update for the pool is scheduled
+		NoScheduledUpdate,
+		/// Scheduled time for this update is in the future
+		ScheduledTimeHasNotPassed,
 	}
 
 	#[pallet::call]
@@ -592,6 +592,38 @@ pub mod pallet {
 					Ok(())
 				})
 			}
+		}
+
+		/// Executed a scheduled update to the pool.
+		///
+		/// This checks if the scheduled time is in the past
+		/// and, if required, if there are no outstanding
+		/// redeem orders. If both apply, then the scheduled
+		/// changes are applied.
+		#[pallet::weight(200_000_000)]
+		pub fn execute_scheduled_update(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let update = ScheduledUpdate::<T>::try_get(pool_id)
+				.map_err(|_| Error::<T>::NoScheduledUpdate)?;
+
+			ensure!(
+				Self::now() >= update.scheduled_time,
+				Error::<T>::ScheduledTimeHasNotPassed
+			);
+
+			if T::RequireRedeemFulfillmentsBeforeUpdates::get() == true {
+				// TODO: check if, if required, redemptions were fulfilled in last epoch
+				// (and last epoch was closed after scheduled time)
+				Self::do_update_pool(&pool_id, &update.changes)?;
+			} else {
+				Self::do_update_pool(&pool_id, &update.changes)?;
+			}
+
+			Ok(())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
@@ -797,6 +829,7 @@ pub mod pallet {
 
 			Self::do_collect(who, pool_id, tranche_loc, collect_n_epochs)
 		}
+
 		/// Collect the results of an executed invest or
 		/// redeem order for another account.
 		///
@@ -1251,9 +1284,14 @@ pub mod pallet {
 				}
 
 				if let Change::NewValue(tranches) = &changes.tranches {
+					let now = Self::now();
+
 					pool.tranches.combine_with_mut_non_residual_top(
 						tranches.into_iter(),
 						|tranche, (new_tranche_type, seniority)| {
+							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
+							tranche.accrue(now)?;
+
 							tranche.tranche_type = new_tranche_type.clone();
 
 							if let Some(new_seniority) = seniority {
