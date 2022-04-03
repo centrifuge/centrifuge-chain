@@ -538,7 +538,13 @@ pub mod pallet {
 
 		/// Update per-pool configuration settings.
 		///
-		/// This sets the minimum epoch length, and maximum NAV age.
+		/// This updates the tranches of the pool,
+		/// sets the minimum epoch length, and maximum NAV age.
+		///
+		/// If no delay is required for updates and redemptions
+		/// don't have to be fulfilled, then this is executed
+		/// immediately. Otherwise, the update is scheduled
+		/// to be executed later.
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
