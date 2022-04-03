@@ -31,7 +31,7 @@ use fudge::{
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::{SpawnTaskHandle, TaskManager};
+use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, AccountId32, DigestItem, Storage};
@@ -86,31 +86,31 @@ pub struct TestEnv {
 }
 
 #[allow(unused)]
-pub fn test_env_default(handle: SpawnTaskHandle) -> TestEnv {
-	test_env(handle, None, None)
+pub fn test_env_default(manager: &TaskManager) -> TestEnv {
+	test_env(manager, None, None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_relay_storage(handle: SpawnTaskHandle, storage: Storage) -> TestEnv {
-	test_env(handle, Some(storage), None)
+pub fn test_env_with_relay_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
+	test_env(manager, Some(storage), None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_centrifuge_storage(handle: SpawnTaskHandle, storage: Storage) -> TestEnv {
-	test_env(handle, None, Some(storage))
+pub fn test_env_with_centrifuge_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
+	test_env(manager, None, Some(storage))
 }
 
 #[allow(unused)]
 pub fn test_env_with_both_storage(
-	handle: SpawnTaskHandle,
+	manager: &TaskManager,
 	relay_storage: Storage,
 	centrifuge_storage: Storage,
 ) -> TestEnv {
-	test_env(handle, Some(relay_storage), Some(centrifuge_storage))
+	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
 }
 
 fn test_env(
-	handle: SpawnTaskHandle,
+	manager: &TaskManager,
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
 ) -> TestEnv {
@@ -144,7 +144,7 @@ fn test_env(
 
 		let (client, backend) = provider.init_default(
 			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(handle.clone()),
+			Box::new(manager.spawn_handle()),
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
@@ -188,13 +188,7 @@ fn test_env(
 			Ok(digest)
 		});
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp>::new(
-			handle.clone(),
-			backend,
-			client,
-			cidp,
-			dp,
-		)
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp>::new(manager, backend, client, cidp, dp)
 	};
 
 	// Build parachain-builder
@@ -221,7 +215,7 @@ fn test_env(
 
 		let (client, backend) = provider.init_default(
 			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(handle.clone()),
+			Box::new(manager.spawn_handle()),
 		);
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
@@ -248,7 +242,7 @@ fn test_env(
 		});
 		let dp = Box::new(move || async move { Ok(sp_runtime::Digest::default()) });
 
-		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(handle.clone(), backend, client, cidp, dp)
+		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(manager, backend, client, cidp, dp)
 	};
 
 	TestEnv::new(relay, centrifuge)

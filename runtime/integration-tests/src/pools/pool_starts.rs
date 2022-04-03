@@ -19,7 +19,7 @@ async fn create_pool() {
 	let manager = env::task_manager(Handle::current());
 	let mut genesis = Storage::default();
 	env::default_balances::<Runtime>(&mut genesis);
-	let _env = env::test_env_with_centrifuge_storage(manager.spawn_handle(), genesis);
+	let _env = env::test_env_with_centrifuge_storage(&manager, genesis);
 
 	// TODO: Next PR actually create pool
 }

@@ -23,7 +23,7 @@ use tokio::runtime::Handle;
 #[tokio::test]
 async fn env_works() {
 	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(manager.spawn_handle());
+	let mut env = env::test_env_default(&manager);
 
 	let num_blocks = 10;
 	let block_before = env
@@ -48,7 +48,7 @@ async fn extrinsics_works() {
 	let manager = env::task_manager(Handle::current());
 	let mut genesis = Storage::default();
 	env::default_balances::<Runtime>(&mut genesis);
-	let mut env = env::test_env_with_centrifuge_storage(manager.spawn_handle(), genesis);
+	let mut env = env::test_env_with_centrifuge_storage(&manager, genesis);
 
 	let to: centrifuge::Address = Keyring::Bob.into();
 	let xt = ext_centrifuge(
@@ -71,6 +71,24 @@ async fn extrinsics_works() {
 			)
 		})
 		.unwrap();
+
+	env.evolve().unwrap();
+
+	let (alice_after, bob_after) = env
+		.with_state(Chain::Para(PARA_ID), || {
+			(
+				frame_system::Pallet::<Runtime>::account(Keyring::Alice.to_account_id()),
+				frame_system::Pallet::<Runtime>::account(Keyring::Bob.to_account_id()),
+			)
+		})
+		.unwrap();
+
+	// Need to account for fees here
+	assert!(alice_after.data.free <= alice_before.data.free - 100 * centrifuge::CFG);
+	assert_eq!(
+		bob_after.data.free,
+		bob_before.data.free + 100 * centrifuge::CFG
+	);
 
 	env.evolve().unwrap();
 
