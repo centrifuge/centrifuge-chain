@@ -309,7 +309,9 @@ impl<T: Config> Pallet<T> {
 				// repay since new pv is less than old
 				false => old_pv
 					.checked_sub(&new_pv)
-					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
+					.and_then(|negative_diff| nav.latest.saturating_sub(&negative_diff))
+					// this is a saturating add such that if more than the nav
+					// is to be subtracted, then it's simply set to 0
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
 			}?;
 			nav.latest = new_nav;

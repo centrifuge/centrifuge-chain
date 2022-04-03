@@ -1668,3 +1668,59 @@ fn test_write_off_overflow() {
 	write_off_overflow!(price_bullet_loan);
 	write_off_overflow!(price_credit_line_with_maturity_loan);
 }
+
+macro_rules! repay_should_not_underflow_nav {
+	($price_loan:ident) => {
+		TestExternalitiesBuilder::default()
+			.build()
+			.execute_with(|| {
+				Timestamp::set_timestamp(1 * 1000);
+				let borrower: u64 = Borrower::get();
+				// successful issue
+				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
+				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				assert_eq!(pool_balance, 1000 * USD);
+
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				assert_eq!(owner_balance, Zero::zero());
+
+				let loan_id = loan.1;
+
+				// successful pricing
+				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
+
+				// borrow amount
+				let borrow_amount = Amount::from_inner(100 * USD);
+				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
+				assert_ok!(res);
+
+				// check balances
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				assert_eq!(pool_balance, 900 * USD);
+
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				assert_eq!(owner_balance, 100 * USD);
+
+				// pass 1000 days, such that debt is significantly more than the original borrowed amount
+				Timestamp::set_timestamp((1000 * math::seconds_per_day()) * 1000);
+
+				// repay more than original borrowed amount. nav is still the original borrowed amount,
+				// so this should attempt to reduce the nav by more than its value
+				let res = Loans::repay(
+					Origin::signed(borrower),
+					pool_id,
+					loan_id,
+					Amount::from_inner(110 * USD),
+				);
+				assert_ok!(res);
+			})
+	};
+}
+
+#[test]
+fn test_repay_should_not_underflow_nav() {
+	repay_should_not_underflow_nav!(price_bullet_loan);
+	repay_should_not_underflow_nav!(price_credit_line_loan);
+	repay_should_not_underflow_nav!(price_credit_line_with_maturity_loan);
+}
