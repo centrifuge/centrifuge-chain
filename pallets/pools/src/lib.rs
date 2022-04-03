@@ -637,26 +637,8 @@ pub mod pallet {
 					Error::<T>::ScheduledTimeHasNotPassed
 				);
 
-				// For each tranche in the pool, we get the
-				// last executed epoch information.
-				let epochs: Vec<EpochDetails<T::BalanceRatio>> = pool
-					.tranches
-					.ids_residual_top()
-					.iter()
-					.map(|tranche_id| {
-						Epoch::<T>::try_get(&tranche_id, pool.epoch.last_executed)
-							.map_err(|_| Error::<T>::EpochNotExecutedYet)
-					})
-					.collect::<Result<Vec<_>, _>>()?;
-
-				// We check that for every tranche,
-				// all redeem orders were fulfilled.
-				let redemptions_were_fulfilled = epochs
-					.iter()
-					.all(|epoch| epoch.redeem_fulfillment == Perquintill::from_percent(100));
-
 				ensure!(
-					redemptions_were_fulfilled,
+					pool.tranches.acc_outstanding_redemptions()?.is_zero(),
 					Error::<T>::RedemptionsHaveNotBeenFulfilled
 				);
 

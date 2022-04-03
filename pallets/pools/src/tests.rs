@@ -1177,9 +1177,11 @@ fn updating_with_same_amount_is_err() {
 }
 
 #[test]
-fn pool_parameters_should_be_constrained() {
+fn pool_updates_should_be_constrained() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 0_u64;
+		let jun_invest_id = 1u64;
+		let junior_investor = Origin::signed(jun_invest_id);
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let pool_id = 0;
 
@@ -1192,6 +1194,14 @@ fn pool_parameters_should_be_constrained() {
 			10_000 * CURRENCY
 		));
 
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			pool_id,
+			ensure_signed(junior_investor.clone()).unwrap(),
+			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+		)
+		.unwrap();
+
+		let initial_pool = &crate::Pool::<Test>::try_get(pool_id).unwrap();
 		let realistic_min_epoch_time = 24 * 60 * 60; // 24 hours
 		let realistic_max_nav_age = 1 * 60; // 1 min
 
@@ -1229,6 +1239,33 @@ fn pool_parameters_should_be_constrained() {
 				max_nav_age: Change::NewValue(realistic_max_nav_age),
 			}
 		));
+
+		// Since the delay is set, the above update should not have been executed yet
+		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
+		assert_eq!(
+			pool.parameters.min_epoch_time,
+			initial_pool.parameters.min_epoch_time
+		);
+
+		// The update should fail since the min update delay hasnt passed yet
+		assert_err!(
+			Pools::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
+			Error::<Test>::ScheduledTimeHasNotPassed
+		);
+
+		next_block();
+		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), pool_id));
+
+		// Now it works since the epoch was executed and the min update delay has passed
+		assert_ok!(Pools::execute_scheduled_update(
+			pool_owner_origin.clone(),
+			pool_id
+		));
+
+		// And the parameter should be updated now
+		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
+		assert_eq!(pool.parameters.min_epoch_time, realistic_min_epoch_time);
 	});
 }
 
