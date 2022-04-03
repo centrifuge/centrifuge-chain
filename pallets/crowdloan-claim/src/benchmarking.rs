@@ -123,8 +123,8 @@ benchmarks! {
 
 impl_benchmark_test_suite!(
 	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(None),
-	crate::mock::T,
+	crate::mock::TestExternalitiesBuilder::default().build(Some(|| {})),
+	crate::mock::MockRuntime,
 );
 
 // Helper functions from here on
