@@ -654,7 +654,7 @@ pub mod pallet {
 
 				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
 
-				pool.tranches.combine_with_mut_non_residual_top(
+				pool.tranches.combine_with_mut_residual_top(
 					tranches.into_iter(),
 					|tranche, (new_tranche_type, seniority)| {
 						tranche.tranche_type = new_tranche_type;
