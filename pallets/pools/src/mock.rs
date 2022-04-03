@@ -261,8 +261,8 @@ parameter_types! {
 	pub const MaxTranches: u32 = 5;
 
 	pub const ChallengeTime: u64 = 1;
-	pub const MinUpdateDelay: u64 = 0; // no delay
-	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
+	pub const MinUpdateDelay: u64 = 1; // no delay
+	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = true;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;

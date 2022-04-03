@@ -591,14 +591,16 @@ pub mod pallet {
 			{
 				Self::do_update_pool(&pool_id, &changes)
 			} else {
-				ScheduledUpdate::<T>::try_mutate(pool_id, |scheduled_update| -> DispatchResult {
-					let scheduled_update =
-						scheduled_update.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					scheduled_update.changes = changes.clone();
-					scheduled_update.scheduled_time =
-						Self::now().saturating_add(T::MinUpdateDelay::get());
-					Ok(())
-				})
+				// If an update was already stored, this will override it
+				ScheduledUpdate::<T>::insert(
+					pool_id,
+					ScheduledUpdateDetails {
+						changes: changes.clone(),
+						scheduled_time: Self::now().saturating_add(T::MinUpdateDelay::get()),
+					},
+				);
+
+				Ok(())
 			}
 		}
 
@@ -626,11 +628,17 @@ pub mod pallet {
 			if T::RequireRedeemFulfillmentsBeforeUpdates::get() == true {
 				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
+				// The epoch in which the redemptions were fulfilled,
+				// should have closed after the scheduled time already,
+				// to ensure that investors had the `MinUpdateDelay`
+				// to submit their redemption orders.
 				ensure!(
 					Self::now() >= pool.epoch.last_closed,
 					Error::<T>::ScheduledTimeHasNotPassed
 				);
 
+				// For each tranche in the pool, we get the
+				// last executed epoch information.
 				let epochs: Vec<EpochDetails<T::BalanceRatio>> = pool
 					.tranches
 					.ids_residual_top()
@@ -641,6 +649,8 @@ pub mod pallet {
 					})
 					.collect::<Result<Vec<_>, _>>()?;
 
+				// We check that for every tranche,
+				// all redeem orders were fulfilled.
 				let redemptions_were_fulfilled = epochs
 					.iter()
 					.all(|epoch| epoch.redeem_fulfillment == Perquintill::from_percent(100));
