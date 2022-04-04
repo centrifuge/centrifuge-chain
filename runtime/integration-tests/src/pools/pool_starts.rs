@@ -18,25 +18,22 @@ use tokio::runtime::Handle;
 async fn env_works() {
 	logs::init_logs();
 	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(manager.spawn_handle());
+	let mut env = env::test_env_default(&manager);
 
 	let num_blocks = 10;
-	let mut block_before = 0;
-
-	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> {
-		block_before = frame_system::Pallet::<Runtime>::block_number();
-		Ok(())
-	})
-	.unwrap();
+	let block_before = env
+		.with_state(Chain::Para(PARA_ID), || {
+			frame_system::Pallet::<Runtime>::block_number()
+		})
+		.unwrap();
 
 	env::pass_n(num_blocks, &mut env).unwrap();
 
-	let mut block_after = 0;
-	env.with_state(Chain::Para(PARA_ID), || -> Result<(), ()> {
-		block_after = frame_system::Pallet::<Runtime>::block_number();
-		Ok(())
-	})
-	.unwrap();
+	let block_after = env
+		.with_state(Chain::Para(PARA_ID), || {
+			frame_system::Pallet::<Runtime>::block_number()
+		})
+		.unwrap();
 
 	assert_eq!(block_before + num_blocks as u32, block_after)
 }
