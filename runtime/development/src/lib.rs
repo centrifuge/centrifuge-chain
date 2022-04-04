@@ -854,7 +854,7 @@ impl pallet_pools::Config for Runtime {
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
-	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 }
 
@@ -981,7 +981,7 @@ impl pallet_loans::Config for Runtime {
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type Permission = Permissions;
-	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
