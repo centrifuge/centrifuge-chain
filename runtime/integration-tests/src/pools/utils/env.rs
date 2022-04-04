@@ -26,13 +26,27 @@ use fudge::{
 };
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
+use sc_executor::sp_wasm_interface::ExtendedHostFunctions;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::{SpawnTaskHandle, TaskManager};
+use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::sync::Arc;
 use tokio::runtime::Handle;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+/// HostFunctions that do not include benchmarking specific host functions
+type CentrifugeHF = sp_io::SubstrateHostFunctions;
+#[cfg(feature = "runtime-benchmarks")]
+/// Host functions that include benchmarking specific functionalities
+type CentrifugeHF = ExtendedHostFunctions<
+	sp_io::SubstrateHostFunctions,
+	frame_benchmarking::benchmarking::HostFunctions,
+>;
+
+/// Basic supstrate host functions
+type HF = sp_io::SubstrateHostFunctions;
 
 /// The type that CreatesInherentDataProviders for the relay-chain.
 /// As a new-type here as otherwise the TestEnv is badly
@@ -76,42 +90,44 @@ type Dp = Box<dyn DigestCreator + Send + Sync>;
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
-	relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
+	relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp, HF>,
 	#[fudge::parachain(2000)]
-	centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
+	centrifuge:
+		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
 }
 
 #[allow(unused)]
-pub fn test_env_default(handle: SpawnTaskHandle) -> TestEnv {
-	test_env(handle, None, None)
+pub fn test_env_default(manager: &TaskManager) -> TestEnv {
+	test_env(manager, None, None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_relay_storage(handle: SpawnTaskHandle, storage: Storage) -> TestEnv {
-	test_env(handle, Some(storage), None)
+pub fn test_env_with_relay_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
+	test_env(manager, Some(storage), None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_centrifuge_storage(handle: SpawnTaskHandle, storage: Storage) -> TestEnv {
-	test_env(handle, None, Some(storage))
+pub fn test_env_with_centrifuge_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
+	test_env(manager, None, Some(storage))
 }
 
 #[allow(unused)]
 pub fn test_env_with_both_storage(
-	handle: SpawnTaskHandle,
+	manager: &TaskManager,
 	relay_storage: Storage,
 	centrifuge_storage: Storage,
 ) -> TestEnv {
-	test_env(handle, Some(relay_storage), Some(centrifuge_storage))
+	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
 }
 
 fn test_env(
-	handle: SpawnTaskHandle,
+	manager: &TaskManager,
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
 ) -> TestEnv {
 	// Build relay-chain builder
 	let relay = {
+		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
 		let mut provider = EnvProvider::<
 			RelayBlock,
 			RelayRtApi,
@@ -131,7 +147,7 @@ fn test_env(
 
 		let (client, backend) = provider.init_default(
 			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(handle.clone()),
+			Box::new(manager.spawn_handle()),
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
@@ -175,22 +191,18 @@ fn test_env(
 			Ok(digest)
 		});
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp>::new(
-			handle.clone(),
-			backend,
-			client,
-			cidp,
-			dp,
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp, HF>::new(
+			manager, backend, client, cidp, dp,
 		)
 	};
 
 	// Build parachain-builder
 	let centrifuge = {
-		let mut provider = EnvProvider::<
-			CentrifugeBlock,
-			CentrifugeRtApi,
-			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::with_code(CentrifugeCode.unwrap());
+		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Centrifuge - StartUp");
+		let mut provider =
+			EnvProvider::<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>::with_code(
+				CentrifugeCode.unwrap(),
+			);
 
 		if let Some(storage) = centrifuge_storage {
 			provider.insert_storage(storage);
@@ -198,7 +210,7 @@ fn test_env(
 
 		let (client, backend) = provider.init_default(
 			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(handle.clone()),
+			Box::new(manager.spawn_handle()),
 		);
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
@@ -222,7 +234,9 @@ fn test_env(
 		});
 		let dp = Box::new(move || async move { Ok(sp_runtime::Digest::default()) });
 
-		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(handle.clone(), backend, client, cidp, dp)
+		ParachainBuilder::<_, _, CentrifugeCidp, Dp, CentrifugeHF>::new(
+			manager, backend, client, cidp, dp,
+		)
 	};
 
 	TestEnv::new(relay, centrifuge).unwrap()
