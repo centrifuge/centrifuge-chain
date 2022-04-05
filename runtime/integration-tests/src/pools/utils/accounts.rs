@@ -30,7 +30,7 @@ pub enum Keyring {
 	Dave,
 	Eve,
 	Ferdie,
-	Costume(&'static str),
+	Custom(&'static str),
 }
 
 impl Keyring {
@@ -52,7 +52,7 @@ impl Keyring {
 			Keyring::Dave => "Dave".to_owned(),
 			Keyring::Eve => "Eve".to_owned(),
 			Keyring::Ferdie => "Ferdie".to_owned(),
-			Keyring::Costume(derivation_path) => derivation_path.to_owned(),
+			Keyring::Custom(derivation_path) => derivation_path.to_owned(),
 		};
 
 		Pair::from_string(&format!("//{}", path.as_str()), None)
@@ -73,7 +73,7 @@ impl Keyring {
 			Keyring::Dave => "Dave".to_owned(),
 			Keyring::Eve => "Eve".to_owned(),
 			Keyring::Ferdie => "Ferdie".to_owned(),
-			Keyring::Costume(derivation_path) => derivation_path.to_owned(),
+			Keyring::Custom(derivation_path) => derivation_path.to_owned(),
 		};
 		format!("//{}", path.as_str())
 	}
