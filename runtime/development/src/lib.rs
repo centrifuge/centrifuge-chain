@@ -862,7 +862,7 @@ impl pallet_pools::Config for Runtime {
 struct PoolCurrencyChecker;
 impl PoolCurrency for PoolCurrencyChecker {
 	type CurrencyId = CurrencyId;
-	fn base(id: Self::CurrencyId) -> bool {
+	fn allowed(id: Self::CurrencyId) -> bool {
 		match id {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
 			CurrencyId::Usd => true,

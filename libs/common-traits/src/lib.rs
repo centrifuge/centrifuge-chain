@@ -223,7 +223,7 @@ pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
 
-/// Trait for checking which currencies are "whitelisted" as pool-currencies.
+/// Trait for checking which currencies are allowed as pool-currencies.
 /// Runtimes need to define which one they want to allow to be
 /// a base currency for a pool.
 pub trait PoolCurrency {
@@ -231,7 +231,7 @@ pub trait PoolCurrency {
 
 	/// Checks whether the given currency is allowed as a
 	/// base currency of a pool
-	fn base(currency: Self::CurrencyId) -> bool;
+	fn allowed(currency: Self::CurrencyId) -> bool;
 }
 
 /// Blanket implementation for testing
@@ -239,7 +239,7 @@ pub trait PoolCurrency {
 impl<T> PoolCurrency for () {
 	type CurrencyId = T;
 
-	fn base(_: Self::CurrencyId) -> bool {
+	fn allowed(_: Self::CurrencyId) -> bool {
 		true
 	}
 }

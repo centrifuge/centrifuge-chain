@@ -450,9 +450,9 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
-		/// Indicates that a pool base currency that is NOT whitelisted was used
+		/// Indicates that a pool base currency that is NOT allowed was used
 		/// for creating a pool
-		NotAPoolBaseCurrency,
+		NotAValidPoolCurrency,
 	}
 
 	#[pallet::call]
@@ -488,8 +488,8 @@ pub mod pallet {
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
 			ensure!(
-				T::PoolCurrency::base(currency),
-				Error::<T>::NotAPoolBaseCurrency
+				T::PoolCurrency::allowed(currency),
+				Error::<T>::NotAValidPoolCurrency
 			);
 
 			Self::is_valid_tranche_change(None, &tranches)?;
