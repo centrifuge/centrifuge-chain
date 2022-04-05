@@ -1094,6 +1094,7 @@ dependencies = [
  "polkadot-primitives",
  "polkadot-service",
  "runtime-common",
+ "runtime-integration-tests",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
