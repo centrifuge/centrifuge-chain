@@ -159,6 +159,7 @@ parameter_types! {
 }
 
 impl pallet_pools::Config for MockRuntime {
+	type PoolCurrency = ();
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;
