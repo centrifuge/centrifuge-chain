@@ -10,10 +10,14 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+//! Utilities to create a relay-chain-parachain setup
 use crate::chain::centrifuge::{
-	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
+	Block as CentrifugeBlock, CurrencyId, RuntimeApi as CentrifugeRtApi, PARA_ID,
+	WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
+use crate::pools::utils::accounts::default_accounts;
+use crate::pools::utils::logs;
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::{
@@ -27,10 +31,10 @@ use fudge::{
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
-use sc_service::{SpawnTaskHandle, TaskManager};
+use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
-use sp_runtime::{generic::BlockId, DigestItem, Storage};
+use sp_runtime::{generic::BlockId, AccountId32, DigestItem, Storage};
 use std::sync::Arc;
 use tokio::runtime::Handle;
 
@@ -76,47 +80,48 @@ type Dp = Box<dyn DigestCreator + Send + Sync>;
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
-	relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
-	#[fudge::parachain(2000)]
-	centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
+	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
+	#[fudge::parachain(PARA_ID)]
+	pub centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
 }
 
 #[allow(unused)]
-pub fn test_env_default(handle: SpawnTaskHandle) -> TestEnv {
-	test_env(handle, None, None)
+pub fn test_env_default(manager: &TaskManager) -> TestEnv {
+	test_env(manager, None, None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_relay_storage(handle: SpawnTaskHandle, storage: Storage) -> TestEnv {
-	test_env(handle, Some(storage), None)
+pub fn test_env_with_relay_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
+	test_env(manager, Some(storage), None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_centrifuge_storage(handle: SpawnTaskHandle, storage: Storage) -> TestEnv {
-	test_env(handle, None, Some(storage))
+pub fn test_env_with_centrifuge_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
+	test_env(manager, None, Some(storage))
 }
 
 #[allow(unused)]
 pub fn test_env_with_both_storage(
-	handle: SpawnTaskHandle,
+	manager: &TaskManager,
 	relay_storage: Storage,
 	centrifuge_storage: Storage,
 ) -> TestEnv {
-	test_env(handle, Some(relay_storage), Some(centrifuge_storage))
+	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
 }
 
 fn test_env(
-	handle: SpawnTaskHandle,
+	manager: &TaskManager,
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
 ) -> TestEnv {
+	logs::init_logs();
 	// Build relay-chain builder
 	let relay = {
 		let mut provider = EnvProvider::<
 			RelayBlock,
 			RelayRtApi,
 			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::with_code(RelayCode.unwrap());
+		>::empty();
 
 		// We need to HostConfiguration and use the default here.
 		provider.insert_storage(
@@ -125,13 +130,21 @@ fn test_env(
 				.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
 		);
 
+		provider.insert_storage(
+			frame_system::GenesisConfig {
+				code: RelayCode.expect("ESSENTIAL: Relay WASM is some.").to_vec(),
+			}
+			.build_storage::<RelayRt>()
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+		);
+
 		if let Some(storage) = relay_storage {
 			provider.insert_storage(storage);
 		}
 
 		let (client, backend) = provider.init_default(
 			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(handle.clone()),
+			Box::new(manager.spawn_handle()),
 		);
 		let client = Arc::new(client);
 		let clone_client = client.clone();
@@ -140,8 +153,8 @@ fn test_env(
 			let client = clone_client.clone();
 			let parent_header = client
 				.header(&BlockId::Hash(parent.clone()))
-				.unwrap()
-				.unwrap();
+				.expect("ESSENTIAL: Relay CIDP must not fail.")
+				.expect("ESSENTIAL: Relay CIDP must not fail.");
 
 			async move {
 				let uncles =
@@ -175,13 +188,7 @@ fn test_env(
 			Ok(digest)
 		});
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp>::new(
-			handle.clone(),
-			backend,
-			client,
-			cidp,
-			dp,
-		)
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp>::new(manager, backend, client, cidp, dp)
 	};
 
 	// Build parachain-builder
@@ -190,7 +197,17 @@ fn test_env(
 			CentrifugeBlock,
 			CentrifugeRtApi,
 			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::with_code(CentrifugeCode.unwrap());
+		>::empty();
+
+		provider.insert_storage(
+			frame_system::GenesisConfig {
+				code: CentrifugeCode
+					.expect("ESSENTIAL: Centrifuge WASM is some.")
+					.to_vec(),
+			}
+			.build_storage::<RelayRt>()
+			.expect("ESSENTIAL: GenesisBuild must not fail at this stage."),
+		);
 
 		if let Some(storage) = centrifuge_storage {
 			provider.insert_storage(storage);
@@ -198,7 +215,7 @@ fn test_env(
 
 		let (client, backend) = provider.init_default(
 			WasmExecutor::new(WasmExecutionMethod::Interpreted, Some(8), 8, None, 2),
-			Box::new(handle.clone()),
+			Box::new(manager.spawn_handle()),
 		);
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
@@ -215,17 +232,21 @@ fn test_env(
 						timestamp.current_time(),
 						std::time::Duration::from_secs(6),
 					);
-				let inherent = inherent_builder_clone.parachain_inherent().await.unwrap();
+				let inherent = inherent_builder_clone
+					.parachain_inherent()
+					.await
+					.expect("ESSENTIAL: ParachainInherent from RelayBuilder must not fail.");
 				let relay_para_inherent = FudgeInherentParaParachain::new(inherent);
 				Ok((timestamp, slot, relay_para_inherent))
 			}
 		});
 		let dp = Box::new(move || async move { Ok(sp_runtime::Digest::default()) });
 
-		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(handle.clone(), backend, client, cidp, dp)
+		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(manager, backend, client, cidp, dp)
 	};
 
-	TestEnv::new(relay, centrifuge).unwrap()
+	TestEnv::new(relay, centrifuge)
+		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 
 pub fn task_manager(tokio_handle: Handle) -> TaskManager {
@@ -239,4 +260,55 @@ pub fn pass_n(n: u64, env: &mut TestEnv) -> Result<(), ()> {
 	}
 
 	Ok(())
+}
+
+pub fn default_native_balances<Runtime>(storage: &mut Storage)
+where
+	Runtime: pallet_balances::Config,
+	Runtime::Balance: From<u128>,
+	Runtime::AccountId: From<AccountId32>,
+{
+	pallet_balances::GenesisConfig::<Runtime> {
+		balances: default_accounts()
+			.iter()
+			.map(|acc| (acc.clone().into(), (1000 * runtime_common::CFG).into()))
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+pub fn default_usd_balances<Runtime>(storage: &mut Storage)
+where
+	Runtime: orml_tokens::Config,
+	Runtime::Balance: From<u128>,
+	Runtime::AccountId: From<AccountId32>,
+	Runtime::CurrencyId: From<CurrencyId>,
+{
+	orml_tokens::GenesisConfig::<Runtime> {
+		balances: default_accounts()
+			.iter()
+			.map(|acc| {
+				(
+					acc.clone().into(),
+					CurrencyId::Usd.into(),
+					(1000 * runtime_common::CFG).into(),
+				)
+			})
+			.collect(),
+	}
+	.assimilate_storage(storage)
+	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
+}
+
+pub fn default_balances<Runtime>(storage: &mut Storage)
+where
+	Runtime: orml_tokens::Config + pallet_balances::Config,
+	<Runtime as orml_tokens::Config>::Balance: From<u128>,
+	<Runtime as pallet_balances::Config>::Balance: From<u128>,
+	Runtime::AccountId: From<AccountId32>,
+	Runtime::CurrencyId: From<CurrencyId>,
+{
+	default_native_balances::<Runtime>(storage);
+	default_usd_balances::<Runtime>(storage);
 }

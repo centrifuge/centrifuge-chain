@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+//! Utilities to initialize logging subscriber
 use std::sync::atomic::{AtomicUsize, Ordering};
 static GLOBAL_INIT: AtomicUsize = AtomicUsize::new(UNINITIALIZED);
 
