@@ -9,31 +9,17 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Runtime, PARA_ID};
+use crate::chain::centrifuge::Runtime;
 use crate::pools::utils::*;
-use fudge::primitives::Chain;
+use sp_runtime::Storage;
 use tokio::runtime::Handle;
 
 #[tokio::test]
-async fn env_works() {
-	logs::init_logs();
+async fn create_pool() {
 	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(&manager);
+	let mut genesis = Storage::default();
+	env::default_balances::<Runtime>(&mut genesis);
+	let _env = env::test_env_with_centrifuge_storage(&manager, genesis);
 
-	let num_blocks = 10;
-	let block_before = env
-		.with_state(Chain::Para(PARA_ID), || {
-			frame_system::Pallet::<Runtime>::block_number()
-		})
-		.unwrap();
-
-	env::pass_n(num_blocks, &mut env).unwrap();
-
-	let block_after = env
-		.with_state(Chain::Para(PARA_ID), || {
-			frame_system::Pallet::<Runtime>::block_number()
-		})
-		.unwrap();
-
-	assert_eq!(block_before + num_blocks as u32, block_after)
+	// TODO: Next PR actually create pool
 }

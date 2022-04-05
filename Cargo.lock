@@ -5684,6 +5684,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-asset-tx-payment"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17#22d40c761a985482f93bbbea5ba4199bdba74f8e"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-aura"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17#22d40c761a985482f93bbbea5ba4199bdba74f8e"
@@ -9138,12 +9154,16 @@ dependencies = [
  "frame-system",
  "fudge",
  "kusama-runtime",
+ "lazy_static",
+ "node-primitives",
  "orml-tokens",
  "orml-traits",
  "orml-xcm-support",
  "orml-xtokens",
+ "pallet-asset-tx-payment",
  "pallet-babe",
  "pallet-balances",
+ "pallet-transaction-payment",
  "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
@@ -9151,9 +9171,11 @@ dependencies = [
  "polkadot-parachain",
  "polkadot-primitives",
  "polkadot-runtime",
+ "polkadot-runtime-common",
  "polkadot-runtime-parachains",
  "rococo-runtime",
  "runtime-common",
+ "sc-client-api",
  "sc-consensus-uncles",
  "sc-executor",
  "sc-service",
@@ -9164,6 +9186,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-tracing",
+ "strum",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -12174,7 +12197,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.2",
+ "parking_lot 0.10.2",
  "regex",
  "serde",
  "serde_json",
