@@ -273,7 +273,7 @@ parameter_types! {
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
 
-	pub const ZeroDeposit: Balance = 0;
+	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
 impl Config for Test {
@@ -302,7 +302,7 @@ impl Config for Test {
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
-	type PoolDeposit = ZeroDeposit;
+	type PoolDeposit = PoolDeposit;
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
@@ -348,6 +348,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		balances: (0..10)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::Usd, 1000 * CURRENCY))
+			.collect(),
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	pallet_balances::GenesisConfig::<Test> {
+		balances: (0..10)
+			.into_iter()
+			.map(|idx| (idx, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)

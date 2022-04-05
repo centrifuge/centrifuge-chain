@@ -169,7 +169,7 @@ pub struct OutstandingCollections<Balance> {
 
 /// Information about the deposit that has been taken to create a pool
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct PoolDeposit<AccountId, Balance> {
+pub struct PoolDepositInfo<AccountId, Balance> {
 	pub depositor: AccountId,
 	pub deposit: Balance,
 }
@@ -192,7 +192,8 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
 >;
-type PoolDepositOf<T> = PoolDeposit<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
+type PoolDepositOf<T> =
+	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
 #[frame_support::pallet]
 pub mod pallet {
