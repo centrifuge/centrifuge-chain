@@ -12,7 +12,7 @@
 use crate::chain::centrifuge;
 use crate::chain::centrifuge::{Runtime, PARA_ID};
 use crate::pools::utils::accounts::Keyring;
-use crate::pools::utils::extrinsics::ext_centrifuge;
+use crate::pools::utils::extrinsics::{ext_centrifuge, nonce_centrifuge};
 use crate::pools::utils::*;
 use codec::Encode;
 use fudge::primitives::Chain;
@@ -54,6 +54,7 @@ async fn extrinsics_works() {
 	let xt = ext_centrifuge(
 		&env,
 		Keyring::Alice,
+		nonce_centrifuge(&env, Keyring::Alice),
 		centrifuge::Call::Balances(BalancesCall::transfer {
 			dest: to,
 			value: 100 * centrifuge::CFG,

@@ -39,6 +39,7 @@ use sp_runtime::{
 pub fn ext_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
+	nonce: centrifuge::Index,
 	call: centrifuge::Call,
 ) -> Result<centrifuge::UncheckedExtrinsic, ()> {
 	let client = env.centrifuge.client();
@@ -54,13 +55,14 @@ pub fn ext_centrifuge(
 	};
 
 	env.centrifuge
-		.with_state(|| sign_centrifuge(who, call, spec_version, tx_version, genesis_hash))
+		.with_state(|| sign_centrifuge(who, nonce, call, spec_version, tx_version, genesis_hash))
 		.map_err(|_| ())
 }
 
 pub fn ext_relay(
 	env: &TestEnv,
 	who: Keyring,
+	nonce: RelayIndex,
 	call: relay::Call,
 ) -> Result<relay::UncheckedExtrinsic, ()> {
 	let client = env.relay.client();
@@ -76,8 +78,26 @@ pub fn ext_relay(
 	};
 
 	env.relay
-		.with_state(|| sign_relay(who, call, spec_version, tx_version, genesis_hash))
+		.with_state(|| sign_relay(who, nonce, call, spec_version, tx_version, genesis_hash))
 		.map_err(|_| ())
+}
+
+pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
+	env.centrifuge
+		.with_state(|| {
+			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+				who.clone().to_account_id().into(),
+			)
+		})
+		.expect("ESSENTIAL: Nonce must be retrievable.")
+}
+
+pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
+	env.relay
+		.with_state(|| {
+			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
+		})
+		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
 
 fn nonce<Runtime, AccountId, Index>(who: AccountId) -> Index
@@ -89,7 +109,7 @@ where
 	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }
 
-fn signed_extra_centrifuge(nonce: RelayIndex) -> CentrifugeSignedExtra {
+fn signed_extra_centrifuge(nonce: centrifuge::Index) -> CentrifugeSignedExtra {
 	(
 		frame_system::CheckNonZeroSender::<CentrifugeRuntime>::new(),
 		frame_system::CheckSpecVersion::<CentrifugeRuntime>::new(),
@@ -104,16 +124,13 @@ fn signed_extra_centrifuge(nonce: RelayIndex) -> CentrifugeSignedExtra {
 
 fn sign_centrifuge(
 	who: Keyring,
+	nonce: centrifuge::Index,
 	call: CentrifugeCall,
 	spec_version: u32,
 	tx_version: u32,
 	genesis_hash: H256,
 ) -> CentrifugeUnchecked {
-	let extra = signed_extra_centrifuge(nonce::<
-		CentrifugeRuntime,
-		CentrifugeAccountId,
-		CentrifugeIndex,
-	>(who.clone().to_account_id().into()));
+	let extra = signed_extra_centrifuge(nonce);
 	let additional = (
 		(),
 		spec_version,
@@ -152,14 +169,13 @@ fn signed_extra_relay(nonce: RelayIndex) -> RelaySignedExtra {
 
 fn sign_relay(
 	who: Keyring,
+	nonce: RelayIndex,
 	call: RelayCall,
 	spec_version: u32,
 	tx_version: u32,
 	genesis_hash: H256,
 ) -> RelayUnchecked {
-	let extra = signed_extra_relay(nonce::<RelayRuntime, RelayAccountId, RelayIndex>(
-		who.clone().to_account_id().into(),
-	));
+	let extra = signed_extra_relay(nonce);
 	let additional = (
 		(),
 		spec_version,
