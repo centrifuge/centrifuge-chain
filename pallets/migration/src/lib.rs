@@ -13,9 +13,7 @@ pub use weights::*;
 
 #[cfg(test)]
 mod mock;
-#[cfg(test)]
-mod test_data;
-#[cfg(feature = "runtime-benchmarks")]
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 mod test_data;
 #[cfg(test)]
 mod tests;

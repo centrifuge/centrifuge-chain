@@ -5,9 +5,10 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::traits::Everything;
 use frame_support::{
 	construct_runtime, parameter_types,
-	traits::{Contains, EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
+	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
 		DispatchClass, Weight,
@@ -67,7 +68,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1003,
+	spec_version: 1004,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -126,36 +127,9 @@ impl pallet_migration_manager::Config for Runtime {
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
 }
 
-// our base filter
-// allow base system calls needed for block production and runtime upgrade
-// other calls will be disallowed
-pub struct BaseFilter;
-
-impl Contains<Call> for BaseFilter {
-	fn contains(c: &Call) -> bool {
-		matches!(
-			c,
-			// Calls from Sudo
-			Call::Sudo(..)
-			| Call::System{..}
-			// Calls that are present in each block
-			| Call::ParachainSystem(
-				cumulus_pallet_parachain_system::Call::set_validation_data{..}
-			)
-			| Call::Timestamp(pallet_timestamp::Call::set{..})
-			// Enable Governance
-			| Call::Democracy{..} | Call::Council{..} | Call::Elections{..}
-			| Call::Identity{..}
-			| Call::Proxy{..}
-			| Call::Utility{..}
-			| Call::Multisig{..}
-		)
-	}
-}
-
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = BaseFilter;
+	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -689,7 +663,6 @@ impl pallet_nft::Config for Runtime {
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
-	//TODO create new mapping (< copied from 'development', need to figure out what this means)
 	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xCFG"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
@@ -746,12 +719,6 @@ impl pallet_claims::Config for Runtime {
 	type WeightInfo = ();
 }
 
-// admin stuff
-impl pallet_sudo::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-}
-
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -800,9 +767,6 @@ construct_runtime!(
 
 		// 3rd party pallets
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
-
-		// admin stuff
-		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>} = 200,
 	}
 );
 

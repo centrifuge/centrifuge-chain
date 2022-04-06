@@ -66,15 +66,15 @@ mod fake_nav {
 	}
 
 	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
-		type ClassId = ();
-		type Origin = ();
+		type ClassId = u64;
+		type Origin = super::Origin;
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
 			Some(Self::latest(pool_id))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
 		}
-		fn initialise(_: (), _: T::PoolId, _: ()) -> DispatchResult {
+		fn initialise(_: Self::Origin, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
 			Ok(())
 		}
 	}

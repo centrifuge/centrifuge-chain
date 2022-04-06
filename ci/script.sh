@@ -25,7 +25,11 @@ case $TARGET in
     ;;
 
   tests)
-    cargo test --workspace --release
+    RUST_MIN_STACK=8388608 cargo test --workspace --release --features test-benchmarks
+    ;;
+
+  integration)
+    RUST_MIN_STACK=8388608 cargo test --release --package runtime-integration-tests
     ;;
 
   lint)

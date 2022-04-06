@@ -1094,6 +1094,7 @@ dependencies = [
  "polkadot-primitives",
  "polkadot-service",
  "runtime-common",
+ "runtime-integration-tests",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
@@ -1149,7 +1150,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.3"
+version = "0.10.4"
 dependencies = [
  "chainbridge",
  "cumulus-pallet-aura-ext",
@@ -1198,7 +1199,6 @@ dependencies = [
  "pallet-session-benchmarking",
  "pallet-staking",
  "pallet-staking-reward-curve",
- "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -2021,7 +2021,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -2037,7 +2037,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2088,7 +2088,7 @@ dependencies = [
 [[package]]
 name = "cumulus-relay-chain-interface"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2109,7 +2109,7 @@ dependencies = [
 [[package]]
 name = "cumulus-relay-chain-local"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2137,7 +2137,7 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -2973,8 +2973,8 @@ checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 
 [[package]]
 name = "fudge"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.1-polkadot-v0.9.17#e2a0f2384c94f820ed92f7291bca3a10d2274387"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
 dependencies = [
  "fudge-companion",
  "fudge-core",
@@ -2986,8 +2986,8 @@ dependencies = [
 
 [[package]]
 name = "fudge-companion"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.1-polkadot-v0.9.17#e2a0f2384c94f820ed92f7291bca3a10d2274387"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
 dependencies = [
  "proc-macro-crate 1.1.3",
  "proc-macro2",
@@ -2997,8 +2997,8 @@ dependencies = [
 
 [[package]]
 name = "fudge-core"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.1-polkadot-v0.9.17#e2a0f2384c94f820ed92f7291bca3a10d2274387"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
 dependencies = [
  "async-trait",
  "cumulus-primitives-parachain-inherent",
@@ -3024,6 +3024,7 @@ dependencies = [
  "sc-executor",
  "sc-offchain",
  "sc-service",
+ "sc-transaction-pool",
  "sc-transaction-pool-api",
  "sp-api",
  "sp-authorship",
@@ -3042,6 +3043,7 @@ dependencies = [
  "sp-std",
  "sp-storage",
  "sp-timestamp",
+ "sp-transaction-pool",
 ]
 
 [[package]]
@@ -5675,6 +5677,22 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-asset-tx-payment"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.17#22d40c761a985482f93bbbea5ba4199bdba74f8e"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "scale-info",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -9131,25 +9149,33 @@ dependencies = [
  "common-traits",
  "cumulus-primitives-core",
  "development-runtime",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "fudge",
  "kusama-runtime",
+ "lazy_static",
+ "node-primitives",
  "orml-tokens",
  "orml-traits",
  "orml-xcm-support",
  "orml-xtokens",
+ "pallet-asset-tx-payment",
  "pallet-babe",
  "pallet-balances",
+ "pallet-transaction-payment",
  "pallet-xcm",
  "parachain-info",
+ "parity-scale-codec",
  "polkadot-core-primitives",
  "polkadot-parachain",
  "polkadot-primitives",
  "polkadot-runtime",
+ "polkadot-runtime-common",
  "polkadot-runtime-parachains",
  "rococo-runtime",
  "runtime-common",
+ "sc-client-api",
  "sc-consensus-uncles",
  "sc-executor",
  "sc-service",
@@ -9159,6 +9185,8 @@ dependencies = [
  "sp-inherents",
  "sp-io",
  "sp-runtime",
+ "sp-tracing",
+ "strum",
  "tokio",
  "tracing",
  "tracing-subscriber",

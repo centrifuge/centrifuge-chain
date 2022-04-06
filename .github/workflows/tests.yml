@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        target: [tests, lint]
+        target: [tests, lint, integration]
     runs-on: ${{ matrix.os }}
     env:
       RUST_TOOLCHAIN: "nightly-2021-11-07"
