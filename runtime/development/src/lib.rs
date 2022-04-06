@@ -859,7 +859,7 @@ impl pallet_pools::Config for Runtime {
 	type PoolCurrency = PoolCurrencyChecker;
 }
 
-struct PoolCurrencyChecker;
+pub struct PoolCurrencyChecker;
 impl PoolCurrency for PoolCurrencyChecker {
 	type CurrencyId = CurrencyId;
 	fn allowed(id: Self::CurrencyId) -> bool {
