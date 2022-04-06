@@ -11,49 +11,82 @@
 // GNU General Public License for more details.
 
 //! Utilities around the loans pallet
-use lazy_static::lazy_static;
-use runtime_common::{ClassId, InstanceId, PoolId};
-use std::sync::atomic::{AtomicU64, Ordering};
+use crate::chain::centrifuge::UncheckedExtrinsic;
+use crate::pools::utils::env::TestEnv;
+use runtime_common::{ClassId, Index, InstanceId, PoolId};
+use std::collections::HashMap;
 
-lazy_static! {
-	static ref CLASS_ID: AtomicU64 = AtomicU64::new(0);
-	static ref INSTANCE_ID: AtomicU64 = AtomicU64::new(0);
+/// Structure that manages collateral and loan nft ids
+pub struct NftManager {
+	collaterals: HashMap<PoolId, InstanceId>,
+	loans: HashMap<PoolId, InstanceId>,
 }
 
-/// Returns the current class id counter. This id might
-/// already be in use.
-pub fn curr_class_id() -> ClassId {
-	CLASS_ID.load(Ordering::SeqCst)
+/// The id we use for loans
+pub type LoanId = InstanceId;
+
+// The id we use for collaterals
+pub type CollateralId = InstanceId;
+
+impl NftManager {
+	pub fn new() -> Self {
+		Self {
+			collaterals: HashMap::new(),
+			loans: HashMap::new(),
+		}
+	}
+
+	/// Currently simply maps pool_id = loan_class_id for a pool
+	pub fn loan_class_id(&self, pool_id: PoolId) -> ClassId {
+		pool_id
+	}
+
+	/// Maps pool_id << 32 = collateral_class id
+	///
+	/// panics if pool_id > u32::MAX as this would result in an overflow
+	/// during shifting.
+	pub fn collateral_class_id(&self, pool_id: PoolId) -> ClassId {
+		assert!(pool_id <= u32::MAX.into());
+		pool_id << 32
+	}
+
+	pub fn curr_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
+		self.loans.entry(pool_id).or_insert(InstanceId(0)).clone()
+	}
+
+	pub fn next_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
+		let id = self.loans.entry(pool_id).or_insert(InstanceId(0));
+		let next = id.clone();
+		*id = InstanceId(id.0);
+		next
+	}
+
+	pub fn curr_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
+		self.loans.entry(pool_id).or_insert(InstanceId(0)).clone()
+	}
+
+	pub fn next_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
+		let id = self.collaterals.entry(pool_id).or_insert(InstanceId(0));
+		let next = id.clone();
+		*id = InstanceId(id.0);
+		next
+	}
 }
 
-/// Increase the counter of class ids and returns the
-/// next unused class id.
+/// Creates the necessary extrinsics to initialises a pool in the loans pallet.
+/// The pool must already exist for this extrinsics to succeed.
 ///
-/// Overflows and panics of `curr_class_id == u64::MAX`
-pub fn next_class_id() -> u64 {
-	let prev = CLASS_ID.fetch_add(1, Ordering::SeqCst);
-	prev + 1
+/// Extrinsics that are generated:
+/// * Loans::initialise_pool
+/// * Uniques::create -> for
+/// *
+pub fn init_loans_for_pool(
+	env: &mut TestEnv,
+	pool: PoolId,
+) -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
 }
 
-/// Shifts the id 64 bits into the u128 range that
-/// u64 does not cover
-fn shift_to_instance_id_range(id: u64) -> u128 {
-	((id as u128) << 64)
-}
-/// Increase the counter of asset ids and returns the
-/// next unused asset id.
-pub fn next_asset_id() -> InstanceId {
-	let prev = INSTANCE_ID.fetch_add(1, Ordering::SeqCst);
-	InstanceId(shift_to_instance_id_range(prev + 1))
-}
-
-/// Returns the current asset id counter. This id might
-/// already be in use.
-pub fn curr_asset_id() -> InstanceId {
-	InstanceId(shift_to_instance_id_range(
-		INSTANCE_ID.load(Ordering::SeqCst),
-	))
-}
+pub fn initialise_pool() {}
 
 /*
 Uniques::create(

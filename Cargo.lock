@@ -2976,7 +2976,7 @@ checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 [[package]]
 name = "fudge"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
+source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#07a7852186b03d00b17f6740bc41226ce17a1668"
 dependencies = [
  "fudge-companion",
  "fudge-core",
@@ -2989,7 +2989,7 @@ dependencies = [
 [[package]]
 name = "fudge-companion"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
+source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#07a7852186b03d00b17f6740bc41226ce17a1668"
 dependencies = [
  "proc-macro-crate 1.1.3",
  "proc-macro2",
@@ -3000,7 +3000,7 @@ dependencies = [
 [[package]]
 name = "fudge-core"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
+source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#07a7852186b03d00b17f6740bc41226ce17a1668"
 dependencies = [
  "async-trait",
  "cumulus-primitives-parachain-inherent",

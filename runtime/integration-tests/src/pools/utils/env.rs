@@ -12,11 +12,11 @@
 
 //! Utilities to create a relay-chain-parachain setup
 use crate::chain::centrifuge::{
-	Block as CentrifugeBlock, CurrencyId, RuntimeApi as CentrifugeRtApi, PARA_ID,
-	WASM_BINARY as CentrifugeCode,
+	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
-use crate::pools::utils::{accounts::default_accounts, logs, time::START_DATE};
+use crate::pools::utils::loans::NftManager;
+use crate::pools::utils::{logs, time::START_DATE};
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::{
@@ -33,7 +33,7 @@ use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
-use sp_runtime::{generic::BlockId, AccountId32, DigestItem, Storage};
+use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::sync::Arc;
 use tokio::runtime::Handle;
 
@@ -96,6 +96,8 @@ pub struct TestEnv {
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
+
+	pub nft_manager: NftManager,
 }
 
 #[allow(unused)]
@@ -269,7 +271,7 @@ fn test_env(
 		)
 	};
 
-	TestEnv::new(relay, centrifuge)
+	TestEnv::new(relay, centrifuge, NftManager::new())
 		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 

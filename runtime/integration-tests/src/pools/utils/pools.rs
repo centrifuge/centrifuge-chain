@@ -13,13 +13,13 @@
 //! Utilities around creating a pool
 
 use crate::chain::centrifuge::{
-	Call, Index, Loans, OrmlTokens, Permissions, Pools, Timestamp, UncheckedExtrinsic, PARA_ID,
+	Call, Index, Loans, OrmlTokens, Permissions, Pools, Timestamp, UncheckedExtrinsic,
 };
-use crate::pools::utils::extrinsics::{nonce_centrifuge, xt_centrifuge};
+use crate::pools::utils::extrinsics::xt_centrifuge;
 use crate::pools::utils::{
-	accounts::{default_investors, increase_nonce, Keyring},
+	accounts::{increase_nonce, Keyring},
 	env::TestEnv,
-	time::{blocks::*, secs::*},
+	time::secs::*,
 	tokens,
 	tokens::{DECIMAL_BASE_12, YEAR_RATE},
 };
@@ -27,18 +27,19 @@ use codec::Encode;
 use common_traits::Permissions as PermissionsT;
 use common_types::{CurrencyId, PoolRole};
 use frame_support::{Blake2_128, StorageHasher};
-use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
-use runtime_common::{
-	AccountId, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, CFG,
-};
-use sp_runtime::{
-	traits::{One, StaticLookup},
-	FixedPointNumber, Perquintill,
-};
+use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
+use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
-/// Creates a pool with the following spec
+/// Creates the necessary extrinsics for initialising a pool.
+/// This includes:
+/// * creating a pool
+/// * whitelisting investors
+/// * initialising the loans pallet for the given pool
+///
+/// Extrinsics are returned and must be submitted to the transaction pool
+/// in order to be included into the next block.
 ///
 /// * Pool id as given
 /// * Admin as provided (also owner of pool)
@@ -56,10 +57,16 @@ use sp_runtime::{
 /// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
 /// * Currency: CurrencyId::Usd,
 /// * MaxReserve: 100_000 Usd
-pub fn default_pool(env: &mut TestEnv, admin: Keyring, nonce: Index, id: PoolId) -> Index {
+pub fn default_pool(
+	env: &mut TestEnv,
+	admin: Keyring,
+	nonce: Index,
+	id: PoolId,
+) -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
 	let mut curr_nonce = nonce;
+	let mut xts = Vec::new();
 
-	let xt = create_pool_xt(
+	let (xt, mut curr_nonce) = create_pool_xt(
 		env,
 		admin,
 		curr_nonce,
@@ -73,15 +80,11 @@ pub fn default_pool(env: &mut TestEnv, admin: Keyring, nonce: Index, id: PoolId)
 		),
 	)
 	.expect("ESSENTIAL: Creating a pool failed.");
+	xts.push(xt);
 
-	increase_nonce(&mut curr_nonce);
-
-	let (whitelists_xts, curr_nonce) =
+	let (whitelists_xts, mut curr_nonce) =
 		whitelist_10_for_each_tranche_xts(env, id, admin, curr_nonce, 5);
-	whitelists_xts.iter().for_each(|xt| {
-		env.append_extrinsic(Chain::Para(PARA_ID), xt.encode())
-			.expect("ESSENTIAL: Appending extrinisc to parachain failed.")
-	});
+	xts.extend(whitelists_xts);
 
 	/*
 	Uniques::create(
@@ -95,7 +98,7 @@ pub fn default_pool(env: &mut TestEnv, admin: Keyring, nonce: Index, id: PoolId)
 
 	 */
 
-	curr_nonce
+	Ok((xts, curr_nonce))
 }
 
 /// Creates a TrancheInput vector given the input.
@@ -267,8 +270,9 @@ pub fn create_pool_xt(
 	currency: CurrencyId,
 	max_reserve: Balance,
 	tranches: Vec<TrancheInput<Rate>>,
-) -> Result<UncheckedExtrinsic, ()> {
-	xt_centrifuge(
+) -> Result<(UncheckedExtrinsic, Index), ()> {
+	let mut curr_nonce = nonce;
+	let xt = xt_centrifuge(
 		env,
 		who,
 		nonce,
@@ -279,7 +283,9 @@ pub fn create_pool_xt(
 			currency,
 			max_reserve,
 		}),
-	)
+	);
+	increase_nonce(&mut curr_nonce);
+	xt.map(|xt| (xt, curr_nonce))
 }
 
 /// Calculates the tranche-id for pools at start-up. Makes it easier
@@ -295,7 +301,6 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 mod with_ext {
 	use super::*;
 	use common_traits::PoolNAV;
-	use pallet_pools::PoolDetails;
 	use runtime_common::Amount;
 
 	/// Whitelists 10 tranche-investors per tranche.

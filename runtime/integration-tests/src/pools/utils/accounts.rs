@@ -12,7 +12,6 @@
 
 // NOTE: Taken mostly from paritytech-substrate
 
-use frame_support::traits::OriginTrait;
 use runtime_common::Index;
 pub use sp_core::sr25519;
 use sp_core::{
