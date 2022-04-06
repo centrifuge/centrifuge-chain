@@ -11,14 +11,17 @@
 // GNU General Public License for more details.
 
 //! Utilities to create a relay-chain-parachain setup
+use crate::chain::centrifuge;
 use crate::chain::centrifuge::{
 	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
+use crate::pools::utils::accounts::{Keyring, NonceManager};
 use crate::pools::utils::loans::NftManager;
 use crate::pools::utils::{logs, time::START_DATE};
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
+use fudge::primitives::Chain;
 use fudge::{
 	digest::DigestCreator,
 	inherent::{
@@ -29,6 +32,8 @@ use fudge::{
 };
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
+use runtime_common::Index;
+
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -96,8 +101,39 @@ pub struct TestEnv {
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
-
 	pub nft_manager: NftManager,
+	nonce_manager: NonceManager,
+}
+
+impl TestEnv {
+	pub fn nonce(&self, chain: Chain, who: Keyring) -> Index {
+		// If manager does not contain yet, create please fetch from chain state and
+		// inject.
+		todo!()
+	}
+
+	pub fn sign(&self, chain: Chain, who: Keyring, call: Vec<u8>) -> Vec<u8> {
+		todo!()
+	}
+
+	pub fn submit(&self, chain: Chain, xt: Vec<u8>) -> Result<(), ()> {
+		todo!()
+	}
+
+	pub fn sign_and_submit(&self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<(), ()> {
+		todo!()
+	}
+	pub fn sign_cfg(&self, who: Keyring, call: centrifuge::Call) -> Vec<u8> {
+		todo!()
+	}
+
+	pub fn submit_cfg(&self, xt: centrifuge::UncheckedExtrinsic) -> Result<(), ()> {
+		todo!()
+	}
+
+	pub fn sign_and_submit_cfg(&self, who: Keyring, call: centrifuge::Call) -> Result<(), ()> {
+		todo!()
+	}
 }
 
 #[allow(unused)]
@@ -271,7 +307,7 @@ fn test_env(
 		)
 	};
 
-	TestEnv::new(relay, centrifuge, NftManager::new())
+	TestEnv::new(relay, centrifuge, NftManager::new(), NonceManager::new())
 		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 

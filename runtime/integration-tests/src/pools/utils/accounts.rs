@@ -12,6 +12,7 @@
 
 // NOTE: Taken mostly from paritytech-substrate
 
+use fudge::primitives::Chain;
 use runtime_common::Index;
 pub use sp_core::sr25519;
 use sp_core::{
@@ -19,6 +20,20 @@ use sp_core::{
 	Pair as PairT,
 };
 use sp_runtime::AccountId32;
+use std::collections::HashMap;
+
+/// Struct that takes care of handling nonces for accounts
+pub struct NonceManager {
+	nonces: HashMap<Chain, HashMap<Keyring, Index>>,
+}
+
+impl NonceManager {
+	pub fn new() -> Self {
+		Self {
+			nonces: HashMap::new(),
+		}
+	}
+}
 
 /// Set of test accounts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

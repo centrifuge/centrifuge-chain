@@ -12,6 +12,7 @@
 
 //! Utilities around the loans pallet
 use crate::chain::centrifuge::UncheckedExtrinsic;
+use crate::pools::utils::accounts::Keyring;
 use crate::pools::utils::env::TestEnv;
 use runtime_common::{ClassId, Index, InstanceId, PoolId};
 use std::collections::HashMap;
@@ -78,15 +79,36 @@ impl NftManager {
 ///
 /// Extrinsics that are generated:
 /// * Loans::initialise_pool
-/// * Uniques::create -> for
-/// *
+/// * Uniques::create -> for Loan nft class
+/// * Uniques::create -> for Collateral nft class
 pub fn init_loans_for_pool(
 	env: &mut TestEnv,
+	owner: Keyring,
+	nonce: Index,
 	pool: PoolId,
 ) -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
+	todo!()
 }
 
-pub fn initialise_pool() {}
+pub fn initialise_pool_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
+	todo!()
+}
+
+pub fn price_loan_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
+	todo!()
+}
+
+pub fn create_nft_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
+	todo!()
+}
+
+pub fn mint_nft_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
+	todo!()
+}
+
+pub fn issue_loan() -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
+	todo!()
+}
 
 /*
 Uniques::create(
@@ -101,6 +123,7 @@ Loans::initialise_pool(into_signed(get_admin()), id, get_loan_nft_class_id(id)).
  */
 
 /*
+
 /// A module where all calls need to be called within an
 /// externalities provided environment.
 pub mod with_ext {
