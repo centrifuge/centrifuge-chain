@@ -2334,7 +2334,7 @@ fn only_usd_as_pool_currency_allowed() {
 				CurrencyId::Native,
 				200 * CURRENCY
 			),
-			Error::<Test>::NotAValidPoolCurrency
+			Error::<Test>::InvalidCurrency
 		);
 
 		assert_noop!(
@@ -2355,7 +2355,7 @@ fn only_usd_as_pool_currency_allowed() {
 				CurrencyId::Tranche(0, [0u8; 16]),
 				200 * CURRENCY
 			),
-			Error::<Test>::NotAValidPoolCurrency
+			Error::<Test>::InvalidCurrency
 		);
 
 		assert_ok!(Pools::create(
