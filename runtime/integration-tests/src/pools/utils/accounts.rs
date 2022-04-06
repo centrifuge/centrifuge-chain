@@ -12,6 +12,8 @@
 
 // NOTE: Taken mostly from paritytech-substrate
 
+use frame_support::traits::OriginTrait;
+use runtime_common::Index;
 pub use sp_core::sr25519;
 use sp_core::{
 	sr25519::{Pair, Public, Signature},
@@ -127,25 +129,185 @@ impl std::str::FromStr for Keyring {
 	}
 }
 
-pub fn default_accounts() -> Vec<AccountId32> {
+/// Returns a Vector of default accounts
+///
+/// Accounts:
+/// * Keyring::Admin
+/// * Keyring::Alice
+/// * Keyring::Bob
+/// * Keyring::Ferdie
+/// * Keyring::Charlie
+/// * Keyring::Dave
+/// * Keyring::Eve
+/// * Keyring::TrancheInvestor(1)
+/// * Keyring::TrancheInvestor(2)
+/// * Keyring::TrancheInvestor(3)
+/// * Keyring::TrancheInvestor(4)
+/// * Keyring::TrancheInvestor(5)
+/// * Keyring::TrancheInvestor(6)
+/// * Keyring::TrancheInvestor(7)
+/// * Keyring::TrancheInvestor(8)
+/// * Keyring::TrancheInvestor(9)
+/// * Keyring::TrancheInvestor(10)
+/// * Keyring::TrancheInvestor(11)
+/// * Keyring::TrancheInvestor(12)
+/// * Keyring::TrancheInvestor(13)
+/// * Keyring::TrancheInvestor(14)
+/// * Keyring::TrancheInvestor(15)
+/// * Keyring::TrancheInvestor(16)
+/// * Keyring::TrancheInvestor(17)
+/// * Keyring::TrancheInvestor(18)
+/// * Keyring::TrancheInvestor(19)
+/// * Keyring::TrancheInvestor(20)
+/// * Keyring::TrancheInvestor(21)
+/// * Keyring::TrancheInvestor(22)
+/// * Keyring::TrancheInvestor(23)
+/// * Keyring::TrancheInvestor(24)
+/// * Keyring::TrancheInvestor(25)
+/// * Keyring::TrancheInvestor(26)
+/// * Keyring::TrancheInvestor(27)
+/// * Keyring::TrancheInvestor(28)
+/// * Keyring::TrancheInvestor(29)
+/// * Keyring::TrancheInvestor(30)
+/// * Keyring::TrancheInvestor(31)
+/// * Keyring::TrancheInvestor(32)
+/// * Keyring::TrancheInvestor(33)
+/// * Keyring::TrancheInvestor(34)
+/// * Keyring::TrancheInvestor(35)
+/// * Keyring::TrancheInvestor(36)
+/// * Keyring::TrancheInvestor(37)
+/// * Keyring::TrancheInvestor(38)
+/// * Keyring::TrancheInvestor(39)
+/// * Keyring::TrancheInvestor(40)
+/// * Keyring::TrancheInvestor(41)
+/// * Keyring::TrancheInvestor(42)
+/// * Keyring::TrancheInvestor(43)
+/// * Keyring::TrancheInvestor(44)
+/// * Keyring::TrancheInvestor(45)
+/// * Keyring::TrancheInvestor(46)
+/// * Keyring::TrancheInvestor(47)
+/// * Keyring::TrancheInvestor(48)
+/// * Keyring::TrancheInvestor(49)
+/// * Keyring::TrancheInvestor(50)
+pub fn default_accounts() -> Vec<Keyring> {
+	let mut standard = vec![
+		Keyring::Admin,
+		Keyring::Alice,
+		Keyring::Bob,
+		Keyring::Ferdie,
+		Keyring::Charlie,
+		Keyring::Dave,
+		Keyring::Eve,
+	];
+	standard.extend(default_investors());
+	standard
+}
+
+/// Returns a Vector of default investor accounts
+///
+/// Accounts:
+/// * Keyring::TrancheInvestor(1)
+/// * Keyring::TrancheInvestor(2)
+/// * Keyring::TrancheInvestor(3)
+/// * Keyring::TrancheInvestor(4)
+/// * Keyring::TrancheInvestor(5)
+/// * Keyring::TrancheInvestor(6)
+/// * Keyring::TrancheInvestor(7)
+/// * Keyring::TrancheInvestor(8)
+/// * Keyring::TrancheInvestor(9)
+/// * Keyring::TrancheInvestor(10)
+/// * Keyring::TrancheInvestor(11)
+/// * Keyring::TrancheInvestor(12)
+/// * Keyring::TrancheInvestor(13)
+/// * Keyring::TrancheInvestor(14)
+/// * Keyring::TrancheInvestor(15)
+/// * Keyring::TrancheInvestor(16)
+/// * Keyring::TrancheInvestor(17)
+/// * Keyring::TrancheInvestor(18)
+/// * Keyring::TrancheInvestor(19)
+/// * Keyring::TrancheInvestor(20)
+/// * Keyring::TrancheInvestor(21)
+/// * Keyring::TrancheInvestor(22)
+/// * Keyring::TrancheInvestor(23)
+/// * Keyring::TrancheInvestor(24)
+/// * Keyring::TrancheInvestor(25)
+/// * Keyring::TrancheInvestor(26)
+/// * Keyring::TrancheInvestor(27)
+/// * Keyring::TrancheInvestor(28)
+/// * Keyring::TrancheInvestor(29)
+/// * Keyring::TrancheInvestor(30)
+/// * Keyring::TrancheInvestor(31)
+/// * Keyring::TrancheInvestor(32)
+/// * Keyring::TrancheInvestor(33)
+/// * Keyring::TrancheInvestor(34)
+/// * Keyring::TrancheInvestor(35)
+/// * Keyring::TrancheInvestor(36)
+/// * Keyring::TrancheInvestor(37)
+/// * Keyring::TrancheInvestor(38)
+/// * Keyring::TrancheInvestor(39)
+/// * Keyring::TrancheInvestor(40)
+/// * Keyring::TrancheInvestor(41)
+/// * Keyring::TrancheInvestor(42)
+/// * Keyring::TrancheInvestor(43)
+/// * Keyring::TrancheInvestor(44)
+/// * Keyring::TrancheInvestor(45)
+/// * Keyring::TrancheInvestor(46)
+/// * Keyring::TrancheInvestor(47)
+/// * Keyring::TrancheInvestor(48)
+/// * Keyring::TrancheInvestor(49)
+/// * Keyring::TrancheInvestor(50)
+pub fn default_investors() -> Vec<Keyring> {
 	vec![
-		Keyring::Admin.to_account_id(),
-		Keyring::Alice.to_account_id(),
-		Keyring::Bob.to_account_id(),
-		Keyring::Ferdie.to_account_id(),
-		Keyring::Charlie.to_account_id(),
-		Keyring::Dave.to_account_id(),
-		Keyring::Eve.to_account_id(),
-		Keyring::TrancheInvestor(0).to_account_id(),
-		Keyring::TrancheInvestor(1).to_account_id(),
-		Keyring::TrancheInvestor(2).to_account_id(),
-		Keyring::TrancheInvestor(3).to_account_id(),
-		Keyring::TrancheInvestor(4).to_account_id(),
-		Keyring::TrancheInvestor(5).to_account_id(),
-		Keyring::TrancheInvestor(6).to_account_id(),
-		Keyring::TrancheInvestor(7).to_account_id(),
-		Keyring::TrancheInvestor(8).to_account_id(),
-		Keyring::TrancheInvestor(9).to_account_id(),
+		Keyring::TrancheInvestor(1),
+		Keyring::TrancheInvestor(2),
+		Keyring::TrancheInvestor(3),
+		Keyring::TrancheInvestor(4),
+		Keyring::TrancheInvestor(5),
+		Keyring::TrancheInvestor(6),
+		Keyring::TrancheInvestor(7),
+		Keyring::TrancheInvestor(8),
+		Keyring::TrancheInvestor(9),
+		Keyring::TrancheInvestor(10),
+		Keyring::TrancheInvestor(11),
+		Keyring::TrancheInvestor(12),
+		Keyring::TrancheInvestor(13),
+		Keyring::TrancheInvestor(14),
+		Keyring::TrancheInvestor(15),
+		Keyring::TrancheInvestor(16),
+		Keyring::TrancheInvestor(17),
+		Keyring::TrancheInvestor(18),
+		Keyring::TrancheInvestor(19),
+		Keyring::TrancheInvestor(20),
+		Keyring::TrancheInvestor(21),
+		Keyring::TrancheInvestor(22),
+		Keyring::TrancheInvestor(23),
+		Keyring::TrancheInvestor(24),
+		Keyring::TrancheInvestor(25),
+		Keyring::TrancheInvestor(26),
+		Keyring::TrancheInvestor(27),
+		Keyring::TrancheInvestor(28),
+		Keyring::TrancheInvestor(29),
+		Keyring::TrancheInvestor(30),
+		Keyring::TrancheInvestor(31),
+		Keyring::TrancheInvestor(32),
+		Keyring::TrancheInvestor(33),
+		Keyring::TrancheInvestor(34),
+		Keyring::TrancheInvestor(35),
+		Keyring::TrancheInvestor(36),
+		Keyring::TrancheInvestor(37),
+		Keyring::TrancheInvestor(38),
+		Keyring::TrancheInvestor(39),
+		Keyring::TrancheInvestor(40),
+		Keyring::TrancheInvestor(41),
+		Keyring::TrancheInvestor(42),
+		Keyring::TrancheInvestor(43),
+		Keyring::TrancheInvestor(44),
+		Keyring::TrancheInvestor(45),
+		Keyring::TrancheInvestor(46),
+		Keyring::TrancheInvestor(47),
+		Keyring::TrancheInvestor(48),
+		Keyring::TrancheInvestor(49),
+		Keyring::TrancheInvestor(50),
 	]
 }
 
@@ -173,13 +335,29 @@ impl From<Keyring> for [u8; 32] {
 	}
 }
 
+impl From<Keyring> for crate::chain::centrifuge::Origin {
+	fn from(account: Keyring) -> Self {
+		crate::chain::centrifuge::Origin::signed(AccountId32::from(account))
+	}
+}
+
+impl From<Keyring> for crate::chain::relay::Origin {
+	fn from(account: Keyring) -> Self {
+		crate::chain::relay::Origin::signed(AccountId32::from(account))
+	}
+}
+
+pub fn increase_nonce(nonce: &mut Index) {
+	*nonce = *nonce + 1;
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 	use sp_core::{sr25519::Pair, Pair as PairT};
 
 	#[test]
-	fn should_work() {
+	fn keyring_works() {
 		assert!(Pair::verify(
 			&Keyring::Alice.sign(b"I am Alice!"),
 			b"I am Alice!",

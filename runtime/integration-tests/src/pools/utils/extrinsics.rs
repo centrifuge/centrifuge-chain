@@ -36,7 +36,7 @@ use sp_runtime::{
 	MultiSignature,
 };
 
-pub fn ext_centrifuge(
+pub fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: centrifuge::Index,
@@ -59,7 +59,7 @@ pub fn ext_centrifuge(
 		.map_err(|_| ())
 }
 
-pub fn ext_relay(
+pub fn xt_relay(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: RelayIndex,

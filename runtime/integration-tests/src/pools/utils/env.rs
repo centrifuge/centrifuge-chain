@@ -16,8 +16,7 @@ use crate::chain::centrifuge::{
 	WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
-use crate::pools::utils::accounts::default_accounts;
-use crate::pools::utils::logs;
+use crate::pools::utils::{accounts::default_accounts, logs, time::START_DATE};
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::{
@@ -175,8 +174,11 @@ fn test_env(
 				let uncles =
 					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-				let timestamp =
-					FudgeInherentTimestamp::new(0, std::time::Duration::from_secs(6), None);
+				let timestamp = FudgeInherentTimestamp::new(
+					0,
+					std::time::Duration::from_secs(6),
+					Some(std::time::Duration::from_millis(START_DATE)),
+				);
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
@@ -241,13 +243,16 @@ fn test_env(
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
-				let timestamp =
-					FudgeInherentTimestamp::new(0, std::time::Duration::from_secs(6), None);
+				let timestamp = FudgeInherentTimestamp::new(
+					1,
+					std::time::Duration::from_secs(12),
+					Some(std::time::Duration::from_millis(START_DATE)),
+				);
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(6),
+						std::time::Duration::from_secs(12),
 					);
 				let inherent = inherent_builder_clone
 					.parachain_inherent()
@@ -279,55 +284,4 @@ pub fn pass_n(n: u64, env: &mut TestEnv) -> Result<(), ()> {
 	}
 
 	Ok(())
-}
-
-pub fn default_native_balances<Runtime>(storage: &mut Storage)
-where
-	Runtime: pallet_balances::Config,
-	Runtime::Balance: From<u128>,
-	Runtime::AccountId: From<AccountId32>,
-{
-	pallet_balances::GenesisConfig::<Runtime> {
-		balances: default_accounts()
-			.iter()
-			.map(|acc| (acc.clone().into(), (1000 * runtime_common::CFG).into()))
-			.collect(),
-	}
-	.assimilate_storage(storage)
-	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
-}
-
-pub fn default_usd_balances<Runtime>(storage: &mut Storage)
-where
-	Runtime: orml_tokens::Config,
-	Runtime::Balance: From<u128>,
-	Runtime::AccountId: From<AccountId32>,
-	Runtime::CurrencyId: From<CurrencyId>,
-{
-	orml_tokens::GenesisConfig::<Runtime> {
-		balances: default_accounts()
-			.iter()
-			.map(|acc| {
-				(
-					acc.clone().into(),
-					CurrencyId::Usd.into(),
-					(1000 * runtime_common::CFG).into(),
-				)
-			})
-			.collect(),
-	}
-	.assimilate_storage(storage)
-	.expect("ESSENTIAL: Genesisbuild is not allowed to fail.");
-}
-
-pub fn default_balances<Runtime>(storage: &mut Storage)
-where
-	Runtime: orml_tokens::Config + pallet_balances::Config,
-	<Runtime as orml_tokens::Config>::Balance: From<u128>,
-	<Runtime as pallet_balances::Config>::Balance: From<u128>,
-	Runtime::AccountId: From<AccountId32>,
-	Runtime::CurrencyId: From<CurrencyId>,
-{
-	default_native_balances::<Runtime>(storage);
-	default_usd_balances::<Runtime>(storage);
 }

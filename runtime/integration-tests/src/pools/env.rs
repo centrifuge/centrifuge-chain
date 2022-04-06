@@ -12,7 +12,7 @@
 use crate::chain::centrifuge;
 use crate::chain::centrifuge::{Runtime, PARA_ID};
 use crate::pools::utils::accounts::Keyring;
-use crate::pools::utils::extrinsics::{ext_centrifuge, nonce_centrifuge};
+use crate::pools::utils::extrinsics::{nonce_centrifuge, xt_centrifuge};
 use crate::pools::utils::*;
 use codec::Encode;
 use fudge::primitives::Chain;
@@ -47,11 +47,11 @@ async fn env_works() {
 async fn extrinsics_works() {
 	let manager = env::task_manager(Handle::current());
 	let mut genesis = Storage::default();
-	env::default_balances::<Runtime>(&mut genesis);
+	genesis::default_balances::<Runtime>(&mut genesis);
 	let mut env = env::test_env_with_centrifuge_storage(&manager, genesis);
 
 	let to: centrifuge::Address = Keyring::Bob.into();
-	let xt = ext_centrifuge(
+	let xt = xt_centrifuge(
 		&env,
 		Keyring::Alice,
 		nonce_centrifuge(&env, Keyring::Alice),
