@@ -150,6 +150,9 @@ node-primitives = { git = "https://github.com/paritytech/substrate", branch = "p
 # benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.17" }
 
+# testing
+runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
+
 [build-dependencies]
 vergen = "3.0.4"
 substrate-build-script-utils  = { optional = true, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -173,4 +176,8 @@ runtime-benchmarks = [
 	"altair-runtime/runtime-benchmarks",
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
+]
+test-benchmarks = [
+	"runtime-benchmarks",
+        "runtime-integration-tests/runtime-benchmarks",
 ]

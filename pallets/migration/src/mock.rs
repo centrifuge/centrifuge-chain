@@ -20,7 +20,6 @@ use crate as pallet_migration_manager;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_runtime::traits::ConvertInto;
-use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
 	scale_info::TypeInfo,

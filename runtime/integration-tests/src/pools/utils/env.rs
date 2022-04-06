@@ -30,6 +30,7 @@ use fudge::{
 };
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
+use sc_executor::sp_wasm_interface::ExtendedHostFunctions;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -37,6 +38,19 @@ use sp_core::H256;
 use sp_runtime::{generic::BlockId, AccountId32, DigestItem, Storage};
 use std::sync::Arc;
 use tokio::runtime::Handle;
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+/// HostFunctions that do not include benchmarking specific host functions
+type CentrifugeHF = sp_io::SubstrateHostFunctions;
+#[cfg(feature = "runtime-benchmarks")]
+/// Host functions that include benchmarking specific functionalities
+type CentrifugeHF = ExtendedHostFunctions<
+	sp_io::SubstrateHostFunctions,
+	frame_benchmarking::benchmarking::HostFunctions,
+>;
+
+/// Basic supstrate host functions
+type HF = sp_io::SubstrateHostFunctions;
 
 /// The type that CreatesInherentDataProviders for the relay-chain.
 /// As a new-type here as otherwise the TestEnv is badly
@@ -80,9 +94,10 @@ type Dp = Box<dyn DigestCreator + Send + Sync>;
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
-	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp>,
+	pub relay: RelaychainBuilder<RelayBlock, RelayRtApi, RelayRt, RelayCidp, Dp, HF>,
 	#[fudge::parachain(PARA_ID)]
-	pub centrifuge: ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp>,
+	pub centrifuge:
+		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
 }
 
 #[allow(unused)]
@@ -117,6 +132,7 @@ fn test_env(
 	logs::init_logs();
 	// Build relay-chain builder
 	let relay = {
+		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
 		let mut provider = EnvProvider::<
 			RelayBlock,
 			RelayRtApi,
@@ -188,16 +204,18 @@ fn test_env(
 			Ok(digest)
 		});
 
-		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp>::new(manager, backend, client, cidp, dp)
+		RelaychainBuilder::<_, _, RelayRt, RelayCidp, Dp, HF>::new(
+			manager, backend, client, cidp, dp,
+		)
 	};
 
 	// Build parachain-builder
 	let centrifuge = {
-		let mut provider = EnvProvider::<
-			CentrifugeBlock,
-			CentrifugeRtApi,
-			WasmExecutor<sp_io::SubstrateHostFunctions>,
-		>::empty();
+		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Centrifuge - StartUp");
+		let mut provider =
+			EnvProvider::<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>::with_code(
+				CentrifugeCode.unwrap(),
+			);
 
 		provider.insert_storage(
 			frame_system::GenesisConfig {
@@ -242,7 +260,9 @@ fn test_env(
 		});
 		let dp = Box::new(move || async move { Ok(sp_runtime::Digest::default()) });
 
-		ParachainBuilder::<_, _, CentrifugeCidp, Dp>::new(manager, backend, client, cidp, dp)
+		ParachainBuilder::<_, _, CentrifugeCidp, Dp, CentrifugeHF>::new(
+			manager, backend, client, cidp, dp,
+		)
 	};
 
 	TestEnv::new(relay, centrifuge)

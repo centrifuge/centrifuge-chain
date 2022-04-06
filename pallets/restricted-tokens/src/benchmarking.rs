@@ -179,7 +179,7 @@ where
 	};
 
 	match curr {
-		_x if curr == 0 => CurrencyId::Tranche(0, 0).into(),
+		_x if curr == 0 => CurrencyId::Tranche(0, [0; 16]).into(),
 		_x if curr == 1 => CurrencyId::Usd.into(),
 		_ => unreachable!("We only want the range of enum discrimants to be covered. qed."),
 	}
@@ -346,9 +346,3 @@ benchmarks! {
 		assert!(<orml_tokens::Pallet<T> as fungibles::Inspect<T::AccountId>>::balance(currency, &recv) == (free + reserved));
 	}
 }
-
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(),
-	crate::mock::MockRuntime,
-);

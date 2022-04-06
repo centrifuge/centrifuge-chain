@@ -1094,6 +1094,7 @@ dependencies = [
  "polkadot-primitives",
  "polkadot-service",
  "runtime-common",
+ "runtime-integration-tests",
  "sc-authority-discovery",
  "sc-basic-authorship",
  "sc-chain-spec",
@@ -2020,7 +2021,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-core"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -2036,7 +2037,7 @@ dependencies = [
 [[package]]
 name = "cumulus-primitives-parachain-inherent"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2087,7 +2088,7 @@ dependencies = [
 [[package]]
 name = "cumulus-relay-chain-interface"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2108,7 +2109,7 @@ dependencies = [
 [[package]]
 name = "cumulus-relay-chain-local"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "async-trait",
  "cumulus-primitives-core",
@@ -2136,7 +2137,7 @@ dependencies = [
 [[package]]
 name = "cumulus-test-relay-sproof-builder"
 version = "0.1.0"
-source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#76479e7fef3af7c8828a44647847b01afd5fefe5"
+source = "git+https://github.com/paritytech/cumulus?branch=polkadot-v0.9.17#db11baacc325537be74ad34517fcb28ed9ded6c6"
 dependencies = [
  "cumulus-primitives-core",
  "parity-scale-codec",
@@ -2972,8 +2973,8 @@ checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 
 [[package]]
 name = "fudge"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.5-polkadot-v0.9.17#662204b475d0b8df360f6ca170e0c0cf4e09bf0b"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
 dependencies = [
  "fudge-companion",
  "fudge-core",
@@ -2985,8 +2986,8 @@ dependencies = [
 
 [[package]]
 name = "fudge-companion"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.5-polkadot-v0.9.17#662204b475d0b8df360f6ca170e0c0cf4e09bf0b"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
 dependencies = [
  "proc-macro-crate 1.1.3",
  "proc-macro2",
@@ -2996,8 +2997,8 @@ dependencies = [
 
 [[package]]
 name = "fudge-core"
-version = "0.1.0"
-source = "git+https://github.com/centrifuge/fudge?tag=v0.0.5-polkadot-v0.9.17#662204b475d0b8df360f6ca170e0c0cf4e09bf0b"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?tag=v0.0.7-polkadot-v0.9.17#0025feb7b1b6655fb3ec045d03fccf1949e2de74"
 dependencies = [
  "async-trait",
  "cumulus-primitives-parachain-inherent",
@@ -9148,6 +9149,7 @@ dependencies = [
  "common-traits",
  "cumulus-primitives-core",
  "development-runtime",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "fudge",
@@ -12195,7 +12197,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.2",
+ "parking_lot 0.10.2",
  "regex",
  "serde",
  "serde_json",
