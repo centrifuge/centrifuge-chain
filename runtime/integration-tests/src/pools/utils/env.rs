@@ -499,19 +499,21 @@ macro_rules! run {
 	// This macro takes an argument of designator `ident` and
 	// creates a function named `$func_name`.
 	// The `ident` designator is used for variable/function names.
-	($env:tt, $chain:tt, $state:tt, $who:tt, $($calls:tt),*) => {{
+	($env:expr, $chain:expr, $state:expr, $who:expr, $($calls:expr),*) => {{
 			use crate::chain::centrifuge::Call as __hidden_include_Call;
-			trait CallAssimilator{
-				fn assimilate(&self, &mut Vec<__hidden_include_Call>);
+			use codec::Encode as _;
+
+			trait CallAssimilator {
+				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>);
 			}
 
-			impl trait CallAssimilator for Vec<__hidden_include_Call> {
+			impl CallAssimilator for Vec<__hidden_include_Call> {
 				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>) {
-					calls.extend(self.as_slice());
+					calls.extend(self.clone());
 				}
 			}
 
-			impl trait CallAssimilator for __hidden_include_Call {
+			impl CallAssimilator for __hidden_include_Call {
 				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>) {
 					calls.push(self.clone())
 				}
@@ -519,12 +521,16 @@ macro_rules! run {
 
 			let mut calls = Vec::new();
 			$(
-			  $calls.assimilate(calls);
+			  $calls.assimilate(&mut calls);
 			)*
 
-			assert_ok!($env.batch_sign_and_submit($chain, $who, calls))
+			let sign_and_submit_res = $env.batch_sign_and_submit($chain, $who, calls.into_iter().map(|call| call.encode()).collect());
+			assert!(sign_and_submit_res.is_ok());
 
-			assert_ok!($env.evolve_till(chain, $state))
+			let evolve_res = $env.evolve_till($chain, $state);
+			assert!(evolve_res.is_ok())
 		}
 	};
 }
+// Need to export after definition.
+pub(crate) use run;
