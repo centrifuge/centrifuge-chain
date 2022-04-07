@@ -64,8 +64,8 @@ use xcm_builder::{
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
+use common_traits::Permissions as PermissionsT;
 use common_traits::PreConditions;
-use common_traits::{Permissions as PermissionsT, PoolCurrency};
 pub use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use pallet_anchors::AnchorData;
@@ -856,13 +856,12 @@ impl pallet_pools::Config for Runtime {
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
-	type PoolCurrency = PoolCurrencyChecker;
+	type PoolCurrency = PoolCurrency;
 }
 
-pub struct PoolCurrencyChecker;
-impl PoolCurrency for PoolCurrencyChecker {
-	type CurrencyId = CurrencyId;
-	fn allowed(id: Self::CurrencyId) -> bool {
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
 		match id {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
 			CurrencyId::Usd => true,

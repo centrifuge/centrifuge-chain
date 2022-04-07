@@ -1,10 +1,10 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
-use common_traits::{Permissions as PermissionsT, PoolCurrency, PreConditions};
+use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
-use frame_support::traits::SortedMembers;
+use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
@@ -302,13 +302,12 @@ impl Config for Test {
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
-	type PoolCurrency = PoolCurrencyChecker;
+	type PoolCurrency = PoolCurrency;
 }
 
-pub struct PoolCurrencyChecker;
-impl PoolCurrency for PoolCurrencyChecker {
-	type CurrencyId = CurrencyId;
-	fn allowed(id: Self::CurrencyId) -> bool {
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
 		match id {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
 			CurrencyId::Usd => true,
