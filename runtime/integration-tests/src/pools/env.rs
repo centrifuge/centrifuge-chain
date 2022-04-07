@@ -32,7 +32,7 @@ async fn env_works() {
 		})
 		.unwrap();
 
-	env::pass_n(num_blocks, &mut env).unwrap();
+	env::pass_n(&mut env, num_blocks).unwrap();
 
 	let block_after = env
 		.with_state(Chain::Para(PARA_ID), || {

@@ -21,7 +21,7 @@ use crate::pools::utils::{logs, time::START_DATE};
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
-use fudge::primitives::Chain;
+use fudge::primitives::{Chain, PoolState};
 use fudge::{
 	digest::DigestCreator,
 	inherent::{
@@ -41,6 +41,13 @@ use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
+
+#[derive(Clone, Copy)]
+pub enum ChainState {
+	PoolEmpty,
+	PoolMax(usize),
+	EvolvedBy(u64),
+}
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 /// HostFunctions that do not include benchmarking specific host functions
@@ -234,6 +241,68 @@ impl TestEnv {
 
 		Ok(())
 	}
+
+	pub fn evolve_till(&mut self, chain: Chain, till_state: ChainState) -> Result<(), ()> {
+		match chain {
+			Chain::Relay => match till_state {
+				ChainState::EvolvedBy(blocks) => pass_n(self, blocks / 2),
+				ChainState::PoolEmpty => self.evolve_till_pool_xts_relay(0),
+				ChainState::PoolMax(max) => self.evolve_till_pool_xts_relay(max),
+			},
+			Chain::Para(id) => match id {
+				_ if id == PARA_ID => match till_state {
+					ChainState::EvolvedBy(blocks) => pass_n(self, blocks),
+					ChainState::PoolEmpty => self.evolve_till_pool_xts_centrifuge(0),
+					ChainState::PoolMax(max) => self.evolve_till_pool_xts_centrifuge(max),
+				},
+				_ => unreachable!("No other parachain supported currently."),
+			},
+		}
+	}
+
+	fn evolve_till_pool_xts_centrifuge(&mut self, xts: usize) -> Result<(), ()> {
+		let state = self.centrifuge.pool_state();
+		let mut curr_xts = match state {
+			PoolState::Empty => return Ok(()),
+			PoolState::Busy(curr_xts) => curr_xts,
+		};
+
+		if curr_xts <= xts {
+			return Ok(());
+		} else {
+			while curr_xts > xts {
+				self.evolve()?;
+				curr_xts = match self.centrifuge.pool_state() {
+					PoolState::Empty => return Ok(()),
+					PoolState::Busy(curr_xts) => curr_xts,
+				};
+			}
+		}
+
+		Ok(())
+	}
+
+	fn evolve_till_pool_xts_relay(&mut self, xts: usize) -> Result<(), ()> {
+		let state = self.relay.pool_state();
+		let mut curr_xts = match state {
+			PoolState::Empty => return Ok(()),
+			PoolState::Busy(curr_xts) => curr_xts,
+		};
+
+		if curr_xts <= xts {
+			return Ok(());
+		} else {
+			while curr_xts > xts {
+				self.evolve()?;
+				curr_xts = match self.relay.pool_state() {
+					PoolState::Empty => return Ok(()),
+					PoolState::Busy(curr_xts) => curr_xts,
+				};
+			}
+		}
+
+		Ok(())
+	}
 }
 
 #[allow(unused)]
@@ -416,7 +485,7 @@ pub fn task_manager(tokio_handle: Handle) -> TaskManager {
 }
 
 /// Pass n_blocks on the parachain-side!
-pub fn pass_n(n: u64, env: &mut TestEnv) -> Result<(), ()> {
+pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 	for _ in 0..n {
 		env.evolve()?;
 	}
