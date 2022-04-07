@@ -36,7 +36,11 @@ use sp_runtime::{
 	MultiSignature,
 };
 
-pub(super) fn xt_centrifuge(
+/// Generates an signed-extrinisc for centrifuge-chain.
+///
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
+///         the same `who` as the sender**
+pub fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: centrifuge::Index,
@@ -59,7 +63,11 @@ pub(super) fn xt_centrifuge(
 		.map_err(|_| ())
 }
 
-pub(super) fn xt_relay(
+/// Generates an signed-extrinisc for relay-chain.
+///
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
+///         the same `who` as the sender**
+pub fn xt_relay(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: RelayIndex,
@@ -168,4 +176,39 @@ fn sign_relay(
 		signature,
 		extra,
 	)
+}
+
+/// Retrieves the latest centrifuge nonce for a given account.
+///
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
+///         the same `who` as the sender**
+pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
+	env.centrifuge
+		.with_state(|| {
+			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+				who.clone().to_account_id().into(),
+			)
+		})
+		.expect("ESSENTIAL: Nonce must be retrievable.")
+}
+
+/// Retrieves the latest relay nonce for a given account.
+///
+/// **NOTE: Should not be used if the TesteEnv::sign_and_submit() interface is also used with
+///         the same `who` as the sender**
+pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
+	env.relay
+		.with_state(|| {
+			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
+		})
+		.expect("ESSENTIAL: Nonce must be retrievable.")
+}
+
+fn nonce<Runtime, AccountId, Index>(who: AccountId) -> Index
+where
+	Runtime: frame_system::Config,
+	AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
+	Index: From<<Runtime as frame_system::Config>::Index>,
+{
+	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }

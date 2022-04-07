@@ -11,10 +11,8 @@
 // GNU General Public License for more details.
 
 //! Utilities around the loans pallet
-use crate::chain::centrifuge::UncheckedExtrinsic;
-use crate::pools::utils::accounts::Keyring;
-use crate::pools::utils::env::TestEnv;
-use runtime_common::{ClassId, Index, InstanceId, PoolId};
+use crate::chain::centrifuge::{Call, UncheckedExtrinsic};
+use runtime_common::{AccountId, ClassId, Index, InstanceId, PoolId};
 use std::collections::HashMap;
 
 /// Structure that manages collateral and loan nft ids
@@ -81,12 +79,7 @@ impl NftManager {
 /// * Loans::initialise_pool
 /// * Uniques::create -> for Loan nft class
 /// * Uniques::create -> for Collateral nft class
-pub fn init_loans_for_pool(
-	env: &mut TestEnv,
-	owner: Keyring,
-	nonce: Index,
-	pool: PoolId,
-) -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
+pub fn init_loans_for_pool(owner: AccountId, pool: PoolId, manager: &mut NftManager) -> Vec<Call> {
 	todo!()
 }
 

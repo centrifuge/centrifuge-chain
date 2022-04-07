@@ -14,8 +14,10 @@
 
 use crate::chain::centrifuge;
 use crate::chain::centrifuge::PARA_ID;
+use crate::chain::relay;
 use crate::pools::utils::env::TestEnv;
 use fudge::primitives::Chain;
+use node_primitives::{AccountId as RelayAccountId, Index as RelayIndex};
 use runtime_common::Index;
 pub use sp_core::sr25519;
 use sp_core::{
@@ -53,11 +55,11 @@ impl NonceManager {
 
 	fn nonce_from_chain(chain: Chain, who: Keyring) -> Index {
 		match chain {
-			Chain::Relay => nonce::<RelayRuntime, RelayAccountId, RelayIndex>(
+			Chain::Relay => nonce::<relay::Runtime, RelayAccountId, RelayIndex>(
 				who.clone().to_account_id().into(),
 			),
 			Chain::Para(id) => match id {
-				_ if id == PARA_ID => nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+				_ if id == PARA_ID => nonce::<centrifuge::Runtime, centrifuge::AccountId, centrifuge::Index>(
 					who.clone().to_account_id().into()
 				),
 				_ => unreachable!("Currently no nonces for chains differing from Relay and centrifuge are supported. Para ID {}", id)
@@ -102,7 +104,7 @@ impl NonceManager {
 fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
 	env.centrifuge
 		.with_state(|| {
-			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+			nonce::<centrifuge::Runtime, centrifuge::AccountId, centrifuge::Index>(
 				who.clone().to_account_id().into(),
 			)
 		})
@@ -115,7 +117,7 @@ fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
 fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
 	env.relay
 		.with_state(|| {
-			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
+			nonce::<relay::Runtime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
 		})
 		.expect("ESSENTIAL: Nonce must be retrievable.")
 }
@@ -453,10 +455,6 @@ impl From<Keyring> for crate::chain::relay::Origin {
 	fn from(account: Keyring) -> Self {
 		crate::chain::relay::Origin::signed(AccountId32::from(account))
 	}
-}
-
-pub fn increase_nonce(nonce: &mut Index) {
-	*nonce = *nonce + 1;
 }
 
 #[cfg(test)]

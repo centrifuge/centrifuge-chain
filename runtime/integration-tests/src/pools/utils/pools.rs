@@ -12,12 +12,10 @@
 
 //! Utilities around creating a pool
 
-use crate::chain::centrifuge::{
-	Call, Index, Loans, OrmlTokens, Permissions, Pools, Timestamp, UncheckedExtrinsic,
-};
-use crate::pools::utils::extrinsics::xt_centrifuge;
+use crate::chain::centrifuge::{Call, Loans, OrmlTokens, Permissions, Pools, Timestamp, PARA_ID};
+use crate::pools::utils::loans::NftManager;
 use crate::pools::utils::{
-	accounts::{increase_nonce, Keyring},
+	accounts::Keyring,
 	env::TestEnv,
 	time::secs::*,
 	tokens,
@@ -27,12 +25,68 @@ use codec::Encode;
 use common_traits::Permissions as PermissionsT;
 use common_types::{CurrencyId, PoolRole};
 use frame_support::{Blake2_128, StorageHasher};
+use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
 use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
-/// Creates the necessary extrinsics for initialising a pool.
+/// Creates a default pool.
+///
+/// This will also inject the extrinsics needed for this. Furthermore, it progresses
+/// the chain to a point where all extrinsics are included in the state.
+///
+/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
+/// its collateral and loan nft classes.
+pub fn default_pool(
+	env: &mut TestEnv,
+	nfts: &mut NftManager,
+	admin: Keyring,
+	pool_id: PoolId,
+) -> Result<(), ()> {
+	let calls: Vec<Vec<u8>> = default_pool_calls(admin.to_account_id(), pool_id, nfts)
+		.into_iter()
+		.map(|call| call.encode())
+		.collect();
+	env.batch_sign_and_submit(Chain::Para(PARA_ID), admin, calls)
+}
+
+/// Creates a custom pool.
+///
+/// This will also inject the extrinsics needed for this. Furthermore, it progresses
+/// the chain to a point where all extrinsics are included in the state.
+///
+/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
+/// its collateral and loan nft classes.
+pub fn custom_pool(
+	env: &mut TestEnv,
+	nfts: &mut NftManager,
+	admin: Keyring,
+	pool_id: PoolId,
+	currency: CurrencyId,
+	max_reserve: Balance,
+	tranche_input: Vec<TrancheInput<Rate>>,
+) -> Result<(), ()> {
+	let calls: Vec<Vec<u8>> = pool_setup_calls(
+		admin.to_account_id(),
+		pool_id,
+		currency,
+		max_reserve,
+		tranche_input,
+		nfts,
+	)
+	.into_iter()
+	.map(|call| call.encode())
+	.collect();
+	env.batch_sign_and_submit(Chain::Para(PARA_ID), admin, calls)
+}
+
+/// Creates a default pool.
+///
+/// This will also inject the extrinsics needed for this. Furthermore, it progresses
+/// the chain to a point where all extrinsics are included in the state.
+
+/// Creates the necessary calls for initialising a pool.
 /// This includes:
 /// * creating a pool
 /// * whitelisting investors
@@ -42,7 +96,7 @@ use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 /// in order to be included into the next block.
 ///
 /// * Pool id as given
-/// * Admin as provided (also owner of pool)
+/// * Admin as provided (also owner of pool, and owner of nft-classes for collateral and loans)
 /// * 5 Tranches
 ///     * 0: Junior Tranche
 ///     * 1: 10% APR, 5% Risk buffer
@@ -57,20 +111,10 @@ use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 /// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
 /// * Currency: CurrencyId::Usd,
 /// * MaxReserve: 100_000 Usd
-pub fn default_pool(
-	env: &mut TestEnv,
-	admin: Keyring,
-	nonce: Index,
-	id: PoolId,
-) -> Result<Vec<Call>, ()> {
-	let mut curr_nonce = nonce;
-	let mut xts = Vec::new();
-
-	let (xt, mut curr_nonce) = create_pool_xt(
-		env,
+pub fn default_pool_calls(admin: AccountId, pool_id: PoolId, nfts: &mut NftManager) -> Vec<Call> {
+	pool_setup_calls(
 		admin,
-		curr_nonce,
-		id,
+		pool_id,
 		CurrencyId::Usd,
 		100_000 * DECIMAL_BASE_12,
 		create_tranche_input(
@@ -78,13 +122,36 @@ pub fn default_pool(
 			vec![None, Some(5), Some(5), Some(10), Some(25)],
 			None,
 		),
+		nfts,
 	)
-	.expect("ESSENTIAL: Creating a pool failed.");
-	xts.push(xt);
+}
 
-	let (whitelists_xts, mut curr_nonce) =
-		whitelist_10_for_each_tranche_xts(env, id, admin, curr_nonce, 5);
-	xts.extend(whitelists_xts);
+/// Creates the necessary calls for setting up a pool. Given the input.
+/// Per default there will be 10 investors whitelisted per tranche.
+/// Order goes like follow `whitelist_10_for_each_tranche_calls` docs explain.
+/// Furthermore, it will create the necessary calls for creating the
+/// collateral-nft and loan-nft classes in the Uniques pallet.
+pub fn pool_setup_calls(
+	admin: AccountId,
+	pool_id: PoolId,
+	currency: CurrencyId,
+	max_reserve: Balance,
+	tranche_input: Vec<TrancheInput<Rate>>,
+	nfts: &mut NftManager,
+) -> Vec<Call> {
+	let mut calls = Vec::new();
+	let num_tranches = tranche_input.len();
+	calls.push(create_pool_call(
+		admin,
+		pool_id,
+		currency,
+		max_reserve,
+		tranche_input,
+	));
+	calls.extend(whitelist_10_for_each_tranche_calls(
+		pool_id,
+		num_tranches as u32,
+	));
 
 	/*
 	Uniques::create(
@@ -98,7 +165,7 @@ pub fn default_pool(
 
 	 */
 
-	Ok((xts, curr_nonce))
+	calls
 }
 
 /// Creates a TrancheInput vector given the input.
@@ -111,7 +178,7 @@ pub fn create_tranche_input(
 	risk_buffs: Vec<Option<u64>>,
 	seniorities: Option<Vec<Option<u32>>>,
 ) -> Vec<TrancheInput<Rate>> {
-	let mut interest_rates = rates
+	let interest_rates = rates
 		.into_iter()
 		.map(|rate| {
 			if let Some(rate) = rate {
@@ -122,7 +189,7 @@ pub fn create_tranche_input(
 		})
 		.collect::<Vec<Option<_>>>();
 
-	let mut risk_buffs = risk_buffs
+	let risk_buffs = risk_buffs
 		.into_iter()
 		.map(|buff| {
 			if let Some(buff) = buff {
@@ -190,102 +257,63 @@ pub fn create_tranche_input(
 ///       * Keyring::TrancheInvestor(18)
 ///       * Keyring::TrancheInvestor(19)
 ///       * Keyring::TrancheInvestor(20)
-pub fn whitelist_10_for_each_tranche_xts(
-	env: &TestEnv,
-	pool: PoolId,
-	admin: Keyring,
-	nonce: Index,
-	num_tranches: u32,
-) -> (Vec<UncheckedExtrinsic>, Index) {
-	let mut xts = Vec::with_capacity(10 * num_tranches as usize);
-	let mut curr_nonce = nonce;
+pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> Vec<Call> {
+	let mut calls = Vec::with_capacity(10 * num_tranches as usize);
 
 	let mut x: u32 = 0;
 	while x < num_tranches {
 		for id in 1..11 {
-			xts.push(whitelist_investor_xt(
-				env,
-				admin,
-				nonce,
+			calls.push(whitelist_investor_call(
 				pool,
 				Keyring::TrancheInvestor((x * 10) + id),
 				tranche_id(pool, x as u64),
 			));
-			increase_nonce(&mut curr_nonce)
 		}
+		x += 1;
 	}
 
-	(xts, curr_nonce)
+	calls
 }
 
 /// Whitelist a given investor for a fiven pool and tranche for 1 year of time
-pub fn whitelist_investor_xt(
-	env: &TestEnv,
-	admin: Keyring,
-	nonce: Index,
-	pool: PoolId,
-	investor: Keyring,
-	tranche: TrancheId,
-) -> UncheckedExtrinsic {
-	permission_xt(
-		env,
-		admin,
-		nonce,
+pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> Call {
+	permission_call(
 		PoolRole::PoolAdmin,
 		investor.to_account_id(),
 		pool,
 		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
 	)
-	.expect("ESSENTIAL: Adding new roles must not fail here.")
 }
 
 /// Creates a permission xt with the given input
-pub fn permission_xt(
-	env: &TestEnv,
-	who: Keyring,
-	nonce: Index,
+pub fn permission_call(
 	with_role: PoolRole,
 	to: AccountId,
 	location: PoolId,
 	role: PoolRole,
-) -> Result<UncheckedExtrinsic, ()> {
-	xt_centrifuge(
-		env,
-		who,
-		nonce,
-		Call::Permissions(PermissionsCall::add {
-			with_role,
-			to,
-			location,
-			role,
-		}),
-	)
+) -> Call {
+	Call::Permissions(PermissionsCall::add {
+		with_role,
+		to,
+		location,
+		role,
+	})
 }
 
-pub fn create_pool_xt(
-	env: &TestEnv,
-	who: Keyring,
-	nonce: Index,
+pub fn create_pool_call(
+	admin: AccountId,
 	pool_id: PoolId,
 	currency: CurrencyId,
 	max_reserve: Balance,
 	tranches: Vec<TrancheInput<Rate>>,
-) -> Result<(UncheckedExtrinsic, Index), ()> {
-	let mut curr_nonce = nonce;
-	let xt = xt_centrifuge(
-		env,
-		who,
-		nonce,
-		Call::Pools(PoolsCall::create {
-			admin: who.into(),
-			pool_id,
-			tranches,
-			currency,
-			max_reserve,
-		}),
-	);
-	increase_nonce(&mut curr_nonce);
-	xt.map(|xt| (xt, curr_nonce))
+) -> Call {
+	Call::Pools(PoolsCall::create {
+		admin,
+		pool_id,
+		tranches,
+		currency,
+		max_reserve,
+	})
 }
 
 /// Calculates the tranche-id for pools at start-up. Makes it easier
@@ -337,6 +365,7 @@ mod with_ext {
 				let id = (x * 10) + id;
 				permit_investor(id, pool_id, tranche_id(pool_id, x as u64));
 			}
+			x += 1;
 		}
 	}
 

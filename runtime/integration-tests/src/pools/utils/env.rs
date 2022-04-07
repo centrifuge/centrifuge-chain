@@ -11,16 +11,14 @@
 // GNU General Public License for more details.
 
 //! Utilities to create a relay-chain-parachain setup
-use crate::chain::centrifuge;
 use crate::chain::centrifuge::{
 	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use crate::pools::utils::accounts::{Keyring, NonceManager};
 use crate::pools::utils::extrinsics::{xt_centrifuge, xt_relay};
-use crate::pools::utils::loans::NftManager;
 use crate::pools::utils::{logs, time::START_DATE};
-use codec::Encode;
+use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::primitives::Chain;
@@ -41,7 +39,7 @@ use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
@@ -101,7 +99,7 @@ pub struct TestEnv {
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
-	nonce_manager: NonceManager,
+	nonce_manager: Arc<Mutex<NonceManager>>,
 }
 
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
@@ -110,31 +108,75 @@ pub struct TestEnv {
 // Upon usage of this API:
 // *
 impl TestEnv {
+	/// Returns the next nonce to be used
+	/// **WARN: Increases the nonce counter on `NonceManager**
+	fn fetch_add_nonce(&mut self, chain: Chain, who: Keyring) -> Index {
+		let manager = self.nonce_manager.clone();
+		self.with_state(chain, || {
+			manager
+				.lock()
+				.expect("Locking nonce manager must not fail.")
+				.fetch_add(chain, who)
+		})
+		.expect("Essential: Nonce need to be retrievable and incrementable")
+	}
+
+	/// Returns the next nonce to be used. Does NOT increase counter in
+	/// `NonceManager`
 	fn nonce(&mut self, chain: Chain, who: Keyring) -> Index {
-		self.with_state(chain, || self.nonce_manager.fetch_add(chain, who))
-			.expect("Essential: Nonce need to be retrievable")
+		let manager = self.nonce_manager.clone();
+		self.with_state(chain, || {
+			manager
+				.lock()
+				.expect("Locking nonce manager must not fail.")
+				.nonce(chain, who)
+		})
+		.expect("Essential: Nonce need to be retrievable")
 	}
 
-	/// Over
+	/// Does increase counter in `NonceManager`. MUST only be called
+	/// if a previously `nonce` has been called for a given `Keyring`
+	/// `Chain` combination.
+	fn incr_nonce(&mut self, chain: Chain, who: Keyring) {
+		let manager = self.nonce_manager.clone();
+		self.with_state(chain, || {
+			manager
+				.lock()
+				.expect("Locking nonce manager must not fail.")
+				.incr(chain, who)
+				.expect("Essential: Nonce need to be incrementable")
+		})
+		.expect("Essential: Nonce need to be retrievable")
+	}
+
+	/// Resets the current nonce-manager
+	///
+	/// General notes on usage of this function:
+	/// * should be used when an extrinsics fails -> nonces are out of sync
+	/// * should be used when a signed extrinsic is dropped -> nonces are out of sync
 	pub fn clear_nonces(&mut self) {
-		self.nonce_manager = NonceManager::new();
+		self.nonce_manager = Arc::new(Mutex::new(NonceManager::new()));
 	}
 
+	/// Signs a given call for the given chain. Should only be used if the extrinsic really
+	/// should be submitted afterwards.
+	/// **NOTE: This will increase the stored nonce of an account**
 	pub fn sign(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<Vec<u8>, ()> {
+		let nonce = self.fetch_add_nonce(chain, who);
 		match chain {
 			Chain::Relay => Ok(xt_relay(
 				self,
 				who,
-				self.nonce(chain, who),
-				call.decode().map_err(|_| ())?,
+				nonce,
+				Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
 			)
 			.encode()),
 			Chain::Para(id) => match id {
 				_ if id == PARA_ID => Ok(xt_centrifuge(
 					self,
 					who,
-					self.nonce(chain, who),
-					call.decode().map_err(|_| ())?,
+					nonce,
+					Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
 				)
 				.encode()),
 				_ => Err(()),
@@ -142,50 +184,54 @@ impl TestEnv {
 		}
 	}
 
+	/// Submits a previously signed extrinsics to the pool of the respective chain.
 	pub fn submit(&mut self, chain: Chain, xt: Vec<u8>) -> Result<(), ()> {
 		self.append_extrinsic(chain, xt)
 	}
 
+	/// Signs and submits an extrinsic to the given chain. Will take the nonce for the account
+	/// from the `NonceManager`.
 	pub fn sign_and_submit(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<(), ()> {
+		let nonce = self.nonce(chain, who);
 		let xt = match chain {
 			Chain::Relay => xt_relay(
 				self,
 				who,
-				self.nonce(chain, who),
-				call.decode().map_err(|_| ())?,
+				nonce,
+				Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
 			)
 			.encode(),
 			Chain::Para(id) => match id {
 				_ if id == PARA_ID => xt_centrifuge(
 					self,
 					who,
-					self.nonce(chain, who),
-					call.decode().map_err(|_| ())?,
+					nonce,
+					Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
 				)
 				.encode(),
 				_ => return Err(()),
 			},
 		};
 
-		self.append_extrinsic(chain, xt)
-	}
-
-	pub fn sign_cfg(
-		&mut self,
-		who: Keyring,
-		call: centrifuge::Call,
-	) -> Result<centrifuge::UncheckedExtrinsic, ()> {
-		xt_centrifuge(self, who, self.nonce(chain, who), call)
-	}
-
-	pub fn submit_cfg(&mut self, xt: centrifuge::UncheckedExtrinsic) -> Result<(), ()> {
-		self.centrifuge.append_extrinsic(xt);
+		self.append_extrinsic(chain, xt)?;
+		self.incr_nonce(chain, who);
 		Ok(())
 	}
 
-	pub fn sign_and_submit_cfg(&mut self, who: Keyring, call: centrifuge::Call) -> Result<(), ()> {
-		self.centrifuge
-			.append_extrinsic(xt_centrifuge(self, who, self.nonce(chain, who), call)?);
+	/// Signs and submits a batch of extrinsic to the given chain. Will take the nonce for the account
+	/// from the `NonceManager`.
+	///
+	/// Returns early of an extrinsic fails to be submitted.
+	pub fn batch_sign_and_submit(
+		&mut self,
+		chain: Chain,
+		who: Keyring,
+		calls: Vec<Vec<u8>>,
+	) -> Result<(), ()> {
+		for call in calls {
+			self.sign_and_submit(chain, who, call)?;
+		}
+
 		Ok(())
 	}
 }
@@ -361,7 +407,7 @@ fn test_env(
 		)
 	};
 
-	TestEnv::new(relay, centrifuge, NonceManager::new())
+	TestEnv::new(relay, centrifuge, Arc::new(Mutex::new(NonceManager::new())))
 		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 
