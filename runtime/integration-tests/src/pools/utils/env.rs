@@ -30,6 +30,7 @@ use fudge::{
 	},
 	EnvProvider, ParachainBuilder, RelaychainBuilder,
 };
+pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
 use runtime_common::Index;
@@ -41,6 +42,47 @@ use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
+
+pub mod macros {
+	/// A macro that helps including the given calls into a chain
+	/// and to progress a chain until all of them are included
+	macro_rules! run {
+		($env:expr, $chain:expr, $state:expr, $who:expr, $($calls:expr),*) => {{
+				use crate::chain::centrifuge::Call as __hidden_include_Call;
+				use codec::Encode as _;
+
+				trait CallAssimilator {
+					fn assimilate(self, calls: &mut Vec<__hidden_include_Call>);
+				}
+
+				impl CallAssimilator for Vec<__hidden_include_Call> {
+					fn assimilate(self, calls: &mut Vec<__hidden_include_Call>) {
+						calls.extend(self);
+					}
+				}
+
+				impl CallAssimilator for __hidden_include_Call {
+					fn assimilate(self, calls: &mut Vec<__hidden_include_Call>) {
+						calls.push(self)
+					}
+				}
+
+				let mut calls = Vec::new();
+				$(
+				  $calls.assimilate(&mut calls);
+				)*
+
+				let sign_and_submit_res = $env.batch_sign_and_submit($chain, $who, calls.into_iter().map(|call| call.encode()).collect());
+				assert!(sign_and_submit_res.is_ok());
+
+				let evolve_res = $env.evolve_till($chain, $state);
+				assert!(evolve_res.is_ok())
+			}
+		};
+	}
+	// Need to export after definition.
+	pub(crate) use run;
+}
 
 #[derive(Clone, Copy)]
 pub enum ChainState {
@@ -176,7 +218,7 @@ impl TestEnv {
 				who,
 				nonce,
 				Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-			)
+			)?
 			.encode()),
 			Chain::Para(id) => match id {
 				_ if id == PARA_ID => Ok(xt_centrifuge(
@@ -184,7 +226,7 @@ impl TestEnv {
 					who,
 					nonce,
 					Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-				)
+				)?
 				.encode()),
 				_ => Err(()),
 			},
@@ -206,7 +248,7 @@ impl TestEnv {
 				who,
 				nonce,
 				Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-			)
+			)?
 			.encode(),
 			Chain::Para(id) => match id {
 				_ if id == PARA_ID => xt_centrifuge(
@@ -214,7 +256,7 @@ impl TestEnv {
 					who,
 					nonce,
 					Decode::decode(&mut call.as_slice()).map_err(|_| ())?,
-				)
+				)?
 				.encode(),
 				_ => return Err(()),
 			},
@@ -492,45 +534,3 @@ pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 
 	Ok(())
 }
-
-/// A macro that helps including the given calls into a chain
-/// and to progress a chain until all of them are included
-macro_rules! run {
-	// This macro takes an argument of designator `ident` and
-	// creates a function named `$func_name`.
-	// The `ident` designator is used for variable/function names.
-	($env:expr, $chain:expr, $state:expr, $who:expr, $($calls:expr),*) => {{
-			use crate::chain::centrifuge::Call as __hidden_include_Call;
-			use codec::Encode as _;
-
-			trait CallAssimilator {
-				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>);
-			}
-
-			impl CallAssimilator for Vec<__hidden_include_Call> {
-				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>) {
-					calls.extend(self.clone());
-				}
-			}
-
-			impl CallAssimilator for __hidden_include_Call {
-				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>) {
-					calls.push(self.clone())
-				}
-			}
-
-			let mut calls = Vec::new();
-			$(
-			  $calls.assimilate(&mut calls);
-			)*
-
-			let sign_and_submit_res = $env.batch_sign_and_submit($chain, $who, calls.into_iter().map(|call| call.encode()).collect());
-			assert!(sign_and_submit_res.is_ok());
-
-			let evolve_res = $env.evolve_till($chain, $state);
-			assert!(evolve_res.is_ok())
-		}
-	};
-}
-// Need to export after definition.
-pub(crate) use run;

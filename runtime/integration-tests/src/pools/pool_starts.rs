@@ -9,10 +9,16 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Runtime, PARA_ID};
+use crate::chain::centrifuge::{Amount, Runtime, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
-	accounts::Keyring, env::ChainState, loans::NftManager, pools::default_pool_calls,
+	accounts::Keyring,
+	env::ChainState,
+	loans::NftManager,
+	loans::{borrow_call, init_loans_for_pool, issue_default_loan},
+	pools::default_pool_calls,
+	time::secs::SECONDS_PER_DAY,
+	tokens::DECIMAL_BASE_12,
 };
 use fudge::primitives::Chain;
 use sp_runtime::Storage;
@@ -20,18 +26,51 @@ use tokio::runtime::Handle;
 
 #[tokio::test]
 async fn create_pool() {
-	let manager = env::task_manager(Handle::current());
-	let mut genesis = Storage::default();
-	genesis::default_balances::<Runtime>(&mut genesis);
-	let mut env = env::test_env_with_centrifuge_storage(&manager, genesis);
+	let mut env = {
+		let manager = env::task_manager(Handle::current());
+		let mut genesis = Storage::default();
+		genesis::default_balances::<Runtime>(&mut genesis);
+		env::test_env_with_centrifuge_storage(&manager, genesis)
+	};
+
 	let mut nft_manager = NftManager::new();
 	let pool_id = 0u64;
+	let loan_amount = 10_000 * DECIMAL_BASE_12;
+	let maturity = 90 * SECONDS_PER_DAY;
 
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),
 		ChainState::PoolEmpty,
 		Keyring::Admin,
-		default_pool_calls(Keyring::Admin.into(), 0, &mut nft_manager)
+		default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
+		issue_default_loan(
+			Keyring::Admin.into(),
+			pool_id,
+			loan_amount,
+			maturity,
+			&mut nft_manager
+		),
+		borrow_call(
+			pool_id,
+			nft_manager.curr_loan_id(pool_id),
+			Amount::from_inner(loan_amount)
+		)
 	);
+
+	env.evolve().unwrap();
+
+	let (block, pool, account) = env
+		.with_state(Chain::Para(PARA_ID), || {
+			(
+				frame_system::Pallet::<Runtime>::block_number(),
+				pallet_pools::Pallet::<Runtime>::pool(pool_id),
+				frame_system::Pallet::<Runtime>::account(Keyring::Admin.to_account_id()),
+			)
+		})
+		.expect("Get state is available.");
+
+	tracing::event!(tracing::Level::INFO, ?block, "Current block");
+	tracing::event!(tracing::Level::INFO, ?pool, "Current pool");
+	tracing::event!(tracing::Level::INFO, ?account, "Current account info admin");
 }
