@@ -142,7 +142,7 @@ pub fn pool_setup_calls(
 	let mut calls = Vec::new();
 	let num_tranches = tranche_input.len();
 	calls.push(create_pool_call(
-		admin,
+		admin.clone(),
 		pool_id,
 		currency,
 		max_reserve,
@@ -152,19 +152,7 @@ pub fn pool_setup_calls(
 		pool_id,
 		num_tranches as u32,
 	));
-
-	/*
-	Uniques::create(
-		into_signed(get_admin()),
-		get_loan_nft_class_id(id),
-		Address::Id(get_admin()),
-	)
-	.unwrap();
-	Uniques::create(into_signed(get_admin()), id, Address::Id(get_admin())).unwrap();
-	Loans::initialise_pool(into_signed(get_admin()), id, get_loan_nft_class_id(id)).unwrap();
-
-	 */
-
+	calls.extend(super::loans::init_loans_for_pool(admin, pool_id, nfts));
 	calls
 }
 

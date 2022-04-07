@@ -11,10 +11,11 @@
 // GNU General Public License for more details.
 
 //! Utilities around the loans pallet
-use crate::chain::centrifuge::{Call, UncheckedExtrinsic};
+use crate::chain::centrifuge::{Address, Call, UncheckedExtrinsic};
+use pallet_loans::Call as LoansCall;
+use pallet_uniques::Call as UniquesCall;
 use runtime_common::{AccountId, ClassId, Index, InstanceId, PoolId};
 use std::collections::HashMap;
-
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {
 	collaterals: HashMap<PoolId, InstanceId>,
@@ -79,41 +80,48 @@ impl NftManager {
 /// * Loans::initialise_pool
 /// * Uniques::create -> for Loan nft class
 /// * Uniques::create -> for Collateral nft class
-pub fn init_loans_for_pool(owner: AccountId, pool: PoolId, manager: &mut NftManager) -> Vec<Call> {
+pub fn init_loans_for_pool(
+	owner: AccountId,
+	pool_id: PoolId,
+	manager: &mut NftManager,
+) -> Vec<Call> {
+	let loan_class = manager.loan_class_id(pool_id);
+	let collateral_class = manager.collateral_class_id(pool_id);
+
+	let mut calls = Vec::new();
+
+	calls.push(create_nft_call(owner.clone(), loan_class));
+	calls.push(create_nft_call(owner, collateral_class));
+	calls.push(initialise_pool_xt(pool_id, loan_class));
+
+	calls
+}
+
+pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: ClassId) -> Result<Call, ()> {
+	Call::Loans(LoansCall::initialise_pool {
+		pool_id,
+		loan_nft_class_id,
+	})
+}
+
+pub fn price_loan_call() -> Result<Call, ()> {
 	todo!()
 }
 
-pub fn initialise_pool_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
+pub fn create_nft_call(admin: AccountId, class: ClassId) -> Result<Call, ()> {
+	Call::Uniques(UniquesCall::create {
+		admin: Address::Id(owner),
+		class,
+	})
+}
+
+pub fn mint_nft_call() -> Result<Call, ()> {
 	todo!()
 }
 
-pub fn price_loan_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
+pub fn issue_loan() -> Result<Vec<Call>, ()> {
 	todo!()
 }
-
-pub fn create_nft_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
-	todo!()
-}
-
-pub fn mint_nft_xt() -> Result<(UncheckedExtrinsic, Index), ()> {
-	todo!()
-}
-
-pub fn issue_loan() -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
-	todo!()
-}
-
-/*
-Uniques::create(
-	into_signed(get_admin()),
-	get_loan_nft_class_id(id),
-	Address::Id(get_admin()),
-)
-.unwrap();
-Uniques::create(into_signed(get_admin()), id, Address::Id(get_admin())).unwrap();
-Loans::initialise_pool(into_signed(get_admin()), id, get_loan_nft_class_id(id)).unwrap();
-
- */
 
 /*
 

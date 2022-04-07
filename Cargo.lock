@@ -9170,6 +9170,7 @@ dependencies = [
  "pallet-permissions",
  "pallet-pools",
  "pallet-transaction-payment",
+ "pallet-uniques",
  "pallet-xcm",
  "parachain-info",
  "parity-scale-codec",
