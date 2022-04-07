@@ -492,3 +492,39 @@ pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 
 	Ok(())
 }
+
+/// A macro that helps including the given calls into a chain
+/// and to progress a chain until all of them are included
+macro_rules! run {
+	// This macro takes an argument of designator `ident` and
+	// creates a function named `$func_name`.
+	// The `ident` designator is used for variable/function names.
+	($env:tt, $chain:tt, $state:tt, $who:tt, $($calls:tt),*) => {{
+			use crate::chain::centrifuge::Call as __hidden_include_Call;
+			trait CallAssimilator{
+				fn assimilate(&self, &mut Vec<__hidden_include_Call>);
+			}
+
+			impl trait CallAssimilator for Vec<__hidden_include_Call> {
+				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>) {
+					calls.extend(self.as_slice());
+				}
+			}
+
+			impl trait CallAssimilator for __hidden_include_Call {
+				fn assimilate(&self, calls: &mut Vec<__hidden_include_Call>) {
+					calls.push(self.clone())
+				}
+			}
+
+			let mut calls = Vec::new();
+			$(
+			  $calls.assimilate(calls);
+			)*
+
+			assert_ok!($env.batch_sign_and_submit($chain, $who, calls))
+
+			assert_ok!($env.evolve_till(chain, $state))
+		}
+	};
+}
