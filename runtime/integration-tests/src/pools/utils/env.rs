@@ -17,8 +17,10 @@ use crate::chain::centrifuge::{
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use crate::pools::utils::accounts::{Keyring, NonceManager};
+use crate::pools::utils::extrinsics::{xt_centrifuge, xt_relay};
 use crate::pools::utils::loans::NftManager;
 use crate::pools::utils::{logs, time::START_DATE};
+use codec::Encode;
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::primitives::Chain;
@@ -92,8 +94,6 @@ type CentrifugeCidp = Box<
 #[allow(unused)]
 type Dp = Box<dyn DigestCreator + Send + Sync>;
 
-// TODO: Solve the issue that currently one can only manually add the parachain-ids here
-//       We would need the macro to take the constant
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
@@ -101,38 +101,92 @@ pub struct TestEnv {
 	#[fudge::parachain(PARA_ID)]
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
-	pub nft_manager: NftManager,
 	nonce_manager: NonceManager,
 }
 
+// NOTE: Nonce management is a known issue when interacting with a chain and wanting
+//       to submit a lot of extrinsic. This interface eases this issues.
+//
+// Upon usage of this API:
+// *
 impl TestEnv {
-	pub fn nonce(&self, chain: Chain, who: Keyring) -> Index {
-		// If manager does not contain yet, create please fetch from chain state and
-		// inject.
-		todo!()
+	fn nonce(&mut self, chain: Chain, who: Keyring) -> Index {
+		self.with_state(chain, || self.nonce_manager.fetch_add(chain, who))
+			.expect("Essential: Nonce need to be retrievable")
 	}
 
-	pub fn sign(&self, chain: Chain, who: Keyring, call: Vec<u8>) -> Vec<u8> {
-		todo!()
+	/// Over
+	pub fn clear_nonces(&mut self) {
+		self.nonce_manager = NonceManager::new();
 	}
 
-	pub fn submit(&self, chain: Chain, xt: Vec<u8>) -> Result<(), ()> {
-		todo!()
+	pub fn sign(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<Vec<u8>, ()> {
+		match chain {
+			Chain::Relay => Ok(xt_relay(
+				self,
+				who,
+				self.nonce(chain, who),
+				call.decode().map_err(|_| ())?,
+			)
+			.encode()),
+			Chain::Para(id) => match id {
+				_ if id == PARA_ID => Ok(xt_centrifuge(
+					self,
+					who,
+					self.nonce(chain, who),
+					call.decode().map_err(|_| ())?,
+				)
+				.encode()),
+				_ => Err(()),
+			},
+		}
 	}
 
-	pub fn sign_and_submit(&self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<(), ()> {
-		todo!()
-	}
-	pub fn sign_cfg(&self, who: Keyring, call: centrifuge::Call) -> Vec<u8> {
-		todo!()
+	pub fn submit(&mut self, chain: Chain, xt: Vec<u8>) -> Result<(), ()> {
+		self.append_extrinsic(chain, xt)
 	}
 
-	pub fn submit_cfg(&self, xt: centrifuge::UncheckedExtrinsic) -> Result<(), ()> {
-		todo!()
+	pub fn sign_and_submit(&mut self, chain: Chain, who: Keyring, call: Vec<u8>) -> Result<(), ()> {
+		let xt = match chain {
+			Chain::Relay => xt_relay(
+				self,
+				who,
+				self.nonce(chain, who),
+				call.decode().map_err(|_| ())?,
+			)
+			.encode(),
+			Chain::Para(id) => match id {
+				_ if id == PARA_ID => xt_centrifuge(
+					self,
+					who,
+					self.nonce(chain, who),
+					call.decode().map_err(|_| ())?,
+				)
+				.encode(),
+				_ => return Err(()),
+			},
+		};
+
+		self.append_extrinsic(chain, xt)
 	}
 
-	pub fn sign_and_submit_cfg(&self, who: Keyring, call: centrifuge::Call) -> Result<(), ()> {
-		todo!()
+	pub fn sign_cfg(
+		&mut self,
+		who: Keyring,
+		call: centrifuge::Call,
+	) -> Result<centrifuge::UncheckedExtrinsic, ()> {
+		xt_centrifuge(self, who, self.nonce(chain, who), call)
+	}
+
+	pub fn submit_cfg(&mut self, xt: centrifuge::UncheckedExtrinsic) -> Result<(), ()> {
+		self.centrifuge.append_extrinsic(xt);
+		Ok(())
+	}
+
+	pub fn sign_and_submit_cfg(&mut self, who: Keyring, call: centrifuge::Call) -> Result<(), ()> {
+		self.centrifuge
+			.append_extrinsic(xt_centrifuge(self, who, self.nonce(chain, who), call)?);
+		Ok(())
 	}
 }
 
@@ -307,7 +361,7 @@ fn test_env(
 		)
 	};
 
-	TestEnv::new(relay, centrifuge, NftManager::new(), NonceManager::new())
+	TestEnv::new(relay, centrifuge, NonceManager::new())
 		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 

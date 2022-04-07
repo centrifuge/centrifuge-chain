@@ -36,7 +36,7 @@ use sp_runtime::{
 	MultiSignature,
 };
 
-pub fn xt_centrifuge(
+pub(super) fn xt_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: centrifuge::Index,
@@ -59,7 +59,7 @@ pub fn xt_centrifuge(
 		.map_err(|_| ())
 }
 
-pub fn xt_relay(
+pub(super) fn xt_relay(
 	env: &TestEnv,
 	who: Keyring,
 	nonce: RelayIndex,
@@ -80,33 +80,6 @@ pub fn xt_relay(
 	env.relay
 		.with_state(|| sign_relay(who, nonce, call, spec_version, tx_version, genesis_hash))
 		.map_err(|_| ())
-}
-
-pub fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
-	env.centrifuge
-		.with_state(|| {
-			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
-				who.clone().to_account_id().into(),
-			)
-		})
-		.expect("ESSENTIAL: Nonce must be retrievable.")
-}
-
-pub fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
-	env.relay
-		.with_state(|| {
-			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
-		})
-		.expect("ESSENTIAL: Nonce must be retrievable.")
-}
-
-fn nonce<Runtime, AccountId, Index>(who: AccountId) -> Index
-where
-	Runtime: frame_system::Config,
-	AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
-	Index: From<<Runtime as frame_system::Config>::Index>,
-{
-	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }
 
 fn signed_extra_centrifuge(nonce: centrifuge::Index) -> CentrifugeSignedExtra {

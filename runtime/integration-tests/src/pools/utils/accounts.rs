@@ -12,6 +12,9 @@
 
 // NOTE: Taken mostly from paritytech-substrate
 
+use crate::chain::centrifuge;
+use crate::chain::centrifuge::PARA_ID;
+use crate::pools::utils::env::TestEnv;
 use fudge::primitives::Chain;
 use runtime_common::Index;
 pub use sp_core::sr25519;
@@ -33,6 +36,97 @@ impl NonceManager {
 			nonces: HashMap::new(),
 		}
 	}
+
+	/// Retrieves the latest nonce of an account.
+	/// If the nonce is not already in the map for a given chain-account combination
+	/// it ensures to fetch the latest nonce and store it in the map.
+	///
+	/// MUST be executed in an externalites provided env.
+	pub fn nonce(&mut self, chain: Chain, who: Keyring) -> Index {
+		self.nonces
+			.entry(chain)
+			.or_insert(HashMap::new())
+			.entry(who)
+			.or_insert(Self::nonce_from_chain(chain, who))
+			.clone()
+	}
+
+	fn nonce_from_chain(chain: Chain, who: Keyring) -> Index {
+		match chain {
+			Chain::Relay => nonce::<RelayRuntime, RelayAccountId, RelayIndex>(
+				who.clone().to_account_id().into(),
+			),
+			Chain::Para(id) => match id {
+				_ if id == PARA_ID => nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+					who.clone().to_account_id().into()
+				),
+				_ => unreachable!("Currently no nonces for chains differing from Relay and centrifuge are supported. Para ID {}", id)
+			}
+		}
+	}
+
+	/// Retrieves the latest nonce of an account. Returns latest and increases
+	/// the nonce by 1.
+	/// If the nonce is not already in the map for a given chain-account combination
+	/// it ensures to fetch the latest nonce and store it in the map.
+	///
+	/// MUST be executed in an externalites provided env.
+	pub fn fetch_add(&mut self, chain: Chain, who: Keyring) -> Index {
+		let curr = self
+			.nonces
+			.entry(chain)
+			.or_insert(HashMap::new())
+			.entry(who)
+			.or_insert(Self::nonce_from_chain(chain, who));
+		let next = curr.clone();
+		*curr = *curr + 1;
+		next
+	}
+
+	/// Increases the nonce by one. If it is not existing fails.
+	pub fn incr(&mut self, chain: Chain, who: Keyring) -> Result<(), ()> {
+		let curr = self
+			.nonces
+			.get_mut(&chain)
+			.ok_or(())?
+			.get_mut(&who)
+			.ok_or(())?;
+		*curr = *curr + 1;
+		Ok(())
+	}
+}
+
+/// Retrieves a nonce from the centrifuge state
+///
+/// **NOTE: Usually one should use the TestEnv::nonce() api**
+fn nonce_centrifuge(env: &TestEnv, who: Keyring) -> centrifuge::Index {
+	env.centrifuge
+		.with_state(|| {
+			nonce::<CentrifugeRuntime, CentrifugeAccountId, CentrifugeIndex>(
+				who.clone().to_account_id().into(),
+			)
+		})
+		.expect("ESSENTIAL: Nonce must be retrievable.")
+}
+
+/// Retrieves a nonce from the relay state
+///
+/// **NOTE: Usually one should use the TestEnv::nonce() api**
+fn nonce_relay(env: &TestEnv, who: Keyring) -> RelayIndex {
+	env.relay
+		.with_state(|| {
+			nonce::<RelayRuntime, RelayAccountId, RelayIndex>(who.clone().to_account_id().into())
+		})
+		.expect("ESSENTIAL: Nonce must be retrievable.")
+}
+
+fn nonce<Runtime, AccountId, Index>(who: AccountId) -> Index
+where
+	Runtime: frame_system::Config,
+	AccountId: Into<<Runtime as frame_system::Config>::AccountId>,
+	Index: From<<Runtime as frame_system::Config>::Index>,
+{
+	frame_system::Pallet::<Runtime>::account_nonce(who.into()).into()
 }
 
 /// Set of test accounts.

@@ -62,7 +62,7 @@ pub fn default_pool(
 	admin: Keyring,
 	nonce: Index,
 	id: PoolId,
-) -> Result<(Vec<UncheckedExtrinsic>, Index), ()> {
+) -> Result<Vec<Call>, ()> {
 	let mut curr_nonce = nonce;
 	let mut xts = Vec::new();
 
