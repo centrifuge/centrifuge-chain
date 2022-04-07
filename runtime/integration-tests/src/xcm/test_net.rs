@@ -29,7 +29,7 @@ use crate::{
 };
 
 decl_test_relay_chain! {
-	pub struct RelayNet {
+	pub struct RelayChain {
 		Runtime = crate::chain::relay::Runtime,
 		XcmConfig = crate::chain::relay::xcm_config::XcmConfig,
 		new_ext = relay_ext(),
@@ -58,7 +58,7 @@ decl_test_parachain! {
 
 decl_test_network! {
 	pub struct TestNet {
-		relay_chain = RelayNet,
+		relay_chain = RelayChain,
 		parachains = vec![
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
