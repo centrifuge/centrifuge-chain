@@ -11,11 +11,18 @@
 // GNU General Public License for more details.
 
 //! Utilities around the loans pallet
-use crate::chain::centrifuge::{Address, Call, UncheckedExtrinsic};
-use pallet_loans::Call as LoansCall;
+use crate::chain::centrifuge::{Address, Amount, Balance, Call, Rate};
+use crate::pools::utils::tokens::rate_from_percent;
+use pallet_loans::{
+	loan_type::{BulletLoan, LoanType},
+	math::interest_rate_per_sec,
+	types::Asset,
+	Call as LoansCall,
+};
 use pallet_uniques::Call as UniquesCall;
-use runtime_common::{AccountId, ClassId, Index, InstanceId, PoolId};
+use runtime_common::{AccountId, ClassId, InstanceId, PoolId};
 use std::collections::HashMap;
+
 /// Structure that manages collateral and loan nft ids
 pub struct NftManager {
 	collaterals: HashMap<PoolId, InstanceId>,
@@ -54,7 +61,7 @@ impl NftManager {
 		self.loans.entry(pool_id).or_insert(InstanceId(0)).clone()
 	}
 
-	pub fn next_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
+	fn next_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
 		let id = self.loans.entry(pool_id).or_insert(InstanceId(0));
 		let next = id.clone();
 		*id = InstanceId(id.0);
@@ -65,7 +72,7 @@ impl NftManager {
 		self.loans.entry(pool_id).or_insert(InstanceId(0)).clone()
 	}
 
-	pub fn next_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
+	fn next_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
 		let id = self.collaterals.entry(pool_id).or_insert(InstanceId(0));
 		let next = id.clone();
 		*id = InstanceId(id.0);
@@ -92,84 +99,146 @@ pub fn init_loans_for_pool(
 
 	calls.push(create_nft_call(owner.clone(), loan_class));
 	calls.push(create_nft_call(owner, collateral_class));
-	calls.push(initialise_pool_xt(pool_id, loan_class));
+	calls.push(initialise_pool_call(pool_id, loan_class));
 
 	calls
 }
 
-pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: ClassId) -> Result<Call, ()> {
+/// Issues a default loan with the following properties
+/// * 15% APR
+/// * value with amount
+/// * maturity as given
+/// * Type: BulletLoan
+/// 	* advance_rate: 90%,
+///     * probability_of_default: 5%,
+///     * loss_given_default: 50%,
+/// 	* discount_rate: 4% ,
+pub fn issue_default_loan(
+	owner: AccountId,
+	pool_id: PoolId,
+	amount: Balance,
+	maturity: u64,
+	manager: &mut NftManager,
+) -> Vec<Call> {
+	let loan_type = LoanType::BulletLoan(BulletLoan::new(
+		rate_from_percent(90),
+		rate_from_percent(5),
+		rate_from_percent(50),
+		Amount::from_inner(amount),
+		interest_rate_per_sec(rate_from_percent(4))
+			.expect("Essential: Createing rate per sec must not fail."),
+		maturity,
+	));
+
+	issue_loan(
+		owner,
+		pool_id,
+		interest_rate_per_sec(rate_from_percent(15))
+			.expect("Essential: Createing rate per sec must not fail."),
+		loan_type,
+		manager,
+	)
+}
+
+/// Issues a loan.
+/// Should always be used instead of manually issuing a loan as this keeps the `NftManager`
+/// in sync.
+///
+/// * owner should also be `PricingAdmin`
+/// * owner should be owner of `CollateralClass`
+///
+/// Does create the following calls:
+/// * mint collateral nft
+/// * creates a new loan with this collateral
+/// * prices the loan accordingly to input
+pub fn issue_loan(
+	owner: AccountId,
+	pool_id: PoolId,
+	intereset_rate_per_sec: Rate,
+	loan_type: LoanType<Rate, Amount>,
+	manager: &mut NftManager,
+) -> Vec<Call> {
+	let mut calls = Vec::new();
+	calls.push(mint_nft_call(
+		pool_id,
+		manager.next_collateral_id(pool_id),
+		owner,
+	));
+	calls.push(create_loan_call(
+		pool_id,
+		Asset(
+			manager.collateral_class_id(pool_id),
+			manager.curr_collateral_id(pool_id),
+		),
+	));
+	calls.push(price_loan_call(
+		pool_id,
+		manager.next_loan_id(pool_id),
+		intereset_rate_per_sec,
+		loan_type,
+	));
+	calls
+}
+
+pub fn initialise_pool_call(pool_id: PoolId, loan_nft_class_id: ClassId) -> Call {
 	Call::Loans(LoansCall::initialise_pool {
 		pool_id,
 		loan_nft_class_id,
 	})
 }
 
-pub fn price_loan_call() -> Result<Call, ()> {
-	todo!()
+pub fn create_loan_call(pool_id: PoolId, collateral: Asset<ClassId, InstanceId>) -> Call {
+	Call::Loans(LoansCall::create {
+		pool_id,
+		collateral,
+	})
 }
 
-pub fn create_nft_call(admin: AccountId, class: ClassId) -> Result<Call, ()> {
+pub fn price_loan_call(
+	pool_id: PoolId,
+	loan_id: LoanId,
+	interest_rate_per_sec: Rate,
+	loan_type: LoanType<Rate, Amount>,
+) -> Call {
+	Call::Loans(LoansCall::price {
+		pool_id,
+		loan_id,
+		interest_rate_per_sec,
+		loan_type,
+	})
+}
+
+pub fn borrow_call(pool_id: PoolId, loan_id: LoanId, amount: Amount) -> Call {
+	Call::Loans(LoansCall::borrow {
+		pool_id,
+		loan_id,
+		amount,
+	})
+}
+
+pub fn repay_call(pool_id: PoolId, loan_id: LoanId, amount: Amount) -> Call {
+	Call::Loans(LoansCall::repay {
+		pool_id,
+		loan_id,
+		amount,
+	})
+}
+
+pub fn close_loan_call(pool_id: PoolId, loan_id: LoanId) -> Call {
+	Call::Loans(LoansCall::close { pool_id, loan_id })
+}
+
+pub fn create_nft_call(admin: AccountId, class: ClassId) -> Call {
 	Call::Uniques(UniquesCall::create {
-		admin: Address::Id(owner),
+		admin: Address::Id(admin),
 		class,
 	})
 }
 
-pub fn mint_nft_call() -> Result<Call, ()> {
-	todo!()
+pub fn mint_nft_call(class: ClassId, instance: InstanceId, owner: AccountId) -> Call {
+	Call::Uniques(UniquesCall::mint {
+		class,
+		instance,
+		owner: Address::Id(owner),
+	})
 }
-
-pub fn issue_loan() -> Result<Vec<Call>, ()> {
-	todo!()
-}
-
-/*
-
-/// A module where all calls need to be called within an
-/// externalities provided environment.
-pub mod with_ext {
-
-	/// Issues a loan with given amount for the pool
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn issue_loan(pool: PoolId, amount: Balance) -> InstanceId {
-		let rev_admin =
-			<<Runtime as frame_system::Config>::Lookup as StaticLookup>::unlookup(get_admin());
-
-		Uniques::mint(
-			into_signed(get_admin()),
-			pool,
-			get_next_asset_id(pool),
-			rev_admin,
-		)
-		.unwrap();
-
-		let id = InstanceId(Loans::get_next_loan_id());
-		Loans::create(
-			into_signed(get_admin()),
-			pool,
-			Asset(pool, get_curr_asset_id(pool)),
-		)
-		.unwrap();
-
-		Loans::price(
-			into_signed(get_admin()),
-			pool,
-			id,
-			rate_per_sec(get_rate(15)).unwrap(),
-			LoanType::BulletLoan(BulletLoan::new(
-				get_rate(90),
-				get_rate(5),
-				get_rate(50),
-				Amount::from_inner(amount),
-				rate_per_sec(get_rate(4)).unwrap(),
-				get_date_from_delta(30 * SECONDS_PER_DAY),
-			)),
-		)
-		.unwrap();
-
-		id
-	}
-}
-
- */
