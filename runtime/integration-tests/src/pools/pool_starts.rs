@@ -41,7 +41,7 @@ async fn create_pool() {
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),
-		ChainState::EvolvedBy(10),
+		ChainState::PoolEmpty,
 		Keyring::Admin,
 		default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
 		issue_default_loan(

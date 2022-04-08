@@ -48,13 +48,17 @@ impl NftManager {
 		pool_id
 	}
 
-	/// Maps pool_id << 32 = collateral_class id
+	/// Maps (pool_id + 1) << 32 = collateral_class id
 	///
-	/// panics if pool_id > u32::MAX as this would result in an overflow
+	/// panics if pool_id >= u32::MAX - 1 as this would result in an overflow
 	/// during shifting.
 	pub fn collateral_class_id(&self, pool_id: PoolId) -> ClassId {
-		assert!(pool_id <= u32::MAX.into());
-		pool_id << 32
+		assert!(
+			pool_id < u32::MAX.into(),
+			"Pool-id must be smaller u32::MAX for testing. To ensure no-clashes in NFT class-ids"
+		);
+		let id = (pool_id + 1) << 32;
+		id
 	}
 
 	pub fn curr_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
@@ -94,13 +98,10 @@ pub fn init_loans_for_pool(
 ) -> Vec<Call> {
 	let loan_class = manager.loan_class_id(pool_id);
 	let collateral_class = manager.collateral_class_id(pool_id);
-
 	let mut calls = Vec::new();
-
 	calls.push(create_nft_call(owner.clone(), loan_class));
 	calls.push(create_nft_call(owner, collateral_class));
 	calls.push(initialise_pool_call(pool_id, loan_class));
-
 	calls
 }
 
