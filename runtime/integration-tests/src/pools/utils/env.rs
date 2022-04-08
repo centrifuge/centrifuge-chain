@@ -12,7 +12,8 @@
 
 //! Utilities to create a relay-chain-parachain setup
 use crate::chain::centrifuge::{
-	Block as CentrifugeBlock, RuntimeApi as CentrifugeRtApi, PARA_ID, WASM_BINARY as CentrifugeCode,
+	Block as CentrifugeBlock, BlockNumber, Event, Runtime, RuntimeApi as CentrifugeRtApi, PARA_ID,
+	WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use crate::pools::utils::accounts::{Keyring, NonceManager};
@@ -20,6 +21,7 @@ use crate::pools::utils::extrinsics::{xt_centrifuge, xt_relay};
 use crate::pools::utils::{logs, time::START_DATE};
 use codec::{Decode, Encode};
 use frame_support::traits::GenesisBuild;
+use frame_system::EventRecord;
 use fudge::digest::FudgeBabeDigest;
 use fudge::primitives::{Chain, PoolState};
 use fudge::{
@@ -40,10 +42,52 @@ use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
 use sp_core::H256;
 use sp_runtime::{generic::BlockId, DigestItem, Storage};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
-
+/*
+($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+		match $expression {
+			$( $pattern )|+ $( if $guard )? => true,
+			_ => false
+		}
+ */
 pub mod macros {
+	/// A macro that helps retrieving specific events with a filter
+	/// This is useful as the general interface of the TestEnv return
+	/// scale-encoded events.
+	macro_rules! events {
+		($env:expr, $chain:expr, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
+			use frame_system::EventRecord as __hidden_EventRecord;
+			use crate::chain::centrifuge::Event;
+			use sp_core::H256;
+			use codec::{Encode, Decode};
+
+			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
+			let event_records: Vec<__hidden_EventRecord<Event, H256>> = scale_events
+				.into_iter()
+				.map(|scale_record| __hidden_EventRecord::<Event, H256>::decode(&mut scale_record.as_slice())
+					.expect("Decoding from chain data does not fail. qed"))
+				.collect();
+
+			let matches = |event: &Event| {
+				match *event {
+            		$( $pattern )|+ $( if $guard )? => true,
+            		_ => false
+				}
+			};
+
+			let mut searched_events = Vec::new();
+			for record in event_records {
+				if matches(&record.event) {
+					searched_events.push(record.event);
+				}
+			}
+
+			searched_events
+		}};
+	}
+
 	/// A macro that helps including the given calls into a chain
 	/// and to progress a chain until all of them are included
 	macro_rules! run {
@@ -81,6 +125,7 @@ pub mod macros {
 		};
 	}
 	// Need to export after definition.
+	pub(crate) use events;
 	pub(crate) use run;
 }
 
@@ -141,6 +186,26 @@ type CentrifugeCidp = Box<
 #[allow(unused)]
 type Dp = Box<dyn DigestCreator + Send + Sync>;
 
+/// A struct that stores all events that have been generated
+/// since we are building blocks locally here.
+pub struct EventsStorage {
+	pub centrifuge: HashMap<BlockNumber, Vec<EventRecord<Event, H256>>>,
+}
+
+impl EventsStorage {
+	pub fn new() -> Self {
+		Self {
+			centrifuge: HashMap::new(),
+		}
+	}
+}
+
+pub enum EventRange {
+	All,
+	Range(BlockNumber, BlockNumber),
+	Latest,
+}
+
 #[fudge::companion]
 pub struct TestEnv {
 	#[fudge::relaychain]
@@ -149,6 +214,7 @@ pub struct TestEnv {
 	pub centrifuge:
 		ParachainBuilder<CentrifugeBlock, CentrifugeRtApi, CentrifugeCidp, Dp, CentrifugeHF>,
 	nonce_manager: Arc<Mutex<NonceManager>>,
+	pub events: Arc<Mutex<EventsStorage>>,
 }
 
 // NOTE: Nonce management is a known issue when interacting with a chain and wanting
@@ -157,6 +223,50 @@ pub struct TestEnv {
 // Upon usage of this API:
 // *
 impl TestEnv {
+	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()> {
+		match chain {
+			Chain::Relay => todo!("Implement events fetching for relay"),
+			Chain::Para(id) => match id {
+				_ if id == PARA_ID => {
+					let latest = self
+						.centrifuge
+						.with_state(|| frame_system::Pallet::<Runtime>::block_number())
+						.map_err(|_| ())?;
+
+					match range {
+						EventRange::Latest => self.events_centrifuge(latest),
+						EventRange::All => {
+							let mut events = Vec::new();
+							for block in 0..latest + 1 {
+								events.extend(self.events_centrifuge(block)?)
+							}
+
+							Ok(events)
+						}
+						EventRange::Range(from, to) => {
+							let mut events = Vec::new();
+							for block in from..to + 1 {
+								events.extend(self.events_centrifuge(block)?)
+							}
+
+							Ok(events)
+						}
+					}
+				}
+				_ => Err(()),
+			},
+		}
+	}
+
+	fn events_centrifuge(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, ()> {
+		self.centrifuge
+			.with_state_at(BlockId::Number(at), || {
+				frame_system::Pallet::<Runtime>::events()
+			})
+			.map_err(|_| ())
+			.map(|records| records.into_iter().map(|record| record.encode()).collect())
+	}
+
 	/// Returns the next nonce to be used
 	/// **WARN: Increases the nonce counter on `NonceManager**
 	fn fetch_add_nonce(&mut self, chain: Chain, who: Keyring) -> Index {
@@ -314,6 +424,17 @@ impl TestEnv {
 		} else {
 			while curr_xts > xts {
 				self.evolve()?;
+				let event_storage = self.events.clone();
+				self.centrifuge.with_state(|| {
+					let mut storage = event_storage
+						.lock()
+						.expect("Must not fail getting event-storage");
+					let block = frame_system::Pallet::<Runtime>::block_number();
+					storage
+						.centrifuge
+						.insert(block, frame_system::Pallet::<Runtime>::events());
+				});
+
 				curr_xts = match self.centrifuge.pool_state() {
 					PoolState::Empty => return Ok(()),
 					PoolState::Busy(curr_xts) => curr_xts,
@@ -518,8 +639,13 @@ fn test_env(
 		)
 	};
 
-	TestEnv::new(relay, centrifuge, Arc::new(Mutex::new(NonceManager::new())))
-		.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
+	TestEnv::new(
+		relay,
+		centrifuge,
+		Arc::new(Mutex::new(NonceManager::new())),
+		Arc::new(Mutex::new(EventsStorage::new())),
+	)
+	.expect("ESSENTIAL: Creating new TestEnv instance must not fail.")
 }
 
 pub fn task_manager(tokio_handle: Handle) -> TaskManager {

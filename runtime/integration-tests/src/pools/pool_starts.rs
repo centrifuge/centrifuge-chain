@@ -9,11 +9,11 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Amount, Runtime, PARA_ID};
+use crate::chain::centrifuge::{Amount, Event, Runtime, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
 	accounts::Keyring,
-	env::ChainState,
+	env::{ChainState, EventRange},
 	loans::NftManager,
 	loans::{borrow_call, init_loans_for_pool, issue_default_loan},
 	pools::default_pool_calls,
@@ -26,8 +26,8 @@ use tokio::runtime::Handle;
 
 #[tokio::test]
 async fn create_pool() {
+	let manager = env::task_manager(Handle::current());
 	let mut env = {
-		let manager = env::task_manager(Handle::current());
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
 		env::test_env_with_centrifuge_storage(&manager, genesis)
@@ -41,7 +41,7 @@ async fn create_pool() {
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),
-		ChainState::PoolEmpty,
+		ChainState::EvolvedBy(10),
 		Keyring::Admin,
 		default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
 		issue_default_loan(
@@ -58,8 +58,6 @@ async fn create_pool() {
 		)
 	);
 
-	env.evolve().unwrap();
-
 	let (block, pool, account) = env
 		.with_state(Chain::Para(PARA_ID), || {
 			(
@@ -70,7 +68,17 @@ async fn create_pool() {
 		})
 		.expect("Get state is available.");
 
-	tracing::event!(tracing::Level::INFO, ?block, "Current block");
-	tracing::event!(tracing::Level::INFO, ?pool, "Current pool");
-	tracing::event!(tracing::Level::INFO, ?account, "Current account info admin");
+	let events = env::events!(
+		env,
+		Chain::Para(PARA_ID),
+		EventRange::All,
+		Event::Loans(..)
+			| Event::Pools(..)
+			| Event::Uniques(..)
+			| Event::System(frame_system::Event::ExtrinsicFailed { .. })
+	);
+
+	for event in events {
+		tracing::event!(tracing::Level::INFO, ?event);
+	}
 }

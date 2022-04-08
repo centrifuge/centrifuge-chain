@@ -2976,7 +2976,7 @@ checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 [[package]]
 name = "fudge"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#0f8f111ee5fedecd75c784bbf8aa34a1e7ff4668"
+source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#f50bc3f90fddbf7c7b5fe81f41dda47f8b521233"
 dependencies = [
  "fudge-companion",
  "fudge-core",
@@ -2989,7 +2989,7 @@ dependencies = [
 [[package]]
 name = "fudge-companion"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#0f8f111ee5fedecd75c784bbf8aa34a1e7ff4668"
+source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#f50bc3f90fddbf7c7b5fe81f41dda47f8b521233"
 dependencies = [
  "proc-macro-crate 1.1.3",
  "proc-macro2",
@@ -3000,7 +3000,7 @@ dependencies = [
 [[package]]
 name = "fudge-core"
 version = "0.0.7"
-source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#0f8f111ee5fedecd75c784bbf8aa34a1e7ff4668"
+source = "git+https://github.com/centrifuge/fudge?branch=feature/improv-v1#f50bc3f90fddbf7c7b5fe81f41dda47f8b521233"
 dependencies = [
  "async-trait",
  "cumulus-primitives-parachain-inherent",
@@ -12205,7 +12205,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "matchers",
- "parking_lot 0.11.2",
+ "parking_lot 0.10.2",
  "regex",
  "serde",
  "serde_json",

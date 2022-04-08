@@ -148,6 +148,7 @@ pub fn pool_setup_calls(
 		max_reserve,
 		tranche_input,
 	));
+	calls.extend(whitelist_admin(admin.clone(), pool_id));
 	calls.extend(whitelist_10_for_each_tranche_calls(
 		pool_id,
 		num_tranches as u32,
@@ -198,7 +199,6 @@ pub fn create_tranche_input(
 		.into_iter()
 		.zip(risk_buffs)
 		.zip(seniority)
-		.rev()
 		.map(|((rate, buff), seniority)| {
 			if let (Some(interest_rate_per_sec), Some(min_risk_buffer)) = (rate, buff) {
 				(
@@ -213,6 +213,44 @@ pub fn create_tranche_input(
 			}
 		})
 		.collect()
+}
+
+/// Enables permission for all existing `PoolRole` variants
+/// (except for PoolRole::TrancheInvestor) for the given account
+pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
+	let mut calls = Vec::new();
+	calls.push(permission_call(
+		PoolRole::PoolAdmin,
+		admin.clone(),
+		pool_id,
+		PoolRole::Borrower,
+	));
+	calls.push(permission_call(
+		PoolRole::PoolAdmin,
+		admin.clone(),
+		pool_id,
+		PoolRole::LiquidityAdmin,
+	));
+	calls.push(permission_call(
+		PoolRole::PoolAdmin,
+		admin.clone(),
+		pool_id,
+		PoolRole::RiskAdmin,
+	));
+	calls.push(permission_call(
+		PoolRole::PoolAdmin,
+		admin.clone(),
+		pool_id,
+		PoolRole::MemberListAdmin,
+	));
+	calls.push(permission_call(
+		PoolRole::PoolAdmin,
+		admin.clone(),
+		pool_id,
+		PoolRole::PricingAdmin,
+	));
+
+	calls
 }
 
 /// This should only be used at start-up of a pool
