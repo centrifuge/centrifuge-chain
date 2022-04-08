@@ -17,9 +17,9 @@ use crate::pools::utils::*;
 use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_balances::Call as BalancesCall;
+use runtime_common::CFG;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
-use runtime_common::CFG;
 
 #[tokio::test]
 async fn env_works() {
@@ -86,10 +86,7 @@ async fn extrinsics_works() {
 
 	// Need to account for fees here
 	assert!(alice_after.data.free <= alice_before.data.free - 100 * CFG);
-	assert_eq!(
-		bob_after.data.free,
-		bob_before.data.free + 100 * CFG
-	);
+	assert_eq!(bob_after.data.free, bob_before.data.free + 100 * CFG);
 
 	env.evolve().unwrap();
 
@@ -104,8 +101,5 @@ async fn extrinsics_works() {
 
 	// Need to account for fees here
 	assert!(alice_after.data.free <= alice_before.data.free - 100 * CFG);
-	assert_eq!(
-		bob_after.data.free,
-		bob_before.data.free + 100 * CFG
-	);
+	assert_eq!(bob_after.data.free, bob_before.data.free + 100 * CFG);
 }

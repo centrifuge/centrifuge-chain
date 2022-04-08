@@ -15,9 +15,9 @@ use crate::parachain::{
 	Block as CentrifugeBlock, CurrencyId, RuntimeApi as CentrifugeRtApi, PARA_ID,
 	WASM_BINARY as CentrifugeCode,
 };
-use crate::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use crate::pools::utils::accounts::default_accounts;
 use crate::pools::utils::logs;
+use crate::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use frame_support::traits::GenesisBuild;
 use fudge::digest::FudgeBabeDigest;
 use fudge::{

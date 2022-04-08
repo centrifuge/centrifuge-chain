@@ -11,19 +11,19 @@
 // GNU General Public License for more details.
 
 use frame_support::assert_ok;
-use xcm_emulator::TestExt;
-use xcm::latest::{Junction, Junctions::*, MultiLocation, NetworkId};
 use orml_traits::MultiCurrency;
+use xcm::latest::{Junction, Junctions::*, MultiLocation, NetworkId};
+use xcm_emulator::TestExt;
 
+use super::{
+	setup::{
+		native_amount, parachain_account, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
+		PARA_ID_SIBLING,
+	},
+	test_net::{Parachain, Sibling, TestNet},
+};
 use crate::parachain::{
 	Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond2000, XTokens, PARA_ID,
-};
-use super::{
-	test_net::{Parachain, Sibling, TestNet},
-	setup::{
-		parachain_account, native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
-		PARA_ID_SIBLING,
-	}
 };
 
 use runtime_common::Balance;
