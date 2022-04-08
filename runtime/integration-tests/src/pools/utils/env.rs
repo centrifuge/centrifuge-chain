@@ -11,11 +11,11 @@
 // GNU General Public License for more details.
 
 //! Utilities to create a relay-chain-parachain setup
-use crate::chain::centrifuge::{
+use crate::parachain::{
 	Block as CentrifugeBlock, CurrencyId, RuntimeApi as CentrifugeRtApi, PARA_ID,
 	WASM_BINARY as CentrifugeCode,
 };
-use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
+use crate::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
 use crate::pools::utils::accounts::default_accounts;
 use crate::pools::utils::logs;
 use frame_support::traits::GenesisBuild;

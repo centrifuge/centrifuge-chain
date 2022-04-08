@@ -12,19 +12,20 @@
 
 use frame_support::assert_ok;
 use xcm_emulator::TestExt;
-
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-
-use crate::xcm::test_net::{Centrifuge, Sibling, TestNet};
+use xcm::latest::{Junction, Junctions::*, MultiLocation, NetworkId};
 use orml_traits::MultiCurrency;
 
-use crate::chain::centrifuge::{
+use crate::parachain::{
 	Balances, NativePerSecond, Origin, OrmlTokens, UsdPerSecond2000, XTokens, PARA_ID,
 };
-use crate::xcm::setup::{
-	development_account, native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
-	PARA_ID_SIBLING,
+use super::{
+	test_net::{Parachain, Sibling, TestNet},
+	setup::{
+		parachain_account, native_amount, sibling_account, usd_amount, CurrencyId, ALICE, BOB,
+		PARA_ID_SIBLING,
+	}
 };
+
 use runtime_common::Balance;
 
 #[test]
@@ -35,7 +36,7 @@ fn transfer_native_to_sibling() {
 	let bob_initial_balance = native_amount(10);
 	let transfer_amount = native_amount(1);
 
-	Centrifuge::execute_with(|| {
+	Parachain::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
 	});
@@ -44,7 +45,7 @@ fn transfer_native_to_sibling() {
 		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
 	});
 
-	Centrifuge::execute_with(|| {
+	Parachain::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::Native,
@@ -53,7 +54,7 @@ fn transfer_native_to_sibling() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_SIBLING),
+						Junction::Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -92,7 +93,7 @@ fn transfer_usd_to_sibling() {
 	let bob_initial_balance = usd_amount(10);
 	let transfer_amount = usd_amount(7);
 
-	Centrifuge::execute_with(|| {
+	Parachain::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::Usd,
 			&ALICE.into(),
@@ -117,7 +118,7 @@ fn transfer_usd_to_sibling() {
 		);
 	});
 
-	Centrifuge::execute_with(|| {
+	Parachain::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::Usd,
@@ -126,7 +127,7 @@ fn transfer_usd_to_sibling() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_SIBLING),
+						Junction::Parachain(PARA_ID_SIBLING),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -175,12 +176,12 @@ fn transfer_usd_to_development() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &development_account()),
+			OrmlTokens::free_balance(CurrencyId::Usd, &parachain_account()),
 			0
 		);
 	});
 
-	Centrifuge::execute_with(|| {
+	Parachain::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::Usd,
 			&BOB.into(),
@@ -207,7 +208,7 @@ fn transfer_usd_to_development() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID),
+						Junction::Parachain(PARA_ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -226,12 +227,12 @@ fn transfer_usd_to_development() {
 
 		// Verify that the amount transferred is now part of the development account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &development_account()),
+			OrmlTokens::free_balance(CurrencyId::Usd, &parachain_account()),
 			transfer_amount
 		);
 	});
 
-	Centrifuge::execute_with(|| {
+	Parachain::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),

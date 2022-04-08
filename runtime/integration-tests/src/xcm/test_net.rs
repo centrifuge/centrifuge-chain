@@ -23,25 +23,23 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use development_runtime::CurrencyId;
 use runtime_common::AccountId;
 
-use crate::{
-	chain::centrifuge::PARA_ID,
-	xcm::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING},
-};
+use crate::parachain::PARA_ID;
+use crate::xcm::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct RelayChain {
-		Runtime = crate::chain::relay::Runtime,
-		XcmConfig = crate::chain::relay::xcm_config::XcmConfig,
+		Runtime = crate::relay::Runtime,
+		XcmConfig = crate::relay::xcm_config::XcmConfig,
 		new_ext = relay_ext(),
 	}
 }
 
 decl_test_parachain! {
-	pub struct Centrifuge {
-		Runtime = crate::chain::centrifuge::Runtime,
-		Origin = crate::chain::centrifuge::Origin,
-		XcmpMessageHandler = crate::chain::centrifuge::XcmpQueue,
-		DmpMessageHandler = crate::chain::centrifuge::DmpQueue,
+	pub struct Parachain {
+		Runtime = crate::parachain::Runtime,
+		Origin = crate::parachain::Origin,
+		XcmpMessageHandler = crate::parachain::XcmpQueue,
+		DmpMessageHandler = crate::parachain::DmpQueue,
 		new_ext = para_ext(PARA_ID),
 	}
 }
@@ -63,8 +61,9 @@ decl_test_network! {
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `PARA_ID`
-			(2000, Centrifuge),
+			// Be sure to use the appropriate `PARA_ID`
+			(2000, Parachain),
+
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
 		],
@@ -72,7 +71,7 @@ decl_test_network! {
 }
 
 pub fn relay_ext() -> sp_io::TestExternalities {
-	use crate::chain::relay::{Runtime, System};
+	use crate::relay::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()

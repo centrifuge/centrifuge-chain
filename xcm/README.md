@@ -117,4 +117,4 @@ sender and receiver parachains respectively:
 ## Integration Tests
 
 In `runtime` > `integration-tests` > `xcm_transfers` we have our integrated tests covering the xcm transfers using an
-environment identical to the one described previously that you can setup on your machine but emulated instead.
+environment identical to the one described previously that you can set up on your machine but emulated instead.

@@ -13,15 +13,15 @@
 //! Utilities for creating extrinsics
 #![allow(unused)]
 
-use crate::chain::centrifuge::{
+use crate::parachain::{
 	Call as CentrifugeCall, Runtime as CentrifugeRuntime, SignedExtra as CentrifugeSignedExtra,
 	UncheckedExtrinsic as CentrifugeUnchecked,
 };
-use crate::chain::relay::{
+use crate::relay::{
 	Address as RelayAddress, Call as RelayCall, Runtime as RelayRuntime,
 	SignedExtra as RelaySignedExtra, UncheckedExtrinsic as RelayUnchecked,
 };
-use crate::chain::{centrifuge, relay};
+use crate::{parachain, relay};
 use crate::pools::utils::{accounts::Keyring, env::TestEnv};
 use codec::Encode;
 use node_primitives::Index as RelayIndex;
@@ -39,15 +39,15 @@ use sp_runtime::{
 pub fn ext_centrifuge(
 	env: &TestEnv,
 	who: Keyring,
-	call: centrifuge::Call,
-) -> Result<centrifuge::UncheckedExtrinsic, ()> {
+	call: parachain::Call,
+) -> Result<parachain::UncheckedExtrinsic, ()> {
 	let client = env.centrifuge.client();
 
 	let genesis_hash = client
 		.block_hash(0)
 		.expect("ESSENTIAL: Genesis MUST be avilable.")
 		.unwrap();
-	let best_block_id = centrifuge::BlockId::number(client.chain_info().best_number);
+	let best_block_id = parachain::BlockId::number(client.chain_info().best_number);
 	let (spec_version, tx_version) = {
 		let version = client.runtime_version_at(&best_block_id).unwrap();
 		(version.spec_version, version.transaction_version)

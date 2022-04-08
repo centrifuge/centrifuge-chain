@@ -9,8 +9,8 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge;
-use crate::chain::centrifuge::{Runtime, PARA_ID};
+use crate::parachain;
+use crate::parachain::{Runtime, PARA_ID};
 use crate::pools::utils::accounts::Keyring;
 use crate::pools::utils::extrinsics::ext_centrifuge;
 use crate::pools::utils::*;
@@ -19,6 +19,7 @@ use fudge::primitives::Chain;
 use pallet_balances::Call as BalancesCall;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
+use runtime_common::CFG;
 
 #[tokio::test]
 async fn env_works() {
@@ -50,13 +51,13 @@ async fn extrinsics_works() {
 	env::default_balances::<Runtime>(&mut genesis);
 	let mut env = env::test_env_with_centrifuge_storage(&manager, genesis);
 
-	let to: centrifuge::Address = Keyring::Bob.into();
+	let to: parachain::Address = Keyring::Bob.into();
 	let xt = ext_centrifuge(
 		&env,
 		Keyring::Alice,
-		centrifuge::Call::Balances(BalancesCall::transfer {
+		parachain::Call::Balances(BalancesCall::transfer {
 			dest: to,
-			value: 100 * centrifuge::CFG,
+			value: 100 * CFG,
 		}),
 	)
 	.unwrap();
@@ -84,10 +85,10 @@ async fn extrinsics_works() {
 		.unwrap();
 
 	// Need to account for fees here
-	assert!(alice_after.data.free <= alice_before.data.free - 100 * centrifuge::CFG);
+	assert!(alice_after.data.free <= alice_before.data.free - 100 * CFG);
 	assert_eq!(
 		bob_after.data.free,
-		bob_before.data.free + 100 * centrifuge::CFG
+		bob_before.data.free + 100 * CFG
 	);
 
 	env.evolve().unwrap();
@@ -102,9 +103,9 @@ async fn extrinsics_works() {
 		.unwrap();
 
 	// Need to account for fees here
-	assert!(alice_after.data.free <= alice_before.data.free - 100 * centrifuge::CFG);
+	assert!(alice_after.data.free <= alice_before.data.free - 100 * CFG);
 	assert_eq!(
 		bob_after.data.free,
-		bob_before.data.free + 100 * centrifuge::CFG
+		bob_before.data.free + 100 * CFG
 	);
 }

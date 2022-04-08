@@ -9,7 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::Runtime;
+use crate::parachain::Runtime;
 use crate::pools::utils::*;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;

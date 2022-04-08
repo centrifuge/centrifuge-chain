@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System, PARA_ID};
+pub use crate::parachain::{AccountId, CurrencyId, Origin, Runtime, System, PARA_ID};
 use common_traits::TokenMetadata;
 use frame_support::traits::GenesisBuild;
 use runtime_common::Balance;
@@ -109,15 +109,15 @@ pub fn dollar(currency_id: CurrencyId) -> Balance {
 }
 
 pub fn sibling_account() -> AccountId {
-	parachain_account(PARA_ID_SIBLING.into())
+	account_from(PARA_ID_SIBLING.into())
 }
 
-pub fn development_account() -> AccountId {
-	parachain_account(PARA_ID.into())
+pub fn parachain_account() -> AccountId {
+	account_from(PARA_ID.into())
 }
 
-fn parachain_account(id: u32) -> AccountId {
+fn account_from(para_id: u32) -> AccountId {
 	use sp_runtime::traits::AccountIdConversion;
 
-	polkadot_parachain::primitives::Sibling::from(id).into_account()
+	polkadot_parachain::primitives::Sibling::from(para_id).into_account()
 }
