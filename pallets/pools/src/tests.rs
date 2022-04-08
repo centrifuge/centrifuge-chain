@@ -2331,3 +2331,77 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		assert!(!EpochExecution::<Test>::contains_key(0));
 	});
 }
+
+#[test]
+fn only_usd_as_pool_currency_allowed() {
+	new_test_ext().execute_with(|| {
+		let pool_owner = 2_u64;
+		let pool_owner_origin = Origin::signed(pool_owner);
+
+		// Initialize pool with initial investments
+		const SECS_PER_YEAR: u64 = 365 * 24 * 60 * 60;
+		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
+
+		assert_noop!(
+			Pools::create(
+				pool_owner_origin.clone(),
+				pool_owner.clone(),
+				0,
+				vec![
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_rate_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					)
+				],
+				CurrencyId::Native,
+				200 * CURRENCY
+			),
+			Error::<Test>::InvalidCurrency
+		);
+
+		assert_noop!(
+			Pools::create(
+				pool_owner_origin.clone(),
+				pool_owner.clone(),
+				0,
+				vec![
+					(TrancheType::Residual, None),
+					(
+						TrancheType::NonResidual {
+							interest_rate_per_sec: senior_interest_rate,
+							min_risk_buffer: Perquintill::from_percent(10),
+						},
+						None
+					)
+				],
+				CurrencyId::Tranche(0, [0u8; 16]),
+				200 * CURRENCY
+			),
+			Error::<Test>::InvalidCurrency
+		);
+
+		assert_ok!(Pools::create(
+			pool_owner_origin.clone(),
+			pool_owner.clone(),
+			0,
+			vec![
+				(TrancheType::Residual, None),
+				(
+					TrancheType::NonResidual {
+						interest_rate_per_sec: senior_interest_rate,
+						min_risk_buffer: Perquintill::from_percent(10),
+					},
+					None
+				)
+			],
+			CurrencyId::Usd,
+			200 * CURRENCY
+		));
+	});
+}

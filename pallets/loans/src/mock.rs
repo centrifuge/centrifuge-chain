@@ -20,6 +20,7 @@ use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_types::CurrencyId;
 use common_types::PoolLocator;
 use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, SortedMembers},
@@ -162,6 +163,7 @@ parameter_types! {
 }
 
 impl pallet_pools::Config for MockRuntime {
+	type PoolCurrency = Everything;
 	type Event = Event;
 	type Balance = Balance;
 	type BalanceRatio = Rate;

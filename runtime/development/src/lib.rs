@@ -861,6 +861,17 @@ impl pallet_pools::Config for Runtime {
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
+	type PoolCurrency = PoolCurrency;
+}
+
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
+			CurrencyId::Usd => true,
+		}
+	}
 }
 
 parameter_types! {
