@@ -187,6 +187,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 pub mod pallet {
 	use super::*;
 	use frame_support::sp_runtime::traits::Convert;
+	use frame_support::traits::Contains;
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
 	use sp_runtime::ArithmeticError;
@@ -263,6 +264,8 @@ pub mod pallet {
 			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
+
+		type PoolCurrency: Contains<Self::CurrencyId>;
 
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
@@ -452,6 +455,8 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
+		/// A user has tried to create a pool with an invalid currency
+		InvalidCurrency,
 	}
 
 	#[pallet::call]
@@ -485,6 +490,11 @@ pub mod pallet {
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
+
+			ensure!(
+				T::PoolCurrency::contains(&currency),
+				Error::<T>::InvalidCurrency
+			);
 
 			Self::is_valid_tranche_change(None, &tranches)?;
 
