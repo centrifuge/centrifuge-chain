@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System, PARA_ID};
+pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System};
 use common_traits::TokenMetadata;
 use frame_support::traits::GenesisBuild;
 use runtime_common::Balance;
@@ -33,7 +33,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: PARA_ID,
+			parachain_id: PARA_ID_DEVELOPMENT,
 		}
 	}
 }
@@ -127,7 +127,7 @@ pub fn karura_account() -> AccountId {
 }
 
 pub fn development_account() -> AccountId {
-	parachain_account(PARA_ID.into())
+	parachain_account(PARA_ID_DEVELOPMENT.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {

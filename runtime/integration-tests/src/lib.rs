@@ -48,11 +48,11 @@ mod chain {
 	}
 
 	pub mod relay {
-		#[cfg(feature = "runtime-altair")]
+		#[cfg(feature = "runtime-development")]
 		pub use kusama_runtime::*;
 		#[cfg(feature = "runtime-centrifuge")]
 		pub use polkadot_runtime::*;
-		#[cfg(feature = "runtime-development")]
-		pub use rococo_runtime::*;
+		// #[cfg(feature = "runtime-development")]
+		// pub use rococo_runtime::*;
 	}
 }

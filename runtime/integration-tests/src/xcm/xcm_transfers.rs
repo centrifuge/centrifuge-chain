@@ -21,7 +21,7 @@ use crate::xcm::setup::{
 	development_account, karura_account, ksm_amount, kusd_amount, native_amount, sibling_account,
 	usd_amount, CurrencyId, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
 };
-use crate::xcm::test_net::{Development, Karura, TestNet, Sibling};
+use crate::xcm::test_net::{Development, Karura, KusamaNet, Sibling, TestNet};
 
 use development_runtime::{
 	Balances, KUsdPerSecond, KsmPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond,
@@ -327,7 +327,7 @@ fn transfer_kusd_to_development() {
 fn transfer_from_relay_chain() {
 	let transfer_amount: Balance = ksm_amount(1);
 
-	TestNet::execute_with(|| {
+	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
 			Box::new(Parachain(PARA_ID_DEVELOPMENT).into().into()),
@@ -373,7 +373,7 @@ fn transfer_ksm_to_relay_chain() {
 		));
 	});
 
-	TestNet::execute_with(|| {
+	KusamaNet::execute_with(|| {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&BOB.into()),
 			999893333340
@@ -384,22 +384,19 @@ fn transfer_ksm_to_relay_chain() {
 #[test]
 fn currency_id_convert_air() {
 	use development_runtime::CurrencyIdConvert;
-	use xcm_executor::traits::Convert as C1;
-	use sp_runtime::traits::Convert as C2;
 	use sp_runtime::codec::Encode;
+	use sp_runtime::traits::Convert as C2;
+	use xcm_executor::traits::Convert as C1;
 
 	let air_location: MultiLocation = MultiLocation::new(
 		1,
 		X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
 	);
 
-	assert_eq!(
-		CurrencyId::Native.encode(),
-		vec![0]
-	);
+	assert_eq!(CurrencyId::Native.encode(), vec![0]);
 
 	assert_eq!(
-		<CurrencyIdConvert as C1<_,_>>::convert(air_location.clone()),
+		<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),
 		Ok(CurrencyId::Native),
 	);
 
