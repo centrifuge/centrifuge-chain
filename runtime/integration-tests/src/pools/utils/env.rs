@@ -53,20 +53,54 @@ use tokio::runtime::Handle;
 		}
  */
 pub mod macros {
-	/// A macro that helps retrieving specific events with a filter
-	/// This is useful as the general interface of the TestEnv return
-	/// scale-encoded events.
-	macro_rules! events {
-		($env:expr, $chain:expr, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
+	/* // TODO: Implement this assert
+	/// A macro for checking if a specifc event was contained in the given range of blocks
+	/// Panics if this was not the case
+	macro_rules! assert_events {
+		($env:expr, $chain:expr, $event:expr, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
 			use frame_system::EventRecord as __hidden_EventRecord;
-			use crate::chain::centrifuge::Event;
-			use sp_core::H256;
-			use codec::{Encode, Decode};
+			use sp_core::H256 as __hidden_H256;
+			use codec::Decode as _;
 
 			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
 			let event_records: Vec<__hidden_EventRecord<Event, H256>> = scale_events
 				.into_iter()
-				.map(|scale_record| __hidden_EventRecord::<Event, H256>::decode(&mut scale_record.as_slice())
+				.map(|scale_record| __hidden_EventRecord::<$event, __hidden_H256>::decode(&mut scale_record.as_slice())
+					.expect("Decoding from chain data does not fail. qed"))
+				.collect();
+
+			let matches = |event: &Event| {
+				match *event {
+					$( $pattern )|+ $( if $guard )? => true,
+					_ => false
+				}
+			};
+
+			let mut searched_events = Vec::new();
+			for record in event_records {
+				if matches(&record.event) {
+					searched_events.push(record.event);
+				}
+			}
+
+			searched_events
+		}};
+	}
+	 */
+
+	/// A macro that helps retrieving specific events with a filter
+	/// This is useful as the general interface of the TestEnv return
+	/// scale-encoded events.
+	macro_rules! events {
+		($env:expr, $chain:expr, $event:ty, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
+			use frame_system::EventRecord as __hidden_EventRecord;
+			use sp_core::H256 as __hidden_H256;
+			use codec::Decode as _;
+
+			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
+			let event_records: Vec<__hidden_EventRecord<Event, __hidden_H256>> = scale_events
+				.into_iter()
+				.map(|scale_record| __hidden_EventRecord::<$event, __hidden_H256>::decode(&mut scale_record.as_slice())
 					.expect("Decoding from chain data does not fail. qed"))
 				.collect();
 

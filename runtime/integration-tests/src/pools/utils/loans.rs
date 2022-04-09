@@ -62,22 +62,22 @@ impl NftManager {
 	}
 
 	pub fn curr_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
-		self.loans.entry(pool_id).or_insert(InstanceId(0)).clone()
+		self.loans.entry(pool_id).or_insert(InstanceId(1)).clone()
 	}
 
 	fn next_loan_id(&mut self, pool_id: PoolId) -> InstanceId {
-		let id = self.loans.entry(pool_id).or_insert(InstanceId(0));
+		let id = self.loans.entry(pool_id).or_insert(InstanceId(1));
 		let next = id.clone();
 		*id = InstanceId(id.0);
 		next
 	}
 
 	pub fn curr_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
-		self.loans.entry(pool_id).or_insert(InstanceId(0)).clone()
+		self.loans.entry(pool_id).or_insert(InstanceId(1)).clone()
 	}
 
 	fn next_collateral_id(&mut self, pool_id: PoolId) -> InstanceId {
-		let id = self.collaterals.entry(pool_id).or_insert(InstanceId(0));
+		let id = self.collaterals.entry(pool_id).or_insert(InstanceId(1));
 		let next = id.clone();
 		*id = InstanceId(id.0);
 		next
@@ -127,7 +127,7 @@ pub fn issue_default_loan(
 		rate_from_percent(50),
 		Amount::from_inner(amount),
 		interest_rate_per_sec(rate_from_percent(4))
-			.expect("Essential: Createing rate per sec must not fail."),
+			.expect("Essential: Creating rate per sec must not fail."),
 		maturity,
 	));
 
@@ -135,7 +135,7 @@ pub fn issue_default_loan(
 		owner,
 		pool_id,
 		interest_rate_per_sec(rate_from_percent(15))
-			.expect("Essential: Createing rate per sec must not fail."),
+			.expect("Essential: Creating rate per sec must not fail."),
 		loan_type,
 		manager,
 	)
@@ -161,7 +161,7 @@ pub fn issue_loan(
 ) -> Vec<Call> {
 	let mut calls = Vec::new();
 	calls.push(mint_nft_call(
-		pool_id,
+		manager.collateral_class_id(pool_id),
 		manager.next_collateral_id(pool_id),
 		owner,
 	));

@@ -21,11 +21,14 @@ use crate::pools::utils::{
 	tokens::DECIMAL_BASE_12,
 };
 use fudge::primitives::Chain;
+use pallet_loans::types::Asset;
+use runtime_common::{AccountId, Address, Balance, InstanceId};
+use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::Storage;
 use tokio::runtime::Handle;
 
 #[tokio::test]
-async fn create_pool() {
+async fn create_init_and_price() {
 	let manager = env::task_manager(Handle::current());
 	let mut env = {
 		let mut genesis = Storage::default();
@@ -37,7 +40,6 @@ async fn create_pool() {
 	let pool_id = 0u64;
 	let loan_amount = 10_000 * DECIMAL_BASE_12;
 	let maturity = 90 * SECONDS_PER_DAY;
-
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),
@@ -49,28 +51,14 @@ async fn create_pool() {
 			pool_id,
 			loan_amount,
 			maturity,
-			&mut nft_manager
-		),
-		borrow_call(
-			pool_id,
-			nft_manager.curr_loan_id(pool_id),
-			Amount::from_inner(loan_amount)
+			&mut nft_manager,
 		)
 	);
-
-	let (block, pool, account) = env
-		.with_state(Chain::Para(PARA_ID), || {
-			(
-				frame_system::Pallet::<Runtime>::block_number(),
-				pallet_pools::Pallet::<Runtime>::pool(pool_id),
-				frame_system::Pallet::<Runtime>::account(Keyring::Admin.to_account_id()),
-			)
-		})
-		.expect("Get state is available.");
 
 	let events = env::events!(
 		env,
 		Chain::Para(PARA_ID),
+		Event,
 		EventRange::All,
 		Event::Loans(..)
 			| Event::Pools(..)
@@ -78,7 +66,55 @@ async fn create_pool() {
 			| Event::System(frame_system::Event::ExtrinsicFailed { .. })
 	);
 
-	for event in events {
+	for event in events.iter() {
 		tracing::event!(tracing::Level::INFO, ?event);
 	}
+
+	assert!(events.contains(&Event::Pools(pallet_pools::Event::Created(
+		0,
+		Keyring::Admin.to_account_id(),
+	))));
+	assert!(
+		events.contains(&Event::Uniques(pallet_uniques::Event::Created {
+			class: 0,
+			creator: Keyring::Admin.to_account_id(),
+			owner: Keyring::Admin.to_account_id()
+		}))
+	);
+	assert!(
+		events.contains(&Event::Uniques(pallet_uniques::Event::Created {
+			class: 4294967296,
+			creator: Keyring::Admin.to_account_id(),
+			owner: Keyring::Admin.to_account_id()
+		}))
+	);
+	assert!(
+		events.contains(&Event::Uniques(pallet_uniques::Event::Issued {
+			class: 4294967296,
+			instance: InstanceId(1),
+			owner: Keyring::Admin.to_account_id()
+		}))
+	);
+	assert!(
+		events.contains(&Event::Uniques(pallet_uniques::Event::Issued {
+			class: 0,
+			instance: InstanceId(1),
+			owner: Keyring::Admin.to_account_id()
+		}))
+	);
+	assert!(
+		events.contains(&Event::Uniques(pallet_uniques::Event::Transferred {
+			class: 4294967296,
+			instance: InstanceId(1),
+			from: Keyring::Admin.to_account_id(),
+			to: common_types::PoolLocator { pool_id }.into_account()
+		}))
+	);
+	assert!(events.contains(&Event::Loans(pallet_loans::Event::PoolInitialised(0))));
+	assert!(events.contains(&Event::Loans(pallet_loans::Event::Created(
+		0,
+		InstanceId(1),
+		Asset(4294967296, InstanceId(1))
+	))));
+	assert!(events.contains(&Event::Loans(pallet_loans::Event::Priced(0, InstanceId(1)))));
 }
