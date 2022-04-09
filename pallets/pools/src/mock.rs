@@ -2,7 +2,7 @@ use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::{CurrencyId, Moment};
-use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use common_types::{PermissionRoles, PoolRole, Role, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
@@ -108,7 +108,7 @@ parameter_types! {
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Location = u64;
-	type Role = PoolRole<TrancheId, Moment>;
+	type Role = Role<CurrencyId, TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;

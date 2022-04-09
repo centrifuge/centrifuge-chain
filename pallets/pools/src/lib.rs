@@ -21,7 +21,7 @@ pub mod weights;
 use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
-use common_types::{Moment, PoolLocator, PoolRole};
+use common_types::{Moment, PoolLocator, PoolRole, Role};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -274,7 +274,7 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Location = Self::PoolId,
-			Role = PoolRole<Self::TrancheId, Moment>,
+			Role = Role<Self::CurrencyId, Self::TrancheId, Moment>,
 			Error = DispatchError,
 		>;
 
@@ -533,7 +533,7 @@ pub mod pallet {
 					metadata: None,
 				},
 			);
-			T::Permission::add(pool_id, admin.clone(), PoolRole::PoolAdmin)?;
+			T::Permission::add(pool_id, admin.clone(), Role::PoolRole(PoolRole::PoolAdmin))?;
 			Self::deposit_event(Event::Created(pool_id, admin));
 			Ok(())
 		}
@@ -555,7 +555,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(pool_id, who.clone(), Role::PoolRole(PoolRole::PoolAdmin)),
 				BadOrigin
 			);
 
@@ -589,7 +589,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(pool_id, who.clone(), Role::PoolRole(PoolRole::PoolAdmin)),
 				BadOrigin
 			);
 
@@ -621,7 +621,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::LiquidityAdmin),
+				T::Permission::has(
+					pool_id,
+					who.clone(),
+					Role::PoolRole(PoolRole::LiquidityAdmin)
+				),
 				BadOrigin
 			);
 
@@ -650,7 +654,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(pool_id, who.clone(), Role::PoolRole(PoolRole::PoolAdmin)),
 				BadOrigin
 			);
 
@@ -717,7 +721,7 @@ pub mod pallet {
 						T::Permission::has(
 							pool_id,
 							who.clone(),
-							PoolRole::TrancheInvestor(tranche_id, Self::now())
+							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
 					);
@@ -782,7 +786,7 @@ pub mod pallet {
 						T::Permission::has(
 							pool_id,
 							who.clone(),
-							PoolRole::TrancheInvestor(tranche_id, Self::now())
+							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
 					);

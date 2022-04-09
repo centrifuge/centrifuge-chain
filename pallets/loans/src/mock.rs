@@ -19,7 +19,7 @@ use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_types::CurrencyId;
 use common_types::PoolLocator;
-use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use common_types::{PermissionRoles, PoolRole, Role, TimeProvider};
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
@@ -244,7 +244,7 @@ parameter_types! {
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Location = u64;
-	type Role = PoolRole;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;

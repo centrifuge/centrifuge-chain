@@ -67,7 +67,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 use common_traits::Permissions as PermissionsT;
 use common_traits::PreConditions;
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use common_types::{PermissionRoles, PoolRole, Role, TimeProvider, UNION};
 use pallet_anchors::AnchorData;
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
@@ -1011,7 +1011,7 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Location = PoolId;
-	type Role = PoolRole<TrancheId, Moment>;
+	type Role = Role<CurrencyId, TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -1023,25 +1023,26 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<PoolRole<TrancheId, Moment>>,
+		Option<Role<CurrencyId, TrancheId, Moment>>,
 		PoolId,
-		PoolRole<TrancheId, Moment>,
+		Role<CurrencyId, TrancheId, Moment>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<PoolRole<TrancheId, Moment>>,
+			Option<Role<CurrencyId, TrancheId, Moment>>,
 			PoolId,
-			PoolRole<TrancheId, Moment>,
+			Role<CurrencyId, TrancheId, Moment>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				PoolRole::PoolAdmin => true,
-				PoolRole::MemberListAdmin => match *role {
-					PoolRole::TrancheInvestor(_, _) => true,
+				// TODO: handle admins for permissioned assets
+				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,
 				},
 				_ => false,
@@ -1055,7 +1056,7 @@ impl
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
+	P: PermissionsT<AccountId, Location = PoolId, Role = Role<CurrencyId>>,
 {
 	type Result = bool;
 
@@ -1069,9 +1070,17 @@ where
 
 		match id {
 			CurrencyId::Usd | CurrencyId::Native => true,
+			CurrencyId::PermissionedAsset(permissioned_asset_type) => false, // TODO
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
+				P::has(
+					pool_id,
+					send,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				) && P::has(
+					pool_id,
+					recv,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				)
 			}
 		}
 	}
