@@ -712,16 +712,16 @@ pub mod pallet {
 			let tranche_id =
 				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche_id = pool
+					let tranche = pool
 						.tranches
-						.tranche_id(tranche_loc)
+						.get_tranche(tranche_loc)
 						.ok_or(Error::<T>::InvalidTrancheId)?;
 
 					ensure!(
 						T::Permission::has(
 							pool_id,
 							who.clone(),
-							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+							Role::PermissionedAssetHolder(tranche.currency, Self::now())
 						),
 						BadOrigin
 					);
@@ -777,16 +777,16 @@ pub mod pallet {
 			let tranche_id =
 				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche_id = pool
+					let tranche = pool
 						.tranches
-						.tranche_id(tranche_loc)
+						.get_tranche(tranche_loc)
 						.ok_or(Error::<T>::InvalidTrancheId)?;
 
 					ensure!(
 						T::Permission::has(
 							pool_id,
 							who.clone(),
-							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+							Role::PermissionedAssetHolder(tranche.currency, Self::now())
 						),
 						BadOrigin
 					);
