@@ -991,6 +991,7 @@ impl pallet_loans::Config for Runtime {
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
+	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;

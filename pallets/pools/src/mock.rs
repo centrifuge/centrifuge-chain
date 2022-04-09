@@ -233,7 +233,7 @@ impl pallet_restricted_tokens::Config for Test {
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<u64, Location = u64, Role = PoolRole<TrancheId>>,
+	P: PermissionsT<u64, Location = u64, Role = Role<CurrencyId, TrancheId>>,
 {
 	type Result = bool;
 

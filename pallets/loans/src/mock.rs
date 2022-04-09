@@ -244,7 +244,7 @@ parameter_types! {
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Location = u64;
-	type Role = Role;
+	type Role = Role<CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
@@ -268,6 +268,7 @@ impl pallet_loans::Config for MockRuntime {
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
+	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
