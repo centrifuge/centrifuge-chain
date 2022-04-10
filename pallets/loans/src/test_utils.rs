@@ -101,17 +101,6 @@ pub(crate) fn create<T>(
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 
-	set_role::<T>(
-		pool_id.into(),
-		junior_investor.clone(),
-		PoolRole::TrancheInvestor(JuniorTrancheId::get().into(), 0u32.into()),
-	);
-	set_role::<T>(
-		pool_id.into(),
-		senior_investor.clone(),
-		PoolRole::TrancheInvestor(SeniorTrancheId::get().into(), 0u32.into()),
-	);
-
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
 		RawOrigin::Signed(owner.clone()).into(),
@@ -131,6 +120,17 @@ pub(crate) fn create<T>(
 		(100_000 * CURRENCY).into(),
 	));
 
+	set_role::<T>(
+		pool_id.into(),
+		junior_investor.clone(),
+		PoolRole::TrancheInvestor(JuniorTrancheId::get().into(), 999_999_999u32.into()),
+	);
+	set_role::<T>(
+		pool_id.into(),
+		senior_investor.clone(),
+		PoolRole::TrancheInvestor(SeniorTrancheId::get().into(), 999_999_999u32.into()),
+	);
+
 	assert_ok!(PoolPallet::<T>::update_invest_order(
 		RawOrigin::Signed(junior_investor.clone()).into(),
 		pool_id,
@@ -145,6 +145,15 @@ pub(crate) fn create<T>(
 	));
 	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
 		.expect("update nav should work");
+
+	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
+		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;
+		pool.parameters.min_epoch_time = 0;
+		pool.parameters.challenge_time = 0;
+		pool.parameters.max_nav_age = 999_999_999_999;
+		Ok(())
+	})
+	.expect("Could not fixup pool parameters");
 
 	assert_ok!(PoolPallet::<T>::close_epoch(
 		RawOrigin::Signed(owner).into(),
@@ -193,6 +202,20 @@ where
 	let nav = pallet_loans::PoolNAV::<T>::get(pool_id).unwrap();
 	assert!(nav.latest == Zero::zero());
 	class_id
+}
+
+pub(crate) fn get_tranche_id<T>(
+	pool_id: <T as pallet_pools::Config>::PoolId,
+	index: u64,
+) -> <T as pallet_pools::Config>::TrancheId
+where
+	T: pallet_pools::Config,
+{
+	pallet_pools::Pool::<T>::get(pool_id)
+		.unwrap()
+		.tranches
+		.tranche_id(TrancheLoc::Index(index))
+		.unwrap()
 }
 
 pub(crate) fn assert_last_event<T, E>(generic_event: E)

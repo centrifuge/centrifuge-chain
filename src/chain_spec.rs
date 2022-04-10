@@ -102,8 +102,6 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		ChainType::Live,
 		move || {
 			centrifuge_genesis(
-				// 4fKpoZoBEvw2K48tQf5rMAfexaX9fS9WbsEqWPTaREWBRvhs
-				hex!["b03cd3fb823de75f888ac647105d7820476a6b1943a74af840996d2b28e64017"].into(),
 				vec![
 					(
 						// 4dsemFj9QroJbpP1Zdd18DXVvYeyo6ymvnGTEvEvs5ikPCxF
@@ -157,7 +155,6 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 		ChainType::Live,
 		move || {
 			centrifuge_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![
 					(
 						get_account_id_from_seed::<sr25519::Public>("Alice"),
@@ -197,7 +194,6 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 		ChainType::Local,
 		move || {
 			centrifuge_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<centrifuge_runtime::AuraId>("Alice"),
@@ -232,8 +228,6 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 		ChainType::Live,
 		move || {
 			centrifuge_genesis(
-				//4fxfeWgBta4tHPX8Ab4LRvLATmQK1v6VLt1PzHruVYtkpD3R
-				hex!["cc5615f974947b126361c494090dd621777896c3f606912d9c772bdffeda4924"].into(),
 				vec![
 					(
 						//4cSqT4wpxaSUwwmJoGvz6pXX31T5iP8SRyxrQRExquaQScwP
@@ -290,7 +284,6 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 		ChainType::Local,
 		move || {
 			centrifuge_genesis(
-				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				vec![(
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 					get_from_seed::<altair_runtime::AuraId>("Alice"),
@@ -697,7 +690,6 @@ fn endowed_accounts() -> Vec<AccountId> {
 }
 
 fn centrifuge_genesis(
-	root_key: AccountId,
 	initial_authorities: Vec<(centrifuge_runtime::AccountId, centrifuge_runtime::AuraId)>,
 	endowed_accounts: Vec<centrifuge_runtime::AccountId>,
 	total_issuance: Option<centrifuge_runtime::Balance>,
@@ -747,9 +739,6 @@ fn centrifuge_genesis(
 			)],
 		},
 		vesting: Default::default(),
-		sudo: centrifuge_runtime::SudoConfig {
-			key: Some(root_key),
-		},
 		parachain_info: centrifuge_runtime::ParachainInfoConfig { parachain_id: id },
 		session: centrifuge_runtime::SessionConfig {
 			keys: initial_authorities

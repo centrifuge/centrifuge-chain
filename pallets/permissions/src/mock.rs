@@ -18,8 +18,8 @@ use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::testing::{Header, H256};
 use frame_support::sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use frame_support::traits::{Contains, Everything, SortedMembers};
-use frame_system::EnsureSignedBy;
+use frame_support::traits::{Contains, EnsureOneOf, Everything, SortedMembers};
+use frame_system::{EnsureRoot, EnsureSignedBy};
 use pallet_permissions::Properties;
 use sp_runtime::traits::AccountIdConversion;
 
@@ -27,6 +27,7 @@ use sp_runtime::traits::AccountIdConversion;
 pub enum OrganisationRole {
 	SeniorExeutive,
 	HeadOfSaubermaching,
+	Admin,
 }
 
 #[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
@@ -47,6 +48,7 @@ bitflags::bitflags! {
 		pub struct OrgStorage: u32 {
 			const SENIOR_EXEC = 0b00000001;
 			const HEAD_OF_SAUBERMACHING  = 0b00000010;
+					const ADMIN = 0b00000100;
 		}
 }
 
@@ -80,6 +82,12 @@ pub enum Location {
 	PalletB,
 }
 
+impl Default for Location {
+	fn default() -> Self {
+		Self::PalletA
+	}
+}
+
 impl Properties for Storage {
 	type Property = Role;
 	type Error = ();
@@ -96,6 +104,7 @@ impl Properties for Storage {
 				OrganisationRole::HeadOfSaubermaching => {
 					self.org.contains(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
+				OrganisationRole::Admin => self.org.contains(OrgStorage::ADMIN),
 			},
 		}
 	}
@@ -115,6 +124,7 @@ impl Properties for Storage {
 				OrganisationRole::HeadOfSaubermaching => {
 					self.org.remove(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
+				OrganisationRole::Admin => self.org.remove(OrgStorage::ADMIN),
 			},
 		};
 		Ok(())
@@ -131,6 +141,7 @@ impl Properties for Storage {
 				OrganisationRole::HeadOfSaubermaching => {
 					self.org.insert(OrgStorage::HEAD_OF_SAUBERMACHING)
 				}
+				OrganisationRole::Admin => self.org.insert(OrgStorage::ADMIN),
 			},
 		};
 		Ok(())
@@ -270,12 +281,14 @@ parameter_types! {
 	pub const MaxRoles: u32 = 10;
 }
 
+type AdminOrigin = EnsureOneOf<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
+
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Location = Location;
 	type Role = Role;
 	type Storage = Storage;
-	type AdminOrigin = EnsureSignedBy<One, u64>;
+	type AdminOrigin = AdminOrigin;
 	type Editors = Editors;
 	type MaxRolesPerLocation = MaxRoles;
 	type WeightInfo = ();
@@ -300,12 +313,13 @@ impl AccountIdConversion<AccountId> for WrapperAccount {
 pub struct Editors;
 impl Contains<(AccountId, Option<Role>, Location, Role)> for Editors {
 	fn contains(t: &(AccountId, Option<Role>, Location, Role)) -> bool {
-		let (account, _maybe_role, _location, role) = t;
+		let (account, with_role, _location, role) = t;
 		let dummy = DummyAccount::get();
 
-		match account {
-			1 => true,
-			_x if dummy == *account => match role {
+		match (account, role, with_role) {
+			(_, _, Some(Role::Organisation(OrganisationRole::Admin))) => true,
+			(1, _, _) => true,
+			(x, role, _) if *x == dummy => match role {
 				Role::Xcm(xcm) => match xcm {
 					XcmRole::Receiver => true,
 					XcmRole::Sender => false,

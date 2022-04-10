@@ -4,7 +4,7 @@ use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
-use frame_support::traits::SortedMembers;
+use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
@@ -66,15 +66,15 @@ mod fake_nav {
 	}
 
 	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
-		type ClassId = ();
-		type Origin = ();
+		type ClassId = u64;
+		type Origin = super::Origin;
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
 			Some(Self::latest(pool_id))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
 		}
-		fn initialise(_: (), _: T::PoolId, _: ()) -> DispatchResult {
+		fn initialise(_: Self::Origin, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
 			Ok(())
 		}
 	}
@@ -302,6 +302,17 @@ impl Config for Test {
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
+	type PoolCurrency = PoolCurrency;
+}
+
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
+			CurrencyId::Usd => true,
+		}
+	}
 }
 
 impl fake_nav::Config for Test {
