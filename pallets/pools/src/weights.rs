@@ -49,8 +49,6 @@ pub trait WeightInfo {
 	fn close_epoch_execute(n: u32) -> Weight;
 	fn submit_solution(n: u32) -> Weight;
 	fn execute_epoch(n: u32) -> Weight;
-	fn approve_role_for(n: u32) -> Weight;
-	fn revoke_role_for() -> Weight;
 }
 
 /// Weights for pallet_pools using the Substrate node and recommended hardware.
@@ -144,19 +142,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
 	}
-	fn approve_role_for(n: u32) -> Weight {
-		(52_518_000 as Weight)
-			// Standard Error: 444_000
-			.saturating_add((26_761_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(T::DbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-	fn revoke_role_for() -> Weight {
-		(67_424_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
 }
 
 // For backwards compatibility and tests
@@ -248,18 +233,5 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-	fn approve_role_for(n: u32) -> Weight {
-		(52_518_000 as Weight)
-			// Standard Error: 444_000
-			.saturating_add((26_761_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-	fn revoke_role_for() -> Weight {
-		(67_424_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }

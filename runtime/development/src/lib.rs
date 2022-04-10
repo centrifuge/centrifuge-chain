@@ -854,8 +854,19 @@ impl pallet_pools::Config for Runtime {
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
-	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
+	type PoolCurrency = PoolCurrency;
+}
+
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
+			CurrencyId::Usd => true,
+		}
+	}
 }
 
 parameter_types! {
@@ -983,7 +994,7 @@ impl pallet_loans::Config for Runtime {
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
 	type NormalizedDebt = common_traits::InterestAccrual::NormalizedDebt;
-	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
@@ -1762,16 +1773,21 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			impl pallet_loans::benchmarking::Config for Runtime {}
+
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
 			add_benchmark!(params, batches, pallet_crowdloan_reward, CrowdloanReward);
 			add_benchmark!(params, batches, pallet_collator_allowlist, CollatorAllowlist);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
+			add_benchmark!(params, batches, pallet_restricted_tokens, Tokens);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
-
+			add_benchmark!(params, batches, pallet_pools, Pools);
+			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1784,6 +1800,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1793,10 +1810,12 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_crowdloan_reward, CrowdloanReward);
 			list_benchmark!(list, extra, pallet_collator_allowlist, CollatorAllowlist);
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
-			// list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
+			list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_pools, Pools);
+			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

@@ -16,7 +16,7 @@ mod solution;
 #[cfg(test)]
 mod tests;
 mod tranche;
-mod weights;
+pub mod weights;
 
 use codec::HasCompact;
 use common_traits::Permissions;
@@ -57,7 +57,6 @@ where
 	/// Details about the reserve (unused capital) in the pool.
 	pub reserve: ReserveDetails<Balance>,
 }
-
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {
 	/// Investments will be allowed up to this amount.
@@ -188,6 +187,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 pub mod pallet {
 	use super::*;
 	use frame_support::sp_runtime::traits::Convert;
+	use frame_support::traits::Contains;
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
 	use sp_runtime::ArithmeticError;
@@ -237,7 +237,13 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		type PoolId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
 
 		type TrancheId: Member
 			+ Parameter
@@ -258,6 +264,8 @@ pub mod pallet {
 			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
+
+		type PoolCurrency: Contains<Self::CurrencyId>;
 
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
@@ -447,6 +455,8 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
+		/// A user has tried to create a pool with an invalid currency
+		InvalidCurrency,
 	}
 
 	#[pallet::call]
@@ -463,7 +473,7 @@ pub mod pallet {
 		///
 		/// The caller will be given the `PoolAdmin` role for
 		/// the created pool. Additional administrators can be
-		/// added with `approve_role_for`.
+		/// added with the Permissions pallet.
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
@@ -480,6 +490,11 @@ pub mod pallet {
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
+
+			ensure!(
+				T::PoolCurrency::contains(&currency),
+				Error::<T>::InvalidCurrency
+			);
 
 			Self::is_valid_tranche_change(None, &tranches)?;
 
@@ -596,7 +611,7 @@ pub mod pallet {
 		/// The caller must have the `LiquidityAdmin` role in
 		/// order to invoke this extrinsic. This role is not
 		/// given to the pool creator by default, and must be
-		/// added with `approve_role_for` before this
+		/// added with the Permissions pallet before this
 		/// extrinsic can be called.
 		#[pallet::weight(T::WeightInfo::set_max_reserve())]
 		pub fn set_max_reserve(
@@ -627,6 +642,7 @@ pub mod pallet {
 		/// passed in. This configuration must contain the same
 		/// number of tranches that the pool was created with.
 		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[transactional]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -648,7 +664,7 @@ pub mod pallet {
 
 				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
 
-				pool.tranches.combine_with_mut_non_residual_top(
+				pool.tranches.combine_with_mut_residual_top(
 					tranches.into_iter(),
 					|tranche, (new_tranche_type, seniority)| {
 						tranche.tranche_type = new_tranche_type;

@@ -121,12 +121,6 @@ benchmarks! {
   }
 }
 
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(None),
-	crate::mock::T,
-);
-
 // Helper functions from here on
 //
 fn get_contribution<T: Config>(amount: u128) -> T::Balance {
