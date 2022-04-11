@@ -123,9 +123,6 @@ pub mod types {
 	/// Amount with 18 precision fixed point decimal
 	pub type Amount = crate::fixed_point::Amount;
 
-	/// PoolId type we use.
-	pub type PoolId = u64;
-
 	/// A representation of ClassId for Uniques
 	pub type ClassId = u64;
 

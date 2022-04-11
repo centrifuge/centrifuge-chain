@@ -26,7 +26,10 @@ pub mod weights;
 
 /// Who informs about the caller's role
 enum Who {
+	/// Admins can add/remove permissions,
+	/// and purge other users permissions.
 	Admin,
+	/// Editors can add/remove permissions
 	Editor,
 }
 

@@ -37,6 +37,9 @@ pub use tokens::*;
 mod tests;
 mod tokens;
 
+/// PoolId type we use.
+pub type PoolId = u64;
+
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -49,14 +52,22 @@ pub enum PoolRole {
 	RiskAdmin,
 }
 
-// NOTE: In order to not carry around the Moment all the time, we give it a default.
+// NOTE: In order to not carry around the Moment all the time, w	e give it a default.
 //       In case the Role we provide does not match what we expect. I.e. if we change the Moment
 //       type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum Role<CurrencyId, Moment = u64> {
+pub enum Role<Moment = u64> {
 	PoolRole(PoolRole),
-	PermissionedAssetHolder(CurrencyId, Moment),
+	PermissionedAssetHolder(Moment),
+	PermissionedAssetAdmin,
+}
+
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum PermissionLocation {
+  Pool(PoolId),
+  Currency(CurrencyId),
 }
 
 bitflags::bitflags! {
@@ -69,6 +80,7 @@ bitflags::bitflags! {
 		const LIQUIDITY_ADMIN = 0b00001000;
 		const MEMBER_LIST_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
+		const PERMISSIONED_ASSET_ADMIN = 0b01000000;
 	}
 }
 
@@ -138,7 +150,7 @@ where
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 	CurrencyId: PartialEq + PartialOrd,
 {
-	type Property = Role<CurrencyId, Moment>;
+	type Property = Role<Moment>;
 	type Error = ();
 	type Ok = ();
 
@@ -159,7 +171,7 @@ where
 	}
 
 	fn empty(&self) -> bool {
-		self.admin.is_empty() && self.tranche_investor.is_empty()
+		self.admin.is_empty() && self.permissioned_asset_holder.is_empty()
 	}
 
 	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
