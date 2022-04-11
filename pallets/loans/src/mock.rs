@@ -17,6 +17,7 @@
 //! and some helper functions.
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+use common_traits::PoolUpdateGuard;
 use common_types::CurrencyId;
 use common_types::PoolLocator;
 use common_types::{PermissionRoles, PoolRole, TimeProvider};
@@ -28,6 +29,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
+use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
 	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
@@ -179,7 +181,6 @@ impl pallet_pools::Config for MockRuntime {
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
 	type MinUpdateDelay = MinUpdateDelay;
-	type RequireRedeemFulfillmentsBeforeUpdates = RequireRedeemFulfillmentsBeforeUpdates;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
@@ -192,6 +193,31 @@ impl pallet_pools::Config for MockRuntime {
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();
 	type TrancheWeight = runtime_common::TrancheWeight;
+	type UpdateGuard = UpdateGuard;
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type PoolDetails = PoolDetails<
+		CurrencyId,
+		u32,
+		Balance,
+		Rate,
+		MaxSizeMetadata,
+		runtime_common::TrancheWeight,
+		TrancheId,
+		PoolId,
+	>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type Moment = Moment;
+
+	fn released(
+		_pool: &Self::PoolDetails,
+		_update: &Self::ScheduledUpdateDetails,
+		_now: Self::Moment,
+	) -> bool {
+		true
+	}
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime

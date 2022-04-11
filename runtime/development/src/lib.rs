@@ -65,10 +65,11 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use common_traits::Permissions as PermissionsT;
-use common_traits::PreConditions;
+use common_traits::{PoolUpdateGuard, PreConditions};
 pub use common_types::CurrencyId;
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use pallet_anchors::AnchorData;
+use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
@@ -814,9 +815,8 @@ impl pallet_claims::Config for Runtime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
-	pub const ChallengeTime: BlockNumber = 2 * MINUTES;
 	pub const MinUpdateDelay: u64 = 0; // no delay
-	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
+	pub const ChallengeTime: BlockNumber = 2 * MINUTES;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
@@ -849,7 +849,6 @@ impl pallet_pools::Config for Runtime {
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
 	type MinUpdateDelay = MinUpdateDelay;
-	type RequireRedeemFulfillmentsBeforeUpdates = RequireRedeemFulfillmentsBeforeUpdates;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
@@ -862,6 +861,7 @@ impl pallet_pools::Config for Runtime {
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
+	type UpdateGuard = UpdateGuard;
 }
 
 pub struct PoolCurrency;
@@ -871,6 +871,48 @@ impl Contains<CurrencyId> for PoolCurrency {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
 			CurrencyId::Usd => true,
 		}
+	}
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type PoolDetails = PoolDetails<
+		CurrencyId,
+		u32,
+		Balance,
+		Rate,
+		MaxSizeMetadata,
+		TrancheWeight,
+		TrancheId,
+		PoolId,
+	>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type Moment = Moment;
+
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool {
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		// let acc_outstanding_redemptions = pool.tranches.acc_outstanding_redemptions().unwrap_or(false);
+		// if !acc_outstanding_redemptions.is_zero() {
+		// 	return false;
+		// }
+
+		return true;
 	}
 }
 

@@ -1,6 +1,6 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
-use common_traits::{Permissions as PermissionsT, PreConditions};
+use common_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
 use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
@@ -13,6 +13,7 @@ use frame_support::{
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
+use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
 use sp_core::H256;
 use sp_runtime::{
@@ -294,7 +295,6 @@ impl Config for Test {
 	type Time = Timestamp;
 	type ChallengeTime = ChallengeTime;
 	type MinUpdateDelay = MinUpdateDelay;
-	type RequireRedeemFulfillmentsBeforeUpdates = RequireRedeemFulfillmentsBeforeUpdates;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
@@ -308,6 +308,7 @@ impl Config for Test {
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
+	type UpdateGuard = UpdateGuard;
 }
 
 pub struct PoolCurrency;
@@ -317,6 +318,22 @@ impl Contains<CurrencyId> for PoolCurrency {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native => false,
 			CurrencyId::Usd => true,
 		}
+	}
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type PoolDetails =
+		PoolDetails<CurrencyId, u32, Balance, Rate, MaxSizeMetadata, TrancheWeight, TrancheId, u64>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type Moment = Moment;
+
+	fn released(
+		_pool: &Self::PoolDetails,
+		_update: &Self::ScheduledUpdateDetails,
+		_now: Self::Moment,
+	) -> bool {
+		true
 	}
 }
 

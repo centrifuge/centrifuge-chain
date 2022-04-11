@@ -29,7 +29,7 @@ pub mod weights;
 
 use codec::HasCompact;
 use common_traits::Permissions;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use common_traits::{PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken};
 use common_types::{Moment, PoolLocator, PoolRole};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
@@ -288,6 +288,12 @@ pub mod pallet {
 
 		type PoolCurrency: Contains<Self::CurrencyId>;
 
+		type UpdateGuard: PoolUpdateGuard<
+			PoolDetails = PoolDetailsOf<Self>,
+			ScheduledUpdateDetails = ScheduledUpdateDetails<Self::InterestRate>,
+			Moment = Moment,
+		>;
+
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ Transfer<Self::AccountId>;
@@ -322,7 +328,6 @@ pub mod pallet {
 
 		/// Pool update settings
 		type MinUpdateDelay: Get<u64>;
-		type RequireRedeemFulfillmentsBeforeUpdates: Get<bool>;
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -476,8 +481,8 @@ pub mod pallet {
 		NoScheduledUpdate,
 		/// Scheduled time for this update is in the future
 		ScheduledTimeHasNotPassed,
-		/// In the last executed epoch, not all redemptions were fulfilled
-		RedemptionsHaveNotBeenFulfilled,
+		/// Update cannot be fulfilled yet
+		UpdatePrerequesitesNotFulfilled,
 		/// A user has tried to create a pool with an invalid currency
 		InvalidCurrency,
 	}
@@ -610,19 +615,18 @@ pub mod pallet {
 				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
 			}
 
-			if T::MinUpdateDelay::get() == 0
-				&& T::RequireRedeemFulfillmentsBeforeUpdates::get() == false
-			{
+			let now = Self::now();
+
+			let update = ScheduledUpdateDetails {
+				changes: changes.clone(),
+				scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
+			};
+
+			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 				Self::do_update_pool(&pool_id, &changes)
 			} else {
 				// If an update was already stored, this will override it
-				ScheduledUpdate::<T>::insert(
-					pool_id,
-					ScheduledUpdateDetails {
-						changes: changes.clone(),
-						scheduled_time: Self::now().saturating_add(T::MinUpdateDelay::get()),
-					},
-				);
+				ScheduledUpdate::<T>::insert(pool_id, update);
 
 				Ok(())
 			}
@@ -649,27 +653,14 @@ pub mod pallet {
 				Error::<T>::ScheduledTimeHasNotPassed
 			);
 
-			if T::RequireRedeemFulfillmentsBeforeUpdates::get() == true {
-				let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
 
-				// The epoch in which the redemptions were fulfilled,
-				// should have closed after the scheduled time already,
-				// to ensure that investors had the `MinUpdateDelay`
-				// to submit their redemption orders.
-				ensure!(
-					Self::now() >= pool.epoch.last_closed,
-					Error::<T>::ScheduledTimeHasNotPassed
-				);
+			ensure!(
+				T::UpdateGuard::released(&pool, &update, Self::now()),
+				Error::<T>::UpdatePrerequesitesNotFulfilled
+			);
 
-				ensure!(
-					pool.tranches.acc_outstanding_redemptions()?.is_zero(),
-					Error::<T>::RedemptionsHaveNotBeenFulfilled
-				);
-
-				Self::do_update_pool(&pool_id, &update.changes)?;
-			} else {
-				Self::do_update_pool(&pool_id, &update.changes)?;
-			}
+			Self::do_update_pool(&pool_id, &update.changes)?;
 
 			Ok(())
 		}
