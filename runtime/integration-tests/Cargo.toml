@@ -52,7 +52,7 @@ xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "releas
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
 rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17"}
+polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 
 # Cumulus
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.17" }
@@ -69,11 +69,10 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev="24ccbce5
 
 # Local
 runtime-common = { path = "../common" }
+common-traits = { path = "../../libs/common-traits" }
 development-runtime = { path = "../development", optional = true }
 altair-runtime = { path = "../altair", optional = true }
 centrifuge-runtime = { path = "../centrifuge", optional = true }
-
-common-traits = { path = "../../libs/common-traits" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -82,6 +81,7 @@ xcm-executor = { git = "https://github.com/paritytech/polkadot", default-feature
 [features]
 default = [ "runtime-development" ]
 runtime-benchmarks = [ "default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks"]
+# TODO(nuno): Remove "kusama-runtime" from `runtime-development` once XCM is available on Altair
 runtime-development = ["rococo-runtime", "development-runtime", "kusama-runtime"]
 runtime-altair = ["kusama-runtime", "altair-runtime"]
 runtime-centrifuge = ["polkadot-runtime", "centrifuge-runtime"]
