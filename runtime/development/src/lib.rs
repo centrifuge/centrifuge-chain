@@ -1339,12 +1339,19 @@ pub type Trader = (
 pub struct ToTreasury;
 impl TakeRevenue for ToTreasury {
 	fn take_revenue(revenue: MultiAsset) {
+		use orml_traits::MultiCurrency;
+		use xcm_executor::traits::Convert;
+
 		if let MultiAsset {
-			id: Concrete(_location),
-			fun: Fungible(_amount),
+			id: Concrete(location),
+			fun: Fungible(amount),
 		} = revenue
 		{
-			// TODO(nuno): implement this
+			if let Ok(currency_id) =
+				<CurrencyIdConvert as Convert<MultiLocation, CurrencyId>>::convert(location)
+			{
+				let _ = OrmlTokens::deposit(currency_id, &TreasuryAccount::get(), amount);
+			}
 		}
 	}
 }
