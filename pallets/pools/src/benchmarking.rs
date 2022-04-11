@@ -67,10 +67,17 @@ benchmarks! {
 
 	update {
 		let caller: T::AccountId = account("admin", 0, 0);
-		create_pool::<T>(1, caller.clone())?;
-	}: update(RawOrigin::Signed(caller), POOL, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_HOUR)
+		let n in 1..T::MaxTranches::get();
+		let tranches = build_update_tranches::<T>(n);
+		create_pool::<T>(n, caller.clone())?;
+	}: update(RawOrigin::Signed(caller), POOL, PoolChanges {
+		tranches: Change::NewValue(tranches.clone()),
+		min_epoch_time: Change::NewValue(SECS_PER_DAY),
+		max_nav_age: Change::NewValue(SECS_PER_HOUR),
+	})
 	verify {
 		let pool = get_pool::<T>();
+		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
@@ -94,17 +101,6 @@ benchmarks! {
 	}: set_max_reserve(RawOrigin::Signed(caller), POOL, max_reserve)
 	verify {
 		assert_eq!(get_pool::<T>().reserve.max, max_reserve);
-	}
-
-	update_tranches {
-		let caller: T::AccountId = account("admin", 0, 0);
-		let n in 1..T::MaxTranches::get();
-		let tranches = build_update_tranches::<T>(n);
-		create_pool::<T>(n, caller.clone())?;
-	}: update_tranches(RawOrigin::Signed(caller), POOL, tranches.clone())
-	verify {
-		let pool = get_pool::<T>();
-		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 	}
 
 	update_invest_order {
@@ -289,7 +285,6 @@ fn populate_epochs<T: Config<PoolId = u64, TrancheId = [u8; 16], EpochId = u32>>
 fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	Pool::<T>::mutate(POOL, |pool| {
 		let pool = pool.as_mut().unwrap();
-		pool.parameters.challenge_time = 0;
 		pool.parameters.min_epoch_time = 0;
 		pool.parameters.max_nav_age = u64::MAX;
 	});
