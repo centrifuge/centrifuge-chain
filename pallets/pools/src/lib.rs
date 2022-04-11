@@ -1110,10 +1110,8 @@ pub mod pallet {
 
 				// Challenge period starts when the first new solution has been submitted
 				if epoch.challenge_period_end.is_none() {
-					epoch.challenge_period_end = Some(
-						<frame_system::Pallet<T>>::block_number()
-							.saturating_add(T::ChallengeTime::get()),
-					);
+					epoch.challenge_period_end =
+						Some(Self::current_block().saturating_add(T::ChallengeTime::get()));
 				}
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
@@ -1166,7 +1164,7 @@ pub mod pallet {
 					epoch
 						.challenge_period_end
 						.expect("Challenge period is some. qed.")
-						<= <frame_system::Pallet<T>>::block_number(),
+						<= Self::current_block(),
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
@@ -1204,6 +1202,10 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
+		}
+
+		pub(crate) fn current_block() -> <T as frame_system::Config>::BlockNumber {
+			<frame_system::Pallet<T>>::block_number()
 		}
 
 		/// Scores a solution.
