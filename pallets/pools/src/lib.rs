@@ -1327,7 +1327,7 @@ pub mod pallet {
 				if let Change::NewValue(tranches) = &changes.tranches {
 					let now = Self::now();
 
-					pool.tranches.combine_with_mut_non_residual_top(
+					pool.tranches.combine_with_mut_residual_top(
 						tranches.into_iter(),
 						|tranche, (new_tranche_type, seniority)| {
 							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
