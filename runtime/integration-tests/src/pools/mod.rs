@@ -11,5 +11,6 @@
 // GNU General Public License for more details.
 
 mod env;
+mod loan_defaults;
 mod pool_starts;
 mod utils;

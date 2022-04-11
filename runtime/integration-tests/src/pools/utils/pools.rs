@@ -27,7 +27,7 @@ use common_types::{CurrencyId, PoolRole};
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
-use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
+use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
@@ -104,11 +104,11 @@ pub fn custom_pool(
 ///     * 3: 5% APR, 10% Risk buffer
 ///     * 4: 3% APR, 25% Risk buffer
 /// * Whitelistings
-/// 	* Keyring::TrancheInvestor(index) accounts with index 0 - 9 for tranche with id 0
-///  	* Keyring::TrancheInvestor(index) accounts with index 10 - 19 for tranche with id 1
-/// 	* Keyring::TrancheInvestor(index) accounts with index 20 - 29 for tranche with id 2
-/// 	* Keyring::TrancheInvestor(index) accounts with index 30 - 39 for tranche with id 3
-/// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
+/// 	* Keyring::TrancheInvestor(index) accounts with index 1 - 10 for tranche with id 0
+///  	* Keyring::TrancheInvestor(index) accounts with index 11 - 20 for tranche with id 1
+/// 	* Keyring::TrancheInvestor(index) accounts with index 21 - 30 for tranche with id 2
+/// 	* Keyring::TrancheInvestor(index) accounts with index 31 - 40 for tranche with id 3
+/// 	* Keyring::TrancheInvestor(index) accounts with index 41 - 50 for tranche with id 4
 /// * Currency: CurrencyId::Usd,
 /// * MaxReserve: 100_000 Usd
 pub fn default_pool_calls(admin: AccountId, pool_id: PoolId, nfts: &mut NftManager) -> Vec<Call> {
@@ -342,6 +342,26 @@ pub fn create_pool_call(
 	})
 }
 
+pub fn invest_order_call(pool_id: PoolId, index: TrancheIndex, amount: Balance) -> Call {
+	Call::Pools(PoolsCall::update_invest_order {
+		pool_id,
+		tranche_loc: TrancheLoc::Index(index),
+		amount,
+	})
+}
+
+pub fn redeem_order_call(pool_id: PoolId, index: TrancheIndex, amount: Balance) -> Call {
+	Call::Pools(PoolsCall::update_redeem_order {
+		pool_id,
+		tranche_loc: TrancheLoc::Index(index),
+		amount,
+	})
+}
+
+pub fn close_epoch(pool_id: PoolId) -> Call {
+	Call::Pools(PoolsCall::close_epoch { pool_id })
+}
+
 /// Calculates the tranche-id for pools at start-up. Makes it easier
 /// to whitelist.
 ///
@@ -352,7 +372,7 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 
 /// A module where all calls need to be called within an
 /// externalities provided environment.
-mod with_ext {
+pub mod with_ext {
 	use super::*;
 	use common_traits::PoolNAV;
 	use runtime_common::Amount;

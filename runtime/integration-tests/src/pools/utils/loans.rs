@@ -113,7 +113,7 @@ pub fn init_loans_for_pool(
 /// 	* advance_rate: 90%,
 ///     * probability_of_default: 5%,
 ///     * loss_given_default: 50%,
-/// 	* discount_rate: 4% ,
+/// 	* discount_rate: 2% ,
 pub fn issue_default_loan(
 	owner: AccountId,
 	pool_id: PoolId,
@@ -126,7 +126,7 @@ pub fn issue_default_loan(
 		rate_from_percent(5),
 		rate_from_percent(50),
 		Amount::from_inner(amount),
-		interest_rate_per_sec(rate_from_percent(4))
+		interest_rate_per_sec(rate_from_percent(2))
 			.expect("Essential: Creating rate per sec must not fail."),
 		maturity,
 	));
@@ -242,4 +242,8 @@ pub fn mint_nft_call(class: ClassId, instance: InstanceId, owner: AccountId) -> 
 		instance,
 		owner: Address::Id(owner),
 	})
+}
+
+pub fn update_nav(pool_id: PoolId) -> Call {
+	Call::Loans(LoansCall::update_nav { pool_id })
 }
