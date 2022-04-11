@@ -16,6 +16,7 @@ use crate::chain::centrifuge::{
 	WASM_BINARY as CentrifugeCode,
 };
 use crate::chain::relay::{Runtime as RelayRt, RuntimeApi as RelayRtApi, WASM_BINARY as RelayCode};
+use crate::chain::{centrifuge, relay};
 use crate::pools::utils::accounts::{Keyring, NonceManager};
 use crate::pools::utils::extrinsics::{xt_centrifuge, xt_relay};
 use crate::pools::utils::{logs, time::START_DATE};
@@ -32,6 +33,7 @@ use fudge::{
 	},
 	EnvProvider, ParachainBuilder, RelaychainBuilder,
 };
+//pub use macros::{assert_events, events, run};
 pub use macros::*;
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
@@ -45,52 +47,107 @@ use sp_runtime::{generic::BlockId, DigestItem, Storage};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
-/*
-($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
-		match $expression {
-			$( $pattern )|+ $( if $guard )? => true,
-			_ => false
-		}
- */
+
 pub mod macros {
-	/* // TODO: Implement this assert
-	/// A macro for checking if a specifc event was contained in the given range of blocks
-	/// Panics if this was not the case
+	/// A macro that helps checking whether a given list of events
+	/// has been included in the given range of blocks.
+	///
+	/// Usage:
+	/// ```ignore
+	/// env::assert_events!(
+	/// 		env, //-> The test environment create with fudge::companion
+	/// 		Chain::Para(PARA_ID), //-> The chain where we fetch the events from
+	/// 		Event, //-> The event-enum type from the runtime
+	/// 		EventRange::All, //-> The range of blocks we check for the events
+	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..})
+	/// 			if [count 0], // -> Ensures zero occurencies of the given event. Could also ensure n-occurencies
+	/// 		Event::Pools(pallet_pools::Event::Created(id, ..)) if [id == 0], //-> matches only of the id matches to 0
+	/// 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
+	/// 		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
+	/// 			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))], //-> matches only of the clause matches
+	/// 		Event::Loans(pallet_loans::Event::Priced(id, loan)) if [id == 0 && loan == InstanceId(1)],
+	///	);
+	/// ```
 	macro_rules! assert_events {
-		($env:expr, $chain:expr, $event:expr, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
+		($env:expr, $chain:expr, $event:ty, $range:expr, $($pattern:pat_param $(if $extra:tt)? ,)+ ) => {{
 			use frame_system::EventRecord as __hidden_EventRecord;
+			use crate::pools::utils::env::macros::{extra_guards, extra_counts};
 			use sp_core::H256 as __hidden_H256;
 			use codec::Decode as _;
 
+
 			let scale_events = $env.events($chain, $range).expect("Failed fetching events");
-			let event_records: Vec<__hidden_EventRecord<Event, H256>> = scale_events
+			let events: Vec<$event> = scale_events
 				.into_iter()
 				.map(|scale_record| __hidden_EventRecord::<$event, __hidden_H256>::decode(&mut scale_record.as_slice())
 					.expect("Decoding from chain data does not fail. qed"))
+				.map(|record| record.event)
 				.collect();
+			let mut msg = "Failed asserting event clause of: ".to_owned();
 
-			let matches = |event: &Event| {
-				match *event {
-					$( $pattern )|+ $( if $guard )? => true,
-					_ => false
-				}
-			};
+			$(
+				let matches = |event: &Event| {
+					match *event {
+						$pattern $(if extra_guards!($extra) )? => true,
+						_ => false
+					}
+				};
 
-			let mut searched_events = Vec::new();
-			for record in event_records {
-				if matches(&record.event) {
-					searched_events.push(record.event);
-				}
-			}
+				let mut matched = events.clone();
+				matched.retain(|event| matches(event));
+				assert!(matched.len() == extra_counts!($pattern $(,$extra)?));
+			)+
 
-			searched_events
 		}};
 	}
-	 */
+
+	/// DO NOT USE! This macro is solely expected to be used within the macros modules
+	macro_rules! extra_counts {
+		($pattern:pat_param) => {
+			1
+		};
+		($pattern:pat_param, [$guard:expr]) => {
+			1
+		};
+		($pattern:pat_param, [$guard:expr, count $count:expr]) => {
+			$count
+		};
+		($pattern:pat_param, [count $count:expr]) => {
+			$count
+		};
+	}
+
+	/// DO NOT USE! This macro is solely expected to be used within the macros modules
+	macro_rules! extra_guards {
+		( [count $count:expr] ) => {
+			true
+		};
+		( [$guard:expr] ) => {
+			$guard
+		};
+		( [$guard:expr, count $count:expr] ) => {
+			$guard
+		};
+	}
 
 	/// A macro that helps retrieving specific events with a filter
 	/// This is useful as the general interface of the TestEnv return
 	/// scale-encoded events.
+	///
+	/// Returns a vector of the given events.
+	///
+	/// Usage:
+	/// ```ignore
+	/// env::assert_events!(
+	/// 		env, //-> The test environment create with fudge::companion
+	/// 		Chain::Para(PARA_ID), //-> The chain where we fetch the events from
+	/// 		Event, //-> The event-enum type from the runtime
+	/// 		EventRange::All, //-> The range of blocks we check for the events
+	/// 		Event::System(frame_system::Event::ExtrinsicFailed{..}) //-> The list of events that should be matched
+	/// 			| Event::Pools(pallet_pools::Event::Created(id, ..)) if id == 0 //-> matches only of the id matches to 0
+	/// 			| Event::Loans(..)
+	///	);
+	/// ```
 	macro_rules! events {
 		($env:expr, $chain:expr, $event:ty, $range:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
 			use frame_system::EventRecord as __hidden_EventRecord;
@@ -124,34 +181,49 @@ pub mod macros {
 
 	/// A macro that helps including the given calls into a chain
 	/// and to progress a chain until all of them are included
+	///
+	/// Usage:
+	/// ```ignore
+	/// env::run!(
+	/// 	env, //-> The test environment create with fudge::companion
+	/// 	Chain::Para(PARA_ID), //-> The chain, where the calls should be submitted
+	/// 	Call, //-> The Call-enum of the chains-runtime
+	/// 	ChainState::PoolEmpty, //-> The state the chain should evolve to
+	/// 	Keyring::Admin => //-> The executing account of the calls below
+	/// 	...,	//-> An infinity list of either Call-Variants or Vec<Call>
+	/// 	....; // -> End of calls executed by the previously mentioned account
+	///     Keyring::Alice => ANOTHER_CALL_HERE;
+	/// );
+	/// ```
 	macro_rules! run {
-		($env:expr, $chain:expr, $state:expr, $who:expr, $($calls:expr),*) => {{
-				use crate::chain::centrifuge::Call as __hidden_include_Call;
+		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
 				use codec::Encode as _;
 
 				trait CallAssimilator {
-					fn assimilate(self, calls: &mut Vec<__hidden_include_Call>);
+					fn assimilate(self, calls: &mut Vec<$call>);
 				}
 
-				impl CallAssimilator for Vec<__hidden_include_Call> {
-					fn assimilate(self, calls: &mut Vec<__hidden_include_Call>) {
+				impl CallAssimilator for Vec<$call> {
+					fn assimilate(self, calls: &mut Vec<$call>) {
 						calls.extend(self);
 					}
 				}
 
-				impl CallAssimilator for __hidden_include_Call {
-					fn assimilate(self, calls: &mut Vec<__hidden_include_Call>) {
+				impl CallAssimilator for $call {
+					fn assimilate(self, calls: &mut Vec<$call>) {
 						calls.push(self)
 					}
 				}
 
-				let mut calls = Vec::new();
 				$(
-				  $calls.assimilate(&mut calls);
-				)*
+					let mut calls = Vec::new();
+					$(
+					  $calls.assimilate(&mut calls);
+					)*
 
-				let sign_and_submit_res = $env.batch_sign_and_submit($chain, $who, calls.into_iter().map(|call| call.encode()).collect());
-				assert!(sign_and_submit_res.is_ok());
+					let sign_and_submit_res = $env.batch_sign_and_submit($chain, $sender, calls.into_iter().map(|call| call.encode()).collect());
+					assert!(sign_and_submit_res.is_ok());
+				)*
 
 				let evolve_res = $env.evolve_till($chain, $state);
 				assert!(evolve_res.is_ok())
@@ -159,7 +231,10 @@ pub mod macros {
 		};
 	}
 	// Need to export after definition.
+	pub(crate) use assert_events;
 	pub(crate) use events;
+	pub(crate) use extra_counts;
+	pub(crate) use extra_guards;
 	pub(crate) use run;
 }
 
@@ -236,6 +311,7 @@ impl EventsStorage {
 
 pub enum EventRange {
 	All,
+	One(BlockNumber),
 	Range(BlockNumber, BlockNumber),
 	Latest,
 }
@@ -259,7 +335,33 @@ pub struct TestEnv {
 impl TestEnv {
 	pub fn events(&self, chain: Chain, range: EventRange) -> Result<Vec<Vec<u8>>, ()> {
 		match chain {
-			Chain::Relay => todo!("Implement events fetching for relay"),
+			Chain::Relay => {
+				let latest = self
+					.centrifuge
+					.with_state(|| frame_system::Pallet::<Runtime>::block_number())
+					.map_err(|_| ())?;
+
+				match range {
+					EventRange::Latest => self.events_relay(latest),
+					EventRange::All => {
+						let mut events = Vec::new();
+						for block in 0..latest + 1 {
+							events.extend(self.events_relay(block)?)
+						}
+
+						Ok(events)
+					}
+					EventRange::Range(from, to) => {
+						let mut events = Vec::new();
+						for block in from..to + 1 {
+							events.extend(self.events_relay(block)?)
+						}
+
+						Ok(events)
+					}
+					EventRange::One(at) => self.events_relay(at),
+				}
+			}
 			Chain::Para(id) => match id {
 				_ if id == PARA_ID => {
 					let latest = self
@@ -285,6 +387,7 @@ impl TestEnv {
 
 							Ok(events)
 						}
+						EventRange::One(at) => self.events_centrifuge(at),
 					}
 				}
 				_ => Err(()),
@@ -295,7 +398,16 @@ impl TestEnv {
 	fn events_centrifuge(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, ()> {
 		self.centrifuge
 			.with_state_at(BlockId::Number(at), || {
-				frame_system::Pallet::<Runtime>::events()
+				frame_system::Pallet::<centrifuge::Runtime>::events()
+			})
+			.map_err(|_| ())
+			.map(|records| records.into_iter().map(|record| record.encode()).collect())
+	}
+
+	fn events_relay(&self, at: BlockNumber) -> Result<Vec<Vec<u8>>, ()> {
+		self.relay
+			.with_state_at(BlockId::Number(at), || {
+				frame_system::Pallet::<relay::Runtime>::events()
 			})
 			.map_err(|_| ())
 			.map(|records| records.into_iter().map(|record| record.encode()).collect())
