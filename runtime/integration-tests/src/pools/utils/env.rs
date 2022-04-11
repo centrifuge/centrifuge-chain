@@ -83,19 +83,18 @@ pub mod macros {
 					.expect("Decoding from chain data does not fail. qed"))
 				.map(|record| record.event)
 				.collect();
-			let mut msg = "Failed asserting event clause of: ".to_owned();
 
 			$(
 				let matches = |event: &Event| {
-					match *event {
+					match event.clone() {
 						$pattern $(if extra_guards!($extra) )? => true,
 						_ => false
 					}
 				};
-
 				let mut matched = events.clone();
 				matched.retain(|event| matches(event));
-				assert!(matched.len() == extra_counts!($pattern $(,$extra)?));
+				let c = concat!("Failed asserting event clause of: ", stringify!($pattern $(,$extra)?));
+				assert!(matched.len() == extra_counts!($pattern $(,$extra)?), "{}", c);
 			)+
 
 		}};
@@ -196,7 +195,7 @@ pub mod macros {
 	/// );
 	/// ```
 	macro_rules! run {
-		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
+		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);* $(;)?) => {{
 				use codec::Encode as _;
 
 				trait CallAssimilator {
