@@ -30,7 +30,6 @@ use fudge::{
 };
 use polkadot_core_primitives::{Block as RelayBlock, Header as RelayHeader};
 use polkadot_parachain::primitives::Id as ParaId;
-use sc_executor::sp_wasm_interface::ExtendedHostFunctions;
 use sc_executor::{WasmExecutionMethod, WasmExecutor};
 use sc_service::TaskManager;
 use sp_consensus_babe::digests::CompatibleDigestItem;
@@ -44,7 +43,7 @@ use tokio::runtime::Handle;
 type CentrifugeHF = sp_io::SubstrateHostFunctions;
 #[cfg(feature = "runtime-benchmarks")]
 /// Host functions that include benchmarking specific functionalities
-type CentrifugeHF = ExtendedHostFunctions<
+type CentrifugeHF = sc_executor::sp_wasm_interface::ExtendedHostFunctions<
 	sp_io::SubstrateHostFunctions,
 	frame_benchmarking::benchmarking::HostFunctions,
 >;

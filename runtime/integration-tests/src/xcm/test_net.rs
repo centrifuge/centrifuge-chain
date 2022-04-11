@@ -23,26 +23,26 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use development_runtime::CurrencyId;
 use runtime_common::AccountId;
 
-use crate::{
-	chain::centrifuge::PARA_ID,
-	xcm::setup::{native_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING},
+use crate::xcm::setup::{
+	ksm_amount, native_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_KARURA,
+	PARA_ID_SIBLING,
 };
 
 decl_test_relay_chain! {
-	pub struct RelayNet {
-		Runtime = crate::chain::relay::Runtime,
-		XcmConfig = crate::chain::relay::xcm_config::XcmConfig,
+	pub struct KusamaNet {
+		Runtime = kusama_runtime::Runtime,
+		XcmConfig = kusama_runtime::xcm_config::XcmConfig,
 		new_ext = relay_ext(),
 	}
 }
 
 decl_test_parachain! {
-	pub struct Centrifuge {
-		Runtime = crate::chain::centrifuge::Runtime,
-		Origin = crate::chain::centrifuge::Origin,
-		XcmpMessageHandler = crate::chain::centrifuge::XcmpQueue,
-		DmpMessageHandler = crate::chain::centrifuge::DmpQueue,
-		new_ext = para_ext(PARA_ID),
+	pub struct Development {
+		Runtime = development_runtime::Runtime,
+		Origin = development_runtime::Origin,
+		XcmpMessageHandler = development_runtime::XcmpQueue,
+		DmpMessageHandler = development_runtime::DmpQueue,
+		new_ext = para_ext(PARA_ID_DEVELOPMENT),
 	}
 }
 
@@ -56,17 +56,29 @@ decl_test_parachain! {
 	}
 }
 
+decl_test_parachain! {
+	pub struct Karura {
+		Runtime = development_runtime::Runtime,
+		Origin = development_runtime::Origin,
+		XcmpMessageHandler = development_runtime::XcmpQueue,
+		DmpMessageHandler = development_runtime::DmpQueue,
+		new_ext = para_ext(PARA_ID_KARURA),
+	}
+}
+
 decl_test_network! {
 	pub struct TestNet {
-		relay_chain = RelayNet,
+		relay_chain = KusamaNet,
 		parachains = vec![
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `PARA_ID`
-			(2000, Centrifuge),
+			// Be sure to use `PARA_ID_DEVELOPMENT`
+			(2088, Development),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
+			// Be sure to use `PARA_ID_KARURA`
+			(2000, Karura),
 		],
 	}
 }
@@ -81,7 +93,10 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(AccountId::from(ALICE), native_amount(2002)),
-			(ParaId::from(PARA_ID).into_account(), native_amount(7)),
+			(
+				ParaId::from(PARA_ID_DEVELOPMENT).into_account(),
+				native_amount(7),
+			),
 			(
 				ParaId::from(PARA_ID_SIBLING).into_account(),
 				native_amount(7),
@@ -119,6 +134,12 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 				native_amount(10),
 			),
 			(AccountId::from(BOB), CurrencyId::Native, native_amount(10)),
+			(AccountId::from(ALICE), CurrencyId::KSM, ksm_amount(10)),
+			(
+				development_runtime::TreasuryAccount::get(),
+				CurrencyId::KSM,
+				ksm_amount(1),
+			),
 		])
 		.parachain_id(parachain_id)
 		.build()
