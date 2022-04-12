@@ -748,8 +748,6 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
-	type ClaimTransactionPriority = ClaimTransactionPriority;
-	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
 }
 
@@ -798,7 +796,7 @@ construct_runtime!(
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 93,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 94,
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 96,
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 96,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 97,
 
 		// 3rd party pallets

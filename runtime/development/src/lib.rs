@@ -941,8 +941,6 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
-	type ClaimTransactionPriority = ClaimTransactionPriority;
-	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
 }
 
@@ -1240,7 +1238,7 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
