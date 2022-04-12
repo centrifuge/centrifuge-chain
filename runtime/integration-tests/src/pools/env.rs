@@ -11,9 +11,12 @@
 // GNU General Public License for more details.
 use crate::chain::centrifuge;
 use crate::chain::centrifuge::{Runtime, PARA_ID};
-use crate::pools::utils::accounts::Keyring;
-use crate::pools::utils::extrinsics::{nonce_centrifuge, xt_centrifuge};
 use crate::pools::utils::*;
+use crate::pools::utils::{
+	accounts::Keyring,
+	extrinsics::{nonce_centrifuge, xt_centrifuge},
+	time::DEFAULT_BLOCK_TIME,
+};
 use codec::Encode;
 use fudge::primitives::Chain;
 use pallet_balances::Call as BalancesCall;
@@ -23,7 +26,7 @@ use tokio::runtime::Handle;
 #[tokio::test]
 async fn env_works() {
 	let manager = env::task_manager(Handle::current());
-	let mut env = env::test_env_default(&manager);
+	let mut env = env::test_env_default::<DEFAULT_BLOCK_TIME>(&manager);
 
 	let num_blocks = 10;
 	let block_before = env
@@ -48,7 +51,7 @@ async fn extrinsics_works() {
 	let manager = env::task_manager(Handle::current());
 	let mut genesis = Storage::default();
 	genesis::default_balances::<Runtime>(&mut genesis);
-	let mut env = env::test_env_with_centrifuge_storage(&manager, genesis);
+	let mut env = env::test_env_with_centrifuge_storage::<DEFAULT_BLOCK_TIME>(&manager, genesis);
 
 	let to: centrifuge::Address = Keyring::Bob.into();
 	let xt = xt_centrifuge(

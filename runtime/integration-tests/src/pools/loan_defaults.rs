@@ -10,6 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 use crate::chain::centrifuge::{Amount, Call, Event, Runtime, PARA_ID};
+use crate::pools::utils::tokens::DECIMAL_BASE_18;
 use crate::pools::utils::*;
 use crate::pools::utils::{
 	accounts::Keyring,
@@ -29,12 +30,15 @@ use tokio::runtime::Handle;
 
 #[tokio::test]
 async fn tranche_prices_with_simple_default() {
+	// The block time we use for this test (in seconds)
+	pub const BLOCK_TIME: u64 = 86400 / 2u64;
+
 	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
 	let manager = env::task_manager(Handle::current());
 	let mut env = {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
-		env::test_env_with_centrifuge_storage(&manager, genesis)
+		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
 	};
 
 	let mut nft_manager = NftManager::new();
@@ -43,7 +47,7 @@ async fn tranche_prices_with_simple_default() {
 	let loan_id = InstanceId(1);
 	let borrow_amount = Amount::from_inner(9_000 * DECIMAL_BASE_12);
 	let investment = 5_000 * DECIMAL_BASE_12;
-	let maturity = 90 * SECONDS_PER_DAY;
+	let maturity = time::date(90 * SECONDS_PER_DAY);
 
 	env::run!(
 		env,
@@ -64,7 +68,7 @@ async fn tranche_prices_with_simple_default() {
 		env,
 		Chain::Para(PARA_ID),
 		Event,
-		EventRange::Range(1,2),
+		EventRange::Latest,
 		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
 		Event::Pools(pallet_pools::Event::Created(id, ..)) if [id == pool_id],
 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == pool_id],
@@ -78,21 +82,29 @@ async fn tranche_prices_with_simple_default() {
 		Chain::Para(PARA_ID),
 		Call,
 		ChainState::PoolEmpty,
+		Keyring::TrancheInvestor(0) => invest_order_call(pool_id, 0, investment);
 		Keyring::TrancheInvestor(1) => invest_order_call(pool_id, 0, investment);
-		Keyring::TrancheInvestor(2) => invest_order_call(pool_id, 0, investment);
 	);
 
 	env::assert_events!(
 		env,
 		Chain::Para(PARA_ID),
 		Event,
-		EventRange::Range(3,4),
+		EventRange::Latest,
 		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
 		Event::Pools(pallet_pools::Event::InvestOrderUpdated(id, _tranche, who))
-			if [id == pool_id && who == Keyring::TrancheInvestor(1).to_account_id()],
+			if [id == pool_id && who == Keyring::TrancheInvestor(0).to_account_id()],
 		Event::Pools(pallet_pools::Event::InvestOrderUpdated(id, _tranche, who))
-			if [id == pool_id && who == Keyring::TrancheInvestor(2).to_account_id()],
+			if [id == pool_id && who == Keyring::TrancheInvestor(1).to_account_id()],
 	);
+
+	env::pass_n(&mut env, (1 * time::blocks_per_day::<BLOCK_TIME>()).into());
+
+	let one_token_prices = env
+		.with_state(Chain::Para(PARA_ID), || {
+			pools::with_ext::get_tranche_prices(pool_id)
+		})
+		.expect("ESSENTIAL: Chain state is available.");
 
 	env::run!(
 		env,
@@ -100,36 +112,7 @@ async fn tranche_prices_with_simple_default() {
 		Call,
 		ChainState::PoolEmpty,
 		Keyring::Admin =>
-			update_nav(pool_id)
-	);
-
-	env::assert_events!(
-		env,
-		Chain::Para(PARA_ID),
-		Event,
-		EventRange::Range(5,6),
-		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
-	);
-
-	let token_prices = env
-		.with_state(Chain::Para(PARA_ID), || {
-			pools::with_ext::get_tranche_prices(pool_id);
-		})
-		.expect("ESSENTIAL: Chain state is available.");
-	tracing::event!(
-		tracing::Level::INFO,
-		?token_prices,
-		"Token prices before borrow"
-	);
-
-	env::pass_n(&mut env, (10 * time::blocks::BLOCKS_PER_MINUTE).into());
-
-	env::run!(
-		env,
-		Chain::Para(PARA_ID),
-		Call,
-		ChainState::EvolvedBy(4),
-		Keyring::Admin =>
+			update_nav(pool_id),
 			close_epoch(pool_id),
 			borrow_call(pool_id, loan_id, borrow_amount)
 	);
@@ -139,7 +122,9 @@ async fn tranche_prices_with_simple_default() {
 		Chain::Para(PARA_ID),
 		Event,
 		EventRange::All,
-		Event::Pools(..) | Event::Loans(..)
+		Event::Pools(..)
+			| Event::Loans(..)
+			| Event::System(frame_system::Event::ExtrinsicFailed { .. })
 	);
 
 	for event in events {
@@ -150,7 +135,7 @@ async fn tranche_prices_with_simple_default() {
 		env,
 		Chain::Para(PARA_ID),
 		Event,
-		EventRange::Range(7,8),
+		EventRange::Latest,
 		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
 		Event::Pools(pallet_pools::Event::EpochExecuted(id, ..)) if [id == pool_id],
 		Event::Pools(pallet_pools::Event::EpochClosed(id, ..)) if [id == pool_id],
@@ -158,16 +143,7 @@ async fn tranche_prices_with_simple_default() {
 			if [id == pool_id && loan_id == loan_id && amount == borrow_amount],
 	);
 
-	let token_prices = env
-		.with_state(Chain::Para(PARA_ID), || {
-			pools::with_ext::get_tranche_prices(pool_id);
-		})
-		.expect("ESSENTIAL: Chain state is available.");
-	tracing::event!(
-		tracing::Level::INFO,
-		?token_prices,
-		"Token prices after borrow and 10 minutes passed"
-	);
+	env::pass_n(&mut env, (30 * time::blocks_per_day::<BLOCK_TIME>()).into());
 
 	let events = env::events!(
 		env,
@@ -180,4 +156,21 @@ async fn tranche_prices_with_simple_default() {
 	for event in events {
 		tracing::event!(tracing::Level::INFO, ?event);
 	}
+
+	tracing::event!(
+		tracing::Level::INFO,
+		?one_token_prices,
+		"Token prices before borrow"
+	);
+
+	let token_prices = env
+		.with_state(Chain::Para(PARA_ID), || {
+			pools::with_ext::get_tranche_prices(pool_id)
+		})
+		.expect("ESSENTIAL: Chain state is available.");
+	tracing::event!(
+		tracing::Level::INFO,
+		?token_prices,
+		"Token prices after borrow and 10 minutes passed"
+	);
 }

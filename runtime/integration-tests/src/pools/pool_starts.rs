@@ -17,7 +17,7 @@ use crate::pools::utils::{
 	loans::NftManager,
 	loans::{borrow_call, init_loans_for_pool, issue_default_loan},
 	pools::{default_pool_calls, permission_call},
-	time::secs::SECONDS_PER_DAY,
+	time::{secs::SECONDS_PER_DAY, DEFAULT_BLOCK_TIME},
 	tokens::DECIMAL_BASE_12,
 };
 use common_types::PoolRole;
@@ -34,7 +34,7 @@ async fn create_init_and_price() {
 	let mut env = {
 		let mut genesis = Storage::default();
 		genesis::default_balances::<Runtime>(&mut genesis);
-		env::test_env_with_centrifuge_storage(&manager, genesis)
+		env::test_env_with_centrifuge_storage::<DEFAULT_BLOCK_TIME>(&manager, genesis)
 	};
 
 	let mut nft_manager = NftManager::new();

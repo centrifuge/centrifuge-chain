@@ -614,30 +614,36 @@ impl TestEnv {
 }
 
 #[allow(unused)]
-pub fn test_env_default(manager: &TaskManager) -> TestEnv {
-	test_env(manager, None, None)
+pub fn test_env_default<const BLOCK_TIME: u64>(manager: &TaskManager) -> TestEnv {
+	test_env::<BLOCK_TIME>(manager, None, None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_relay_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
-	test_env(manager, Some(storage), None)
+pub fn test_env_with_relay_storage<const BLOCK_TIME: u64>(
+	manager: &TaskManager,
+	storage: Storage,
+) -> TestEnv {
+	test_env::<BLOCK_TIME>(manager, Some(storage), None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_centrifuge_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
-	test_env(manager, None, Some(storage))
+pub fn test_env_with_centrifuge_storage<const BLOCK_TIME: u64>(
+	manager: &TaskManager,
+	storage: Storage,
+) -> TestEnv {
+	test_env::<BLOCK_TIME>(manager, None, Some(storage))
 }
 
 #[allow(unused)]
-pub fn test_env_with_both_storage(
+pub fn test_env_with_both_storage<const BLOCK_TIME: u64>(
 	manager: &TaskManager,
 	relay_storage: Storage,
 	centrifuge_storage: Storage,
 ) -> TestEnv {
-	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
+	test_env::<BLOCK_TIME>(manager, Some(relay_storage), Some(centrifuge_storage))
 }
 
-fn test_env(
+fn test_env<const BLOCK_TIME: u64>(
 	manager: &TaskManager,
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
@@ -691,14 +697,14 @@ fn test_env(
 
 				let timestamp = FudgeInherentTimestamp::new(
 					0,
-					std::time::Duration::from_secs(6),
+					std::time::Duration::from_secs(BLOCK_TIME / 2),
 					Some(std::time::Duration::from_millis(START_DATE)),
 				);
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(6),
+						std::time::Duration::from_secs(BLOCK_TIME / 2),
 					);
 
 				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
@@ -762,14 +768,14 @@ fn test_env(
 			async move {
 				let timestamp = FudgeInherentTimestamp::new(
 					1,
-					std::time::Duration::from_secs(12),
+					std::time::Duration::from_secs(BLOCK_TIME),
 					Some(std::time::Duration::from_millis(START_DATE)),
 				);
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(12),
+						std::time::Duration::from_secs(BLOCK_TIME),
 					);
 				let inherent = inherent_builder_clone
 					.parachain_inherent()
