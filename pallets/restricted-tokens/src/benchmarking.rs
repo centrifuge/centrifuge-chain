@@ -164,10 +164,7 @@ where
 	// NOTE: We do not want to be CurrencyId::Native to be used here
 	let max_variants = match CurrencyId::Native {
 		CurrencyId::Native => 2u32,
-		CurrencyId::Tranche(_, _) => {
-			unreachable!("We only want the max_used_variants count to be returned. qed.")
-		}
-		CurrencyId::Usd => {
+		CurrencyId::Tranche(_, _) | CurrencyId::Usd | CurrencyId::KSM | CurrencyId::KUSD => {
 			unreachable!("We only want the max_used_variants count to be returned. qed.")
 		}
 	};
