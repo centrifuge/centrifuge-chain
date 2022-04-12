@@ -69,9 +69,9 @@ pub enum Role<Moment = u64> {
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PermissionLocation {
-  Pool(PoolId),
-  Currency(CurrencyId),
+pub enum PermissionScope {
+	Pool(PoolId),
+	Currency(CurrencyId),
 }
 
 bitflags::bitflags! {
@@ -135,8 +135,12 @@ where
 	fn default() -> Self {
 		Self {
 			admin: AdminRoles::empty(),
-			permissioned_asset_holder:
-				PermissionedCurrencyHolders::<Now, MinDelay, CurrencyId, Moment>::default(),
+			permissioned_asset_holder: PermissionedCurrencyHolders::<
+				Now,
+				MinDelay,
+				CurrencyId,
+				Moment,
+			>::default(),
 		}
 	}
 }
@@ -211,7 +215,8 @@ where
 	}
 }
 
-impl<Now, MinDelay, CurrencyId, Moment> PermissionedCurrencyHolders<Now, MinDelay, CurrencyId, Moment>
+impl<Now, MinDelay, CurrencyId, Moment>
+	PermissionedCurrencyHolders<Now, MinDelay, CurrencyId, Moment>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,

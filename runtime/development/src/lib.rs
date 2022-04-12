@@ -67,7 +67,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 use common_traits::Permissions as PermissionsT;
 use common_traits::PreConditions;
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PoolRole, Role, TimeProvider, UNION};
+use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
 use pallet_anchors::AnchorData;
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
@@ -1011,12 +1011,12 @@ parameter_types! {
 
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
-	type Location = PoolId;
+	type Scope = PermissionScope;
 	type Role = Role<CurrencyId, TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxRolesPerLocation = MaxRolesPerPool;
+	type MaxRolesPerScope = MaxRolesPerPool;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
 }
 
@@ -1057,7 +1057,7 @@ impl
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<AccountId, Location = PoolId, Role = Role<CurrencyId>>,
+	P: PermissionsT<AccountId, Scope = PermissionScope, Role = Role<CurrencyId>>,
 {
 	type Result = bool;
 

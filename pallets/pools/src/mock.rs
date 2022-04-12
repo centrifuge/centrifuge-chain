@@ -107,12 +107,12 @@ parameter_types! {
 }
 impl pallet_permissions::Config for Test {
 	type Event = Event;
-	type Location = u64;
+	type Scope = u64;
 	type Role = Role<CurrencyId, TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
-	type MaxRolesPerLocation = MaxRoles;
+	type MaxRolesPerScope = MaxRoles;
 	type WeightInfo = ();
 }
 

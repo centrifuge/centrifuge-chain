@@ -26,7 +26,7 @@ fn add_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
@@ -34,7 +34,7 @@ fn add_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
@@ -42,12 +42,12 @@ fn add_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Xcm(XcmRole::Sender)
 			));
 
 			let roles =
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA).unwrap();
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA).unwrap();
 
 			assert!(roles.exists(Role::Organisation(OrganisationRole::HeadOfSaubermaching)));
 			assert!(roles.exists(Role::Organisation(OrganisationRole::SeniorExeutive)));
@@ -55,7 +55,7 @@ fn add_ext_works() {
 			assert!(!roles.exists(Role::Xcm(XcmRole::Receiver)));
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletB).is_none()
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletB).is_none()
 			);
 		})
 }
@@ -69,7 +69,7 @@ fn add_ext_fails() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
@@ -78,7 +78,7 @@ fn add_ext_fails() {
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
-					Location::PalletA,
+					Scope::PalletA,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
 				PermissionsError::<MockRuntime>::RoleAlreadyGiven
@@ -95,7 +95,7 @@ fn remove_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Xcm(XcmRole::Sender)
 			));
 
@@ -103,12 +103,12 @@ fn remove_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Xcm(XcmRole::Sender)
 			));
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA).is_none()
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA).is_none()
 			);
 		})
 }
@@ -123,7 +123,7 @@ fn remove_ext_fails() {
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
-					Location::PalletA,
+					Scope::PalletA,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
 				PermissionsError::<MockRuntime>::NoRoles
@@ -133,7 +133,7 @@ fn remove_ext_fails() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
@@ -142,14 +142,14 @@ fn remove_ext_fails() {
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					2,
-					Location::PalletA,
+					Scope::PalletA,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
 				PermissionsError::<MockRuntime>::RoleNotGiven
 			);
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA)
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA)
 					.unwrap()
 					.exists(Role::Organisation(OrganisationRole::SeniorExeutive))
 			);
@@ -165,7 +165,7 @@ fn user_purge_permission_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
@@ -173,17 +173,17 @@ fn user_purge_permission_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::purge(
 				Origin::signed(2),
-				Location::PalletA
+				Scope::PalletA
 			));
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA).is_none()
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA).is_none()
 			);
 		})
 }
@@ -194,15 +194,12 @@ fn user_purge_permission_ext_fails() {
 		.build(|| {})
 		.execute_with(|| {
 			assert_noop!(
-				pallet_permissions::Pallet::<MockRuntime>::purge(
-					Origin::signed(2),
-					Location::PalletA
-				),
+				pallet_permissions::Pallet::<MockRuntime>::purge(Origin::signed(2), Scope::PalletA),
 				PermissionsError::<MockRuntime>::NoRoles
 			);
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA).is_none()
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA).is_none()
 			);
 		})
 }
@@ -216,7 +213,7 @@ fn admin_purge_permission_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
@@ -224,18 +221,18 @@ fn admin_purge_permission_ext_works() {
 				Origin::signed(1),
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
 
 			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::admin_purge(
 				Origin::signed(1),
 				2,
-				Location::PalletA,
+				Scope::PalletA,
 			));
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA,).is_none()
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA,).is_none()
 			);
 		})
 }
@@ -249,13 +246,13 @@ fn admin_purge_permission_ext_fails() {
 				pallet_permissions::Pallet::<MockRuntime>::admin_purge(
 					Origin::signed(1),
 					2,
-					Location::PalletA,
+					Scope::PalletA,
 				),
 				PermissionsError::<MockRuntime>::NoRoles
 			);
 
 			assert!(
-				pallet_permissions::Permission::<MockRuntime>::get(2, Location::PalletA,).is_none()
+				pallet_permissions::Permission::<MockRuntime>::get(2, Scope::PalletA,).is_none()
 			);
 		})
 }
@@ -268,14 +265,14 @@ fn trait_add_fails() {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
 			assert_noop!(
 				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add(
-					Location::PalletA,
+					Scope::PalletA,
 					2,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
@@ -291,13 +288,13 @@ fn trait_add_works() {
 		.execute_with(|| {
 			assert_ok!(pallet_dummy::Pallet::<MockRuntime>::test_add(
 				Origin::signed(2),
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
 			assert_noop!(
 				<pallet_permissions::Pallet<MockRuntime> as Permissions<AccountId>>::add(
-					Location::PalletA,
+					Scope::PalletA,
 					2,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
@@ -314,7 +311,7 @@ fn trait_remove_fails() {
 			assert_noop!(
 				pallet_dummy::Pallet::<MockRuntime>::test_rm(
 					Origin::signed(2),
-					Location::PalletA,
+					Scope::PalletA,
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 				),
 				pallet_dummy::Error::<MockRuntime>::NotCleared
@@ -330,14 +327,14 @@ fn trait_remove_works() {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 
 			assert_ok!(pallet_dummy::Pallet::<MockRuntime>::test_rm(
 				Origin::signed(2),
-				Location::PalletA,
+				Scope::PalletA,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 		})
@@ -351,7 +348,7 @@ fn trait_has_permission_works() {
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
@@ -359,7 +356,7 @@ fn trait_has_permission_works() {
 			assert!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::has(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
@@ -367,7 +364,7 @@ fn trait_has_permission_works() {
 			assert!(!<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::has(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::SeniorExeutive)
 			));
@@ -384,7 +381,7 @@ fn add_too_many_permissions_fails() {
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					who.into(),
-					Location::PalletA,
+					Scope::PalletA,
 					Role::Organisation(OrganisationRole::SeniorExeutive)
 				));
 			}
@@ -394,7 +391,7 @@ fn add_too_many_permissions_fails() {
 					Origin::signed(1),
 					Role::Organisation(OrganisationRole::HeadOfSaubermaching),
 					who.into(),
-					Location::PalletA,
+					Scope::PalletA,
 					Role::Organisation(OrganisationRole::SeniorExeutive)
 				),
 				PermissionsError::<MockRuntime>::TooManyRoles
@@ -408,55 +405,53 @@ fn permission_counting() {
 		.build(|| {})
 		.execute_with(|| {
 			assert!(
-				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
-					.is_none()
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Scope::PalletA,).is_none()
 			);
 
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 			assert_eq!(
-				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Scope::PalletA,),
 				Some(1)
 			);
 
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::add(
-				Location::PalletA,
+				Scope::PalletA,
 				3,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 			assert_eq!(
-				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Scope::PalletA,),
 				Some(2)
 			);
 
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::remove(
-				Location::PalletA,
+				Scope::PalletA,
 				3,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 			assert_eq!(
-				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,),
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Scope::PalletA,),
 				Some(1)
 			);
 			assert_ok!(<pallet_permissions::Pallet<MockRuntime> as Permissions<
 				AccountId,
 			>>::remove(
-				Location::PalletA,
+				Scope::PalletA,
 				2,
 				Role::Organisation(OrganisationRole::HeadOfSaubermaching)
 			));
 			assert!(
-				pallet_permissions::PermissionCount::<MockRuntime>::get(Location::PalletA,)
-					.is_none(),
+				pallet_permissions::PermissionCount::<MockRuntime>::get(Scope::PalletA,).is_none(),
 			);
 		})
 }

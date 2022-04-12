@@ -243,12 +243,12 @@ parameter_types! {
 }
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
-	type Location = u64;
+	type Scope = u64;
 	type Role = Role<CurrencyId>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type MaxRolesPerLocation = MaxRoles;
+	type MaxRolesPerScope = MaxRoles;
 	type WeightInfo = ();
 }
 

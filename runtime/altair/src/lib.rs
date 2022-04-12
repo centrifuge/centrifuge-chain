@@ -826,12 +826,12 @@ parameter_types! {
 
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
-	type Location = PoolId;
+	type Scope = PoolId;
 	type Role = PoolRole<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxRolesPerLocation = MaxRolesPerPool;
+	type MaxRolesPerScope = MaxRolesPerPool;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Self>;
 }
 

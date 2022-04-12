@@ -64,7 +64,7 @@ fn permission_roles_work() {
 			10
 		))
 		.is_ok());
-		
+
 	assert!(roles
 		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(30),
