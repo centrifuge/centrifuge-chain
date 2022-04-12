@@ -150,36 +150,12 @@ where
 	Into::<T::Balance>::into(Into::<u128>::into(amount) * CURRENCY)
 }
 
-static mut COUNTER: u32 = 0u32;
-// TODO: Make this actually random. rand-crate is not suitable as the features clash with substrate
-//       and wasm.
-fn get_random_non_native_id<T>() -> T::CurrencyId
+fn get_non_native_currency<T>() -> T::CurrencyId
 where
 	T: Config,
 	T::CurrencyId: From<CurrencyId>,
 {
-	// A match call just to ensure we increase the u32 below in case the number
-	// of enum variants change.
-	//
-	// NOTE: We do not want to be CurrencyId::Native to be used here
-	let max_variants = match CurrencyId::Native {
-		CurrencyId::Native => 2u32,
-		CurrencyId::Tranche(_, _) | CurrencyId::Usd | CurrencyId::KSM | CurrencyId::KUSD => {
-			unreachable!("We only want the max_used_variants count to be returned. qed.")
-		}
-	};
-
-	let curr = unsafe {
-		let curr = COUNTER;
-		COUNTER = (COUNTER + 1) % max_variants;
-		curr
-	};
-
-	match curr {
-		_x if curr == 0 => CurrencyId::Tranche(0, [0; 16]).into(),
-		_x if curr == 1 => CurrencyId::Usd.into(),
-		_ => unreachable!("We only want the range of enum discrimants to be covered. qed."),
-	}
+	CurrencyId::KSM.into()
 }
 
 benchmarks! {
@@ -211,7 +187,7 @@ benchmarks! {
 	// It might be beneficially to have a separation of cases in the future.
 	transfer_other {
 		let amount = as_balance::<T>(300);
-		let currency = get_random_non_native_id::<T>();
+		let currency = get_non_native_currency::<T>();
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
@@ -239,7 +215,7 @@ benchmarks! {
 	// It might be beneficially to have a separation of cases in the future.
 	transfer_keep_alive_other {
 		let amount = as_balance::<T>(300);
-		let currency = get_random_non_native_id::<T>();
+		let currency = get_non_native_currency::<T>();
 		let min_deposit = <T as orml_tokens::Config>::ExistentialDeposits::get(&currency);
 		let send_amount = amount - min_deposit;
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
@@ -271,7 +247,7 @@ benchmarks! {
 	// We let the other die to have clean-up logic in weight
 	transfer_all_other {
 		let amount = as_balance::<T>(300);
-		let currency: <T as Config>::CurrencyId = get_random_non_native_id::<T>();
+		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
@@ -302,7 +278,7 @@ benchmarks! {
 	// We let the other die to have clean-up logic in weight
 	force_transfer_other {
 		let amount = as_balance::<T>(300);
-		let currency: <T as Config>::CurrencyId = get_random_non_native_id::<T>();
+		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
 		let send = set_up_account::<T>("sender", currency.clone(), amount, None);
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let send_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(send.clone());
@@ -334,7 +310,7 @@ benchmarks! {
 	set_balance_other {
 		let free = as_balance::<T>(300);
 		let reserved = as_balance::<T>(200);
-		let currency: <T as Config>::CurrencyId = get_random_non_native_id::<T>();
+		let currency: <T as Config>::CurrencyId = get_non_native_currency::<T>();
 		let recv = get_account_maybe_permission::<T>("receiver", currency.clone());
 		let recv_loopup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recv.clone());
 	}:set_balance(RawOrigin::Root, recv_loopup, currency.clone(), free, reserved)
