@@ -721,7 +721,7 @@ pub mod pallet {
 						T::Permission::has(
 							pool_id,
 							who.clone(),
-							Role::PermissionedAssetHolder(tranche.currency, Self::now())
+							Role::PermissionedCurrencyHolder(tranche.currency, Self::now())
 						),
 						BadOrigin
 					);
@@ -786,7 +786,7 @@ pub mod pallet {
 						T::Permission::has(
 							pool_id,
 							who.clone(),
-							Role::PermissionedAssetHolder(tranche.currency, Self::now())
+							Role::PermissionedCurrencyHolder(tranche.currency, Self::now())
 						),
 						BadOrigin
 					);

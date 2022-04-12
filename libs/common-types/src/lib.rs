@@ -59,8 +59,12 @@ pub enum PoolRole {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Role<Moment = u64> {
 	PoolRole(PoolRole),
-	PermissionedAssetHolder(Moment),
-	PermissionedAssetAdmin,
+	/// This role can hold & transfer tokens
+	PermissionedCurrencyHolder(Moment),
+	/// This role can add/remove holders
+	PermissionedCurrencyManager,
+	/// This role can mint/burn tokens
+	PermissionedCurrencyIssuer,
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
@@ -85,14 +89,14 @@ bitflags::bitflags! {
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-pub struct PermissionedAssetHolderInfo<CurrencyId, Moment> {
+pub struct PermissionedCurrencyHolderInfo<CurrencyId, Moment> {
 	currency_id: CurrencyId,
 	permissioned_till: Moment,
 }
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
-pub struct PermissionedAssetHolders<Now, MinDelay, CurrencyId, Moment> {
-	info: Vec<PermissionedAssetHolderInfo<CurrencyId, Moment>>,
+pub struct PermissionedCurrencyHolders<Now, MinDelay, CurrencyId, Moment> {
+	info: Vec<PermissionedCurrencyHolderInfo<CurrencyId, Moment>>,
 	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
@@ -101,11 +105,11 @@ pub struct PermissionedAssetHolders<Now, MinDelay, CurrencyId, Moment> {
 #[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
 pub struct PermissionRoles<Now, MinDelay, CurrencyId, Moment = u64> {
 	admin: AdminRoles,
-	permissioned_asset_holder: PermissionedAssetHolders<Now, MinDelay, CurrencyId, Moment>,
+	permissioned_asset_holder: PermissionedCurrencyHolders<Now, MinDelay, CurrencyId, Moment>,
 }
 
 impl<Now, MinDelay, CurrencyId, Moment> Default
-	for PermissionedAssetHolders<Now, MinDelay, CurrencyId, Moment>
+	for PermissionedCurrencyHolders<Now, MinDelay, CurrencyId, Moment>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
@@ -132,7 +136,7 @@ where
 		Self {
 			admin: AdminRoles::empty(),
 			permissioned_asset_holder:
-				PermissionedAssetHolders::<Now, MinDelay, CurrencyId, Moment>::default(),
+				PermissionedCurrencyHolders::<Now, MinDelay, CurrencyId, Moment>::default(),
 		}
 	}
 }
@@ -164,7 +168,7 @@ where
 				PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
 				PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
 			},
-			Role::PermissionedAssetHolder(currency_id, _) => {
+			Role::PermissionedCurrencyHolder(currency_id, _) => {
 				self.permissioned_asset_holder.contains(currency_id)
 			}
 		}
@@ -184,7 +188,7 @@ where
 				PoolRole::MemberListAdmin => Ok(self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN)),
 				PoolRole::RiskAdmin => Ok(self.admin.remove(AdminRoles::RISK_ADMIN)),
 			},
-			Role::PermissionedAssetHolder(currency_id, delta) => {
+			Role::PermissionedCurrencyHolder(currency_id, delta) => {
 				self.permissioned_asset_holder.remove(currency_id, delta)
 			}
 		}
@@ -200,14 +204,14 @@ where
 				PoolRole::MemberListAdmin => Ok(self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN)),
 				PoolRole::RiskAdmin => Ok(self.admin.insert(AdminRoles::RISK_ADMIN)),
 			},
-			Role::PermissionedAssetHolder(currency_id, delta) => {
+			Role::PermissionedCurrencyHolder(currency_id, delta) => {
 				self.permissioned_asset_holder.insert(currency_id, delta)
 			}
 		}
 	}
 }
 
-impl<Now, MinDelay, CurrencyId, Moment> PermissionedAssetHolders<Now, MinDelay, CurrencyId, Moment>
+impl<Now, MinDelay, CurrencyId, Moment> PermissionedCurrencyHolders<Now, MinDelay, CurrencyId, Moment>
 where
 	Now: UnixTime,
 	MinDelay: Get<Moment>,
@@ -279,7 +283,7 @@ where
 				Ok(self.info[index].permissioned_till = validity)
 			}
 		} else {
-			Ok(self.info.push(PermissionedAssetHolderInfo {
+			Ok(self.info.push(PermissionedCurrencyHolderInfo {
 				currency_id: currency,
 				permissioned_till: validity,
 			}))

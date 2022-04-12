@@ -11,7 +11,8 @@ use sp_std::vec::Vec;
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PermissionedAssetType {
+pub enum PermissionedCurrency {
+	Tranche(u64, [u8; 16]),
 	PermissionedEur,
 	PermissionedUsd,
 }
@@ -23,8 +24,7 @@ pub enum PermissionedAssetType {
 pub enum CurrencyId {
 	Native,
 	Usd,
-	Tranche(u64, [u8; 16]),
-	PermissionedAsset(PermissionedAssetType),
+	Permissioned(PermissionedCurrency),
 }
 
 impl TokenMetadata for CurrencyId {
