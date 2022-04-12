@@ -16,21 +16,50 @@
 /// Sat Jan 01 2022 00:00:00 GMT+0000
 pub const START_DATE: u64 = 1640995200u64;
 
-pub mod secs {
-	pub const SECOND: u64 = 1000u64;
-	pub const SECONDS_PER_MINUTE: u64 = 60 * SECOND;
-	pub const SECONDS_PER_HOUR: u64 = 60 * SECONDS_PER_MINUTE;
-	pub const SECONDS_PER_DAY: u64 = 24 * SECONDS_PER_HOUR;
-	pub const SECONDS_PER_YEAR: u64 = 365 * SECONDS_PER_DAY;
+/// The default block time is 12s
+pub const DEFAULT_BLOCK_TIME: u64 = 12u64;
+
+/// A type representing seconds
+pub type Seconds = u64;
+
+/// A type representing blocks
+pub type Blocks = u64;
+
+/// Generates a date from the given delta. Delta MUST be given
+/// in seconds (not milli-seconds).
+///
+/// The new date is computed starting from the overall
+/// START_DATE of the integration tests.
+pub fn date(delta: Seconds) -> Seconds {
+	START_DATE + delta
 }
 
-pub mod blocks {
-	use super::secs;
+pub fn blocks_per_minute<const BLOCK_TIME: u64>() -> Blocks {
+	secs::SECONDS_PER_MINUTE / BLOCK_TIME
+}
 
-	// as u32 calls are all save as none of the secs is about u32::MAX
-	pub const SECS_PER_BLOCK: u32 = 12u32;
-	pub const BLOCKS_PER_MINUTE: u32 = secs::SECONDS_PER_MINUTE as u32 / SECS_PER_BLOCK;
-	pub const BLOCKS_PER_HOUR: u32 = secs::SECONDS_PER_HOUR as u32 / SECS_PER_BLOCK;
-	pub const BLOCKS_PER_DAY: u32 = secs::SECONDS_PER_DAY as u32 / SECS_PER_BLOCK;
-	pub const BLOCKS_PER_YEAR: u32 = secs::SECONDS_PER_YEAR as u32 / SECS_PER_BLOCK;
+pub fn block_per_10_minutes<const BLOCK_TIME: u64>() -> Blocks {
+	(10 * secs::SECONDS_PER_MINUTE) / BLOCK_TIME
+}
+
+pub fn blocks_per_hour<const BLOCK_TIME: u64>() -> Blocks {
+	secs::SECONDS_PER_HOUR / BLOCK_TIME
+}
+
+pub fn blocks_per_day<const BLOCK_TIME: u64>() -> Blocks {
+	secs::SECONDS_PER_DAY / BLOCK_TIME
+}
+
+pub fn blocks_per_year<const BLOCK_TIME: u64>() -> Blocks {
+	secs::SECONDS_PER_YEAR / BLOCK_TIME
+}
+
+/// Seconds denoted as seconds.
+pub mod secs {
+	use super::Seconds;
+
+	pub const SECONDS_PER_MINUTE: Seconds = 60;
+	pub const SECONDS_PER_HOUR: Seconds = 60 * SECONDS_PER_MINUTE;
+	pub const SECONDS_PER_DAY: Seconds = 24 * SECONDS_PER_HOUR;
+	pub const SECONDS_PER_YEAR: Seconds = 365 * SECONDS_PER_DAY;
 }

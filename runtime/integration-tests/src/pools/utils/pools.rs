@@ -31,61 +31,6 @@ use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheLoc, Tr
 use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
-/// Creates a default pool.
-///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
-///
-/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
-/// its collateral and loan nft classes.
-pub fn default_pool(
-	env: &mut TestEnv,
-	nfts: &mut NftManager,
-	admin: Keyring,
-	pool_id: PoolId,
-) -> Result<(), ()> {
-	let calls: Vec<Vec<u8>> = default_pool_calls(admin.to_account_id(), pool_id, nfts)
-		.into_iter()
-		.map(|call| call.encode())
-		.collect();
-	env.batch_sign_and_submit(Chain::Para(PARA_ID), admin, calls)
-}
-
-/// Creates a custom pool.
-///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
-///
-/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
-/// its collateral and loan nft classes.
-pub fn custom_pool(
-	env: &mut TestEnv,
-	nfts: &mut NftManager,
-	admin: Keyring,
-	pool_id: PoolId,
-	currency: CurrencyId,
-	max_reserve: Balance,
-	tranche_input: Vec<TrancheInput<Rate>>,
-) -> Result<(), ()> {
-	let calls: Vec<Vec<u8>> = pool_setup_calls(
-		admin.to_account_id(),
-		pool_id,
-		currency,
-		max_reserve,
-		tranche_input,
-		nfts,
-	)
-	.into_iter()
-	.map(|call| call.encode())
-	.collect();
-	env.batch_sign_and_submit(Chain::Para(PARA_ID), admin, calls)
-}
-
-/// Creates a default pool.
-///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
-
 /// Creates the necessary calls for initialising a pool.
 /// This includes:
 /// * creating a pool
@@ -104,11 +49,11 @@ pub fn custom_pool(
 ///     * 3: 5% APR, 10% Risk buffer
 ///     * 4: 3% APR, 25% Risk buffer
 /// * Whitelistings
-/// 	* Keyring::TrancheInvestor(index) accounts with index 1 - 10 for tranche with id 0
-///  	* Keyring::TrancheInvestor(index) accounts with index 11 - 20 for tranche with id 1
-/// 	* Keyring::TrancheInvestor(index) accounts with index 21 - 30 for tranche with id 2
-/// 	* Keyring::TrancheInvestor(index) accounts with index 31 - 40 for tranche with id 3
-/// 	* Keyring::TrancheInvestor(index) accounts with index 41 - 50 for tranche with id 4
+/// 	* Keyring::TrancheInvestor(index) accounts with index 0 - 9 for tranche with id 0
+///  	* Keyring::TrancheInvestor(index) accounts with index 10 - 19 for tranche with id 1
+/// 	* Keyring::TrancheInvestor(index) accounts with index 20 - 29 for tranche with id 2
+/// 	* Keyring::TrancheInvestor(index) accounts with index 30 - 39 for tranche with id 3
+/// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
 /// * Currency: CurrencyId::Usd,
 /// * MaxReserve: 100_000 Usd
 pub fn default_pool_calls(admin: AccountId, pool_id: PoolId, nfts: &mut NftManager) -> Vec<Call> {
@@ -262,6 +207,7 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///    -> tranche-id for residual tranche blake2_128::hash((0, pool_id))
 /// * Investor accounts whitelisted for respective tranche like
 ///    * Investors whitelisted for tranche 0
+///		  * Keyring::TrancheInvestor(0)
 ///       * Keyring::TrancheInvestor(1)
 ///       * Keyring::TrancheInvestor(2)
 ///       * Keyring::TrancheInvestor(3)
@@ -271,8 +217,8 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///       * Keyring::TrancheInvestor(7)
 ///       * Keyring::TrancheInvestor(8)
 ///       * Keyring::TrancheInvestor(9)
-///       * Keyring::TrancheInvestor(10)
 ///   * Investors whitelisted for tranche 1
+///       * Keyring::TrancheInvestor(10)
 ///       * Keyring::TrancheInvestor(11)
 ///       * Keyring::TrancheInvestor(12)
 ///       * Keyring::TrancheInvestor(13)
@@ -282,13 +228,12 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///       * Keyring::TrancheInvestor(17)
 ///       * Keyring::TrancheInvestor(18)
 ///       * Keyring::TrancheInvestor(19)
-///       * Keyring::TrancheInvestor(20)
 pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> Vec<Call> {
 	let mut calls = Vec::with_capacity(10 * num_tranches as usize);
 
 	let mut x: u32 = 0;
 	while x < num_tranches {
-		for id in 1..11 {
+		for id in 0..10 {
 			calls.push(whitelist_investor_call(
 				pool,
 				Keyring::TrancheInvestor((x * 10) + id),
@@ -307,7 +252,7 @@ pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: Tranche
 		PoolRole::PoolAdmin,
 		investor.to_account_id(),
 		pool,
-		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
+		PoolRole::TrancheInvestor(tranche, 2 * SECONDS_PER_YEAR),
 	)
 }
 
@@ -382,34 +327,33 @@ pub mod with_ext {
 	/// **Needs: Mut Externalities to persist**
 	/// -------------------------------
 	/// E.g.: num_tranches = 2
-	/// * Investors whitelisted for tranche 0
-	///    * Keyring::TrancheInvestor(1)
-	///    * Keyring::TrancheInvestor(2)
-	///    * Keyring::TrancheInvestor(3)
-	///    * Keyring::TrancheInvestor(4)
-	///    * Keyring::TrancheInvestor(5)
-	///    * Keyring::TrancheInvestor(6)
-	///    * Keyring::TrancheInvestor(7)
-	///    * Keyring::TrancheInvestor(8)
-	///    * Keyring::TrancheInvestor(9)
-	///    * Keyring::TrancheInvestor(10)
-	/// * Investors whitelisted for tranche 1
-	///    * Keyring::TrancheInvestor(11)
-	///    * Keyring::TrancheInvestor(12)
-	///    * Keyring::TrancheInvestor(13)
-	///    * Keyring::TrancheInvestor(14)
-	///    * Keyring::TrancheInvestor(15)
-	///    * Keyring::TrancheInvestor(16)
-	///    * Keyring::TrancheInvestor(17)
-	///    * Keyring::TrancheInvestor(18)
-	///    * Keyring::TrancheInvestor(19)
-	///    * Keyring::TrancheInvestor(20)
+	///    * Investors whitelisted for tranche 0
+	///		  * Keyring::TrancheInvestor(0)
+	///       * Keyring::TrancheInvestor(1)
+	///       * Keyring::TrancheInvestor(2)
+	///       * Keyring::TrancheInvestor(3)
+	///       * Keyring::TrancheInvestor(4)
+	///       * Keyring::TrancheInvestor(5)
+	///       * Keyring::TrancheInvestor(6)
+	///       * Keyring::TrancheInvestor(7)
+	///       * Keyring::TrancheInvestor(8)
+	///       * Keyring::TrancheInvestor(9)
+	///   * Investors whitelisted for tranche 1
+	///       * Keyring::TrancheInvestor(10)
+	///       * Keyring::TrancheInvestor(11)
+	///       * Keyring::TrancheInvestor(12)
+	///       * Keyring::TrancheInvestor(13)
+	///       * Keyring::TrancheInvestor(14)
+	///       * Keyring::TrancheInvestor(15)
+	///       * Keyring::TrancheInvestor(16)
+	///       * Keyring::TrancheInvestor(17)
+	///       * Keyring::TrancheInvestor(18)
+	///       * Keyring::TrancheInvestor(19)
 	pub fn whitelist_investors(pool_id: PoolId, num_tranches: u32) {
 		let mut x: u32 = 0;
 		while x < num_tranches {
-			for id in 1..11 {
-				let id = (x * 10) + id;
-				permit_investor(id, pool_id, tranche_id(pool_id, x as u64));
+			for id in 0..10 {
+				permit_investor((x * 10) + id, pool_id, tranche_id(pool_id, x as u64));
 			}
 			x += 1;
 		}

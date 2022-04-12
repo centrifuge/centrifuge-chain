@@ -249,6 +249,7 @@ impl std::str::FromStr for Keyring {
 /// * Keyring::Charlie
 /// * Keyring::Dave
 /// * Keyring::Eve
+/// * Keyring::TrancheInvestor(0)
 /// * Keyring::TrancheInvestor(1)
 /// * Keyring::TrancheInvestor(2)
 /// * Keyring::TrancheInvestor(3)
@@ -298,7 +299,6 @@ impl std::str::FromStr for Keyring {
 /// * Keyring::TrancheInvestor(47)
 /// * Keyring::TrancheInvestor(48)
 /// * Keyring::TrancheInvestor(49)
-/// * Keyring::TrancheInvestor(50)
 pub fn default_accounts() -> Vec<Keyring> {
 	let mut standard = vec![
 		Keyring::Admin,
@@ -316,6 +316,7 @@ pub fn default_accounts() -> Vec<Keyring> {
 /// Returns a Vector of default investor accounts
 ///
 /// Accounts:
+/// * Keyring::TrancheInvestor(0)
 /// * Keyring::TrancheInvestor(1)
 /// * Keyring::TrancheInvestor(2)
 /// * Keyring::TrancheInvestor(3)
@@ -365,9 +366,9 @@ pub fn default_accounts() -> Vec<Keyring> {
 /// * Keyring::TrancheInvestor(47)
 /// * Keyring::TrancheInvestor(48)
 /// * Keyring::TrancheInvestor(49)
-/// * Keyring::TrancheInvestor(50)
 pub fn default_investors() -> Vec<Keyring> {
 	vec![
+		Keyring::TrancheInvestor(0),
 		Keyring::TrancheInvestor(1),
 		Keyring::TrancheInvestor(2),
 		Keyring::TrancheInvestor(3),
@@ -417,7 +418,6 @@ pub fn default_investors() -> Vec<Keyring> {
 		Keyring::TrancheInvestor(47),
 		Keyring::TrancheInvestor(48),
 		Keyring::TrancheInvestor(49),
-		Keyring::TrancheInvestor(50),
 	]
 }
 
