@@ -27,6 +27,7 @@ use hex;
 use frame_support::{assert_noop, assert_ok, traits::VestingSchedule};
 use sp_core::H256;
 use sp_runtime::Perbill;
+use sp_std::convert::TryInto;
 use sp_std::str::FromStr;
 
 struct Contributor {
@@ -410,7 +411,7 @@ fn test_invalid_signed_claim_transaction() {
 
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::none(),
+					Origin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
 					get_false_signature(),
@@ -431,7 +432,7 @@ fn test_valid_claim() {
 			let bob_balance = Balances::free_balance(&bob.parachain_account);
 
 			assert_ok!(CrowdloanClaim::claim_reward(
-				Origin::none(),
+				Origin::signed(0),
 				bob.relaychain_account.clone(),
 				bob.parachain_account,
 				bob.signature,
@@ -473,7 +474,7 @@ fn test_valid_claim_ext_signature() {
 			let bob_balance = Balances::free_balance(&bob.parachain_account);
 
 			assert_ok!(CrowdloanClaim::claim_reward(
-				Origin::none(),
+				Origin::signed(0),
 				bob.relaychain_account.clone(),
 				bob.parachain_account,
 				bob.signature,
@@ -506,7 +507,7 @@ fn test_valid_claim_but_lease_elapsed() {
 			let bob = get_contributor();
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::none(),
+					Origin::signed(0),
 					bob.relaychain_account.clone(),
 					bob.parachain_account,
 					bob.signature,
@@ -525,7 +526,7 @@ fn test_valid_claim_claimed_twice() {
 		.execute_with(|| {
 			let bob = get_contributor();
 			assert_ok!(CrowdloanClaim::claim_reward(
-				Origin::none(),
+				Origin::signed(0),
 				bob.relaychain_account.clone(),
 				bob.parachain_account,
 				bob.signature,
@@ -540,7 +541,7 @@ fn test_valid_claim_claimed_twice() {
 			let bob = get_contributor();
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::none(),
+					Origin::signed(0),
 					bob.relaychain_account.clone(),
 					bob.parachain_account,
 					bob.signature,
@@ -561,7 +562,7 @@ fn test_invalid_claim_invalid_proof() {
 
 			assert_noop!(
 				Pallet::<MockRuntime>::claim_reward(
-					Origin::none(),
+					Origin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
 					alice.signature,
@@ -582,7 +583,7 @@ fn test_invalid_claim_mod_not_initialized() {
 
 			assert_noop!(
 				CrowdloanClaim::claim_reward(
-					Origin::none(),
+					Origin::signed(0),
 					alice.relaychain_account,
 					alice.parachain_account,
 					alice.signature,
@@ -590,6 +591,27 @@ fn test_invalid_claim_mod_not_initialized() {
 					alice.contribution
 				),
 				CrowdloanClaimError::<MockRuntime>::PalletNotInitialized
+			);
+		})
+}
+
+#[test]
+fn test_claim_reward_requires_origin() {
+	TestExternalitiesBuilder::default()
+		.build(Some(|| {}))
+		.execute_with(|| {
+			let alice = get_contributor();
+
+			assert_noop!(
+				CrowdloanClaim::claim_reward(
+					Origin::none(),
+					alice.relaychain_account,
+					alice.parachain_account,
+					alice.signature,
+					alice.proof,
+					alice.contribution
+				),
+				sp_runtime::DispatchError::BadOrigin
 			);
 		})
 }

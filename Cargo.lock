@@ -1179,6 +1179,8 @@ dependencies = [
  "pallet-bridge",
  "pallet-claims",
  "pallet-collective",
+ "pallet-crowdloan-claim",
+ "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-fees",

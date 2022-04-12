@@ -39,8 +39,7 @@
 //! ## Goals
 //! The aim of this pallet is to ensure that a contributor who's claiming a reward
 //! is eligible for it and avoid potential attacks, such as, for instance, Denial of
-//! Service (DoS) or spams (e.g. massive calls of unsigned claim transactions, that
-//! are free of charge and can be used as a vector to lock down the network.
+//! Service (DoS) or spams by requiring fee payment.
 //!
 //! ## Usage
 //!
@@ -60,9 +59,7 @@
 //! Callable functions (or extrinsics), also considered as transactions, materialize the
 //! pallet contract. Here's the callable functions implemented in this Pallet:
 //!
-//! [`claim_reward`] Note that this extrinsics is invoked via an unsigned (and hence feeless)
-//! transactions. A throttling mechanism for slowing down transactions beat exists, so that
-//! to prevent massive malicious claims that could potentially impact the network.
+//! [`claim_reward`]
 //!
 //! ### Public Functions
 //!
@@ -107,7 +104,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Hash, Verify, Zero},
 	MultiSignature,
 };
-use sp_std::convert::TryInto;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
@@ -255,24 +251,6 @@ pub mod pallet {
 			ContributionAmount = Self::Balance,
 			BlockNumber = Self::BlockNumber,
 		>;
-
-		/// Priority of the unsigned claim transaction.
-		///
-		/// Since the claim transaction is unsigned, a mechanism must ensure that
-		/// it cannot be used for forging a malicious denial of service attack.
-		/// This priority property can be tweaked, according to the runtime
-		/// specificities (using `parameters_type` macro). The higher the value,
-		/// the most prioritized is the transaction.
-		type ClaimTransactionPriority: Get<TransactionPriority>;
-
-		/// Longevity of the unsigned claim transaction.
-		///
-		/// This parameter indicates the minimum number of blocks that the
-		/// claim transaction will remain valid for.
-		/// The [`TransactionLongevity::max_value()`] means "forever".
-		/// This property is used to prevent the unsigned claim transaction
-		/// from being used as a vector for a denial of service attack.
-		type ClaimTransactionLongevity: Get<Self::BlockNumber>;
 
 		/// Entity which is allowed to perform administrative transactions
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -433,20 +411,8 @@ pub mod pallet {
 	// `Eq`, `PartialEq` and `Codec` traits.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Claim for a reward payout via an unsigned transaction
+		/// Claim for a reward payout
 		///
-		/// An unsigned transaction is free of fees. We need such an unsigned transaction
-		/// as some contributors may not have enought parachain tokens for claiming their
-		/// reward payout. The [`validate_unsigned`] function first checks the validity of
-		/// this transaction, so that to prevent potential frauds or attacks.
-		/// Transactions that call that function are de-duplicated on the pool level
-		/// via `validate_unsigned` implementation.
-		/// It is worth pointing out that despite unsigned transactions are free of charge,
-		/// a weight must be assigned to them so that to prevent a single block of having
-		/// infinite number of such transactions.
-		/// The [`contributor_identity_proof`] is built using a signature of the contributor's
-		/// parachain account id with the claimer key.
-		/// See [`validate_unsigned`]
 		#[pallet::weight(<T as Config>::WeightInfo::claim_reward_sr25519()
 			.max(<T as Config>::WeightInfo::claim_reward_ed25519())
 			.max(<T as Config>::WeightInfo::claim_reward_ecdsa())
@@ -459,8 +425,7 @@ pub mod pallet {
 			contribution_proof: Proof<T::Hash>,
 			contribution: T::Balance,
 		) -> DispatchResultWithPostInfo {
-			// Ensures that this function can only be called via an unsigned transaction
-			ensure_none(origin)?;
+			ensure_signed(origin)?;
 
 			let curr_index = Self::curr_index();
 
@@ -688,95 +653,6 @@ pub mod pallet {
 			Self::deposit_event(Event::CrowdloanTrieIndexUpdated(trie_index));
 
 			Ok(().into())
-		}
-	}
-
-	// ------------------------------------------------------------------------
-	// Pallet unsigned transactions validation
-	// ------------------------------------------------------------------------
-
-	#[pallet::validate_unsigned]
-	impl<T: Config> ValidateUnsigned for Pallet<T> {
-		type Call = Call<T>;
-
-		/// Validate unsigned transactions
-		///
-		/// Unsigned transactions are generally disallowed. However, since a contributor
-		/// claiming a reward payout may not have the necessary tokens on the parachain to
-		/// pay the fees of the claim, the [`claim_reward`] transactions must be
-		/// unsigned.
-		/// Here, we make sure such unsigned, and remember, feeless unsigned transactions
-		/// can be used for malicious spams or Deny of Service (DoS) attacks.
-		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::claim_reward {
-				relaychain_account_id,
-				parachain_account_id,
-				identity_proof,
-				contribution_proof,
-				contribution,
-			} = call
-			{
-				let n = <frame_system::Pallet<T>>::block_number();
-				let lease_start = Self::lease_start();
-
-				// By checking the validity of the claim here, we ensure the extrinsic will not
-				// make it into a block (in case of a trusted node, not even into the pool)
-				// unless being valid. This is a trade-off between protecting the network from spam
-				// and paying validators for the work they are doing.
-				if lease_start <= n && n < lease_start.saturating_add(Self::lease_period()) {
-					if !ProcessedClaims::<T>::contains_key((
-						&relaychain_account_id,
-						Self::curr_index(),
-					)) {
-						if Self::verify_contributor_identity_proof(
-							relaychain_account_id.clone(),
-							parachain_account_id.clone(),
-							identity_proof.clone(),
-						)
-						.is_ok()
-						{
-							let mut leaf_data = relaychain_account_id.encode();
-							leaf_data.extend_from_slice(&contribution.encode());
-
-							if Self::verify_contribution_proof(
-								contribution_proof.clone(),
-								&leaf_data,
-							)
-							.is_ok()
-							{
-								// Only the claim reward transaction can be invoked via an unsigned regime
-								return ValidTransaction::with_tag_prefix("CrowdloanClaimReward")
-									.priority(T::ClaimTransactionPriority::get())
-									.and_provides((
-										relaychain_account_id,
-										parachain_account_id,
-										identity_proof,
-										contribution_proof,
-										contribution,
-									))
-									.longevity(
-										TryInto::<u64>::try_into(
-											T::ClaimTransactionLongevity::get(),
-										)
-										.unwrap_or(64_u64),
-									)
-									.propagate(true)
-									.build();
-							} else {
-								return InvalidTransaction::Custom(0).into();
-							}
-						} else {
-							return InvalidTransaction::Custom(0).into();
-						}
-					} else {
-						return InvalidTransaction::Custom(0).into();
-					}
-				} else {
-					return InvalidTransaction::Custom(0).into();
-				}
-			}
-			// Dissallow other unsigned transactions
-			InvalidTransaction::Call.into()
 		}
 	}
 } // end of 'pallet' module
