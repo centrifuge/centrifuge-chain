@@ -36,9 +36,7 @@ use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
-use sp_runtime::transaction_validity::{
-	TransactionPriority, TransactionSource, TransactionValidity,
-};
+use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -769,8 +767,6 @@ impl pallet_crowdloan_reward::Config for Runtime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const ClaimTransactionLongevity: u32 = 64;
 	pub const MaxProofLength: u32 = 30;
 }
 

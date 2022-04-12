@@ -148,8 +148,6 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const ClaimTransactionLongevity: u32 = 64;
 	pub const MaxProofLength: u32 = 30;
 }
 
