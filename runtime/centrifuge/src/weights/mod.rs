@@ -12,6 +12,8 @@
 pub mod frame_system;
 pub mod pallet_balances;
 pub mod pallet_collective;
+pub mod pallet_crowdloan_claim;
+pub mod pallet_crowdloan_reward;
 pub mod pallet_democracy;
 pub mod pallet_fees;
 pub mod pallet_identity;
