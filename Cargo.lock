@@ -1150,7 +1150,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.4"
+version = "0.10.5"
 dependencies = [
  "chainbridge",
  "cumulus-pallet-aura-ext",
@@ -1179,6 +1179,8 @@ dependencies = [
  "pallet-bridge",
  "pallet-claims",
  "pallet-collective",
+ "pallet-crowdloan-claim",
+ "pallet-crowdloan-reward",
  "pallet-democracy",
  "pallet-elections-phragmen",
  "pallet-fees",

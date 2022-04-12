@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.4"
+version = "0.10.5"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
@@ -101,6 +101,8 @@ runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
+pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
@@ -183,6 +185,8 @@ std = [
     "pallet-bridge/std",
     "pallet-nft/std",
     "pallet-migration-manager/std",
+    "pallet-crowdloan-claim/std",
+    "pallet-crowdloan-reward/std",
 ]
 
 runtime-benchmarks = [
@@ -209,6 +213,8 @@ runtime-benchmarks = [
     "pallet-balances/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
+    "pallet-crowdloan-claim/runtime-benchmarks",
+    "pallet-crowdloan-reward/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

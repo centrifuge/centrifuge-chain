@@ -59,7 +59,7 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Vesting: pallet_vesting::{Pallet, Call, Config<T>, Storage, Event<T>},
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>},
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -148,8 +148,6 @@ impl pallet_crowdloan_reward::Config for MockRuntime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const ClaimTransactionLongevity: u32 = 64;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -161,8 +159,6 @@ impl Config for MockRuntime {
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type RelayChainAccountId = AccountId32;
 	type MaxProofLength = MaxProofLength;
-	type ClaimTransactionPriority = ClaimTransactionPriority;
-	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
 }
 
