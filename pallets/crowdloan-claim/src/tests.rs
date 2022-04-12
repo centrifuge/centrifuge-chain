@@ -26,8 +26,8 @@ use hex;
 
 use frame_support::{assert_noop, assert_ok, traits::VestingSchedule};
 use sp_core::H256;
-use sp_std::convert::TryInto;
 use sp_runtime::Perbill;
+use sp_std::convert::TryInto;
 use sp_std::str::FromStr;
 
 struct Contributor {
