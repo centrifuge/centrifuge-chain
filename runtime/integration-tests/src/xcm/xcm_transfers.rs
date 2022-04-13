@@ -26,7 +26,7 @@ use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 use altair_runtime::{
 	AirPerSecond, Balances, KUsdPerSecond, KsmPerSecond, Origin, OrmlTokens, XTokens,
 };
-use runtime_common::Balance;
+use runtime_common::{parachains, Balance};
 
 #[test]
 fn transfer_native_to_sibling() {
@@ -231,12 +231,16 @@ fn currency_id_convert_air() {
 	use sp_runtime::traits::Convert as C2;
 	use xcm_executor::traits::Convert as C1;
 
+	assert_eq!(CurrencyId::Native.encode(), vec![0]);
+	assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0]);
+
 	let air_location: MultiLocation = MultiLocation::new(
 		1,
-		X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
+		X2(
+			Parachain(parachains::altair::ID),
+			GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+		),
 	);
-
-	assert_eq!(CurrencyId::Native.encode(), vec![0]);
 
 	assert_eq!(
 		<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),

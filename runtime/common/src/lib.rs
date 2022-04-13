@@ -240,6 +240,11 @@ pub mod parachains {
 		pub const ID: u32 = 2000;
 		pub const KUSD_KEY: &[u8] = &[0, 129];
 	}
+
+	pub mod altair {
+		pub const ID: u32 = 2088;
+		pub const AIR_KEY: &[u8] = &[0];
+	}
 }
 
 pub mod xcm_fees {

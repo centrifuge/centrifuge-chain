@@ -71,7 +71,7 @@ parameter_types! {
 	pub AirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
+			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
@@ -174,7 +174,14 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::karura::KUSD_KEY.into()),
 				),
 			),
-			_ => native_currency_location(id),
+			CurrencyId::Native => MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::altair::ID),
+					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+				),
+			),
+			_ => return None,
 		};
 		Some(x)
 	}
@@ -193,22 +200,18 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} => {
-				match para_id {
-					// TODO(nuno): make this a constant
-					2088 => match key[..] {
-						[0] => Ok(CurrencyId::Native),
-						[1] => Ok(CurrencyId::Usd),
-						_ => Err(location.clone()),
-					},
-
-					parachains::karura::ID => match &key[..] {
-						parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
-						_ => Err(location.clone()),
-					},
+			} => match para_id {
+				parachains::altair::ID => match &key[..] {
+					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
 					_ => Err(location.clone()),
-				}
-			}
+				},
+
+				parachains::karura::ID => match &key[..] {
+					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
+					_ => Err(location.clone()),
+				},
+				_ => Err(location.clone()),
+			},
 			_ => Err(location.clone()),
 		}
 	}
@@ -226,10 +229,6 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 			None
 		}
 	}
-}
-
-fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(1, X2(Parachain(2088), GeneralKey(id.encode())))
 }
 
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to configure

@@ -36,9 +36,7 @@ use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto};
-use sp_runtime::transaction_validity::{
-	TransactionPriority, TransactionSource, TransactionValidity,
-};
+use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
