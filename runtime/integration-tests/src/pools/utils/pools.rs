@@ -322,43 +322,6 @@ pub mod with_ext {
 	use common_traits::PoolNAV;
 	use runtime_common::Amount;
 
-	/// Whitelists 10 tranche-investors per tranche.
-	///
-	/// **Needs: Mut Externalities to persist**
-	/// -------------------------------
-	/// E.g.: num_tranches = 2
-	///    * Investors whitelisted for tranche 0
-	///		  * Keyring::TrancheInvestor(0)
-	///       * Keyring::TrancheInvestor(1)
-	///       * Keyring::TrancheInvestor(2)
-	///       * Keyring::TrancheInvestor(3)
-	///       * Keyring::TrancheInvestor(4)
-	///       * Keyring::TrancheInvestor(5)
-	///       * Keyring::TrancheInvestor(6)
-	///       * Keyring::TrancheInvestor(7)
-	///       * Keyring::TrancheInvestor(8)
-	///       * Keyring::TrancheInvestor(9)
-	///   * Investors whitelisted for tranche 1
-	///       * Keyring::TrancheInvestor(10)
-	///       * Keyring::TrancheInvestor(11)
-	///       * Keyring::TrancheInvestor(12)
-	///       * Keyring::TrancheInvestor(13)
-	///       * Keyring::TrancheInvestor(14)
-	///       * Keyring::TrancheInvestor(15)
-	///       * Keyring::TrancheInvestor(16)
-	///       * Keyring::TrancheInvestor(17)
-	///       * Keyring::TrancheInvestor(18)
-	///       * Keyring::TrancheInvestor(19)
-	pub fn whitelist_investors(pool_id: PoolId, num_tranches: u32) {
-		let mut x: u32 = 0;
-		while x < num_tranches {
-			for id in 0..10 {
-				permit_investor((x * 10) + id, pool_id, tranche_id(pool_id, x as u64));
-			}
-			x += 1;
-		}
-	}
-
 	/// Retrieves the token prices of a pool at the state that
 	/// this is called with.
 	///
@@ -379,36 +342,5 @@ pub mod with_ext {
 			.tranches
 			.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
 			.expect("POOLS: Calculating tranche-prices failed")
-	}
-
-	/// Add a permission for who, at pool with role.
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn permission_for(who: AccountId, pool: PoolId, role: PoolRole) {
-		<Permissions as PermissionsT<AccountId>>::add(pool, who, role)
-			.expect("ESSENTIAL: Adding a permission for a role should not fail.");
-	}
-
-	/// Adds all roles that `PoolRole`s currently provides to the Keyring::Admin account
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn permit_admin(id: PoolId) {
-		permission_for(Keyring::Admin.into(), id, PoolRole::PricingAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::LiquidityAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::RiskAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::MemberListAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::Borrower);
-	}
-
-	/// Add a `PoolRole::TrancheInvestor to a Keyring::TrancheInvestor(u32) account.
-	/// Role is permitted for 1 year.
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {
-		permission_for(
-			Keyring::TrancheInvestor(investor).into(),
-			pool,
-			PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
-		)
 	}
 }

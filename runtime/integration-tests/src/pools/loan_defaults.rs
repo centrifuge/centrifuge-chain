@@ -9,8 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-use crate::chain::centrifuge::{Amount, Call, Event, Runtime, PARA_ID};
-use crate::pools::utils::tokens::DECIMAL_BASE_18;
+use crate::chain::centrifuge::{Amount, Call, Event, Runtime, Timestamp, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
 	accounts::Keyring,
@@ -100,12 +99,6 @@ async fn tranche_prices_with_simple_default() {
 
 	env::pass_n(&mut env, (1 * time::blocks_per_day::<BLOCK_TIME>()).into());
 
-	let one_token_prices = env
-		.with_state(Chain::Para(PARA_ID), || {
-			pools::with_ext::get_tranche_prices(pool_id)
-		})
-		.expect("ESSENTIAL: Chain state is available.");
-
 	env::run!(
 		env,
 		Chain::Para(PARA_ID),
@@ -116,20 +109,6 @@ async fn tranche_prices_with_simple_default() {
 			close_epoch(pool_id),
 			borrow_call(pool_id, loan_id, borrow_amount)
 	);
-
-	let events = env::events!(
-		env,
-		Chain::Para(PARA_ID),
-		Event,
-		EventRange::All,
-		Event::Pools(..)
-			| Event::Loans(..)
-			| Event::System(frame_system::Event::ExtrinsicFailed { .. })
-	);
-
-	for event in events {
-		tracing::event!(tracing::Level::INFO, ?event);
-	}
 
 	env::assert_events!(
 		env,
@@ -145,29 +124,15 @@ async fn tranche_prices_with_simple_default() {
 
 	env::pass_n(&mut env, (30 * time::blocks_per_day::<BLOCK_TIME>()).into());
 
-	let events = env::events!(
-		env,
-		Chain::Para(PARA_ID),
-		Event,
-		EventRange::All,
-		Event::Pools(..) | Event::Loans(..)
-	);
-
-	for event in events {
-		tracing::event!(tracing::Level::INFO, ?event);
-	}
-
-	tracing::event!(
-		tracing::Level::INFO,
-		?one_token_prices,
-		"Token prices before borrow"
-	);
-
 	let token_prices = env
 		.with_state(Chain::Para(PARA_ID), || {
-			pools::with_ext::get_tranche_prices(pool_id)
+			(
+				pools::with_ext::get_tranche_prices(pool_id),
+				Timestamp::now(),
+			)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
+
 	tracing::event!(
 		tracing::Level::INFO,
 		?token_prices,

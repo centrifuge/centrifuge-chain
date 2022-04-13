@@ -14,6 +14,8 @@
 
 /// Start date used for timestamps in test-enviornments
 /// Sat Jan 01 2022 00:00:00 GMT+0000
+///
+/// **NOTE: These are seconds here**
 pub const START_DATE: u64 = 1640995200u64;
 
 /// The default block time is 12s
@@ -31,7 +33,7 @@ pub type Blocks = u64;
 /// The new date is computed starting from the overall
 /// START_DATE of the integration tests.
 pub fn date(delta: Seconds) -> Seconds {
-	START_DATE + delta
+	std::time::Duration::from_secs(START_DATE).as_secs() + delta
 }
 
 pub fn blocks_per_minute<const BLOCK_TIME: u64>() -> Blocks {
