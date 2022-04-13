@@ -836,7 +836,7 @@ impl pallet_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
-	type Tokens = OrmlTokens;
+	type Tokens = Tokens;
 	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;

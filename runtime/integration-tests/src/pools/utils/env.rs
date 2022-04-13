@@ -651,7 +651,7 @@ fn test_env<const BLOCK_TIME: u64>(
 	logs::init_logs();
 	// Build relay-chain builder
 	let relay = {
-		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
+		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
 		let mut provider = EnvProvider::<
 			RelayBlock,
 			RelayRtApi,
@@ -684,6 +684,13 @@ fn test_env<const BLOCK_TIME: u64>(
 		let client = Arc::new(client);
 		let clone_client = client.clone();
 
+		// Initialize timestamp instance
+		FudgeInherentTimestamp::new(
+			0,
+			std::time::Duration::from_secs(BLOCK_TIME / 2),
+			Some(std::time::Duration::from_secs(START_DATE)),
+		);
+
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
 			let parent_header = client
@@ -695,12 +702,8 @@ fn test_env<const BLOCK_TIME: u64>(
 				let uncles =
 					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-				let timestamp = FudgeInherentTimestamp::new(
-					0,
-					std::time::Duration::from_secs(BLOCK_TIME / 2),
-					Some(std::time::Duration::from_millis(START_DATE)),
-				);
-
+				let timestamp =
+					FudgeInherentTimestamp::get_instance(0).expect("Instance is initialised. qed");
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 						timestamp.current_time(),
@@ -735,7 +738,7 @@ fn test_env<const BLOCK_TIME: u64>(
 
 	// Build parachain-builder
 	let centrifuge = {
-		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Centrifuge - StartUp");
+		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Centrifuge - StartUp");
 		let mut provider =
 			EnvProvider::<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>::with_code(
 				CentrifugeCode.unwrap(),
@@ -762,15 +765,18 @@ fn test_env<const BLOCK_TIME: u64>(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
+		// Initialize timestamp instance
+		FudgeInherentTimestamp::new(
+			1,
+			std::time::Duration::from_secs(BLOCK_TIME),
+			Some(std::time::Duration::from_secs(START_DATE)),
+		);
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
-				let timestamp = FudgeInherentTimestamp::new(
-					1,
-					std::time::Duration::from_secs(BLOCK_TIME),
-					Some(std::time::Duration::from_millis(START_DATE)),
-				);
+				let timestamp =
+					FudgeInherentTimestamp::get_instance(1).expect("Instance is initialized. qed");
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
@@ -812,4 +818,11 @@ pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 	}
 
 	Ok(())
+}
+
+/// Logs provided events as info
+pub fn log<Event: std::fmt::Debug>(events: Vec<Event>) {
+	for event in events {
+		tracing::event!(tracing::Level::INFO, ?event);
+	}
 }
