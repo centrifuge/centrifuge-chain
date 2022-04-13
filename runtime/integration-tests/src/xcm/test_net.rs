@@ -24,7 +24,7 @@ use development_runtime::CurrencyId;
 use runtime_common::AccountId;
 
 use crate::xcm::setup::{
-	ksm_amount, native_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_KARURA,
+	ksm_amount, native_amount, ExtBuilder, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_KARURA,
 	PARA_ID_SIBLING,
 };
 
@@ -42,7 +42,7 @@ decl_test_parachain! {
 		Origin = development_runtime::Origin,
 		XcmpMessageHandler = development_runtime::XcmpQueue,
 		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_DEVELOPMENT),
+		new_ext = para_ext(PARA_ID_ALTAIR),
 	}
 }
 
@@ -73,7 +73,7 @@ decl_test_network! {
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `PARA_ID_DEVELOPMENT`
+			// Be sure to use `PARA_ID_ALTAIR`
 			(2088, Development),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
@@ -94,7 +94,7 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 		balances: vec![
 			(AccountId::from(ALICE), native_amount(2002)),
 			(
-				ParaId::from(PARA_ID_DEVELOPMENT).into_account(),
+				ParaId::from(PARA_ID_ALTAIR).into_account(),
 				native_amount(7),
 			),
 			(

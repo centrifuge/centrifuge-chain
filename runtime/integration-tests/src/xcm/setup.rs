@@ -20,7 +20,7 @@ pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
 /// Parachain Ids
-pub const PARA_ID_DEVELOPMENT: u32 = 2088;
+pub const PARA_ID_ALTAIR: u32 = 2088;
 pub const PARA_ID_SIBLING: u32 = 3000;
 pub const PARA_ID_KARURA: u32 = 2000;
 
@@ -33,7 +33,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: PARA_ID_DEVELOPMENT,
+			parachain_id: PARA_ID_ALTAIR,
 		}
 	}
 }
@@ -127,7 +127,7 @@ pub fn karura_account() -> AccountId {
 }
 
 pub fn development_account() -> AccountId {
-	parachain_account(PARA_ID_DEVELOPMENT.into())
+	parachain_account(PARA_ID_ALTAIR.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {

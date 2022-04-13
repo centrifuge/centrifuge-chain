@@ -1108,8 +1108,6 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub ORMLMaxLocks: u32 = 2;
-
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 
@@ -1121,7 +1119,7 @@ impl orml_tokens::Config for Runtime {
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
-	type MaxLocks = ORMLMaxLocks;
+	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
@@ -1261,6 +1259,11 @@ construct_runtime!(
 	}
 );
 
+parameter_types! {
+	/// The `MultiLocation` identifying this very parachain
+	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
+}
+
 impl orml_xtokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -1274,10 +1277,6 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
-}
-
-parameter_types! {
-	pub SelfLocation: MultiLocation = MultiLocation::new(1, X1(Parachain(ParachainInfo::get().into())));
 }
 
 parameter_type_with_key! {

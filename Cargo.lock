@@ -107,6 +107,8 @@ dependencies = [
  "node-primitives",
  "orml-tokens",
  "orml-traits",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
