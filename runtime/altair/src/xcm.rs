@@ -3,7 +3,6 @@ use super::{
 	PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
-use codec::Encode;
 pub use cumulus_primitives_core::ParaId;
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::fungibles;
