@@ -19,7 +19,7 @@ use orml_traits::MultiCurrency;
 
 use crate::xcm::setup::{
 	development_account, karura_account, ksm_amount, kusd_amount, native_amount, sibling_account,
-	usd_amount, CurrencyId, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
+	usd_amount, CurrencyId, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_SIBLING,
 };
 use crate::xcm::test_net::{Development, Karura, KusamaNet, Sibling, TestNet};
 
@@ -209,7 +209,7 @@ fn transfer_usd_to_development() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_DEVELOPMENT),
+						Parachain(PARA_ID_ALTAIR),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -290,7 +290,7 @@ fn transfer_kusd_to_development() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_DEVELOPMENT),
+						Parachain(PARA_ID_ALTAIR),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -330,7 +330,7 @@ fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(PARA_ID_DEVELOPMENT).into().into()),
+			Box::new(Parachain(PARA_ID_ALTAIR).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					network: NetworkId::Any,
