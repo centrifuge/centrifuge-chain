@@ -71,7 +71,7 @@ parameter_types! {
 	pub AirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(CurrencyId::Native.encode())),
+			X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
 		).into(),
 		native_per_second(),
 	);
@@ -195,8 +195,8 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => {
 				match para_id {
-					// Local testing para ids
-					2088 | 3000 => match key[..] {
+					// TODO(nuno): make this a constant
+					2088 => match key[..] {
 						[0] => Ok(CurrencyId::Native),
 						[1] => Ok(CurrencyId::Usd),
 						_ => Err(location.clone()),
@@ -229,13 +229,7 @@ impl Convert<MultiAsset, Option<CurrencyId>> for CurrencyIdConvert {
 }
 
 fn native_currency_location(id: CurrencyId) -> MultiLocation {
-	MultiLocation::new(
-		1,
-		X2(
-			Parachain(ParachainInfo::get().into()),
-			GeneralKey(id.encode()),
-		),
-	)
+	MultiLocation::new(1, X2(Parachain(2088), GeneralKey(id.encode())))
 }
 
 /// Pallet Xcm offers a lot of out-of-the-box functionality and features to configure

@@ -24,8 +24,7 @@ use crate::xcm::setup::{
 use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{
-	Balances, KUsdPerSecond, KsmPerSecond, AirPerSecond, Origin, OrmlTokens,
-	XTokens,
+	AirPerSecond, Balances, KUsdPerSecond, KsmPerSecond, Origin, OrmlTokens, XTokens,
 };
 use runtime_common::Balance;
 
@@ -258,32 +257,21 @@ fn native_fee() -> Balance {
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
+	fee.div_euclid(10_000) * 8
 }
-//
-// // The fee associated with transferring Native tokens
-// fn usd_fee() -> Balance {
-// 	let (_asset, fee) = UsdPerSecond::get();
-// 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-// 	// time the transfers take.
-// 	// NOTE: it is possible that in different machines this value may differ. We shall see.
-// 	fee.div_euclid(10_000) * 4
-// }
 
 // The fee associated with transferring KUSD tokens
 fn kusd_fee() -> Balance {
 	let (_asset, fee) = KUsdPerSecond::get();
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
+	fee.div_euclid(10_000) * 8
 }
 
 // The fee associated with transferring KSM tokens
 fn ksm_fee() -> Balance {
 	let (_asset, fee) = KsmPerSecond::get();
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
+	// We divide the fee to align its unit and multiply by 8 as that seems to be the unit of
 	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
+	fee.div_euclid(10_000) * 8
 }
