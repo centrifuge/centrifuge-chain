@@ -53,7 +53,7 @@ impl ExtBuilder {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
-		let native_currency_id = development_runtime::NativeToken::get();
+		let native_currency_id = altair_runtime::NativeToken::get();
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
 				.balances
@@ -106,10 +106,6 @@ pub fn kusd_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::KUSD)
 }
 
-pub fn usd_amount(amount: Balance) -> Balance {
-	amount * dollar(CurrencyId::Usd)
-}
-
 pub fn ksm_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::KSM)
 }
@@ -126,7 +122,7 @@ pub fn karura_account() -> AccountId {
 	parachain_account(PARA_ID_KARURA.into())
 }
 
-pub fn development_account() -> AccountId {
+pub fn altair_account() -> AccountId {
 	parachain_account(PARA_ID_ALTAIR.into())
 }
 

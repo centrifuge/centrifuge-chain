@@ -87,6 +87,6 @@ pallet-permissions = { path = "../../pallets/permissions" }
 default = [ "runtime-development" ]
 runtime-benchmarks = [ "default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks"]
 # TODO(nuno): Remove "kusama-runtime" from `runtime-development` once XCM is available on Altair
-runtime-development = ["rococo-runtime", "development-runtime", "kusama-runtime"]
+runtime-development = ["rococo-runtime", "development-runtime", "kusama-runtime", "altair-runtime"]
 runtime-altair = ["kusama-runtime", "altair-runtime"]
 runtime-centrifuge = ["polkadot-runtime", "centrifuge-runtime"]
