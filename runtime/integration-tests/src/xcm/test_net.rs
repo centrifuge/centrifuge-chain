@@ -20,7 +20,7 @@ use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
-use development_runtime::CurrencyId;
+use altair_runtime::CurrencyId;
 use runtime_common::AccountId;
 
 use crate::xcm::setup::{
@@ -37,31 +37,31 @@ decl_test_relay_chain! {
 }
 
 decl_test_parachain! {
-	pub struct Development {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
+	pub struct Altair {
+		Runtime = altair_runtime::Runtime,
+		Origin = altair_runtime::Origin,
+		XcmpMessageHandler = altair_runtime::XcmpQueue,
+		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_ALTAIR),
 	}
 }
 
 decl_test_parachain! {
 	pub struct Sibling {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
+		Runtime = altair_runtime::Runtime,
+		Origin = altair_runtime::Origin,
+		XcmpMessageHandler = altair_runtime::XcmpQueue,
+		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_SIBLING),
 	}
 }
 
 decl_test_parachain! {
 	pub struct Karura {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
+		Runtime = altair_runtime::Runtime,
+		Origin = altair_runtime::Origin,
+		XcmpMessageHandler = altair_runtime::XcmpQueue,
+		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_KARURA),
 	}
 }
@@ -74,7 +74,7 @@ decl_test_network! {
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
 			// Be sure to use `PARA_ID_ALTAIR`
-			(2088, Development),
+			(2088, Altair),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
 			// Be sure to use `PARA_ID_KARURA`
@@ -136,7 +136,7 @@ pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 			(AccountId::from(BOB), CurrencyId::Native, native_amount(10)),
 			(AccountId::from(ALICE), CurrencyId::KSM, ksm_amount(10)),
 			(
-				development_runtime::TreasuryAccount::get(),
+				altair_runtime::TreasuryAccount::get(),
 				CurrencyId::KSM,
 				ksm_amount(1),
 			),
