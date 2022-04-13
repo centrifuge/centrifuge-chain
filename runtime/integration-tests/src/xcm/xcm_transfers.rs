@@ -224,35 +224,101 @@ fn transfer_ksm_to_relay_chain() {
 	});
 }
 
-#[test]
-fn currency_id_convert_air() {
+pub mod currency_id_convert {
+	use super::*;
 	use altair_runtime::CurrencyIdConvert;
-	use sp_runtime::codec::Encode;
 	use sp_runtime::traits::Convert as C2;
 	use xcm_executor::traits::Convert as C1;
 
-	assert_eq!(CurrencyId::Native.encode(), vec![0]);
-	assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0]);
+	#[test]
+	fn convert_air() {
+		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0]);
 
-	let air_location: MultiLocation = MultiLocation::new(
-		1,
-		X2(
-			Parachain(parachains::altair::ID),
-			GeneralKey(parachains::altair::AIR_KEY.to_vec()),
-		),
-	);
+		let air_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::altair::ID),
+				GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+			),
+		);
 
-	assert_eq!(
-		<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),
-		Ok(CurrencyId::Native),
-	);
-
-	Altair::execute_with(|| {
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-			Some(air_location)
-		)
-	});
+			<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),
+			Ok(CurrencyId::Native),
+		);
+
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
+				Some(air_location)
+			)
+		});
+	}
+
+	#[test]
+	fn convert_kusd() {
+		assert_eq!(parachains::karura::KUSD_KEY.to_vec(), vec![0, 129]);
+
+		let kusd_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::karura::ID),
+				GeneralKey(parachains::karura::KUSD_KEY.to_vec()),
+			),
+		);
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(kusd_location.clone()),
+			Ok(CurrencyId::KUSD),
+		);
+
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KUSD),
+				Some(kusd_location)
+			)
+		});
+	}
+
+	#[test]
+	fn convert_ksm() {
+		let ksm_location: MultiLocation = MultiLocation::parent().into();
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
+			Ok(CurrencyId::KSM),
+		);
+
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KSM),
+				Some(ksm_location)
+			)
+		});
+	}
+
+	#[test]
+	fn convert_unkown_multilocation() {
+		let unknown_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(Parachain(parachains::altair::ID), GeneralKey([42].to_vec())),
+		);
+
+		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+	}
+
+	#[test]
+	fn convert_unsupported_currency() {
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Tranche(
+					0,
+					[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+				)),
+				None
+			)
+		});
+	}
 }
 
 // The fee associated with transferring Native tokens
