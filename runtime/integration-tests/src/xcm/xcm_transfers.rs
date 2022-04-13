@@ -18,7 +18,7 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use orml_traits::MultiCurrency;
 
 use crate::xcm::setup::{
-	altair_account, karura_account, ksm_amount, kusd_amount, native_amount, sibling_account,
+	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
 	CurrencyId, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_SIBLING,
 };
 use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
@@ -29,12 +29,12 @@ use altair_runtime::{
 use runtime_common::{parachains, Balance};
 
 #[test]
-fn transfer_native_to_sibling() {
+fn transfer_air_to_sibling() {
 	TestNet::reset();
 
-	let alice_initial_balance = native_amount(10);
-	let bob_initial_balance = native_amount(10);
-	let transfer_amount = native_amount(1);
+	let alice_initial_balance = air_amount(10);
+	let bob_initial_balance = air_amount(10);
+	let transfer_amount = air_amount(1);
 
 	Altair::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
@@ -80,7 +80,7 @@ fn transfer_native_to_sibling() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			Balances::free_balance(&BOB.into()),
-			bob_initial_balance + transfer_amount - native_fee(),
+			bob_initial_balance + transfer_amount - air_fee(),
 		);
 	});
 }
@@ -321,13 +321,13 @@ pub mod currency_id_convert {
 	}
 }
 
-// The fee associated with transferring Native tokens
-fn native_fee() -> Balance {
+// The fee associated with transferring AIR tokens
+fn air_fee() -> Balance {
 	let (_asset, fee) = AirPerSecond::get();
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 8
+	fee * 8.div_euclid(10_000)
 }
 
 // The fee associated with transferring KUSD tokens
