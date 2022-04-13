@@ -98,7 +98,7 @@ impl ExtBuilder {
 	}
 }
 
-pub fn native_amount(amount: Balance) -> Balance {
+pub fn air_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::Native)
 }
 

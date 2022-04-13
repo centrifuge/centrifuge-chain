@@ -24,8 +24,7 @@ use altair_runtime::CurrencyId;
 use runtime_common::AccountId;
 
 use crate::xcm::setup::{
-	ksm_amount, native_amount, ExtBuilder, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_KARURA,
-	PARA_ID_SIBLING,
+	air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_KARURA, PARA_ID_SIBLING,
 };
 
 decl_test_relay_chain! {
@@ -92,15 +91,9 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), native_amount(2002)),
-			(
-				ParaId::from(PARA_ID_ALTAIR).into_account(),
-				native_amount(7),
-			),
-			(
-				ParaId::from(PARA_ID_SIBLING).into_account(),
-				native_amount(7),
-			),
+			(AccountId::from(ALICE), air_amount(2002)),
+			(ParaId::from(PARA_ID_ALTAIR).into_account(), air_amount(7)),
+			(ParaId::from(PARA_ID_SIBLING).into_account(), air_amount(7)),
 		],
 	}
 	.assimilate_storage(&mut t)
@@ -128,12 +121,8 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Native,
-				native_amount(10),
-			),
-			(AccountId::from(BOB), CurrencyId::Native, native_amount(10)),
+			(AccountId::from(ALICE), CurrencyId::Native, air_amount(10)),
+			(AccountId::from(BOB), CurrencyId::Native, air_amount(10)),
 			(AccountId::from(ALICE), CurrencyId::KSM, ksm_amount(10)),
 			(
 				altair_runtime::TreasuryAccount::get(),
