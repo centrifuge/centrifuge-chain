@@ -243,7 +243,7 @@ pub mod parachains {
 
 	pub mod altair {
 		pub const ID: u32 = 2088;
-		pub const AIR_KEY: &[u8] = &[0];
+		pub const AIR_KEY: &[u8] = &[0, 1];
 	}
 }
 
