@@ -321,6 +321,7 @@ pub mod with_ext {
 	use super::*;
 	use common_traits::PoolNAV;
 	use runtime_common::Amount;
+	use std::time::Duration;
 
 	/// Retrieves the token prices of a pool at the state that
 	/// this is called with.
@@ -330,7 +331,7 @@ pub mod with_ext {
 	/// NOTE:
 	/// * update_nav() is called with Keyring::Admin as calley
 	pub fn get_tranche_prices(pool: PoolId) -> Vec<Rate> {
-		let now = Timestamp::now();
+		let now = Duration::from_millis(Timestamp::now()).as_secs();
 		let mut details = Pools::pool(pool).expect("POOLS: Getting pool failed.");
 		Loans::update_nav(Keyring::Admin.into(), pool).expect("LOANS: UpdatingNav failed");
 		let (epoch_nav, _) =
