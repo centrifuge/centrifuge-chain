@@ -83,8 +83,7 @@ where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
 {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub(crate) fn new(
+	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,
@@ -105,7 +104,7 @@ where
 	/// calculates the present value of the bullet loan.
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub(crate) fn present_value(
+	pub fn present_value(
 		&self,
 		debt: Amount,
 		origination_date: Option<Moment>,
@@ -125,7 +124,7 @@ where
 	}
 
 	/// validates the bullet loan parameters
-	pub(crate) fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Moment) -> bool {
 		vec![
 			// discount should always be >= 1
 			self.discount_rate >= One::one(),
@@ -139,7 +138,7 @@ where
 	/// calculates max_borrow_amount for bullet loan,
 	/// max_borrow_amount = advance_rate * collateral_value - borrowed
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling
-	pub(crate) fn max_borrow_amount(&self, total_borrowed: Amount) -> Option<Amount> {
+	pub fn max_borrow_amount(&self, total_borrowed: Amount) -> Option<Amount> {
 		math::max_borrow_amount(self.advance_rate, self.value, total_borrowed)
 	}
 }
@@ -154,9 +153,8 @@ pub struct CreditLine<Rate, Amount> {
 }
 
 impl<Rate, Amount> CreditLine<Rate, Amount> {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	#[allow(dead_code)]
-	pub(crate) fn new(advance_rate: Rate, value: Amount) -> Self {
+	pub fn new(advance_rate: Rate, value: Amount) -> Self {
 		Self {
 			advance_rate,
 			value,
@@ -166,19 +164,19 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 	/// calculates the present value of the credit line loan
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value1
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub(crate) fn present_value(&self, debt: Amount) -> Option<Amount> {
+	pub fn present_value(&self, debt: Amount) -> Option<Amount> {
 		Some(debt)
 	}
 
 	/// validates credit line loan parameters
-	pub(crate) fn is_valid(&self) -> bool {
+	pub fn is_valid(&self) -> bool {
 		true
 	}
 
 	/// calculates max_borrow_amount for credit line loan,
 	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub(crate) fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
+	pub fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
 		Amount: FixedPointNumber,
@@ -201,8 +199,8 @@ pub struct CreditLineWithMaturity<Rate, Amount> {
 }
 
 impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub(crate) fn new(
+	#[allow(dead_code)]
+	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,
@@ -223,7 +221,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	/// calculates the present value of the credit line with maturity loan type
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value2
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub(crate) fn present_value(
+	pub fn present_value(
 		&self,
 		debt: Amount,
 		origination_date: Option<Moment>,
@@ -247,7 +245,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	}
 
 	/// validates credit line loan parameters
-	pub(crate) fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Moment) -> bool {
 		vec![
 			// discount should always be >= 1
 			self.discount_rate >= One::one(),
@@ -261,7 +259,7 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	/// calculates max_borrow_amount for credit line loan,
 	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub(crate) fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
+	pub fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
 		Amount: FixedPointNumber,
