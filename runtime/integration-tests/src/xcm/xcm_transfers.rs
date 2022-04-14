@@ -19,7 +19,7 @@ use orml_traits::MultiCurrency;
 
 use crate::xcm::setup::{
 	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
-	CurrencyId, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_SIBLING,
+	CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
 };
 use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
@@ -133,7 +133,7 @@ fn transfer_kusd_to_development() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_ALTAIR),
+						Parachain(parachains::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -173,7 +173,7 @@ fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(PARA_ID_ALTAIR).into().into()),
+			Box::new(Parachain(parachains::altair::ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					network: NetworkId::Any,
@@ -327,7 +327,7 @@ fn air_fee() -> Balance {
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee * 8.div_euclid(10_000)
+	fee.div_euclid(10_000) * 8
 }
 
 // The fee associated with transferring KUSD tokens

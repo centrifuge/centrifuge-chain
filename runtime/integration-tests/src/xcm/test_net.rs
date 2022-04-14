@@ -21,11 +21,9 @@ use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
 use altair_runtime::CurrencyId;
-use runtime_common::AccountId;
+use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{
-	air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_ALTAIR, PARA_ID_KARURA, PARA_ID_SIBLING,
-};
+use crate::xcm::setup::{air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {
@@ -41,7 +39,7 @@ decl_test_parachain! {
 		Origin = altair_runtime::Origin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_ALTAIR),
+		new_ext = para_ext(parachains::altair::ID),
 	}
 }
 
@@ -61,7 +59,7 @@ decl_test_parachain! {
 		Origin = altair_runtime::Origin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_KARURA),
+		new_ext = para_ext(parachains::karura::ID),
 	}
 }
 
@@ -72,11 +70,11 @@ decl_test_network! {
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `PARA_ID_ALTAIR`
+			// Be sure to use `parachains::altair::ID`
 			(2088, Altair),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
-			// Be sure to use `PARA_ID_KARURA`
+			// Be sure to use `parachains::karura::ID`
 			(2000, Karura),
 		],
 	}
@@ -92,7 +90,10 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
 			(AccountId::from(ALICE), air_amount(2002)),
-			(ParaId::from(PARA_ID_ALTAIR).into_account(), air_amount(7)),
+			(
+				ParaId::from(parachains::altair::ID).into_account(),
+				air_amount(7),
+			),
 			(ParaId::from(PARA_ID_SIBLING).into_account(), air_amount(7)),
 		],
 	}
