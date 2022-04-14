@@ -260,8 +260,8 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 	pub const MaxTranches: u32 = 5;
 
-	pub const ChallengeTime: u64 = 1;
-	pub const MinUpdateDelay: u64 = 1; // no delay
+	pub const ChallengeTime: u64 = 0;
+	pub const MinUpdateDelay: u64 = 1;
 	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = true;
 
 	// Defaults for pool parameters

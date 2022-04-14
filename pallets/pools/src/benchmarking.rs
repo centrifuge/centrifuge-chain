@@ -65,7 +65,40 @@ benchmarks! {
 		assert_eq!(pool.metadata, None);
 	}
 
-	update {
+	update_no_execution {
+		let admin: T::AccountId = account("admin", 0, 0);
+		let n in 1..T::MaxTranches::get();
+		let tranches = build_update_tranches::<T>(n);
+		create_pool::<T>(n, admin.clone())?;
+
+		let pool = get_pool::<T>();
+		let default_min_epoch_time = pool.parameters.min_epoch_time;
+		let default_max_nav_age = pool.parameters.max_nav_age;
+
+		// Submit redemption order so the update isn't executed
+		let admin: T::AccountId = account("admin", 0, 0);
+		let amount = MAX_RESERVE / 2;
+		let investor = create_investor::<T>(0, TRANCHE)?;
+		let locator = get_tranche_id::<T>(TRANCHE);
+		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), amount)?;
+
+		let changes = PoolChanges {
+			tranches: Change::NoChange,
+			min_epoch_time: Change::NewValue(SECS_PER_DAY),
+			max_nav_age: Change::NewValue(SECS_PER_HOUR),
+		};
+	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
+	verify {
+		// Should be the old values
+		let pool = get_pool::<T>();
+		assert_eq!(pool.parameters.min_epoch_time, default_min_epoch_time);
+		assert_eq!(pool.parameters.max_nav_age, default_max_nav_age);
+
+		let actual_update = get_scheduled_update::<T>();
+		assert_eq!(actual_update.changes, changes);
+	}
+
+	update_and_execute {
 		let caller: T::AccountId = account("admin", 0, 0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
@@ -81,6 +114,16 @@ benchmarks! {
 		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
+
+	// execute_scheduled_update {
+	// 	// TODO
+	// }: execute_scheduled_update(RawOrigin::Signed(caller), POOL)
+	// verify {
+	// 	let pool = get_pool::<T>();
+	// 	assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+	// 	assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+	// 	assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
+	// }
 
 	set_metadata {
 		let n in 0..T::MaxSizeMetadata::get();
@@ -302,6 +345,10 @@ fn assert_tranches_match<T: Config>(
 
 fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
+}
+
+fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<T::InterestRate> {
+	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
 }
 
 fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {

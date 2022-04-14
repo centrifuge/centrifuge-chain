@@ -818,7 +818,12 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
 	pub const MinUpdateDelay: u64 = 0; // no delay
-	pub const ChallengeTime: BlockNumber = 2 * MINUTES;
+	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
+		// Disable challenge time in benchmarks
+		0
+	} else {
+		2 * MINUTES
+	};
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
@@ -909,10 +914,13 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		// There should be no outstanding redemption orders.
-		// let acc_outstanding_redemptions = pool.tranches.acc_outstanding_redemptions().unwrap_or(false);
-		// if !acc_outstanding_redemptions.is_zero() {
-		// 	return false;
-		// }
+		let acc_outstanding_redemptions = pool
+			.tranches
+			.acc_outstanding_redemptions()
+			.unwrap_or(u128::MAX);
+		if !acc_outstanding_redemptions.is_zero() {
+			return false;
+		}
 
 		return true;
 	}

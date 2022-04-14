@@ -352,6 +352,7 @@ pub mod pallet {
 	pub type Pool<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetailsOf<T>>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn scheduled_update)]
 	pub type ScheduledUpdate<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, ScheduledUpdateDetails<T::InterestRate>>;
 
