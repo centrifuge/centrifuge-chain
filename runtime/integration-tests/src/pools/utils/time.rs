@@ -36,22 +36,37 @@ pub fn date(delta: Seconds) -> Seconds {
 	std::time::Duration::from_secs(START_DATE).as_secs() + delta
 }
 
+/// Calculates the number of blocks per minute
+///
+/// NOTE: Returns zero if BLOCK_TIME > SECONDS_PER_MINUTE
 pub fn blocks_per_minute<const BLOCK_TIME: u64>() -> Blocks {
 	secs::SECONDS_PER_MINUTE / BLOCK_TIME
 }
 
+/// Calculates the number of blocks per minute
+///
+/// NOTE: Returns zero if BLOCK_TIME > SECONDS_PER_MINUTE
 pub fn block_per_10_minutes<const BLOCK_TIME: u64>() -> Blocks {
 	(10 * secs::SECONDS_PER_MINUTE) / BLOCK_TIME
 }
 
+/// Calculates the number of blocks per minute
+///
+/// NOTE: Returns zero if BLOCK_TIME > SECONDS_PER_HOUR
 pub fn blocks_per_hour<const BLOCK_TIME: u64>() -> Blocks {
 	secs::SECONDS_PER_HOUR / BLOCK_TIME
 }
 
+/// Calculates the number of blocks per minute
+///
+/// NOTE: Returns zero if BLOCK_TIME > SECONDS_PER_DAY
 pub fn blocks_per_day<const BLOCK_TIME: u64>() -> Blocks {
 	secs::SECONDS_PER_DAY / BLOCK_TIME
 }
 
+/// Calculates the number of blocks per minute
+///
+/// NOTE: Returns zero if BLOCK_TIME > SECONDS_PER_YEAR
 pub fn blocks_per_year<const BLOCK_TIME: u64>() -> Blocks {
 	secs::SECONDS_PER_YEAR / BLOCK_TIME
 }

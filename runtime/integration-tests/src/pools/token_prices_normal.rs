@@ -33,6 +33,7 @@ use tokio::runtime::Handle;
 #[tokio::test]
 async fn tranche_prices_with_single_tranche_investor() {
 	// The block time we use for this test (in seconds)
+	// -> two blocks per day
 	pub const BLOCK_TIME: u64 = 86400 / 2u64;
 
 	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
