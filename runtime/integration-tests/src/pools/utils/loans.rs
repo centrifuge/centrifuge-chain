@@ -251,7 +251,7 @@ pub fn update_nav(pool_id: PoolId) -> Call {
 	Call::Loans(LoansCall::update_nav { pool_id })
 }
 
-/// Calculates the final amount for a given
+/// Calculates the final debt for a given
 /// principal amount, rate and period.
 /// Compounding happens every second.
 ///
@@ -259,7 +259,7 @@ pub fn update_nav(pool_id: PoolId) -> Call {
 ///
 /// Logic: n = second-per-year
 /// * principal * (1 + r/n)^(end-start)
-pub fn final_amount(principal: Balance, rate: u64, start: Moment, end: Moment) -> Balance {
+pub fn calculate_debt(principal: Balance, rate: u64, start: Moment, end: Moment) -> Balance {
 	let rate = interest_rate_per_sec(rate_from_percent(rate)).expect("Rate per sec works");
 	let delta: usize = end
 		.checked_sub(start)

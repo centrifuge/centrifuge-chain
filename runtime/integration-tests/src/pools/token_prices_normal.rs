@@ -38,7 +38,7 @@ use tokio::runtime::Handle;
 
 // The block time we use for theses tests (in seconds)
 // -> two blocks per day
-const BLOCK_TIME: u64 = 86400 / 2u64;
+const BLOCK_TIME: u64 = 86400u64;
 
 #[tokio::test]
 async fn single_tranche_investor_single_loan() {
@@ -108,7 +108,7 @@ async fn single_tranche_investor_single_loan() {
 			if [id == pool_id && who == Keyring::TrancheInvestor(1).to_account_id()],
 	);
 
-	env::pass_n(&mut env, (1 * time::blocks_per_day::<BLOCK_TIME>()).into());
+	env::pass_n(&mut env, 1);
 
 	env::run!(
 		env,
@@ -133,53 +133,43 @@ async fn single_tranche_investor_single_loan() {
 			if [id == pool_id && loan_id == loan_id && amount == borrow_amount],
 	);
 
-	let start_interest_time = env
+	env::pass_n(&mut env, 30 * time::blocks_per_day::<BLOCK_TIME>());
+
+	let token_prices = env
 		.with_state(Chain::Para(PARA_ID), || {
-			Duration::from_millis(Timestamp::now()).as_secs()
-		})
-		.expect("State is available.");
-
-	env::pass_n(&mut env, (30 * time::blocks_per_day::<BLOCK_TIME>()).into());
-
-	let (token_prices, end_interest_time, total_issuance) = env
-		.with_state(Chain::Para(PARA_ID), || {
-			let pool = Pools::pool(pool_id).expect("Pool exists. qed");
-			let tranche_id = pool
-				.tranches
-				.tranche_id(TrancheLoc::Index(0))
-				.expect("Residual tranche exists. qed");
-
-			(
-				pools::with_ext::get_tranche_prices(pool_id),
-				Duration::from_millis(Timestamp::now()).as_secs(),
-				Tokens::total_issuance(CurrencyId::Tranche(pool_id, tranche_id)),
-			)
+			pools::with_ext::get_tranche_prices(pool_id)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
 
-	let reserve = loan_amount - borrow;
-	let final_debt = loans::final_amount(borrow, 15, start_interest_time, end_interest_time);
-	let residual_price = Rate::saturating_from_rational(final_debt + reserve, total_issuance);
-
-	tracing::event!(
-		tracing::Level::INFO,
-		"Prices: {:?}, reserve: {}, final debt: {}, residual_price: {}",
-		token_prices,
-		reserve,
-		final_debt,
-		residual_price
-	);
-
 	assert_eq!(
 		vec![
-			residual_price,
+			Rate::from_inner(1024576162005238300000000000),
 			Rate::one(),
 			Rate::one(),
 			Rate::one(),
 			Rate::one(),
 		],
 		token_prices,
-	)
+	);
+
+	env::pass_n(&mut env, 60 * time::blocks_per_day::<BLOCK_TIME>());
+
+	let token_prices = env
+		.with_state(Chain::Para(PARA_ID), || {
+			pools::with_ext::get_tranche_prices(pool_id)
+		})
+		.expect("ESSENTIAL: Chain state is available.");
+
+	assert_eq!(
+		vec![
+			Rate::from_inner(1033910925284219300000000000),
+			Rate::one(),
+			Rate::one(),
+			Rate::one(),
+			Rate::one(),
+		],
+		token_prices,
+	);
 }
 
 #[tokio::test]
