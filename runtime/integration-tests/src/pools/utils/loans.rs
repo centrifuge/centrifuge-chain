@@ -12,6 +12,7 @@
 
 //! Utilities around the loans pallet
 use crate::chain::centrifuge::{Address, Amount, Balance, Call, Rate};
+use crate::pools::utils::time::Moment;
 use crate::pools::utils::tokens::rate_from_percent;
 use pallet_loans::{
 	loan_type::{BulletLoan, LoanType},
@@ -21,6 +22,8 @@ use pallet_loans::{
 };
 use pallet_uniques::Call as UniquesCall;
 use runtime_common::{AccountId, ClassId, InstanceId, PoolId};
+use sp_arithmetic::traits::{checked_pow, One};
+use sp_runtime::{traits::CheckedMul, FixedPointNumber};
 use std::collections::HashMap;
 
 /// Structure that manages collateral and loan nft ids
@@ -246,4 +249,39 @@ pub fn mint_nft_call(class: ClassId, instance: InstanceId, owner: AccountId) -> 
 
 pub fn update_nav(pool_id: PoolId) -> Call {
 	Call::Loans(LoansCall::update_nav { pool_id })
+}
+
+/// Calculates the final amount for a given
+/// principal amount, rate and period.
+/// Compounding happens every second.
+///
+/// Rate should be in percent. E.g. 15 -> 15%APR
+///
+/// Logic: n = second-per-year
+/// * principal * (1 + r/n)^(end-start)
+pub fn final_amount(principal: Balance, rate: u64, start: Moment, end: Moment) -> Balance {
+	let rate = interest_rate_per_sec(rate_from_percent(rate)).expect("Rate per sec works");
+	let delta: usize = end
+		.checked_sub(start)
+		.expect("End must be greater start of period")
+		.try_into()
+		.expect("Must run on 64 bit machine.");
+	let rate = checked_pow(rate, delta).expect("Power must not overflow");
+	rate.checked_mul_int(principal)
+		.expect("Overflow in multiplication")
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::pools::utils::time::START_DATE;
+	use crate::pools::utils::tokens::DECIMAL_BASE_12;
+	use runtime_common::SECONDS_PER_YEAR;
+
+	#[test]
+	fn final_amount_works() {
+		let principal = 100_000 * DECIMAL_BASE_12;
+		let amount = final_amount(principal, 20, START_DATE, START_DATE + SECONDS_PER_YEAR);
+		assert_eq!(amount, 122140275738556129);
+	}
 }

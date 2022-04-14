@@ -9190,6 +9190,7 @@ dependencies = [
  "sc-consensus-uncles",
  "sc-executor",
  "sc-service",
+ "sp-arithmetic",
  "sp-authorship",
  "sp-consensus-babe",
  "sp-core",
