@@ -174,42 +174,36 @@ async fn single_tranche_investor_single_loan() {
 
 #[tokio::test]
 async fn single_tranche_investor_multiple_loans() {
-	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
-	let manager = env::task_manager(Handle::current());
-	let mut env = {
-		let mut genesis = Storage::default();
-		genesis::default_balances::<Runtime>(&mut genesis);
-		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
-	};
-
-	let mut nft_manager = NftManager::new();
-	let pool_id = 0u64;
+	// TODO:
 }
 
 #[tokio::test]
 async fn multiple_tranche_investors_single_loan() {
-	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
-	let manager = env::task_manager(Handle::current());
-	let mut env = {
-		let mut genesis = Storage::default();
-		genesis::default_balances::<Runtime>(&mut genesis);
-		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
-	};
-
-	let mut nft_manager = NftManager::new();
-	let pool_id = 0u64;
+	// TODO:
 }
 
 #[tokio::test]
 async fn multiple_tranche_investors_multiple_loans() {
-	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
-	let manager = env::task_manager(Handle::current());
-	let mut env = {
-		let mut genesis = Storage::default();
-		genesis::default_balances::<Runtime>(&mut genesis);
-		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
-	};
+	// TODO:
+}
 
-	let mut nft_manager = NftManager::new();
-	let pool_id = 0u64;
+#[tokio::test]
+async fn multiple_tranche_investors_single_loan_different_investing_times() {
+	// TODO:
+}
+
+#[tokio::test]
+async fn multiple_tranche_investors_multiple_loans_different_investing_times() {
+	// TODO:
+}
+
+#[tokio::test]
+async fn multiple_tranche_investors_single_loan_dynamic_investing_time_same_redemption_times() {
+	// TODO:
+}
+
+#[tokio::test]
+async fn multiple_tranche_investors_single_loan_dynamic_investing_time_different_redemption_times()
+{
+	// TODO:
 }
