@@ -23,6 +23,8 @@ pub use types::*;
 mod fixed_point;
 mod impls;
 
+pub use common_types::CurrencyId;
+
 pub mod apis {
 	use node_primitives::{BlockNumber, Hash};
 	use pallet_anchors::AnchorData;
@@ -227,5 +229,52 @@ pub mod constants {
 
 	pub const fn deposit(items: u32, bytes: u32) -> Balance {
 		items as Balance * 15 * CENTI_CFG + (bytes as Balance) * 6 * CENTI_CFG
+	}
+}
+
+pub mod parachains {
+	pub mod karura {
+		pub const ID: u32 = 2000;
+		pub const KUSD_KEY: &[u8] = &[0, 129];
+	}
+}
+
+pub mod xcm_fees {
+	use common_traits::TokenMetadata;
+	use common_types::CurrencyId;
+	use frame_support::weights::constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND};
+
+	use super::types::Balance;
+	use super::CENTI_CFG as CENTI_CURRENCY;
+
+	pub fn base_tx_in_air() -> Balance {
+		CENTI_CURRENCY / 10
+	}
+
+	// The fee cost per second for transferring the native token in cents.
+	pub fn native_per_second() -> Balance {
+		base_tx_per_second(CurrencyId::Native)
+	}
+
+	pub fn ksm_per_second() -> Balance {
+		base_tx_per_second(CurrencyId::KSM) / 50
+	}
+
+	fn base_tx_per_second(currency: CurrencyId) -> Balance {
+		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
+		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		base_tx_per_second * base_tx(currency)
+	}
+
+	fn base_tx(currency: CurrencyId) -> Balance {
+		cent(currency) / 10
+	}
+
+	pub fn dollar(currency_id: common_types::CurrencyId) -> Balance {
+		10u128.saturating_pow(currency_id.decimals().into())
+	}
+
+	pub fn cent(currency_id: CurrencyId) -> Balance {
+		dollar(currency_id) / 100
 	}
 }

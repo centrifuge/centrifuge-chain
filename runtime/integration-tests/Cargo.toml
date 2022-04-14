@@ -9,13 +9,12 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 
 [dependencies]
-fudge = { git = "https://github.com/centrifuge/fudge", tag = "v0.0.7-polkadot-v0.9.17"}
+fudge = { git = "https://github.com/centrifuge/fudge", tag = "v0.0.8-polkadot-v0.9.17"}
 tokio = { version = "1.15", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 lazy_static = "1.4.0"
-strum = { version = "0.23", features = ["derive"] }
 
 # Substrate
 ## Substrate-Frame
@@ -26,6 +25,7 @@ pallet-babe = { git = "https://github.com/paritytech/substrate", default-feature
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.17" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 pallet-asset-tx-payment = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
+pallet-uniques = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 ## Substrate-Primitives
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -52,7 +52,7 @@ xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "releas
 polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
 kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
 rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17"}
+polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 
 # Cumulus
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.17" }
@@ -69,18 +69,24 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev="24ccbce5
 
 # Local
 runtime-common = { path = "../common" }
+common-traits = { path = "../../libs/common-traits" }
 development-runtime = { path = "../development", optional = true }
 altair-runtime = { path = "../altair", optional = true }
 centrifuge-runtime = { path = "../centrifuge", optional = true }
 
-common-traits = { path = "../../libs/common-traits" }
-
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.17" }
+common-traits = { path = "../../libs/common-traits" }
+common-types = { path = "../../libs/common-types" }
+pallet-pools = { path = "../../pallets/pools" }
+pallet-loans = { path = "../../pallets/loans" }
+pallet-permissions = { path = "../../pallets/permissions" }
 
 [features]
 default = [ "runtime-development" ]
 runtime-benchmarks = [ "default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks"]
-runtime-development = ["rococo-runtime", "development-runtime"]
+# TODO(nuno): Remove "kusama-runtime" from `runtime-development` once XCM is available on Altair
+runtime-development = ["rococo-runtime", "development-runtime", "kusama-runtime"]
 runtime-altair = ["kusama-runtime", "altair-runtime"]
 runtime-centrifuge = ["polkadot-runtime", "centrifuge-runtime"]

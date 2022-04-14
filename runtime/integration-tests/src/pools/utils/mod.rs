@@ -13,4 +13,9 @@
 pub mod accounts;
 pub mod env;
 pub mod extrinsics;
+pub mod genesis;
+pub mod loans;
 pub mod logs;
+pub mod pools;
+pub mod time;
+pub mod tokens;

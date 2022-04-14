@@ -54,7 +54,7 @@ pub mod benchmarking;
 pub(crate) mod test_utils;
 
 pub mod functions;
-mod loan_type;
+pub mod loan_type;
 pub mod math;
 pub mod types;
 pub mod weights;

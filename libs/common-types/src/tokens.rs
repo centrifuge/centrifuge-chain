@@ -12,7 +12,7 @@ use sp_std::vec::Vec;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PermissionedCurrency {
-	Tranche(u64, [u8; 16]),
+	// Tranche(u64, [u8; 16]),
 	PermissionedEur,
 	PermissionedUsd,
 }
@@ -25,6 +25,13 @@ pub enum CurrencyId {
 	Native,
 	Usd,
 	Permissioned(PermissionedCurrency),
+	Tranche(u64, [u8; 16]),
+
+	/// Karura KSM
+	KSM,
+
+	/// Karura Dollar
+	KUSD,
 }
 
 impl TokenMetadata for CurrencyId {
@@ -40,6 +47,8 @@ impl TokenMetadata for CurrencyId {
 			)
 			.as_ref()
 			.to_vec(),
+			CurrencyId::KUSD => b"Karura Dollar".to_vec(),
+			CurrencyId::KSM => b"Kusama".to_vec(),
 		}
 	}
 
@@ -53,15 +62,17 @@ impl TokenMetadata for CurrencyId {
 					.as_ref()
 					.to_vec()
 			}
+			CurrencyId::KUSD => b"KUSD".to_vec(),
+			CurrencyId::KSM => b"KSM".to_vec(),
 		}
 	}
 
 	fn decimals(&self) -> u8 {
 		match self {
 			CurrencyId::Native => 18,
-			CurrencyId::Usd => 12,
 			CurrencyId::PermissionedAsset(_) => 12,
 			CurrencyId::Tranche(_, _) => 27,
+			CurrencyId::Usd | CurrencyId::KUSD | CurrencyId::KSM => 12,
 		}
 	}
 }
