@@ -40,9 +40,7 @@ use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{AccountIdConversion, Convert, Zero};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
-use sp_runtime::transaction_validity::{
-	TransactionPriority, TransactionSource, TransactionValidity,
-};
+use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -798,8 +796,6 @@ impl pallet_collator_allowlist::Config for Runtime {
 // Parameterize claims pallet
 parameter_types! {
 	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
-	pub const Longevity: u32 = 64;
-	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
@@ -983,8 +979,6 @@ impl pallet_crowdloan_reward::Config for Runtime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const ClaimTransactionLongevity: u32 = 64;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -996,8 +990,6 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
-	type ClaimTransactionPriority = ClaimTransactionPriority;
-	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
 }
 
@@ -1295,7 +1287,7 @@ construct_runtime!(
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
 		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,

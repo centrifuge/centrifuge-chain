@@ -1,4 +1,5 @@
 #![feature(stmt_expr_attributes)]
+#![feature(destructuring_assignment)]
 // Copyright 2021 Centrifuge GmbH (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
@@ -12,6 +13,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 #![cfg(test)]
+#![allow(unused)]
 
 mod pools;
 mod xcm;
