@@ -13,16 +13,15 @@
 pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System};
 use common_traits::TokenMetadata;
 use frame_support::traits::GenesisBuild;
-use runtime_common::Balance;
+use runtime_common::{parachains, Balance};
 
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
-/// Parachain Ids
-pub const PARA_ID_ALTAIR: u32 = 2088;
+/// A PARA ID used for a sibling parachain.
+/// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
-pub const PARA_ID_KARURA: u32 = 2000;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
@@ -33,7 +32,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: PARA_ID_ALTAIR,
+			parachain_id: parachains::altair::ID,
 		}
 	}
 }
@@ -119,11 +118,11 @@ pub fn sibling_account() -> AccountId {
 }
 
 pub fn karura_account() -> AccountId {
-	parachain_account(PARA_ID_KARURA.into())
+	parachain_account(parachains::karura::ID.into())
 }
 
 pub fn altair_account() -> AccountId {
-	parachain_account(PARA_ID_ALTAIR.into())
+	parachain_account(parachains::altair::ID.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {
