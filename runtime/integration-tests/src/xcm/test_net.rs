@@ -81,7 +81,7 @@ decl_test_network! {
 }
 
 pub fn relay_ext() -> sp_io::TestExternalities {
-	use crate::chain::relay::{Runtime, System};
+	use kusama_runtime::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()

@@ -232,7 +232,7 @@ pub mod currency_id_convert {
 
 	#[test]
 	fn convert_air() {
-		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0]);
+		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
 		let air_location: MultiLocation = MultiLocation::new(
 			1,
