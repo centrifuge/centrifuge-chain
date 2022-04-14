@@ -9,6 +9,9 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+
+//! Tests for token-price behaviour in a normal and healthy scenario
+//! I.e. no defaults. But we test weird tranche investment structures
 use crate::chain::centrifuge::{Amount, Call, Event, Runtime, Timestamp, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
@@ -28,7 +31,7 @@ use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError
 use tokio::runtime::Handle;
 
 #[tokio::test]
-async fn tranche_prices_with_simple_default() {
+async fn tranche_prices_with_single_tranche_investor() {
 	// The block time we use for this test (in seconds)
 	pub const BLOCK_TIME: u64 = 86400 / 2u64;
 
