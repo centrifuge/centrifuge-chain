@@ -179,7 +179,7 @@ where
 	}
 
 	pub fn accrue(&mut self, now: Moment) -> DispatchResult {
-		let delta = now - self.last_updated_interest;
+		let delta = now.saturating_sub(self.last_updated_interest);
 		let interest = self.interest_rate_per_sec();
 		// NOTE: `checked_pow` can return 1 for 0^0 which is fine
 		//       for us, as we simply have the same debt if this happens

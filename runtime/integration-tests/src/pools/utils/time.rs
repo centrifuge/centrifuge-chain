@@ -27,6 +27,9 @@ pub type Seconds = u64;
 /// A type representing blocks
 pub type Blocks = u64;
 
+/// A moment in time in seconds
+pub type Moment = u64;
+
 /// Generates a date from the given delta. Delta MUST be given
 /// in seconds (not milli-seconds).
 ///

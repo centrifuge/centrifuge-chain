@@ -12,7 +12,7 @@
 
 //! Tests for token-price behaviour in a normal and healthy scenario
 //! I.e. no defaults. But we test weird tranche investment structures
-use crate::chain::centrifuge::{Amount, Call, Event, Runtime, Timestamp, PARA_ID};
+use crate::chain::centrifuge::{Amount, Call, Event, Pools, Runtime, Timestamp, Tokens, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
 	accounts::Keyring,
@@ -23,19 +23,25 @@ use crate::pools::utils::{
 	time::secs::SECONDS_PER_DAY,
 	tokens::DECIMAL_BASE_12,
 };
-use common_types::PoolRole;
+use common_types::{CurrencyId, PoolRole};
+use frame_support::traits::fungibles::Inspect;
 use fudge::primitives::Chain;
 use pallet_loans::types::Asset;
-use runtime_common::{AccountId, Address, Balance, InstanceId};
-use sp_runtime::{traits::AccountIdConversion, DispatchError, Storage, TokenError};
+use pallet_pools::TrancheLoc;
+use runtime_common::{AccountId, Address, Balance, InstanceId, Rate};
+use sp_arithmetic::traits::One;
+use sp_runtime::{
+	traits::AccountIdConversion, DispatchError, FixedPointNumber, Storage, TokenError,
+};
+use std::time::Duration;
 use tokio::runtime::Handle;
 
-#[tokio::test]
-async fn tranche_prices_with_single_tranche_investor() {
-	// The block time we use for this test (in seconds)
-	// -> two blocks per day
-	pub const BLOCK_TIME: u64 = 86400 / 2u64;
+// The block time we use for theses tests (in seconds)
+// -> two blocks per day
+const BLOCK_TIME: u64 = 86400 / 2u64;
 
+#[tokio::test]
+async fn single_tranche_investor_single_loan() {
 	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
 	let manager = env::task_manager(Handle::current());
 	let mut env = {
@@ -48,7 +54,8 @@ async fn tranche_prices_with_single_tranche_investor() {
 	let pool_id = 0u64;
 	let loan_amount = 10_000 * DECIMAL_BASE_12;
 	let loan_id = InstanceId(1);
-	let borrow_amount = Amount::from_inner(9_000 * DECIMAL_BASE_12);
+	let borrow = 9_000 * DECIMAL_BASE_12;
+	let borrow_amount = Amount::from_inner(borrow);
 	let investment = 5_000 * DECIMAL_BASE_12;
 	let maturity = time::date(90 * SECONDS_PER_DAY);
 
@@ -126,20 +133,93 @@ async fn tranche_prices_with_single_tranche_investor() {
 			if [id == pool_id && loan_id == loan_id && amount == borrow_amount],
 	);
 
+	let start_interest_time = env
+		.with_state(Chain::Para(PARA_ID), || {
+			Duration::from_millis(Timestamp::now()).as_secs()
+		})
+		.expect("State is available.");
+
 	env::pass_n(&mut env, (30 * time::blocks_per_day::<BLOCK_TIME>()).into());
 
-	let token_prices = env
+	let (token_prices, end_interest_time, total_issuance) = env
 		.with_state(Chain::Para(PARA_ID), || {
+			let pool = Pools::pool(pool_id).expect("Pool exists. qed");
+			let tranche_id = pool
+				.tranches
+				.tranche_id(TrancheLoc::Index(0))
+				.expect("Residual tranche exists. qed");
+
 			(
 				pools::with_ext::get_tranche_prices(pool_id),
-				Timestamp::now(),
+				Duration::from_millis(Timestamp::now()).as_secs(),
+				Tokens::total_issuance(CurrencyId::Tranche(pool_id, tranche_id)),
 			)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
 
+	let reserve = loan_amount - borrow;
+	let final_debt = loans::final_amount(borrow, 15, start_interest_time, end_interest_time);
+	let residual_price = Rate::saturating_from_rational(final_debt + reserve, total_issuance);
+
 	tracing::event!(
 		tracing::Level::INFO,
-		?token_prices,
-		"Token prices after borrow and 10 minutes passed"
+		"Prices: {:?}, reserve: {}, final debt: {}, residual_price: {}",
+		token_prices,
+		reserve,
+		final_debt,
+		residual_price
 	);
+
+	assert_eq!(
+		vec![
+			residual_price,
+			Rate::one(),
+			Rate::one(),
+			Rate::one(),
+			Rate::one(),
+		],
+		token_prices,
+	)
+}
+
+#[tokio::test]
+async fn single_tranche_investor_multiple_loans() {
+	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
+	let manager = env::task_manager(Handle::current());
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<Runtime>(&mut genesis);
+		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
+	};
+
+	let mut nft_manager = NftManager::new();
+	let pool_id = 0u64;
+}
+
+#[tokio::test]
+async fn multiple_tranche_investors_single_loan() {
+	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
+	let manager = env::task_manager(Handle::current());
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<Runtime>(&mut genesis);
+		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
+	};
+
+	let mut nft_manager = NftManager::new();
+	let pool_id = 0u64;
+}
+
+#[tokio::test]
+async fn multiple_tranche_investors_multiple_loans() {
+	// THE MANAGER MUST NOT BE DROPPED! It is the receiver of a lot of channels
+	let manager = env::task_manager(Handle::current());
+	let mut env = {
+		let mut genesis = Storage::default();
+		genesis::default_balances::<Runtime>(&mut genesis);
+		env::test_env_with_centrifuge_storage::<BLOCK_TIME>(&manager, genesis)
+	};
+
+	let mut nft_manager = NftManager::new();
+	let pool_id = 0u64;
 }
