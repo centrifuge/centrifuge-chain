@@ -820,6 +820,22 @@ pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 	Ok(())
 }
 
+/// Pass n_blocks on the parachain-side and run function on
+/// centrifuge state after each block.
+///
+/// Typically, this can be used to assert some state info after each block
+pub fn pass_n_assert<F>(env: &mut TestEnv, n: u64, assert: F) -> Result<(), ()>
+where
+	F: FnMut() -> () + Copy,
+{
+	for _ in 0..n {
+		env.evolve()?;
+		env.with_state(Chain::Para(PARA_ID), assert)?;
+	}
+
+	Ok(())
+}
+
 /// Logs provided events as info
 pub fn log<Event: std::fmt::Debug>(events: Vec<Event>) {
 	for event in events {
