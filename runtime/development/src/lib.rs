@@ -1006,7 +1006,7 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Scope = PermissionScope;
-	type Role = Role<CurrencyId, TrancheId, Moment>;
+	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -1018,17 +1018,17 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<Role<CurrencyId, TrancheId, Moment>>,
+		Option<Role<TrancheId, Moment>>,
 		PoolId,
-		Role<CurrencyId, TrancheId, Moment>,
+		Role<TrancheId, Moment>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<Role<CurrencyId, TrancheId, Moment>>,
+			Option<Role<TrancheId, Moment>>,
 			PoolId,
-			Role<CurrencyId, TrancheId, Moment>,
+			Role<TrancheId, Moment>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;
@@ -1051,7 +1051,7 @@ impl
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<AccountId, Scope = PermissionScope, Role = Role<CurrencyId>>,
+	P: PermissionsT<AccountId, Scope = PermissionScope, Role = Role>,
 {
 	type Result = bool;
 
@@ -1064,7 +1064,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::PermissionedAsset(permissioned_asset_type) => false, // TODO
+			CurrencyId::Permissioned(permissioned_asset_type) => false, // TODO
 			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(

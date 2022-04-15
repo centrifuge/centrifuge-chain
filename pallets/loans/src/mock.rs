@@ -17,9 +17,9 @@
 //! and some helper functions.
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
-use common_types::CurrencyId;
-use common_types::PoolLocator;
-use common_types::{PermissionRoles, PoolRole, Role, TimeProvider};
+use common_types::{
+	CurrencyId, PermissionRoles, PoolId, PoolLocator, PoolRole, Role, TimeProvider,
+};
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
+	Amount, Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -244,7 +244,7 @@ parameter_types! {
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
 	type Scope = u64;
-	type Role = Role<CurrencyId>;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;

@@ -2,7 +2,7 @@ use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::{CurrencyId, Moment};
-use common_types::{PermissionRoles, PoolRole, Role, TimeProvider, UNION};
+use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
@@ -108,7 +108,7 @@ parameter_types! {
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Scope = u64;
-	type Role = Role<CurrencyId, TrancheId, Moment>;
+	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
@@ -233,7 +233,7 @@ impl pallet_restricted_tokens::Config for Test {
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<u64, Location = u64, Role = Role<CurrencyId, TrancheId>>,
+	P: PermissionsT<u64, Scope = PermissionScope<u64, CurrencyId>, Role = Role<TrancheId>>,
 {
 	type Result = bool;
 

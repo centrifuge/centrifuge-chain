@@ -59,12 +59,11 @@ fn permission_roles_work() {
 
 	// Updating works only when increasing permissions
 	assert!(roles
-		.add(Role::PermissionedCurrencyHolder(
-			CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, into_tranche_id(30))),
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
+			into_tranche_id(30),
 			10
-		))
+		)))
 		.is_ok());
-
 	assert!(roles
 		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(30),

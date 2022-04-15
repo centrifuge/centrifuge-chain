@@ -24,13 +24,12 @@ use crate::test_utils::{
 	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
 	initialise_test_pool, mint_nft,
 };
-use common_types::CurrencyId;
-use common_types::PoolLocator;
+use common_types::{CurrencyId, PoolId, PoolLocator};
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
+use runtime_common::{Amount, Balance, ClassId, InstanceId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
@@ -71,7 +70,7 @@ where
 		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
 		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>
-		+ pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
+		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
 {
 	let pool_admin = PoolAdmin::get();

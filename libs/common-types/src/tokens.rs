@@ -39,7 +39,7 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"Native currency".to_vec(),
 			CurrencyId::Usd => b"USD stable coin".to_vec(),
-			CurrencyId::PermissionedAsset(_) => b"Permissioned stable coin".to_vec(),
+			CurrencyId::Permissioned(_) => b"Permissioned stable coin".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => format_runtime_string!(
 				"Tranche token of pool {} and tranche {:?}",
 				pool_id,
@@ -56,7 +56,7 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"CFG".to_vec(),
 			CurrencyId::Usd => b"USD".to_vec(),
-			CurrencyId::PermissionedAsset(_) => b"PERM".to_vec(),
+			CurrencyId::Permissioned(_) => b"PERM".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				format_runtime_string!("TT:{}:{:?}", pool_id, tranche_id)
 					.as_ref()
@@ -70,7 +70,7 @@ impl TokenMetadata for CurrencyId {
 	fn decimals(&self) -> u8 {
 		match self {
 			CurrencyId::Native => 18,
-			CurrencyId::PermissionedAsset(_) => 12,
+			CurrencyId::Permissioned(_) => 12,
 			CurrencyId::Tranche(_, _) => 27,
 			CurrencyId::Usd | CurrencyId::KUSD | CurrencyId::KSM => 12,
 		}

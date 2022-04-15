@@ -16,9 +16,7 @@ use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use codec::Encode;
 use common_traits::{Permissions, PoolNAV};
-use common_types::CurrencyId;
-use common_types::PoolLocator;
-use common_types::PoolRole;
+use common_types::{CurrencyId, PoolId, PoolLocator, PoolRole, Role};
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
@@ -38,7 +36,7 @@ type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
 pub(crate) fn set_role<T: pallet_loans::Config>(
 	location: <T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 	who: T::AccountId,
-	role: PoolRole,
+	role: Role<PoolId, CurrencyId>,
 ) {
 	PermissionsOf::<T>::add(location, who, role).expect("adding permissions should not fail");
 }
@@ -123,12 +121,18 @@ pub(crate) fn create<T>(
 	set_role::<T>(
 		pool_id.into(),
 		junior_investor.clone(),
-		PoolRole::TrancheInvestor(JuniorTrancheId::get().into(), 999_999_999u32.into()),
+		Role::PoolRole(PoolRole::TrancheInvestor(
+			JuniorTrancheId::get().into(),
+			999_999_999u32.into(),
+		)),
 	);
 	set_role::<T>(
 		pool_id.into(),
 		senior_investor.clone(),
-		PoolRole::TrancheInvestor(SeniorTrancheId::get().into(), 999_999_999u32.into()),
+		Role::PoolRole(PoolRole::TrancheInvestor(
+			SeniorTrancheId::get().into(),
+			999_999_999u32.into(),
+		)),
 	);
 
 	assert_ok!(PoolPallet::<T>::update_invest_order(

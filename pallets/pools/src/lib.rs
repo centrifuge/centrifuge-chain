@@ -21,7 +21,7 @@ pub mod weights;
 use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
-use common_types::{Moment, PoolLocator, PoolRole, Role};
+use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -273,8 +273,8 @@ pub mod pallet {
 
 		type Permission: Permissions<
 			Self::AccountId,
-			Location = Self::PoolId,
-			Role = Role<Self::CurrencyId, Self::TrancheId, Moment>,
+			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
+			Role = Role<Self::TrancheId, Moment>,
 			Error = DispatchError,
 		>;
 
@@ -533,7 +533,11 @@ pub mod pallet {
 					metadata: None,
 				},
 			);
-			T::Permission::add(pool_id, admin.clone(), Role::PoolRole(PoolRole::PoolAdmin))?;
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				admin.clone(),
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)?;
 			Self::deposit_event(Event::Created(pool_id, admin));
 			Ok(())
 		}
@@ -555,7 +559,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), Role::PoolRole(PoolRole::PoolAdmin)),
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
 				BadOrigin
 			);
 
@@ -589,7 +597,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), Role::PoolRole(PoolRole::PoolAdmin)),
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
 				BadOrigin
 			);
 
@@ -622,7 +634,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has(
-					pool_id,
+					PermissionScope::Pool(pool_id),
 					who.clone(),
 					Role::PoolRole(PoolRole::LiquidityAdmin)
 				),
@@ -654,7 +666,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), Role::PoolRole(PoolRole::PoolAdmin)),
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
 				BadOrigin
 			);
 
@@ -712,16 +728,16 @@ pub mod pallet {
 			let tranche_id =
 				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche = pool
+					let tranche_id = pool
 						.tranches
-						.get_tranche(tranche_loc)
+						.tranche_id(tranche_loc)
 						.ok_or(Error::<T>::InvalidTrancheId)?;
 
 					ensure!(
 						T::Permission::has(
-							pool_id,
+							PermissionScope::Pool(pool_id),
 							who.clone(),
-							Role::PermissionedCurrencyHolder(tranche.currency, Self::now())
+							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
 					);
@@ -777,16 +793,16 @@ pub mod pallet {
 			let tranche_id =
 				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche = pool
+					let tranche_id = pool
 						.tranches
-						.get_tranche(tranche_loc)
+						.tranche_id(tranche_loc)
 						.ok_or(Error::<T>::InvalidTrancheId)?;
 
 					ensure!(
 						T::Permission::has(
-							pool_id,
+							PermissionScope::Pool(pool_id),
 							who.clone(),
-							Role::PermissionedCurrencyHolder(tranche.currency, Self::now())
+							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
 					);
