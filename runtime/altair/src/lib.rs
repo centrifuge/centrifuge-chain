@@ -56,7 +56,10 @@ mod weights;
 use constants::currency::*;
 
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PermissionScope, PoolId, PoolRole, Role, TimeProvider};
+use common_types::{
+	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	TimeProvider,
+};
 
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 
@@ -850,10 +853,13 @@ impl
 		let (_editor, maybe_role, _pool, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				// TODO: handle admins for permissioned assets
 				Role::PoolRole(PoolRole::PoolAdmin) => true,
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
+					_ => false,
+				},
+				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => match *role {
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => true,
 					_ => false,
 				},
 				_ => false,

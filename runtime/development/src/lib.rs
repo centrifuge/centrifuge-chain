@@ -1034,13 +1034,16 @@ impl
 			Role<TrancheId, Moment>,
 		),
 	) -> bool {
-		let (_editor, maybe_role, _pool, role) = t;
+		let (_editor, maybe_role, _scope, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				// TODO: handle admins for permissioned assets
 				Role::PoolRole(PoolRole::PoolAdmin) => true,
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
+					_ => false,
+				},
+				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => match *role {
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => true,
 					_ => false,
 				},
 				_ => false,

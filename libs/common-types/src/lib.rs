@@ -64,7 +64,7 @@ pub enum PermissionedCurrencyRole<Moment> {
 	Issuer,
 }
 
-// NOTE: In order to not carry around the Moment all the time, w	e give it a default.
+// NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
 //       In case the Role we provide does not match what we expect. I.e. if we change the Moment
 //       type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
@@ -176,7 +176,7 @@ where
 }
 
 /// The implementation of trait Properties for our PermissionsRoles does not care which Moment
-/// is passed to the PoolRole::TrancheInvestor(CurrencyId, Moment) variant.
+/// is passed to the PoolRole::TrancheInvestor(TrancheId, Moment) variant.
 /// This UNION shall reflect that and explain to the reader why it is passed here.
 pub const UNION: u64 = 0;
 
