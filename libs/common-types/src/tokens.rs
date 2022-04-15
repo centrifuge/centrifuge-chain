@@ -12,9 +12,7 @@ use sp_std::vec::Vec;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PermissionedCurrency {
-	// Tranche(u64, [u8; 16]),
-	PermissionedEur,
-	PermissionedUsd,
+	// TODO: Tranche variant from CurrencyId should be moved in here.
 }
 
 #[derive(
@@ -39,7 +37,7 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"Native currency".to_vec(),
 			CurrencyId::Usd => b"USD stable coin".to_vec(),
-			CurrencyId::Permissioned(_) => b"Permissioned stable coin".to_vec(),
+			CurrencyId::Permissioned(_) => b"Permissioned currency".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => format_runtime_string!(
 				"Tranche token of pool {} and tranche {:?}",
 				pool_id,
