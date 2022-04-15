@@ -132,16 +132,12 @@ pub trait Permissions<AccountId> {
 	type Error: Debug;
 	type Ok: Debug;
 
-	fn has(location: Self::Scope, who: AccountId, role: Self::Role) -> bool;
+	fn has(scope: Self::Scope, who: AccountId, role: Self::Role) -> bool;
 
-	fn add(
-		location: Self::Scope,
-		who: AccountId,
-		role: Self::Role,
-	) -> Result<Self::Ok, Self::Error>;
+	fn add(scope: Self::Scope, who: AccountId, role: Self::Role) -> Result<Self::Ok, Self::Error>;
 
 	fn remove(
-		location: Self::Scope,
+		scope: Self::Scope,
 		who: AccountId,
 		role: Self::Role,
 	) -> Result<Self::Ok, Self::Error>;

@@ -1157,7 +1157,7 @@ fn test_add_write_off_groups() {
 				Origin::signed(pool_admin),
 				Role::PoolRole(PoolRole::PoolAdmin),
 				risk_admin,
-				pool_id,
+				PermissionScope::Pool(pool_id),
 				Role::PoolRole(PoolRole::RiskAdmin),
 			));
 

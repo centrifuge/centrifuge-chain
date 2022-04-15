@@ -16,7 +16,7 @@ use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use codec::Encode;
 use common_traits::{Permissions, PoolNAV};
-use common_types::{CurrencyId, PermissionScope, PoolId, PoolLocator, PoolRole, Role};
+use common_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
@@ -32,14 +32,16 @@ use sp_runtime::{
 };
 use sp_std::vec;
 
+type TrancheId = [u8; 16];
 type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
+
 pub(crate) fn set_role<T: pallet_loans::Config>(
 	scope: PermissionScope<
 		<T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
 		<T as pallet_loans::Config>::CurrencyId,
 	>,
 	who: T::AccountId,
-	role: Role<PoolId, CurrencyId>,
+	role: Role<TrancheId, Moment>,
 ) {
 	PermissionsOf::<T>::add(scope, who, role).expect("adding permissions should not fail");
 }

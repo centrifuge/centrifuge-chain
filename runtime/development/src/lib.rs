@@ -66,7 +66,10 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 use common_traits::Permissions as PermissionsT;
 use common_traits::PreConditions;
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
+use common_types::{
+	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	TimeProvider, UNION,
+};
 use pallet_anchors::AnchorData;
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
@@ -862,7 +865,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
 			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
-			CurrencyId::Usd | CurrencyId::KUSD => true,
+			CurrencyId::Usd | CurrencyId::KUSD | CurrencyId::Permissioned(_) => true,
 		}
 	}
 }
@@ -1005,7 +1008,7 @@ parameter_types! {
 
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
-	type Scope = PermissionScope;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
@@ -1019,7 +1022,7 @@ impl
 	Contains<(
 		AccountId,
 		Option<Role<TrancheId, Moment>>,
-		PoolId,
+		PermissionScope<PoolId, CurrencyId>,
 		Role<TrancheId, Moment>,
 	)> for Editors
 {
@@ -1027,7 +1030,7 @@ impl
 		t: &(
 			AccountId,
 			Option<Role<TrancheId, Moment>>,
-			PoolId,
+			PermissionScope<PoolId, CurrencyId>,
 			Role<TrancheId, Moment>,
 		),
 	) -> bool {
@@ -1051,7 +1054,7 @@ impl
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<AccountId, Scope = PermissionScope, Role = Role>,
+	P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 {
 	type Result = bool;
 
@@ -1064,17 +1067,27 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Permissioned(permissioned_asset_type) => false, // TODO
 			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
-					pool_id,
+					PermissionScope::Pool(pool_id),
 					send,
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
 				) && P::has(
-					pool_id,
+					PermissionScope::Pool(pool_id),
 					recv,
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				)
+			}
+			CurrencyId::Permissioned(_) => {
+				P::has(
+					PermissionScope::Currency(id),
+					send,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
+				) && P::has(
+					PermissionScope::Currency(id),
+					recv,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
 				)
 			}
 		}

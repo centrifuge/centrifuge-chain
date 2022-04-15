@@ -18,7 +18,7 @@
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_types::{
-	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, PoolRole, Role, TimeProvider,
+	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
 };
 use frame_support::traits::Everything;
 use frame_support::{
