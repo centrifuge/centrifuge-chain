@@ -279,9 +279,9 @@ mod test {
 	use runtime_common::SECONDS_PER_YEAR;
 
 	#[test]
-	fn final_amount_works() {
+	fn calculate_debt_works() {
 		let principal = 100_000 * DECIMAL_BASE_12;
-		let amount = final_amount(principal, 20, START_DATE, START_DATE + SECONDS_PER_YEAR);
+		let amount = calculate_debt(principal, 20, START_DATE, START_DATE + SECONDS_PER_YEAR);
 		assert_eq!(amount, 122140275738556129);
 	}
 }
