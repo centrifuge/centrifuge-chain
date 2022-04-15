@@ -10,15 +10,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Tests for token-price behaviour in a normal and healthy scenario
-//! I.e. no defaults. But we test weird tranche investment structures
+//! Loan-type: Just bullet-loans
+//! Scenario: Healthy (no-defaults)
+//! Investments: Mixed structures
+//! Tranches: All kind
+
 use crate::chain::centrifuge::{Amount, Call, Event, Pools, Runtime, Timestamp, Tokens, PARA_ID};
 use crate::pools::utils::*;
 use crate::pools::utils::{
 	accounts::Keyring,
 	env::{ChainState, EventRange},
 	loans::NftManager,
-	loans::{borrow_call, init_loans_for_pool, issue_default_loan, update_nav},
+	loans::{borrow_call, init_loans_for_pool, issue_default_bullet_loan, update_nav},
 	pools::{close_epoch, default_pool_calls, invest_order_call, permission_call},
 	time::secs::SECONDS_PER_DAY,
 	tokens::DECIMAL_BASE_12,
@@ -52,12 +55,12 @@ async fn single_tranche_investor_single_loan() {
 
 	let mut nft_manager = NftManager::new();
 	let pool_id = 0u64;
-	let loan_amount = 10_000 * DECIMAL_BASE_12;
+	let loan_value = 10_000 * DECIMAL_BASE_12;
 	let loan_id = InstanceId(1);
 	let borrow = 9_000 * DECIMAL_BASE_12;
 	let borrow_amount = Amount::from_inner(borrow);
 	let investment = 5_000 * DECIMAL_BASE_12;
-	let maturity = time::date(90 * SECONDS_PER_DAY);
+	let maturity = time::moment_from_default_start(90 * SECONDS_PER_DAY);
 
 	env::run!(
 		env,
@@ -65,10 +68,10 @@ async fn single_tranche_investor_single_loan() {
 		Call,
 		ChainState::PoolEmpty,
 		Keyring::Admin => default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
-			issue_default_loan(
+			issue_default_bullet_loan(
 				Keyring::Admin.into(),
 				pool_id,
-				loan_amount,
+				loan_value,
 				maturity,
 				&mut nft_manager,
 			)
@@ -139,7 +142,7 @@ async fn single_tranche_investor_single_loan() {
 		.with_state(Chain::Para(PARA_ID), || {
 			(
 				Duration::from_millis(Timestamp::now()).as_secs(),
-				pools::with_ext::get_tranche_prices(pool_id),
+				pools::with_ext::update_nav_and_get_tranche_prices(pool_id),
 			)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
@@ -161,7 +164,7 @@ async fn single_tranche_investor_single_loan() {
 
 	let token_prices = env
 		.with_state(Chain::Para(PARA_ID), || {
-			pools::with_ext::get_tranche_prices(pool_id)
+			pools::with_ext::update_nav_and_get_tranche_prices(pool_id)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
 

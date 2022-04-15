@@ -330,7 +330,7 @@ pub mod with_ext {
 	///
 	/// NOTE:
 	/// * update_nav() is called with Keyring::Admin as calley
-	pub fn get_tranche_prices(pool: PoolId) -> Vec<Rate> {
+	pub fn update_nav_and_get_tranche_prices(pool: PoolId) -> Vec<Rate> {
 		let now = Duration::from_millis(Timestamp::now()).as_secs();
 		let mut details = Pools::pool(pool).expect("POOLS: Getting pool failed.");
 		Loans::update_nav(Keyring::Admin.into(), pool).expect("LOANS: UpdatingNav failed");

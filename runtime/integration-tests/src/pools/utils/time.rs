@@ -35,7 +35,7 @@ pub type Moment = u64;
 ///
 /// The new date is computed starting from the overall
 /// START_DATE of the integration tests.
-pub fn date(delta: Seconds) -> Seconds {
+pub fn moment_from_default_start(delta: Seconds) -> Seconds {
 	std::time::Duration::from_secs(START_DATE).as_secs() + delta
 }
 
