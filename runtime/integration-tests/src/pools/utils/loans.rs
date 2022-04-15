@@ -117,7 +117,7 @@ pub fn init_loans_for_pool(
 ///     * probability_of_default: 5%,
 ///     * loss_given_default: 50%,
 /// 	* discount_rate: 2% ,
-pub fn issue_default_loan(
+pub fn issue_default_bullet_loan(
 	owner: AccountId,
 	pool_id: PoolId,
 	amount: Balance,
@@ -251,7 +251,7 @@ pub fn update_nav(pool_id: PoolId) -> Call {
 	Call::Loans(LoansCall::update_nav { pool_id })
 }
 
-/// Calculates the final debt for a given
+/// Calculates the expected repayment amount for a given
 /// principal amount, rate and period.
 /// Compounding happens every second.
 ///
@@ -259,15 +259,21 @@ pub fn update_nav(pool_id: PoolId) -> Call {
 ///
 /// Logic: n = second-per-year
 /// * principal * (1 + r/n)^(end-start)
-pub fn calculate_debt(principal: Balance, rate: u64, start: Moment, end: Moment) -> Balance {
-	let rate = interest_rate_per_sec(rate_from_percent(rate)).expect("Rate per sec works");
-	let delta: usize = end
-		.checked_sub(start)
+pub fn calculate_expected_repayment_amount(
+	borrowed_amount: Balance,
+	apr: u64,
+	origination_date: Moment,
+	maturity_date: Moment,
+) -> Balance {
+	let interst_rate_per_sec =
+		interest_rate_per_sec(rate_from_percent(apr)).expect("Rate per sec works");
+	let delta: usize = maturity_date
+		.checked_sub(origination_date)
 		.expect("End must be greater start of period")
 		.try_into()
 		.expect("Must run on 64 bit machine.");
-	let rate = checked_pow(rate, delta).expect("Power must not overflow");
-	rate.checked_mul_int(principal)
+	let rate = checked_pow(interst_rate_per_sec, delta).expect("Power must not overflow");
+	rate.checked_mul_int(borrowed_amount)
 		.expect("Overflow in multiplication")
 }
 
@@ -279,9 +285,14 @@ mod test {
 	use runtime_common::SECONDS_PER_YEAR;
 
 	#[test]
-	fn calculate_debt_works() {
-		let principal = 100_000 * DECIMAL_BASE_12;
-		let amount = calculate_debt(principal, 20, START_DATE, START_DATE + SECONDS_PER_YEAR);
+	fn calculate_expected_repayment_amount_works() {
+		let borrowed_amount = 100_000 * DECIMAL_BASE_12;
+		let amount = calculate_expected_repayment_amount(
+			borrowed_amount,
+			20,
+			START_DATE,
+			START_DATE + SECONDS_PER_YEAR,
+		);
 		assert_eq!(amount, 122140275738556129);
 	}
 }

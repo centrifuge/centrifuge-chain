@@ -10,7 +10,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-mod env;
-mod pool_starts;
-mod token_prices;
-mod utils;
+//! Token price checks
+//! This module is concerned with checking price evolvments
+//! for token prices are correct. Especially, with concerns on the
+//! loan-types that are used and on the investment structure and default events.
+mod bullet_loans_no_defaults;

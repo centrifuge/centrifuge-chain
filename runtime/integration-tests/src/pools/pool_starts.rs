@@ -15,7 +15,7 @@ use crate::pools::utils::{
 	accounts::Keyring,
 	env::{ChainState, EventRange},
 	loans::NftManager,
-	loans::{borrow_call, init_loans_for_pool, issue_default_loan},
+	loans::{borrow_call, init_loans_for_pool, issue_default_bullet_loan},
 	pools::{default_pool_calls, permission_call},
 	time::{secs::SECONDS_PER_DAY, DEFAULT_BLOCK_TIME},
 	tokens::DECIMAL_BASE_12,
@@ -39,9 +39,9 @@ async fn create_init_and_price() {
 
 	let mut nft_manager = NftManager::new();
 	let pool_id = 0u64;
-	let loan_amount = 10_000 * DECIMAL_BASE_12;
+	let loan_value = 10_000 * DECIMAL_BASE_12;
 	let borrow_amount = Amount::from_inner(9_000 * DECIMAL_BASE_12);
-	let maturity = 90 * SECONDS_PER_DAY;
+	let maturity = time::moment_from_default_start(90 * SECONDS_PER_DAY);
 
 	env::run!(
 		env,
@@ -49,10 +49,10 @@ async fn create_init_and_price() {
 		Call,
 		ChainState::PoolEmpty,
 		Keyring::Admin => default_pool_calls(Keyring::Admin.into(), pool_id, &mut nft_manager),
-			issue_default_loan(
+			issue_default_bullet_loan(
 				Keyring::Admin.into(),
 				pool_id,
-				loan_amount,
+				loan_value,
 				maturity,
 				&mut nft_manager,
 			)
