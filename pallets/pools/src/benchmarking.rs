@@ -336,9 +336,9 @@ where
 	let investor: T::AccountId = account("investor", id, 0);
 	let tranche_id = get_tranche_id::<T>(tranche);
 	T::Permission::add(
-		POOL,
+		PermissionScope::Pool(POOL),
 		investor.clone(),
-		PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF),
+		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
 	T::Tokens::mint_into(CurrencyId::Usd, &investor.clone().into(), MINT_AMOUNT)?;
 	T::Tokens::mint_into(
@@ -353,7 +353,11 @@ fn set_liquidity_admin<T: Config<PoolId = u64>>(target: T::AccountId) -> Dispatc
 where
 	T::Permission: Permissions<T::AccountId, Ok = ()>,
 {
-	T::Permission::add(POOL, target, PoolRole::LiquidityAdmin)
+	T::Permission::add(
+		PermissionScope::Pool(POOL),
+		target,
+		Role::PoolRole(PoolRole::LiquidityAdmin),
+	)
 }
 
 fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>(

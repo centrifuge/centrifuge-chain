@@ -177,19 +177,19 @@ where
 	make_free_cfg_balance::<T>(borrower::<T>());
 	make_free_cfg_balance::<T>(risk_admin::<T>());
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		pool_id.into(),
+		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
-		PoolRole::Borrower
+		Role::PoolRole(PoolRole::Borrower)
 	));
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		pool_id.into(),
+		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
-		PoolRole::PricingAdmin
+		Role::PoolRole(PoolRole::PricingAdmin)
 	));
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		pool_id.into(),
+		PermissionScope::Pool(pool_id.into()),
 		risk_admin::<T>(),
-		PoolRole::RiskAdmin
+		Role::PoolRole(PoolRole::RiskAdmin)
 	));
 
 	// initialise pool on loan

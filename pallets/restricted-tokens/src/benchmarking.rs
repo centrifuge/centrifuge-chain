@@ -11,12 +11,12 @@
 // GNU General Public License for more details.
 use super::*;
 use common_traits::Permissions;
-use common_types::{CurrencyId, PoolRole};
+use common_types::{CurrencyId, PermissionScope, PoolId, PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, Zero};
 use frame_support::traits::{fungibles, Get};
 use frame_system::RawOrigin;
 use orml_traits::GetByKey;
-use runtime_common::{PoolId, TrancheId};
+use runtime_common::TrancheId;
 use sp_runtime::traits::StaticLookup;
 
 const CURRENCY: u128 = 1_000_000_000_000_000_000u128;
@@ -90,7 +90,8 @@ where
 
 fn get_account_maybe_permission<T>(name: &'static str, currency: T::CurrencyId) -> T::AccountId
 where
-	T: Config + pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
+	T: Config
+		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	T::CurrencyId: Into<CurrencyId>,
 {
 	let acc = get_account::<T>(name, false);
@@ -103,12 +104,13 @@ where
 
 fn permission_for_tranche<T>(acc: T::AccountId, pool_id: PoolId, tranche_id: TrancheId)
 where
-	T: frame_system::Config + pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
+	T: frame_system::Config
+		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 {
 	<pallet_permissions::Pallet<T> as Permissions<T::AccountId>>::add(
-		pool_id,
+		PermissionScope::Pool(pool_id),
 		acc,
-		PoolRole::TrancheInvestor(tranche_id, u64::MAX),
+		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, u64::MAX)),
 	)
 	.expect("Whitelisting works. qed.");
 }
@@ -125,7 +127,7 @@ where
 		+ orml_tokens::Config<
 			Balance = <T as Config>::Balance,
 			CurrencyId = <T as Config>::CurrencyId,
-		> + pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
+		> + pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	<T as Config>::CurrencyId: Into<CurrencyId>,
 {
 	let acc = get_account::<T>(name, true);
@@ -164,7 +166,7 @@ benchmarks! {
 		T: Config
 			+ pallet_balances::Config<Balance = <T as Config>::Balance>
 			+ orml_tokens::Config<Balance = <T as Config>::Balance, CurrencyId = <T as Config>::CurrencyId>
-			+ pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
+			+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 		<T as Config>::Balance: From<u128> + Zero,
 		<T as Config>::CurrencyId: From<CurrencyId> + Into<CurrencyId>,
 	}

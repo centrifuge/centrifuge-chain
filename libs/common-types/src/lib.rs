@@ -41,9 +41,12 @@ mod tokens;
 pub type PoolId = u64;
 
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
+// NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
+//       In case the Role we provide does not match what we expect. I.e. if we change the Moment
+//       type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PoolRole<TrancheId, Moment> {
+pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	PoolAdmin,
 	Borrower,
 	PricingAdmin,
@@ -55,7 +58,7 @@ pub enum PoolRole<TrancheId, Moment> {
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PermissionedCurrencyRole<Moment> {
+pub enum PermissionedCurrencyRole<Moment = u64> {
 	/// This role can hold & transfer tokens
 	Holder(Moment),
 	/// This role can add/remove holders
@@ -64,9 +67,6 @@ pub enum PermissionedCurrencyRole<Moment> {
 	Issuer,
 }
 
-// NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
-//       In case the Role we provide does not match what we expect. I.e. if we change the Moment
-//       type in our actual runtimes, then the compiler complains about it anyways.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Role<TrancheId = [u8; 16], Moment = u64> {
@@ -79,6 +79,15 @@ pub enum Role<TrancheId = [u8; 16], Moment = u64> {
 pub enum PermissionScope<PoolId, CurrencyId> {
 	Pool(PoolId),
 	Currency(CurrencyId),
+}
+
+impl<PoolId, CurrencyId> Default for PermissionScope<PoolId, CurrencyId>
+where
+	PoolId: Default,
+{
+	fn default() -> Self {
+		Self::Pool(PoolId::default())
+	}
 }
 
 bitflags::bitflags! {
@@ -109,7 +118,7 @@ pub struct TrancheInvestorInfo<TrancheId, Moment> {
 
 #[derive(Encode, Decode, TypeInfo, Debug, Clone, Eq, PartialEq)]
 pub struct PermissionedCurrencyHolders<Now, MinDelay, Moment> {
-	info: Vec<PermissionedCurrencyHolderInfo<Moment>>,
+	info: Option<PermissionedCurrencyHolderInfo<Moment>>,
 	_phantom: PhantomData<(Now, MinDelay)>,
 }
 
@@ -136,7 +145,7 @@ where
 {
 	fn default() -> Self {
 		Self {
-			info: Vec::default(),
+			info: None,
 			_phantom: Default::default(),
 		}
 	}
@@ -203,14 +212,18 @@ where
 				PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
 			},
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => {
-				self.permissioned_asset_holder.contains()
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => {
-				self.admin.contains(AdminRoles::PERMISSIONED_ASSET_MANAGER)
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Issuer) => {
-				self.admin.contains(AdminRoles::PERMISSIONED_ASSET_ISSUER)
+			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
+				match permissioned_currency_role {
+					PermissionedCurrencyRole::Holder(_) => {
+						self.permissioned_asset_holder.contains()
+					}
+					PermissionedCurrencyRole::Manager => {
+						self.admin.contains(AdminRoles::PERMISSIONED_ASSET_MANAGER)
+					}
+					PermissionedCurrencyRole::Issuer => {
+						self.admin.contains(AdminRoles::PERMISSIONED_ASSET_ISSUER)
+					}
+				}
 			}
 		}
 	}
@@ -230,14 +243,18 @@ where
 				PoolRole::RiskAdmin => Ok(self.admin.remove(AdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
 			},
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(delta)) => {
-				self.permissioned_asset_holder.remove(delta)
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => {
-				Ok(self.admin.remove(AdminRoles::PERMISSIONED_ASSET_MANAGER))
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Issuer) => {
-				Ok(self.admin.remove(AdminRoles::PERMISSIONED_ASSET_ISSUER))
+			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
+				match permissioned_currency_role {
+					PermissionedCurrencyRole::Holder(delta) => {
+						self.permissioned_asset_holder.remove(delta)
+					}
+					PermissionedCurrencyRole::Manager => {
+						Ok(self.admin.remove(AdminRoles::PERMISSIONED_ASSET_MANAGER))
+					}
+					PermissionedCurrencyRole::Issuer => {
+						Ok(self.admin.remove(AdminRoles::PERMISSIONED_ASSET_ISSUER))
+					}
+				}
 			}
 		}
 	}
@@ -253,14 +270,18 @@ where
 				PoolRole::RiskAdmin => Ok(self.admin.insert(AdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
 			},
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(delta)) => {
-				self.permissioned_asset_holder.insert(delta)
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => {
-				Ok(self.admin.insert(AdminRoles::PERMISSIONED_ASSET_MANAGER))
-			}
-			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Issuer) => {
-				Ok(self.admin.insert(AdminRoles::PERMISSIONED_ASSET_ISSUER))
+			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
+				match permissioned_currency_role {
+					PermissionedCurrencyRole::Holder(delta) => {
+						self.permissioned_asset_holder.insert(delta)
+					}
+					PermissionedCurrencyRole::Manager => {
+						Ok(self.admin.insert(AdminRoles::PERMISSIONED_ASSET_MANAGER))
+					}
+					PermissionedCurrencyRole::Issuer => {
+						Ok(self.admin.insert(AdminRoles::PERMISSIONED_ASSET_ISSUER))
+					}
+				}
 			}
 		}
 	}
@@ -277,7 +298,7 @@ where
 	}
 
 	pub fn is_empty(&self) -> bool {
-		self.info.is_empty()
+		self.info.is_none()
 	}
 
 	fn validity(&self, delta: Moment) -> Result<Moment, ()> {
@@ -293,15 +314,16 @@ where
 	}
 
 	pub fn contains(&self) -> bool {
-		self.info
-			.iter()
-			.position(|info| info.permissioned_till >= Now::now().as_secs().into())
-			.is_some()
+		if let Some(info) = &self.info {
+			info.permissioned_till >= Now::now().as_secs().into()
+		} else {
+			false
+		}
 	}
 
 	pub fn remove(&mut self, delta: Moment) -> Result<(), ()> {
-		if self.info.len() == 1 {
-			let valid_till = &self.info[0].permissioned_till;
+		if let Some(info) = &self.info {
+			let valid_till = &info.permissioned_till;
 			let now = Now::now().as_secs().into();
 
 			if *valid_till <= now {
@@ -309,7 +331,9 @@ where
 				Err(())
 			} else {
 				// Ensure that permissioned_till is at least now + min_delay.
-				Ok(self.info[0].permissioned_till = self.validity(delta)?)
+				Ok(self.info = Some(PermissionedCurrencyHolderInfo {
+					permissioned_till: self.validity(delta)?,
+				}))
 			}
 		} else {
 			Err(())
@@ -319,14 +343,16 @@ where
 	pub fn insert(&mut self, delta: Moment) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 
-		if self.info.len() == 1 {
-			if self.info[0].permissioned_till > validity {
+		if let Some(info) = &self.info {
+			if info.permissioned_till > validity {
 				Err(())
 			} else {
-				Ok(self.info[0].permissioned_till = validity)
+				Ok(self.info = Some(PermissionedCurrencyHolderInfo {
+					permissioned_till: validity,
+				}))
 			}
 		} else {
-			Ok(self.info.push(PermissionedCurrencyHolderInfo {
+			Ok(self.info = Some(PermissionedCurrencyHolderInfo {
 				permissioned_till: validity,
 			}))
 		}
