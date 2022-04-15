@@ -229,7 +229,9 @@ where
 	}
 
 	fn empty(&self) -> bool {
-		self.admin.is_empty() && self.permissioned_asset_holder.is_empty()
+		self.admin.is_empty()
+			&& self.tranche_investor.is_empty()
+			&& self.permissioned_asset_holder.is_empty()
 	}
 
 	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
