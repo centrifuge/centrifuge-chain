@@ -38,7 +38,7 @@ use tokio::runtime::Handle;
 
 // The block time we use for theses tests (in seconds)
 // -> two blocks per day
-const BLOCK_TIME: u64 = 86400u64;
+const BLOCK_TIME: u64 = 86400 / 2u64;
 
 #[tokio::test]
 async fn single_tranche_investor_single_loan() {
@@ -135,11 +135,16 @@ async fn single_tranche_investor_single_loan() {
 
 	env::pass_n(&mut env, 30 * time::blocks_per_day::<BLOCK_TIME>());
 
-	let token_prices = env
+	let (now, token_prices) = env
 		.with_state(Chain::Para(PARA_ID), || {
-			pools::with_ext::get_tranche_prices(pool_id)
+			(
+				Duration::from_millis(Timestamp::now()).as_secs(),
+				pools::with_ext::get_tranche_prices(pool_id),
+			)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
+
+	tracing::event!(tracing::Level::INFO, now);
 
 	assert_eq!(
 		vec![
