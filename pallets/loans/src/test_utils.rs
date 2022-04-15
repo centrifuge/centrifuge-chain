@@ -213,20 +213,6 @@ where
 	class_id
 }
 
-pub(crate) fn get_tranche_id<T>(
-	pool_id: <T as pallet_pools::Config>::PoolId,
-	index: u64,
-) -> <T as pallet_pools::Config>::TrancheId
-where
-	T: pallet_pools::Config,
-{
-	pallet_pools::Pool::<T>::get(pool_id)
-		.unwrap()
-		.tranches
-		.tranche_id(TrancheLoc::Index(index))
-		.unwrap()
-}
-
 pub(crate) fn assert_last_event<T, E>(generic_event: E)
 where
 	T: pallet_loans::Config + pallet_pools::Config,

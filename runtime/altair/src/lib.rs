@@ -56,7 +56,8 @@ mod weights;
 use constants::currency::*;
 
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use common_types::{PermissionRoles, PermissionScope, PoolId, PoolRole, Role, TimeProvider};
+
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 
 /// common types for the runtime.
@@ -820,8 +821,8 @@ parameter_types! {
 
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
-	type Scope = PoolId;
-	type Role = PoolRole<TrancheId, Moment>;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
+	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -833,25 +834,26 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<PoolRole<TrancheId, Moment>>,
-		PoolId,
-		PoolRole<TrancheId, Moment>,
+		Option<Role<TrancheId, Moment>>,
+		PermissionScope<PoolId, CurrencyId>,
+		Role<TrancheId, Moment>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<PoolRole<TrancheId, Moment>>,
-			PoolId,
-			PoolRole<TrancheId, Moment>,
+			Option<Role<TrancheId, Moment>>,
+			PermissionScope<PoolId, CurrencyId>,
+			Role<TrancheId, Moment>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				PoolRole::PoolAdmin => true,
-				PoolRole::MemberListAdmin => match *role {
-					PoolRole::TrancheInvestor(_, _) => true,
+				// TODO: handle admins for permissioned assets
+				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,
 				},
 				_ => false,
