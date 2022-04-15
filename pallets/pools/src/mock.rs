@@ -107,7 +107,7 @@ parameter_types! {
 }
 impl pallet_permissions::Config for Test {
 	type Event = Event;
-	type Scope = u64;
+	type Scope = PermissionScope<u64, CurrencyId>;
 	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
@@ -247,8 +247,15 @@ where
 
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
+				P::has(
+					PermissionScope::Pool(pool_id),
+					send,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				) && P::has(
+					PermissionScope::Pool(pool_id),
+					recv,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				)
 			}
 			_ => true,
 		}

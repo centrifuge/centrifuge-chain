@@ -85,17 +85,17 @@ where
 	// add borrower role and price admin role
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
-		PoolRole::PoolAdmin,
+		Role::PoolRole(PoolRole::PoolAdmin),
 		borrower,
-		pool_id,
-		PoolRole::Borrower,
+		PermissionScope::Pool(pool_id),
+		Role::PoolRole(PoolRole::Borrower),
 	));
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
-		PoolRole::PoolAdmin,
+		Role::PoolRole(PoolRole::PoolAdmin),
 		borrower,
-		pool_id,
-		PoolRole::PricingAdmin,
+		PermissionScope::Pool(pool_id),
+		Role::PoolRole(PoolRole::PricingAdmin),
 	));
 	let pr_pool_id: PoolIdOf<T> = pool_id.into();
 	let loan_nft_class_id =
@@ -625,10 +625,10 @@ macro_rules! test_borrow_loan {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				for group in vec![(3, 0), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1031,10 +1031,10 @@ macro_rules! test_pool_nav {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				// write off the loan and check for updated nav
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
@@ -1155,10 +1155,10 @@ fn test_add_write_off_groups() {
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
 			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(pool_admin),
-				PoolRole::PoolAdmin,
+				Role::PoolRole(PoolRole::PoolAdmin),
 				risk_admin,
 				pool_id,
-				PoolRole::RiskAdmin,
+				Role::PoolRole(PoolRole::RiskAdmin),
 			));
 
 			// fetch write off groups
@@ -1239,10 +1239,10 @@ macro_rules! test_write_off_maturity_loan {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
 					let res = Loans::add_write_off_group(
@@ -1331,10 +1331,10 @@ macro_rules! test_admin_write_off_loan_type {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 
 				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
@@ -1452,10 +1452,10 @@ macro_rules! test_close_written_off_loan_type {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1634,10 +1634,10 @@ macro_rules! write_off_overflow {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				//for group in vec![(3, 10), (313503982334601, 20)] {
 				for group in vec![(3, 10), (313503982334601, 15), (10, 20), (10, 30)] {

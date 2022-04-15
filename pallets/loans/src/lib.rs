@@ -129,7 +129,7 @@ pub mod pallet {
 		type Permission: PermissionsT<
 			Self::AccountId,
 			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
-			Role = Role<Self::CurrencyId>,
+			Role = Role,
 			Error = DispatchError,
 		>;
 
@@ -572,7 +572,11 @@ macro_rules! ensure_role {
 	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
 		let sender = ensure_signed($origin)?;
 		ensure!(
-			T::Permission::has($pool_id, sender.clone(), Role::PoolRole($role)),
+			T::Permission::has(
+				PermissionScope::Pool($pool_id),
+				sender.clone(),
+				Role::PoolRole($role)
+			),
 			BadOrigin
 		);
 		sender
