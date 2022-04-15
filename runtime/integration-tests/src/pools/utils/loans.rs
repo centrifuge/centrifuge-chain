@@ -13,6 +13,7 @@
 //! Utilities around the loans pallet
 use crate::chain::centrifuge::{Address, Amount, Balance, Call, Rate};
 use crate::pools::utils::tokens::rate_from_percent;
+use common_types::PoolId;
 use pallet_loans::{
 	loan_type::{BulletLoan, LoanType},
 	math::interest_rate_per_sec,
@@ -20,7 +21,7 @@ use pallet_loans::{
 	Call as LoansCall,
 };
 use pallet_uniques::Call as UniquesCall;
-use runtime_common::{AccountId, ClassId, InstanceId, PoolId};
+use runtime_common::{AccountId, ClassId, InstanceId};
 use std::collections::HashMap;
 
 /// Structure that manages collateral and loan nft ids
