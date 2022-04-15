@@ -36,6 +36,7 @@ use sp_arithmetic::traits::One;
 use sp_runtime::{
 	traits::AccountIdConversion, DispatchError, FixedPointNumber, Storage, TokenError,
 };
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::runtime::Handle;
 
@@ -111,7 +112,19 @@ async fn single_tranche_investor_single_loan() {
 			if [id == pool_id && who == Keyring::TrancheInvestor(1).to_account_id()],
 	);
 
-	env::pass_n(&mut env, 1);
+	env::pass_n_assert(&mut env, time::blocks_per_day::<BLOCK_TIME>(), || {
+		let prices = pools::with_ext::update_nav_and_get_tranche_prices(pool_id);
+		assert_eq!(
+			vec![
+				Rate::one(),
+				Rate::one(),
+				Rate::one(),
+				Rate::one(),
+				Rate::one(),
+			],
+			prices
+		);
+	});
 
 	env::run!(
 		env,
@@ -136,18 +149,27 @@ async fn single_tranche_investor_single_loan() {
 			if [id == pool_id && loan_id == loan_id && amount == borrow_amount],
 	);
 
-	env::pass_n(&mut env, 30 * time::blocks_per_day::<BLOCK_TIME>());
+	let prev_prices = Arc::new(Mutex::new(
+		env.with_state(Chain::Para(PARA_ID), || {
+			pools::with_ext::update_nav_and_get_tranche_prices(pool_id)
+		})
+		.expect("ESSENTIAL: Chain state is available."),
+	));
 
-	let (now, token_prices) = env
+	env::pass_n_assert(&mut env, 30 * time::blocks_per_day::<BLOCK_TIME>(), || {
+		let prev_prices = prev_prices.clone();
+		let mut prev_prices = prev_prices.lock().expect("Must not fail.");
+
+		let prices = pools::with_ext::update_nav_and_get_tranche_prices(pool_id);
+		assert!(*prev_prices < prices);
+		*prev_prices = prices;
+	});
+
+	let token_prices = env
 		.with_state(Chain::Para(PARA_ID), || {
-			(
-				Duration::from_millis(Timestamp::now()).as_secs(),
-				pools::with_ext::update_nav_and_get_tranche_prices(pool_id),
-			)
+			pools::with_ext::update_nav_and_get_tranche_prices(pool_id)
 		})
 		.expect("ESSENTIAL: Chain state is available.");
-
-	tracing::event!(tracing::Level::INFO, now);
 
 	assert_eq!(
 		vec![
@@ -160,7 +182,14 @@ async fn single_tranche_investor_single_loan() {
 		token_prices,
 	);
 
-	env::pass_n(&mut env, 60 * time::blocks_per_day::<BLOCK_TIME>());
+	env::pass_n_assert(&mut env, 60 * time::blocks_per_day::<BLOCK_TIME>(), || {
+		let prev_prices = prev_prices.clone();
+		let mut prev_prices = prev_prices.lock().expect("Must not fail.");
+
+		let prices = pools::with_ext::update_nav_and_get_tranche_prices(pool_id);
+		assert!(*prev_prices < prices);
+		*prev_prices = prices;
+	});
 
 	let token_prices = env
 		.with_state(Chain::Para(PARA_ID), || {
