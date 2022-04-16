@@ -30,8 +30,16 @@ enum Who {
 	Editor,
 }
 
-use common_traits::{Permissions, Properties};
-use frame_support::traits::Contains;
+/// Informs preconditions about the edit parameters
+pub struct EditEffects<AccountId, Role, Location> {
+	pub editor: AccountId,
+	pub with_role: Option<Role>,
+	pub to: AccountId,
+	pub location: Location,
+	pub role: Role,
+}
+
+use common_traits::{Permissions, PreConditions, Properties};
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 use frame_system::pallet_prelude::*;
 
@@ -52,12 +60,10 @@ pub mod pallet {
 
 		type Storage: Member + Parameter + Properties<Property = Self::Role> + Default;
 
-		type Editors: Contains<(
-			Self::AccountId,
-			Option<Self::Role>,
-			Self::Location,
-			Self::Role,
-		)>;
+		type Editors: PreConditions<
+			EditEffects<Self::AccountId, Self::Role, Self::Location>,
+			Result = bool,
+		>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
@@ -97,11 +103,19 @@ pub mod pallet {
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
+		/// Existing roles can not be added twice
 		RoleAlreadyGiven,
+		/// Non-existing roles can not be removed
 		RoleNotGiven,
+		/// NoRoles know for account
 		NoRoles,
+		/// Account is not an editor
 		NoEditor,
+		/// Can not act as editor with role
+		EditorRoleNotGiven,
+		/// Erronoes parameters for adding or removing a role
 		WrongParameters,
+		/// Location has too many roles
 		TooManyRoles,
 	}
 
@@ -110,13 +124,18 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::add_as_admin().max(T::WeightInfo::add_as_editor()))]
 		pub fn add(
 			origin: OriginFor<T>,
-			with_role: T::Role,
+			with_role: Option<T::Role>,
 			to: T::AccountId,
 			location: T::Location,
 			role: T::Role,
 		) -> DispatchResultWithPostInfo {
-			let who =
-				Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
+			let who = Self::ensure_admin_or_preconditons(
+				origin,
+				with_role,
+				to.clone(),
+				location.clone(),
+				role.clone(),
+			)?;
 
 			Pallet::<T>::do_add(location.clone(), to.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::Added(to, location, role)))?;
@@ -130,13 +149,18 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::remove_as_editor().max(T::WeightInfo::remove_as_admin()))]
 		pub fn remove(
 			origin: OriginFor<T>,
-			with_role: T::Role,
+			with_role: Option<T::Role>,
 			from: T::AccountId,
 			location: T::Location,
 			role: T::Role,
 		) -> DispatchResultWithPostInfo {
-			let who =
-				Self::ensure_admin_or_editor(origin, with_role, location.clone(), role.clone())?;
+			let who = Self::ensure_admin_or_preconditons(
+				origin,
+				with_role,
+				from.clone(),
+				location.clone(),
+				role.clone(),
+			)?;
 
 			Pallet::<T>::do_remove(location.clone(), from.clone(), role.clone())
 				.map(|_| Self::deposit_event(Event::<T>::Removed(from, location, role)))?;
@@ -186,26 +210,43 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	fn ensure_admin_or_editor(
+	fn ensure_admin_or_preconditons(
 		origin: OriginFor<T>,
-		with_role: T::Role,
+		with_role: Option<T::Role>,
+		to: T::AccountId,
 		location: T::Location,
 		role: T::Role,
 	) -> Result<Who, DispatchError> {
 		// check if origin is admin
 		match Self::ensure_admin(origin.clone()) {
 			Ok(()) => Ok(Who::Admin),
-			_ => {
+			Err(_) => {
 				// check if origin is editor
 				let editor = ensure_signed(origin)?;
-				let is_editor = Permission::<T>::get(editor.clone(), location.clone())
-					.and_then(|roles| {
-						Some(
-							roles.exists(with_role.clone())
-								&& T::Editors::contains(&(editor, Some(with_role), location, role)),
-						)
-					})
-					.unwrap_or(false);
+				let is_editor =
+					if let Some(roles) = Permission::<T>::get(editor.clone(), location.clone()) {
+						let with_role = if let Some(with_role) = with_role {
+							ensure!(
+								roles.exists(with_role.clone()),
+								Error::<T>::EditorRoleNotGiven
+							);
+
+							Some(with_role)
+						} else {
+							None
+						};
+
+						T::Editors::check(EditEffects {
+							editor,
+							with_role,
+							to,
+							location,
+							role,
+						})
+					} else {
+						false
+					};
+
 				ensure!(is_editor, Error::<T>::NoEditor);
 				Ok(Who::Editor)
 			}
