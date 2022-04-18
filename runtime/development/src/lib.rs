@@ -897,6 +897,27 @@ impl PoolUpdateGuard for UpdateGuard {
 		update: &Self::ScheduledUpdateDetails,
 		now: Self::Moment,
 	) -> bool {
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		let acc_outstanding_redemptions = pool
+			.tranches
+			.acc_outstanding_redemptions()
+			.unwrap_or(Balance::MAX);
+		if acc_outstanding_redemptions != 0u128 {
+			return false;
+		}
+
 		return true;
 	}
 }
