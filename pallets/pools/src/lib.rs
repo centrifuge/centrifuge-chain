@@ -363,6 +363,8 @@ pub mod pallet {
 		Created(T::PoolId, T::AccountId),
 		/// A pool was updated. [pool]
 		Updated(T::PoolId),
+		/// The tranches were rebalanced.
+		Rebalanced(T::PoolId),
 		/// Tranches were updated. [pool]
 		TranchesUpdated(T::PoolId),
 		/// The max reserve was updated. [pool]
@@ -383,10 +385,22 @@ pub mod pallet {
 			T::AccountId,
 			OutstandingCollections<T::Balance>,
 		),
-		/// An invest order was updated. [pool, tranche, account]
-		InvestOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
-		/// A redeem order was updated. [pool, tranche, account]
-		RedeemOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
+		/// An invest order was updated. [pool, tranche, account, old_order, new_order]
+		InvestOrderUpdated(
+			T::PoolId,
+			T::TrancheId,
+			T::AccountId,
+			T::Balance,
+			T::Balance,
+		),
+		/// A redeem order was updated. [pool, tranche, account, old_order, new_order]
+		RedeemOrderUpdated(
+			T::PoolId,
+			T::TrancheId,
+			T::AccountId,
+			T::Balance,
+			T::Balance,
+		),
 	}
 
 	// Errors inform users that something went wrong.
@@ -701,12 +715,13 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_loc: TrancheLoc<T::TrancheId>,
-			amount: T::Balance,
+			new_order: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let tranche_id =
-				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
+			let (tranche_id, old_order) = Pool::<T>::try_mutate(
+				pool_id,
+				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 					let tranche_id = pool
 						.tranches
@@ -722,27 +737,38 @@ pub mod pallet {
 						BadOrigin
 					);
 
-					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
-						let order = if let Some(order) = active_order {
-							order
-						} else {
-							*active_order = Some(UserOrder::default());
-							active_order.as_mut().expect("UserOrder now Some. qed.")
-						};
+					Order::<T>::try_mutate(
+						tranche_id,
+						&who,
+						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
+							let order = if let Some(order) = active_order {
+								order
+							} else {
+								*active_order = Some(UserOrder::default());
+								active_order.as_mut().expect("UserOrder now Some. qed.")
+							};
 
-						ensure!(
-							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.epoch.current,
-							Error::<T>::CollectRequired
-						);
+							let old_order = order.invest;
 
-						Self::do_update_invest_order(&who, pool, order, amount, pool_id, tranche_id)
-					})?;
+							ensure!(
+								order.invest.saturating_add(order.redeem) == Zero::zero()
+									|| order.epoch == pool.epoch.current,
+								Error::<T>::CollectRequired
+							);
 
-					Ok(tranche_id)
-				})?;
+							Self::do_update_invest_order(
+								&who, pool, order, new_order, pool_id, tranche_id,
+							)?;
 
-			Self::deposit_event(Event::InvestOrderUpdated(pool_id, tranche_id, who));
+							Ok((tranche_id, old_order))
+						},
+					)
+				},
+			)?;
+
+			Self::deposit_event(Event::InvestOrderUpdated(
+				pool_id, tranche_id, who, old_order, new_order,
+			));
 			Ok(())
 		}
 
@@ -766,12 +792,13 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_loc: TrancheLoc<T::TrancheId>,
-			amount: T::Balance,
+			new_order: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let tranche_id =
-				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
+			let (tranche_id, old_order) = Pool::<T>::try_mutate(
+				pool_id,
+				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 					let tranche_id = pool
 						.tranches
@@ -787,27 +814,38 @@ pub mod pallet {
 						BadOrigin
 					);
 
-					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
-						let order = if let Some(order) = active_order {
-							order
-						} else {
-							*active_order = Some(UserOrder::default());
-							active_order.as_mut().expect("UserOrder now Some. qed.")
-						};
+					Order::<T>::try_mutate(
+						tranche_id,
+						&who,
+						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
+							let order = if let Some(order) = active_order {
+								order
+							} else {
+								*active_order = Some(UserOrder::default());
+								active_order.as_mut().expect("UserOrder now Some. qed.")
+							};
 
-						ensure!(
-							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.epoch.current,
-							Error::<T>::CollectRequired
-						);
+							let old_order = order.invest;
 
-						Self::do_update_redeem_order(&who, pool, order, amount, pool_id, tranche_id)
-					})?;
+							ensure!(
+								order.invest.saturating_add(order.redeem) == Zero::zero()
+									|| order.epoch == pool.epoch.current,
+								Error::<T>::CollectRequired
+							);
 
-					Ok(tranche_id)
-				})?;
+							Self::do_update_redeem_order(
+								&who, pool, order, new_order, pool_id, tranche_id,
+							)?;
 
-			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, tranche_id, who));
+							Ok((tranche_id, old_order))
+						},
+					)
+				},
+			)?;
+
+			Self::deposit_event(Event::RedeemOrderUpdated(
+				pool_id, tranche_id, who, old_order, new_order,
+			));
 			Ok(())
 		}
 
@@ -1687,6 +1725,7 @@ pub mod pallet {
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
 			)?;
+			Self::deposit_event(Event::Rebalanced(pool_id));
 
 			Ok(())
 		}
@@ -1785,6 +1824,7 @@ pub mod pallet {
 				}
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
+				Self::deposit_event(Event::Rebalanced(pool_id));
 				Ok(())
 			})
 		}
@@ -1836,6 +1876,7 @@ pub mod pallet {
 				}
 
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
+				Self::deposit_event(Event::Rebalanced(pool_id));
 				Ok(())
 			})
 		}
