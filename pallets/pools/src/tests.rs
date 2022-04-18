@@ -1201,6 +1201,27 @@ fn pool_updates_should_be_constrained() {
 		)
 		.unwrap();
 
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			Ok(())
+		})
+		.unwrap();
+
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			100_000
+		));
+		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			1
+		));
+
 		let initial_pool = &crate::Pool::<Test>::try_get(pool_id).unwrap();
 		let realistic_min_epoch_time = 24 * 60 * 60; // 24 hours
 		let realistic_max_nav_age = 1 * 60; // 1 min
@@ -1230,6 +1251,13 @@ fn pool_updates_should_be_constrained() {
 			Error::<Test>::PoolParameterBoundViolated
 		);
 
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			100
+		));
+
 		assert_ok!(Pools::update(
 			pool_owner_origin.clone(),
 			pool_id,
@@ -1240,24 +1268,29 @@ fn pool_updates_should_be_constrained() {
 			}
 		));
 
-		// Since the delay is set, the above update should not have been executed yet
+		// Since there's a redemption order, the above update should not have been executed yet
 		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
+		assert_eq!(
+			pool.tranches
+				.acc_outstanding_redemptions()
+				.unwrap_or(Balance::MAX),
+			100
+		);
 		assert_eq!(
 			pool.parameters.min_epoch_time,
 			initial_pool.parameters.min_epoch_time
 		);
 
-		// The update should fail since the min update delay hasnt passed yet
 		assert_err!(
 			Pools::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
-			Error::<Test>::ScheduledTimeHasNotPassed
+			Error::<Test>::UpdatePrerequesitesNotFulfilled
 		);
 
 		next_block();
 		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), pool_id));
 
-		// Now it works since the epoch was executed and the min update delay has passed
+		// Now it works since the epoch was executed and the redemption order was fulfilled
 		assert_ok!(Pools::execute_scheduled_update(
 			pool_owner_origin.clone(),
 			pool_id

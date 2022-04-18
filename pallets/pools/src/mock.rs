@@ -15,6 +15,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
+use runtime_common::BlockNumber;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -260,9 +261,8 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 	pub const MaxTranches: u32 = 5;
 
-	pub const ChallengeTime: u64 = 0;
-	pub const MinUpdateDelay: u64 = 1;
-	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = true;
+	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const ChallengeTime: BlockNumber = 0;
 
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
@@ -328,11 +328,32 @@ impl PoolUpdateGuard for UpdateGuard {
 	type Moment = Moment;
 
 	fn released(
-		_pool: &Self::PoolDetails,
-		_update: &Self::ScheduledUpdateDetails,
-		_now: Self::Moment,
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
 	) -> bool {
-		true
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		let acc_outstanding_redemptions = pool
+			.tranches
+			.acc_outstanding_redemptions()
+			.unwrap_or(Balance::MAX);
+		if acc_outstanding_redemptions != 0u128 {
+			return false;
+		}
+
+		return true;
 	}
 }
 

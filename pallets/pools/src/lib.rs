@@ -578,7 +578,8 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update())]
+		#[pallet::weight(T::WeightInfo::update_no_execution()
+			.max(T::WeightInfo::update_and_execute()))]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -639,7 +640,7 @@ pub mod pallet {
 		/// and, if required, if there are no outstanding
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
-		#[pallet::weight(200_000_000)]
+		#[pallet::weight(T::WeightInfo::execute_scheduled_update())]
 		pub fn execute_scheduled_update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,

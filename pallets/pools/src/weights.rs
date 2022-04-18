@@ -40,7 +40,9 @@ pub trait WeightInfo {
 	fn update() -> Weight;
 	fn set_metadata(n: u32) -> Weight;
 	fn set_max_reserve() -> Weight;
-	fn update_tranches(n: u32) -> Weight;
+	fn update_no_execution() -> Weight;
+	fn update_and_execute() -> Weight;
+	fn execute_scheduled_update() -> Weight;
 	fn update_invest_order() -> Weight;
 	fn update_redeem_order() -> Weight;
 	fn collect(n: u32) -> Weight;
@@ -76,10 +78,21 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn update_tranches(n: u32) -> Weight {
+	fn update_no_execution() -> Weight {
 		(61_909_000 as Weight)
 			// Standard Error: 632_000
-			.saturating_add((471_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn update_and_execute() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn execute_scheduled_update() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
@@ -168,10 +181,21 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
-	fn update_tranches(n: u32) -> Weight {
+	fn update_no_execution() -> Weight {
 		(61_909_000 as Weight)
 			// Standard Error: 632_000
-			.saturating_add((471_000 as Weight).saturating_mul(n as Weight))
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn update_and_execute() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+	}
+	fn execute_scheduled_update() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
