@@ -596,6 +596,19 @@ pub mod pallet {
 				Error::<T>::InSubmissionPeriod
 			);
 
+			if changes.min_epoch_time == Change::NoChange
+				&& changes.max_nav_age == Change::NoChange
+				&& changes.tranches == Change::NoChange
+			{
+				// If there's an existing update, we remove it
+				// If not, this transaction is a no-op
+				if ScheduledUpdate::<T>::contains_key(pool_id) {
+					ScheduledUpdate::<T>::remove(pool_id);
+				}
+
+				return Ok(());
+			}
+
 			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
 				ensure!(
 					min_epoch_time >= T::MinEpochTimeLowerBound::get()
