@@ -431,7 +431,12 @@ pub mod pallet {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::Priced(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::Priced(
+				pool_id,
+				loan_id,
+				interest_rate_per_sec,
+				loan_type,
+			));
 			Ok(())
 		}
 
