@@ -910,6 +910,7 @@ pub mod pallet {
 					} else {
 						tranche.accrue(now)?;
 
+						// Pool value can not satisfy the expected value of the tranche
 						if tranche.expected_assets()? > pool_value {
 							// This arm matches if the pool_value can only partially fill the debt of
 							// a tranche
@@ -917,7 +918,8 @@ pub mod pallet {
 								// Losses increase by what the diff between current value and expected value
 								tranche.loss = tranche
 									.loss
-									.saturating_add(tranche.debt.saturating_sub(pool_value));
+									.saturating_add(tranche.debt.saturating_sub(pool_value))
+									.saturating_add(tranche.reserve);
 								// We assume the pool will still be able to generate enough value for
 								// satisfying the tranche. This boils down to the assumption of
 								// NAV_{t + 1} >= NAV_{t} * rate_per_sec_{tranche} for every tranche
@@ -927,31 +929,30 @@ pub mod pallet {
 								tranche.reserve = Zero::zero();
 								pool_value = Zero::zero();
 
-							// This arm matches if the new pool_value can satisfy the debt and the losses
-							// of a tranche.
-							} else if tranche.debt.saturating_add(tranche.loss) > pool_value {
-								let recovered_loss = pool_value.saturating_sub(tranche.debt);
-								// Debt increases by covered losses
-								tranche.debt = tranche.debt.saturating_add(recovered_loss);
+							// This arm matches if the new pool_value can satisfy the debt and the reserve of tranche
+							// This favors debt over reserve as we want as much value to accrue interest for a tranche
+							} else if tranche.debt.saturating_add(tranche.reserve) > pool_value {
+								let loss = pool_value
+									.saturating_sub(tranche.debt.saturating_add(tranche.reserve));
 								// Losses are partially re-covered
-								tranche.loss = tranche.loss.saturating_sub(recovered_loss);
-								// Reserve is still wiped
-								tranche.reserve = Zero::zero();
+								tranche.loss = tranche.loss.saturating_add(loss);
+								// Reserve is reduced by losses
+								tranche.reserve = tranche.reserve.saturating_sub(loss);
 								pool_value = Zero::zero();
 
-							// This arm matches if the pool_value can satisfy the debt and the losses and
-							// partially fill up the reserve
+							// This arm matches if the pool_value can satisfy the debt and the reserve and
+							// partially recover the losses of a tranche
 							} else {
-								// Pool value can recover all losses
-								tranche.debt = tranche.debt.saturating_add(tranche.loss);
-								tranche.loss = Zero::zero();
-								tranche.reserve = pool_value.saturating_sub(tranche.debt);
+								let recovered_loss = pool_value
+									.saturating_sub(tranche.debt.saturating_add(tranche.reserve));
+								tranche.loss = tranche.loss.saturating_sub(recovered_loss);
+								tranche.reserve = pool_value.saturating_add(recovered_loss);
 								pool_value = Zero::zero();
 							}
 						} else {
 							pool_value = pool_value.saturating_sub(tranche.expected_assets()?);
-							// If we had losses those are now cleaned and will be back generating value
-							tranche.debt = tranche.debt.saturating_add(tranche.loss);
+							// If we had losses those are now cleaned and are back in the reserve
+							tranche.reserve = tranche.reserve.saturating_add(tranche.loss);
 							tranche.loss = Zero::zero();
 						}
 					}
@@ -1685,6 +1686,8 @@ pub mod pallet {
 					.checked_add(&redeem)
 					.ok_or(ArithmeticError::Overflow)?;
 			}
+			// TODO: this might change between epoch-close and epoch-execution.
+			//    * Does this affect the rebalancing?
 			pool.reserve.total = pool
 				.reserve
 				.total
