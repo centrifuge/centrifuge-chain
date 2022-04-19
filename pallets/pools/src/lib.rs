@@ -1718,11 +1718,20 @@ pub mod pallet {
 				},
 			)?;
 
-			let total_assets = pool
-				.reserve
-				.total
-				.checked_add(&epoch.nav)
-				.ok_or(ArithmeticError::Overflow)?;
+			let total_expected = epoch
+				.tranches
+				.combine_with_residual_top(executed_amounts, |tranche, (invest, redeem)| {
+					tranche
+						.supply
+						.checked_add(invest)
+						.ok_or(ArithmeticError::Overflow)?
+						.checked_sub(redeem)
+						.ok_or(ArithmeticError::Underflow.into())
+				})?
+				.into_iter()
+				.fold(Zero::zero(), |sum, expected_amount| {
+					sum.saturating_add(expected_amount)
+				});
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				executed_amounts.iter(),
 				|tranche, (invest, redeem)| {
@@ -1733,7 +1742,7 @@ pub mod pallet {
 						.checked_sub(redeem)
 						.ok_or(ArithmeticError::Underflow.into())
 						.map(|tranche_asset| {
-							Perquintill::from_rational(tranche_asset, total_assets)
+							Perquintill::from_rational(tranche_asset, total_expected)
 						})
 				},
 			)?;
