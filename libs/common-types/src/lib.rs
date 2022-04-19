@@ -67,10 +67,15 @@ pub enum PermissionedCurrencyRole<Moment = u64> {
 	Issuer,
 }
 
+/// The Role enum is used by the permissions pallet,
+/// to specify which role an account has within a
+/// specific scope.
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Role<TrancheId = [u8; 16], Moment = u64> {
+	/// Roles that apply to a specific pool.
 	PoolRole(PoolRole<TrancheId, Moment>),
+	/// Roles that apply to a specific permissioned currency.
 	PermissionedCurrencyRole(PermissionedCurrencyRole<Moment>),
 }
 
@@ -311,7 +316,7 @@ where
 		if req_validity < min_validity {
 			return Err(());
 		}
-		
+
 		Ok(req_validity)
 	}
 
@@ -333,10 +338,8 @@ where
 				Err(())
 			} else {
 				// Ensure that permissioned_till is at least now + min_delay.
-        let permissioned_till = self.validity(delta)?;
-        self.info = Some(PermissionedCurrencyHolderInfo {
-					permissioned_till
-				});
+				let permissioned_till = self.validity(delta)?;
+				self.info = Some(PermissionedCurrencyHolderInfo { permissioned_till });
 				Ok(())
 			}
 		} else {
@@ -347,12 +350,15 @@ where
 	pub fn insert(&mut self, delta: Moment) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 
-    match &self.info {
-      Some(info if info.permissioned_till > validity => Err(()),
-      _ => Ok(self.info = Some(PermissionedCurrencyHolderInfo {
+		match &self.info {
+			Some(info) if info.permissioned_till > validity => Err(()),
+			_ => {
+				self.info = Some(PermissionedCurrencyHolderInfo {
 					permissioned_till: validity,
-				}))
-    }
+				});
+
+				Ok(())
+			}
 		}
 	}
 }

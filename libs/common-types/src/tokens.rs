@@ -22,7 +22,6 @@ pub enum PermissionedCurrency {
 pub enum CurrencyId {
 	Native,
 	Usd,
-	Permissioned(PermissionedCurrency),
 	Tranche(u64, [u8; 16]),
 
 	/// Karura KSM
@@ -30,6 +29,8 @@ pub enum CurrencyId {
 
 	/// Karura Dollar
 	KUSD,
+
+	Permissioned(PermissionedCurrency),
 }
 
 impl TokenMetadata for CurrencyId {
