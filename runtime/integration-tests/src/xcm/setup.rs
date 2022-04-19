@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System};
+pub use altair_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
 use common_traits::TokenMetadata;
 use frame_support::traits::GenesisBuild;
 use runtime_common::{parachains, Balance};
