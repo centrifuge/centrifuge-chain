@@ -345,18 +345,12 @@ where
 	pub fn insert(&mut self, delta: Moment) -> Result<(), ()> {
 		let validity = self.validity(delta)?;
 
-		if let Some(info) = &self.info {
-			if info.permissioned_till > validity {
-				Err(())
-			} else {
-				Ok(self.info = Some(PermissionedCurrencyHolderInfo {
+    match &self.info {
+      Some(info if info.permissioned_till > validity => Err(()),
+      _ => Ok(self.info = Some(PermissionedCurrencyHolderInfo {
 					permissioned_till: validity,
 				}))
-			}
-		} else {
-			Ok(self.info = Some(PermissionedCurrencyHolderInfo {
-				permissioned_till: validity,
-			}))
+    }
 		}
 	}
 }
