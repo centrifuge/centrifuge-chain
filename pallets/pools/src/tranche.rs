@@ -777,8 +777,10 @@ where
 		let mut prices = self.combine_mut_non_residual_top(|tranche| {
 			let total_issuance = Tokens::total_issuance(tranche.currency);
 
-			if pool_is_zero || total_issuance == Zero::zero() {
-				Ok(One::one())
+			if total_issuance == Zero::zero() {
+				Ok(BalanceRatio::one())
+			} else if pool_is_zero {
+				Ok(BalanceRatio::zero())
 			} else if tranche.tranche_type == TrancheType::Residual {
 				BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
 					.ok_or(ArithmeticError::Overflow.into())
