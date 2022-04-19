@@ -6252,6 +6252,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-investments"
+version = "1.0.0"
+dependencies = [
+ "common-traits",
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-permissions",
+ "pallet-restricted-tokens",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rand 0.8.5",
+ "rev_slice",
+ "runtime-common",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
