@@ -333,9 +333,11 @@ where
 				Err(())
 			} else {
 				// Ensure that permissioned_till is at least now + min_delay.
-				Ok(self.info = Some(PermissionedCurrencyHolderInfo {
-					permissioned_till: self.validity(delta)?,
-				}))
+        let permissioned_till = self.validity(delta)?;
+        self.info = Some(PermissionedCurrencyHolderInfo {
+					permissioned_till
+				});
+				Ok(())
 			}
 		} else {
 			Err(())
