@@ -49,9 +49,9 @@ polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", 
 polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
-polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
-kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
-rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17", optional = true }
+polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
+kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
+rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.17" }
 
 # Cumulus
@@ -70,9 +70,9 @@ xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev="24ccbce5
 # Local
 runtime-common = { path = "../common" }
 common-traits = { path = "../../libs/common-traits" }
-development-runtime = { path = "../development", optional = true }
-altair-runtime = { path = "../altair", optional = true }
-centrifuge-runtime = { path = "../centrifuge", optional = true }
+development-runtime = { path = "../development" }
+altair-runtime = { path = "../altair" }
+centrifuge-runtime = { path = "../centrifuge" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -86,7 +86,6 @@ pallet-permissions = { path = "../../pallets/permissions" }
 [features]
 default = [ "runtime-development" ]
 runtime-benchmarks = [ "default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks"]
-# TODO(nuno): Remove "kusama-runtime" from `runtime-development` once XCM is available on Altair
-runtime-development = ["rococo-runtime", "development-runtime", "kusama-runtime", "altair-runtime"]
-runtime-altair = ["kusama-runtime", "altair-runtime"]
-runtime-centrifuge = ["polkadot-runtime", "centrifuge-runtime"]
+runtime-development = []
+runtime-altair = []
+runtime-centrifuge = []
