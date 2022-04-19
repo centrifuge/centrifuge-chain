@@ -1825,30 +1825,52 @@ pub mod pallet {
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
 					tranche.accrue(now)?;
 
-					let tranche_amount = if tranche.tranche_type != TrancheType::Residual {
-						tranche.ratio.mul_ceil(amount)
+					// Calculate the rights a tranche has on this deposit-amount
+					if tranche.tranche_type != TrancheType::Residual {
+						let tranche_amount = tranche.claim(amount)?;
+
+						// Amount is able to purge losses
+						if tranche.claim_with_losses(amount)? < remaining_amount {
+							tranche.reserve = tranche
+								.reserve
+								.saturating_add(tranche_amount)
+								.saturating_add(tranche.loss);
+							tranche.debt = tranche.debt.saturating_sub(tranche_amount);
+
+							remaining_amount = remaining_amount
+								.saturating_sub(tranche_amount.saturating_add(tranche.loss));
+							tranche.loss = Zero::zero()
+
+						// Amount is able to partially purge losses
+						} else if tranche.claim(amount)? < remaining_amount {
+							tranche.debt = tranche.debt.saturating_sub(tranche_amount);
+							tranche.reserve = tranche
+								.reserve
+								.saturating_add(tranche_amount)
+								.saturating_add(remaining_amount);
+							tranche.loss = tranche.loss.saturating_sub(remaining_amount);
+
+							remaining_amount = Zero::zero();
+						// Amount introduce new losses to tranche
+						} else {
+							tranche.debt = tranche.debt.saturating_sub(remaining_amount);
+							tranche.reserve = tranche.reserve.saturating_add(remaining_amount);
+							tranche.loss = tranche
+								.loss
+								.saturating_add(tranche_amount.saturating_sub(remaining_amount));
+
+							remaining_amount = Zero::zero();
+						}
+					// Residual tranche takes the leftovers
 					} else {
-						remaining_amount
-					};
-
-					let tranche_amount = if tranche_amount > tranche.debt {
-						tranche.debt
-					} else {
-						tranche_amount
-					};
-
-					// NOTE: we ensure this is never underflowing. But better be safe than sorry.
-					tranche.debt = tranche.debt.saturating_sub(tranche_amount);
-					tranche.reserve = tranche
-						.reserve
-						.checked_add(&tranche_amount)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					// NOTE: In case there is an error in the ratios this might be critical. Hence,
-					//       we check here and error out
-					remaining_amount = remaining_amount
-						.checked_sub(&tranche_amount)
-						.ok_or(ArithmeticError::Underflow)?;
+						tranche.debt = tranche
+							.debt
+							.saturating_sub(sp_std::cmp::min(tranche_amount, remaining_amount));
+						tranche.reserve = tranche
+							.reserve
+							.checked_add(&sp_std::cmp::min(tranche_amount, remaining_amount))
+							.ok_or(ArithmeticError::Overflow)?;
+					}
 				}
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;

@@ -170,6 +170,17 @@ where
 		Ok(orders)
 	}
 
+	pub fn claim(&self, from: Balance) -> Result<Balance, DispatchError> {
+		self.ratio
+			.mul_ceil(from)
+			.checked_add(&self.loss)
+			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	pub fn claim_with_losses(&self, from: Balance) -> Result<Balance, DispatchError> {
+		Ok(self.ratio.mul_ceil(from))
+	}
+
 	pub fn balance(&self) -> Result<Balance, DispatchError> {
 		self.debt
 			.checked_add(&self.reserve)
