@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain]
+    branches: [master, parachain, altair/xcm]
   pull_request:
 name: Build
 jobs:
