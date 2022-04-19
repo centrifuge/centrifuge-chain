@@ -62,7 +62,6 @@ parameter_types! {
     pub const ClaimsPalletId: PalletId = PalletId(*b"claims");
     pub const One: u64 = 1;
     pub const Longevity: u32 = 64;
-    pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const MinimalPayoutAmount: node_primitives::Balance = 5 * CFG;
 }
 
@@ -70,8 +69,6 @@ parameter_types! {
 impl pallet_claims::Config for MyRuntime {
     type Event = ();
     type PalletId = ClaimsPalletId;
-    type Longevity = Longevity;
-    type UnsignedPriority = UnsignedPriority;
     type AdminOrigin = EnsureSignedBy<One, u64>;
     type Currency = Balances;
     type WeightInfo = ();
@@ -80,7 +77,7 @@ impl pallet_claims::Config for MyRuntime {
 construct_runtime! {
     …
 
-    Claims: pallet_claims::{Pallet, Call, Config<T>, Storage, Event<T>, ValidateUnsigned},
+    Claims: pallet_claims::{Pallet, Call, Config<T>, Storage, Event<T>},
 }
 ```
 

@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.1"
+version = "0.10.5"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
@@ -83,6 +83,7 @@ pallet-preimage = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-proxy = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-randomness-collective-flip = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-session = { git = "https://github.com/paritytech/substrate",  default-features = false, features = ["historical"] , branch = "polkadot-v0.9.17" }
+pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true,  branch = "polkadot-v0.9.17" }
 pallet-staking = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
@@ -92,15 +93,22 @@ pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/parityt
 pallet-identity = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-scheduler = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
-pallet-sudo = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.17" }
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
-pallet-society = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.17" }
 
+
+# Our pallets and modules
 runtime-common = { path = "../common", default-features = false }
-
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
 pallet-claims = { path = "../../pallets/claims", default-features = false }
+pallet-crowdloan-claim = { path = "../../pallets/crowdloan-claim", default-features = false }
+pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-features = false }
+pallet-bridge = { path = "../../pallets/bridge", default-features = false }
+pallet-nft = { path = "../../pallets/nft", default-features = false }
+pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
+
+# bridge pallets
+chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.17" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }
@@ -170,25 +178,43 @@ std = [
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-claims/std",
-    "pallet-sudo/std",
-    "pallet-society/std",
     "runtime-common/std",
     "polkadot-runtime-common/std",
     "pallet-preimage/std",
+    "chainbridge/std",
+    "pallet-bridge/std",
+    "pallet-nft/std",
+    "pallet-migration-manager/std",
+    "pallet-crowdloan-claim/std",
+    "pallet-crowdloan-reward/std",
 ]
 
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
+    "pallet-session-benchmarking",
+    "pallet-multisig/runtime-benchmarks",
+    "pallet-proxy/runtime-benchmarks",
+    "pallet-utility/runtime-benchmarks",
+    "pallet-scheduler/runtime-benchmarks",
+    "pallet-collective/runtime-benchmarks",
+    "pallet-elections-phragmen/runtime-benchmarks",
+    "pallet-democracy/runtime-benchmarks",
+    "pallet-identity/runtime-benchmarks",
+    "pallet-vesting/runtime-benchmarks",
+    "pallet-preimage/runtime-benchmarks",
     "hex-literal",
     "pallet-fees/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
     "frame-system-benchmarking",
+    "frame-system/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
-    "pallet-collective/runtime-benchmarks",
-    "pallet-society/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks"
+    "pallet-balances/runtime-benchmarks",
+    "chainbridge/runtime-benchmarks",
+    "pallet-migration-manager/runtime-benchmarks",
+    "pallet-crowdloan-claim/runtime-benchmarks",
+    "pallet-crowdloan-reward/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

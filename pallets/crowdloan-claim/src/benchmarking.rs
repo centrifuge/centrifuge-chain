@@ -1,6 +1,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use core::convert::TryInto;
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::StorageHasher;
 use frame_support::Twox128;
 use frame_system::RawOrigin;
@@ -12,6 +13,7 @@ benchmarks! {
   where_clause {where T: pallet_balances::Config}
 
   claim_reward_ed25519 {
+		let caller: T::AccountId = account("claimer", 0, 0);
 		let relay_account: T::RelayChainAccountId = get_account_relay_ed25519::<T>();
 		init_pallets::<T>(relay_account.clone());
 		let para_account: ParachainAccountIdOf<T> = get_account_para_ed25519::<T>();
@@ -22,7 +24,7 @@ benchmarks! {
 			contribution
 		);
 
-  }: claim_reward(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
+  }: claim_reward(RawOrigin::Signed(caller), relay_account, para_account, identity_proof, contribution_proof, contribution)
   verify {
 		// TODO: Not sure if it is even possible to use the balances pallet here. But "T" does not implement the pallet_balances::Config
 		//       so currently, I am not able to see a solution to get to the balances. Although, one might use storage directy. But I
@@ -30,6 +32,7 @@ benchmarks! {
   }
 
 	claim_reward_sr25519 {
+		let caller: T::AccountId = account("claimer", 0, 0);
 		let relay_account: T::RelayChainAccountId = get_account_relay_sr25519::<T>();
 		init_pallets::<T>(relay_account.clone());
 		let para_account: ParachainAccountIdOf<T> = get_account_para_sr25519::<T>();
@@ -39,7 +42,7 @@ benchmarks! {
 			relay_account.clone(),
 			contribution
 		);
-	}: claim_reward(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
+	}: claim_reward(RawOrigin::Signed(caller), relay_account, para_account, identity_proof, contribution_proof, contribution)
 	verify{
 		// TODO: Not sure if it is even possible to use the balances pallet here. But "T" does not implement the pallet_balances::Config
 		//       so currently, I am not able to see a solution to get to the balances. Although, one might use storage directy. But I
@@ -47,6 +50,7 @@ benchmarks! {
 	}
 
 	claim_reward_ecdsa {
+		let caller: T::AccountId = account("claimer", 0, 0);
 		let relay_account: T::RelayChainAccountId = get_account_relay_ecdsa::<T>();
 		init_pallets::<T>(relay_account.clone());
 		let para_account: ParachainAccountIdOf<T> = get_account_para_ecdsa::<T>();
@@ -57,7 +61,7 @@ benchmarks! {
 			contribution
 		);
 
-	  }: claim_reward(RawOrigin::None, relay_account, para_account, identity_proof, contribution_proof, contribution)
+	  }: claim_reward(RawOrigin::Signed(caller), relay_account, para_account, identity_proof, contribution_proof, contribution)
 	  verify {
 		// TODO: Not sure if it is even possible to use the balances pallet here. But "T" does not implement the pallet_balances::Config
 		//       so currently, I am not able to see a solution to get to the balances. Although, one might use storage directy. But I
@@ -120,12 +124,6 @@ benchmarks! {
 		assert!(Pallet::<T>::crowdloan_trie_index().is_some());
   }
 }
-
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::mock::TestExternalitiesBuilder::default().build(None),
-	crate::mock::T,
-);
 
 // Helper functions from here on
 //

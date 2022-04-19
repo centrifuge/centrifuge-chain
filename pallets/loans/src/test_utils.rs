@@ -22,7 +22,7 @@ use common_types::PoolRole;
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
-use frame_support::{assert_ok, parameter_types, StorageHasher, Twox128};
+use frame_support::{assert_ok, parameter_types, Blake2_128, StorageHasher};
 use frame_system::RawOrigin;
 use pallet_pools::TrancheLoc;
 use pallet_pools::TrancheType;
@@ -45,7 +45,7 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
-	Twox128::hash(&hash_input)
+	Blake2_128::hash(&hash_input)
 }
 
 parameter_types! {
@@ -101,17 +101,6 @@ pub(crate) fn create<T>(
 {
 	let pool_account = PoolLocator { pool_id }.into_account();
 
-	set_role::<T>(
-		pool_id.into(),
-		junior_investor.clone(),
-		PoolRole::TrancheInvestor(JuniorTrancheId::get().into(), 0u32.into()),
-	);
-	set_role::<T>(
-		pool_id.into(),
-		senior_investor.clone(),
-		PoolRole::TrancheInvestor(SeniorTrancheId::get().into(), 0u32.into()),
-	);
-
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
 		RawOrigin::Signed(owner.clone()).into(),
@@ -121,7 +110,7 @@ pub(crate) fn create<T>(
 			(TrancheType::Residual, None),
 			(
 				TrancheType::NonResidual {
-					interest_per_sec: One::one(),
+					interest_rate_per_sec: One::one(),
 					min_risk_buffer: Perquintill::from_percent(10),
 				},
 				None
@@ -130,6 +119,17 @@ pub(crate) fn create<T>(
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
 	));
+
+	set_role::<T>(
+		pool_id.into(),
+		junior_investor.clone(),
+		PoolRole::TrancheInvestor(JuniorTrancheId::get().into(), 999_999_999u32.into()),
+	);
+	set_role::<T>(
+		pool_id.into(),
+		senior_investor.clone(),
+		PoolRole::TrancheInvestor(SeniorTrancheId::get().into(), 999_999_999u32.into()),
+	);
 
 	assert_ok!(PoolPallet::<T>::update_invest_order(
 		RawOrigin::Signed(junior_investor.clone()).into(),
@@ -146,13 +146,22 @@ pub(crate) fn create<T>(
 	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
 		.expect("update nav should work");
 
+	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
+		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;
+		pool.parameters.min_epoch_time = 0;
+		pool.parameters.challenge_time = 0;
+		pool.parameters.max_nav_age = 999_999_999_999;
+		Ok(())
+	})
+	.expect("Could not fixup pool parameters");
+
 	assert_ok!(PoolPallet::<T>::close_epoch(
 		RawOrigin::Signed(owner).into(),
 		pool_id,
 	));
 
 	let pool = PoolStorage::<T>::get(pool_id).unwrap();
-	assert_eq!(pool.reserve.available_reserve, (1000 * CURRENCY).into());
+	assert_eq!(pool.reserve.available, (1000 * CURRENCY).into());
 
 	// TODO(ved) do disbursal manually for now
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
@@ -191,8 +200,22 @@ where
 	)
 	.expect("initialisation of pool should not fail");
 	let nav = pallet_loans::PoolNAV::<T>::get(pool_id).unwrap();
-	assert!(nav.latest_nav == Zero::zero());
+	assert!(nav.latest == Zero::zero());
 	class_id
+}
+
+pub(crate) fn get_tranche_id<T>(
+	pool_id: <T as pallet_pools::Config>::PoolId,
+	index: u64,
+) -> <T as pallet_pools::Config>::TrancheId
+where
+	T: pallet_pools::Config,
+{
+	pallet_pools::Pool::<T>::get(pool_id)
+		.unwrap()
+		.tranches
+		.tranche_id(TrancheLoc::Index(index))
+		.unwrap()
 }
 
 pub(crate) fn assert_last_event<T, E>(generic_event: E)
@@ -216,5 +239,15 @@ pub(crate) fn expect_asset_owner<T: frame_system::Config + pallet_loans::Config>
 		<T as pallet_loans::Config>::NonFungible::owner(&class_id.into(), &instance_id.into())
 			.unwrap(),
 		owner
+	);
+}
+
+pub(crate) fn expect_asset_to_be_burned<T: frame_system::Config + pallet_loans::Config>(
+	asset: AssetOf<T>,
+) {
+	let (class_id, instance_id) = asset.destruct();
+	assert_eq!(
+		<T as pallet_loans::Config>::NonFungible::owner(&class_id.into(), &instance_id.into()),
+		None
 	);
 }

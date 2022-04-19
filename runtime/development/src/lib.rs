@@ -38,11 +38,9 @@ use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
+use sp_runtime::traits::{AccountIdConversion, Convert, Zero};
 use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
-use sp_runtime::traits::{Convert, Zero};
-use sp_runtime::transaction_validity::{
-	TransactionPriority, TransactionSource, TransactionValidity,
-};
+use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -60,7 +58,8 @@ use xcm_builder::{
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
 	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentAsSuperuser, ParentIsPreset,
 	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue,
+	TakeWeightCredit,
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
@@ -76,6 +75,7 @@ use pallet_restricted_tokens::{
 pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+use runtime_common::xcm_fees::{ksm_per_second, native_per_second};
 
 mod weights;
 
@@ -142,7 +142,7 @@ parameter_types! {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Migration;
+	type BaseCallFilter = Everything;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -363,6 +363,8 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
+	Borrower,
+	Investor,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -384,6 +386,32 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, Call::Proxy(..))
 			}
+			ProxyType::Borrower => matches!(
+				c,
+				Call::Loans(pallet_loans::Call::create{..}) |
+				Call::Loans(pallet_loans::Call::borrow{..}) |
+				Call::Loans(pallet_loans::Call::repay{..}) |
+				Call::Loans(pallet_loans::Call::write_off{..}) |
+				Call::Loans(pallet_loans::Call::close{..}) |
+				// Borrowers should be able to close and execute an epoch
+				// in order to get liquidity from repayments in previous epochs.
+				Call::Loans(pallet_loans::Call::update_nav{..}) |
+				Call::Pools(pallet_pools::Call::close_epoch{..}) |
+				Call::Pools(pallet_pools::Call::submit_solution{..}) |
+				Call::Pools(pallet_pools::Call::execute_epoch{..})
+			),
+			ProxyType::Investor => matches!(
+				c,
+				Call::Pools(pallet_pools::Call::update_invest_order{..}) |
+				Call::Pools(pallet_pools::Call::update_redeem_order{..}) |
+				Call::Pools(pallet_pools::Call::collect{..}) |
+				// Investors should be able to close and execute an epoch
+				// in order to get their orders fulfilled.
+				Call::Loans(pallet_loans::Call::update_nav{..}) |
+				Call::Pools(pallet_pools::Call::close_epoch{..}) |
+				Call::Pools(pallet_pools::Call::submit_solution{..}) |
+				Call::Pools(pallet_pools::Call::execute_epoch{..})
+			),
 		}
 	}
 
@@ -767,20 +795,16 @@ impl pallet_collator_allowlist::Config for Runtime {
 // Parameterize claims pallet
 parameter_types! {
 	pub const ClaimsPalletId: PalletId = PalletId(*b"p/claims");
-	pub const Longevity: u32 = 64;
-	pub const UnsignedPriority: TransactionPriority = TransactionPriority::max_value();
 	pub const MinimalPayoutAmount: Balance = 5 * CFG;
 }
 
-// Implement claims pallet configuration trait for the mock runtime
+// Implement claims pallet configuration trait for the centrifuge runtime
 impl pallet_claims::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type Currency = Tokens;
 	type Event = Event;
-	type Longevity = Longevity;
 	type MinimalPayoutAmount = MinimalPayoutAmount;
 	type PalletId = ClaimsPalletId;
-	type UnsignedPriority = UnsignedPriority;
 	type WeightInfo = ();
 }
 
@@ -828,8 +852,19 @@ impl pallet_pools::Config for Runtime {
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
-	type WeightInfo = pallet_pools::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
+	type PoolCurrency = PoolCurrency;
+}
+
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Usd | CurrencyId::KUSD => true,
+		}
+	}
 }
 
 parameter_types! {
@@ -846,9 +881,6 @@ impl pallet_migration_manager::Config for Runtime {
 	type MigrationMaxProxies = MigrationMaxProxies;
 	type Event = Event;
 	type WeightInfo = weights::pallet_migration_manager::SubstrateWeight<Self>;
-	type FinalizedFilter = Everything;
-	type InactiveFilter = Everything;
-	type OngoingFilter = BaseFilter;
 }
 
 // our base filter
@@ -892,8 +924,6 @@ impl pallet_crowdloan_reward::Config for Runtime {
 // Parameterize crowdloan claim pallet
 parameter_types! {
 	pub const CrowdloanClaimPalletId: PalletId = PalletId(*b"cc/claim");
-	pub const ClaimTransactionPriority: TransactionPriority = TransactionPriority::max_value();
-	pub const ClaimTransactionLongevity: u32 = 64;
 	pub const MaxProofLength: u32 = 30;
 }
 
@@ -905,8 +935,6 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type RelayChainAccountId = AccountId;
 	type MaxProofLength = MaxProofLength;
-	type ClaimTransactionPriority = ClaimTransactionPriority;
-	type ClaimTransactionLongevity = ClaimTransactionLongevity;
 	type RewardMechanism = CrowdloanReward;
 }
 
@@ -958,7 +986,7 @@ impl pallet_loans::Config for Runtime {
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type Permission = Permissions;
-	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
@@ -1034,7 +1062,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Usd | CurrencyId::Native => true,
+			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
 					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
@@ -1081,6 +1109,8 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub ORMLMaxLocks: u32 = 2;
+
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -1090,7 +1120,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = ORMLMaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
@@ -1126,6 +1156,7 @@ parameter_types! {
 
 impl chainbridge::Config for Runtime {
 	type Event = Event;
+	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin =
 		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
 	type Proposal = Call;
@@ -1133,7 +1164,6 @@ impl chainbridge::Config for Runtime {
 	type PalletId = ChainBridgePalletId;
 	type ProposalLifetime = ProposalLifetime;
 	type RelayerVoteThreshold = RelayerVoteThreshold;
-	/// A 75% majority of the council can update bridge settings.
 	type WeightInfo = ();
 }
 
@@ -1201,8 +1231,8 @@ construct_runtime!(
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
 		Anchor: pallet_anchors::{Pallet, Call, Storage} = 91,
-		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 92,
-		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 93,
+		Claims: pallet_claims::{Pallet, Call, Storage, Event<T>} = 92,
+		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 93,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 94,
 		Pools: pallet_pools::{Pallet, Call, Storage, Event<T>} = 95,
 		Loans: pallet_loans::{Pallet, Call, Storage, Event<T>} = 96,
@@ -1302,25 +1332,62 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<NativePerSecond, ()>,
-	FixedRateOfFungible<UsdPerSecond2000, ()>,
-	FixedRateOfFungible<UsdPerSecond3000, ()>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<NativePerSecond, ToTreasury>,
+	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<UsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<UsdPerSecondSibling, ToTreasury>,
 );
 
+pub struct ToTreasury;
+impl TakeRevenue for ToTreasury {
+	fn take_revenue(revenue: MultiAsset) {
+		use orml_traits::MultiCurrency;
+		use xcm_executor::traits::Convert;
+
+		if let MultiAsset {
+			id: Concrete(location),
+			fun: Fungible(amount),
+		} = revenue
+		{
+			if let Ok(currency_id) =
+				<CurrencyIdConvert as Convert<MultiLocation, CurrencyId>>::convert(location)
+			{
+				let _ = OrmlTokens::deposit(currency_id, &TreasuryAccount::get(), amount);
+			}
+		}
+	}
+}
+
 parameter_types! {
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
+
 	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(2000), GeneralKey(CurrencyId::Native.encode())),
+			X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
-		10_000,
+		native_per_second(),
 	);
 
-	pub UsdPerSecond2000: (AssetId, u128) = (
+	pub KUsdPerSecond: (AssetId, u128) = (
+		KUSDAssetId::get(),
+		// KUSD:KSM = 400:1
+		ksm_per_second() * 400
+	);
+	pub KUSDAssetId: AssetId = MultiLocation::new(
+		1,
+		X2(
+			Parachain(parachains::karura::ID),
+			GeneralKey(parachains::karura::KUSD_KEY.to_vec())
+		)
+	).into();
+
+	// TODO(nuno): consider removing this placeholder 'usd' token
+	pub UsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(2000), GeneralKey(CurrencyId::Usd.encode())),
+			X2(Parachain(2088), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
 		//TODO(nuno): we need to fine tune this value later on
 		200_000
@@ -1328,12 +1395,11 @@ parameter_types! {
 
 	/// We support this Trader for testing purposes when we spawn a sibling clone development
 	/// parachain with id 3000.
-	pub UsdPerSecond3000: (AssetId, u128) = (
+	pub UsdPerSecondSibling: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(3000), GeneralKey(CurrencyId::Usd.encode())),
 		).into(),
-		//TODO(nuno): we need to fine tune this value later on
 		200_000
 	);
 }
@@ -1377,7 +1443,18 @@ pub struct CurrencyIdConvert;
 /// handle it on their side.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		Some(native_currency_location(id))
+		let x = match id {
+			CurrencyId::KSM => MultiLocation::parent(),
+			CurrencyId::KUSD => MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::karura::ID),
+					GeneralKey(parachains::karura::KUSD_KEY.into()),
+				),
+			),
+			_ => native_currency_location(id),
+		};
+		Some(x)
 	}
 }
 
@@ -1386,15 +1463,30 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 /// correctly convert their `MultiLocation` representation into our internal `CurrencyId` type.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
+		if location == MultiLocation::parent() {
+			return Ok(CurrencyId::KSM);
+		}
+
 		match location.clone() {
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
-			} if para_id == 2000 || para_id == 3000 => match &key[..] {
-				[0] => Ok(CurrencyId::Native),
-				[1] => Ok(CurrencyId::Usd),
-				_ => Err(location.clone()),
-			},
+			} => {
+				match para_id {
+					// Local testing para ids
+					2088 | 3000 => match key[..] {
+						[0] => Ok(CurrencyId::Native),
+						[1] => Ok(CurrencyId::Usd),
+						_ => Err(location.clone()),
+					},
+
+					parachains::karura::ID => match &key[..] {
+						parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
+						_ => Err(location.clone()),
+					},
+					_ => Err(location.clone()),
+				}
+			}
 			_ => Err(location.clone()),
 		}
 	}
@@ -1727,6 +1819,9 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			impl pallet_loans::benchmarking::Config for Runtime {}
+
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_crowdloan_claim, CrowdloanClaim);
@@ -1737,7 +1832,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
-
+			add_benchmark!(params, batches, pallet_pools, Pools);
+			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1750,6 +1846,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1763,6 +1860,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
+			list_benchmark!(list, extra, pallet_pools, Pools);
+			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

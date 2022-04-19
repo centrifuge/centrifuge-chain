@@ -17,7 +17,7 @@ use crate::loan_type::{BulletLoan, CreditLineWithMaturity};
 use crate::test_utils::initialise_test_pool;
 use crate::types::WriteOffGroup;
 use crate::{Config as LoanConfig, Event as LoanEvent, Pallet as LoansPallet};
-use common_types::CurrencyId;
+use common_types::{CurrencyId, PoolLocator};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_support::sp_runtime::traits::Zero;
@@ -27,13 +27,12 @@ use frame_system::RawOrigin;
 use orml_tokens::{Config as ORMLConfig, Pallet as ORMLPallet};
 use orml_traits::MultiCurrency;
 use pallet_balances::Pallet as BalancePallet;
-use pallet_pools::PoolLocator;
 use pallet_timestamp::{Config as TimestampConfig, Pallet as TimestampPallet};
 use runtime_common::{Amount, Rate, CFG as CURRENCY};
-use sp_runtime::traits::StaticLookup;
 use sp_std::vec;
 use test_utils::{
-	assert_last_event, create as create_test_pool, create_nft_class, expect_asset_owner, mint_nft,
+	assert_last_event, create as create_test_pool, create_nft_class, expect_asset_owner,
+	expect_asset_to_be_burned, get_tranche_id, mint_nft,
 };
 
 pub struct Pallet<T: Config>(LoansPallet<T>);
@@ -47,6 +46,9 @@ pub trait Config:
 	+ TimestampConfig
 {
 }
+
+#[cfg(test)]
+impl Config for super::mock::MockRuntime {}
 
 fn make_free_cfg_balance<T>(account: T::AccountId)
 where
@@ -134,7 +136,7 @@ where
 	<T as pallet_uniques::Config>::ClassId: From<u64>,
 	<T as pallet_pools::Config>::Balance: From<u128>,
 	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-	<T as pallet_pools::Config>::TrancheId: From<u8>,
+	<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
@@ -151,16 +153,6 @@ where
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
 	let pal_pool_id: T::PoolId = pool_id.into();
-	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), 0u8),
-		&pool_account,
-		(500 * CURRENCY).into(),
-	);
-	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), 1u8),
-		&pool_account,
-		(500 * CURRENCY).into(),
-	);
 	create_test_pool::<T>(
 		pool_id.into(),
 		pool_owner.clone(),
@@ -168,27 +160,36 @@ where
 		senior_inv,
 		CurrencyId::Usd,
 	);
+	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
+	make_free_token_balance::<T>(
+		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
+		&pool_account,
+		(500 * CURRENCY).into(),
+	);
+	let tranche_id = get_tranche_id::<T>(pool_id.into(), 1);
+	make_free_token_balance::<T>(
+		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
+		&pool_account,
+		(500 * CURRENCY).into(),
+	);
 
 	// add borrower role and price admin and risk admin role
 	make_free_cfg_balance::<T>(borrower::<T>());
 	make_free_cfg_balance::<T>(risk_admin::<T>());
-	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(pool_owner.clone()).into(),
+	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		pool_id.into(),
-		PoolRole::Borrower,
-		vec![<T::Lookup as StaticLookup>::unlookup(borrower::<T>())]
+		borrower::<T>(),
+		PoolRole::Borrower
 	));
-	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(pool_owner.clone()).into(),
+	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		pool_id.into(),
-		PoolRole::PricingAdmin,
-		vec![<T::Lookup as StaticLookup>::unlookup(borrower::<T>())]
+		borrower::<T>(),
+		PoolRole::PricingAdmin
 	));
-	assert_ok!(pallet_pools::Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(pool_owner.clone()).into(),
+	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		pool_id.into(),
-		PoolRole::RiskAdmin,
-		vec![<T::Lookup as StaticLookup>::unlookup(risk_admin::<T>())]
+		risk_admin::<T>(),
+		PoolRole::RiskAdmin
 	));
 
 	// initialise pool on loan
@@ -238,14 +239,14 @@ fn activate_test_loan_with_defaults<T: Config>(
 		// collateral value
 		Amount::from_inner(125 * CURRENCY).into(),
 		// 4%
-		math::rate_per_sec(Rate::saturating_from_rational(4, 100))
+		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100))
 			.unwrap()
 			.into(),
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
 	// interest rate is 5%
-	let rp: T::Rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100))
+	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100))
 		.unwrap()
 		.into();
 	LoansPallet::<T>::price(
@@ -291,7 +292,7 @@ benchmarks! {
 		<T as TimestampConfig>::Moment: From<u64> + Into<u64>,
 		<T as pallet_pools::Config>::Balance: From<u128>,
 		<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
-		<T as pallet_pools::Config>::TrancheId: From<u8>,
+		<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
 		<T as pallet_pools::Config>::EpochId: From<u32>,
 		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 	}
@@ -338,12 +339,12 @@ benchmarks! {
 			// collateral value
 			Amount::from_inner(125 * CURRENCY).into(),
 			// 4%
-			math::rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap().into(),
+			math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap().into(),
 			// 2 years
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let rp: T::Rate = math::rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
+		let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
 		let loan_id: T::LoanId = 1u128.into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
@@ -351,7 +352,7 @@ benchmarks! {
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan.loan_type, loan_type);
 		assert_eq!(loan.status, LoanStatus::Active);
-		assert_eq!(loan.rate_per_sec, rp);
+		assert_eq!(loan.interest_rate_per_sec, rp);
 	}
 
 	add_write_off_group {
@@ -513,7 +514,7 @@ benchmarks! {
 		// pool reserve should have more 1000 USD. this is with interest
 		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_accuont) > pool_reserve_balance);
+		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_account) > pool_reserve_balance);
 
 		// Loan should be closed
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
@@ -524,7 +525,7 @@ benchmarks! {
 
 		// loan nft owner is pool account
 		let loan_asset = Asset(loan_class_id, loan_id);
-		expect_asset_owner::<T>(loan_asset, loan_account);
+		expect_asset_to_be_burned::<T>(loan_asset);
 	}
 
 	write_off_and_close {
@@ -560,7 +561,7 @@ benchmarks! {
 
 		// loan nft owner is pool account
 		let loan_asset = Asset(loan_class_id, loan_id);
-		expect_asset_owner::<T>(loan_asset, loan_account);
+		expect_asset_to_be_burned::<T>(loan_asset);
 	}
 
 	nav_update_single_loan {
@@ -581,10 +582,10 @@ benchmarks! {
 	verify {
 		let pool_nav = PoolNAV::<T>::get(pool_id).expect("pool nav should be present");
 		// pool nav should more than 100 USD(due to interest)
-		assert!(pool_nav.latest_nav > amount);
+		assert!(pool_nav.latest > amount);
 		// updated time should be after_one_years
 		assert_eq!(pool_nav.last_updated, after_one_year/1000);
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest_nav, NAVUpdateType::Exact).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest, NAVUpdateType::Exact).into());
 	}
 }
 

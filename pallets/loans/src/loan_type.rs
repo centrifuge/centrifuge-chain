@@ -83,8 +83,7 @@ where
 	Rate: FixedPointNumber,
 	Amount: FixedPointNumber,
 {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub(crate) fn new(
+	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,
@@ -105,16 +104,16 @@ where
 	/// calculates the present value of the bullet loan.
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub(crate) fn present_value(
+	pub fn present_value(
 		&self,
 		debt: Amount,
-		origination_date: Moment,
+		origination_date: Option<Moment>,
 		now: Moment,
-		rate_per_sec: Rate,
+		interest_rate_per_sec: Rate,
 	) -> Option<Amount> {
 		math::maturity_based_present_value(
 			debt,
-			rate_per_sec,
+			interest_rate_per_sec,
 			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,
@@ -125,7 +124,7 @@ where
 	}
 
 	/// validates the bullet loan parameters
-	pub(crate) fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Moment) -> bool {
 		vec![
 			// discount should always be >= 1
 			self.discount_rate >= One::one(),
@@ -136,11 +135,11 @@ where
 		.all(|is_positive| is_positive)
 	}
 
-	/// calculates ceiling for bullet loan,
-	/// ceiling = advance_rate * collateral_value - borrowed
+	/// calculates max_borrow_amount for bullet loan,
+	/// max_borrow_amount = advance_rate * collateral_value - borrowed
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling
-	pub(crate) fn ceiling(&self, total_borrowed: Amount) -> Option<Amount> {
-		math::ceiling(self.advance_rate, self.value, total_borrowed)
+	pub fn max_borrow_amount(&self, total_borrowed: Amount) -> Option<Amount> {
+		math::max_borrow_amount(self.advance_rate, self.value, total_borrowed)
 	}
 }
 
@@ -154,9 +153,8 @@ pub struct CreditLine<Rate, Amount> {
 }
 
 impl<Rate, Amount> CreditLine<Rate, Amount> {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	#[allow(dead_code)]
-	pub(crate) fn new(advance_rate: Rate, value: Amount) -> Self {
+	pub fn new(advance_rate: Rate, value: Amount) -> Self {
 		Self {
 			advance_rate,
 			value,
@@ -166,24 +164,24 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 	/// calculates the present value of the credit line loan
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value1
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub(crate) fn present_value(&self, debt: Amount) -> Option<Amount> {
+	pub fn present_value(&self, debt: Amount) -> Option<Amount> {
 		Some(debt)
 	}
 
 	/// validates credit line loan parameters
-	pub(crate) fn is_valid(&self) -> bool {
+	pub fn is_valid(&self) -> bool {
 		true
 	}
 
-	/// calculates ceiling for credit line loan,
-	/// ceiling = advance_rate * collateral_value - debt
+	/// calculates max_borrow_amount for credit line loan,
+	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub(crate) fn ceiling(&self, debt: Amount) -> Option<Amount>
+	pub fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
 		Amount: FixedPointNumber,
 	{
-		math::ceiling(self.advance_rate, self.value, debt)
+		math::max_borrow_amount(self.advance_rate, self.value, debt)
 	}
 }
 
@@ -201,8 +199,8 @@ pub struct CreditLineWithMaturity<Rate, Amount> {
 }
 
 impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub(crate) fn new(
+	#[allow(dead_code)]
+	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,
@@ -223,12 +221,12 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	/// calculates the present value of the credit line with maturity loan type
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value2
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub(crate) fn present_value(
+	pub fn present_value(
 		&self,
 		debt: Amount,
-		origination: Moment,
+		origination_date: Option<Moment>,
 		now: Moment,
-		rate_per_sec: Rate,
+		interest_rate_per_sec: Rate,
 	) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
@@ -236,18 +234,18 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	{
 		math::maturity_based_present_value(
 			debt,
-			rate_per_sec,
+			interest_rate_per_sec,
 			self.discount_rate,
 			self.probability_of_default,
 			self.loss_given_default,
-			origination,
+			origination_date,
 			self.maturity_date,
 			now,
 		)
 	}
 
 	/// validates credit line loan parameters
-	pub(crate) fn is_valid(&self, now: Moment) -> bool {
+	pub fn is_valid(&self, now: Moment) -> bool {
 		vec![
 			// discount should always be >= 1
 			self.discount_rate >= One::one(),
@@ -258,15 +256,15 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 		.all(|is_positive| is_positive)
 	}
 
-	/// calculates ceiling for credit line loan,
-	/// ceiling = advance_rate * collateral_value - debt
+	/// calculates max_borrow_amount for credit line loan,
+	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub(crate) fn ceiling(&self, debt: Amount) -> Option<Amount>
+	pub fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
 	where
 		Rate: FixedPointNumber,
 		Amount: FixedPointNumber,
 	{
-		math::ceiling(self.advance_rate, self.value, debt)
+		math::max_borrow_amount(self.advance_rate, self.value, debt)
 	}
 }
 
@@ -308,21 +306,24 @@ mod tests {
 	}
 
 	#[test]
-	fn test_credit_line_ceiling() {
+	fn test_credit_line_max_borrow_amount() {
 		let ad = Rate::saturating_from_rational(80, 100);
 		let value = Amount::from_inner(100 * CURRENCY);
 		let cl = CreditLine::new(ad, value);
 
 		// debt can be more
 		let debt = Amount::from_inner(120 * CURRENCY);
-		assert_eq!(cl.ceiling(debt), None);
+		assert_eq!(cl.max_borrow_amount(debt), None);
 
 		// debt can be same
 		let debt = Amount::from_inner(80 * CURRENCY);
-		assert_eq!(cl.ceiling(debt), Some(Amount::from_inner(0)));
+		assert_eq!(cl.max_borrow_amount(debt), Some(Amount::from_inner(0)));
 
 		// debt can be less
 		let debt = Amount::from_inner(70 * CURRENCY);
-		assert_eq!(cl.ceiling(debt), Some(Amount::from_inner(10 * CURRENCY)));
+		assert_eq!(
+			cl.max_borrow_amount(debt),
+			Some(Amount::from_inner(10 * CURRENCY))
+		);
 	}
 }

@@ -4,11 +4,11 @@ use common_traits::{Permissions as PermissionsT, PreConditions};
 use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
-use frame_support::traits::SortedMembers;
+use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
 	parameter_types,
 	traits::{GenesisBuild, Hooks},
-	StorageHasher, Twox128,
+	Blake2_128, StorageHasher,
 };
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -66,15 +66,15 @@ mod fake_nav {
 	}
 
 	impl<T: Config> common_traits::PoolNAV<T::PoolId, Balance> for Pallet<T> {
-		type ClassId = ();
-		type Origin = ();
+		type ClassId = u64;
+		type Origin = super::Origin;
 		fn nav(pool_id: T::PoolId) -> Option<(Balance, u64)> {
 			Some(Self::latest(pool_id))
 		}
 		fn update_nav(pool_id: T::PoolId) -> Result<Balance, DispatchError> {
 			Ok(Self::value(pool_id))
 		}
-		fn initialise(_: (), _: T::PoolId, _: ()) -> DispatchResult {
+		fn initialise(_: Self::Origin, _: T::PoolId, _: Self::ClassId) -> DispatchResult {
 			Ok(())
 		}
 	}
@@ -246,12 +246,11 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Usd => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
 					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
 			}
-			CurrencyId::Native => true,
+			_ => true,
 		}
 	}
 }
@@ -302,6 +301,17 @@ impl Config for Test {
 	type MaxTranches = MaxTranches;
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
+	type PoolCurrency = PoolCurrency;
+}
+
+pub struct PoolCurrency;
+impl Contains<CurrencyId> for PoolCurrency {
+	fn contains(id: &CurrencyId) -> bool {
+		match id {
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Usd | CurrencyId::KUSD => true,
+		}
+	}
 }
 
 impl fake_nav::Config for Test {
@@ -312,7 +322,7 @@ pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 fn create_tranche_id(pool: u64, tranche: u64) -> [u8; 16] {
 	let hash_input = (tranche, pool).encode();
-	Twox128::hash(&hash_input)
+	Blake2_128::hash(&hash_input)
 }
 
 parameter_types! {
@@ -405,7 +415,8 @@ pub fn invest_close_and_collect(
 
 	let epoch = pallet_pools::Pool::<Test>::try_get(pool_id)
 		.map_err(|_| Error::<Test>::NoSuchPool)?
-		.last_epoch_executed;
+		.epoch
+		.last_executed;
 
 	for (who, tranche_id, _) in investments {
 		Pools::collect(who, pool_id, TrancheLoc::Id(tranche_id), epoch).map_err(|e| e.error)?;

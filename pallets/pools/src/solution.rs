@@ -220,43 +220,39 @@ impl<Balance> EpochSolution<Balance> {
 		};
 
 		let reserve_improvement_score = if state.contains(&UnhealthyState::MaxReserveViolated) {
-			let (acc_invest, acc_redeem) = solution.iter().zip(tranches.residual_top_slice()).fold(
-				(Some(Balance::zero()), Some(Balance::zero())),
-				|(acc_invest, acc_redeem), (solution, tranches)| {
-					(
-						acc_invest.and_then(|acc| {
-							solution
-								.invest_fulfillment
-								.mul_floor(tranches.invest)
-								.checked_add(&acc)
-						}),
-						acc_redeem.and_then(|acc| {
-							solution
-								.redeem_fulfillment
-								.mul_floor(tranches.redeem)
-								.checked_add(&acc)
-						}),
-					)
-				},
-			);
+			let mut acc_invest = Balance::zero();
+			let mut acc_redeem = Balance::zero();
+			tranches.combine_with_residual_top(solution, |tranche, solution| {
+				acc_invest = solution
+					.invest_fulfillment
+					.mul_floor(tranche.invest)
+					.checked_add(&acc_invest)
+					.ok_or(ArithmeticError::Overflow)?;
 
-			let acc_invest = acc_invest.ok_or(ArithmeticError::Overflow)?;
-			let acc_redeem = acc_redeem.ok_or(ArithmeticError::Overflow)?;
+				acc_redeem = solution
+					.invest_fulfillment
+					.mul_floor(tranche.redeem)
+					.checked_add(&acc_redeem)
+					.ok_or(ArithmeticError::Overflow)?;
+				Ok(())
+			})?;
 
 			let new_reserve = reserve
 				.checked_add(&acc_invest)
-				.and_then(|value| value.checked_sub(&acc_redeem))
-				.and_then(|value| value.checked_sub(&max_reserve))
-				.ok_or(ArithmeticError::Overflow)?;
+				.ok_or(ArithmeticError::Overflow)?
+				.checked_sub(&acc_redeem)
+				.ok_or(ArithmeticError::Underflow)?;
 
 			// Score: 1 / (new reserve - max reserve)
 			// A higher score means the distance to the max reserve is smaller
-			Some(
-				new_reserve
-					.checked_sub(&max_reserve)
-					.and_then(|reserve_diff| BalanceRatio::one().checked_div_int(reserve_diff))
-					.ok_or(ArithmeticError::Overflow)?,
-			)
+			let reserve_diff = new_reserve
+				.checked_sub(&max_reserve)
+				.ok_or(ArithmeticError::Underflow)?;
+			let score = BalanceRatio::one()
+				.checked_div_int(reserve_diff)
+				.ok_or(ArithmeticError::Overflow)?;
+
+			Some(score)
 		} else {
 			None
 		};

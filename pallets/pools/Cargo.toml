@@ -48,12 +48,10 @@ std = [
     'frame-system/std',
     'pallet-timestamp/std',
     'pallet-permissions/std',
-    'orml-tokens/std',
     'orml-traits/std',
     'common-traits/std',
     'sp-runtime/std',
     'sp-std/std',
-    'runtime-common/std',
     'common-types/std'
 ]
 try-runtime = ['frame-support/try-runtime']

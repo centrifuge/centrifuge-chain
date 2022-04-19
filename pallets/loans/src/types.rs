@@ -29,7 +29,7 @@ impl<ClassId, InstanceId> Asset<ClassId, InstanceId> {
 
 /// ClosedLoan holds the collateral reference of the loan and if loan was written off
 pub(crate) struct ClosedLoan<T: pallet::Config> {
-	pub(crate) asset: AssetOf<T>,
+	pub(crate) collateral: AssetOf<T>,
 	// Whether the loan has been 100% written off
 	pub(crate) written_off: bool,
 }
@@ -45,7 +45,7 @@ pub struct NAVDetails<Amount> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest_nav: Amount,
+	pub(crate) latest: Amount,
 
 	// this is the last time when the nav was calculated for the entire pool
 	pub(crate) last_updated: Moment,
@@ -72,7 +72,7 @@ pub enum LoanStatus {
 	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
-	// loan is closed and asset nft is transferred back to borrower and loan nft is transferred back to loan module
+	// loan is closed and collateral nft is transferred back to borrower and loan nft is transferred back to pool account
 	Closed,
 }
 
@@ -91,15 +91,15 @@ pub enum NAVUpdateType {
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct LoanDetails<Rate, Amount, Asset> {
-	pub(crate) asset: Asset,
+	pub(crate) collateral: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
 	pub(crate) status: LoanStatus,
 
 	// interest rate per second
-	pub(crate) rate_per_sec: Rate,
+	pub(crate) interest_rate_per_sec: Rate,
 
 	// time at which first borrow occurred
-	pub(crate) origination_date: Moment,
+	pub(crate) origination_date: Option<Moment>,
 
 	// principal debt used to calculate the current outstanding debt.
 	// principal debt will change on every borrow and repay.
@@ -157,14 +157,14 @@ where
 					debt,
 					self.origination_date,
 					self.last_updated,
-					self.rate_per_sec,
+					self.interest_rate_per_sec,
 				),
 				LoanType::CreditLine(cl) => cl.present_value(debt),
 				LoanType::CreditLineWithMaturity(clm) => clm.present_value(
 					debt,
 					self.origination_date,
 					self.last_updated,
-					self.rate_per_sec,
+					self.interest_rate_per_sec,
 				),
 			})
 	}
@@ -173,9 +173,9 @@ where
 	pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Amount)> {
 		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
 		let maybe_rate = match self.total_borrowed == Zero::zero() {
-			true => Some(self.rate_per_sec),
+			true => Some(self.interest_rate_per_sec),
 			false => math::calculate_accumulated_rate::<Rate>(
-				self.rate_per_sec,
+				self.interest_rate_per_sec,
 				self.accumulated_rate,
 				now,
 				self.last_updated,
@@ -192,22 +192,24 @@ where
 		}
 	}
 
-	/// returns the ceiling amount for the loan based on the loan type
-	pub(crate) fn ceiling(&self, now: Moment) -> Amount {
+	/// returns the max_borrow_amount amount for the loan based on the loan type
+	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Amount {
 		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.ceiling(self.total_borrowed),
+			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
 			LoanType::CreditLine(cl) => {
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt
-				self.accrue(now).and_then(|(_, debt)| cl.ceiling(debt))
+				self.accrue(now)
+					.and_then(|(_, debt)| cl.max_borrow_amount(debt))
 			}
 			LoanType::CreditLineWithMaturity(clm) => {
 				// we need to accrue and calculate the latest debt
 				// calculate accumulated rate and outstanding debt
-				self.accrue(now).and_then(|(_, debt)| clm.ceiling(debt))
+				self.accrue(now)
+					.and_then(|(_, debt)| clm.max_borrow_amount(debt))
 			}
 		}
-		// always fallback to zero ceiling
+		// always fallback to zero max_borrow_amount
 		.unwrap_or(Zero::zero())
 	}
 }

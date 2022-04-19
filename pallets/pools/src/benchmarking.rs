@@ -31,13 +31,13 @@ const SECS_PER_DAY: u64 = 24 * SECS_PER_HOUR;
 const SECS_PER_YEAR: u64 = 365 * SECS_PER_DAY;
 
 const POOL: u64 = 0;
-const TRANCHE: u8 = 0;
+const TRANCHE: TrancheIndex = 0;
 
 benchmarks! {
 	where_clause {
 	where
 		T: Config<PoolId = u64,
-			  TrancheId = u8,
+			  TrancheId = [u8; 16],
 			  Balance = u128,
 			  CurrencyId = CurrencyId,
 			  EpochId = u32,
@@ -46,6 +46,7 @@ benchmarks! {
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
 		T::NAV: PoolNAV<T::PoolId, T::LoanAmount, Origin = T::Origin, ClassId = u64>,
+		T::Permission: Permissions<T::AccountId, Ok = ()>,
 	}
 
 	create {
@@ -56,12 +57,12 @@ benchmarks! {
 	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::Usd, MAX_RESERVE)
 	verify {
 		let pool = get_pool::<T>();
-		assert_tranches_match::<T>(&pool.tranches, &tranches);
-		assert_eq!(pool.available_reserve, Zero::zero());
-		assert_eq!(pool.total_reserve, Zero::zero());
-		assert_eq!(pool.min_epoch_time, T::DefaultMinEpochTime::get());
-		assert_eq!(pool.challenge_time, T::DefaultChallengeTime::get());
-		assert_eq!(pool.max_nav_age, T::DefaultMaxNAVAge::get());
+		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_eq!(pool.reserve.available, Zero::zero());
+		assert_eq!(pool.reserve.total, Zero::zero());
+		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
+		assert_eq!(pool.parameters.challenge_time, T::DefaultChallengeTime::get());
+		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
 		assert_eq!(pool.metadata, None);
 	}
 
@@ -71,9 +72,9 @@ benchmarks! {
 	}: update(RawOrigin::Signed(caller), POOL, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_HOUR)
 	verify {
 		let pool = get_pool::<T>();
-		assert_eq!(pool.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.challenge_time, SECS_PER_HOUR);
-		assert_eq!(pool.max_nav_age, SECS_PER_HOUR);
+		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+		assert_eq!(pool.parameters.challenge_time, SECS_PER_HOUR);
+		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
 
 	set_metadata {
@@ -91,10 +92,10 @@ benchmarks! {
 		let caller: T::AccountId = account("admin", 1, 0);
 		let max_reserve = MAX_RESERVE / 2;
 		create_pool::<T>(1, admin.clone())?;
-		set_liquidity_admin::<T>(admin, caller.clone())?;
-	}: set_max_reserve(RawOrigin::Signed(caller), 0, max_reserve)
+		set_liquidity_admin::<T>(caller.clone())?;
+	}: set_max_reserve(RawOrigin::Signed(caller), POOL, max_reserve)
 	verify {
-		assert_eq!(get_pool::<T>().max_reserve, max_reserve);
+		assert_eq!(get_pool::<T>().reserve.max, max_reserve);
 	}
 
 	update_tranches {
@@ -104,21 +105,22 @@ benchmarks! {
 		create_pool::<T>(n, caller.clone())?;
 	}: update_tranches(RawOrigin::Signed(caller), POOL, tranches.clone())
 	verify {
-		assert_tranches_match::<T>(&get_pool::<T>().tranches, &tranches);
+		let pool = get_pool::<T>();
+		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 	}
 
 	update_invest_order {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(1, admin.clone())?;
+		let locator = get_tranche_id::<T>(TRANCHE);
 		let amount = MAX_RESERVE / 2;
-		let caller = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
-		let locator = TrancheLocator { pool_id: POOL, tranche_id: TRANCHE };
-		let expected = UserOrder {
+		let caller = create_investor::<T>(0, TRANCHE)?;
+		let expected = Some(UserOrder {
 			invest: amount,
 			redeem: 0,
 			epoch: 1,
-		};
-	}: update_invest_order(RawOrigin::Signed(caller.clone()), POOL, TRANCHE, amount)
+		});
+	}: update_invest_order(RawOrigin::Signed(caller.clone()), POOL, tranche_location::<T>(TRANCHE), amount)
 	verify {
 		assert_eq!(Pallet::<T>::order(locator, caller), expected);
 	}
@@ -127,14 +129,14 @@ benchmarks! {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(1, admin.clone())?;
 		let amount = MAX_RESERVE / 2;
-		let caller = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
-		let locator = TrancheLocator { pool_id: POOL, tranche_id: TRANCHE };
-		let expected = UserOrder {
+		let caller = create_investor::<T>(0, TRANCHE)?;
+		let locator = get_tranche_id::<T>(TRANCHE);
+		let expected = Some(UserOrder {
 			invest: 0,
 			redeem: amount,
 			epoch: 1,
-		};
-	}: update_redeem_order(RawOrigin::Signed(caller.clone()), POOL, TRANCHE, amount)
+		});
+	}: update_redeem_order(RawOrigin::Signed(caller.clone()), POOL, tranche_location::<T>(TRANCHE), amount)
 	verify {
 		assert_eq!(Pallet::<T>::order(locator, caller), expected);
 	}
@@ -145,28 +147,27 @@ benchmarks! {
 		create_pool::<T>(1, admin.clone())?;
 		let amount = MAX_RESERVE / 2;
 		let expected = amount + MINT_AMOUNT;
-		let caller = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
-		Pallet::<T>::update_invest_order(RawOrigin::Signed(caller.clone()).into(), POOL, TRANCHE, amount)?;
+		let caller = create_investor::<T>(0, TRANCHE)?;
+		Pallet::<T>::update_invest_order(RawOrigin::Signed(caller.clone()).into(), POOL, tranche_location::<T>(TRANCHE), amount)?;
 		let pool_account = PoolLocator::<T::PoolId> { pool_id: POOL }.into_account();
-		let currency = CurrencyId::Tranche(0, 0);
+		let currency = CurrencyId::Tranche(POOL, get_tranche_id::<T>(TRANCHE));
 		T::Tokens::mint_into(currency.clone(), &pool_account, MINT_AMOUNT)?;
 		populate_epochs::<T>(n)?;
-	}: collect(RawOrigin::Signed(caller.clone()), POOL, TRANCHE, n.into())
+	}: collect(RawOrigin::Signed(caller.clone()), POOL, tranche_location::<T>(TRANCHE), n.into())
 	verify {
 		assert_eq!(T::Tokens::balance(currency, &caller), expected);
 	}
 
-	close_epoch_no_orders{
-		let n in 1..T::MaxTranches::get(); // number of tranches
-
+	close_epoch_no_orders {
 		let admin: T::AccountId = account("admin", 0, 0);
+		let n in 1..T::MaxTranches::get();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, 0, 0, u64::MAX)?;
+		unrestrict_epoch_close::<T>();
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
 	verify {
-		assert_eq!(get_pool::<T>().last_epoch_executed, 1);
-		assert_eq!(get_pool::<T>().current_epoch, 2);
+		assert_eq!(get_pool::<T>().epoch.last_executed, 1);
+		assert_eq!(get_pool::<T>().epoch.current, 2);
 	}
 
 	close_epoch_no_execution {
@@ -175,15 +176,15 @@ benchmarks! {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, 0, 0, u64::MAX)?;
+		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
-		let investor = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, TRANCHE, investment)?;
+		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
 	verify {
-		assert_eq!(get_pool::<T>().last_epoch_executed, 0);
-		assert_eq!(get_pool::<T>().current_epoch, 2);
+		assert_eq!(get_pool::<T>().epoch.last_executed, 0);
+		assert_eq!(get_pool::<T>().epoch.current, 2);
 	}
 
 	close_epoch_execute {
@@ -192,15 +193,15 @@ benchmarks! {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, 0, 0, u64::MAX)?;
+		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE / 2;
-		let investor = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, TRANCHE, investment)?;
+		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 	}: close_epoch(RawOrigin::Signed(admin.clone()), POOL)
 	verify {
-		assert_eq!(get_pool::<T>().last_epoch_executed, 1);
-		assert_eq!(get_pool::<T>().current_epoch, 2);
+		assert_eq!(get_pool::<T>().epoch.last_executed, 1);
+		assert_eq!(get_pool::<T>().epoch.current, 2);
 	}
 
 	submit_solution {
@@ -209,11 +210,11 @@ benchmarks! {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, 0, 0, u64::MAX)?;
+		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
-		let investor = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, TRANCHE, investment)?;
+		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
 		Pallet::<T>::close_epoch(admin_origin, POOL)?;
 		let default_solution = Pallet::<T>::epoch_targets(POOL).unwrap().best_submission;
@@ -224,8 +225,8 @@ benchmarks! {
 		let solution = vec![tranche_solution; n as usize];
 	}: submit_solution(RawOrigin::Signed(admin.clone()), POOL, solution)
 	verify {
-		assert_eq!(get_pool::<T>().last_epoch_executed, 0);
-		assert_eq!(get_pool::<T>().current_epoch, 2);
+		assert_eq!(get_pool::<T>().epoch.last_executed, 0);
+		assert_eq!(get_pool::<T>().epoch.current, 2);
 		assert!(Pallet::<T>::epoch_targets(POOL).unwrap().challenge_period_end.is_some());
 		assert_ne!(Pallet::<T>::epoch_targets(POOL).unwrap().best_submission, default_solution);
 	}
@@ -236,11 +237,11 @@ benchmarks! {
 		let admin: T::AccountId = account("admin", 0, 0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, 0, 0, u64::MAX)?;
+		unrestrict_epoch_close::<T>();
 		let investment = MAX_RESERVE * 2;
-		let investor = create_investor::<T>(admin.clone(), 0, TRANCHE)?;
+		let investor = create_investor::<T>(0, TRANCHE)?;
 		let origin = RawOrigin::Signed(investor.clone()).into();
-		Pallet::<T>::update_invest_order(origin, POOL, TRANCHE, investment)?;
+		Pallet::<T>::update_invest_order(origin, POOL, tranche_location::<T>(TRANCHE), investment)?;
 		let admin_origin = RawOrigin::Signed(admin.clone()).into();
 		Pallet::<T>::close_epoch(admin_origin, POOL)?;
 		let default_solution = Pallet::<T>::epoch_targets(POOL).unwrap().best_submission;
@@ -253,51 +254,20 @@ benchmarks! {
 		Pallet::<T>::submit_solution(admin_origin, POOL, solution)?;
 	}: execute_epoch(RawOrigin::Signed(admin), POOL)
 	verify {
-		assert_eq!(get_pool::<T>().last_epoch_executed, 1);
-		assert_eq!(get_pool::<T>().current_epoch, 2);
+		assert_eq!(get_pool::<T>().epoch.last_executed, 1);
+		assert_eq!(get_pool::<T>().epoch.current, 2);
 		assert!(Pallet::<T>::epoch_targets(POOL).is_none());
 	}
-
-	approve_role_for {
-		let n in 1..100;
-		let admin: T::AccountId = account("admin", 0, 0);
-		create_pool::<T>(1, admin.clone())?;
-		let accounts = build_account_vec::<T>(n);
-		let account_lookups = accounts.iter().cloned().map(|a| a.into()).collect();
-		let role = PoolRole::LiquidityAdmin;
-	}: approve_role_for(RawOrigin::Signed(admin), POOL, role.clone(), account_lookups)
-	verify {
-		for account in accounts {
-			assert!(T::Permission::has(POOL, account.into(), role.clone()));
-		}
-	}
-
-	revoke_role_for {
-		let admin: T::AccountId = account("admin", 0, 0);
-		create_pool::<T>(1, admin.clone())?;
-		let role = PoolRole::LiquidityAdmin;
-		let account: T::AccountId = account("investor", 0, 0);
-		Pallet::<T>::approve_role_for(RawOrigin::Signed(admin.clone()).into(), POOL, role.clone(), vec![account.clone().into()])?;
-	}: revoke_role_for(RawOrigin::Signed(admin), POOL, role.clone(), account.clone().into())
-	verify {
-		assert!(!T::Permission::has(POOL, account.into(), role));
-	}
 }
 
-fn build_account_vec<T: Config>(num_accounts: u32) -> Vec<T::AccountId> {
-	(0..num_accounts)
-		.map(|i| account::<T::AccountId>("investor", i, 0))
-		.collect()
-}
-
-fn populate_epochs<T: Config<PoolId = u64, TrancheId = u8, EpochId = u32>>(
+fn populate_epochs<T: Config<PoolId = u64, TrancheId = [u8; 16], EpochId = u32>>(
 	num_epochs: u32,
 ) -> DispatchResult {
 	let current_epoch = num_epochs + 1;
 	Pool::<T>::try_mutate(POOL, |pool| -> DispatchResult {
 		let pool = pool.as_mut().unwrap();
-		pool.last_epoch_executed = num_epochs;
-		pool.current_epoch = current_epoch;
+		pool.epoch.last_executed = num_epochs;
+		pool.epoch.current = current_epoch;
 		Ok(())
 	})?;
 	let details = EpochDetails {
@@ -305,10 +275,7 @@ fn populate_epochs<T: Config<PoolId = u64, TrancheId = u8, EpochId = u32>>(
 		redeem_fulfillment: Perquintill::from_percent(10),
 		token_price: One::one(),
 	};
-	let locator = TrancheLocator {
-		pool_id: POOL,
-		tranche_id: TRANCHE,
-	};
+	let locator = get_tranche_id::<T>(TRANCHE);
 	for epoch in 1..num_epochs {
 		Epoch::<T>::insert(locator.clone(), epoch, details.clone());
 	}
@@ -321,34 +288,22 @@ fn populate_epochs<T: Config<PoolId = u64, TrancheId = u8, EpochId = u32>>(
 	Ok(())
 }
 
+fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
+	Pool::<T>::mutate(POOL, |pool| {
+		let pool = pool.as_mut().unwrap();
+		pool.parameters.challenge_time = 0;
+		pool.parameters.min_epoch_time = 0;
+		pool.parameters.max_nav_age = u64::MAX;
+	});
+}
+
 fn assert_tranches_match<T: Config>(
-	chain: &[Tranche<T::Balance, T::InterestRate, T::TrancheWeight>],
+	chain: &[TrancheOf<T>],
 	target: &[TrancheInput<T::InterestRate>],
 ) {
 	assert!(chain.len() == target.len());
 	for (chain, target) in chain.iter().zip(target.iter()) {
-		match chain.tranche_type {
-			TrancheType::Residual => {
-				assert!(target.interest_per_sec.is_none() && target.min_risk_buffer.is_none())
-			}
-			TrancheType::NonResidual {
-				interest_per_sec,
-				min_risk_buffer,
-			} => {
-				assert_eq!(
-					interest_per_sec,
-					target
-						.interest_per_sec
-						.expect("Interest rate for non-residual tranches must be set.")
-				);
-				assert_eq!(
-					min_risk_buffer,
-					target
-						.min_risk_buffer
-						.expect("Min risk buffer for non-residual tranches must be set.")
-				);
-			}
-		}
+		assert_eq!(chain.tranche_type, target.0);
 	}
 }
 
@@ -356,47 +311,49 @@ fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
 }
 
+fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
+	get_pool::<T>()
+		.tranches
+		.tranche_id(TrancheLoc::Index(index))
+		.unwrap()
+}
+
+fn tranche_location<T: Config<PoolId = u64>>(index: TrancheIndex) -> TrancheLoc<T::TrancheId> {
+	TrancheLoc::Id(get_tranche_id::<T>(index))
+}
+
 fn create_investor<
-	T: Config<PoolId = u64, TrancheId = u8, Balance = u128, CurrencyId = CurrencyId>,
+	T: Config<PoolId = u64, TrancheId = [u8; 16], Balance = u128, CurrencyId = CurrencyId>,
 >(
-	admin: T::AccountId,
 	id: u32,
-	tranche: u8,
+	tranche: TrancheIndex,
 ) -> Result<T::AccountId, DispatchError>
 where
 	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 		From<<T as frame_system::Config>::AccountId>,
+	T::Permission: Permissions<T::AccountId, Ok = ()>,
 {
 	let investor: T::AccountId = account("investor", id, 0);
-	Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(admin).into(),
+	let tranche_id = get_tranche_id::<T>(tranche);
+	T::Permission::add(
 		POOL,
-		PoolRole::TrancheInvestor(tranche, 0x0FFF_FFFF_FFFF_FFFF),
-		vec![investor.clone().into()],
+		investor.clone(),
+		PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF),
 	)?;
 	T::Tokens::mint_into(CurrencyId::Usd, &investor.clone().into(), MINT_AMOUNT)?;
 	T::Tokens::mint_into(
-		CurrencyId::Tranche(0, 0),
+		CurrencyId::Tranche(POOL, tranche_id),
 		&investor.clone().into(),
 		MINT_AMOUNT,
 	)?;
 	Ok(investor)
 }
 
-fn set_liquidity_admin<T: Config<PoolId = u64>>(
-	admin: T::AccountId,
-	target: T::AccountId,
-) -> DispatchResult
+fn set_liquidity_admin<T: Config<PoolId = u64>>(target: T::AccountId) -> DispatchResult
 where
-	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
-		From<<T as frame_system::Config>::AccountId>,
+	T::Permission: Permissions<T::AccountId, Ok = ()>,
 {
-	Pallet::<T>::approve_role_for(
-		RawOrigin::Signed(admin).into(),
-		POOL,
-		PoolRole::LiquidityAdmin,
-		vec![target.into()],
-	)
+	T::Permission::add(POOL, target, PoolRole::LiquidityAdmin)
 }
 
 fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>(
@@ -417,9 +374,19 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 fn build_update_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::InterestRate>> {
 	let mut tranches = build_bench_tranches::<T>(num_tranches);
 	for tranche in &mut tranches {
-		tranche.min_risk_buffer = tranche
-			.min_risk_buffer
-			.map(|risk_buffer| Perquintill::from_parts(risk_buffer.deconstruct() * 2));
+		tranche.0 = match tranche.0 {
+			TrancheType::Residual => TrancheType::Residual,
+			TrancheType::NonResidual {
+				interest_rate_per_sec,
+				min_risk_buffer,
+			} => {
+				let min_risk_buffer = Perquintill::from_parts(min_risk_buffer.deconstruct() * 2);
+				TrancheType::NonResidual {
+					interest_rate_per_sec,
+					min_risk_buffer,
+				}
+			}
+		}
 	}
 	tranches
 }
@@ -428,23 +395,19 @@ fn build_bench_tranches<T: Config>(num_tranches: u32) -> Vec<TrancheInput<T::Int
 	let senior_interest_rate = T::InterestRate::saturating_from_rational(5, 100)
 		/ T::InterestRate::saturating_from_integer(SECS_PER_YEAR);
 	let mut tranches: Vec<_> = (1..num_tranches)
-		.map(|tranche_id| TrancheInput {
-			interest_per_sec: Some(
-				senior_interest_rate * T::InterestRate::saturating_from_integer(tranche_id)
-					+ One::one(),
-			),
-			min_risk_buffer: Some(Perquintill::from_percent(tranche_id.into())),
-			seniority: None,
+		.map(|tranche_id| {
+			(
+				TrancheType::NonResidual {
+					interest_rate_per_sec: senior_interest_rate
+						/ T::InterestRate::saturating_from_integer(tranche_id)
+						+ One::one(),
+					min_risk_buffer: Perquintill::from_percent(tranche_id.into()),
+				},
+				None,
+			)
 		})
 		.collect();
-	tranches.insert(
-		0,
-		TrancheInput {
-			interest_per_sec: None,
-			min_risk_buffer: None,
-			seniority: None,
-		},
-	);
+	tranches.insert(0, (TrancheType::Residual, None));
 	tranches
 }
 

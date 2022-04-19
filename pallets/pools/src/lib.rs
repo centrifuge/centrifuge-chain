@@ -16,7 +16,7 @@ mod solution;
 #[cfg(test)]
 mod tests;
 mod tranche;
-mod weights;
+pub mod weights;
 
 use codec::HasCompact;
 use common_traits::Permissions;
@@ -44,18 +44,20 @@ where
 	Rate: FixedPointNumber<Inner = Balance>,
 	Balance: FixedPointOperand,
 {
+	/// Currency that the pool is denominated in (immutable).
 	pub currency: CurrencyId,
-	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>, // ordered junior => senior
-	pub current_epoch: EpochId,
-	pub last_epoch_closed: Moment,
-	pub last_epoch_executed: EpochId,
-	pub reserve: ReserveDetails<Balance>,
+	/// List of tranches, ordered junior to senior.
+	pub tranches: Tranches<Balance, Rate, Weight, CurrencyId, TrancheId, PoolId>,
+	/// Details about the parameters of the pool.
+	pub parameters: PoolParameters,
+	/// Metadata that specifies the pool.
 	pub metadata: Option<BoundedVec<u8, MetaSize>>,
-	pub min_epoch_time: Moment,
-	pub challenge_time: Moment,
-	pub max_nav_age: Moment,
-
+	/// The status the pool is currently in
 	pub status: PoolStatus,
+	/// Details about the epochs of the pool.
+	pub epoch: EpochState<EpochId>,
+	/// Details about the reserve (unused capital) in the pool.
+	pub reserve: ReserveDetails<Balance>,
 }
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
@@ -100,9 +102,33 @@ pub enum CloseManner {
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {
-	pub max_reserve: Balance,
-	pub available_reserve: Balance,
-	pub total_reserve: Balance,
+	/// Investments will be allowed up to this amount.
+	pub max: Balance,
+	/// Current total amount of currency in the pool reserve.
+	pub total: Balance,
+	/// Current reserve that is available for originations.
+	pub available: Balance,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct EpochState<EpochId> {
+	/// Current epoch that is ongoing.
+	pub current: EpochId,
+	/// Last epoch that was closed.
+	pub last_closed: Moment,
+	/// Last epoch that was executed.
+	pub last_executed: EpochId,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolParameters {
+	/// Minimum duration for an epoch.
+	pub min_epoch_time: Moment,
+	/// Minimum duration after submission of the first solution
+	/// that the epoch can be executed.
+	pub challenge_time: Moment,
+	/// Maximum time between the NAV update and the epoch closing.
+	pub max_nav_age: Moment,
 }
 
 impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
@@ -113,19 +139,19 @@ where
 	Balance: FixedPointOperand,
 	EpochId: BaseArithmetic,
 {
-	pub fn end_epoch(&mut self, now: Moment) -> DispatchResult {
-		self.current_epoch += One::one();
-		self.last_epoch_closed = now;
+	pub fn start_next_epoch(&mut self, now: Moment) -> DispatchResult {
+		self.epoch.current += One::one();
+		self.epoch.last_closed = now;
 		// TODO: Remove and set state rather to EpochClosing or similar
 		// Set available reserve to 0 to disable originations while the epoch is closed but not executed
-		self.reserve.available_reserve = Zero::zero();
+		self.reserve.available = Zero::zero();
 
 		Ok(())
 	}
 
-	fn last_epoch_closed(&mut self) -> DispatchResult {
-		self.reserve.available_reserve = self.reserve.total_reserve;
-		self.last_epoch_executed += One::one();
+	fn execute_previous_epoch(&mut self) -> DispatchResult {
+		self.reserve.available = self.reserve.total;
+		self.epoch.last_executed += One::one();
 		Ok(())
 	}
 }
@@ -204,6 +230,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 pub mod pallet {
 	use super::*;
 	use frame_support::sp_runtime::traits::Convert;
+	use frame_support::traits::Contains;
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
 	use sp_runtime::ArithmeticError;
@@ -253,7 +280,13 @@ pub mod pallet {
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
 
-		type PoolId: Member + Parameter + Default + Copy + HasCompact + MaxEncodedLen;
+		type PoolId: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ HasCompact
+			+ MaxEncodedLen
+			+ core::fmt::Debug;
 
 		type TrancheId: Member
 			+ Parameter
@@ -274,6 +307,8 @@ pub mod pallet {
 			+ Into<u32>;
 
 		type CurrencyId: Parameter + Copy;
+
+		type PoolCurrency: Contains<Self::CurrencyId>;
 
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
@@ -465,6 +500,8 @@ pub mod pallet {
 		PoolParameterBoundViolated,
 		/// Indicates that a pool is in a state that restricts actions
 		PoolNotOpen,
+		/// A user has tried to create a pool with an invalid currency
+		InvalidCurrency,
 	}
 
 	#[pallet::call]
@@ -481,7 +518,7 @@ pub mod pallet {
 		///
 		/// The caller will be given the `PoolAdmin` role for
 		/// the created pool. Additional administrators can be
-		/// added with `approve_role_for`.
+		/// added with the Permissions pallet.
 		///
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
@@ -499,6 +536,11 @@ pub mod pallet {
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
 
+			ensure!(
+				T::PoolCurrency::contains(&currency),
+				Error::<T>::InvalidCurrency
+			);
+
 			Self::is_valid_tranche_change(None, &tranches)?;
 
 			let now = Self::now();
@@ -509,25 +551,29 @@ pub mod pallet {
 				PoolDetails {
 					currency,
 					tranches,
-					current_epoch: One::one(),
-					last_epoch_closed: now,
-					last_epoch_executed: Zero::zero(),
-					min_epoch_time: sp_std::cmp::max(
-						T::DefaultMinEpochTime::get(),
-						T::MinEpochTimeLowerBound::get(),
-					),
-					challenge_time: sp_std::cmp::max(
-						T::DefaultChallengeTime::get(),
-						T::ChallengeTimeLowerBound::get(),
-					),
-					max_nav_age: sp_std::cmp::min(
-						T::DefaultMaxNAVAge::get(),
-						T::MaxNAVAgeUpperBound::get(),
-					),
+					epoch: EpochState {
+						current: One::one(),
+						last_closed: now,
+						last_executed: Zero::zero(),
+					},
+					parameters: PoolParameters {
+						min_epoch_time: sp_std::cmp::max(
+							T::DefaultMinEpochTime::get(),
+							T::MinEpochTimeLowerBound::get(),
+						),
+						challenge_time: sp_std::cmp::max(
+							T::DefaultChallengeTime::get(),
+							T::ChallengeTimeLowerBound::get(),
+						),
+						max_nav_age: sp_std::cmp::min(
+							T::DefaultMaxNAVAge::get(),
+							T::MaxNAVAgeUpperBound::get(),
+						),
+					},
 					reserve: ReserveDetails {
-						max_reserve,
-						available_reserve: Zero::zero(),
-						total_reserve: Zero::zero(),
+						max: max_reserve,
+						available: Zero::zero(),
+						total: Zero::zero(),
 					},
 					metadata: None,
 					status: PoolStatus::Open,
@@ -606,9 +652,9 @@ pub mod pallet {
 
 				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
 
-				pool.min_epoch_time = min_epoch_time;
-				pool.challenge_time = challenge_time;
-				pool.max_nav_age = max_nav_age;
+				pool.parameters.min_epoch_time = min_epoch_time;
+				pool.parameters.challenge_time = challenge_time;
+				pool.parameters.max_nav_age = max_nav_age;
 				Self::deposit_event(Event::Updated(pool_id));
 				Ok(())
 			})
@@ -651,7 +697,7 @@ pub mod pallet {
 		/// The caller must have the `LiquidityAdmin` role in
 		/// order to invoke this extrinsic. This role is not
 		/// given to the pool creator by default, and must be
-		/// added with `approve_role_for` before this
+		/// added with the Permissions pallet before this
 		/// extrinsic can be called.
 		#[pallet::weight(T::WeightInfo::set_max_reserve())]
 		pub fn set_max_reserve(
@@ -670,7 +716,7 @@ pub mod pallet {
 
 				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
 
-				pool.reserve.max_reserve = max_reserve;
+				pool.reserve.max = max_reserve;
 				Self::deposit_event(Event::MaxReserveSet(pool_id));
 				Ok(())
 			})
@@ -685,6 +731,7 @@ pub mod pallet {
 		/// passed in. This configuration must contain the same
 		/// number of tranches that the pool was created with.
 		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[transactional]
 		pub fn update_tranches(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -708,7 +755,7 @@ pub mod pallet {
 
 				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
 
-				pool.tranches.combine_with_mut_non_residual_top(
+				pool.tranches.combine_with_mut_residual_top(
 					tranches.into_iter(),
 					|tranche, (new_tranche_type, seniority)| {
 						tranche.tranche_type = new_tranche_type;
@@ -777,7 +824,7 @@ pub mod pallet {
 
 						ensure!(
 							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.current_epoch,
+								|| order.epoch == pool.epoch.current,
 							Error::<T>::CollectRequired
 						);
 
@@ -851,7 +898,7 @@ pub mod pallet {
 
 						ensure!(
 							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.current_epoch,
+								|| order.epoch == pool.epoch.current,
 							Error::<T>::CollectRequired
 						);
 
@@ -936,7 +983,7 @@ pub mod pallet {
 
 				let now = Self::now();
 				ensure!(
-					now.saturating_sub(pool.last_epoch_closed) >= pool.min_epoch_time,
+					now.saturating_sub(pool.epoch.last_closed) >= pool.parameters.min_epoch_time,
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
@@ -944,17 +991,17 @@ pub mod pallet {
 					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
 
 				ensure!(
-					now.saturating_sub(nav_last_updated.into()) <= pool.max_nav_age,
+					now.saturating_sub(nav_last_updated.into()) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
 
 				let nav = nav_amount.into();
-				let closed_epoch = pool.current_epoch;
+				let closed_epoch = pool.epoch.current;
 				let total_assets = nav
-					.checked_add(&pool.reserve.total_reserve)
+					.checked_add(&pool.reserve.total)
 					.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
 
-				pool.end_epoch(now)?;
+				pool.start_next_epoch(now)?;
 
 				let epoch_tranche_prices = pool
 					.tranches
@@ -988,8 +1035,8 @@ pub mod pallet {
 				let mut epoch = EpochExecutionInfo {
 					epoch: closed_epoch,
 					nav,
-					reserve: pool.reserve.total_reserve,
-					max_reserve: pool.reserve.max_reserve,
+					reserve: pool.reserve.total,
+					max_reserve: pool.reserve.max,
 					tranches: EpochExecutionTranches::new(epoch_tranches),
 					best_submission: None,
 					challenge_period_end: None,
@@ -1123,7 +1170,7 @@ pub mod pallet {
 				// Challenge period starts when the first new solution has been submitted
 				if epoch.challenge_period_end.is_none() {
 					epoch.challenge_period_end =
-						Some(Self::now().saturating_add(pool.challenge_time));
+						Some(Self::now().saturating_add(pool.parameters.challenge_time));
 				}
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
@@ -1164,11 +1211,19 @@ pub mod pallet {
 					Error::<T>::NoSolutionAvailable
 				);
 
+				// The challenge period is some if we have submitted at least one valid
+				// solution since going into submission period. Hence, if it is none
+				// no solution beside the injected zero-solution is available.
 				ensure!(
-					match epoch.challenge_period_end {
-						Some(challenge_period_end) => challenge_period_end <= Self::now(),
-						None => false,
-					},
+					epoch.challenge_period_end.is_some(),
+					Error::<T>::NoSolutionAvailable
+				);
+
+				ensure!(
+					epoch
+						.challenge_period_end
+						.expect("Challenge period is some. qed.")
+						<= Self::now(),
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
@@ -1231,11 +1286,12 @@ pub mod pallet {
 				PoolState::Unhealthy(states) => EpochSolution::score_solution_unhealthy(
 					solution,
 					&epoch.tranches,
-					epoch.max_reserve,
 					epoch.reserve,
+					epoch.max_reserve,
 					&states,
 				),
 			}
+			.map_err(|_| Error::<T>::InvalidSolution.into())
 		}
 
 		pub(crate) fn inspect_solution(
@@ -1258,15 +1314,15 @@ pub mod pallet {
 					// is not enough balance in the tranches to realize the redeemptions.
 					// We convert this at the pool level into an InsufficientCurrency error.
 					if e == DispatchError::Arithmetic(ArithmeticError::Underflow) {
-						Error::<T>::InsufficientCurrency.into()
+						Error::<T>::InsufficientCurrency
 					} else {
-						e
+						Error::<T>::InvalidSolution
 					}
 				})?;
 
 			let currency_available: T::Balance = acc_invest
 				.checked_add(&epoch.reserve)
-				.ok_or(ArithmeticError::Overflow)?;
+				.ok_or(Error::<T>::InvalidSolution)?;
 
 			// Mostly a sanity check. This is catched above.
 			ensure!(
@@ -1281,7 +1337,7 @@ pub mod pallet {
 			Self::validate_pool_constraints(
 				PoolState::Healthy,
 				new_reserve,
-				pool.reserve.max_reserve,
+				pool.reserve.max,
 				&pool.tranches.min_risk_buffers(),
 				&risk_buffers,
 			)
@@ -1336,7 +1392,7 @@ pub mod pallet {
 				.ok_or(DispatchError::from(ArithmeticError::Overflow))?;
 
 			ensure!(
-				end_epoch <= pool.last_epoch_executed,
+				end_epoch <= pool.epoch.last_executed,
 				Error::<T>::EpochNotExecutedYet
 			);
 
@@ -1375,7 +1431,7 @@ pub mod pallet {
 					UserOrder {
 						invest: collections.remaining_invest_currency,
 						redeem: collections.remaining_redeem_token,
-						epoch: pool.current_epoch,
+						epoch: pool.epoch.current,
 					},
 				);
 			} else {
@@ -1421,7 +1477,7 @@ pub mod pallet {
 				&mut outstanding,
 			)?;
 
-			order.epoch = pool.current_epoch;
+			order.epoch = pool.epoch.current;
 			T::Tokens::transfer(pool.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
@@ -1448,7 +1504,7 @@ pub mod pallet {
 				&mut outstanding,
 			)?;
 
-			order.epoch = pool.current_epoch;
+			order.epoch = pool.epoch.current;
 			T::Tokens::transfer(tranche.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
@@ -1730,17 +1786,17 @@ pub mod pallet {
 					.checked_add(&redeem)
 					.ok_or(ArithmeticError::Overflow)?;
 			}
-			pool.reserve.total_reserve = pool
+			pool.reserve.total = pool
 				.reserve
-				.total_reserve
+				.total
 				.checked_add(&acc_investments)
 				.ok_or(ArithmeticError::Overflow)?
 				.checked_sub(&acc_redemptions)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			pool.last_epoch_closed()?;
+			pool.execute_previous_epoch()?;
 
-			let last_epoch_executed = pool.last_epoch_executed;
+			let last_epoch_executed = pool.epoch.last_executed;
 			let ids = pool.tranches.ids_residual_top();
 
 			// Update tranche orders and add epoch solution state
@@ -1765,7 +1821,7 @@ pub mod pallet {
 
 			let total_assets = pool
 				.reserve
-				.total_reserve
+				.total
 				.checked_add(&epoch.nav)
 				.ok_or(ArithmeticError::Overflow)?;
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
@@ -1785,7 +1841,7 @@ pub mod pallet {
 
 			pool.tranches.rebalance_tranches(
 				Self::now(),
-				pool.reserve.total_reserve,
+				pool.reserve.total,
 				epoch.nav,
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
@@ -1862,9 +1918,9 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
 				let now = Self::now();
-				pool.reserve.total_reserve = pool
+				pool.reserve.total = pool
 					.reserve
-					.total_reserve
+					.total
 					.checked_add(&amount)
 					.ok_or(ArithmeticError::Overflow)?;
 
@@ -1915,14 +1971,14 @@ pub mod pallet {
 				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
 
 				let now = Self::now();
-				pool.reserve.total_reserve = pool
+				pool.reserve.total = pool
 					.reserve
-					.total_reserve
+					.total
 					.checked_sub(&amount)
 					.ok_or(TokenError::NoFunds)?;
-				pool.reserve.available_reserve = pool
+				pool.reserve.available = pool
 					.reserve
-					.available_reserve
+					.available
 					.checked_sub(&amount)
 					.ok_or(TokenError::NoFunds)?;
 

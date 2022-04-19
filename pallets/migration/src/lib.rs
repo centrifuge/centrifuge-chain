@@ -6,20 +6,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::DispatchResult,
-	ensure,
-	traits::{Contains, Currency},
-};
+use frame_support::{dispatch::DispatchResult, ensure, traits::Currency};
 pub use pallet::*;
 use scale_info::TypeInfo;
 pub use weights::*;
 
 #[cfg(test)]
 mod mock;
-#[cfg(test)]
-mod test_data;
-#[cfg(feature = "runtime-benchmarks")]
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 mod test_data;
 #[cfg(test)]
 mod tests;
@@ -89,15 +83,6 @@ pub mod pallet {
 
 		/// WeightInfo
 		type WeightInfo: WeightInfo;
-
-		/// The call filter that will be used when pallet is in an ongoing migration
-		type OngoingFilter: Contains<<Self as frame_system::Config>::Call>;
-
-		/// The call filter that will be used when pallet has finalize the migration
-		type FinalizedFilter: Contains<<Self as frame_system::Config>::Call>;
-
-		/// The call filter that will be used when pallet is inactive
-		type InactiveFilter: Contains<<Self as frame_system::Config>::Call>;
 	}
 
 	#[pallet::hooks]
@@ -383,8 +368,7 @@ pub mod pallet {
 			)
 		}
 
-		/// This extrinsic disables the call-filter. After this has been called the chain will accept
-		/// all calls again.
+		/// Update the migration status to `Complete`
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::finalize())]
 		#[transactional]
 		pub fn finalize(origin: OriginFor<T>) -> DispatchResult {
@@ -419,16 +403,5 @@ impl<T: Config> Pallet<T> {
 		);
 
 		Ok(())
-	}
-}
-
-impl<T: Config> Contains<<T as frame_system::Config>::Call> for Pallet<T> {
-	fn contains(c: &<T as frame_system::Config>::Call) -> bool {
-		let status = <Status<T>>::get();
-		match status {
-			MigrationStatus::Inactive => T::InactiveFilter::contains(c),
-			MigrationStatus::Ongoing => T::OngoingFilter::contains(c),
-			MigrationStatus::Complete => T::FinalizedFilter::contains(c),
-		}
 	}
 }
