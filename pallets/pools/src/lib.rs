@@ -902,12 +902,70 @@ pub mod pallet {
 
 				pool.start_next_epoch(now)?;
 
+				let mut pool_value = total_assets;
+				// Update the tranches here and note losses and new expected value (i.e. debt)
+				pool.tranches.combine_mut_non_residual_top(|tranche| {
+					if tranche.tranche_type == TrancheType::Residual {
+						tranche.debt = pool_value;
+					} else {
+						tranche.accrue(now)?;
+
+						if tranche.expected_assets()? > pool_value {
+							// This arm matches if the pool_value can only partially fill the debt of
+							// a tranche
+							if tranche.debt > pool_value {
+								// Losses increase by what the diff between current value and expected value
+								tranche.loss = tranche
+									.loss
+									.saturating_add(tranche.debt.saturating_sub(pool_value));
+								// We assume the pool will still be able to generate enough value for
+								// satisfying the tranche. This boils down to the assumption of
+								// NAV_{t + 1} >= NAV_{t} * rate_per_sec_{tranche} for every tranche
+								//
+								// Assuming the residual tranche has no rate_per_sec
+								tranche.debt = pool_value;
+								tranche.reserve = Zero::zero();
+								pool_value = Zero::zero();
+
+							// This arm matches if the new pool_value can satisfy the debt and the losses
+							// of a tranche.
+							} else if tranche.debt.saturating_add(tranche.loss) > pool_value {
+								let recovered_loss = pool_value.saturating_sub(tranche.debt);
+								// Debt increases by covered losses
+								tranche.debt = tranche.debt.saturating_add(recovered_loss);
+								// Losses are partially re-covered
+								tranche.loss = tranche.loss.saturating_sub(recovered_loss);
+								// Reserve is still wiped
+								tranche.reserve = Zero::zero();
+								pool_value = Zero::zero();
+
+							// This arm matches if the pool_value can satisfy the debt and the losses and
+							// partially fill up the reserve
+							} else {
+								// Pool value can recover all losses
+								tranche.debt = tranche.debt.saturating_add(tranche.loss);
+								tranche.loss = Zero::zero();
+								tranche.reserve = pool_value.saturating_sub(tranche.debt);
+								pool_value = Zero::zero();
+							}
+						} else {
+							pool_value = pool_value.saturating_sub(tranche.expected_assets()?);
+							// If we had losses those are now cleaned and will be back generating value
+							tranche.debt = tranche.debt.saturating_add(tranche.loss);
+							tranche.loss = Zero::zero();
+						}
+					}
+					Ok(())
+				})?;
+
 				let epoch_tranche_prices = pool
 					.tranches
 					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
 
 				// If closing the epoch would wipe out a tranche, the close is invalid.
-				// TODO: This should instead put the pool into an error state
+				// TODO: * This should instead put the pool into an error state
+				//       * This should also block investments and redemptions from wiped tranche
+				//       * See PR for PoolState for an exisiing draft
 				ensure!(
 					!epoch_tranche_prices
 						.iter()
