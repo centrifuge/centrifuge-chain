@@ -309,10 +309,10 @@ where
 		let req_validity = now.saturating_add(delta);
 
 		if req_validity < min_validity {
-			Err(())
-		} else {
-			Ok(req_validity)
+			return Err(());
 		}
+		
+		Ok(req_validity)
 	}
 
 	pub fn contains(&self) -> bool {
