@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.11"
+version = "0.10.12"
 dependencies = [
  "common-traits",
  "common-types",
@@ -107,6 +107,8 @@ dependencies = [
  "node-primitives",
  "orml-tokens",
  "orml-traits",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
