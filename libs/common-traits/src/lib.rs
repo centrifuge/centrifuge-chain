@@ -222,3 +222,34 @@ pub trait TokenMetadata {
 pub trait TrancheToken<PoolId, TrancheId, CurrencyId> {
 	fn tranche_token(pool: PoolId, tranche: TrancheId) -> CurrencyId;
 }
+
+pub trait InvestmentManager {
+	type Error;
+	type AssetId;
+	type Orders;
+	type Fulfillment;
+
+	fn orders(id: Self::AssetId) -> Result<Self::Orders, Self::Error>;
+	fn fulfillment(id: Self::AssetId, fulfillment: Self::Fulfillment) -> Result<(), Self::Error>;
+}
+
+pub trait AssetManager<AccountId> {
+	type Error;
+	type AssetId;
+	type AssetInfo;
+	type Amount;
+
+	fn info(id: Self::AssetId) -> Result<Self::AssetInfo, Self::Error>;
+	fn buy(buyer: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error>;
+	fn sell(seller: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error>;
+}
+
+pub trait AssetPricer {
+	type Error;
+	type AssetId;
+	type Price;
+	type Moment;
+
+	fn price(asset: Self::AssetId) -> Result<Self::Price, Self::Error>;
+	fn forecast(asset: Self::AssetId, at: Self::Moment) -> Option<Self::Price>;
+}

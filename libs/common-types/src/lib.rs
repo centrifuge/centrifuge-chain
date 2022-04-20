@@ -283,3 +283,9 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 
 // Type that indicates a point in time
 pub type Moment = u64;
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct AssetInfo<Currency> {
+	pub complementary_currency: Currency,
+	pub decimals: u8,
+}

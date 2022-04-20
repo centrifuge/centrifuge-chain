@@ -20,8 +20,8 @@ pub mod weights;
 
 use codec::HasCompact;
 use common_traits::Permissions;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
-use common_types::{Moment, PoolLocator, PoolRole};
+use common_traits::{AssetManager, AssetPricer, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use common_types::{AssetInfo, Moment, PoolLocator, PoolRole};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
@@ -923,7 +923,7 @@ pub mod pallet {
 							.iter()
 							.zip(pool.tranches.ids_residual_top()),
 						|tranche, (price, tranche_id)| {
-							Self::update_tranche_for_epoch(
+							Self::_epoch(
 								pool_id,
 								tranche_id,
 								submission_period_epoch,
@@ -1695,7 +1695,7 @@ pub mod pallet {
 		///
 		/// This function updates the
 		///  * Invest and redeem orders based on the executed solution
-		fn update_tranche_for_epoch(
+		fn update_tranche_for_epoch(update_tranche_for
 			pool_id: T::PoolId,
 			tranche_id: T::TrancheId,
 			submission_period_epoch: T::EpochId,
@@ -1839,6 +1839,45 @@ pub mod pallet {
 				Ok(())
 			})
 		}
+
+		pub fn do_calculate_tranche_prices(
+			pool: &mut PoolDetailsOf<T>,
+			now: Moment,
+		) -> Result<Vec<T::BalanceRatio>, DispatchError> {
+			let (nav_amount, nav_last_updated) = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+
+			ensure!(
+				now.saturating_sub(nav_last_updated.into()) <= pool.parameters.max_nav_age,
+				Error::<T>::NAVTooOld
+			);
+
+			let nav = nav_amount.into();
+			let submission_period_epoch = pool.epoch.current;
+			let total_assets = nav
+				.checked_add(&pool.reserve.total)
+				.ok_or::<DispatchError>(ArithmeticError::Overflow.into())?;
+
+			pool.tranches
+				.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
+		}
+
+		pub fn do_calculate_tranche_price(
+			pool_id: T::PoolId,
+			tranche: TrancheLoc<T::TrancheId>,
+		) -> Result<T::BalanceRatio, DispatchError> {
+			let now = Self::now();
+			let pool = Pool::<T>::try_get(pool_id).ok_or(Error::<T>::NoSuchPool);
+			let prices = Self::do_calculate_tranche_prices(pool, now)?;
+			prices
+				.get(
+					pool.tranches
+						.tranche_index(tranche)
+						.try_into()
+						.map_err(|_| ArithmeticError::Overflow.into()),
+				)
+				.clone()
+				.ok_or(Error::<T>::TrancheId.into())
+		}
 	}
 }
 
@@ -1859,5 +1898,63 @@ impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
 
 	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
 		Self::do_deposit(from, pool_id, amount)
+	}
+}
+
+impl<T: Config> AssetPricer for Pallet<T> {
+	type Error = DispatchError;
+	type AssetId = (T::PoolId, TrancheLoc<T::TrancheId>);
+	type Price = T::BalanceRatio;
+	type Moment = Moment;
+
+	fn price(asset: Self::AssetId) -> Result<Self::Price, Self::Error> {
+		let (pool_id, tranche_id) = asset;
+		let now = Self::now();
+		Self::do_calculate_tranche_price(pool_id, tranche_id, now)
+	}
+
+	fn forecast(asset: Self::AssetId, at: Self::Moment) -> Option<Self::Price> {
+		None
+	}
+}
+
+impl<T: Config> AssetManager<T::AccountId> for Pallet<T> {
+	type Error = DispatchError;
+	type AssetId = (T::PoolId, TrancheLoc<T::TrancheId>);
+	type AssetInfo = common_types::AssetInfo<T::CurrencyId>;
+	type Amount = T::Balance;
+
+	fn info(id: Self::AssetId) -> Result<Self::AssetInfo, Self::Error> {
+		let (pool_id, _) = asset;
+		let pool = Pool::<T>::try_get(pool_id).ok_or(Error::<T>::NoSuchPool)?;
+
+		Ok(AssetInfo {
+			complementary_currency: pool.currency,
+			decimals: 12, // TODO: This should be dynamic
+		})
+	}
+
+	fn buy(buyer: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error> {
+		let (pool_id, tranche_loc) = id;
+		let currency = Pool::<T>::try_get(pool_id)
+			.ok_or(Error::<T>::NoSuchPool)?
+			.tranches.get_tranche(tranche_loc)
+			.ok_or(Error::<T>::InvalidTrancheId)?
+			.currency;
+		T::Tokens::mint_into(currency, &buyer, amount)?;
+
+		Ok(())
+	}
+
+	fn sell(seller: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error> {
+		let (pool_id, tranche_loc) = id;
+		let currency = Pool::<T>::try_get(pool_id)
+			.ok_or(Error::<T>::NoSuchPool)?
+			.tranches.get_tranche(tranche_loc)
+			.ok_or(Error::<T>::InvalidTrancheId)?
+			.currency;
+		T::Tokens::burn_from(currency, &seller, amount)?;
+
+		Ok(())
 	}
 }

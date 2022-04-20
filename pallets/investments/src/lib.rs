@@ -13,9 +13,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
+use common_traits::InvestmentManager;
+use frame_support::sp_runtime::{DispatchError, Perquintill};
+
 pub use pallet::*;
 pub use solution::*;
 pub use tranche::*;
@@ -28,16 +28,69 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+/// The outstanding collections for an account
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct OutstandingCollections<Balance> {
+	pub payout_currency_amount: Balance,
+	pub payout_token_amount: Balance,
+	pub remaining_invest_currency: Balance,
+	pub remaining_redeem_token: Balance,
+}
+
+pub type OrderOf<T> = Order<T::Balance, T::OrderId>;
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Order<Balance, OrderId> {
+	pub invest: Balance,
+	pub redeem: Balance,
+	pub id: OrderId,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Fulfillment {
+	pub invest: Perquintill,
+	pub redeem: Perquintill,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use common_traits::{AssetManager, AssetPricer, Permissions};
+	use common_types::{AssetInfo, Moment, PoolRole};
 	use frame_support::pallet_prelude::*;
+	use frame_support::sp_runtime::traits::{AtLeast32BitUnsigned, One, Zero};
+	use frame_support::sp_runtime::{FixedPointNumber, FixedPointOperand};
+	use frame_support::sp_std::convert::TryInto;
+	use frame_support::traits::tokens::fungibles::{Inspect, Mutate, Transfer};
+	use frame_support::traits::UnixTime;
+	use frame_support::PalletId;
+	use frame_system::ensure_signed;
+	use frame_system::pallet_prelude::OriginFor;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		type AssetId: Clone;
+
+		type OrderId: One::one();
+
+		type Manager: AssetManager<
+			Self::AccountId,
+			Error = DispatchError,
+			AssetId = Self::AssetId,
+			AssetInfo = AssetInfo<Self::CurrencyId>,
+			Amount = Self::Balance,
+		>;
+
+		type Prices: AssetPricer<
+			Error = DispatchError,
+			AssetId = Self::AssetId,
+			Price = Self::BalanceRatio,
+			Moment = Moment,
+		>;
 
 		type Balance: Member
 			+ Parameter
@@ -65,6 +118,8 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Copy;
 
+		type MaxOutstandingCollects: Get<u32>;
+
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ Transfer<Self::AccountId>;
@@ -86,36 +141,63 @@ pub mod pallet {
 	#[pallet::without_storage_info]
 	pub struct Pallet<T>(_);
 
+	#[pallet::type_value]
+	pub fn OnOrderIdEmpty<OrderId: One>() -> OrderId {
+		One::one()
+	}
+
 	#[pallet::storage]
-	#[pallet::getter(fn pool)]
-	pub type Pool<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetailsOf<T>>;
+	#[pallet::getter(fn order_id)]
+	pub type OrderId<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		T::AssetId,
+		T::OrderId,
+		ValueQuery,
+		OnOrderIdEmpty<T::OrderId>,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order)]
-	pub type Order<T: Config> = StorageDoubleMap<
+	pub type Orders<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::TrancheId,
-		Blake2_128Concat,
 		T::AccountId,
-		UserOrder<T::Balance, T::EpochId>,
+		Blake2_128Concat,
+		T::AssetId,
+		BoundedVec<Order<T::Balance, T::OrderId>, T::MaxOutstandingCollects>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn acc_active_order)]
+	pub type ActiveOrder<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AssetId, Order<T::Balance, T::OrderId>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn acc_in_processing_order)]
+	pub type InProcessingOrder<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, T::AssetId, Blake2_128Concat, T::OrderId, Order<T::Balance, T::OrderId>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn cleared_order)]
+	pub type ClearedOrders<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AssetId,
+		Blake2_128Concat,
+		T::OrderId,
+		Fulfillment,
 	>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Fulfilled orders were collected. [pool, tranche, end_epoch, user, outstanding_collections]
-		OrdersCollected(
-			T::PoolId,
-			T::TrancheId,
-			T::EpochId,
-			T::AccountId,
-			OutstandingCollections<T::Balance>,
-		),
-		/// An invest order was updated. [pool, tranche, account]
-		InvestOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
-		/// A redeem order was updated. [pool, tranche, account]
-		RedeemOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
+		OrdersCollected(T::AccountId, T::AssetId, OutstandingCollections<T::Balance>),
+		/// An invest order was updated. [who, asset, amount]
+		InvestOrderUpdated(T::AccountId, T::AssetId, T::Amount),
+		/// A redeem order was updated. [who, asset, amount]
+		RedeemOrderUpdated(T::AccountId, T::AssetId, T::Amount),
 	}
 
 	// Errors inform users that something went wrong.
@@ -142,50 +224,52 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::update_invest_order())]
 		pub fn update_invest_order(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
+			asset: T::AssetId,
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let tranche_id =
-				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
-					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche_id = pool
-						.tranches
-						.tranche_id(tranche_loc)
-						.ok_or(Error::<T>::InvalidTrancheId)?;
+			// TODO: This should be adapted to the role enum of new token pr
+			ensure!(
+				T::Permission::has(
+					pool_id,
+					who.clone(),
+					PoolRole::TrancheInvestor(tranche_id, Self::now())
+				),
+				BadOrigin
+			);
 
-					ensure!(
-						T::Permission::has(
-							pool_id,
-							who.clone(),
-							PoolRole::TrancheInvestor(tranche_id, Self::now())
-						),
-						BadOrigin
-					);
+			Orders::<T>::try_mutate(&who, &asset, |orders| -> DispatchResult {
+				let orders = if let Some(orders) = orders {
+					orders
+				} else {
+					*orders = Some(BoundedVec::try_from(Vec::new()).expect("Size of zero makes no sense. qed."));
+					orders.as_mut().expect("UserOrder now Some. qed.")
+				};
 
-					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
-						let order = if let Some(order) = active_order {
-							order
-						} else {
-							*active_order = Some(UserOrder::default());
-							active_order.as_mut().expect("UserOrder now Some. qed.")
-						};
+				let cur_order_id = OrderId::<T>::get(asset.clone());
+				let order = if let Some(order) = orders.get_mut(orders.len()) {
+					if order.id == cur_order_id {
+						order
+					} else {
+						Order {
+							invest: Zero::zero(),
+							redeem: Zero::zero(),
+							id: cur_order_id
+						}
+					}
+				} else {
+					Order {
+						invest: Zero::zero(),
+						redeem: Zero::zero(),
+						id: cur_order_id
+					}
+				};
 
-						ensure!(
-							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.epoch.current,
-							Error::<T>::CollectRequired
-						);
+				Self::do_update_invest_order(&who, asset.clone, order, amount)
+			})?;
 
-						Self::do_update_invest_order(&who, pool, order, amount, pool_id, tranche_id)
-					})?;
-
-					Ok(tranche_id)
-				})?;
-
-			Self::deposit_event(Event::InvestOrderUpdated(pool_id, tranche_id, who));
+			Self::deposit_event(Event::InvestOrderUpdated(who, asset, amount));
 			Ok(())
 		}
 
@@ -207,50 +291,40 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::update_redeem_order())]
 		pub fn update_redeem_order(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
+            asset: T::AssetId,
 			amount: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let tranche_id =
-				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
-					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-					let tranche_id = pool
-						.tranches
-						.tranche_id(tranche_loc)
-						.ok_or(Error::<T>::InvalidTrancheId)?;
+			// TODO: This should be adapted to the role enum of new token pr
+			ensure!(
+				T::Permission::has(
+					pool_id,
+					who.clone(),
+					PoolRole::TrancheInvestor(tranche_id, Self::now())
+				),
+				BadOrigin
+			);
 
-					ensure!(
-						T::Permission::has(
-							pool_id,
-							who.clone(),
-							PoolRole::TrancheInvestor(tranche_id, Self::now())
-						),
-						BadOrigin
-					);
+			ActiveOrder::<T>::try_mutate(&who, &asset, |active_order| -> DispatchResult {
+				let mut new_order = false;
+				let order = if let Some(order) = active_order {
+					order
+				} else {
+					*active_order = Some(Order {
+						invest: Zero::zero(),
+						redeem: Zero::zero(),
+						id: OrderId::<T>::get(asset.clone()),
+					});
+					// TODO: Need this for weight calculation
+					new_order = true;
+					active_order.as_mut().expect("UserOrder now Some. qed.")
+				};
 
-					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
-						let order = if let Some(order) = active_order {
-							order
-						} else {
-							*active_order = Some(UserOrder::default());
-							active_order.as_mut().expect("UserOrder now Some. qed.")
-						};
+				Self::do_update_redeem_order(&who, asset.clone, order, amount)
+			})?;
 
-						ensure!(
-							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.epoch.current,
-							Error::<T>::CollectRequired
-						);
-
-						Self::do_update_redeem_order(&who, pool, order, amount, pool_id, tranche_id)
-					})?;
-
-					Ok(tranche_id)
-				})?;
-
-			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, tranche_id, who));
+			Self::deposit_event(Event::RedeemOrderUpdated(who, asset, amount);
 			Ok(())
 		}
 
@@ -260,16 +334,14 @@ pub mod pallet {
 		/// when the caller's order was initiated, and transfers
 		/// the total results of the order execution to the
 		/// caller's account.
-		#[pallet::weight(T::WeightInfo::collect((* collect_n_epochs).into()))]
+		#[pallet::weight(T::WeightInfo::collect((* T::MaxOustandingCollect::get()).into()))]
 		pub fn collect(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			collect_n_epochs: T::EpochId,
+			asset_id: T::AssetId,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
-			Self::do_collect(who, pool_id, tranche_loc, collect_n_epochs)
+			Self::do_collect(who, asset_id)
 		}
 		/// Collect the results of an executed invest or
 		/// redeem order for another account.
@@ -278,17 +350,15 @@ pub mod pallet {
 		/// when the caller's order was initiated, and transfers
 		/// the total results of the order execution to the
 		/// caller's account.
-		#[pallet::weight(T::WeightInfo::collect((* collect_n_epochs).into()))]
+		#[pallet::weight(T::WeightInfo::collect((* T::MaxOustandingCollect::get()).into()))]
 		pub fn collect_for(
 			origin: OriginFor<T>,
 			who: T::AccountId,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			collect_n_epochs: T::EpochId,
+			asset_id: T::AssetId,
 		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
-			Self::do_collect(who, pool_id, tranche_loc, collect_n_epochs)
+			Self::do_collect(who, asset_id)
 		}
 	}
 
@@ -297,36 +367,16 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
+		fn current_or_next(orders: &mut BoundedVec<OrderOf<T>, T::MaxOutstandingCollects>, curr_id: T::OrderId) -> &mut Order {
+
+		}
+
 		pub(crate) fn do_collect(
 			who: T::AccountId,
-			pool_id: T::PoolId,
-			tranche_loc: TrancheLoc<T::TrancheId>,
-			collect_n_epochs: T::EpochId,
+			asset: T::AssetId,
 		) -> DispatchResultWithPostInfo {
-			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
-			let tranche_id = pool
-				.tranches
-				.tranche_id(tranche_loc)
-				.ok_or(Error::<T>::InvalidTrancheId)?;
-			let order = Order::<T>::try_get(tranche_id, &who)
-				.map_err(|_| Error::<T>::NoOutstandingOrder)?;
+			let pool_account = AssetAccountLocator { asset_id.clone() }.into_account();
 
-			let end_epoch: T::EpochId = collect_n_epochs
-				.checked_sub(&One::one())
-				.ok_or(Error::<T>::CollectsNoEpochs)?
-				.checked_add(&order.epoch)
-				.ok_or(DispatchError::from(ArithmeticError::Overflow))?;
-
-			ensure!(
-				end_epoch <= pool.epoch.last_executed,
-				Error::<T>::EpochNotExecutedYet
-			);
-
-			let actual_epochs = end_epoch.saturating_sub(order.epoch);
-
-			let collections = Self::calculate_collect(tranche_id, order, end_epoch)?;
-
-			let pool_account = PoolLocator { pool_id }.into_account();
 			if collections.payout_currency_amount > Zero::zero() {
 				T::Tokens::transfer(
 					pool.currency,
@@ -348,22 +398,6 @@ pub mod pallet {
 				)?;
 			}
 
-			if collections.remaining_redeem_token != Zero::zero()
-				|| collections.remaining_invest_currency != Zero::zero()
-			{
-				Order::<T>::insert(
-					tranche_id,
-					who.clone(),
-					UserOrder {
-						invest: collections.remaining_invest_currency,
-						redeem: collections.remaining_redeem_token,
-						epoch: pool.epoch.current,
-					},
-				);
-			} else {
-				Order::<T>::remove(tranche_id, who.clone())
-			};
-
 			Self::deposit_event(Event::OrdersCollected(
 				pool_id,
 				tranche_id,
@@ -382,11 +416,9 @@ pub mod pallet {
 
 		pub(crate) fn do_update_invest_order(
 			who: &T::AccountId,
-			pool: &mut PoolDetailsOf<T>,
-			order: &mut UserOrderOf<T>,
+			asset: T::AssetId,
+			order: &mut OrderOf<T>,
 			amount: T::Balance,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
 		) -> DispatchResult {
 			let mut outstanding = &mut pool
 				.tranches
@@ -409,17 +441,10 @@ pub mod pallet {
 
 		pub(crate) fn do_update_redeem_order(
 			who: &T::AccountId,
-			pool: &mut PoolDetailsOf<T>,
-			order: &mut UserOrderOf<T>,
+			asset: T::AssetId,
+			order: &mut OrderOf<T>,
 			amount: T::Balance,
-			pool_id: T::PoolId,
-			tranche_id: T::TrancheId,
 		) -> DispatchResult {
-			let tranche = pool
-				.tranches
-				.get_mut_tranche(TrancheLoc::Id(tranche_id))
-				.ok_or(Error::<T>::InvalidTrancheId)?;
-			let mut outstanding = &mut tranche.outstanding_redeem_orders;
 			let pool_account = PoolLocator { pool_id }.into_account();
 
 			let (send, recv, transfer_amount) = Self::update_order_amount(
@@ -431,7 +456,7 @@ pub mod pallet {
 			)?;
 
 			order.epoch = pool.epoch.current;
-			T::Tokens::transfer(tranche.currency, send, recv, transfer_amount, false).map(|_| ())
+			T::Tokens::transfer(.currency, send, recv, transfer_amount, false).map(|_| ())
 		}
 
 		fn update_order_amount<'a>(
@@ -468,39 +493,21 @@ pub mod pallet {
 			}
 		}
 
-		pub(crate) fn calculate_collect(
-			tranche_id: T::TrancheId,
-			order: UserOrder<T::Balance, T::EpochId>,
-			end_epoch: T::EpochId,
-		) -> Result<OutstandingCollections<T::Balance>, DispatchError> {
-			let mut epoch_idx = order.epoch;
-			let mut outstanding = OutstandingCollections {
-				payout_currency_amount: Zero::zero(),
-				payout_token_amount: Zero::zero(),
-				remaining_invest_currency: order.invest,
-				remaining_redeem_token: order.redeem,
-			};
-			let mut all_calculated = false;
+	}
+}
 
-			while epoch_idx <= end_epoch && !all_calculated {
-				// Note: If this errors out here, the system is in a corrupt state.
-				let epoch = Epoch::<T>::try_get(&tranche_id, epoch_idx)
-					.map_err(|_| Error::<T>::EpochNotExecutedYet)?;
+impl<T: Config> InvestmentManager for Pallet<T> {
+	type Error = DispatchError;
+	type AssetId = T::AssetId;
+	type Orders = Order<T::Balance, T::OrderId>;
+	type Fulfillment = Fulfillment;
 
-				if outstanding.remaining_invest_currency != Zero::zero() {
-					Self::parse_invest_executions(&epoch, &mut outstanding)?;
-				}
+	fn orders(id: Self::AssetId) -> Result<Self::Orders, Self::Error> {
+		todo!()
+		// TODO: -get
+	}
 
-				if outstanding.remaining_redeem_token != Zero::zero() {
-					Self::parse_redeem_executions(&epoch, &mut outstanding)?;
-				}
-
-				epoch_idx = epoch_idx + One::one();
-				all_calculated = outstanding.remaining_invest_currency == Zero::zero()
-					&& outstanding.remaining_redeem_token == Zero::zero();
-			}
-
-			return Ok(outstanding);
-		}
+	fn fulfillment(id: Self::AssetId, fulfillment: Self::Fulfillment) -> Result<(), Self::Error> {
+		todo!()
 	}
 }
