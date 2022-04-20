@@ -72,7 +72,7 @@ use common_types::{
 };
 use pallet_anchors::AnchorData;
 use pallet_restricted_tokens::{
-	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
+	FungibleInspectPassthrough, FungiblesInspectPassthrough, MutateDetails, TransferDetails,
 };
 /// common types for the runtime.
 pub use runtime_common::{Index, *};
@@ -1100,6 +1100,39 @@ where
 	}
 }
 
+impl<P> PreConditions<MutateDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
+where
+	P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
+{
+	type Result = bool;
+
+	fn check(details: MutateDetails<AccountId, CurrencyId, Balance>) -> bool {
+		let MutateDetails {
+			send,
+			who,
+			id,
+			amount: _amount,
+		} = details.clone();
+
+		match id {
+			// Check that the sender has the Issuer role and
+			// the receiver has the Holder role.
+			CurrencyId::Permissioned(id) => {
+				P::has(
+					PermissionScope::Currency(CurrencyId::Permissioned(id)),
+					send,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Issuer),
+				) && P::has(
+					PermissionScope::Currency(CurrencyId::Permissioned(id)),
+					who,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
+				)
+			}
+			_ => false,
+		}
+	}
+}
+
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
@@ -1109,6 +1142,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreExtrMutate = RestrictedTokens<Permissions>;
 	type PreFungiblesInspect = FungiblesInspectPassthrough;
 	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;

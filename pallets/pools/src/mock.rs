@@ -212,6 +212,7 @@ impl pallet_restricted_tokens::Config for Test {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreExtrMutate = common_traits::Never;
 	type PreFungiblesInspect = pallet_restricted_tokens::FungiblesInspectPassthrough;
 	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;

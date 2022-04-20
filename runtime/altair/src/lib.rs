@@ -879,6 +879,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = common_traits::Always;
+	type PreExtrMutate = common_traits::Never;
 	type PreFungiblesInspect = FungiblesInspectPassthrough;
 	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;

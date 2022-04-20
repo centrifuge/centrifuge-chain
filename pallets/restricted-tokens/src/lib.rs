@@ -48,6 +48,16 @@ pub struct TransferDetails<AccountId, CurrencyId, Balance> {
 	pub amount: Balance,
 }
 
+impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Balance> {
+	pub fn new(send: AccountId, recv: AccountId, id: CurrencyId, amount: Balance) -> Self {
+		TransferDetails {
+			send,
+			recv,
+			id,
+			amount,
+		}
+	}
+}
 
 #[derive(Encode, Decode, Clone, PartialEq, Eq, Default, MaxEncodedLen, RuntimeDebug, TypeInfo)]
 pub struct MutateDetails<AccountId, CurrencyId, Balance> {
@@ -57,11 +67,11 @@ pub struct MutateDetails<AccountId, CurrencyId, Balance> {
 	pub amount: Balance,
 }
 
-impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Balance> {
-	pub fn new(send: AccountId, recv: AccountId, id: CurrencyId, amount: Balance) -> Self {
-		TransferDetails {
+impl<AccountId, CurrencyId, Balance> MutateDetails<AccountId, CurrencyId, Balance> {
+	pub fn new(send: AccountId, who: AccountId, id: CurrencyId, amount: Balance) -> Self {
+		MutateDetails {
 			send,
-			recv,
+			who,
 			id,
 			amount,
 		}
@@ -119,7 +129,7 @@ pub mod pallet {
 
 		/// Checks the pre conditions for every mint/burn via the user api (i.e. extrinsics)
 		type PreExtrMutate: PreConditions<
-			MutateDetails<Self::AccountId, Self::AccountId, Self::CurrencyId, Self::Balance>,
+			MutateDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
 			Result = bool,
 		>;
 
@@ -239,6 +249,12 @@ pub mod pallet {
 		},
 		/// Mint succeeded.
 		Mint {
+			currency_id: T::CurrencyId,
+			who: T::AccountId,
+			amount: T::Balance,
+		},
+		/// Burn succeeded.
+		Burn {
 			currency_id: T::CurrencyId,
 			who: T::AccountId,
 			amount: T::Balance,
@@ -563,10 +579,12 @@ pub mod pallet {
 			dest: <T::Lookup as StaticLookup>::Source,
 			currency_id: T::CurrencyId,
 			#[pallet::compact] amount: T::Balance,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let send = ensure_signed(origin)?;
 			let who = T::Lookup::lookup(dest)?;
 
+			// We hardcode not allowing minting native
+			// tokens through extrinsics here.
 			ensure!(
 				T::NativeToken::get() != currency_id,
 				Error::<T>::PreConditionsNotMet
@@ -594,9 +612,50 @@ pub mod pallet {
 				amount,
 			});
 
-		
 			Ok(())
 		}
 
+		// TODO: add benchmark
+		#[pallet::weight(1_000_000_000)]
+		pub fn burn_from(
+			origin: OriginFor<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+			currency_id: T::CurrencyId,
+			#[pallet::compact] amount: T::Balance,
+		) -> DispatchResult {
+			let send = ensure_signed(origin)?;
+			let who = T::Lookup::lookup(dest)?;
+
+			// We hardcode not allowing burning native
+			// tokens through extrinsics here.
+			ensure!(
+				T::NativeToken::get() != currency_id,
+				Error::<T>::PreConditionsNotMet
+			);
+
+			ensure!(
+				T::PreExtrMutate::check(MutateDetails::new(
+					send.clone(),
+					who.clone(),
+					currency_id,
+					amount
+				)),
+				Error::<T>::PreConditionsNotMet
+			);
+
+			<T::Fungibles as fungibles::Mutate<T::AccountId>>::burn_from(
+				currency_id,
+				&who,
+				amount,
+			)?;
+
+			Self::deposit_event(Event::Burn {
+				currency_id,
+				who,
+				amount,
+			});
+
+			Ok(())
+		}
 	}
 }

@@ -12,6 +12,7 @@ use sp_std::vec::Vec;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PermissionedCurrency {
+	PermissionedEur,
 	// TODO: Tranche variant from CurrencyId should be moved in here.
 }
 

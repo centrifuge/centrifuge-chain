@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 pub use crate as pallet_restricted_tokens;
+use crate::MutateDetails;
 use common_traits::{PreConditions, TokenMetadata};
 use common_types::Moment;
 use frame_support::parameter_types;
@@ -439,6 +440,7 @@ impl pallet_restricted_tokens::Config for MockRuntime {
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
 	type PreExtrTransfer = RestrictedTokens;
+	type PreExtrMutate = RestrictedTokens;
 	type PreFungiblesInspect = filter::fungibles::InspectFilter;
 	type PreFungiblesInspectHold = filter::fungibles::InspectHoldFilter;
 	type PreFungiblesMutate = filter::fungibles::MutateFilter;
@@ -467,6 +469,18 @@ impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restrict
 			CurrencyId::KUSD | CurrencyId::USDT => true,
 			CurrencyId::RestrictedCoin => t.recv >= 100 && t.send >= 100,
 			CurrencyId::Cfg => true,
+		}
+	}
+}
+
+// Only restricted coins can be minted/burned through extrinsics
+impl PreConditions<MutateDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens {
+	type Result = bool;
+
+	fn check(t: MutateDetails<AccountId, CurrencyId, Balance>) -> bool {
+		match t.id {
+			CurrencyId::RestrictedCoin => true,
+			_ => false,
 		}
 	}
 }
