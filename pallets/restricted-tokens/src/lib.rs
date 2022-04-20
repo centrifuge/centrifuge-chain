@@ -48,6 +48,15 @@ pub struct TransferDetails<AccountId, CurrencyId, Balance> {
 	pub amount: Balance,
 }
 
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Default, MaxEncodedLen, RuntimeDebug, TypeInfo)]
+pub struct MutateDetails<AccountId, CurrencyId, Balance> {
+	pub send: AccountId,
+	pub who: AccountId,
+	pub id: CurrencyId,
+	pub amount: Balance,
+}
+
 impl<AccountId, CurrencyId, Balance> TransferDetails<AccountId, CurrencyId, Balance> {
 	pub fn new(send: AccountId, recv: AccountId, id: CurrencyId, amount: Balance) -> Self {
 		TransferDetails {
@@ -105,6 +114,12 @@ pub mod pallet {
 		/// Checks the pre conditions for every transfer via the user api (i.e. extrinsics)
 		type PreExtrTransfer: PreConditions<
 			TransferDetails<Self::AccountId, Self::CurrencyId, Self::Balance>,
+			Result = bool,
+		>;
+
+		/// Checks the pre conditions for every mint/burn via the user api (i.e. extrinsics)
+		type PreExtrMutate: PreConditions<
+			MutateDetails<Self::AccountId, Self::AccountId, Self::CurrencyId, Self::Balance>,
 			Result = bool,
 		>;
 
@@ -221,6 +236,12 @@ pub mod pallet {
 			who: T::AccountId,
 			free: T::Balance,
 			reserved: T::Balance,
+		},
+		/// Mint succeeded.
+		Mint {
+			currency_id: T::CurrencyId,
+			who: T::AccountId,
+			amount: T::Balance,
 		},
 	}
 
@@ -534,5 +555,48 @@ pub mod pallet {
 				TokenType::Other => Ok(Some(T::WeightInfo::set_balance_other()).into()),
 			}
 		}
+
+		// TODO: add benchmark
+		#[pallet::weight(1_000_000_000)]
+		pub fn mint_into(
+			origin: OriginFor<T>,
+			dest: <T::Lookup as StaticLookup>::Source,
+			currency_id: T::CurrencyId,
+			#[pallet::compact] amount: T::Balance,
+		) -> DispatchResultWithPostInfo {
+			let send = ensure_signed(origin)?;
+			let who = T::Lookup::lookup(dest)?;
+
+			ensure!(
+				T::NativeToken::get() != currency_id,
+				Error::<T>::PreConditionsNotMet
+			);
+
+			ensure!(
+				T::PreExtrMutate::check(MutateDetails::new(
+					send.clone(),
+					who.clone(),
+					currency_id,
+					amount
+				)),
+				Error::<T>::PreConditionsNotMet
+			);
+
+			<T::Fungibles as fungibles::Mutate<T::AccountId>>::mint_into(
+				currency_id,
+				&who,
+				amount,
+			)?;
+
+			Self::deposit_event(Event::Mint {
+				currency_id,
+				who,
+				amount,
+			});
+
+		
+			Ok(())
+		}
+
 	}
 }
