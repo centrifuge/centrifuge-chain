@@ -14,7 +14,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::Properties;
+use common_traits::{AssetProperties, Properties};
 use frame_support::scale_info::build::Fields;
 use frame_support::scale_info::Path;
 use frame_support::scale_info::Type;
@@ -281,11 +281,42 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 	const TYPE_ID: [u8; 4] = *b"pool";
 }
 
+/// A representation of a pool identifier that can be converted to an account address
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct AssetAccount<AssetId> {
+	pub asset_id: AssetId,
+}
+
+impl<PoolId> TypeId for AssetAccount<PoolId> {
+	const TYPE_ID: [u8; 4] = *b"invs";
+}
+
 // Type that indicates a point in time
 pub type Moment = u64;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct AssetInfo<Currency> {
-	pub complementary_currency: Currency,
-	pub decimals: u8,
+pub struct AssetInfo<AccountId, Currency> {
+	pub owner: AccountId,
+	pub denominating_currency: Currency,
+	pub payment_currency: Currency,
+}
+
+impl<AccountId, Currency> AssetProperties<AccountId> for AssetInfo<AccountId, Currency>
+where
+	AccountId: Clone,
+	Currency: Clone,
+{
+	type Currency = Currency;
+
+	fn owner(&self) -> AccountId {
+		self.owner.clone()
+	}
+
+	fn denominating_currency(&self) -> Self::Currency {
+		self.denominating_currency.clone()
+	}
+
+	fn payment_currency(&self) -> Self::Currency {
+		self.payment_currency.clone()
+	}
 }

@@ -20,7 +20,7 @@ pub mod weights;
 
 use codec::HasCompact;
 use common_traits::Permissions;
-use common_traits::{AssetManager, AssetPricer, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use common_traits::{AssetAccountant, AssetPricer, PoolInspect, PoolNAV, PoolReserve, TrancheToken};
 use common_types::{AssetInfo, Moment, PoolLocator, PoolRole};
 use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_support::transactional;
@@ -1918,42 +1918,45 @@ impl<T: Config> AssetPricer for Pallet<T> {
 	}
 }
 
-impl<T: Config> AssetManager<T::AccountId> for Pallet<T> {
+impl<T: Config> AssetAccountant<T::AccountId> for Pallet<T> {
 	type Error = DispatchError;
 	type AssetId = (T::PoolId, TrancheLoc<T::TrancheId>);
-	type AssetInfo = common_types::AssetInfo<T::CurrencyId>;
+	type AssetInfo = common_types::AssetInfo<T::AccountId, T::CurrencyId>;
 	type Amount = T::Balance;
 
 	fn info(id: Self::AssetId) -> Result<Self::AssetInfo, Self::Error> {
-		let (pool_id, _) = asset;
+		let (pool_id, tranche_loc) = id;
 		let pool = Pool::<T>::try_get(pool_id).ok_or(Error::<T>::NoSuchPool)?;
+		let tranche = pool.tranches.get_tranche(tranche_loc).ok_or(Error::<T>::InvalidTrancheId)?;
 
 		Ok(AssetInfo {
-			complementary_currency: pool.currency,
-			decimals: 12, // TODO: This should be dynamic
+			owner: PoolLocator { pool_id }.into_account(),
+			denominating_currency: tranche.currency,
+			payment_currency: pool.currency,
 		})
 	}
 
-	fn buy(buyer: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error> {
+	fn deposit(to: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error> {
 		let (pool_id, tranche_loc) = id;
 		let currency = Pool::<T>::try_get(pool_id)
 			.ok_or(Error::<T>::NoSuchPool)?
 			.tranches.get_tranche(tranche_loc)
 			.ok_or(Error::<T>::InvalidTrancheId)?
 			.currency;
-		T::Tokens::mint_into(currency, &buyer, amount)?;
+		T::Tokens::mint_into(currency, &to, amount)?;
 
 		Ok(())
 	}
 
-	fn sell(seller: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error> {
+	fn withdraw(from: AccountId, id: Self::AssetId, amount: Self::Amount) -> Result<(), Self::Error> {
 		let (pool_id, tranche_loc) = id;
+		&mut outstanding,
 		let currency = Pool::<T>::try_get(pool_id)
 			.ok_or(Error::<T>::NoSuchPool)?
 			.tranches.get_tranche(tranche_loc)
 			.ok_or(Error::<T>::InvalidTrancheId)?
 			.currency;
-		T::Tokens::burn_from(currency, &seller, amount)?;
+		T::Tokens::burn_from(currency, &from, amount)?;
 
 		Ok(())
 	}
