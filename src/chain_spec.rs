@@ -15,7 +15,6 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use cumulus_primitives_core::ParaId;
-use frame_benchmarking::frame_support::metadata::StorageEntryModifier::Default;
 use hex_literal::hex;
 use node_primitives::{AccountId, Hash, Signature};
 use sc_service::{ChainType, Properties};
