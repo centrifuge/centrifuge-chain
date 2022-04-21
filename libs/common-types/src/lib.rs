@@ -24,7 +24,7 @@ use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::TypeId;
+use sp_runtime::{Perquintill, TypeId};
 ///! Common-types of the Centrifuge chain.
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
 use sp_std::marker::PhantomData;
@@ -319,4 +319,23 @@ where
 	fn payment_currency(&self) -> Self::Currency {
 		self.payment_currency.clone()
 	}
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct TotalOrder<Balance> {
+	pub invest: Balance,
+	pub redeem: Balance,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct Fulfillment {
+	pub invest: Perquintill,
+	pub redeem: Perquintill,
+}
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct FulfillmentWithPrice<BalanceRatio> {
+	pub invest: Perquintill,
+	pub redeem: Perquintill,
+	pub price: BalanceRatio,
 }

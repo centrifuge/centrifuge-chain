@@ -13,8 +13,10 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use common_traits::{AssetPricer, InvestmentManager};
+use common_traits::{AssetAccountant, AssetPricer, InvestmentManager};
 use frame_support::sp_runtime::{DispatchError, Perquintill};
+use frame_support::sp_runtime::traits::AccountIdConversion;
+use common_types::{AssetAccount, FulfillmentWithPrice};
 
 pub use pallet::*;
 pub use solution::*;
@@ -64,26 +66,6 @@ pub struct Order<Balance, OrderId> {
 	pub redeem: Balance,
 	pub id: OrderId,
 }
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct TotalOrder<Balance> {
-	pub invest: Balance,
-	pub redeem: Balance,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct Fulfillment{
-	pub invest: Perquintill,
-	pub redeem: Perquintill,
-}
-
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-pub struct FulfillmentWithPrice<BalanceRatio> {
-	pub invest: Perquintill,
-	pub redeem: Perquintill,
-	pub price: BalanceRatio
-}
-
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum CollectType {
@@ -564,17 +546,33 @@ impl<T: Config> InvestmentManager for Pallet<T> {
 	}
 
 	fn fulfillment(order_id: Self::OrderId, asset_id: Self::AssetId, fulfillment: Self::Fulfillment) -> Result<(), Self::Error> {
-		// Removing the order from its processing state. We actually do not need it anymore as from now forward
-		// we only need the per-user orders.
-		let _ = InProcessingOrders::<T>::take(&asset_id, &order_id).ok_or(Error::<T>::OrderNotInProcessing)?;
-		let price = T::Prices::price(asset_id.clone());
+		InProcessingOrders::<T>::try_mutate(&asset_id, &order_id, |orders| {
+			let orders = orders.ok_or(Error::<T>::OrderNotInProcessing)?;
+			let price = T::Prices::price(asset_id.clone());
 
-		let fulfillment = FulfillmentWithPrice {
-			invest: fulfillment.invest,
-			redeem: fulfillment.redeem,
-			price
-		};
-		ClearedOrders::<T>::insert(asset_id.clone(), order_id, fulfillment.clone());
+			let fulfillment = FulfillmentWithPrice {
+				invest: fulfillment.invest,
+				redeem: fulfillment.redeem,
+				price
+			};
+
+			let invest = fulfillment.invest.mul_floor(orders.invest);
+			let redeem = fulfillment.redeem.mul_floor(orders.redeem);
+
+			let asset_account = AssetAccount{asset_id: asset_id.clone()}.into_account();
+			if invest >= redeem {
+				T::Manager::deposit(asset_account, asset_id.clone, invest - redeem)?;
+			} else {
+				T::Manager::withdraw(asset_account, asset_id.clone, redeem - invest)?;
+			}
+
+			ClearedOrders::<T>::insert(asset_id.clone(), order_id, fulfillment.clone());
+
+			// Removing the order from its processing state. We actually do not need it anymore as from now forward
+			// we only need the per-user orders.
+			*orders = None;
+			Ok(())
+		})?;
 
 		Self::deposit_event(Event::OrderCleared(asset_id, order_id, fulfillment);
 

@@ -110,9 +110,6 @@ pub struct Tranche<Balance, Rate, Weight, Currency> {
 	pub(super) seniority: Seniority,
 	pub(super) currency: Currency,
 
-	pub(super) outstanding_invest_orders: Balance,
-	pub(super) outstanding_redeem_orders: Balance,
-
 	pub(super) debt: Balance,
 	pub(super) reserve: Balance,
 	pub(super) ratio: Perquintill,
@@ -133,8 +130,6 @@ where
 			tranche_type: TrancheType::Residual,
 			seniority: 1,
 			currency: CurrencyId::Tranche(0, [0u8; 16]),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
 			ratio: Perquintill::one(),
@@ -151,23 +146,6 @@ where
 	Balance: FixedPointOperand,
 	Weight: Copy + From<u128>,
 {
-	pub fn order_as_currency<BalanceRatio>(
-		&self,
-		price: &BalanceRatio,
-	) -> Result<(Balance, Balance), DispatchError>
-	where
-		BalanceRatio: FixedPointNumber<Inner = Balance>,
-	{
-		let orders = (
-			self.outstanding_invest_orders,
-			price
-				.checked_mul_int(self.outstanding_redeem_orders)
-				.ok_or(ArithmeticError::Overflow)?,
-		);
-
-		Ok(orders)
-	}
-
 	pub fn balance(&self) -> Result<Balance, DispatchError> {
 		self.debt
 			.checked_add(&self.reserve)
@@ -475,8 +453,6 @@ where
 			seniority: seniority
 				.unwrap_or(index.try_into().map_err(|_| ArithmeticError::Overflow)?),
 			currency: TrancheToken::tranche_token(self.salt.1, id),
-			outstanding_invest_orders: Zero::zero(),
-			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
 			ratio: Perquintill::zero(),
@@ -747,18 +723,6 @@ where
 		Ok(res)
 	}
 
-	pub fn orders_as_currency<BalanceRatio>(
-		&self,
-		prices: &Vec<BalanceRatio>,
-	) -> Result<Vec<(Balance, Balance)>, DispatchError>
-	where
-		BalanceRatio: FixedPointNumber<Inner = Balance>,
-	{
-		self.combine_with_non_residual_top(prices.iter(), |tranche, price| {
-			tranche.order_as_currency(price)
-		})
-	}
-
 	pub fn calculate_prices<BalanceRatio, Tokens, AccountId>(
 		&mut self,
 		total_assets: Balance,
@@ -887,38 +851,6 @@ where
 					acc.checked_add(&tranche.debt)
 						.and_then(|acc| acc.checked_add(&tranche.reserve))
 				})
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn outstanding_investments(&self) -> Vec<Balance> {
-		self.tranches
-			.iter()
-			.map(|tranche| tranche.outstanding_invest_orders)
-			.collect()
-	}
-
-	pub fn acc_outstanding_investments(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_invest_orders))
-			})
-			.ok_or(ArithmeticError::Overflow.into())
-	}
-
-	pub fn outstanding_redemptions(&self) -> Vec<Balance> {
-		self.tranches
-			.iter()
-			.map(|tranche| tranche.outstanding_redeem_orders)
-			.collect()
-	}
-
-	pub fn acc_outstanding_redemptions(&self) -> Result<Balance, DispatchError> {
-		self.tranches
-			.iter()
-			.fold(Some(Balance::zero()), |sum, tranche| {
-				sum.and_then(|acc| acc.checked_add(&tranche.outstanding_redeem_orders))
 			})
 			.ok_or(ArithmeticError::Overflow.into())
 	}
