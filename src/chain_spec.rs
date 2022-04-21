@@ -131,6 +131,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				],
 				Some(1000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -173,6 +174,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 				endowed_accounts(),
 				Some(100000000 * CFG),
 				para_id,
+				council_members_bootstrap(),
 			)
 		},
 		vec![],
@@ -202,6 +204,7 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 				endowed_accounts(),
 				Some(100000000 * CFG),
 				para_id,
+				council_members_bootstrap(),
 			)
 		},
 		vec![],
@@ -702,6 +705,7 @@ fn centrifuge_genesis(
 	endowed_accounts: Vec<centrifuge_runtime::AccountId>,
 	total_issuance: Option<centrifuge_runtime::Balance>,
 	id: ParaId,
+	council_members: Vec<centrifuge_runtime::AccountId>,
 ) -> centrifuge_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
 	let balances = match total_issuance {
@@ -727,7 +731,7 @@ fn centrifuge_genesis(
 		balances: centrifuge_runtime::BalancesConfig { balances },
 		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
 		council: centrifuge_runtime::CouncilConfig {
-			members: Default::default(),
+			members: council_members,
 			phantom: Default::default(),
 		},
 		fees: centrifuge_runtime::FeesConfig {
