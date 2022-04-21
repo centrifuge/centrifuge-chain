@@ -86,6 +86,7 @@ pub enum PermissionScope<PoolId, CurrencyId> {
 	Currency(CurrencyId),
 }
 
+#[cfg(test)]
 impl<PoolId, CurrencyId> Default for PermissionScope<PoolId, CurrencyId>
 where
 	PoolId: Default,
@@ -98,15 +99,20 @@ where
 bitflags::bitflags! {
 	/// The current admin roles we support
 	#[derive(codec::Encode, codec::Decode,  TypeInfo)]
-	pub struct AdminRoles: u32 {
+	pub struct PoolAdminRoles: u32 {
 		const POOL_ADMIN = 0b00000001;
 		const BORROWER  = 0b00000010;
 		const PRICING_ADMIN = 0b00000100;
 		const LIQUIDITY_ADMIN = 0b00001000;
 		const MEMBER_LIST_ADMIN = 0b00010000;
 		const RISK_ADMIN = 0b00100000;
-		const PERMISSIONED_ASSET_MANAGER = 0b01000000;
-		const PERMISSIONED_ASSET_ISSUER = 0b10000000;
+	}
+
+	/// The current admin roles we support
+	#[derive(codec::Encode, codec::Decode,  TypeInfo)]
+	pub struct CurrencyAdminRoles: u32 {
+		const PERMISSIONED_ASSET_MANAGER = 0b00000001;
+		const PERMISSIONED_ASSET_ISSUER  = 0b00000010;
 	}
 }
 
@@ -137,7 +143,8 @@ pub struct TrancheInvestors<Now, MinDelay, TrancheId, Moment> {
 /// This here implements trait Properties.
 #[derive(Encode, Decode, TypeInfo, Clone, Eq, PartialEq, Debug)]
 pub struct PermissionRoles<Now, MinDelay, TrancheId, Moment = u64> {
-	admin: AdminRoles,
+	pool_admin: PoolAdminRoles,
+	currency_admin: CurrencyAdminRoles,
 	permissioned_asset_holder: PermissionedCurrencyHolders<Now, MinDelay, Moment>,
 	tranche_investor: TrancheInvestors<Now, MinDelay, TrancheId, Moment>,
 }
@@ -181,7 +188,8 @@ where
 {
 	fn default() -> Self {
 		Self {
-			admin: AdminRoles::empty(),
+			pool_admin: PoolAdminRoles::empty(),
+			currency_admin: CurrencyAdminRoles::empty(),
 			permissioned_asset_holder:
 				PermissionedCurrencyHolders::<Now, MinDelay, Moment>::default(),
 			tranche_investor: TrancheInvestors::<Now, MinDelay, TrancheId, Moment>::default(),
@@ -209,12 +217,16 @@ where
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
 			Role::PoolRole(pool_role) => match pool_role {
-				PoolRole::Borrower => self.admin.contains(AdminRoles::BORROWER),
-				PoolRole::LiquidityAdmin => self.admin.contains(AdminRoles::LIQUIDITY_ADMIN),
-				PoolRole::PoolAdmin => self.admin.contains(AdminRoles::POOL_ADMIN),
-				PoolRole::PricingAdmin => self.admin.contains(AdminRoles::PRICING_ADMIN),
-				PoolRole::MemberListAdmin => self.admin.contains(AdminRoles::MEMBER_LIST_ADMIN),
-				PoolRole::RiskAdmin => self.admin.contains(AdminRoles::RISK_ADMIN),
+				PoolRole::Borrower => self.pool_admin.contains(PoolAdminRoles::BORROWER),
+				PoolRole::LiquidityAdmin => {
+					self.pool_admin.contains(PoolAdminRoles::LIQUIDITY_ADMIN)
+				}
+				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
+				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
+				PoolRole::MemberListAdmin => {
+					self.pool_admin.contains(PoolAdminRoles::MEMBER_LIST_ADMIN)
+				}
+				PoolRole::RiskAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
@@ -222,19 +234,20 @@ where
 					PermissionedCurrencyRole::Holder(_) => {
 						self.permissioned_asset_holder.contains()
 					}
-					PermissionedCurrencyRole::Manager => {
-						self.admin.contains(AdminRoles::PERMISSIONED_ASSET_MANAGER)
-					}
-					PermissionedCurrencyRole::Issuer => {
-						self.admin.contains(AdminRoles::PERMISSIONED_ASSET_ISSUER)
-					}
+					PermissionedCurrencyRole::Manager => self
+						.currency_admin
+						.contains(CurrencyAdminRoles::PERMISSIONED_ASSET_MANAGER),
+					PermissionedCurrencyRole::Issuer => self
+						.currency_admin
+						.contains(CurrencyAdminRoles::PERMISSIONED_ASSET_ISSUER),
 				}
 			}
 		}
 	}
 
 	fn empty(&self) -> bool {
-		self.admin.is_empty()
+		self.pool_admin.is_empty()
+			&& self.currency_admin.is_empty()
 			&& self.tranche_investor.is_empty()
 			&& self.permissioned_asset_holder.is_empty()
 	}
@@ -242,12 +255,16 @@ where
 	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
 		match property {
 			Role::PoolRole(pool_role) => match pool_role {
-				PoolRole::Borrower => Ok(self.admin.remove(AdminRoles::BORROWER)),
-				PoolRole::LiquidityAdmin => Ok(self.admin.remove(AdminRoles::LIQUIDITY_ADMIN)),
-				PoolRole::PoolAdmin => Ok(self.admin.remove(AdminRoles::POOL_ADMIN)),
-				PoolRole::PricingAdmin => Ok(self.admin.remove(AdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => Ok(self.admin.remove(AdminRoles::MEMBER_LIST_ADMIN)),
-				PoolRole::RiskAdmin => Ok(self.admin.remove(AdminRoles::RISK_ADMIN)),
+				PoolRole::Borrower => Ok(self.pool_admin.remove(PoolAdminRoles::BORROWER)),
+				PoolRole::LiquidityAdmin => {
+					Ok(self.pool_admin.remove(PoolAdminRoles::LIQUIDITY_ADMIN))
+				}
+				PoolRole::PoolAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::POOL_ADMIN)),
+				PoolRole::PricingAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::PRICING_ADMIN)),
+				PoolRole::MemberListAdmin => {
+					Ok(self.pool_admin.remove(PoolAdminRoles::MEMBER_LIST_ADMIN))
+				}
+				PoolRole::RiskAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
@@ -255,12 +272,12 @@ where
 					PermissionedCurrencyRole::Holder(delta) => {
 						self.permissioned_asset_holder.remove(delta)
 					}
-					PermissionedCurrencyRole::Manager => {
-						Ok(self.admin.remove(AdminRoles::PERMISSIONED_ASSET_MANAGER))
-					}
-					PermissionedCurrencyRole::Issuer => {
-						Ok(self.admin.remove(AdminRoles::PERMISSIONED_ASSET_ISSUER))
-					}
+					PermissionedCurrencyRole::Manager => Ok(self
+						.currency_admin
+						.remove(CurrencyAdminRoles::PERMISSIONED_ASSET_MANAGER)),
+					PermissionedCurrencyRole::Issuer => Ok(self
+						.currency_admin
+						.remove(CurrencyAdminRoles::PERMISSIONED_ASSET_ISSUER)),
 				}
 			}
 		}
@@ -269,12 +286,16 @@ where
 	fn add(&mut self, property: Self::Property) -> Result<(), ()> {
 		match property {
 			Role::PoolRole(pool_role) => match pool_role {
-				PoolRole::Borrower => Ok(self.admin.insert(AdminRoles::BORROWER)),
-				PoolRole::LiquidityAdmin => Ok(self.admin.insert(AdminRoles::LIQUIDITY_ADMIN)),
-				PoolRole::PoolAdmin => Ok(self.admin.insert(AdminRoles::POOL_ADMIN)),
-				PoolRole::PricingAdmin => Ok(self.admin.insert(AdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => Ok(self.admin.insert(AdminRoles::MEMBER_LIST_ADMIN)),
-				PoolRole::RiskAdmin => Ok(self.admin.insert(AdminRoles::RISK_ADMIN)),
+				PoolRole::Borrower => Ok(self.pool_admin.insert(PoolAdminRoles::BORROWER)),
+				PoolRole::LiquidityAdmin => {
+					Ok(self.pool_admin.insert(PoolAdminRoles::LIQUIDITY_ADMIN))
+				}
+				PoolRole::PoolAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::POOL_ADMIN)),
+				PoolRole::PricingAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::PRICING_ADMIN)),
+				PoolRole::MemberListAdmin => {
+					Ok(self.pool_admin.insert(PoolAdminRoles::MEMBER_LIST_ADMIN))
+				}
+				PoolRole::RiskAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
@@ -282,12 +303,12 @@ where
 					PermissionedCurrencyRole::Holder(delta) => {
 						self.permissioned_asset_holder.insert(delta)
 					}
-					PermissionedCurrencyRole::Manager => {
-						Ok(self.admin.insert(AdminRoles::PERMISSIONED_ASSET_MANAGER))
-					}
-					PermissionedCurrencyRole::Issuer => {
-						Ok(self.admin.insert(AdminRoles::PERMISSIONED_ASSET_ISSUER))
-					}
+					PermissionedCurrencyRole::Manager => Ok(self
+						.currency_admin
+						.insert(CurrencyAdminRoles::PERMISSIONED_ASSET_MANAGER)),
+					PermissionedCurrencyRole::Issuer => Ok(self
+						.currency_admin
+						.insert(CurrencyAdminRoles::PERMISSIONED_ASSET_ISSUER)),
 				}
 			}
 		}
