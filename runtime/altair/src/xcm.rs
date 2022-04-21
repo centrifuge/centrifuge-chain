@@ -77,11 +77,7 @@ parameter_types! {
 
 	pub KUsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
-			)
+			// TODO(workshop)
 		).into(),
 		// KUSD:KSM = 400:1
 		ksm_per_second() * 400
@@ -166,13 +162,8 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		let x = match id {
 			CurrencyId::KSM => MultiLocation::parent(),
-			CurrencyId::KUSD => MultiLocation::new(
-				1,
-				X2(
-					Parachain(parachains::karura::ID),
-					GeneralKey(parachains::karura::KUSD_KEY.into()),
-				),
-			),
+			CurrencyId::KUSD => // TODO(workshop)
+			,
 			CurrencyId::Native => MultiLocation::new(
 				1,
 				X2(
@@ -205,10 +196,8 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 					_ => Err(location.clone()),
 				},
 
-				parachains::karura::ID => match &key[..] {
-					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
-					_ => Err(location.clone()),
-				},
+				// TODO(workshop): Handle Karura tokens (only KUSD for now) here
+				,
 				_ => Err(location.clone()),
 			},
 			_ => Err(location.clone()),
