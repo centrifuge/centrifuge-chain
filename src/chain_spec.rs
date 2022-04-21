@@ -262,6 +262,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				],
 				Some(10000000 * CFG),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -294,6 +295,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 				endowed_accounts(),
 				Some(10000000 * CFG),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -481,6 +483,7 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 				],
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -513,6 +516,7 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -565,6 +569,7 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -597,6 +602,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
