@@ -200,8 +200,13 @@ pub mod pallet {
 		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 		/// A loan was closed. [pool, loan, collateral]
 		Closed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
-		/// A loan was priced. [pool, loan]
-		Priced(PoolIdOf<T>, T::LoanId),
+		/// A loan was priced. [pool, loan, interest_rate_per_sec, loan_type]
+		Priced(
+			PoolIdOf<T>,
+			T::LoanId,
+			T::Rate,
+			LoanType<T::Rate, T::Amount>,
+		),
 		/// An amount was borrowed for a loan. [pool, loan, amount]
 		Borrowed(PoolIdOf<T>, T::LoanId, T::Amount),
 		/// An amount was repaid for a loan. [pool, loan, amount]
@@ -426,7 +431,12 @@ pub mod pallet {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::Priced(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::Priced(
+				pool_id,
+				loan_id,
+				interest_rate_per_sec,
+				loan_type,
+			));
 			Ok(())
 		}
 
