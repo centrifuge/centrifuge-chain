@@ -702,7 +702,7 @@ fn endowed_accounts() -> Vec<AccountId> {
 }
 
 fn council_members_bootstrap() -> Vec<AccountId> {
-	endowed_accounts().iter().take(4).collect();
+	endowed_accounts().into_iter().take(4).collect()
 }
 
 fn centrifuge_genesis(
