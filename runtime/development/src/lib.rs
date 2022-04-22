@@ -814,6 +814,9 @@ parameter_types! {
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 46; // length of IPFS hash
+
+	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
+	pub const PoolDeposit: Balance = 100 * CFG;
 }
 
 impl pallet_pools::Config for Runtime {
@@ -825,6 +828,7 @@ impl pallet_pools::Config for Runtime {
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
+	type Currency = Balances;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
 	type NAV = Loans;
@@ -840,6 +844,7 @@ impl pallet_pools::Config for Runtime {
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
+	type PoolDeposit = PoolDeposit;
 	type PoolCreateOrigin = EnsureSigned<AccountId>;
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;

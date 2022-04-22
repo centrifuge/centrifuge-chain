@@ -19,7 +19,10 @@ use codec::HasCompact;
 use common_traits::Permissions;
 use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
 use common_types::{Moment, PoolLocator, PoolRole};
-use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
+use frame_support::traits::{
+	fungibles::{Inspect, Mutate, Transfer},
+	ReservableCurrency,
+};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
@@ -161,6 +164,13 @@ pub struct OutstandingCollections<Balance> {
 	pub remaining_redeem_token: Balance,
 }
 
+/// Information about the deposit that has been taken to create a pool
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct PoolDepositInfo<AccountId, Balance> {
+	pub depositor: AccountId,
+	pub deposit: Balance,
+}
+
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
@@ -179,6 +189,8 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
 >;
+type PoolDepositOf<T> =
+	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -262,6 +274,8 @@ pub mod pallet {
 
 		type PoolCurrency: Contains<Self::CurrencyId>;
 
+		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
+
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ Transfer<Self::AccountId>;
@@ -306,6 +320,9 @@ pub mod pallet {
 		/// Max number of Tranches
 		type MaxTranches: Get<u32>;
 
+		/// The amount that must be reserved to create a pool
+		type PoolDeposit: Get<Self::Balance>;
+
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
 
@@ -348,6 +365,15 @@ pub mod pallet {
 	#[pallet::getter(fn epoch_targets)]
 	pub type EpochExecution<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfoOf<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn account_deposits)]
+	pub type AccountDeposit<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn pool_deposits)]
+	pub type PoolDeposit<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDepositOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -484,6 +510,7 @@ pub mod pallet {
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
 		#[pallet::weight(T::WeightInfo::create(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: T::AccountId,
@@ -493,6 +520,16 @@ pub mod pallet {
 			max_reserve: T::Balance,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
+
+			// First we take a deposit.
+			// If we are coming from a signed origin, we take
+			// the deposit from them
+			// If we are coming from some internal origin
+			// (Democracy, Council, etc.) we assume that the
+			// parameters are vetted somehow and rely on the
+			// admin as our depositor.
+			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
+			Self::take_deposit(depositor, pool_id)?;
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -1871,6 +1908,16 @@ pub mod pallet {
 				Self::deposit_event(Event::Rebalanced(pool_id));
 				Ok(())
 			})
+		}
+
+		fn take_deposit(depositor: T::AccountId, pool: T::PoolId) -> DispatchResult {
+			let deposit = T::PoolDeposit::get();
+			T::Currency::reserve(&depositor, deposit)?;
+			AccountDeposit::<T>::mutate(&depositor, |total_deposit| {
+				*total_deposit += deposit;
+			});
+			PoolDeposit::<T>::insert(pool, PoolDepositOf::<T> { deposit, depositor });
+			Ok(())
 		}
 	}
 }

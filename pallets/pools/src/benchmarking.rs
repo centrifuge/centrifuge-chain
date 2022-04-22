@@ -19,6 +19,7 @@ use common_types::CurrencyId;
 use codec::EncodeLike;
 use core::convert::TryInto;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_support::traits::Currency;
 use frame_system::RawOrigin;
 use sp_std::vec;
 
@@ -51,7 +52,7 @@ benchmarks! {
 
 	create {
 		let n in 1..T::MaxTranches::get();
-		let caller: T::AccountId = account("admin", 0, 0);
+		let caller: T::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
 	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::Usd, MAX_RESERVE)
@@ -67,7 +68,7 @@ benchmarks! {
 	}
 
 	update {
-		let caller: T::AccountId = account("admin", 0, 0);
+		let caller: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(1, caller.clone())?;
 	}: update(RawOrigin::Signed(caller), POOL, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_HOUR)
 	verify {
@@ -79,7 +80,7 @@ benchmarks! {
 
 	set_metadata {
 		let n in 0..T::MaxSizeMetadata::get();
-		let caller: T::AccountId = account("admin", 0, 0);
+		let caller: T::AccountId = create_admin::<T>(0);
 		let metadata = vec![0u8; n as usize];
 		create_pool::<T>(1, caller.clone())?;
 	}: set_metadata(RawOrigin::Signed(caller), POOL, metadata.clone())
@@ -88,8 +89,8 @@ benchmarks! {
 	}
 
 	set_max_reserve {
-		let admin: T::AccountId = account("admin", 0, 0);
-		let caller: T::AccountId = account("admin", 1, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
+		let caller: T::AccountId = create_admin::<T>(1);
 		let max_reserve = MAX_RESERVE / 2;
 		create_pool::<T>(1, admin.clone())?;
 		set_liquidity_admin::<T>(caller.clone())?;
@@ -99,7 +100,7 @@ benchmarks! {
 	}
 
 	update_tranches {
-		let caller: T::AccountId = account("admin", 0, 0);
+		let caller: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
 		create_pool::<T>(n, caller.clone())?;
@@ -110,7 +111,7 @@ benchmarks! {
 	}
 
 	update_invest_order {
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(1, admin.clone())?;
 		let locator = get_tranche_id::<T>(TRANCHE);
 		let amount = MAX_RESERVE / 2;
@@ -126,7 +127,7 @@ benchmarks! {
 	}
 
 	update_redeem_order {
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(1, admin.clone())?;
 		let amount = MAX_RESERVE / 2;
 		let caller = create_investor::<T>(0, TRANCHE)?;
@@ -143,7 +144,7 @@ benchmarks! {
 
 	collect {
 		let n in 1..100;
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(1, admin.clone())?;
 		let amount = MAX_RESERVE / 2;
 		let expected = amount + MINT_AMOUNT;
@@ -159,7 +160,7 @@ benchmarks! {
 	}
 
 	close_epoch_no_orders {
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
@@ -173,7 +174,7 @@ benchmarks! {
 	close_epoch_no_execution {
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -190,7 +191,7 @@ benchmarks! {
 	close_epoch_execute {
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -207,7 +208,7 @@ benchmarks! {
 	submit_solution {
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -234,7 +235,7 @@ benchmarks! {
 	execute_epoch {
 		let n in 1..T::MaxTranches::get(); // number of tranches
 
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		create_pool::<T>(n, admin.clone())?;
 		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
 		unrestrict_epoch_close::<T>();
@@ -347,6 +348,17 @@ where
 		MINT_AMOUNT,
 	)?;
 	Ok(investor)
+}
+
+fn create_admin<T: Config<CurrencyId = CurrencyId, Balance = u128>>(id: u32) -> T::AccountId
+where
+	<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
+		From<<T as frame_system::Config>::AccountId>,
+{
+	let admin: T::AccountId = account("admin", id, 0);
+	let mint_amount = T::PoolDeposit::get() * 2;
+	T::Currency::deposit_creating(&admin.clone().into(), mint_amount);
+	admin
 }
 
 fn set_liquidity_admin<T: Config<PoolId = u64>>(target: T::AccountId) -> DispatchResult
