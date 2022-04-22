@@ -86,7 +86,7 @@ pub enum PermissionScope<PoolId, CurrencyId> {
 	Currency(CurrencyId),
 }
 
-#[cfg(any(test, feature = runtime-benchmarks))]
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 impl<PoolId, CurrencyId> Default for PermissionScope<PoolId, CurrencyId>
 where
 	PoolId: Default,
