@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.11"
+version = "0.10.12"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
@@ -101,6 +101,8 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-fea
 # orml pallets
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "master" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "master" }
+orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "master" }
+orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "master" }
 
 # our custom pallets
 runtime-common = { path = "../common", default-features = false }
@@ -198,6 +200,7 @@ std = [
     "pallet-nft-sales/std",
     "pallet-permissions/std",
     "orml-tokens/std",
+    "orml-xtokens/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",

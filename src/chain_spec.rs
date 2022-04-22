@@ -130,6 +130,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				],
 				Some(1000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -172,6 +173,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 				endowed_accounts(),
 				Some(100000000 * CFG),
 				para_id,
+				council_members_bootstrap(),
 			)
 		},
 		vec![],
@@ -201,6 +203,7 @@ pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 				endowed_accounts(),
 				Some(100000000 * CFG),
 				para_id,
+				council_members_bootstrap(),
 			)
 		},
 		vec![],
@@ -259,6 +262,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 				],
 				Some(10000000 * CFG),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -291,6 +295,7 @@ pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 				endowed_accounts(),
 				Some(10000000 * CFG),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -346,6 +351,7 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 				vec![],
 				None,
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -388,6 +394,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(100000000 * AIR),
 				para_id,
+				council_members_bootstrap(),
 			)
 		},
 		vec![],
@@ -417,6 +424,7 @@ pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(100000000 * AIR),
 				para_id,
+				council_members_bootstrap(),
 			)
 		},
 		vec![],
@@ -475,6 +483,7 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 				],
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -507,6 +516,7 @@ pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -559,6 +569,7 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -591,6 +602,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 				endowed_accounts(),
 				Some(10000000 * AIR),
 				para_id,
+				Default::default(),
 			)
 		},
 		vec![],
@@ -689,11 +701,16 @@ fn endowed_accounts() -> Vec<AccountId> {
 	]
 }
 
+fn council_members_bootstrap() -> Vec<AccountId> {
+	endowed_accounts().into_iter().take(4).collect()
+}
+
 fn centrifuge_genesis(
 	initial_authorities: Vec<(centrifuge_runtime::AccountId, centrifuge_runtime::AuraId)>,
 	endowed_accounts: Vec<centrifuge_runtime::AccountId>,
 	total_issuance: Option<centrifuge_runtime::Balance>,
 	id: ParaId,
+	council_members: Vec<centrifuge_runtime::AccountId>,
 ) -> centrifuge_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
 	let balances = match total_issuance {
@@ -719,7 +736,7 @@ fn centrifuge_genesis(
 		balances: centrifuge_runtime::BalancesConfig { balances },
 		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
 		council: centrifuge_runtime::CouncilConfig {
-			members: Default::default(),
+			members: council_members,
 			phantom: Default::default(),
 		},
 		fees: centrifuge_runtime::FeesConfig {
@@ -787,13 +804,14 @@ fn altair_genesis(
 	endowed_accounts: Vec<altair_runtime::AccountId>,
 	total_issuance: Option<altair_runtime::Balance>,
 	id: ParaId,
+	council_members: Vec<altair_runtime::AccountId>,
 ) -> altair_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
 	let (balances, token_balances) = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
-				.checked_div(num_endowed_accounts as development_runtime::Balance)
-				.unwrap_or(0 as development_runtime::Balance);
+				.checked_div(num_endowed_accounts as altair_runtime::Balance)
+				.unwrap_or(0 as altair_runtime::Balance);
 			(
 				endowed_accounts
 					.iter()
@@ -803,7 +821,7 @@ fn altair_genesis(
 				endowed_accounts
 					.iter()
 					.cloned()
-					.map(|k| (k, development_runtime::CurrencyId::Usd, balance_per_endowed))
+					.map(|k| (k, altair_runtime::CurrencyId::Usd, balance_per_endowed))
 					.collect(),
 			)
 		}
@@ -822,7 +840,7 @@ fn altair_genesis(
 		},
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {
-			members: Default::default(),
+			members: council_members,
 			phantom: Default::default(),
 		},
 
