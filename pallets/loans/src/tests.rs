@@ -193,7 +193,7 @@ fn price_test_loan<T>(
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
-		LoanEvent::Priced(pool_id, loan_id) => Some((pool_id, loan_id)),
+		LoanEvent::Priced(pool_id, loan_id, _, _) => Some((pool_id, loan_id)),
 		_ => None,
 	}
 	.expect("must be a Loan issue priced event");
