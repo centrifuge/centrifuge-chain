@@ -27,64 +27,9 @@ use common_types::{CurrencyId, PoolRole};
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
-use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
+use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheLoc, TrancheType};
 use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
-
-/// Creates a default pool.
-///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
-///
-/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
-/// its collateral and loan nft classes.
-pub fn default_pool(
-	env: &mut TestEnv,
-	nfts: &mut NftManager,
-	admin: Keyring,
-	pool_id: PoolId,
-) -> Result<(), ()> {
-	let calls: Vec<Vec<u8>> = default_pool_calls(admin.to_account_id(), pool_id, nfts)
-		.into_iter()
-		.map(|call| call.encode())
-		.collect();
-	env.batch_sign_and_submit(Chain::Para(PARA_ID), admin, calls)
-}
-
-/// Creates a custom pool.
-///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
-///
-/// Given keyring will be the origin that dispatches the calls and the admin of the pool and
-/// its collateral and loan nft classes.
-pub fn custom_pool(
-	env: &mut TestEnv,
-	nfts: &mut NftManager,
-	admin: Keyring,
-	pool_id: PoolId,
-	currency: CurrencyId,
-	max_reserve: Balance,
-	tranche_input: Vec<TrancheInput<Rate>>,
-) -> Result<(), ()> {
-	let calls: Vec<Vec<u8>> = pool_setup_calls(
-		admin.to_account_id(),
-		pool_id,
-		currency,
-		max_reserve,
-		tranche_input,
-		nfts,
-	)
-	.into_iter()
-	.map(|call| call.encode())
-	.collect();
-	env.batch_sign_and_submit(Chain::Para(PARA_ID), admin, calls)
-}
-
-/// Creates a default pool.
-///
-/// This will also inject the extrinsics needed for this. Furthermore, it progresses
-/// the chain to a point where all extrinsics are included in the state.
 
 /// Creates the necessary calls for initialising a pool.
 /// This includes:
@@ -262,6 +207,7 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///    -> tranche-id for residual tranche blake2_128::hash((0, pool_id))
 /// * Investor accounts whitelisted for respective tranche like
 ///    * Investors whitelisted for tranche 0
+///		  * Keyring::TrancheInvestor(0)
 ///       * Keyring::TrancheInvestor(1)
 ///       * Keyring::TrancheInvestor(2)
 ///       * Keyring::TrancheInvestor(3)
@@ -271,8 +217,8 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///       * Keyring::TrancheInvestor(7)
 ///       * Keyring::TrancheInvestor(8)
 ///       * Keyring::TrancheInvestor(9)
-///       * Keyring::TrancheInvestor(10)
 ///   * Investors whitelisted for tranche 1
+///       * Keyring::TrancheInvestor(10)
 ///       * Keyring::TrancheInvestor(11)
 ///       * Keyring::TrancheInvestor(12)
 ///       * Keyring::TrancheInvestor(13)
@@ -282,13 +228,12 @@ pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 ///       * Keyring::TrancheInvestor(17)
 ///       * Keyring::TrancheInvestor(18)
 ///       * Keyring::TrancheInvestor(19)
-///       * Keyring::TrancheInvestor(20)
 pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> Vec<Call> {
 	let mut calls = Vec::with_capacity(10 * num_tranches as usize);
 
 	let mut x: u32 = 0;
 	while x < num_tranches {
-		for id in 1..11 {
+		for id in 0..10 {
 			calls.push(whitelist_investor_call(
 				pool,
 				Keyring::TrancheInvestor((x * 10) + id),
@@ -307,7 +252,7 @@ pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: Tranche
 		PoolRole::PoolAdmin,
 		investor.to_account_id(),
 		pool,
-		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
+		PoolRole::TrancheInvestor(tranche, 2 * SECONDS_PER_YEAR),
 	)
 }
 
@@ -342,6 +287,26 @@ pub fn create_pool_call(
 	})
 }
 
+pub fn invest_order_call(pool_id: PoolId, index: TrancheIndex, amount: Balance) -> Call {
+	Call::Pools(PoolsCall::update_invest_order {
+		pool_id,
+		tranche_loc: TrancheLoc::Index(index),
+		amount,
+	})
+}
+
+pub fn redeem_order_call(pool_id: PoolId, index: TrancheIndex, amount: Balance) -> Call {
+	Call::Pools(PoolsCall::update_redeem_order {
+		pool_id,
+		tranche_loc: TrancheLoc::Index(index),
+		amount,
+	})
+}
+
+pub fn close_epoch(pool_id: PoolId) -> Call {
+	Call::Pools(PoolsCall::close_epoch { pool_id })
+}
+
 /// Calculates the tranche-id for pools at start-up. Makes it easier
 /// to whitelist.
 ///
@@ -352,48 +317,11 @@ fn tranche_id(pool: PoolId, index: TrancheIndex) -> TrancheId {
 
 /// A module where all calls need to be called within an
 /// externalities provided environment.
-mod with_ext {
+pub mod with_ext {
 	use super::*;
 	use common_traits::PoolNAV;
 	use runtime_common::Amount;
-
-	/// Whitelists 10 tranche-investors per tranche.
-	///
-	/// **Needs: Mut Externalities to persist**
-	/// -------------------------------
-	/// E.g.: num_tranches = 2
-	/// * Investors whitelisted for tranche 0
-	///    * Keyring::TrancheInvestor(1)
-	///    * Keyring::TrancheInvestor(2)
-	///    * Keyring::TrancheInvestor(3)
-	///    * Keyring::TrancheInvestor(4)
-	///    * Keyring::TrancheInvestor(5)
-	///    * Keyring::TrancheInvestor(6)
-	///    * Keyring::TrancheInvestor(7)
-	///    * Keyring::TrancheInvestor(8)
-	///    * Keyring::TrancheInvestor(9)
-	///    * Keyring::TrancheInvestor(10)
-	/// * Investors whitelisted for tranche 1
-	///    * Keyring::TrancheInvestor(11)
-	///    * Keyring::TrancheInvestor(12)
-	///    * Keyring::TrancheInvestor(13)
-	///    * Keyring::TrancheInvestor(14)
-	///    * Keyring::TrancheInvestor(15)
-	///    * Keyring::TrancheInvestor(16)
-	///    * Keyring::TrancheInvestor(17)
-	///    * Keyring::TrancheInvestor(18)
-	///    * Keyring::TrancheInvestor(19)
-	///    * Keyring::TrancheInvestor(20)
-	pub fn whitelist_investors(pool_id: PoolId, num_tranches: u32) {
-		let mut x: u32 = 0;
-		while x < num_tranches {
-			for id in 1..11 {
-				let id = (x * 10) + id;
-				permit_investor(id, pool_id, tranche_id(pool_id, x as u64));
-			}
-			x += 1;
-		}
-	}
+	use std::time::Duration;
 
 	/// Retrieves the token prices of a pool at the state that
 	/// this is called with.
@@ -402,8 +330,8 @@ mod with_ext {
 	///
 	/// NOTE:
 	/// * update_nav() is called with Keyring::Admin as calley
-	pub fn get_tranche_prices(pool: PoolId) -> Vec<Rate> {
-		let now = Timestamp::now();
+	pub fn update_nav_and_get_tranche_prices(pool: PoolId) -> Vec<Rate> {
+		let now = Duration::from_millis(Timestamp::now()).as_secs();
 		let mut details = Pools::pool(pool).expect("POOLS: Getting pool failed.");
 		Loans::update_nav(Keyring::Admin.into(), pool).expect("LOANS: UpdatingNav failed");
 		let (epoch_nav, _) =
@@ -415,36 +343,5 @@ mod with_ext {
 			.tranches
 			.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
 			.expect("POOLS: Calculating tranche-prices failed")
-	}
-
-	/// Add a permission for who, at pool with role.
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn permission_for(who: AccountId, pool: PoolId, role: PoolRole) {
-		<Permissions as PermissionsT<AccountId>>::add(pool, who, role)
-			.expect("ESSENTIAL: Adding a permission for a role should not fail.");
-	}
-
-	/// Adds all roles that `PoolRole`s currently provides to the Keyring::Admin account
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn permit_admin(id: PoolId) {
-		permission_for(Keyring::Admin.into(), id, PoolRole::PricingAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::LiquidityAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::RiskAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::MemberListAdmin);
-		permission_for(Keyring::Admin.into(), id, PoolRole::Borrower);
-	}
-
-	/// Add a `PoolRole::TrancheInvestor to a Keyring::TrancheInvestor(u32) account.
-	/// Role is permitted for 1 year.
-	///
-	/// **Needs: Mut Externalities to persist**
-	pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {
-		permission_for(
-			Keyring::TrancheInvestor(investor).into(),
-			pool,
-			PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
-		)
 	}
 }

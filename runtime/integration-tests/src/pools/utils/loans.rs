@@ -12,6 +12,7 @@
 
 //! Utilities around the loans pallet
 use crate::chain::centrifuge::{Address, Amount, Balance, Call, Rate};
+use crate::pools::utils::time::Moment;
 use crate::pools::utils::tokens::rate_from_percent;
 use pallet_loans::{
 	loan_type::{BulletLoan, LoanType},
@@ -21,6 +22,8 @@ use pallet_loans::{
 };
 use pallet_uniques::Call as UniquesCall;
 use runtime_common::{AccountId, ClassId, InstanceId, PoolId};
+use sp_arithmetic::traits::{checked_pow, One};
+use sp_runtime::{traits::CheckedMul, FixedPointNumber};
 use std::collections::HashMap;
 
 /// Structure that manages collateral and loan nft ids
@@ -113,8 +116,8 @@ pub fn init_loans_for_pool(
 /// 	* advance_rate: 90%,
 ///     * probability_of_default: 5%,
 ///     * loss_given_default: 50%,
-/// 	* discount_rate: 4% ,
-pub fn issue_default_loan(
+/// 	* discount_rate: 2% ,
+pub fn issue_default_bullet_loan(
 	owner: AccountId,
 	pool_id: PoolId,
 	amount: Balance,
@@ -126,7 +129,7 @@ pub fn issue_default_loan(
 		rate_from_percent(5),
 		rate_from_percent(50),
 		Amount::from_inner(amount),
-		interest_rate_per_sec(rate_from_percent(4))
+		interest_rate_per_sec(rate_from_percent(2))
 			.expect("Essential: Creating rate per sec must not fail."),
 		maturity,
 	));
@@ -242,4 +245,54 @@ pub fn mint_nft_call(class: ClassId, instance: InstanceId, owner: AccountId) -> 
 		instance,
 		owner: Address::Id(owner),
 	})
+}
+
+pub fn update_nav(pool_id: PoolId) -> Call {
+	Call::Loans(LoansCall::update_nav { pool_id })
+}
+
+/// Calculates the expected repayment amount for a given
+/// principal amount, rate and period.
+/// Compounding happens every second.
+///
+/// Rate should be in percent. E.g. 15 -> 15%APR
+///
+/// Logic: n = second-per-year
+/// * principal * (1 + r/n)^(end-start)
+pub fn calculate_expected_repayment_amount(
+	borrowed_amount: Balance,
+	apr: u64,
+	origination_date: Moment,
+	maturity_date: Moment,
+) -> Balance {
+	let interst_rate_per_sec =
+		interest_rate_per_sec(rate_from_percent(apr)).expect("Rate per sec works");
+	let delta: usize = maturity_date
+		.checked_sub(origination_date)
+		.expect("End must be greater start of period")
+		.try_into()
+		.expect("Must run on 64 bit machine.");
+	let rate = checked_pow(interst_rate_per_sec, delta).expect("Power must not overflow");
+	rate.checked_mul_int(borrowed_amount)
+		.expect("Overflow in multiplication")
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+	use crate::pools::utils::time::START_DATE;
+	use crate::pools::utils::tokens::DECIMAL_BASE_12;
+	use runtime_common::SECONDS_PER_YEAR;
+
+	#[test]
+	fn calculate_expected_repayment_amount_works() {
+		let borrowed_amount = 100_000 * DECIMAL_BASE_12;
+		let amount = calculate_expected_repayment_amount(
+			borrowed_amount,
+			20,
+			START_DATE,
+			START_DATE + SECONDS_PER_YEAR,
+		);
+		assert_eq!(amount, 122140275738556129);
+	}
 }

@@ -83,19 +83,18 @@ pub mod macros {
 					.expect("Decoding from chain data does not fail. qed"))
 				.map(|record| record.event)
 				.collect();
-			let mut msg = "Failed asserting event clause of: ".to_owned();
 
 			$(
 				let matches = |event: &Event| {
-					match *event {
+					match event.clone() {
 						$pattern $(if extra_guards!($extra) )? => true,
 						_ => false
 					}
 				};
-
 				let mut matched = events.clone();
 				matched.retain(|event| matches(event));
-				assert!(matched.len() == extra_counts!($pattern $(,$extra)?));
+				let c = concat!("Failed asserting event clause of: ", stringify!($pattern $(,$extra)?));
+				assert!(matched.len() == extra_counts!($pattern $(,$extra)?), "{}", c);
 			)+
 
 		}};
@@ -196,7 +195,7 @@ pub mod macros {
 	/// );
 	/// ```
 	macro_rules! run {
-		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);*) => {{
+		($env:expr, $chain:expr, $call:ty, $state:expr, $($sender:expr => $($calls:expr),+);* $(;)?) => {{
 				use codec::Encode as _;
 
 				trait CallAssimilator {
@@ -615,30 +614,36 @@ impl TestEnv {
 }
 
 #[allow(unused)]
-pub fn test_env_default(manager: &TaskManager) -> TestEnv {
-	test_env(manager, None, None)
+pub fn test_env_default<const BLOCK_TIME: u64>(manager: &TaskManager) -> TestEnv {
+	test_env::<BLOCK_TIME>(manager, None, None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_relay_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
-	test_env(manager, Some(storage), None)
+pub fn test_env_with_relay_storage<const BLOCK_TIME: u64>(
+	manager: &TaskManager,
+	storage: Storage,
+) -> TestEnv {
+	test_env::<BLOCK_TIME>(manager, Some(storage), None)
 }
 
 #[allow(unused)]
-pub fn test_env_with_centrifuge_storage(manager: &TaskManager, storage: Storage) -> TestEnv {
-	test_env(manager, None, Some(storage))
+pub fn test_env_with_centrifuge_storage<const BLOCK_TIME: u64>(
+	manager: &TaskManager,
+	storage: Storage,
+) -> TestEnv {
+	test_env::<BLOCK_TIME>(manager, None, Some(storage))
 }
 
 #[allow(unused)]
-pub fn test_env_with_both_storage(
+pub fn test_env_with_both_storage<const BLOCK_TIME: u64>(
 	manager: &TaskManager,
 	relay_storage: Storage,
 	centrifuge_storage: Storage,
 ) -> TestEnv {
-	test_env(manager, Some(relay_storage), Some(centrifuge_storage))
+	test_env::<BLOCK_TIME>(manager, Some(relay_storage), Some(centrifuge_storage))
 }
 
-fn test_env(
+fn test_env<const BLOCK_TIME: u64>(
 	manager: &TaskManager,
 	relay_storage: Option<Storage>,
 	centrifuge_storage: Option<Storage>,
@@ -646,7 +651,7 @@ fn test_env(
 	logs::init_logs();
 	// Build relay-chain builder
 	let relay = {
-		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Relay - StartUp");
+		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Relay - StartUp");
 		let mut provider = EnvProvider::<
 			RelayBlock,
 			RelayRtApi,
@@ -679,6 +684,13 @@ fn test_env(
 		let client = Arc::new(client);
 		let clone_client = client.clone();
 
+		// Initialize timestamp instance
+		FudgeInherentTimestamp::new(
+			0,
+			std::time::Duration::from_secs(BLOCK_TIME / 2),
+			Some(std::time::Duration::from_secs(START_DATE)),
+		);
+
 		let cidp = Box::new(move |parent: H256, ()| {
 			let client = clone_client.clone();
 			let parent_header = client
@@ -690,16 +702,12 @@ fn test_env(
 				let uncles =
 					sc_consensus_uncles::create_uncles_inherent_data_provider(&*client, parent)?;
 
-				let timestamp = FudgeInherentTimestamp::new(
-					0,
-					std::time::Duration::from_secs(6),
-					Some(std::time::Duration::from_millis(START_DATE)),
-				);
-
+				let timestamp =
+					FudgeInherentTimestamp::get_instance(0).expect("Instance is initialised. qed");
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(6),
+						std::time::Duration::from_secs(BLOCK_TIME / 2),
 					);
 
 				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
@@ -730,7 +738,7 @@ fn test_env(
 
 	// Build parachain-builder
 	let centrifuge = {
-		sp_tracing::enter_span!(sp_tracing::Level::DEBUG, "Centrifuge - StartUp");
+		sp_tracing::enter_span!(sp_tracing::Level::INFO, "Centrifuge - StartUp");
 		let mut provider =
 			EnvProvider::<CentrifugeBlock, CentrifugeRtApi, WasmExecutor<CentrifugeHF>>::with_code(
 				CentrifugeCode.unwrap(),
@@ -757,20 +765,23 @@ fn test_env(
 		let client = Arc::new(client);
 		let para_id = ParaId::from(PARA_ID);
 		let inherent_builder = relay.inherent_builder(para_id.clone());
+		// Initialize timestamp instance
+		FudgeInherentTimestamp::new(
+			1,
+			std::time::Duration::from_secs(BLOCK_TIME),
+			Some(std::time::Duration::from_secs(START_DATE)),
+		);
 
 		let cidp = Box::new(move |_parent: H256, ()| {
 			let inherent_builder_clone = inherent_builder.clone();
 			async move {
-				let timestamp = FudgeInherentTimestamp::new(
-					1,
-					std::time::Duration::from_secs(12),
-					Some(std::time::Duration::from_millis(START_DATE)),
-				);
+				let timestamp =
+					FudgeInherentTimestamp::get_instance(1).expect("Instance is initialized. qed");
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(12),
+						std::time::Duration::from_secs(BLOCK_TIME),
 					);
 				let inherent = inherent_builder_clone
 					.parachain_inherent()
@@ -807,4 +818,27 @@ pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 	}
 
 	Ok(())
+}
+
+/// Pass n_blocks on the parachain-side and run function on
+/// centrifuge state after each block.
+///
+/// Typically, this can be used to assert some state info after each block
+pub fn pass_n_assert<F>(env: &mut TestEnv, n: u64, assert: F) -> Result<(), ()>
+where
+	F: FnMut() -> () + Copy,
+{
+	for _ in 0..n {
+		env.evolve()?;
+		env.with_state(Chain::Para(PARA_ID), assert)?;
+	}
+
+	Ok(())
+}
+
+/// Logs provided events as info
+pub fn log<Event: std::fmt::Debug>(events: Vec<Event>) {
+	for event in events {
+		tracing::event!(tracing::Level::INFO, ?event);
+	}
 }

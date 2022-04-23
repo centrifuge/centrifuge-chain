@@ -143,6 +143,10 @@ pub enum Keyring {
 	Eve,
 	Ferdie,
 	Custom(&'static str),
+	/// This variant will NOT use the normally used DEV-Seed but expect the
+	/// use to submit its own seed and we genrate a pair from there one
+	/// Good for testing with real accounts
+	OwnSeed(&'static str, Option<&'static str>),
 }
 
 impl Keyring {
@@ -165,6 +169,10 @@ impl Keyring {
 			Keyring::Eve => "Eve".to_owned(),
 			Keyring::Ferdie => "Ferdie".to_owned(),
 			Keyring::Custom(derivation_path) => derivation_path.to_owned(),
+			Keyring::OwnSeed(seed, pw_override) => {
+				return Pair::from_string(seed, pw_override)
+					.expect("one should know what he is doing when using this")
+			}
 		};
 
 		Pair::from_string(&format!("//{}", path.as_str()), None)
@@ -176,28 +184,26 @@ impl Keyring {
 	}
 
 	pub fn to_seed(self) -> String {
-		let path = match self {
-			Keyring::Admin => "Admin".to_owned(),
-			Keyring::TrancheInvestor(tranche_index) => format!("Tranche{}", tranche_index),
-			Keyring::Alice => "Alice".to_owned(),
-			Keyring::Bob => "Bob".to_owned(),
-			Keyring::Charlie => "Charlie".to_owned(),
-			Keyring::Dave => "Dave".to_owned(),
-			Keyring::Eve => "Eve".to_owned(),
-			Keyring::Ferdie => "Ferdie".to_owned(),
-			Keyring::Custom(derivation_path) => derivation_path.to_owned(),
+		use sp_core::crypto::DEV_PHRASE;
+
+		let mut dev_seed_derived = DEV_PHRASE.to_owned();
+
+		match self {
+			Keyring::Admin => dev_seed_derived.push_str("//Admin"),
+			Keyring::TrancheInvestor(tranche_index) => {
+				dev_seed_derived.push_str(format!("//Tranche{}", tranche_index).as_str())
+			}
+			Keyring::Alice => dev_seed_derived.push_str("//Alice"),
+			Keyring::Bob => dev_seed_derived.push_str("//Bob"),
+			Keyring::Charlie => dev_seed_derived.push_str("//Charlie"),
+			Keyring::Dave => dev_seed_derived.push_str("//Dave"),
+			Keyring::Eve => dev_seed_derived.push_str("//Eve"),
+			Keyring::Ferdie => dev_seed_derived.push_str("//Ferdie"),
+			Keyring::Custom(derivation_path) => dev_seed_derived.push_str(derivation_path),
+			Keyring::OwnSeed(seed, _) => return seed.to_owned(), // Password is not exposed here.
 		};
-		format!("//{}", path.as_str())
-	}
 
-	/// Create a crypto `Pair` from a numeric value.
-	pub fn numeric(idx: usize) -> Pair {
-		Pair::from_string(&format!("//{}", idx), None).expect("numeric values are known good; qed")
-	}
-
-	/// Get account id of a `numeric` account.
-	pub fn numeric_id(idx: usize) -> AccountId32 {
-		(*Self::numeric(idx).public().as_array_ref()).into()
+		dev_seed_derived
 	}
 }
 
@@ -222,23 +228,6 @@ impl std::fmt::Display for ParseKeyringError {
 	}
 }
 
-impl std::str::FromStr for Keyring {
-	type Err = ParseKeyringError;
-
-	fn from_str(s: &str) -> Result<Self, <Self as std::str::FromStr>::Err> {
-		match s {
-			"alice" => Ok(Keyring::Alice),
-			"bob" => Ok(Keyring::Bob),
-			"charlie" => Ok(Keyring::Charlie),
-			"dave" => Ok(Keyring::Dave),
-			"eve" => Ok(Keyring::Eve),
-			"ferdie" => Ok(Keyring::Ferdie),
-			"admin" => Ok(Keyring::Admin),
-			_ => Err(ParseKeyringError),
-		}
-	}
-}
-
 /// Returns a Vector of default accounts
 ///
 /// Accounts:
@@ -249,6 +238,7 @@ impl std::str::FromStr for Keyring {
 /// * Keyring::Charlie
 /// * Keyring::Dave
 /// * Keyring::Eve
+/// * Keyring::TrancheInvestor(0)
 /// * Keyring::TrancheInvestor(1)
 /// * Keyring::TrancheInvestor(2)
 /// * Keyring::TrancheInvestor(3)
@@ -298,7 +288,6 @@ impl std::str::FromStr for Keyring {
 /// * Keyring::TrancheInvestor(47)
 /// * Keyring::TrancheInvestor(48)
 /// * Keyring::TrancheInvestor(49)
-/// * Keyring::TrancheInvestor(50)
 pub fn default_accounts() -> Vec<Keyring> {
 	let mut standard = vec![
 		Keyring::Admin,
@@ -316,6 +305,7 @@ pub fn default_accounts() -> Vec<Keyring> {
 /// Returns a Vector of default investor accounts
 ///
 /// Accounts:
+/// * Keyring::TrancheInvestor(0)
 /// * Keyring::TrancheInvestor(1)
 /// * Keyring::TrancheInvestor(2)
 /// * Keyring::TrancheInvestor(3)
@@ -365,60 +355,11 @@ pub fn default_accounts() -> Vec<Keyring> {
 /// * Keyring::TrancheInvestor(47)
 /// * Keyring::TrancheInvestor(48)
 /// * Keyring::TrancheInvestor(49)
-/// * Keyring::TrancheInvestor(50)
 pub fn default_investors() -> Vec<Keyring> {
-	vec![
-		Keyring::TrancheInvestor(1),
-		Keyring::TrancheInvestor(2),
-		Keyring::TrancheInvestor(3),
-		Keyring::TrancheInvestor(4),
-		Keyring::TrancheInvestor(5),
-		Keyring::TrancheInvestor(6),
-		Keyring::TrancheInvestor(7),
-		Keyring::TrancheInvestor(8),
-		Keyring::TrancheInvestor(9),
-		Keyring::TrancheInvestor(10),
-		Keyring::TrancheInvestor(11),
-		Keyring::TrancheInvestor(12),
-		Keyring::TrancheInvestor(13),
-		Keyring::TrancheInvestor(14),
-		Keyring::TrancheInvestor(15),
-		Keyring::TrancheInvestor(16),
-		Keyring::TrancheInvestor(17),
-		Keyring::TrancheInvestor(18),
-		Keyring::TrancheInvestor(19),
-		Keyring::TrancheInvestor(20),
-		Keyring::TrancheInvestor(21),
-		Keyring::TrancheInvestor(22),
-		Keyring::TrancheInvestor(23),
-		Keyring::TrancheInvestor(24),
-		Keyring::TrancheInvestor(25),
-		Keyring::TrancheInvestor(26),
-		Keyring::TrancheInvestor(27),
-		Keyring::TrancheInvestor(28),
-		Keyring::TrancheInvestor(29),
-		Keyring::TrancheInvestor(30),
-		Keyring::TrancheInvestor(31),
-		Keyring::TrancheInvestor(32),
-		Keyring::TrancheInvestor(33),
-		Keyring::TrancheInvestor(34),
-		Keyring::TrancheInvestor(35),
-		Keyring::TrancheInvestor(36),
-		Keyring::TrancheInvestor(37),
-		Keyring::TrancheInvestor(38),
-		Keyring::TrancheInvestor(39),
-		Keyring::TrancheInvestor(40),
-		Keyring::TrancheInvestor(41),
-		Keyring::TrancheInvestor(42),
-		Keyring::TrancheInvestor(43),
-		Keyring::TrancheInvestor(44),
-		Keyring::TrancheInvestor(45),
-		Keyring::TrancheInvestor(46),
-		Keyring::TrancheInvestor(47),
-		Keyring::TrancheInvestor(48),
-		Keyring::TrancheInvestor(49),
-		Keyring::TrancheInvestor(50),
-	]
+	(0..50)
+		.into_iter()
+		.map(|id| Keyring::TrancheInvestor(id))
+		.collect()
 }
 
 impl From<Keyring> for AccountId32 {
