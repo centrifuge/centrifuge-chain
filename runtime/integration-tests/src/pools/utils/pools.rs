@@ -28,7 +28,7 @@ use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheLoc, TrancheType};
-use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
+use runtime_common::{AccountId, Balance, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
 /// Creates the necessary calls for initialising a pool.

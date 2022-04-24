@@ -22,7 +22,7 @@ use pallet_loans::{
 	Call as LoansCall,
 };
 use pallet_uniques::Call as UniquesCall;
-use runtime_common::{AccountId, ClassId, InstanceId, PoolId};
+use runtime_common::{AccountId, ClassId, InstanceId};
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_runtime::{traits::CheckedMul, FixedPointNumber};
 use std::collections::HashMap;
