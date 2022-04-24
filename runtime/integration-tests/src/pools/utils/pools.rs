@@ -287,19 +287,19 @@ pub fn create_pool_call(
 	})
 }
 
-pub fn invest_order_call(pool_id: PoolId, index: TrancheIndex, amount: Balance) -> Call {
+pub fn invest_order_call(pool_id: PoolId, index: TrancheIndex, new_order: Balance) -> Call {
 	Call::Pools(PoolsCall::update_invest_order {
 		pool_id,
 		tranche_loc: TrancheLoc::Index(index),
-		amount,
+		new_order,
 	})
 }
 
-pub fn redeem_order_call(pool_id: PoolId, index: TrancheIndex, amount: Balance) -> Call {
+pub fn redeem_order_call(pool_id: PoolId, index: TrancheIndex, new_order: Balance) -> Call {
 	Call::Pools(PoolsCall::update_redeem_order {
 		pool_id,
 		tranche_loc: TrancheLoc::Index(index),
-		amount,
+		new_order,
 	})
 }
 
