@@ -420,16 +420,16 @@ fn epoch() {
 		let borrower = 3;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -656,16 +656,16 @@ fn submission_period() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -862,16 +862,16 @@ fn execute_info_removed_after_epoch_execute() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -967,16 +967,16 @@ fn collect_tranche_tokens() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1098,9 +1098,9 @@ fn invalid_tranche_id_is_err() {
 		let senior_investor = Origin::signed(1);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1142,9 +1142,9 @@ fn updating_with_same_amount_is_err() {
 		let senior_investor = Origin::signed(1);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1247,9 +1247,9 @@ fn updating_orders_updates_epoch() {
 		let pool_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			pool_id,
+			PermissionScope::Pool(pool_id),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1297,9 +1297,9 @@ fn no_order_is_err() {
 		let pool_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			pool_id,
+			PermissionScope::Pool(pool_id),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1339,9 +1339,9 @@ fn collecting_over_last_exec_epoch_is_err() {
 		let pool_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			pool_id,
+			PermissionScope::Pool(pool_id),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1663,16 +1663,16 @@ fn triger_challange_period_with_zero_solution() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1773,16 +1773,16 @@ fn min_challenge_time_is_respected() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -1886,16 +1886,16 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
@@ -2104,16 +2104,16 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			0,
+			PermissionScope::Pool(0),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX),
+			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
 		)
 		.unwrap();
 

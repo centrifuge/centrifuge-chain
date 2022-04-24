@@ -14,6 +14,7 @@
 use crate::chain::centrifuge::{Address, Amount, Balance, Call, Rate};
 use crate::pools::utils::time::Moment;
 use crate::pools::utils::tokens::rate_from_percent;
+use common_types::PoolId;
 use pallet_loans::{
 	loan_type::{BulletLoan, LoanType},
 	math::interest_rate_per_sec,

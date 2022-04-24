@@ -32,7 +32,6 @@ use sp_io::TestExternalities;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	transaction_validity::TransactionPriority,
 	AccountId32,
 };
 

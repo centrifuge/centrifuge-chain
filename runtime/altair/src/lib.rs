@@ -55,7 +55,11 @@ use constants::currency::*;
 use xcm_executor::XcmExecutor;
 
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use common_types::{
+	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	TimeProvider,
+};
+
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
@@ -826,12 +830,12 @@ parameter_types! {
 
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
-	type Location = PoolId;
-	type Role = PoolRole<TrancheId, Moment>;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
+	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxRolesPerLocation = MaxRolesPerPool;
+	type MaxRolesPerScope = MaxRolesPerPool;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Self>;
 }
 
@@ -839,25 +843,29 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<PoolRole<TrancheId, Moment>>,
-		PoolId,
-		PoolRole<TrancheId, Moment>,
+		Option<Role<TrancheId, Moment>>,
+		PermissionScope<PoolId, CurrencyId>,
+		Role<TrancheId, Moment>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<PoolRole<TrancheId, Moment>>,
-			PoolId,
-			PoolRole<TrancheId, Moment>,
+			Option<Role<TrancheId, Moment>>,
+			PermissionScope<PoolId, CurrencyId>,
+			Role<TrancheId, Moment>,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				PoolRole::PoolAdmin => true,
-				PoolRole::MemberListAdmin => match *role {
-					PoolRole::TrancheInvestor(_, _) => true,
+				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
+					_ => false,
+				},
+				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => match *role {
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => true,
 					_ => false,
 				},
 				_ => false,

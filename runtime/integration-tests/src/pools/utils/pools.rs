@@ -23,7 +23,7 @@ use crate::pools::utils::{
 };
 use codec::Encode;
 use common_traits::Permissions as PermissionsT;
-use common_types::{CurrencyId, PoolRole};
+use common_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
@@ -258,16 +258,16 @@ pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: Tranche
 
 /// Creates a permission xt with the given input
 pub fn permission_call(
-	with_role: PoolRole,
+	with_role: PoolRole<TrancheId, Moment>,
 	to: AccountId,
-	location: PoolId,
-	role: PoolRole,
+	pool_id: PoolId,
+	role: PoolRole<TrancheId, Moment>,
 ) -> Call {
 	Call::Permissions(PermissionsCall::add {
-		with_role,
 		to,
-		location,
-		role,
+		scope: PermissionScope::Pool(pool_id),
+		with_role: Role::PoolRole(with_role),
+		role: Role::PoolRole(role),
 	})
 }
 

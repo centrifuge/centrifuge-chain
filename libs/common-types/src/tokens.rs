@@ -11,6 +11,14 @@ use sp_std::vec::Vec;
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum PermissionedCurrency {
+	// TODO: Tranche variant from CurrencyId should be moved in here.
+}
+
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	Native,
 	Usd,
@@ -21,6 +29,8 @@ pub enum CurrencyId {
 
 	/// Karura Dollar
 	KUSD,
+
+	Permissioned(PermissionedCurrency),
 }
 
 impl TokenMetadata for CurrencyId {
@@ -28,6 +38,7 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"Native currency".to_vec(),
 			CurrencyId::Usd => b"USD stable coin".to_vec(),
+			CurrencyId::Permissioned(_) => b"Permissioned currency".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => format_runtime_string!(
 				"Tranche token of pool {} and tranche {:?}",
 				pool_id,
@@ -44,6 +55,7 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"CFG".to_vec(),
 			CurrencyId::Usd => b"USD".to_vec(),
+			CurrencyId::Permissioned(_) => b"PERM".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				format_runtime_string!("TT:{}:{:?}", pool_id, tranche_id)
 					.as_ref()
@@ -57,6 +69,7 @@ impl TokenMetadata for CurrencyId {
 	fn decimals(&self) -> u8 {
 		match self {
 			CurrencyId::Native => 18,
+			CurrencyId::Permissioned(_) => 12,
 			CurrencyId::Tranche(_, _) => 27,
 			CurrencyId::Usd | CurrencyId::KUSD | CurrencyId::KSM => 12,
 		}
