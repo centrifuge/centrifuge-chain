@@ -112,7 +112,7 @@ async fn single_tranche_investor_single_loan() {
 			if [id == pool_id && who == Keyring::TrancheInvestor(1).to_account_id()],
 	);
 
-	env::pass_n_assert(&mut env, 2 * time::blocks_per_day::<BLOCK_TIME>(), || {
+	env::pass_n_assert(&mut env, 30 * time::blocks_per_day::<BLOCK_TIME>(), || {
 		let prices = pools::with_ext::update_nav_and_get_tranche_prices(pool_id);
 		assert_eq!(
 			vec![
