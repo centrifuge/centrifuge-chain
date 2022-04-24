@@ -173,7 +173,7 @@ async fn single_tranche_investor_single_loan() {
 
 	assert_eq!(
 		vec![
-			Rate::from_inner(1024576162005238300000000000),
+			Rate::from_inner(1024443376017061500000000000),
 			Rate::one(),
 			Rate::one(),
 			Rate::one(),
