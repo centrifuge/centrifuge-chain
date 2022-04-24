@@ -68,6 +68,6 @@ async fn create_init_and_price() {
 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == 0],
 		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
 			if [id == 0 && loan == InstanceId(1) && asset == Asset(4294967296, InstanceId(1))],
-		Event::Loans(pallet_loans::Event::Priced(id, loan)) if [id == 0 && loan == InstanceId(1)],
+		Event::Loans(pallet_loans::Event::Priced(id, loan, ..)) if [id == 0 && loan == InstanceId(1)],
 	);
 }

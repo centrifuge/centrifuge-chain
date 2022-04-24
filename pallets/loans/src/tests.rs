@@ -24,13 +24,12 @@ use crate::test_utils::{
 	assert_last_event, create, create_nft_class, expect_asset_owner, expect_asset_to_be_burned,
 	initialise_test_pool, mint_nft,
 };
-use common_types::CurrencyId;
-use common_types::PoolLocator;
+use common_types::{CurrencyId, PoolId, PoolLocator};
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use runtime_common::{Amount, Balance, ClassId, InstanceId, PoolId, Rate, CFG as USD};
+use runtime_common::{Amount, Balance, ClassId, InstanceId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
@@ -71,7 +70,7 @@ where
 		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
 		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>
-		+ pallet_permissions::Config<Location = PoolId, Role = PoolRole>,
+		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
 {
 	let pool_admin = PoolAdmin::get();
@@ -86,17 +85,17 @@ where
 	// add borrower role and price admin role
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
-		PoolRole::PoolAdmin,
+		Role::PoolRole(PoolRole::PoolAdmin),
 		borrower,
-		pool_id,
-		PoolRole::Borrower,
+		PermissionScope::Pool(pool_id),
+		Role::PoolRole(PoolRole::Borrower),
 	));
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
 		Origin::signed(pool_admin),
-		PoolRole::PoolAdmin,
+		Role::PoolRole(PoolRole::PoolAdmin),
 		borrower,
-		pool_id,
-		PoolRole::PricingAdmin,
+		PermissionScope::Pool(pool_id),
+		Role::PoolRole(PoolRole::PricingAdmin),
 	));
 	let pr_pool_id: PoolIdOf<T> = pool_id.into();
 	let loan_nft_class_id =
@@ -194,7 +193,7 @@ fn price_test_loan<T>(
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
-		LoanEvent::Priced(pool_id, loan_id) => Some((pool_id, loan_id)),
+		LoanEvent::Priced(pool_id, loan_id, _, _) => Some((pool_id, loan_id)),
 		_ => None,
 	}
 	.expect("must be a Loan issue priced event");
@@ -626,10 +625,10 @@ macro_rules! test_borrow_loan {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				for group in vec![(3, 0), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1032,10 +1031,10 @@ macro_rules! test_pool_nav {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				// write off the loan and check for updated nav
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
@@ -1156,10 +1155,10 @@ fn test_add_write_off_groups() {
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
 			assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 				Origin::signed(pool_admin),
-				PoolRole::PoolAdmin,
+				Role::PoolRole(PoolRole::PoolAdmin),
 				risk_admin,
-				pool_id,
-				PoolRole::RiskAdmin,
+				PermissionScope::Pool(pool_id),
+				Role::PoolRole(PoolRole::RiskAdmin),
 			));
 
 			// fetch write off groups
@@ -1240,10 +1239,10 @@ macro_rules! test_write_off_maturity_loan {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
 					let res = Loans::add_write_off_group(
@@ -1332,10 +1331,10 @@ macro_rules! test_admin_write_off_loan_type {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 
 				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
@@ -1453,10 +1452,10 @@ macro_rules! test_close_written_off_loan_type {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1635,10 +1634,10 @@ macro_rules! write_off_overflow {
 				let risk_admin = RiskAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
-					PoolRole::PoolAdmin,
+					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
-					pool_id,
-					PoolRole::RiskAdmin,
+					PermissionScope::Pool(pool_id),
+					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				//for group in vec![(3, 10), (313503982334601, 20)] {
 				for group in vec![(3, 10), (313503982334601, 15), (10, 20), (10, 30)] {

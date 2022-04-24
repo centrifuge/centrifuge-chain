@@ -177,19 +177,19 @@ where
 	make_free_cfg_balance::<T>(borrower::<T>());
 	make_free_cfg_balance::<T>(risk_admin::<T>());
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		pool_id.into(),
+		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
-		PoolRole::Borrower
+		Role::PoolRole(PoolRole::Borrower)
 	));
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		pool_id.into(),
+		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
-		PoolRole::PricingAdmin
+		Role::PoolRole(PoolRole::PricingAdmin)
 	));
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
-		pool_id.into(),
+		PermissionScope::Pool(pool_id.into()),
 		risk_admin::<T>(),
-		PoolRole::RiskAdmin
+		Role::PoolRole(PoolRole::RiskAdmin)
 	));
 
 	// initialise pool on loan
@@ -348,7 +348,7 @@ benchmarks! {
 		let loan_id: T::LoanId = 1u128.into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced(pool_id, loan_id).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced(pool_id, loan_id, rp, loan_type).into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan.loan_type, loan_type);
 		assert_eq!(loan.status, LoanStatus::Active);

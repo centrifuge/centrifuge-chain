@@ -59,99 +59,144 @@ fn permission_roles_work() {
 
 	// Updating works only when increasing permissions
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(into_tranche_id(30), 10))
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
+			into_tranche_id(30),
+			10
+		)))
 		.is_ok());
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(into_tranche_id(30), 9))
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
+			into_tranche_id(30),
+			9
+		)))
 		.is_err());
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(into_tranche_id(30), 11))
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
+			into_tranche_id(30),
+			11
+		)))
 		.is_ok());
 
 	// Test zero-tranche handling
-	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
+	assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(0),
+		UNION
+	))));
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			MinDelay::get()
-		))
+		)))
 		.is_ok());
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(0),
+		UNION
+	))));
 
 	// Removing before MinDelay fails
 	assert!(roles
-		.rm(PoolRole::TrancheInvestor(into_tranche_id(0), 0))
+		.rm(Role::PoolRole(PoolRole::TrancheInvestor(
+			into_tranche_id(0),
+			0
+		)))
 		.is_err());
 	Now::pass(1);
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(0),
+		UNION
+	))));
 	assert!(roles
-		.rm(PoolRole::TrancheInvestor(
+		.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			MinDelay::get() - 1
-		))
+		)))
 		.is_err());
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(0),
+		UNION
+	))));
 	Now::set(0);
 
 	// Removing after MinDelay works (i.e. this is after min_delay the account will be invalid)
 	assert!(roles
-		.rm(PoolRole::TrancheInvestor(
+		.rm(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(0),
 			MinDelay::get()
-		))
+		)))
 		.is_ok());
 	Now::pass(6);
-	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(0), UNION)));
+	assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(0),
+		UNION
+	))));
 	Now::set(0);
 
 	// Multiple tranches work
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(1),
 			MinDelay::get()
-		))
+		)))
 		.is_ok());
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(2),
 			MinDelay::get()
-		))
+		)))
 		.is_ok());
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(1), UNION)));
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(2), UNION)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(1),
+		UNION
+	))));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(2),
+		UNION
+	))));
 
 	// Adding roles works normally
-	assert!(roles.add(PoolRole::LiquidityAdmin).is_ok());
-	assert!(roles.add(PoolRole::MemberListAdmin).is_ok());
-	assert!(roles.exists(PoolRole::LiquidityAdmin));
-	assert!(roles.exists(PoolRole::MemberListAdmin));
+	assert!(roles.add(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
+	assert!(roles.add(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+	assert!(roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
 
 	// Role exists for as long as permission is given
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(8),
 			MinDelay::get() + 2
-		))
+		)))
 		.is_ok());
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(8), UNION)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(8),
+		UNION
+	))));
 	Now::pass(MinDelay::get() + 2);
-	assert!(roles.exists(PoolRole::TrancheInvestor(into_tranche_id(8), UNION)));
+	assert!(roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(8),
+		UNION
+	))));
 	Now::pass(1);
-	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(8), UNION)));
+	assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(8),
+		UNION
+	))));
 	Now::set(0);
 
 	// Role must be added for at least min_delay
 	assert!(roles
-		.add(PoolRole::TrancheInvestor(
+		.add(Role::PoolRole(PoolRole::TrancheInvestor(
 			into_tranche_id(5),
 			MinDelay::get() - 1
-		))
+		)))
 		.is_err());
-	assert!(!roles.exists(PoolRole::TrancheInvestor(into_tranche_id(5), UNION)));
+	assert!(!roles.exists(Role::PoolRole(PoolRole::TrancheInvestor(
+		into_tranche_id(5),
+		UNION
+	))));
 
 	// Removing roles work normally for Non-TrancheInvestor roles
-	assert!(roles.rm(PoolRole::LiquidityAdmin).is_ok());
-	assert!(roles.rm(PoolRole::MemberListAdmin).is_ok());
-	assert!(!roles.exists(PoolRole::LiquidityAdmin));
-	assert!(!roles.exists(PoolRole::MemberListAdmin));
+	assert!(roles.rm(Role::PoolRole(PoolRole::LiquidityAdmin)).is_ok());
+	assert!(roles.rm(Role::PoolRole(PoolRole::MemberListAdmin)).is_ok());
+	assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
+	assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
 }

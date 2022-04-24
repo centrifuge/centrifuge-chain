@@ -14,7 +14,7 @@ use super::*;
 use crate as pallet_permissions;
 use crate::Pallet as PermissionsPallet;
 use common_traits::Permissions as TPermissions;
-use common_types::PoolRole;
+use common_types::{PoolRole, Role};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::assert_ok;
 use frame_system::RawOrigin;
@@ -38,14 +38,14 @@ benchmarks! {
 	where_clause {
 		where
 		<T as pallet_permissions::Config>::Role: BenchRole + Clone,
-		<T as pallet_permissions::Config>::Location: Default + Clone,
+		<T as pallet_permissions::Config>::Scope: Default + Clone,
 	}
 
 	add_as_admin {
 		let acc = admin::<T>(0);
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
-		let pool_id: T::Location = Default::default();
+		let pool_id: T::Scope = Default::default();
 	}:add(RawOrigin::Root, with_role.clone(), acc.clone(), pool_id.clone(), role.clone())
 	verify {
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id, acc, role));
@@ -56,7 +56,7 @@ benchmarks! {
 		let acc = admin::<T>(0);
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
-		let pool_id: T::Location = Default::default();
+		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
@@ -74,7 +74,7 @@ benchmarks! {
 		let acc = admin::<T>(0);
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
-		let pool_id: T::Location = Default::default();
+		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
@@ -88,7 +88,7 @@ benchmarks! {
 		let acc = admin::<T>(0);
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
-		let pool_id: T::Location = Default::default();
+		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
@@ -109,7 +109,7 @@ benchmarks! {
 		let acc = admin::<T>(0);
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
-		let pool_id: T::Location = Default::default();
+		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
@@ -123,7 +123,7 @@ benchmarks! {
 		let acc = admin::<T>(0);
 		let with_role = T::Role::editor();
 		let role = T::Role::editor();
-		let pool_id: T::Location = Default::default();
+		let pool_id: T::Scope = Default::default();
 		let res = PermissionsPallet::<T>::add(RawOrigin::Root.into(), with_role.clone(), acc.clone(), pool_id.clone(), role.clone());
 		assert_ok!(res);
 		assert!(<PermissionsPallet::<T> as TPermissions<T::AccountId>>::has(pool_id.clone(), acc.clone(), role.clone()));
@@ -144,13 +144,13 @@ pub trait BenchRole {
 	fn user() -> Self;
 }
 
-impl BenchRole for PoolRole {
+impl BenchRole for Role {
 	fn editor() -> Self {
-		Self::PoolAdmin
+		Self::PoolRole(PoolRole::PoolAdmin)
 	}
 
 	fn user() -> Self {
-		Self::Borrower
+		Self::PoolRole(PoolRole::Borrower)
 	}
 }
 

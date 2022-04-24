@@ -23,12 +23,12 @@ use crate::pools::utils::{
 };
 use codec::Encode;
 use common_traits::Permissions as PermissionsT;
-use common_types::{CurrencyId, PoolRole};
+use common_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
 use pallet_pools::{Call as PoolsCall, TrancheIndex, TrancheInput, TrancheType};
-use runtime_common::{AccountId, Balance, PoolId, Rate, TrancheId};
+use runtime_common::{AccountId, Balance, Rate, TrancheId};
 use sp_runtime::{traits::One, FixedPointNumber, Perquintill};
 
 /// Creates a default pool.
@@ -313,16 +313,16 @@ pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: Tranche
 
 /// Creates a permission xt with the given input
 pub fn permission_call(
-	with_role: PoolRole,
+	with_role: PoolRole<TrancheId, Moment>,
 	to: AccountId,
-	location: PoolId,
-	role: PoolRole,
+	pool_id: PoolId,
+	role: PoolRole<TrancheId, Moment>,
 ) -> Call {
 	Call::Permissions(PermissionsCall::add {
-		with_role,
 		to,
-		location,
-		role,
+		scope: PermissionScope::Pool(pool_id),
+		with_role: Role::PoolRole(with_role),
+		role: Role::PoolRole(role),
 	})
 }
 
@@ -420,9 +420,13 @@ mod with_ext {
 	/// Add a permission for who, at pool with role.
 	///
 	/// **Needs: Mut Externalities to persist**
-	pub fn permission_for(who: AccountId, pool: PoolId, role: PoolRole) {
-		<Permissions as PermissionsT<AccountId>>::add(pool, who, role)
-			.expect("ESSENTIAL: Adding a permission for a role should not fail.");
+	pub fn permission_for(who: AccountId, pool_id: PoolId, role: PoolRole<TrancheId, Moment>) {
+		<Permissions as PermissionsT<AccountId>>::add(
+			PermissionScope::Pool(pool_id),
+			who,
+			Role::PoolRole(role),
+		)
+		.expect("ESSENTIAL: Adding a permission for a role should not fail.");
 	}
 
 	/// Adds all roles that `PoolRole`s currently provides to the Keyring::Admin account

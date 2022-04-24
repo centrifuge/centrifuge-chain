@@ -18,9 +18,9 @@
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
 use common_traits::PoolUpdateGuard;
-use common_types::CurrencyId;
-use common_types::PoolLocator;
-use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use common_types::{
+	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
+};
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
@@ -31,7 +31,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
+	Amount, Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -162,6 +162,8 @@ parameter_types! {
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
+
+	pub const ZeroDeposit: Balance = 0;
 }
 
 impl pallet_pools::Config for MockRuntime {
@@ -174,6 +176,7 @@ impl pallet_pools::Config for MockRuntime {
 	type TrancheId = [u8; 16];
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
+	type Currency = Balances;
 	type Tokens = Tokens;
 	type LoanAmount = Amount;
 	type NAV = Loans;
@@ -191,6 +194,7 @@ impl pallet_pools::Config for MockRuntime {
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
+	type PoolDeposit = ZeroDeposit;
 	type WeightInfo = ();
 	type TrancheWeight = runtime_common::TrancheWeight;
 	type UpdateGuard = UpdateGuard;
@@ -274,12 +278,12 @@ parameter_types! {
 }
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
-	type Location = u64;
-	type Role = PoolRole;
+	type Scope = PermissionScope<u64, CurrencyId>;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type MaxRolesPerLocation = MaxRoles;
+	type MaxRolesPerScope = MaxRoles;
 	type WeightInfo = ();
 }
 
@@ -299,6 +303,7 @@ impl pallet_loans::Config for MockRuntime {
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
+	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;

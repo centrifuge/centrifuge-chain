@@ -28,10 +28,14 @@ mod tranche;
 pub mod weights;
 
 use codec::HasCompact;
-use common_traits::Permissions;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken};
-use common_types::{Moment, PoolLocator, PoolRole};
-use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
+use common_traits::{
+	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
+};
+use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
+use frame_support::traits::{
+	fungibles::{Inspect, Mutate, Transfer},
+	ReservableCurrency,
+};
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
@@ -184,6 +188,13 @@ pub struct OutstandingCollections<Balance> {
 	pub remaining_redeem_token: Balance,
 }
 
+/// Information about the deposit that has been taken to create a pool
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
+pub struct PoolDepositInfo<AccountId, Balance> {
+	pub depositor: AccountId,
+	pub deposit: Balance,
+}
+
 // Types to ease function signatures
 type PoolDetailsOf<T> = PoolDetails<
 	<T as Config>::CurrencyId,
@@ -203,6 +214,8 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::TrancheWeight,
 	<T as frame_system::Config>::BlockNumber,
 >;
+type PoolDepositOf<T> =
+	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -214,10 +227,8 @@ pub mod pallet {
 	use sp_runtime::ArithmeticError;
 	use sp_std::convert::TryInto;
 
-	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type Balance: Member
@@ -294,14 +305,16 @@ pub mod pallet {
 			Moment = Moment,
 		>;
 
+		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
+
 		type Tokens: Mutate<Self::AccountId>
 			+ Inspect<Self::AccountId, AssetId = Self::CurrencyId, Balance = Self::Balance>
 			+ Transfer<Self::AccountId>;
 
 		type Permission: Permissions<
 			Self::AccountId,
-			Location = Self::PoolId,
-			Role = PoolRole<Self::TrancheId, Moment>,
+			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
+			Role = Role<Self::TrancheId, Moment>,
 			Error = DispatchError,
 		>;
 
@@ -334,6 +347,9 @@ pub mod pallet {
 
 		/// Max number of Tranches
 		type MaxTranches: Get<u32>;
+
+		/// The amount that must be reserved to create a pool
+		type PoolDeposit: Get<Self::Balance>;
 
 		/// The origin permitted to create pools
 		type PoolCreateOrigin: EnsureOrigin<Self::Origin>;
@@ -383,8 +399,15 @@ pub mod pallet {
 	pub type EpochExecution<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::PoolId, EpochExecutionInfoOf<T>>;
 
-	// Pallets use events to inform users when important changes are made.
-	// https://substrate.dev/docs/en/knowledgebase/runtime/events
+	#[pallet::storage]
+	#[pallet::getter(fn account_deposits)]
+	pub type AccountDeposit<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn pool_deposits)]
+	pub type PoolDeposit<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDepositOf<T>>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -392,6 +415,8 @@ pub mod pallet {
 		Created(T::PoolId, T::AccountId),
 		/// A pool was updated. [pool]
 		Updated(T::PoolId),
+		/// The tranches were rebalanced.
+		Rebalanced(T::PoolId),
 		/// The max reserve was updated. [pool]
 		MaxReserveSet(T::PoolId),
 		/// Pool metadata was set. [pool, metadata]
@@ -410,13 +435,24 @@ pub mod pallet {
 			T::AccountId,
 			OutstandingCollections<T::Balance>,
 		),
-		/// An invest order was updated. [pool, tranche, account]
-		InvestOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
-		/// A redeem order was updated. [pool, tranche, account]
-		RedeemOrderUpdated(T::PoolId, T::TrancheId, T::AccountId),
+		/// An invest order was updated. [pool, tranche, account, old_order, new_order]
+		InvestOrderUpdated(
+			T::PoolId,
+			T::TrancheId,
+			T::AccountId,
+			T::Balance,
+			T::Balance,
+		),
+		/// A redeem order was updated. [pool, tranche, account, old_order, new_order]
+		RedeemOrderUpdated(
+			T::PoolId,
+			T::TrancheId,
+			T::AccountId,
+			T::Balance,
+			T::Balance,
+		),
 	}
 
-	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
 		/// A pool with this ID is already in use
@@ -507,6 +543,7 @@ pub mod pallet {
 		/// Returns an error if the requested pool ID is already in
 		/// use, or if the tranche configuration cannot be used.
 		#[pallet::weight(T::WeightInfo::create(tranches.len().try_into().unwrap_or(u32::MAX)))]
+		#[transactional]
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: T::AccountId,
@@ -516,6 +553,16 @@ pub mod pallet {
 			max_reserve: T::Balance,
 		) -> DispatchResult {
 			T::PoolCreateOrigin::ensure_origin(origin.clone())?;
+
+			// First we take a deposit.
+			// If we are coming from a signed origin, we take
+			// the deposit from them
+			// If we are coming from some internal origin
+			// (Democracy, Council, etc.) we assume that the
+			// parameters are vetted somehow and rely on the
+			// admin as our depositor.
+			let depositor = ensure_signed(origin).unwrap_or(admin.clone());
+			Self::take_deposit(depositor, pool_id)?;
 
 			// A single pool ID can only be used by one owner.
 			ensure!(!Pool::<T>::contains_key(pool_id), Error::<T>::PoolInUse);
@@ -561,7 +608,11 @@ pub mod pallet {
 					metadata: None,
 				},
 			);
-			T::Permission::add(pool_id, admin.clone(), PoolRole::PoolAdmin)?;
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				admin.clone(),
+				Role::PoolRole(PoolRole::PoolAdmin),
+			)?;
 			Self::deposit_event(Event::Created(pool_id, admin));
 			Ok(())
 		}
@@ -587,7 +638,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
 				BadOrigin
 			);
 
@@ -692,7 +747,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::PoolAdmin),
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::PoolAdmin)
+				),
 				BadOrigin
 			);
 
@@ -724,7 +783,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			ensure!(
-				T::Permission::has(pool_id, who.clone(), PoolRole::LiquidityAdmin),
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::LiquidityAdmin)
+				),
 				BadOrigin
 			);
 
@@ -756,12 +819,13 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_loc: TrancheLoc<T::TrancheId>,
-			amount: T::Balance,
+			new_order: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let tranche_id =
-				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
+			let (tranche_id, old_order) = Pool::<T>::try_mutate(
+				pool_id,
+				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 					let tranche_id = pool
 						.tranches
@@ -770,34 +834,45 @@ pub mod pallet {
 
 					ensure!(
 						T::Permission::has(
-							pool_id,
+							PermissionScope::Pool(pool_id),
 							who.clone(),
-							PoolRole::TrancheInvestor(tranche_id, Self::now())
+							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
 					);
 
-					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
-						let order = if let Some(order) = active_order {
-							order
-						} else {
-							*active_order = Some(UserOrder::default());
-							active_order.as_mut().expect("UserOrder now Some. qed.")
-						};
+					Order::<T>::try_mutate(
+						tranche_id,
+						&who,
+						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
+							let order = if let Some(order) = active_order {
+								order
+							} else {
+								*active_order = Some(UserOrder::default());
+								active_order.as_mut().expect("UserOrder now Some. qed.")
+							};
 
-						ensure!(
-							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.epoch.current,
-							Error::<T>::CollectRequired
-						);
+							let old_order = order.invest;
 
-						Self::do_update_invest_order(&who, pool, order, amount, pool_id, tranche_id)
-					})?;
+							ensure!(
+								order.invest.saturating_add(order.redeem) == Zero::zero()
+									|| order.epoch == pool.epoch.current,
+								Error::<T>::CollectRequired
+							);
 
-					Ok(tranche_id)
-				})?;
+							Self::do_update_invest_order(
+								&who, pool, order, new_order, pool_id, tranche_id,
+							)?;
 
-			Self::deposit_event(Event::InvestOrderUpdated(pool_id, tranche_id, who));
+							Ok((tranche_id, old_order))
+						},
+					)
+				},
+			)?;
+
+			Self::deposit_event(Event::InvestOrderUpdated(
+				pool_id, tranche_id, who, old_order, new_order,
+			));
 			Ok(())
 		}
 
@@ -821,12 +896,13 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			tranche_loc: TrancheLoc<T::TrancheId>,
-			amount: T::Balance,
+			new_order: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let tranche_id =
-				Pool::<T>::try_mutate(pool_id, |pool| -> Result<T::TrancheId, DispatchError> {
+			let (tranche_id, old_order) = Pool::<T>::try_mutate(
+				pool_id,
+				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 					let tranche_id = pool
 						.tranches
@@ -835,34 +911,45 @@ pub mod pallet {
 
 					ensure!(
 						T::Permission::has(
-							pool_id,
+							PermissionScope::Pool(pool_id),
 							who.clone(),
-							PoolRole::TrancheInvestor(tranche_id, Self::now())
+							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
 					);
 
-					Order::<T>::try_mutate(tranche_id, &who, |active_order| -> DispatchResult {
-						let order = if let Some(order) = active_order {
-							order
-						} else {
-							*active_order = Some(UserOrder::default());
-							active_order.as_mut().expect("UserOrder now Some. qed.")
-						};
+					Order::<T>::try_mutate(
+						tranche_id,
+						&who,
+						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
+							let order = if let Some(order) = active_order {
+								order
+							} else {
+								*active_order = Some(UserOrder::default());
+								active_order.as_mut().expect("UserOrder now Some. qed.")
+							};
 
-						ensure!(
-							order.invest.saturating_add(order.redeem) == Zero::zero()
-								|| order.epoch == pool.epoch.current,
-							Error::<T>::CollectRequired
-						);
+							let old_order = order.invest;
 
-						Self::do_update_redeem_order(&who, pool, order, amount, pool_id, tranche_id)
-					})?;
+							ensure!(
+								order.invest.saturating_add(order.redeem) == Zero::zero()
+									|| order.epoch == pool.epoch.current,
+								Error::<T>::CollectRequired
+							);
 
-					Ok(tranche_id)
-				})?;
+							Self::do_update_redeem_order(
+								&who, pool, order, new_order, pool_id, tranche_id,
+							)?;
 
-			Self::deposit_event(Event::RedeemOrderUpdated(pool_id, tranche_id, who));
+							Ok((tranche_id, old_order))
+						},
+					)
+				},
+			)?;
+
+			Self::deposit_event(Event::RedeemOrderUpdated(
+				pool_id, tranche_id, who, old_order, new_order,
+			));
 			Ok(())
 		}
 
@@ -1788,6 +1875,7 @@ pub mod pallet {
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
 			)?;
+			Self::deposit_event(Event::Rebalanced(pool_id));
 
 			Ok(())
 		}
@@ -1886,6 +1974,7 @@ pub mod pallet {
 				}
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
+				Self::deposit_event(Event::Rebalanced(pool_id));
 				Ok(())
 			})
 		}
@@ -1937,8 +2026,19 @@ pub mod pallet {
 				}
 
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
+				Self::deposit_event(Event::Rebalanced(pool_id));
 				Ok(())
 			})
+		}
+
+		fn take_deposit(depositor: T::AccountId, pool: T::PoolId) -> DispatchResult {
+			let deposit = T::PoolDeposit::get();
+			T::Currency::reserve(&depositor, deposit)?;
+			AccountDeposit::<T>::mutate(&depositor, |total_deposit| {
+				*total_deposit += deposit;
+			});
+			PoolDeposit::<T>::insert(pool, PoolDepositOf::<T> { deposit, depositor });
+			Ok(())
 		}
 	}
 }

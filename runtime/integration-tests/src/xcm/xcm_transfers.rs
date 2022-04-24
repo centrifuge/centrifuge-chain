@@ -18,26 +18,25 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use orml_traits::MultiCurrency;
 
 use crate::xcm::setup::{
-	development_account, karura_account, ksm_amount, kusd_amount, native_amount, sibling_account,
-	usd_amount, CurrencyId, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
+	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
+	CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
 };
-use crate::xcm::test_net::{Development, Karura, KusamaNet, Sibling, TestNet};
+use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
-use development_runtime::{
-	Balances, KUsdPerSecond, KsmPerSecond, NativePerSecond, Origin, OrmlTokens, UsdPerSecond,
-	XTokens,
+use altair_runtime::{
+	AirPerSecond, Balances, KUsdPerSecond, KsmPerSecond, Origin, OrmlTokens, XTokens,
 };
-use runtime_common::Balance;
+use runtime_common::{parachains, Balance};
 
 #[test]
-fn transfer_native_to_sibling() {
+fn transfer_air_to_sibling() {
 	TestNet::reset();
 
-	let alice_initial_balance = native_amount(10);
-	let bob_initial_balance = native_amount(10);
-	let transfer_amount = native_amount(1);
+	let alice_initial_balance = air_amount(10);
+	let bob_initial_balance = air_amount(10);
+	let transfer_amount = air_amount(1);
 
-	Development::execute_with(|| {
+	Altair::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
 	});
@@ -46,7 +45,7 @@ fn transfer_native_to_sibling() {
 		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
 	});
 
-	Development::execute_with(|| {
+	Altair::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::Native,
@@ -81,163 +80,7 @@ fn transfer_native_to_sibling() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			Balances::free_balance(&BOB.into()),
-			bob_initial_balance + transfer_amount - native_fee(),
-		);
-	});
-}
-
-#[test]
-fn transfer_usd_to_sibling() {
-	TestNet::reset();
-
-	let alice_initial_balance = usd_amount(10);
-	let bob_initial_balance = usd_amount(10);
-	let transfer_amount = usd_amount(7);
-
-	Development::execute_with(|| {
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::Usd,
-			&ALICE.into(),
-			alice_initial_balance
-		));
-
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &sibling_account()),
-			0
-		);
-	});
-
-	Sibling::execute_with(|| {
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::Usd,
-			&BOB.into(),
-			bob_initial_balance
-		));
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
-			bob_initial_balance,
-		);
-	});
-
-	Development::execute_with(|| {
-		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
-			CurrencyId::Usd,
-			transfer_amount,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(PARA_ID_SIBLING),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
-						}
-					)
-				)
-				.into()
-			),
-			8_000_000_000,
-		));
-
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &ALICE.into()),
-			alice_initial_balance - transfer_amount
-		);
-
-		// Verify that the amount transferred is now part of the sibling account here
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &sibling_account()),
-			transfer_amount
-		);
-	});
-
-	Sibling::execute_with(|| {
-		// Verify that BOB now has initial balance + amount transferred - fee
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
-			bob_initial_balance + transfer_amount - usd_fee()
-		);
-	});
-}
-
-#[test]
-fn transfer_usd_to_development() {
-	TestNet::reset();
-
-	let alice_initial_balance = usd_amount(10);
-	let bob_initial_balance = usd_amount(10);
-	let transfer_amount = usd_amount(7);
-
-	Sibling::execute_with(|| {
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::Usd,
-			&ALICE.into(),
-			alice_initial_balance
-		));
-
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &development_account()),
-			0
-		);
-	});
-
-	Development::execute_with(|| {
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::Usd,
-			&BOB.into(),
-			bob_initial_balance
-		));
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
-			bob_initial_balance,
-		);
-
-		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::Usd,
-			&sibling_account().into(),
-			bob_initial_balance
-		));
-	});
-
-	Sibling::execute_with(|| {
-		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
-			CurrencyId::Usd,
-			transfer_amount,
-			Box::new(
-				MultiLocation::new(
-					1,
-					X2(
-						Parachain(PARA_ID_DEVELOPMENT),
-						Junction::AccountId32 {
-							network: NetworkId::Any,
-							id: BOB.into(),
-						}
-					)
-				)
-				.into()
-			),
-			8_000_000_000,
-		));
-
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &ALICE.into()),
-			alice_initial_balance - transfer_amount
-		);
-
-		// Verify that the amount transferred is now part of the development account here
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &development_account()),
-			transfer_amount
-		);
-	});
-
-	Development::execute_with(|| {
-		// Verify that BOB now has initial balance + amount transferred - fee
-		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::Usd, &BOB.into()),
-			bob_initial_balance + transfer_amount - usd_fee()
+			bob_initial_balance + transfer_amount - air_fee(),
 		);
 	});
 }
@@ -258,12 +101,12 @@ fn transfer_kusd_to_development() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &development_account()),
+			OrmlTokens::free_balance(CurrencyId::KUSD, &altair_account()),
 			0
 		);
 	});
 
-	Development::execute_with(|| {
+	Altair::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::KUSD,
 			&BOB.into(),
@@ -290,7 +133,7 @@ fn transfer_kusd_to_development() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(PARA_ID_DEVELOPMENT),
+						Parachain(parachains::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -307,14 +150,14 @@ fn transfer_kusd_to_development() {
 			alice_initial_balance - transfer_amount
 		);
 
-		// Verify that the amount transferred is now part of the development account here
+		// Verify that the amount transferred is now part of the altair parachain account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &development_account()),
+			OrmlTokens::free_balance(CurrencyId::KUSD, &altair_account()),
 			transfer_amount
 		);
 	});
 
-	Development::execute_with(|| {
+	Altair::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::KUSD, &BOB.into()),
@@ -330,7 +173,7 @@ fn transfer_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(PARA_ID_DEVELOPMENT).into().into()),
+			Box::new(Parachain(parachains::altair::ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					network: NetworkId::Any,
@@ -344,7 +187,7 @@ fn transfer_from_relay_chain() {
 		));
 	});
 
-	Development::execute_with(|| {
+	Altair::execute_with(|| {
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::KSM, &BOB.into()),
 			transfer_amount - ksm_fee()
@@ -354,7 +197,7 @@ fn transfer_from_relay_chain() {
 
 #[test]
 fn transfer_ksm_to_relay_chain() {
-	Development::execute_with(|| {
+	Altair::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::KSM,
@@ -381,49 +224,110 @@ fn transfer_ksm_to_relay_chain() {
 	});
 }
 
-#[test]
-fn currency_id_convert_air() {
-	use development_runtime::CurrencyIdConvert;
-	use sp_runtime::codec::Encode;
+pub mod currency_id_convert {
+	use super::*;
+	use altair_runtime::CurrencyIdConvert;
 	use sp_runtime::traits::Convert as C2;
 	use xcm_executor::traits::Convert as C1;
 
-	let air_location: MultiLocation = MultiLocation::new(
-		1,
-		X2(Parachain(2088), GeneralKey(CurrencyId::Native.encode())),
-	);
+	#[test]
+	fn convert_air() {
+		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
-	assert_eq!(CurrencyId::Native.encode(), vec![0]);
+		let air_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::altair::ID),
+				GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+			),
+		);
 
-	assert_eq!(
-		<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),
-		Ok(CurrencyId::Native),
-	);
-
-	Development::execute_with(|| {
 		assert_eq!(
-			<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-			Some(air_location)
-		)
-	});
+			<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),
+			Ok(CurrencyId::Native),
+		);
+
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
+				Some(air_location)
+			)
+		});
+	}
+
+	#[test]
+	fn convert_kusd() {
+		assert_eq!(parachains::karura::KUSD_KEY.to_vec(), vec![0, 129]);
+
+		let kusd_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(
+				Parachain(parachains::karura::ID),
+				GeneralKey(parachains::karura::KUSD_KEY.to_vec()),
+			),
+		);
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(kusd_location.clone()),
+			Ok(CurrencyId::KUSD),
+		);
+
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KUSD),
+				Some(kusd_location)
+			)
+		});
+	}
+
+	#[test]
+	fn convert_ksm() {
+		let ksm_location: MultiLocation = MultiLocation::parent().into();
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
+			Ok(CurrencyId::KSM),
+		);
+
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KSM),
+				Some(ksm_location)
+			)
+		});
+	}
+
+	#[test]
+	fn convert_unkown_multilocation() {
+		let unknown_location: MultiLocation = MultiLocation::new(
+			1,
+			X2(Parachain(parachains::altair::ID), GeneralKey([42].to_vec())),
+		);
+
+		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+	}
+
+	#[test]
+	fn convert_unsupported_currency() {
+		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Tranche(
+					0,
+					[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+				)),
+				None
+			)
+		});
+	}
 }
 
-// The fee associated with transferring Native tokens
-fn native_fee() -> Balance {
-	let (_asset, fee) = NativePerSecond::get();
+// The fee associated with transferring AIR tokens
+fn air_fee() -> Balance {
+	let (_asset, fee) = AirPerSecond::get();
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
-}
-
-// The fee associated with transferring Native tokens
-fn usd_fee() -> Balance {
-	let (_asset, fee) = UsdPerSecond::get();
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
+	fee.div_euclid(10_000) * 8
 }
 
 // The fee associated with transferring KUSD tokens
@@ -431,15 +335,13 @@ fn kusd_fee() -> Balance {
 	let (_asset, fee) = KUsdPerSecond::get();
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
+	fee.div_euclid(10_000) * 8
 }
 
 // The fee associated with transferring KSM tokens
 fn ksm_fee() -> Balance {
 	let (_asset, fee) = KsmPerSecond::get();
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
+	// We divide the fee to align its unit and multiply by 8 as that seems to be the unit of
 	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 4
+	fee.div_euclid(10_000) * 8
 }

@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::{Moment, PoolRole};
+pub use common_types::{Moment, PermissionScope, PoolRole, Role};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -123,11 +123,13 @@ pub mod pallet {
 		/// Pool reserve type
 		type Pool: PoolReserve<Self::AccountId>;
 
+		type CurrencyId: Parameter + Copy;
+
 		/// Permission type that verifies permissions of users
 		type Permission: PermissionsT<
 			Self::AccountId,
-			Location = PoolIdOf<Self>,
-			Role = PoolRole,
+			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
+			Role = Role,
 			Error = DispatchError,
 		>;
 
@@ -200,8 +202,13 @@ pub mod pallet {
 		Created(PoolIdOf<T>, T::LoanId, AssetOf<T>),
 		/// A loan was closed. [pool, loan, collateral]
 		Closed(PoolIdOf<T>, T::LoanId, AssetOf<T>),
-		/// A loan was priced. [pool, loan]
-		Priced(PoolIdOf<T>, T::LoanId),
+		/// A loan was priced. [pool, loan, interest_rate_per_sec, loan_type]
+		Priced(
+			PoolIdOf<T>,
+			T::LoanId,
+			T::Rate,
+			LoanType<T::Rate, T::Amount>,
+		),
 		/// An amount was borrowed for a loan. [pool, loan, amount]
 		Borrowed(PoolIdOf<T>, T::LoanId, T::Amount),
 		/// An amount was repaid for a loan. [pool, loan, amount]
@@ -426,7 +433,12 @@ pub mod pallet {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
-			Self::deposit_event(Event::<T>::Priced(pool_id, loan_id));
+			Self::deposit_event(Event::<T>::Priced(
+				pool_id,
+				loan_id,
+				interest_rate_per_sec,
+				loan_type,
+			));
 			Ok(())
 		}
 
@@ -570,7 +582,11 @@ macro_rules! ensure_role {
 	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
 		let sender = ensure_signed($origin)?;
 		ensure!(
-			T::Permission::has($pool_id, sender.clone(), $role),
+			T::Permission::has(
+				PermissionScope::Pool($pool_id),
+				sender.clone(),
+				Role::PoolRole($role)
+			),
 			BadOrigin
 		);
 		sender

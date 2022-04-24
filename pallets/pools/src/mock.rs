@@ -2,7 +2,7 @@ use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
 use common_types::{CurrencyId, Moment};
-use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
@@ -109,12 +109,12 @@ parameter_types! {
 }
 impl pallet_permissions::Config for Test {
 	type Event = Event;
-	type Location = u64;
-	type Role = PoolRole<TrancheId, Moment>;
+	type Scope = PermissionScope<u64, CurrencyId>;
+	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
-	type MaxRolesPerLocation = MaxRoles;
+	type MaxRolesPerScope = MaxRoles;
 	type WeightInfo = ();
 }
 
@@ -235,7 +235,7 @@ impl pallet_restricted_tokens::Config for Test {
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<u64, Location = u64, Role = PoolRole<TrancheId>>,
+	P: PermissionsT<u64, Scope = PermissionScope<u64, CurrencyId>, Role = Role<TrancheId>>,
 {
 	type Result = bool;
 
@@ -249,8 +249,15 @@ where
 
 		match id {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
+				P::has(
+					PermissionScope::Pool(pool_id),
+					send,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				) && P::has(
+					PermissionScope::Pool(pool_id),
+					recv,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				)
 			}
 			_ => true,
 		}
@@ -276,6 +283,8 @@ parameter_types! {
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
 	pub const MaxSizeMetadata: u32 = 100;
+
+	pub const PoolDeposit: Balance = 1 * CURRENCY;
 }
 
 impl Config for Test {
@@ -287,6 +296,7 @@ impl Config for Test {
 	type TrancheId = TrancheId;
 	type EpochId = u32;
 	type CurrencyId = CurrencyId;
+	type Currency = Balances;
 	type Tokens = Tokens;
 	type LoanAmount = Balance;
 	type NAV = FakeNav;
@@ -304,6 +314,7 @@ impl Config for Test {
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
+	type PoolDeposit = PoolDeposit;
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
@@ -314,7 +325,10 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _)
+			| CurrencyId::Native
+			| CurrencyId::KSM
+			| CurrencyId::Permissioned(_) => false,
 			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
 	}
@@ -387,6 +401,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 		balances: (0..10)
 			.into_iter()
 			.map(|idx| (idx, CurrencyId::Usd, 1000 * CURRENCY))
+			.collect(),
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+
+	pallet_balances::GenesisConfig::<Test> {
+		balances: (0..10)
+			.into_iter()
+			.map(|idx| (idx, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
