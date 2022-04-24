@@ -17,9 +17,9 @@
 //! and some helper functions.
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
-use common_types::CurrencyId;
-use common_types::PoolLocator;
-use common_types::{PermissionRoles, PoolRole, TimeProvider};
+use common_types::{
+	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
+};
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, Moment, PoolId, Rate, TrancheId, TrancheToken,
+	Amount, Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -247,12 +247,12 @@ parameter_types! {
 }
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
-	type Location = u64;
-	type Role = PoolRole;
+	type Scope = PermissionScope<u64, CurrencyId>;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = frame_support::traits::Everything;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
-	type MaxRolesPerLocation = MaxRoles;
+	type MaxRolesPerScope = MaxRoles;
 	type WeightInfo = ();
 }
 
@@ -272,6 +272,7 @@ impl pallet_loans::Config for MockRuntime {
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
+	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;

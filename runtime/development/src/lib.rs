@@ -53,7 +53,10 @@ use xcm_executor::XcmExecutor;
 use common_traits::Permissions as PermissionsT;
 use common_traits::PreConditions;
 pub use common_types::CurrencyId;
-use common_types::{PermissionRoles, PoolRole, TimeProvider, UNION};
+use common_types::{
+	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
+	TimeProvider, UNION,
+};
 use pallet_anchors::AnchorData;
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
@@ -855,7 +858,10 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
+			CurrencyId::Tranche(_, _)
+			| CurrencyId::Native
+			| CurrencyId::KSM
+			| CurrencyId::Permissioned(_) => false,
 			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
 	}
@@ -979,6 +985,7 @@ impl pallet_loans::Config for Runtime {
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
+	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
@@ -998,12 +1005,12 @@ parameter_types! {
 
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
-	type Location = PoolId;
-	type Role = PoolRole<TrancheId, Moment>;
+	type Scope = PermissionScope<PoolId, CurrencyId>;
+	type Role = Role<TrancheId, Moment>;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
-	type MaxRolesPerLocation = MaxRolesPerPool;
+	type MaxRolesPerScope = MaxRolesPerPool;
 	type WeightInfo = weights::pallet_permissions::SubstrateWeight<Runtime>;
 }
 
@@ -1011,25 +1018,29 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<PoolRole<TrancheId, Moment>>,
-		PoolId,
-		PoolRole<TrancheId, Moment>,
+		Option<Role<TrancheId, Moment>>,
+		PermissionScope<PoolId, CurrencyId>,
+		Role<TrancheId, Moment>,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<PoolRole<TrancheId, Moment>>,
-			PoolId,
-			PoolRole<TrancheId, Moment>,
+			Option<Role<TrancheId, Moment>>,
+			PermissionScope<PoolId, CurrencyId>,
+			Role<TrancheId, Moment>,
 		),
 	) -> bool {
-		let (_editor, maybe_role, _pool, role) = t;
+		let (_editor, maybe_role, _scope, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				PoolRole::PoolAdmin => true,
-				PoolRole::MemberListAdmin => match *role {
-					PoolRole::TrancheInvestor(_, _) => true,
+				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
+					_ => false,
+				},
+				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => match *role {
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => true,
 					_ => false,
 				},
 				_ => false,
@@ -1043,7 +1054,7 @@ impl
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<AccountId, Location = PoolId, Role = PoolRole>,
+	P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 {
 	type Result = bool;
 
@@ -1058,8 +1069,26 @@ where
 		match id {
 			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has(pool_id, send, PoolRole::TrancheInvestor(tranche_id, UNION))
-					&& P::has(pool_id, recv, PoolRole::TrancheInvestor(tranche_id, UNION))
+				P::has(
+					PermissionScope::Pool(pool_id),
+					send,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				) && P::has(
+					PermissionScope::Pool(pool_id),
+					recv,
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+				)
+			}
+			CurrencyId::Permissioned(_) => {
+				P::has(
+					PermissionScope::Currency(id),
+					send,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
+				) && P::has(
+					PermissionScope::Currency(id),
+					recv,
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
+				)
 			}
 		}
 	}

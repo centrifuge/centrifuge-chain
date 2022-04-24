@@ -77,12 +77,12 @@ impl Default for Storage {
 }
 
 #[derive(codec::Encode, codec::Decode, scale_info::TypeInfo, Debug, Clone, Eq, PartialEq)]
-pub enum Location {
+pub enum Scope {
 	PalletA,
 	PalletB,
 }
 
-impl Default for Location {
+impl Default for Scope {
 	fn default() -> Self {
 		Self::PalletA
 	}
@@ -159,13 +159,13 @@ mod dummy {
 		/// Configure the pallet by specifying the parameters and types on which it depends.
 		#[pallet::config]
 		pub trait Config: frame_system::Config {
-			type Location: Member + Parameter;
+			type Scope: Member + Parameter;
 
 			type Role: Member + Parameter;
 
 			type Permission: Permissions<
 				Self::AccountId,
-				Location = Self::Location,
+				Scope = Self::Scope,
 				Role = Self::Role,
 				Error = DispatchError,
 			>;
@@ -189,35 +189,31 @@ mod dummy {
 			#[pallet::weight(100)]
 			pub fn test_add(
 				origin: OriginFor<T>,
-				location: T::Location,
+				scope: T::Scope,
 				role: T::Role,
 			) -> DispatchResult {
 				let who = ensure_signed(origin)?;
 
 				ensure!(
-					!T::Permission::has(location.clone(), who.clone(), role.clone()),
+					!T::Permission::has(scope.clone(), who.clone(), role.clone()),
 					Error::<T>::AlreadyCleared
 				);
 
-				T::Permission::add(location, who, role)?;
+				T::Permission::add(scope, who, role)?;
 
 				Ok(())
 			}
 
 			#[pallet::weight(100)]
-			pub fn test_rm(
-				origin: OriginFor<T>,
-				location: T::Location,
-				role: T::Role,
-			) -> DispatchResult {
+			pub fn test_rm(origin: OriginFor<T>, scope: T::Scope, role: T::Role) -> DispatchResult {
 				let who = ensure_signed(origin)?;
 
 				ensure!(
-					T::Permission::has(location.clone(), who.clone(), role.clone()),
+					T::Permission::has(scope.clone(), who.clone(), role.clone()),
 					Error::<T>::NotCleared
 				);
 
-				T::Permission::remove(location, who, role)?;
+				T::Permission::remove(scope, who, role)?;
 
 				Ok(())
 			}
@@ -285,12 +281,12 @@ type AdminOrigin = EnsureOneOf<EnsureRoot<u64>, EnsureSignedBy<One, u64>>;
 
 impl pallet_permissions::Config for MockRuntime {
 	type Event = Event;
-	type Location = Location;
+	type Scope = Scope;
 	type Role = Role;
 	type Storage = Storage;
 	type AdminOrigin = AdminOrigin;
 	type Editors = Editors;
-	type MaxRolesPerLocation = MaxRoles;
+	type MaxRolesPerScope = MaxRoles;
 	type WeightInfo = ();
 }
 
@@ -311,9 +307,9 @@ impl AccountIdConversion<AccountId> for WrapperAccount {
 }
 
 pub struct Editors;
-impl Contains<(AccountId, Option<Role>, Location, Role)> for Editors {
-	fn contains(t: &(AccountId, Option<Role>, Location, Role)) -> bool {
-		let (account, with_role, _location, role) = t;
+impl Contains<(AccountId, Option<Role>, Scope, Role)> for Editors {
+	fn contains(t: &(AccountId, Option<Role>, Scope, Role)) -> bool {
+		let (account, with_role, _scope, role) = t;
 		let dummy = DummyAccount::get();
 
 		match (account, role, with_role) {
@@ -339,7 +335,7 @@ impl SortedMembers<u64> for One {
 
 impl pallet_dummy::Config for MockRuntime {
 	type Role = Role;
-	type Location = Location;
+	type Scope = Scope;
 	type Permission = Permissions;
 	type PalletId = DummyAccount;
 }

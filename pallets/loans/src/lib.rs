@@ -19,7 +19,7 @@
 use codec::{Decode, Encode};
 use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::{Moment, PoolRole};
+pub use common_types::{Moment, PermissionScope, PoolRole, Role};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -123,11 +123,13 @@ pub mod pallet {
 		/// Pool reserve type
 		type Pool: PoolReserve<Self::AccountId>;
 
+		type CurrencyId: Parameter + Copy;
+
 		/// Permission type that verifies permissions of users
 		type Permission: PermissionsT<
 			Self::AccountId,
-			Location = PoolIdOf<Self>,
-			Role = PoolRole,
+			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
+			Role = Role,
 			Error = DispatchError,
 		>;
 
@@ -580,7 +582,11 @@ macro_rules! ensure_role {
 	( $pool_id:expr, $origin:expr, $role:expr $(,)? ) => {{
 		let sender = ensure_signed($origin)?;
 		ensure!(
-			T::Permission::has($pool_id, sender.clone(), $role),
+			T::Permission::has(
+				PermissionScope::Pool($pool_id),
+				sender.clone(),
+				Role::PoolRole($role)
+			),
 			BadOrigin
 		);
 		sender
