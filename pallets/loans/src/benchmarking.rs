@@ -348,7 +348,7 @@ benchmarks! {
 		let loan_id: T::LoanId = 1u128.into();
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
 	verify {
-		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced(pool_id, loan_id).into());
+		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced(pool_id, loan_id, rp, loan_type).into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		assert_eq!(loan.loan_type, loan_type);
 		assert_eq!(loan.status, LoanStatus::Active);

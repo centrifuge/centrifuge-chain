@@ -10,19 +10,18 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-pub use crate::chain::centrifuge::{AccountId, CurrencyId, Origin, Runtime, System};
+pub use altair_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
 use common_traits::TokenMetadata;
 use frame_support::traits::GenesisBuild;
-use runtime_common::Balance;
+use runtime_common::{parachains, Balance};
 
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
 pub const BOB: [u8; 32] = [5u8; 32];
 
-/// Parachain Ids
-pub const PARA_ID_DEVELOPMENT: u32 = 2088;
+/// A PARA ID used for a sibling parachain.
+/// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
-pub const PARA_ID_KARURA: u32 = 2000;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
@@ -33,7 +32,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: PARA_ID_DEVELOPMENT,
+			parachain_id: parachains::altair::ID,
 		}
 	}
 }
@@ -53,7 +52,7 @@ impl ExtBuilder {
 		let mut t = frame_system::GenesisConfig::default()
 			.build_storage::<Runtime>()
 			.unwrap();
-		let native_currency_id = development_runtime::NativeToken::get();
+		let native_currency_id = altair_runtime::NativeToken::get();
 		pallet_balances::GenesisConfig::<Runtime> {
 			balances: self
 				.balances
@@ -98,16 +97,12 @@ impl ExtBuilder {
 	}
 }
 
-pub fn native_amount(amount: Balance) -> Balance {
+pub fn air_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::Native)
 }
 
 pub fn kusd_amount(amount: Balance) -> Balance {
 	amount * dollar(CurrencyId::KUSD)
-}
-
-pub fn usd_amount(amount: Balance) -> Balance {
-	amount * dollar(CurrencyId::Usd)
 }
 
 pub fn ksm_amount(amount: Balance) -> Balance {
@@ -123,11 +118,11 @@ pub fn sibling_account() -> AccountId {
 }
 
 pub fn karura_account() -> AccountId {
-	parachain_account(PARA_ID_KARURA.into())
+	parachain_account(parachains::karura::ID.into())
 }
 
-pub fn development_account() -> AccountId {
-	parachain_account(PARA_ID_DEVELOPMENT.into())
+pub fn altair_account() -> AccountId {
+	parachain_account(parachains::altair::ID.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {

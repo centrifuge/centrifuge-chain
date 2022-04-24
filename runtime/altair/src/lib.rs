@@ -35,8 +35,9 @@ use sp_api::impl_runtime_apis;
 use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
+use sp_runtime::traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
+
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -49,11 +50,9 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 
-pub mod constants;
-mod weights;
-
 /// Constant values used within the runtime.
 use constants::currency::*;
+use xcm_executor::XcmExecutor;
 
 pub use common_types::CurrencyId;
 use common_types::{
@@ -63,8 +62,14 @@ use common_types::{
 
 use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 
-/// common types for the runtime.
+use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 pub use runtime_common::*;
+
+pub mod constants;
+mod weights;
+pub mod xcm;
+
+pub use crate::xcm::*;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]
@@ -82,7 +87,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1011,
+	spec_version: 1012,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -173,6 +178,7 @@ impl frame_system::Config for Runtime {
 }
 
 parameter_types! {
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
 	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT / 4;
 }
 
@@ -180,11 +186,11 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type Event = Event;
 	type OnSystemEvent = ();
 	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type OutboundXcmpMessageSource = ();
-	type DmpMessageHandler = ();
+	type DmpMessageHandler = DmpQueue;
 	type ReservedDmpWeight = ReservedDmpWeight;
-	type XcmpMessageHandler = ();
-	type ReservedXcmpWeight = ();
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type XcmpMessageHandler = XcmpQueue;
+	type ReservedXcmpWeight = ReservedXcmpWeight;
 }
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
@@ -906,6 +912,10 @@ parameter_type_with_key! {
 	};
 }
 
+parameter_types! {
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+}
+
 impl orml_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
@@ -913,7 +923,7 @@ impl orml_tokens::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
-	type OnDust = ();
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
@@ -930,6 +940,27 @@ impl pallet_nft_sales::Config for Runtime {
 	type ClassId = ClassId;
 	type InstanceId = InstanceId;
 	type PalletId = NftSalesPalletId;
+}
+
+// XCM
+
+/// XCMP Queue is responsible to handle XCM messages coming directly from sibling parachains.
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ChannelInfo = ParachainSystem;
+	type VersionWrapper = PolkadotXcm;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+	type ControllerOrigin = EnsureRoot<AccountId>;
+	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+}
+
+/// The config for the Downward Message Passing Queue, i.e., how messages coming from the
+/// relay-chain are handled.
+impl cumulus_pallet_dmp_queue::Config for Runtime {
+	type Event = Event;
+	type XcmExecutor = XcmExecutor<XcmConfig>;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -983,6 +1014,13 @@ construct_runtime!(
 		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>} = 96,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 97,
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 98,
+
+		// XCM
+		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
+		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 121,
+		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
+		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
+		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,

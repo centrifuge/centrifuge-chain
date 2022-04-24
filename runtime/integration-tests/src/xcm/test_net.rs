@@ -20,13 +20,10 @@ use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
 
-use development_runtime::CurrencyId;
-use runtime_common::AccountId;
+use altair_runtime::CurrencyId;
+use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{
-	ksm_amount, native_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_KARURA,
-	PARA_ID_SIBLING,
-};
+use crate::xcm::setup::{air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {
@@ -37,32 +34,32 @@ decl_test_relay_chain! {
 }
 
 decl_test_parachain! {
-	pub struct Development {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_DEVELOPMENT),
+	pub struct Altair {
+		Runtime = altair_runtime::Runtime,
+		Origin = altair_runtime::Origin,
+		XcmpMessageHandler = altair_runtime::XcmpQueue,
+		DmpMessageHandler = altair_runtime::DmpQueue,
+		new_ext = para_ext(parachains::altair::ID),
 	}
 }
 
 decl_test_parachain! {
 	pub struct Sibling {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
+		Runtime = altair_runtime::Runtime,
+		Origin = altair_runtime::Origin,
+		XcmpMessageHandler = altair_runtime::XcmpQueue,
+		DmpMessageHandler = altair_runtime::DmpQueue,
 		new_ext = para_ext(PARA_ID_SIBLING),
 	}
 }
 
 decl_test_parachain! {
 	pub struct Karura {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_KARURA),
+		Runtime = altair_runtime::Runtime,
+		Origin = altair_runtime::Origin,
+		XcmpMessageHandler = altair_runtime::XcmpQueue,
+		DmpMessageHandler = altair_runtime::DmpQueue,
+		new_ext = para_ext(parachains::karura::ID),
 	}
 }
 
@@ -73,18 +70,18 @@ decl_test_network! {
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `PARA_ID_DEVELOPMENT`
-			(2088, Development),
+			// Be sure to use `parachains::altair::ID`
+			(2088, Altair),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
-			// Be sure to use `PARA_ID_KARURA`
+			// Be sure to use `parachains::karura::ID`
 			(2000, Karura),
 		],
 	}
 }
 
 pub fn relay_ext() -> sp_io::TestExternalities {
-	use crate::chain::relay::{Runtime, System};
+	use kusama_runtime::{Runtime, System};
 
 	let mut t = frame_system::GenesisConfig::default()
 		.build_storage::<Runtime>()
@@ -92,15 +89,12 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), native_amount(2002)),
+			(AccountId::from(ALICE), air_amount(2002)),
 			(
-				ParaId::from(PARA_ID_DEVELOPMENT).into_account(),
-				native_amount(7),
+				ParaId::from(parachains::altair::ID).into_account(),
+				air_amount(7),
 			),
-			(
-				ParaId::from(PARA_ID_SIBLING).into_account(),
-				native_amount(7),
-			),
+			(ParaId::from(PARA_ID_SIBLING).into_account(), air_amount(7)),
 		],
 	}
 	.assimilate_storage(&mut t)
@@ -128,15 +122,11 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![
-			(
-				AccountId::from(ALICE),
-				CurrencyId::Native,
-				native_amount(10),
-			),
-			(AccountId::from(BOB), CurrencyId::Native, native_amount(10)),
+			(AccountId::from(ALICE), CurrencyId::Native, air_amount(10)),
+			(AccountId::from(BOB), CurrencyId::Native, air_amount(10)),
 			(AccountId::from(ALICE), CurrencyId::KSM, ksm_amount(10)),
 			(
-				development_runtime::TreasuryAccount::get(),
+				altair_runtime::TreasuryAccount::get(),
 				CurrencyId::KSM,
 				ksm_amount(1),
 			),
