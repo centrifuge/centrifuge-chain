@@ -88,7 +88,7 @@ async fn single_tranche_investor_single_loan() {
 		Event::Loans(pallet_loans::Event::PoolInitialised(id)) if [id == pool_id],
 		Event::Loans(pallet_loans::Event::Created(id, loan, asset))
 			if [id == pool_id && loan == loan_id && asset == Asset(4294967296, InstanceId(1))],
-		Event::Loans(pallet_loans::Event::Priced(id, loan)) if [id == pool_id && loan == loan_id],
+		Event::Loans(pallet_loans::Event::Priced(id, loan, ..)) if [id == pool_id && loan == loan_id],
 	);
 
 	env::run!(
@@ -106,9 +106,9 @@ async fn single_tranche_investor_single_loan() {
 		Event,
 		EventRange::Latest,
 		Event::System(frame_system::Event::ExtrinsicFailed{..}) if [count 0],
-		Event::Pools(pallet_pools::Event::InvestOrderUpdated(id, _tranche, who))
+		Event::Pools(pallet_pools::Event::InvestOrderUpdated(id, _tranche, who, ..))
 			if [id == pool_id && who == Keyring::TrancheInvestor(0).to_account_id()],
-		Event::Pools(pallet_pools::Event::InvestOrderUpdated(id, _tranche, who))
+		Event::Pools(pallet_pools::Event::InvestOrderUpdated(id, _tranche, who, ..))
 			if [id == pool_id && who == Keyring::TrancheInvestor(1).to_account_id()],
 	);
 
