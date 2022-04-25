@@ -126,6 +126,7 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.17" }

@@ -32,10 +32,10 @@ pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 
 /// calculates the debt using debt=principal_debt * cumulative_rate
 pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
-	principal_debt: Balance,
+	normalized_debt: Balance,
 	accumulated_rate: Rate,
 ) -> Option<Balance> {
-	accumulated_rate.checked_mul_int(principal_debt)
+	accumulated_rate.checked_mul_int(normalized_debt)
 }
 
 pub enum Adjustment<Balance> {
@@ -45,7 +45,7 @@ pub enum Adjustment<Balance> {
 
 /// calculates the principal debt after the adjustment
 /// current_debt and cumulative_rate must be latest
-pub fn calculate_principal_debt<
+pub fn calculate_normalized_debt<
 	Balance: FixedPointOperand + BaseArithmetic,
 	Rate: FixedPointNumber,
 >(

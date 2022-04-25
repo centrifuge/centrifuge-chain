@@ -90,7 +90,7 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanDetails<Rate, Balance, Asset> {
+pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
 	pub(crate) collateral: Asset,
 	pub(crate) loan_type: LoanType<Rate, Balance>,
 	pub(crate) status: LoanStatus,
@@ -101,15 +101,8 @@ pub struct LoanDetails<Rate, Balance, Asset> {
 	// time at which first borrow occurred
 	pub(crate) origination_date: Option<Moment>,
 
-	// principal debt used to calculate the current outstanding debt.
-	// principal debt will change on every borrow and repay.
-	// Called principal debt instead of pie or normalized debt as mentioned here - https://docs.makerdao.com/smart-contract-modules/rates-module
-	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with the accumulated interest rate
-	pub(crate) principal_debt: Balance,
-	pub(crate) last_updated: Moment,
-
-	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
-	pub(crate) accumulated_rate: Rate,
+	// normalized debt used to calculate the current outstanding debt.
+	pub(crate) normalized_debt: NormalizedDebt,
 
 	// total borrowed and repaid on this loan
 	pub(crate) total_borrowed: Balance,
@@ -125,7 +118,7 @@ pub struct LoanDetails<Rate, Balance, Asset> {
 	pub(crate) admin_written_off: bool,
 }
 
-impl<Rate, Balance, Asset> LoanDetails<Rate, Balance, Asset>
+impl<Rate, Balance, Asset, NormalizedDebt> LoanDetails<Rate, Balance, Asset, NormalizedDebt>
 where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
@@ -135,10 +128,10 @@ where
 	/// if you want the latest upto date present value, ensure these values are updated as well before calling this
 	pub(crate) fn present_value(
 		&self,
+		debt: Balance,
 		write_off_groups: &Vec<WriteOffGroup<Rate>>,
+		now: Moment,
 	) -> Option<Balance> {
-		// calculate current debt and present value
-		let debt = math::debt(self.principal_debt, self.accumulated_rate)?;
 		// if the debt is written off, write off accordingly
 		let debt = if let Some(index) = self.write_off_index {
 			let group = write_off_groups.get(index as usize)?;
@@ -149,61 +142,21 @@ where
 		};
 
 		match self.loan_type {
-			LoanType::BulletLoan(bl) => bl.present_value(
-				debt,
-				self.origination_date,
-				self.last_updated,
-				self.interest_rate_per_sec,
-			),
+			LoanType::BulletLoan(bl) => {
+				bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
+			}
 			LoanType::CreditLine(cl) => cl.present_value(debt),
-			LoanType::CreditLineWithMaturity(clm) => clm.present_value(
-				debt,
-				self.origination_date,
-				self.last_updated,
-				self.interest_rate_per_sec,
-			),
+			LoanType::CreditLineWithMaturity(clm) => {
+				clm.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
+			}
 		}
 	}
 
-	/// accrues rate and current debt from last updated until now
-	pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Balance)> {
-		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
-		let maybe_rate = match self.total_borrowed == Zero::zero() {
-			true => Some(self.interest_rate_per_sec),
-			false => math::calculate_accumulated_rate::<Rate>(
-				self.interest_rate_per_sec,
-				self.accumulated_rate,
-				now,
-				self.last_updated,
-			),
-		};
-
-		// calculate the current outstanding debt
-		let maybe_debt = maybe_rate
-			.and_then(|acc_rate| math::debt::<Balance, Rate>(self.principal_debt, acc_rate));
-
-		match (maybe_rate, maybe_debt) {
-			(Some(rate), Some(debt)) => Some((rate, debt)),
-			_ => None,
-		}
-	}
-
-	/// returns the max_borrow_amount amount for the loan based on the loan type
-	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Balance {
+	pub(crate) fn max_borrow_amount(&self, debt: Balance) -> Balance {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
-			LoanType::CreditLine(cl) => {
-				// we need to accrue and calculate the latest debt
-				// calculate accumulated rate and outstanding debt
-				self.accrue(now)
-					.and_then(|(_, debt)| cl.max_borrow_amount(debt))
-			}
-			LoanType::CreditLineWithMaturity(clm) => {
-				// we need to accrue and calculate the latest debt
-				// calculate accumulated rate and outstanding debt
-				self.accrue(now)
-					.and_then(|(_, debt)| clm.max_borrow_amount(debt))
-			}
+			LoanType::CreditLine(cl) => cl.max_borrow_amount(debt),
+			LoanType::CreditLineWithMaturity(clm) => clm.max_borrow_amount(debt),
 		}
 		// always fallback to zero max_borrow_amount
 		.unwrap_or(Zero::zero())

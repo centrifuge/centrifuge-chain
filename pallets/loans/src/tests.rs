@@ -555,12 +555,11 @@ macro_rules! test_borrow_loan {
 
 				// accumulated rate is now rate per sec
 				assert_eq!(loan.interest_rate_per_sec, rate);
-				assert_eq!(loan.accumulated_rate, rate);
 				assert_eq!(loan.last_updated, 1);
 				assert_eq!(loan.total_borrowed, 50 * USD);
 				let inverse_rate = loan.accumulated_rate.reciprocal().unwrap();
 				let p_debt = inverse_rate.checked_mul_int(borrow_amount).unwrap();
-				assert_eq!(loan.principal_debt, p_debt);
+				assert_eq!(loan.normalized_debt, p_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
@@ -586,7 +585,6 @@ macro_rules! test_borrow_loan {
 					loan.accumulated_rate,
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
-				assert_eq!(loan.last_updated, 1001);
 				assert_eq!(loan.total_borrowed, 70 * USD);
 				let c_debt = math::debt(p_debt, loan.accumulated_rate)
 					.unwrap()
@@ -594,7 +592,7 @@ macro_rules! test_borrow_loan {
 					.unwrap();
 				let inverse_rate = loan.accumulated_rate.reciprocal().unwrap();
 				let p_debt = inverse_rate.checked_mul_int(c_debt).unwrap();
-				assert_eq!(loan.principal_debt, p_debt);
+				assert_eq!(loan.normalized_debt, p_debt);
 
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 930 * USD);
@@ -711,8 +709,6 @@ macro_rules! test_repay_loan {
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
 				// accumulated rate is now rate per sec
-				assert_eq!(loan.accumulated_rate, rate);
-				assert_eq!(loan.last_updated, 1);
 				assert_eq!(loan.total_borrowed, 50 * USD);
 				let p_debt = loan
 					.accumulated_rate
@@ -720,7 +716,7 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.checked_mul_int(borrow_amount)
 					.unwrap();
-				assert_eq!(loan.principal_debt, p_debt);
+				assert_eq!(loan.normalized_debt, p_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);

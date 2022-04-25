@@ -494,3 +494,8 @@ impl<PoolId> TypeId for PoolLocator<PoolId> {
 
 // Type that indicates a point in time
 pub type Moment = u64;
+
+pub enum Adjustment<Amount> {
+	Increase(Amount),
+	Decrease(Amount),
+}

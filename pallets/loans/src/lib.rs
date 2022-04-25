@@ -17,9 +17,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::Permissions as PermissionsT;
+use common_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::{Moment, PermissionScope, PoolRole, Role};
+pub use common_types::{Adjustment, Moment, PermissionScope, PoolRole, Role};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -34,7 +34,7 @@ pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Member};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedMul, Member};
 use sp_runtime::{DispatchError, FixedPointNumber, FixedPointOperand};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 #[cfg(feature = "std")]
@@ -137,6 +137,23 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
+		/// A fixed-point number which represents
+		/// the normalized debt.
+		type NormalizedDebt: Member
+			+ Parameter
+			+ Default
+			+ Copy
+			+ TypeInfo
+			+ FixedPointOperand
+			+ CheckedMul;
+
+		type InterestAccrual: InterestAccrualT<
+			Self::Rate,
+			Self::Balance,
+			Adjustment<Self::Balance>,
+			NormalizedDebt = Self::NormalizedDebt,
+		>;
+
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
 
@@ -181,7 +198,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanDetails<T::Rate, T::Balance, AssetOf<T>>,
+		LoanDetails<T::Rate, T::Balance, AssetOf<T>, T::NormalizedDebt>,
 		OptionQuery,
 	>;
 
@@ -240,7 +257,7 @@ pub mod pallet {
 		/// Emits when an operation lead to the number overflow
 		ValueOverflow,
 		/// Emits when principal debt calculation failed due to overflow
-		PrincipalDebtOverflow,
+		NormalizedDebtOverflow,
 		/// Emits when tries to update an active loan
 		LoanIsActive,
 		/// Emits when loan type given is not valid
