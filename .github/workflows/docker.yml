@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [master, parachain, mintable-currencies]
+    branches: [master, parachain]
   workflow_dispatch:
     inputs:
       docker_tag:
