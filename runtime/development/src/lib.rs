@@ -55,7 +55,7 @@ use common_traits::PreConditions;
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
-	TimeProvider, UNION,
+	TimeProvider, UNION, PermissionedCurrency,
 };
 use pallet_anchors::AnchorData;
 use pallet_restricted_tokens::{
