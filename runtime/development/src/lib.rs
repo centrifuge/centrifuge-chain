@@ -858,11 +858,13 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
+			CurrencyId::Usd
+			| CurrencyId::KUSD
+			| CurrencyId::Permissioned(PermissionedCurrency::PermissionedEur) => true,
 			CurrencyId::Tranche(_, _)
 			| CurrencyId::Native
 			| CurrencyId::KSM
 			| CurrencyId::Permissioned(_) => false,
-			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
 	}
 }
