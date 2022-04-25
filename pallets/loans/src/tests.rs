@@ -30,7 +30,7 @@ use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
 use runtime_common::{Balance, ClassId, InstanceId, Rate, CFG as USD};
-use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
+use sp_arithmetic::traits::{checked_pow, CheckedMul};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
 use sp_runtime::ArithmeticError;
@@ -593,7 +593,7 @@ macro_rules! test_borrow_loan {
 					.checked_add(borrow_amount)
 					.unwrap();
 				let inverse_rate = loan.accumulated_rate.reciprocal().unwrap();
-				let p_debt = inverse_rate.checked_mul_int(borrow_amount).unwrap();
+				let p_debt = inverse_rate.checked_mul_int(c_debt).unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
@@ -1109,9 +1109,9 @@ fn test_pool_nav_bullet_loan() {
 		// anyone can write off after maturity
 		false,
 		// present value at the instant of origination
-		48969664319886742817u128,
+		48969664319886742807u128,
 		// present value after 200 days
-		50054820713981957069u128
+		50054820713981957085u128
 	)
 }
 
@@ -1124,9 +1124,9 @@ fn test_pool_nav_credit_line_with_maturity_loan() {
 		// anyone can write off after maturity
 		false,
 		// present value at the instant of origination
-		48969664319886742817u128,
+		48969664319886742807u128,
 		// present value after 200 days
-		50054820713981957069u128
+		50054820713981957085u128
 	)
 }
 
@@ -1139,9 +1139,9 @@ fn test_pool_nav_credit_line_loan() {
 		// only admin can write off
 		true,
 		// present value at the instant of origination
-		49999999999999999999u128,
+		50000000000000000000u128,
 		// present value after 200 days
-		51388800811704851007u128
+		51388800811704851014u128
 	)
 }
 

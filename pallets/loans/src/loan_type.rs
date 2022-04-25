@@ -321,6 +321,6 @@ mod tests {
 
 		// debt can be less
 		let debt: u128 = 70 * CURRENCY;
-		assert_eq!(cl.max_borrow_amount(debt), Some(10));
+		assert_eq!(cl.max_borrow_amount(debt), Some(10 * CURRENCY));
 	}
 }

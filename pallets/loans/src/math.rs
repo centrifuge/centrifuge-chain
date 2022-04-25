@@ -104,7 +104,10 @@ where
 
 	// calculate the rate^(m-now)
 	let rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
+	// calculate expected cash flow
 	let cf = rate.checked_mul_int(debt)?;
+	// calculate risk-adjusted cash flow
+	// cf * (1 - expected_loss)
 	let rr = Rate::one().checked_sub(&expected_loss_over_asset_maturity)?;
 	rr.checked_mul_int(cf)
 }
@@ -129,6 +132,7 @@ where
 	// calculate total discount rate
 	let rate = checked_pow(discount_rate, (maturity_date - now) as usize)?;
 	let d = rate.reciprocal()?;
+	// calculate the present value
 	d.checked_mul_int(expected_cash_flow)
 }
 
@@ -171,7 +175,7 @@ pub(crate) fn max_borrow_amount<
 	debt: Balance,
 ) -> Option<Balance> {
 	let val = advance_rate.checked_mul_int(value)?;
-	val.checked_add(&debt)
+	val.checked_sub(&debt)
 }
 
 /// calculates the expected loss over term
@@ -252,9 +256,8 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Balance: Fixe
 mod tests {
 	use super::*;
 	use frame_support::assert_ok;
-	use frame_support::sp_runtime::traits::CheckedMul;
 	use runtime_common::{Rate, CFG as USD};
-	use sp_arithmetic::{FixedU128, PerThing, Percent};
+	use sp_arithmetic::{PerThing, Percent};
 
 	#[test]
 	fn test_calculate_accumulated_rate() {
@@ -319,7 +322,7 @@ mod tests {
 			expected_loss_over_asset_maturity,
 		)
 		.unwrap();
-		assert_eq!(cf, 110351316161105372133u128)
+		assert_eq!(cf, 110351316161105372142u128)
 	}
 
 	#[test]
@@ -347,7 +350,7 @@ mod tests {
 		let discount_rate = interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap();
 		// present value should be 101.87
 		let pv = bullet_loan_present_value(cf, now, md, discount_rate).unwrap();
-		assert_eq!(pv, 101867103798764401467u128)
+		assert_eq!(pv, 101867103798764401444u128)
 	}
 
 	#[test]
