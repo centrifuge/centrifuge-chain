@@ -46,7 +46,7 @@ benchmarks! {
 		T::AccountId: EncodeLike<<T as frame_system::Config>::AccountId>,
 		<<T as frame_system::Config>::Lookup as sp_runtime::traits::StaticLookup>::Source:
 			From<<T as frame_system::Config>::AccountId>,
-		T::NAV: PoolNAV<T::PoolId, T::LoanAmount, Origin = T::Origin, ClassId = u64>,
+		T::NAV: PoolNAV<T::PoolId, T::Balance, Origin = T::Origin, ClassId = u64>,
 		T::Permission: Permissions<T::AccountId, Ok = ()>,
 	}
 
