@@ -29,7 +29,7 @@ use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use runtime_common::{Amount, Balance, ClassId, InstanceId, Rate, CFG as USD};
+use runtime_common::{Balance, ClassId, InstanceId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
@@ -135,7 +135,7 @@ where
 	(pool_id, Asset(loan_nft_class_id, loan_id), collateral)
 }
 
-fn default_bullet_loan_params() -> LoanType<Rate, Amount> {
+fn default_bullet_loan_params() -> LoanType<Rate, Balance> {
 	LoanType::BulletLoan(BulletLoan::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
@@ -144,7 +144,7 @@ fn default_bullet_loan_params() -> LoanType<Rate, Amount> {
 		// loss given default is 50%
 		Rate::saturating_from_rational(50, 100),
 		// collateral value
-		Amount::from_inner(125 * USD),
+		125 * USD,
 		// 4%
 		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 		// 2 years
@@ -152,16 +152,16 @@ fn default_bullet_loan_params() -> LoanType<Rate, Amount> {
 	))
 }
 
-fn default_credit_line_params() -> LoanType<Rate, Amount> {
+fn default_credit_line_params() -> LoanType<Rate, Balance> {
 	LoanType::CreditLine(CreditLine::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
 		// collateral value
-		Amount::from_inner(125 * USD),
+		125 * USD,
 	))
 }
 
-fn default_credit_line_with_maturity_params() -> LoanType<Rate, Amount> {
+fn default_credit_line_with_maturity_params() -> LoanType<Rate, Balance> {
 	LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100),
@@ -170,7 +170,7 @@ fn default_credit_line_with_maturity_params() -> LoanType<Rate, Amount> {
 		// loss given default is 50%
 		Rate::saturating_from_rational(50, 100),
 		// collateral value
-		Amount::from_inner(125 * USD),
+		125 * USD,
 		// 4%
 		math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 		// 2 years
@@ -183,7 +183,7 @@ fn price_test_loan<T>(
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
 	rp: Rate,
-	loan_type: LoanType<Rate, Amount>,
+	loan_type: LoanType<Rate, Balance>,
 ) where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
@@ -205,7 +205,7 @@ fn price_test_loan<T>(
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(loan.interest_rate_per_sec, rp);
 	assert_eq!(loan.loan_type, loan_type);
-	assert_eq!(loan.max_borrow_amount(0), Amount::from_inner(100 * USD));
+	assert_eq!(loan.max_borrow_amount(0), 100 * USD);
 	assert_eq!(loan.write_off_index, None);
 	assert!(!loan.admin_written_off);
 }
@@ -214,7 +214,7 @@ fn price_bullet_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Amount>)
+) -> (Rate, LoanType<Rate, Balance>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
@@ -231,7 +231,7 @@ fn price_credit_line_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Amount>)
+) -> (Rate, LoanType<Rate, Balance>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
@@ -248,7 +248,7 @@ fn price_credit_line_with_maturity_loan<T>(
 	admin: T::AccountId,
 	pool_id: T::PoolId,
 	loan_id: T::LoanId,
-) -> (Rate, LoanType<Rate, Amount>)
+) -> (Rate, LoanType<Rate, Balance>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
 		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
@@ -349,7 +349,7 @@ fn test_price_bullet_loan() {
 				// loss given default is 50%
 				Rate::saturating_from_rational(50, 100),
 				// collateral value
-				Amount::from_inner(125 * USD),
+				125 * USD,
 				// 4%
 				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity date in the past
@@ -369,7 +369,7 @@ fn test_price_bullet_loan() {
 				// loss given default is 50%
 				Rate::saturating_from_rational(50, 100),
 				// collateral value
-				Amount::from_inner(125 * USD),
+				125 * USD,
 				// 4%
 				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity in 2 years
@@ -409,7 +409,7 @@ fn test_price_credit_line_with_maturity_loan() {
 				// loss given default is 50%
 				Rate::saturating_from_rational(50, 100),
 				// collateral value
-				Amount::from_inner(125 * USD),
+				125 * USD,
 				// 4%
 				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity date in the past
@@ -429,7 +429,7 @@ fn test_price_credit_line_with_maturity_loan() {
 				// loss given default is 50%
 				Rate::saturating_from_rational(50, 100),
 				// collateral value
-				Amount::from_inner(125 * USD),
+				125 * USD,
 				// 4%
 				math::interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap(),
 				// maturity in 2 years
@@ -465,7 +465,7 @@ fn test_price_credit_line_loan() {
 				// advance rate 80%
 				Rate::saturating_from_rational(80, 100),
 				// collateral value
-				Amount::from_inner(125 * USD),
+				125 * USD,
 			));
 			let rp = Zero::zero();
 			let res = Loans::price(Origin::signed(borrower), pool_id, loan_id, rp, loan_type);
@@ -535,7 +535,7 @@ macro_rules! test_borrow_loan {
 
 				// borrow 50 first
 				Timestamp::set_timestamp(1 * 1000);
-				let borrow_amount = Amount::from_inner(50 * USD);
+				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -557,10 +557,9 @@ macro_rules! test_borrow_loan {
 				assert_eq!(loan.interest_rate_per_sec, rate);
 				assert_eq!(loan.accumulated_rate, rate);
 				assert_eq!(loan.last_updated, 1);
-				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
-				let p_debt = borrow_amount
-					.checked_div(&math::convert::<Rate, Amount>(loan.accumulated_rate).unwrap())
-					.unwrap();
+				assert_eq!(loan.total_borrowed, 50 * USD);
+				let inverse_rate = loan.accumulated_rate.reciprocal().unwrap();
+				let p_debt = inverse_rate.checked_mul_int(borrow_amount).unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
@@ -568,13 +567,15 @@ macro_rules! test_borrow_loan {
 				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
 				assert_eq!(owner_balance, 50 * USD);
 				// nav should be updated to latest present value
-				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
+					.unwrap()
+					.0;
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// borrow another 20 after 1000 seconds
 				Timestamp::set_timestamp(1001 * 1000);
-				let borrow_amount = Amount::from_inner(20 * USD);
+				let borrow_amount = 20 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 				// check loan data
@@ -586,27 +587,29 @@ macro_rules! test_borrow_loan {
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
 				assert_eq!(loan.last_updated, 1001);
-				assert_eq!(loan.total_borrowed, Amount::from_inner(70 * USD));
-				let c_debt = math::debt(p_debt, loan.accumulated_rate).unwrap();
-				let p_debt = c_debt
-					.checked_add(&borrow_amount)
+				assert_eq!(loan.total_borrowed, 70 * USD);
+				let c_debt = math::debt(p_debt, loan.accumulated_rate)
 					.unwrap()
-					.checked_div(&math::convert::<Rate, Amount>(loan.accumulated_rate).unwrap())
+					.checked_add(borrow_amount)
 					.unwrap();
+				let inverse_rate = loan.accumulated_rate.reciprocal().unwrap();
+				let p_debt = inverse_rate.checked_mul_int(borrow_amount).unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 930 * USD);
 				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
 				assert_eq!(owner_balance, 70 * USD);
-				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
+					.unwrap()
+					.0;
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// try to borrow more than max_borrow_amount
 				// borrow another 40 after 1000 seconds
 				Timestamp::set_timestamp(2001 * 1000);
-				let borrow_amount = Amount::from_inner(40 * USD);
+				let borrow_amount = 40 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
@@ -649,7 +652,8 @@ macro_rules! test_borrow_loan {
 				assert_err!(res, Error::<MockRuntime>::WrittenOffByAdmin);
 
 				// update nav
-				let updated_nav = <Loans as TPoolNav<PoolId, Amount>>::update_nav(pool_id).unwrap();
+				let updated_nav =
+					<Loans as TPoolNav<PoolId, Balance>>::update_nav(pool_id).unwrap();
 				// check loan data
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
@@ -699,7 +703,7 @@ macro_rules! test_repay_loan {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
-				let borrow_amount = Amount::from_inner(50 * USD);
+				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -709,9 +713,12 @@ macro_rules! test_repay_loan {
 				// accumulated rate is now rate per sec
 				assert_eq!(loan.accumulated_rate, rate);
 				assert_eq!(loan.last_updated, 1);
-				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
-				let p_debt = borrow_amount
-					.checked_div(&math::convert::<Rate, Amount>(loan.accumulated_rate).unwrap())
+				assert_eq!(loan.total_borrowed, 50 * USD);
+				let p_debt = loan
+					.accumulated_rate
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(borrow_amount)
 					.unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 				// pool should have 50 less token
@@ -720,14 +727,16 @@ macro_rules! test_repay_loan {
 				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
 				assert_eq!(owner_balance, 50 * USD);
 				// nav should be updated to latest present value
-				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
+					.unwrap()
+					.0;
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 20 after 1000 seconds
 				Timestamp::set_timestamp(1001 * 1000);
-				let repay_amount = Amount::from_inner(20 * USD);
-				assert_eq!(loan.total_repaid, Amount::from_inner(0));
+				let repay_amount = 20 * USD;
+				assert_eq!(loan.total_repaid, 0);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
@@ -740,23 +749,25 @@ macro_rules! test_repay_loan {
 					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
 				);
 				assert_eq!(loan.last_updated, 1001);
-				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
-				assert_eq!(loan.total_repaid, Amount::from_inner(20 * USD));
+				assert_eq!(loan.total_borrowed, 50 * USD);
+				assert_eq!(loan.total_repaid, 20 * USD);
 				// principal debt should still be more than 30 due to interest
-				assert!(loan.principal_debt > Amount::from_inner(30 * USD));
+				assert!(loan.principal_debt > 30 * USD);
 				// pool should have 30 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
 				assert_eq!(pool_balance, 970 * USD);
 				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
 				assert_eq!(owner_balance, 30 * USD);
 				// nav should be updated to latest present value
-				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
+					.unwrap()
+					.0;
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 30 more after another 1000 seconds
 				Timestamp::set_timestamp(2001 * 1000);
-				let repay_amount = Amount::from_inner(30 * USD);
+				let repay_amount = 30 * USD;
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
@@ -768,55 +779,52 @@ macro_rules! test_repay_loan {
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
 				// nav should be updated to latest present value
-				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
+					.unwrap()
+					.0;
 				let pv = loan.present_value(&vec![]).unwrap();
-				assert_eq!(loan.total_repaid, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_repaid, 50 * USD);
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay the interest
 				// 50 for 1000 seconds
-				let amount = Amount::from_inner(50 * USD);
-				let p_debt = amount
-					.checked_div(
-						&math::convert::<Rate, Amount>(loan.interest_rate_per_sec).unwrap(),
-					)
+				let amount = 50 * USD;
+				let p_debt = loan
+					.interest_rate_per_sec
+					.reciprocal()
+					.unwrap()
+					.checked_mul_int(amount)
 					.unwrap();
 				let rate_after_1000 = checked_pow(loan.interest_rate_per_sec, 1001).unwrap();
-				let debt_after_1000 = p_debt
-					.checked_mul(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
-					.unwrap();
+				let debt_after_1000 = rate_after_1000.checked_mul_int(p_debt).unwrap();
 
 				// 30 for 1000 seconds
-				let p_debt = debt_after_1000
-					.checked_sub(&Amount::from_inner(20 * USD))
+				let p_debt = rate_after_1000
+					.reciprocal()
 					.unwrap()
-					.checked_div(&math::convert::<Rate, Amount>(rate_after_1000).unwrap())
+					.checked_mul_int(debt_after_1000 - (20 * USD))
 					.unwrap();
 				let rate_after_2000 = checked_pow(loan.interest_rate_per_sec, 2001).unwrap();
-				let debt_after_2000 = p_debt
-					.checked_mul(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
-					.unwrap();
-				let p_debt = debt_after_2000
-					.checked_sub(&Amount::from_inner(30 * USD))
+				let debt_after_2000 = rate_after_2000.checked_mul_int(p_debt).unwrap();
+				let p_debt = rate_after_2000
+					.reciprocal()
 					.unwrap()
-					.checked_div(&math::convert::<Rate, Amount>(rate_after_2000).unwrap())
+					.checked_mul_int(debt_after_2000 - (30 * USD))
 					.unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 
 				// debt after 3000 seconds
 				Timestamp::set_timestamp(3001 * 1000);
 				let rate_after_3000 = checked_pow(loan.interest_rate_per_sec, 3001).unwrap();
-				let debt = p_debt
-					.checked_mul(&math::convert::<Rate, Amount>(rate_after_3000).unwrap())
-					.unwrap();
+				let debt = rate_after_3000.checked_mul_int(p_debt).unwrap();
 
 				// transfer exact interest amount to owner account from dummy account 2
 				let dummy: u64 = 7;
-				let transfer_amount: Balance = debt.into_inner().into();
 				let dest =
 					<<MockRuntime as frame_system::Config>::Lookup as StaticLookup>::unlookup(
 						borrower,
 					);
+				let transfer_amount = debt;
 				let res = Tokens::transfer(
 					Origin::signed(dummy),
 					dest,
@@ -830,7 +838,7 @@ macro_rules! test_repay_loan {
 					.expect("LoanDetails should be present");
 				let total_repaid_pre = loan.total_repaid;
 
-				let repay_amount = debt + Amount::from_inner(10 * USD);
+				let repay_amount = debt + 10 * USD;
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
@@ -848,10 +856,12 @@ macro_rules! test_repay_loan {
 					.expect("LoanDetails should be present");
 				assert_eq!(loan.status, LoanStatus::Closed);
 				assert_eq!(loan.principal_debt, Zero::zero());
-				assert_eq!(loan.total_borrowed, Amount::from_inner(50 * USD));
+				assert_eq!(loan.total_borrowed, 50 * USD);
 				assert_eq!(loan.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
-				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
+				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
+					.unwrap()
+					.0;
 				let pv = loan.present_value(&vec![]).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 				assert_eq!(current_nav, Zero::zero());
@@ -925,7 +935,7 @@ macro_rules! test_pool_nav {
 				assert_eq!(pv, Zero::zero());
 
 				// borrow 50 amount at the instant
-				let borrow_amount = Amount::from_inner(50 * USD);
+				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -953,19 +963,19 @@ macro_rules! test_pool_nav {
 					let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 						.expect("LoanDetails should be present");
 					let (_, debt) = loan.accrue(after_200_days).unwrap();
-					let borrow_amount = Amount::from_inner(100 * USD).checked_sub(&debt).unwrap();
+					let borrow_amount = (100 * USD).checked_sub(debt).unwrap();
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 
 					// cannot borrow more than max_borrow_amount, 1
-					let borrow_amount = Amount::from_inner(1 * USD);
+					let borrow_amount = 1 * USD;
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 					// payback 50 and borrow more later
-					let repay_amount = Amount::from_inner(50 * USD);
+					let repay_amount = 50 * USD;
 					let res =
 						Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 					assert_ok!(res);
@@ -975,25 +985,25 @@ macro_rules! test_pool_nav {
 					Timestamp::set_timestamp(after_500_days * 1000);
 
 					// you cannot borrow more than 50 since the debt is more than 50 by now
-					let borrow_amount = Amount::from_inner(50 * USD);
+					let borrow_amount = 50 * USD;
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
 
 					// borrow 40 maybe
-					let borrow_amount = Amount::from_inner(40 * USD);
+					let borrow_amount = 40 * USD;
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 				} else {
 					// borrow another 50 and
-					let borrow_amount = Amount::from_inner(50 * USD);
+					let borrow_amount = 50 * USD;
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_ok!(res);
 
 					// cannot borrow more than max_borrow_amount, 1
-					let borrow_amount = Amount::from_inner(1 * USD);
+					let borrow_amount = 1 * USD;
 					let res =
 						Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 					assert_err!(res, Error::<MockRuntime>::MaxBorrowAmountExceeded);
@@ -1039,7 +1049,7 @@ macro_rules! test_pool_nav {
 				// write off the loan and check for updated nav
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
 					let group = WriteOffGroup {
-						percentage: Rate::saturating_from_rational(group.1, 100),
+						percentage: Rate::saturating_from_rational::<u128, u128>(group.1, 100),
 						overdue_days: group.0,
 					};
 					let res =
@@ -1080,10 +1090,9 @@ macro_rules! test_pool_nav {
 				.expect("must be a Nav updated event");
 
 				// updated nav should be (1-20%) outstanding debt
-				let expected_nav =
-					math::convert::<Rate, Amount>(Rate::saturating_from_rational(20, 100))
-						.and_then(|rate| debt.checked_mul(&rate))
-						.and_then(|written_off_amount| debt.checked_sub(&written_off_amount))
+				let expected_nav = debt
+					- Rate::saturating_from_rational(20, 100)
+						.checked_mul_int(debt)
 						.unwrap();
 				assert_eq!(expected_nav, updated_nav);
 				assert_eq!(exact, NAVUpdateType::Exact);
@@ -1100,9 +1109,9 @@ fn test_pool_nav_bullet_loan() {
 		// anyone can write off after maturity
 		false,
 		// present value at the instant of origination
-		Amount::from_inner(48969664319886742817u128),
+		48969664319886742817u128,
 		// present value after 200 days
-		Amount::from_inner(50054820713981957069u128)
+		50054820713981957069u128
 	)
 }
 
@@ -1115,9 +1124,9 @@ fn test_pool_nav_credit_line_with_maturity_loan() {
 		// anyone can write off after maturity
 		false,
 		// present value at the instant of origination
-		Amount::from_inner(48969664319886742817u128),
+		48969664319886742817u128,
 		// present value after 200 days
-		Amount::from_inner(50054820713981957069u128)
+		50054820713981957069u128
 	)
 }
 
@@ -1130,9 +1139,9 @@ fn test_pool_nav_credit_line_loan() {
 		// only admin can write off
 		true,
 		// present value at the instant of origination
-		Amount::from_inner(49999999999999999999u128),
+		49999999999999999999u128,
 		// present value after 200 days
-		Amount::from_inner(51388800811704851007u128)
+		51388800811704851007u128
 	)
 }
 
@@ -1218,7 +1227,7 @@ macro_rules! test_write_off_maturity_loan {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
-				let borrow_amount = Amount::from_inner(50 * USD);
+				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -1322,7 +1331,7 @@ macro_rules! test_admin_write_off_loan_type {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
-				let borrow_amount = Amount::from_inner(50 * USD);
+				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -1437,7 +1446,7 @@ macro_rules! test_close_written_off_loan_type {
 
 				// borrow 50
 				Timestamp::set_timestamp(1 * 1000);
-				let borrow_amount = Amount::from_inner(50 * USD);
+				let borrow_amount = 50 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 
@@ -1567,7 +1576,7 @@ macro_rules! repay_too_early {
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// borrow amount
-				let borrow_amount = Amount::from_inner(100 * USD);
+				let borrow_amount = 100 * USD;
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 

@@ -29,7 +29,7 @@ use frame_support::{
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
+	Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -173,7 +173,6 @@ impl pallet_pools::Config for MockRuntime {
 	type CurrencyId = CurrencyId;
 	type Currency = Balances;
 	type Tokens = Tokens;
-	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
@@ -267,7 +266,7 @@ impl pallet_loans::Config for MockRuntime {
 	type ClassId = ClassId;
 	type LoanId = InstanceId;
 	type Rate = Rate;
-	type Amount = Amount;
+	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;

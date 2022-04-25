@@ -152,8 +152,10 @@ pub(crate) fn create<T>(
 		TrancheLoc::Id(SeniorTrancheId::get().into()),
 		(500 * CURRENCY).into(),
 	));
-	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
-		.expect("update nav should work");
+	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, <T as pallet_loans::Config>::Balance>>::update_nav(
+		pool_id.into(),
+	)
+	.expect("update nav should work");
 
 	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
 		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;

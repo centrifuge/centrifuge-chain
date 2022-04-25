@@ -119,7 +119,7 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		interest_rate_per_sec: T::Rate,
-		loan_type: LoanType<T::Rate, T::Amount>,
+		loan_type: LoanType<T::Rate, T::Balance>,
 	) -> DispatchResult {
 		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
 			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
@@ -215,7 +215,7 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
-		amount: T::Amount,
+		amount: T::Balance,
 	) -> Result<bool, DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
@@ -241,7 +241,7 @@ impl<T: Config> Pallet<T> {
 			ensure!(valid, Error::<T>::LoanMaturityDatePassed);
 
 			// ensure borrow amount is positive
-			ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
+			ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 			// check for max borrow amount
 			let max_borrow_amount = loan.max_borrow_amount(now);
@@ -266,7 +266,7 @@ impl<T: Config> Pallet<T> {
 				.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
 			// calculate new principal debt with adjustment amount
-			let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
+			let principal_debt = math::calculate_principal_debt::<T::Balance, T::Rate>(
 				debt,
 				math::Adjustment::Inc(amount),
 				accumulated_rate,
@@ -286,15 +286,15 @@ impl<T: Config> Pallet<T> {
 				.present_value(&vec![])
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 			Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-			T::Pool::withdraw(pool_id, owner, amount.into())?;
+			T::Pool::withdraw(pool_id, owner, amount)?;
 			Ok(first_borrow)
 		})
 	}
 
 	pub(crate) fn update_nav_with_updated_present_value(
 		pool_id: PoolIdOf<T>,
-		new_pv: T::Amount,
-		old_pv: T::Amount,
+		new_pv: T::Balance,
+		old_pv: T::Balance,
 	) -> Result<(), DispatchError> {
 		// calculate new diff from the old and new present value and update the nav accordingly
 		PoolNAV::<T>::try_mutate(pool_id, |maybe_nav_details| -> Result<(), DispatchError> {
@@ -327,15 +327,15 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
-		amount: T::Amount,
-	) -> Result<T::Amount, DispatchError> {
+		amount: T::Balance,
+	) -> Result<T::Balance, DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<T::Amount, DispatchError> {
+			|loan| -> Result<T::Balance, DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
@@ -354,7 +354,7 @@ impl<T: Config> Pallet<T> {
 				);
 
 				// ensure repay amount is positive
-				ensure!(amount.is_positive(), Error::<T>::LoanValueInvalid);
+				ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
@@ -375,7 +375,7 @@ impl<T: Config> Pallet<T> {
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow))?;
 
 				// calculate new principal debt with repaid amount
-				let principal_debt = math::calculate_principal_debt::<T::Amount, T::Rate>(
+				let principal_debt = math::calculate_principal_debt::<T::Balance, T::Rate>(
 					debt,
 					math::Adjustment::Dec(repay_amount),
 					accumulated_rate,
@@ -390,7 +390,7 @@ impl<T: Config> Pallet<T> {
 					.present_value(&write_off_groups)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-				T::Pool::deposit(pool_id, owner, repay_amount.into())?;
+				T::Pool::deposit(pool_id, owner, repay_amount)?;
 				Ok(repay_amount)
 			},
 		)
@@ -407,11 +407,11 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		now: Moment,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
-	) -> Result<T::Amount, DispatchError> {
+	) -> Result<T::Balance, DispatchError> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<T::Amount, DispatchError> {
+			|loan| -> Result<T::Balance, DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// if the loan is not active, then skip updating and return PV as zero
@@ -433,13 +433,13 @@ impl<T: Config> Pallet<T> {
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
 	pub(crate) fn update_nav_of_pool(
 		pool_id: PoolIdOf<T>,
-	) -> Result<(T::Amount, Moment), DispatchError> {
+	) -> Result<(T::Balance, Moment), DispatchError> {
 		let now = Self::now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;
 		let nav = Loan::<T>::iter_key_prefix(pool_id).try_fold(
 			Zero::zero(),
-			|sum, loan_id| -> Result<T::Amount, DispatchError> {
+			|sum, loan_id| -> Result<T::Balance, DispatchError> {
 				let pv = Self::accrue_and_update_loan(pool_id, loan_id, now, &write_off_groups)?;
 				updated_loans += 1;
 				sum.checked_add(&pv)

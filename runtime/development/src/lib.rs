@@ -833,7 +833,6 @@ impl pallet_pools::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Currency = Balances;
 	type Tokens = Tokens;
-	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
 	type Permission = Permissions;
@@ -980,7 +979,7 @@ impl pallet_loans::Config for Runtime {
 	type ClassId = ClassId;
 	type LoanId = InstanceId;
 	type Rate = Rate;
-	type Amount = Amount;
+	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;

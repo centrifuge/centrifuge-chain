@@ -37,7 +37,7 @@ pub(crate) struct ClosedLoan<T: pallet::Config> {
 /// The data structure for storing pool nav details
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct NAVDetails<Amount> {
+pub struct NAVDetails<Balance> {
 	// this is the latest nav for the given pool.
 	// this will be updated on these scenarios
 	// 1. When we are calculating pool nav
@@ -45,7 +45,7 @@ pub struct NAVDetails<Amount> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest: Amount,
+	pub(crate) latest: Balance,
 
 	// this is the last time when the nav was calculated for the entire pool
 	pub(crate) last_updated: Moment,
@@ -90,9 +90,9 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanDetails<Rate, Amount, Asset> {
+pub struct LoanDetails<Rate, Balance, Asset> {
 	pub(crate) collateral: Asset,
-	pub(crate) loan_type: LoanType<Rate, Amount>,
+	pub(crate) loan_type: LoanType<Rate, Balance>,
 	pub(crate) status: LoanStatus,
 
 	// interest rate per second
@@ -105,15 +105,15 @@ pub struct LoanDetails<Rate, Amount, Asset> {
 	// principal debt will change on every borrow and repay.
 	// Called principal debt instead of pie or normalized debt as mentioned here - https://docs.makerdao.com/smart-contract-modules/rates-module
 	// since its easier to look at it as principal amount borrowed and can be used to calculate final debt with the accumulated interest rate
-	pub(crate) principal_debt: Amount,
+	pub(crate) principal_debt: Balance,
 	pub(crate) last_updated: Moment,
 
 	// accumulated rate till last_updated. more about this here - https://docs.makerdao.com/smart-contract-modules/rates-module
 	pub(crate) accumulated_rate: Rate,
 
 	// total borrowed and repaid on this loan
-	pub(crate) total_borrowed: Amount,
-	pub(crate) total_repaid: Amount,
+	pub(crate) total_borrowed: Balance,
+	pub(crate) total_repaid: Balance,
 
 	// write off group index in the vec of write off groups
 	// none, the loan is not written off yet
@@ -125,10 +125,10 @@ pub struct LoanDetails<Rate, Amount, Asset> {
 	pub(crate) admin_written_off: bool,
 }
 
-impl<Rate, Amount, Asset> LoanDetails<Rate, Amount, Asset>
+impl<Rate, Balance, Asset> LoanDetails<Rate, Balance, Asset>
 where
 	Rate: FixedPointNumber,
-	Amount: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
 {
 	/// returns the present value of the loan
 	/// note: this will use the accumulated_rate and last_updated from self
@@ -136,41 +136,37 @@ where
 	pub(crate) fn present_value(
 		&self,
 		write_off_groups: &Vec<WriteOffGroup<Rate>>,
-	) -> Option<Amount> {
+	) -> Option<Balance> {
 		// calculate current debt and present value
-		math::debt(self.principal_debt, self.accumulated_rate)
-			.and_then(|debt| {
-				// if the debt is written off, write off accordingly
-				self.write_off_index.map_or(Some(debt), |index| {
-					write_off_groups
-						.get(index as usize)
-						// convert rate to amount
-						.and_then(|group| math::convert::<Rate, Amount>(group.percentage))
-						// calculate write off amount
-						.and_then(|write_off_percentage| debt.checked_mul(&write_off_percentage))
-						// calculate debt after written off
-						.and_then(|write_off_amount| debt.checked_sub(&write_off_amount))
-				})
-			})
-			.and_then(|debt| match self.loan_type {
-				LoanType::BulletLoan(bl) => bl.present_value(
-					debt,
-					self.origination_date,
-					self.last_updated,
-					self.interest_rate_per_sec,
-				),
-				LoanType::CreditLine(cl) => cl.present_value(debt),
-				LoanType::CreditLineWithMaturity(clm) => clm.present_value(
-					debt,
-					self.origination_date,
-					self.last_updated,
-					self.interest_rate_per_sec,
-				),
-			})
+		let debt = math::debt(self.principal_debt, self.accumulated_rate)?;
+		// if the debt is written off, write off accordingly
+		let debt = if let Some(index) = self.write_off_index {
+			let group = write_off_groups.get(index as usize)?;
+			let write_off_amount = group.percentage.checked_mul_int(debt)?;
+			debt.checked_sub(&write_off_amount)?
+		} else {
+			debt
+		};
+
+		match self.loan_type {
+			LoanType::BulletLoan(bl) => bl.present_value(
+				debt,
+				self.origination_date,
+				self.last_updated,
+				self.interest_rate_per_sec,
+			),
+			LoanType::CreditLine(cl) => cl.present_value(debt),
+			LoanType::CreditLineWithMaturity(clm) => clm.present_value(
+				debt,
+				self.origination_date,
+				self.last_updated,
+				self.interest_rate_per_sec,
+			),
+		}
 	}
 
 	/// accrues rate and current debt from last updated until now
-	pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Amount)> {
+	pub(crate) fn accrue(&self, now: Moment) -> Option<(Rate, Balance)> {
 		// if the borrow amount is zero, then set accumulated rate to rate per sec so we start accumulating from now.
 		let maybe_rate = match self.total_borrowed == Zero::zero() {
 			true => Some(self.interest_rate_per_sec),
@@ -184,7 +180,7 @@ where
 
 		// calculate the current outstanding debt
 		let maybe_debt = maybe_rate
-			.and_then(|acc_rate| math::debt::<Amount, Rate>(self.principal_debt, acc_rate));
+			.and_then(|acc_rate| math::debt::<Balance, Rate>(self.principal_debt, acc_rate));
 
 		match (maybe_rate, maybe_debt) {
 			(Some(rate), Some(debt)) => Some((rate, debt)),
@@ -193,7 +189,7 @@ where
 	}
 
 	/// returns the max_borrow_amount amount for the loan based on the loan type
-	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Amount {
+	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Balance {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
 			LoanType::CreditLine(cl) => {
@@ -222,9 +218,6 @@ pub(crate) type InstanceIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::InstanceId;
 /// type alias to Non fungible Asset
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
-/// type alias for pool reserve balance type
-pub(crate) type ReserveBalanceOf<T> =
-	<<T as Config>::Pool as PoolReserve<<T as frame_system::Config>::AccountId>>::Balance;
 /// type alias for poolId type
 pub(crate) type PoolIdOf<T> =
 	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
