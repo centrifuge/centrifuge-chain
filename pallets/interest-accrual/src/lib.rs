@@ -57,10 +57,10 @@ use common_traits::InterestAccrual;
 use common_types::{Adjustment, Moment};
 use frame_support::traits::UnixTime;
 use scale_info::TypeInfo;
-use sp_arithmetic::traits::checked_pow;
+use sp_arithmetic::traits::{checked_pow, One};
 use sp_runtime::ArithmeticError;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedMul, CheckedSub},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -118,27 +118,6 @@ pub mod pallet {
 			+ TypeInfo
 			+ FixedPointNumber<Inner = Self::Balance>;
 
-		/// A fixed-point number which represents
-		/// the normalized debt.
-		type NormalizedDebt: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ TypeInfo
-			+ FixedPointNumber
-			+ CheckedMul;
-
-		/// The amount type
-		type Amount: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
-			+ FixedPointOperand
-			+ From<Self::NormalizedDebt>
-			+ CheckedAdd
-			+ CheckedSub
-			+ TypeInfo;
-
 		type Time: UnixTime;
 	}
 
@@ -165,8 +144,8 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub fn get_current_debt(
 			interest_rate_per_sec: T::InterestRate,
-			normalized_debt: T::NormalizedDebt,
-		) -> Result<T::Amount, DispatchError> {
+			normalized_debt: T::Balance,
+		) -> Result<T::Balance, DispatchError> {
 			Rate::<T>::try_mutate(
 				interest_rate_per_sec,
 				|rate_details| -> Result<T::Amount, DispatchError> {
@@ -184,8 +163,7 @@ pub mod pallet {
 						rate
 					} else {
 						*rate_details = Some(RateDetails {
-							accumulated_rate: T::InterestRate::saturating_from_rational(100, 100)
-								.into(),
+							accumulated_rate: One::one(),
 							last_updated: Self::now(),
 						});
 						rate_details.as_mut().expect("RateDetails now Some. qed.")
@@ -200,46 +178,30 @@ pub mod pallet {
 
 		pub fn do_adjust_normalized_debt(
 			interest_rate_per_sec: T::InterestRate,
-			normalized_debt: T::NormalizedDebt,
-			adjustment: Adjustment<T::Amount>,
-		) -> Result<T::NormalizedDebt, DispatchError> {
+			normalized_debt: T::Balance,
+			adjustment: Adjustment<T::Balance>,
+		) -> Result<T::Balance, DispatchError> {
 			let rate =
 				Rate::<T>::try_get(interest_rate_per_sec).map_err(|_| Error::<T>::NoSuchRate)?;
 
 			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
 
-			let new_normalized_debt =
-				Self::convert::<T::InterestRate, T::Amount>(rate.accumulated_rate)
-					.and_then(|rate| {
-						// Apply adjustment to debt
-						match adjustment {
-							Adjustment::Increase(amount) => debt.checked_add(&amount),
-							Adjustment::Decrease(amount) => debt.checked_sub(&amount),
-						}
-						// Calculate normalized debt = debt / accumulated_rate
-						.and_then(|debt| {
-							debt.checked_div_int(rate).and_then(|normalized_debt| {
-								Self::convert::<T::Amount, T::NormalizedDebt>(normalized_debt)
-							})
-						})
-					})
-					.ok_or(Error::<T>::DebtAdjustmentFailed)?;
+			let new_normalized_debt = rate
+				.accumulated_rate
+				.reciprocal()
+				.and_then(|inv_rate| inv_rate.checked_mul_int(new_debt))
+				.ok_or(Error::<T>::DebtAdjustmentFailed)?;
 
 			Ok(new_normalized_debt)
 		}
 
 		/// Calculates the debt using debt = normalized_debt * accumulated_rate
 		fn calculate_debt(
-			normalized_debt: T::NormalizedDebt,
+			normalized_debt: T::Balance,
 			accumulated_rate: T::InterestRate,
-		) -> Option<T::Amount> {
-			// TODO: isn't there a better way of doing this, without the convert?
-			Self::convert::<T::InterestRate, T::NormalizedDebt>(accumulated_rate).and_then(|rate| {
-				normalized_debt
-					.checked_mul(&rate)
-					.and_then(|debt| Self::convert::<T::NormalizedDebt, T::Amount>(debt))
-			})
+		) -> Option<T::Balance> {
+			accumulated_rate.checked_mul_int(normalized_debt)
 		}
 
 		fn calculate_accumulated_rate<Rate: FixedPointNumber>(
@@ -274,8 +236,8 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> InterestAccrual<T::InterestRate, T::Amount, Adjustment<T::Amount>> for Pallet<T> {
-	type NormalizedDebt = T::NormalizedDebt;
+impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balance>> for Pallet<T> {
+	type NormalizedDebt = T::Balance;
 
 	fn current_debt(
 		interest_rate_per_sec: T::InterestRate,

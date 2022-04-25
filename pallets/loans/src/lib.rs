@@ -34,7 +34,7 @@ pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedMul, Member};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Member};
 use sp_runtime::{DispatchError, FixedPointNumber, FixedPointOperand};
 use sp_std::{convert::TryInto, vec, vec::Vec};
 #[cfg(feature = "std")]
@@ -137,22 +137,7 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
-		/// A fixed-point number which represents
-		/// the normalized debt.
-		type NormalizedDebt: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ TypeInfo
-			+ FixedPointOperand
-			+ CheckedMul;
-
-		type InterestAccrual: InterestAccrualT<
-			Self::Rate,
-			Self::Balance,
-			Adjustment<Self::Balance>,
-			NormalizedDebt = Self::NormalizedDebt,
-		>;
+		type InterestAccrual: InterestAccrualT<Self::Rate, Self::Balance, Adjustment<Self::Balance>>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
@@ -198,7 +183,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanDetails<T::Rate, T::Balance, AssetOf<T>, T::NormalizedDebt>,
+		LoanDetails<T::Rate, T::Balance, AssetOf<T>, NormalizedDebtOf<T>>,
 		OptionQuery,
 	>;
 

@@ -18,7 +18,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
@@ -127,14 +127,14 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 }
 
 /// A trait that can be used to calculate interest accrual for debt
-pub trait InterestAccrual<InterestRate, Amount, Adjustment> {
-	type NormalizedDebt;
+pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
+	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
 
 	/// Calculate the current debt using normalized debt * cumulative rate
 	fn current_debt(
 		interest_rate_per_sec: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
-	) -> Result<Amount, DispatchError>;
+	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt
 	fn adjust_normalized_debt(

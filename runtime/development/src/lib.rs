@@ -987,7 +987,6 @@ impl pallet_loans::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
-	type NormalizedDebt = common_traits::InterestAccrual::NormalizedDebt;
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
@@ -1151,8 +1150,6 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type InterestRate = Rate;
-	type NormalizedDebt = Amount;
-	type Amount = Amount;
 	type Time = Timestamp;
 }
 

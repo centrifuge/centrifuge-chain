@@ -174,3 +174,9 @@ pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId
 /// type alias for poolId type
 pub(crate) type PoolIdOf<T> =
 	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
+/// type alias for a normalized balance type
+pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as InterestAccrualT<
+	<T as Config>::Rate,
+	<T as Config>::Balance,
+	Adjustment<<T as Config>::Balance>,
+>>::NormalizedDebt;
