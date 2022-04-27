@@ -9,8 +9,19 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use pallet_anchors::AnchorData;
+use sp_api::decl_runtime_apis;
 
-//! Runtime apis useful in the Centrifuge ecosystem
-pub mod anchors;
-pub mod loans;
-pub mod pools;
+decl_runtime_apis! {
+	/// Runtime for pallet-anchors.
+	///
+	/// Note: That the runtime api is pallet specific, while the rpc method
+	///       are more focused on domain-specifc logic	pub trait AnchorApi<Hash, BlockNumber>
+	pub trait AnchorApi
+	where
+		Hash: Codec,
+		BlockNumber: Codec
+	{
+		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
+	}
+}

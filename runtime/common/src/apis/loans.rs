@@ -9,8 +9,21 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use sp_api::decl_runtime_apis;
 
-//! Runtime apis useful in the Centrifuge ecosystem
-pub mod anchors;
-pub mod loans;
-pub mod pools;
+decl_runtime_apis! {
+	/// Runtime for pallet-loans.
+	///
+	/// Note: That the runtime api is pallet specific, while the rpc method
+	///       are more focused on domain-specifc logic
+	pub trait LoansApi<PoolId, LoanId, Balance>
+	where
+		PoolId: Codec,
+		LoanId: Codec,
+		Balance: Codec,
+	{
+		fn nav(id: PoolId) -> Option<Balance>;
+
+		fn max_borrow_amount(id: PoolId, loan_id: LoanId) -> Option<Balance>;
+	}
+}
