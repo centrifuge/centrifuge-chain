@@ -58,6 +58,7 @@ use common_types::{
 	TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
+use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
@@ -1479,6 +1480,40 @@ impl_runtime_apis! {
 			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
 			pallet_loans::Loan::<Runtime>::get(id, loan_id)
 				.map(|loan_details| loan_details.max_borrow_amount(now).into())
+		}
+	}
+
+	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
+		fn pool_value(pool_id: PoolId) -> Option<Balance> {
+			todo!()
+		}
+
+		fn pool_currency(poold_id: PoolId) -> Option<CurrencyId>{
+			todo!()
+		}
+
+		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>{
+			todo!()
+		}
+
+		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
+			todo!()
+		}
+
+		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
+			todo!()
+		}
+
+		fn tranche_ids(pool_id: PoolId) -> Option<Vec<TrancheId>>{
+			todo!()
+		}
+
+		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
+			todo!()
+		}
+
+		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
+			todo!()
 		}
 	}
 

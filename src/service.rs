@@ -790,7 +790,9 @@ pub async fn start_development_node(
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
-			io.extend_with(LoansApi::to_delegate(Loans::new(client)));
+			io.extend_with(LoansApi::to_delegate(Loans::new(client.clone())));
+			io.extend_with(PoolsApi::to_delegate(Pools::new(client)));
+
 			Ok(io)
 		},
 		build_development_import_queue,
