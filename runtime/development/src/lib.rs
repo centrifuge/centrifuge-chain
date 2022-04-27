@@ -1485,35 +1485,70 @@ impl_runtime_apis! {
 
 	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
 		fn pool_value(pool_id: PoolId) -> Option<Balance> {
-			todo!()
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
+
+			Some(pool.reserve.total.saturating_add(nav))
 		}
 
-		fn pool_currency(poold_id: PoolId) -> Option<CurrencyId>{
-			todo!()
+		fn pool_currency(pool_id: PoolId) -> Option<CurrencyId>{
+			pallet_pools::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
 
 		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>{
-			todo!()
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let epoch_execution_info = pallet_pools::EpochExecution::<Runtime>::get(pool_id)?;
+			pallet_pools::Pallet::<Runtime>::score_solution(
+				&pool,
+				&epoch_execution_info,
+				&solution
+			).ok()
 		}
 
 		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
-			todo!()
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
+			let total_assets = pool.reserve.total.saturating_add(nav);
+			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
+			let prices = pool
+				.tranches
+				.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
+				.ok()?;
+			prices.get(index).map(|rate: &Rate| rate.clone())
 		}
 
 		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
-			todo!()
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
+			let total_assets = pool.reserve.total.saturating_add(nav);
+			pool
+				.tranches
+				.calculate_prices::<Rate, OrmlTokens, AccountId>(total_assets, now)
+				.ok()
 		}
 
 		fn tranche_ids(pool_id: PoolId) -> Option<Vec<TrancheId>>{
-			todo!()
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			Some(pool.tranches.ids_residual_top())
 		}
 
 		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
-			todo!()
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let index: usize = tranche_index.try_into().ok()?;
+			pool.tranches.ids_residual_top().get(index).map(|id| id.clone())
 		}
 
 		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
-			todo!()
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			pool.tranches.tranche_currency(tranche_loc)
 		}
 	}
 

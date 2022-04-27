@@ -109,7 +109,7 @@ where
 pub struct Tranche<Balance, Rate, Weight, Currency> {
 	pub(super) tranche_type: TrancheType<Rate>,
 	pub(super) seniority: Seniority,
-	pub(super) currency: Currency,
+	pub currency: Currency,
 
 	pub(super) outstanding_invest_orders: Balance,
 	pub(super) outstanding_redeem_orders: Balance,
@@ -340,6 +340,10 @@ where
 			ids,
 			salt,
 		})
+	}
+
+	pub fn tranche_currency(&self, id: TrancheLoc<TrancheId>) -> Option<CurrencyId> {
+		self.get_tranche(id).map(|tranche| tranche.currency)
 	}
 
 	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {

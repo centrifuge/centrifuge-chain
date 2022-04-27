@@ -29,7 +29,7 @@ decl_runtime_apis! {
 	{
 		fn pool_value(pool_id: PoolId) -> Option<Balance>;
 
-		fn pool_currency(poold_id: PoolId) -> Option<Currency>;
+		fn pool_currency(pool_id: PoolId) -> Option<Currency>;
 
 		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>;
 

@@ -1255,7 +1255,7 @@ pub mod pallet {
 		///
 		/// This function checks the state a pool would be in when applying a solution
 		/// to an epoch. Depending on the state, the correct scoring function is chosen.
-		pub(crate) fn score_solution(
+		pub fn score_solution(
 			pool_id: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],
