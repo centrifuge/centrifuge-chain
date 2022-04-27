@@ -22,6 +22,10 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
 use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
+pub mod anchor;
+pub mod loans;
+pub mod pools;
+
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
 

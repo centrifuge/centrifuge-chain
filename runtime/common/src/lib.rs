@@ -25,18 +25,7 @@ mod impls;
 
 pub use common_types::CurrencyId;
 
-pub mod apis {
-	use node_primitives::{BlockNumber, Hash};
-	use pallet_anchors::AnchorData;
-	use sp_api::decl_runtime_apis;
-
-	decl_runtime_apis! {
-		/// The API to query anchoring info.
-		pub trait AnchorApi {
-			fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
-		}
-	}
-}
+pub mod apis;
 
 /// Common types for all runtimes
 pub mod types {
