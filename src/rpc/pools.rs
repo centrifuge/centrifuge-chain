@@ -2,10 +2,11 @@ use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
-use runtime_common::pools::PoolsApi as PoolsRuntimeApi;
+use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use std::fmt::Debug;
 use std::sync::Arc;
 
 #[rpc]
@@ -67,11 +68,10 @@ impl<C, Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: PoolsRuntimeApi<Block, PoolId, LoanId, Balance>,
-	Balance: Codec + MaybeDisplay + Copy,
-	PoolId: Codec + Copy,
-	TrancheId: Codec,
-	Balance: Codec,
+	C::Api: PoolsRuntimeApi<Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>,
+	Balance: Codec + Copy,
+	PoolId: Codec + Copy + Debug,
+	TrancheId: Codec + Clone + Debug,
 	Currency: Codec,
 	BalanceRatio: Codec,
 {
@@ -93,7 +93,7 @@ where
 			})
 	}
 
-	fn pool_currency(&self, poold_id: PoolId) -> Result<Currency> {
+	fn pool_currency(&self, pool_id: PoolId) -> Result<Currency> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);

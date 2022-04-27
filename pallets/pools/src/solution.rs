@@ -15,7 +15,8 @@ use frame_support::sp_runtime::traits::Convert;
 use sp_arithmetic::traits::Unsigned;
 use sp_runtime::ArithmeticError;
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum PoolState {
 	Healthy,
 	Unhealthy(Vec<UnhealthyState>),
@@ -83,14 +84,16 @@ impl PoolState {
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum UnhealthyState {
 	MaxReserveViolated,
 	MinRiskBufferViolated,
 }
 
 /// The solutions struct for epoch solution
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub enum EpochSolution<Balance> {
 	Healthy(HealthySolution<Balance>),
 	Unhealthy(UnhealthySolution<Balance>),
@@ -299,7 +302,8 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct HealthySolution<Balance> {
 	pub solution: Vec<TrancheSolution>,
 	pub score: Balance,
@@ -314,7 +318,8 @@ where
 	}
 }
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct UnhealthySolution<Balance> {
 	pub state: Vec<UnhealthyState>,
 	pub solution: Vec<TrancheSolution>,
@@ -383,7 +388,8 @@ where
 }
 
 // The solution struct for a specific tranche
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, Copy)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, Default, TypeInfo, Copy)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct TrancheSolution {
 	pub invest_fulfillment: Perquintill,
 	pub redeem_fulfillment: Perquintill,

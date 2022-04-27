@@ -45,10 +45,10 @@ pub struct NAVDetails<Amount> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest: Amount,
+	pub latest: Amount,
 
 	// this is the last time when the nav was calculated for the entire pool
-	pub(crate) last_updated: Moment,
+	pub last_updated: Moment,
 }
 
 /// The data structure for storing a specific write off group
@@ -193,7 +193,7 @@ where
 	}
 
 	/// returns the max_borrow_amount amount for the loan based on the loan type
-	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Amount {
+	pub fn max_borrow_amount(&self, now: Moment) -> Amount {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
 			LoanType::CreditLine(cl) => {

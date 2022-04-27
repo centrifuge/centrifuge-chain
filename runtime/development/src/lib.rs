@@ -10,7 +10,7 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
 		Contains, EnsureOneOf, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote,
+		U128CurrencyToVote, UnixTime,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
@@ -1461,6 +1461,24 @@ impl_runtime_apis! {
 	impl runtime_common::apis::AnchorApi<Block, Hash, BlockNumber> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
 			Anchor::get_anchor_by_id(id)
+		}
+	}
+
+	impl runtime_common::apis::LoansApi<Block, PoolId, InstanceId, Balance> for Runtime {
+		fn nav(id: PoolId) -> Option<Balance> {
+			// TODO: Error out if pool does not exists in the loans-pallet
+			if !pallet_pools::Pool::<Runtime>::get(id).is_some() {
+				return None;
+			}
+			pallet_loans::Pallet::<Runtime>::update_nav_of_pool(id)
+				.ok()
+				.map(|(latest, _)| latest.into())
+		}
+
+		fn max_borrow_amount(id: PoolId, loan_id: InstanceId) -> Option<Balance> {
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			pallet_loans::Loan::<Runtime>::get(id, loan_id)
+				.map(|loan_details| loan_details.max_borrow_amount(now).into())
 		}
 	}
 

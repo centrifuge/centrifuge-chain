@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::rpc::anchor::{Anchor, AnchorApi};
+use crate::rpc::{
+	anchor::{Anchor, AnchorApi},
+	loans::{Loans, LoansApi},
+	pools::{Pools, PoolsApi},
+};
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::BlockAnnounceValidator;
@@ -785,7 +789,8 @@ pub async fn start_development_node(
 		id,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io.extend_with(LoansApi::to_delegate(Loans::new(client)));
 			Ok(io)
 		},
 		build_development_import_queue,

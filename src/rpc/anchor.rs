@@ -29,31 +29,30 @@ impl<C, P> Anchor<C, P> {
 	}
 }
 
-impl<C, Block, Hash, BlockNumber> AnchorApi<Hash, BlockNumber> for Anchor<C, Block>
+impl<C, Block, Hash> AnchorApi<Hash, sp_runtime::traits::NumberFor<Block>> for Anchor<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: AnchorRuntimeApi<Block>,
-	Hash: Codec,
-	BlockNumber: NumberFor<Block>,
+	C::Api: AnchorRuntimeApi<Block, Hash, sp_runtime::traits::NumberFor<Block>>,
+	Hash: Codec + Clone + sp_std::fmt::Debug,
 {
-	fn get_anchor_by_id(&self, id: Hash) -> Result<AnchorData<Hash, BlockNumber>> {
+	fn get_anchor_by_id(
+		&self,
+		id: Hash,
+	) -> Result<AnchorData<Hash, sp_runtime::traits::NumberFor<Block>>> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
-		let anchor = api
-			.get_anchor_by_id(&at, id)
+		api.get_anchor_by_id(&at, id.clone())
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
 				message: "Unable to query anchor by id.".into(),
 				data: Some(format!("{:?}", e).into()),
 			})?
-			.ok_or(jsonrpc_core::Error {
+			.ok_or(RpcError {
 				code: jsonrpc_core::ErrorCode::InternalError,
 				message: "Unable to find anchor".into(),
 				data: Some(format!("{:?}", id).into()),
-			});
-
-		Ok(anchor)
+			})
 	}
 }

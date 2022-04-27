@@ -1,10 +1,11 @@
 use codec::Codec;
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
-use runtime_common::loans::LoansApi as LoansRuntimeApi;
+use runtime_common::apis::LoansApi as LoansRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use std::fmt::Debug;
 use std::sync::Arc;
 
 #[rpc]
@@ -36,9 +37,9 @@ where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
 	C::Api: LoansRuntimeApi<Block, PoolId, LoanId, Balance>,
-	Balance: Codec + MaybeDisplay + Copy,
-	LoanId: Codec + Copy,
-	PoolId: Codec + Copy,
+	Balance: Codec + Copy + Debug,
+	LoanId: Codec + Copy + Debug,
+	PoolId: Codec + Copy + Debug,
 {
 	fn nav(&self, pool_id: PoolId) -> Result<Balance> {
 		let api = self.client.runtime_api();
