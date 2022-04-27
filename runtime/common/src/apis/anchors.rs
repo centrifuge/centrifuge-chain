@@ -9,6 +9,7 @@
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
+use codec::Codec;
 use pallet_anchors::AnchorData;
 use sp_api::decl_runtime_apis;
 
@@ -17,7 +18,7 @@ decl_runtime_apis! {
 	///
 	/// Note: That the runtime api is pallet specific, while the rpc method
 	///       are more focused on domain-specifc logic	pub trait AnchorApi<Hash, BlockNumber>
-	pub trait AnchorApi
+	pub trait AnchorApi<Hash, BlockNumber>
 	where
 		Hash: Codec,
 		BlockNumber: Codec

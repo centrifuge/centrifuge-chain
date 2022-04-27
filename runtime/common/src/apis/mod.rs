@@ -11,6 +11,10 @@
 // GNU General Public License for more details.
 
 //! Runtime apis useful in the Centrifuge ecosystem
-pub mod anchors;
-pub mod loans;
-pub mod pools;
+pub use anchors::*;
+pub use loans::*;
+pub use pools::*;
+
+mod anchors;
+mod loans;
+mod pools;

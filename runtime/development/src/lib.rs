@@ -1458,7 +1458,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::AnchorApi<Block> for Runtime {
+	impl runtime_common::apis::AnchorApi<Block, Hash, BlockNumber> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
 			Anchor::get_anchor_by_id(id)
 		}

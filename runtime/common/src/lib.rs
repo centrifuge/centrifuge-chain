@@ -24,7 +24,6 @@ mod fixed_point;
 mod impls;
 
 pub use common_types::CurrencyId;
-
 pub mod apis;
 
 /// Common types for all runtimes
