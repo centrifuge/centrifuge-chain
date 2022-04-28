@@ -57,8 +57,8 @@ pub(super) type TrancheOf<T> = Tranche<
 pub type Seniority = u32;
 pub type TrancheInput<Rate> = (TrancheType<Rate>, Option<Seniority>);
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TrancheLoc<TrancheId> {
 	Index(TrancheIndex),
 	Id(TrancheId),
