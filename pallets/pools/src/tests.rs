@@ -2192,36 +2192,14 @@ fn pool_status_recovers_of_force_closed() {
 		// ###### 2 Years passed #######
 		//
 
-		// increase the value for both tranches for one year. Junior should now be unequal zero.
-		let total_interest = checked_pow(loan_interest_rate, SECS_PER_YEAR as usize).unwrap();
-		test_nav_up(
-			0,
-			total_interest.checked_mul_int(1000 * CURRENCY).unwrap() - 1000 * CURRENCY,
-		);
+		// Unexpected repayment of the whole loan with interest
+		// The NAV is zero afterwards, as the repayment goes through the loans in reality
+		let total_interest = checked_pow(loan_interest_rate, 2 * SECS_PER_YEAR as usize).unwrap();
+		let repayment = total_interest.checked_mul_int(1000 * CURRENCY).unwrap();
+		assert_ok!(Pools::do_deposit(pool_owner, 0, repayment));
+		test_nav_down(0, pool_value_increase_by_1_year_senior_rate);
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
-		assert_noop!(
-			Pools::close_epoch(pool_owner_origin.clone(), 0),
-			Error::<Test>::InSubmissionPeriod
-		);
-		assert_ok!(Pools::submit_solution(
-			pool_owner_origin.clone(),
-			0,
-			vec![
-				TrancheSolution {
-					invest_fulfillment: Perquintill::zero(),
-					redeem_fulfillment: Perquintill::zero(),
-				},
-				TrancheSolution {
-					invest_fulfillment: Perquintill::zero(),
-					redeem_fulfillment: Perquintill::zero(),
-				}
-			]
-		));
-		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
-		let pool = crate::Pool::<Test>::try_get(0).unwrap();
-		assert_eq!(pool.status, PoolStatus::InSubmissionPeriod);
-		assert_ok!(Pools::execute_epoch(pool_owner_origin.clone(), 0));
 		let pool = crate::Pool::<Test>::try_get(0).unwrap();
 		assert_eq!(pool.status, PoolStatus::Open);
 	})

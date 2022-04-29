@@ -171,14 +171,13 @@ where
 	}
 
 	pub fn claim_with_losses(&self, from: Balance) -> Result<Balance, DispatchError> {
-		self.ratio
-			.mul_ceil(from)
+		sp_std::cmp::min(self.ratio.mul_ceil(from), self.debt)
 			.checked_add(&self.loss)
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
 	pub fn claim(&self, from: Balance) -> Result<Balance, DispatchError> {
-		Ok(self.ratio.mul_ceil(from))
+		Ok(sp_std::cmp::min(self.ratio.mul_ceil(from), self.debt))
 	}
 
 	pub fn balance(&self) -> Result<Balance, DispatchError> {
@@ -190,8 +189,6 @@ where
 	pub fn expected_assets(&self) -> Result<Balance, DispatchError> {
 		self.debt
 			.checked_add(&self.reserve)
-			.ok_or(ArithmeticError::Overflow)?
-			.checked_add(&self.loss)
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
@@ -997,6 +994,28 @@ where
 			.iter()
 			.map(|tranche| tranche.seniority)
 			.collect::<Vec<_>>()
+	}
+
+	pub fn adjust_ratios(&mut self) -> DispatchResult {
+		// rebalance the tranches above. Hence, we need to adjust the ratios
+		let mut total_assets: Balance = Zero::zero();
+		self.combine_residual_top(|tranche| {
+			total_assets = total_assets
+				.checked_add(&tranche.expected_assets()?)
+				.ok_or(ArithmeticError::Overflow)?;
+			Ok(())
+		})?;
+
+		// SUM tranche.ratio == 1 all the time
+		// This is ensured by the fact, that we distribute the given reserve and
+		// NAV in the logic above.
+		self.combine_mut_residual_top(|tranche| {
+			tranche.ratio = Perquintill::from_rational(tranche.expected_assets()?, total_assets);
+
+			Ok(())
+		})?;
+
+		Ok(())
 	}
 
 	pub fn rebalance_tranches(
