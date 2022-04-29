@@ -602,7 +602,7 @@ fn epoch() {
 		);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve,
-			500 * CURRENCY
+			505 * CURRENCY
 		); // not yet rebalanced
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
@@ -1693,21 +1693,21 @@ fn solution_with_more_than_max_tranches_is_invalid() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
 				),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
 				),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -1721,9 +1721,9 @@ fn solution_with_more_than_max_tranches_is_invalid() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(pool_id_1, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1849,7 +1849,7 @@ fn pool_is_in_status_submission_period() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -1863,9 +1863,9 @@ fn pool_is_in_status_submission_period() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -1936,7 +1936,7 @@ fn pool_status_closed_works() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -1950,9 +1950,9 @@ fn pool_status_closed_works() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -2100,6 +2100,9 @@ fn pool_status_recovers_of_force_closed() {
 		let senior_interest_rate = Rate::saturating_from_rational(10, 100)
 			/ Rate::saturating_from_integer(SECS_PER_YEAR)
 			+ One::one();
+		let loan_interest_rate = Rate::saturating_from_rational(15, 100)
+			/ Rate::saturating_from_integer(SECS_PER_YEAR)
+			+ One::one();
 
 		assert_ok!(Pools::create(
 			pool_owner_origin.clone(),
@@ -2109,7 +2112,7 @@ fn pool_status_recovers_of_force_closed() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -2123,9 +2126,9 @@ fn pool_status_recovers_of_force_closed() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
@@ -2149,9 +2152,16 @@ fn pool_status_recovers_of_force_closed() {
 		assert_ok!(Pools::do_withdraw(pool_owner, 0, 1000 * CURRENCY));
 
 		next_block_after(SECS_PER_YEAR);
+
+		//
+		// ###### 1 Year passed #######
+		//
+
 		// Only increase the value for senior tranche for one year
 		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
-		test_nav_up(0, total_interest.checked_mul_int(500 * CURRENCY).unwrap());
+		let pool_value_increase_by_1_year_senior_rate =
+			total_interest.checked_mul_int(500 * CURRENCY).unwrap();
+		test_nav_up(0, pool_value_increase_by_1_year_senior_rate);
 
 		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
 
@@ -2177,8 +2187,13 @@ fn pool_status_recovers_of_force_closed() {
 		assert_eq!(pool.status, PoolStatus::Closed(CloseManner::Forced));
 
 		next_block_after(SECS_PER_YEAR);
+
+		//
+		// ###### 2 Years passed #######
+		//
+
 		// increase the value for both tranches for one year. Junior should now be unequal zero.
-		let total_interest = checked_pow(senior_interest_rate, SECS_PER_YEAR as usize).unwrap();
+		let total_interest = checked_pow(loan_interest_rate, SECS_PER_YEAR as usize).unwrap();
 		test_nav_up(
 			0,
 			total_interest.checked_mul_int(1000 * CURRENCY).unwrap() - 1000 * CURRENCY,
@@ -2247,7 +2262,7 @@ fn pool_status_stays_closed_when_closed_intentionally() {
 				(TrancheType::Residual, None),
 				(
 					TrancheType::NonResidual {
-						interest_per_sec: senior_interest_rate,
+						interest_rate_per_sec: senior_interest_rate,
 						min_risk_buffer: Perquintill::from_percent(10),
 					},
 					None
@@ -2261,9 +2276,9 @@ fn pool_status_stays_closed_when_closed_intentionally() {
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
-			maybe_pool.as_mut().unwrap().min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().challenge_time = 0;
-			maybe_pool.as_mut().unwrap().max_nav_age = u64::MAX;
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
+			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
 		.unwrap();
