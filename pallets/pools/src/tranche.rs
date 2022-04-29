@@ -170,14 +170,20 @@ where
 		Ok(orders)
 	}
 
-	pub fn claim_with_losses(&self, from: Balance) -> Result<Balance, DispatchError> {
+	pub fn claim_from_deposit_with_losses(&self, from: Balance) -> Result<Balance, DispatchError> {
 		sp_std::cmp::min(self.ratio.mul_ceil(from), self.debt)
 			.checked_add(&self.loss)
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
-	pub fn claim(&self, from: Balance) -> Result<Balance, DispatchError> {
+	pub fn claim_from_deposit(&self, from: Balance) -> Result<Balance, DispatchError> {
 		Ok(sp_std::cmp::min(self.ratio.mul_ceil(from), self.debt))
+	}
+
+	pub fn claim_from_withdraw(&self, from: Balance) -> Result<Balance, DispatchError> {
+		// TODO: Log warning if we ever have reserve < ratio.mul_ceil(from)
+		//       This means we have an inaccuracy or a bug
+		Ok(sp_std::cmp::min(self.ratio.mul_ceil(from), self.reserve))
 	}
 
 	pub fn balance(&self) -> Result<Balance, DispatchError> {

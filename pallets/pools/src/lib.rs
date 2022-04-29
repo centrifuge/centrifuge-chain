@@ -1994,6 +1994,15 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 
+				// Deposits when pool is InSubmissionPhase break the state we
+				// want to rebalance upon. Hence, we currently block this in this period
+				//
+				// TODO: Research how this can be handled
+				ensure!(
+					EpochExecution::<T>::try_get(pool_id).is_err(),
+					Error::<T>::InSubmissionPeriod
+				);
+
 				let now = Self::now();
 				pool.reserve.total = pool
 					.reserve
@@ -2006,8 +2015,9 @@ pub mod pallet {
 					tranche.accrue(now)?;
 
 					// Calculate the rights a tranche has on this deposit-amount
-					let tranche_claim = tranche.claim(amount)?;
-					let tranche_claim_with_losses = tranche.claim_with_losses(amount)?;
+					let tranche_claim = tranche.claim_from_deposit(amount)?;
+					let tranche_claim_with_losses =
+						tranche.claim_from_deposit_with_losses(amount)?;
 
 					// remaining_amount can satisfy claims + losses
 					if tranche_claim_with_losses <= remaining_amount {
@@ -2107,7 +2117,7 @@ pub mod pallet {
 
 				ensure!(pool.status == PoolStatus::Open, Error::<T>::PoolNotOpen);
 
-				// Deposits when pool is InSubmissionPhase break the state we
+				// Withdraws when pool is InSubmissionPhase break the state we
 				// want to rebalance upon. Hence, we currently block this in this period
 				//
 				// TODO: Research how this can be handled
@@ -2132,29 +2142,25 @@ pub mod pallet {
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
 					tranche.accrue(now)?;
 
-					let tranche_amount = if tranche.tranche_type != TrancheType::Residual {
-						tranche.ratio.mul_ceil(amount)
-					} else {
-						remaining_amount
-					};
-
-					// TODO: Investigate
-					//       * Does this also mean, the ratio overall changed?
-					let tranche_amount = if tranche_amount > tranche.reserve {
-						tranche.reserve
-					} else {
-						tranche_amount
-					};
+					let claim = tranche.claim_from_withdraw(amount)?;
 
 					// NOTE: The logic above esnrues this works. But better be safe than sorry.
-					tranche.reserve = tranche.reserve.saturating_sub(tranche_amount);
+					tranche.reserve = tranche.reserve.saturating_sub(claim);
 					tranche.debt = tranche
 						.debt
-						.checked_add(&tranche_amount)
+						.checked_add(&claim)
 						.ok_or(ArithmeticError::Overflow)?;
 
-					remaining_amount -= tranche_amount;
+					remaining_amount = remaining_amount.saturating_sub(claim);
 				}
+
+				// TODO: This should be a log of a warn before production release
+				assert_eq!(remaining_amount, Zero::zero());
+
+				// TODO: Investigate if this is actually needed.
+				//       In theory if is disadvantagoues for the junior tranche
+				//       as this tranche does NOT accrue value.
+				pool.tranches.adjust_ratios()?;
 
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
 				Ok(())
