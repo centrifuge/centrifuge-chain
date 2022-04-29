@@ -1026,81 +1026,36 @@ where
 
 	pub fn rebalance_tranches(
 		&mut self,
-		now: Moment,
-		pool_total_reserve: Balance,
 		pool_nav: Balance,
+		pool_total_reserve: Balance,
 		tranche_ratios: &[Perquintill],
-		executed_amounts: &[(Balance, Balance)],
 	) -> DispatchResult {
-		// Calculate the new fraction of the total pool value that each tranche contains
-		// This is based on the tranche values at time of epoch close.
-		let total_assets = pool_total_reserve
-			.checked_add(&pool_nav)
-			.ok_or(ArithmeticError::Overflow)?;
-
-		// Calculate the new total asset value for each tranche
-		// This uses the current state of the tranches, rather than the cached epoch-close-time values.
-		let mut total_assets = total_assets;
-		let tranche_assets = self.combine_with_mut_non_residual_top(
-			executed_amounts.iter().rev(),
-			|tranche, (invest, redeem)| {
-				tranche.accrue(now)?;
-
-				tranche
-					.debt
-					.checked_add(&tranche.reserve)
-					.ok_or(ArithmeticError::Overflow)?
-					.checked_add(invest)
-					.ok_or(ArithmeticError::Overflow)?
-					.checked_sub(redeem)
-					.ok_or(ArithmeticError::Underflow.into())
-					.map(|value| {
-						if value > total_assets {
-							let assets = total_assets;
-							total_assets = Zero::zero();
-							assets
-						} else {
-							total_assets = total_assets
-								.checked_sub(&value)
-								.expect("total_assets greater equal value. qed.");
-							value
-						}
-					})
-			},
-		)?;
-
 		// Rebalance tranches based on the new tranche asset values and ratios
 		let mut remaining_nav = pool_nav;
 		let mut remaining_reserve = pool_total_reserve;
-		self.combine_with_mut_non_residual_top(
-			tranche_ratios.iter().rev().zip(tranche_assets.iter()),
-			|tranche, (ratio, value)| {
-				tranche.ratio = *ratio;
-				if tranche.tranche_type == TrancheType::Residual {
-					tranche.debt = remaining_nav;
-					tranche.reserve = remaining_reserve;
-				} else {
-					tranche.debt = ratio.mul_ceil(pool_nav);
-					if tranche.debt > *value {
-						tranche.debt = *value;
-					}
-					tranche.reserve = value.saturating_sub(tranche.debt);
-					remaining_nav =
+		self.combine_with_mut_non_residual_top(tranche_ratios.iter().rev(), |tranche, ratio| {
+			tranche.ratio = *ratio;
+			if tranche.tranche_type == TrancheType::Residual {
+				tranche.debt = remaining_nav;
+				tranche.reserve = remaining_reserve;
+			} else {
+				tranche.debt = tranche.ratio.mul_ceil(remaining_nav);
+				tranche.reserve = tranche.ratio.mul_ceil(remaining_reserve);
+			}
+			remaining_nav =
 						remaining_nav
 							.checked_sub(&tranche.debt)
 							.ok_or(DispatchError::Other(
 							"Corrupted pool-state. Pool NAV should be able to handle tranche debt substraction.",
 						))?;
-					remaining_reserve =
+			remaining_reserve =
 						remaining_reserve
 							.checked_sub(&tranche.reserve)
 							.ok_or(DispatchError::Other(
 							"Corrupted pool-state. Pool reserve should be able to handle tranche reserve substraction.",
 						))?;
-				}
-				Ok(())
-			},
-		)
+			Ok(())
+		})
 		.map(|_| ())
 	}
 }

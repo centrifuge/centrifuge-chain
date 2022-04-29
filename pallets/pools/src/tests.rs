@@ -602,7 +602,7 @@ fn epoch() {
 		);
 		assert_eq!(
 			pool.tranches.residual_top_slice()[JUNIOR_TRANCHE_INDEX as usize].reserve,
-			505 * CURRENCY
+			507936737938841306739
 		); // not yet rebalanced
 		assert_eq!(
 			pool.tranches.residual_top_slice()[SENIOR_TRANCHE_INDEX as usize].debt,
@@ -2001,7 +2001,10 @@ fn pool_status_closed_works() {
 		let pool = crate::Pool::<Test>::try_get(0).unwrap();
 		assert_eq!(PoolStatus::Closed(CloseManner::Forced), pool.status);
 
-		assert_ok!(Pools::do_deposit(pool_owner, 0, 500 * CURRENCY));
+		assert_noop!(
+			Pools::do_deposit(pool_owner, 0, 500 * CURRENCY),
+			Error::<Test>::InSubmissionPeriod
+		);
 
 		assert_noop!(
 			Pools::submit_solution(

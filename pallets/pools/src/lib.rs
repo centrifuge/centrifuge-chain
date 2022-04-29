@@ -1885,11 +1885,11 @@ pub mod pallet {
 				},
 			)?;
 
-			let total_expected = epoch
+			let total_expected = pool
 				.tranches
 				.combine_with_residual_top(executed_amounts.iter(), |tranche, (invest, redeem)| {
 					tranche
-						.supply
+						.expected_assets()?
 						.checked_add(&invest)
 						.ok_or(ArithmeticError::Overflow)?
 						.checked_sub(&redeem)
@@ -1901,11 +1901,11 @@ pub mod pallet {
 				})
 				.ok_or(ArithmeticError::Overflow)?;
 
-			let tranche_ratios = epoch.tranches.combine_with_residual_top(
+			let tranche_ratios = pool.tranches.combine_with_residual_top(
 				executed_amounts.iter(),
 				|tranche, (invest, redeem)| {
 					tranche
-						.supply
+						.expected_assets()?
 						.checked_add(invest)
 						.ok_or(ArithmeticError::Overflow)?
 						.checked_sub(redeem)
@@ -1917,11 +1917,9 @@ pub mod pallet {
 			)?;
 
 			pool.tranches.rebalance_tranches(
-				Self::now(),
-				pool.reserve.total,
 				epoch.nav,
+				pool.reserve.total,
 				tranche_ratios.as_slice(),
-				executed_amounts.as_slice(),
 			)?;
 
 			// Ensure the pool is open if he is not wiped
