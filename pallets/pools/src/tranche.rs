@@ -115,6 +115,7 @@ pub struct Tranche<Balance, Rate, Weight, Currency> {
 
 	pub(super) debt: Balance,
 	pub(super) reserve: Balance,
+	pub(super) loss: Balance,
 	pub(super) ratio: Perquintill,
 	pub(super) last_updated_interest: Moment,
 
@@ -137,6 +138,7 @@ where
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
+			loss: Zero::zero(),
 			ratio: Perquintill::one(),
 			last_updated_interest: 0,
 			_phantom: PhantomData::default(),
@@ -168,9 +170,28 @@ where
 		Ok(orders)
 	}
 
+	pub fn claim_with_losses(&self, from: Balance) -> Result<Balance, DispatchError> {
+		self.ratio
+			.mul_ceil(from)
+			.checked_add(&self.loss)
+			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	pub fn claim(&self, from: Balance) -> Result<Balance, DispatchError> {
+		Ok(self.ratio.mul_ceil(from))
+	}
+
 	pub fn balance(&self) -> Result<Balance, DispatchError> {
 		self.debt
 			.checked_add(&self.reserve)
+			.ok_or(ArithmeticError::Overflow.into())
+	}
+
+	pub fn expected_assets(&self) -> Result<Balance, DispatchError> {
+		self.debt
+			.checked_add(&self.reserve)
+			.ok_or(ArithmeticError::Overflow)?
+			.checked_add(&self.loss)
 			.ok_or(ArithmeticError::Overflow.into())
 	}
 
@@ -479,6 +500,7 @@ where
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
+			loss: Zero::zero(),
 			ratio: Perquintill::zero(),
 			last_updated_interest: now,
 			_phantom: Default::default(),
@@ -769,6 +791,7 @@ where
 		Tokens: Inspect<AccountId, AssetId = CurrencyId, Balance = Balance>,
 	{
 		let mut remaining_assets = total_assets;
+		let pool_is_zero = total_assets == Zero::zero();
 
 		// we are gonna reverse the order
 		// such that prices are calculated from most senior to junior
@@ -777,7 +800,14 @@ where
 			let total_issuance = Tokens::total_issuance(tranche.currency);
 
 			if total_issuance == Zero::zero() {
-				Ok(One::one())
+				// There aren't currently any tokens issued for the tranche.
+				// Hence, the tranche does not carry any value.
+				Ok(BalanceRatio::one())
+			} else if pool_is_zero {
+				// If a pool is zero after passing the issuance is not zero clause,
+				// this means we have lost all assets on a pool that had value.
+				// Hence, we should make the tokens-price zero.
+				Ok(BalanceRatio::zero())
 			} else if tranche.tranche_type == TrancheType::Residual {
 				BalanceRatio::checked_from_rational(remaining_assets, total_issuance)
 					.ok_or(ArithmeticError::Overflow.into())

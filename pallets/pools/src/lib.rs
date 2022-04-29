@@ -1003,6 +1003,75 @@ pub mod pallet {
 
 				pool.start_next_epoch(now)?;
 
+				let mut remaining_assets = total_assets;
+				// Update the tranches here and note losses and new expected value (i.e. debt)
+				pool.tranches.combine_mut_non_residual_top(|tranche| {
+					tranche.accrue(now)?;
+
+					// Pool value can not satisfy the expected value of the tranche
+					if tranche.expected_assets()? > remaining_assets {
+						// This arm matches if the pool_value can only partially fill the debt of
+						// a tranche
+						if tranche.debt > remaining_assets {
+							// Losses increase by what the diff between current value and expected value
+							tranche.loss = tranche
+								.loss
+								.saturating_add(tranche.debt.saturating_sub(remaining_assets))
+								.saturating_add(tranche.reserve);
+							// We assume the pool will still be able to generate enough value for
+							// satisfying the tranche. This boils down to the assumption of
+							// NAV_{t + 1} >= NAV_{t} * rate_per_sec_{tranche} for every tranche
+							//
+							// Assuming the residual tranche has no rate_per_sec
+							tranche.debt = remaining_assets;
+							tranche.reserve = Zero::zero();
+							remaining_assets = Zero::zero();
+
+						// This arm matches if the new pool_value can satisfy the debt and the reserve of tranche
+						// This favors debt over reserve as we want as much value to accrue interest for a tranche
+						} else if tranche.debt.saturating_add(tranche.reserve) > remaining_assets {
+							let loss = remaining_assets
+								.saturating_sub(tranche.debt.saturating_add(tranche.reserve));
+							// Losses are partially increased
+							tranche.loss = tranche.loss.saturating_add(loss);
+							// Reserve is reduced by losses
+							tranche.reserve = tranche.reserve.saturating_sub(loss);
+							remaining_assets = Zero::zero();
+
+						// This arm matches if the pool_value can satisfy the debt and the reserve and
+						// partially recover the losses of a tranche
+						} else {
+							let recovered_loss = remaining_assets
+								.saturating_sub(tranche.debt.saturating_add(tranche.reserve));
+							tranche.loss = tranche.loss.saturating_sub(recovered_loss);
+							tranche.reserve = remaining_assets.saturating_add(recovered_loss);
+							remaining_assets = Zero::zero();
+						}
+					} else {
+						// Healthy scenario -> Assets can satisfy tranche needs
+						if tranche.tranche_type == TrancheType::Residual {
+							// Since the iterator goes non residual to residual, this
+							// leads to the residual tranche having the remaining assets
+							// as the debt.
+							remaining_assets = remaining_assets.saturating_sub(tranche.reserve);
+							// The debt of the residual tranche does increase non-linear. Meaning,
+							// it heavily depends on the current ratio of %-residual on the pool
+							// and how much is left over from the %-non-residual on the pool.
+							//
+							// -> Hence, all remaining goes to residual.
+							tranche.debt = remaining_assets;
+						} else {
+							remaining_assets =
+								remaining_assets.saturating_sub(tranche.expected_assets()?);
+							// If we had losses those are now cleaned and are back in the reserve
+							tranche.reserve = tranche.reserve.saturating_add(tranche.loss);
+							tranche.loss = Zero::zero();
+						}
+					}
+
+					Ok(())
+				})?;
+
 				let epoch_tranche_prices = pool
 					.tranches
 					.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)?;
@@ -1786,6 +1855,9 @@ pub mod pallet {
 					.checked_add(&redeem)
 					.ok_or(ArithmeticError::Overflow)?;
 			}
+
+			// TODO: this might change between epoch-close and epoch-execution.
+			//    * Does this affect the rebalancing?
 			pool.reserve.total = pool
 				.reserve
 				.total
@@ -1819,11 +1891,22 @@ pub mod pallet {
 				},
 			)?;
 
-			let total_assets = pool
-				.reserve
-				.total
-				.checked_add(&epoch.nav)
+			let total_expected = epoch
+				.tranches
+				.combine_with_residual_top(executed_amounts.iter(), |tranche, (invest, redeem)| {
+					tranche
+						.supply
+						.checked_add(&invest)
+						.ok_or(ArithmeticError::Overflow)?
+						.checked_sub(&redeem)
+						.ok_or(ArithmeticError::Underflow.into())
+				})?
+				.into_iter()
+				.fold(Some(T::Balance::zero()), |sum, expected_amount| {
+					sum.and_then(|sum| sum.checked_add(&expected_amount))
+				})
 				.ok_or(ArithmeticError::Overflow)?;
+
 			let tranche_ratios = epoch.tranches.combine_with_residual_top(
 				executed_amounts.iter(),
 				|tranche, (invest, redeem)| {
@@ -1834,7 +1917,7 @@ pub mod pallet {
 						.checked_sub(redeem)
 						.ok_or(ArithmeticError::Underflow.into())
 						.map(|tranche_asset| {
-							Perquintill::from_rational(tranche_asset, total_assets)
+							Perquintill::from_rational(tranche_asset, total_expected)
 						})
 				},
 			)?;
@@ -1928,30 +2011,78 @@ pub mod pallet {
 				for tranche in pool.tranches.non_residual_top_slice_mut() {
 					tranche.accrue(now)?;
 
-					let tranche_amount = if tranche.tranche_type != TrancheType::Residual {
-						tranche.ratio.mul_ceil(amount)
+					// Calculate the rights a tranche has on this deposit-amount
+					let tranche_amount = tranche.claim(amount)?;
+
+					// Amount is able to purge losses
+					if tranche.claim_with_losses(amount)? < remaining_amount {
+						// Residual tranche takes the leftovers
+						if tranche.tranche_type == TrancheType::Residual {
+							// We saturate here, as we might have adapted the debt due to losses
+							// But in case of a deposit larger than debt, we do not care, as all
+							// value flows into the reserve of the residual tranche.
+							tranche.debt = tranche.debt.saturating_sub(remaining_amount);
+							tranche.reserve = tranche
+								.reserve
+								.checked_add(&remaining_amount)
+								.ok_or(ArithmeticError::Overflow)?
+								.checked_add(&tranche.loss)
+								.ok_or(ArithmeticError::Overflow)?;
+
+							remaining_amount = Zero::zero()
+						} else {
+							tranche.reserve = tranche
+								.reserve
+								.checked_add(&tranche_amount)
+								.ok_or(ArithmeticError::Overflow)?
+								.checked_add(&tranche.loss)
+								.ok_or(ArithmeticError::Overflow)?;
+
+							// TODO: LOG here a warn as this indicates we have a inaccuracy in
+							//       the debt calculations
+							tranche.debt = tranche.debt.saturating_sub(tranche_amount);
+
+							remaining_amount = remaining_amount
+								.saturating_sub(tranche_amount.saturating_add(tranche.loss));
+						}
+						// Losses are purged completely
+						tranche.loss = Zero::zero()
+
+					// Amount is able to partially purge losses
+					} else if tranche.claim(amount)? < remaining_amount {
+						tranche.reserve = tranche
+							.reserve
+							.checked_add(&tranche_amount)
+							.ok_or(ArithmeticError::Overflow)?
+							.checked_add(&remaining_amount)
+							.ok_or(ArithmeticError::Overflow)?;
+
+						// TODO: LOG here a warn as this indicates we have a inaccuracy in
+						//       the debt calculations
+						tranche.debt = tranche.debt.saturating_sub(tranche_amount);
+						tranche.loss = tranche.loss.saturating_sub(remaining_amount);
+
+						remaining_amount = Zero::zero();
+
+					// Amount introduce new losses to tranche
 					} else {
-						remaining_amount
-					};
+						tranche.reserve = tranche
+							.reserve
+							.checked_add(&remaining_amount)
+							.ok_or(ArithmeticError::Overflow)?;
 
-					let tranche_amount = if tranche_amount > tranche.debt {
-						tranche.debt
-					} else {
-						tranche_amount
-					};
+						// TODO: LOG here a warn as this indicates we have a inaccuracy in
+						//       the debt calculations
+						tranche.debt = tranche.debt.saturating_sub(remaining_amount);
 
-					// NOTE: we ensure this is never underflowing. But better be safe than sorry.
-					tranche.debt = tranche.debt.saturating_sub(tranche_amount);
-					tranche.reserve = tranche
-						.reserve
-						.checked_add(&tranche_amount)
-						.ok_or(ArithmeticError::Overflow)?;
+						let additional_loss = tranche_amount.saturating_sub(remaining_amount);
+						tranche.loss = tranche
+							.loss
+							.checked_add(&additional_loss)
+							.ok_or(ArithmeticError::Overflow)?;
 
-					// NOTE: In case there is an error in the ratios this might be critical. Hence,
-					//       we check here and error out
-					remaining_amount = remaining_amount
-						.checked_sub(&tranche_amount)
-						.ok_or(ArithmeticError::Underflow)?;
+						remaining_amount = Zero::zero();
+					}
 				}
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
@@ -1992,13 +2123,16 @@ pub mod pallet {
 						remaining_amount
 					};
 
+					// TODO: Investigate
+					//       * Does this also mean, the ratio overall changed?
 					let tranche_amount = if tranche_amount > tranche.reserve {
 						tranche.reserve
 					} else {
 						tranche_amount
 					};
 
-					tranche.reserve -= tranche_amount;
+					// NOTE: The logic above esnrues this works. But better be safe than sorry.
+					tranche.reserve = tranche.reserve.saturating_sub(tranche_amount);
 					tranche.debt = tranche
 						.debt
 						.checked_add(&tranche_amount)
