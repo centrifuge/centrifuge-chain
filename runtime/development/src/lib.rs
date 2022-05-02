@@ -51,14 +51,16 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
-use common_traits::PreConditions;
+use common_traits::{PoolUpdateGuard, PreConditions};
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
-use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
+use pallet_pools::{
+	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
+};
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
@@ -805,15 +807,22 @@ impl pallet_claims::Config for Runtime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
+	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
+		// Disable challenge time in benchmarks
+		0
+	} else {
+		2 * MINUTES
+	};
+
 	// Defaults for pool parameters
-	pub const DefaultMinEpochTime: u64 = 5 * 60; // 5 minutes
-	pub const DefaultChallengeTime: u64 = 2 * 60; // 2 minutes
-	pub const DefaultMaxNAVAge: u64 = 1 * 60; // 1 minute
+	pub const DefaultMinEpochTime: u64 = 5 * SECONDS_PER_MINUTE; // 5 minutes
+	pub const DefaultMaxNAVAge: u64 = 1 * SECONDS_PER_MINUTE; // 1 minute
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1; // do not allow multiple epochs closed in 1 block
-	pub const ChallengeTimeLowerBound: u64 = 1; // do not allow submission and execution in 1 block
-	pub const MaxNAVAgeUpperBound: u64 = 60 * 60; // 1 hour
+	pub const MinEpochTimeLowerBound: u64 = 1; // at least 1 second (i.e. do not allow multiple epochs closed in 1 block)
+	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
+	pub const MaxNAVAgeUpperBound: u64 = SECONDS_PER_HOUR; // 1 hour
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -839,11 +848,12 @@ impl pallet_pools::Config for Runtime {
 	type TrancheToken = TrancheToken<Runtime>;
 	type Permission = Permissions;
 	type Time = Timestamp;
+	type ChallengeTime = ChallengeTime;
+	type MinUpdateDelay = MinUpdateDelay;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
-	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type MaxSizeMetadata = MaxSizeMetadata;
@@ -853,6 +863,7 @@ impl pallet_pools::Config for Runtime {
 	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
+	type UpdateGuard = UpdateGuard;
 }
 
 pub struct PoolCurrency;
@@ -865,6 +876,51 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Permissioned(_) => false,
 			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
+	}
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type PoolDetails = PoolDetails<
+		CurrencyId,
+		u32,
+		Balance,
+		Rate,
+		MaxSizeMetadata,
+		TrancheWeight,
+		TrancheId,
+		PoolId,
+	>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type Moment = Moment;
+
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool {
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		let acc_outstanding_redemptions = pool
+			.tranches
+			.acc_outstanding_redemptions()
+			.unwrap_or(Balance::MAX);
+		if acc_outstanding_redemptions != 0u128 {
+			return false;
+		}
+
+		return true;
 	}
 }
 

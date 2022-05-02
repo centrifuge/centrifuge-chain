@@ -1,3 +1,15 @@
+// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
@@ -15,8 +27,9 @@ mod tests;
 mod tranche;
 pub mod weights;
 use codec::HasCompact;
-use common_traits::Permissions;
-use common_traits::{PoolInspect, PoolNAV, PoolReserve, TrancheToken};
+use common_traits::{
+	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
+};
 use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
@@ -25,6 +38,7 @@ use frame_support::traits::{
 use frame_support::transactional;
 use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTime, BoundedVec};
 use frame_system::pallet_prelude::*;
+use orml_traits::Change;
 use scale_info::TypeInfo;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -72,7 +86,7 @@ pub struct ReserveDetails<Balance> {
 pub struct EpochState<EpochId> {
 	/// Current epoch that is ongoing.
 	pub current: EpochId,
-	/// Last epoch that was closed.
+	/// Time when the last epoch was closed.
 	pub last_closed: Moment,
 	/// Last epoch that was executed.
 	pub last_executed: EpochId,
@@ -82,11 +96,21 @@ pub struct EpochState<EpochId> {
 pub struct PoolParameters {
 	/// Minimum duration for an epoch.
 	pub min_epoch_time: Moment,
-	/// Minimum duration after submission of the first solution
-	/// that the epoch can be executed.
-	pub challenge_time: Moment,
 	/// Maximum time between the NAV update and the epoch closing.
 	pub max_nav_age: Moment,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct PoolChanges<Rate> {
+	pub tranches: Change<Vec<TrancheInput<Rate>>>,
+	pub min_epoch_time: Change<Moment>,
+	pub max_nav_age: Change<Moment>,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct ScheduledUpdateDetails<Rate> {
+	pub changes: PoolChanges<Rate>,
+	pub scheduled_time: Moment,
 }
 
 impl<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
@@ -146,14 +170,14 @@ pub struct EpochDetails<BalanceRatio> {
 
 /// The information for a currently executing epoch
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, Default, TypeInfo)]
-pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight> {
+pub struct EpochExecutionInfo<Balance, BalanceRatio, EpochId, Weight, BlockNumber> {
 	epoch: EpochId,
 	nav: Balance,
 	reserve: Balance,
 	max_reserve: Balance,
 	tranches: EpochExecutionTranches<Balance, BalanceRatio, Weight>,
 	best_submission: Option<EpochSolution<Balance>>,
-	challenge_period_end: Option<Moment>,
+	challenge_period_end: Option<BlockNumber>,
 }
 
 /// The outstanding collections for an account
@@ -189,6 +213,7 @@ type EpochExecutionInfoOf<T> = EpochExecutionInfo<
 	<T as Config>::BalanceRatio,
 	<T as Config>::EpochId,
 	<T as Config>::TrancheWeight,
+	<T as frame_system::Config>::BlockNumber,
 >;
 type PoolDepositOf<T> =
 	PoolDepositInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
@@ -275,6 +300,12 @@ pub mod pallet {
 
 		type PoolCurrency: Contains<Self::CurrencyId>;
 
+		type UpdateGuard: PoolUpdateGuard<
+			PoolDetails = PoolDetailsOf<Self>,
+			ScheduledUpdateDetails = ScheduledUpdateDetails<Self::InterestRate>,
+			Moment = Moment,
+		>;
+
 		type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 
 		type Tokens: Mutate<Self::AccountId>
@@ -297,23 +328,20 @@ pub mod pallet {
 
 		type Time: UnixTime;
 
-		/// Default min epoch time
+		/// Challenge time
+		type ChallengeTime: Get<<Self as frame_system::Config>::BlockNumber>;
+
+		/// Pool parameter defaults
 		type DefaultMinEpochTime: Get<u64>;
-
-		/// Default challenge time
-		type DefaultChallengeTime: Get<u64>;
-
-		/// Default max NAV age
 		type DefaultMaxNAVAge: Get<u64>;
 
-		/// Min epoch time lower bound
+		/// Pool parameter bounds
 		type MinEpochTimeLowerBound: Get<u64>;
-
-		/// Challenge time lower bound
-		type ChallengeTimeLowerBound: Get<u64>;
-
-		/// Max NAV age upper bound
+		type MinEpochTimeUpperBound: Get<u64>;
 		type MaxNAVAgeUpperBound: Get<u64>;
+
+		/// Pool update settings
+		type MinUpdateDelay: Get<u64>;
 
 		/// Max size of Metadata
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
@@ -339,6 +367,11 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn pool)]
 	pub type Pool<T: Config> = StorageMap<_, Blake2_128Concat, T::PoolId, PoolDetailsOf<T>>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn scheduled_update)]
+	pub type ScheduledUpdate<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::PoolId, ScheduledUpdateDetails<T::InterestRate>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn order)]
@@ -385,8 +418,6 @@ pub mod pallet {
 		Updated(T::PoolId),
 		/// The tranches were rebalanced.
 		Rebalanced(T::PoolId),
-		/// Tranches were updated. [pool]
-		TranchesUpdated(T::PoolId),
 		/// The max reserve was updated. [pool]
 		MaxReserveSet(T::PoolId),
 		/// Pool metadata was set. [pool, metadata]
@@ -452,14 +483,10 @@ pub mod pallet {
 		NotInSubmissionPeriod,
 		/// Insufficient currency available for desired operation
 		InsufficientCurrency,
-		/// Insufficient reserve available for desired operation
-		InsufficientReserve,
 		/// Risk Buffer validation failed
 		RiskBufferViolated,
 		/// The NAV was not available
 		NoNAV,
-		/// Generic error for invalid input data provided
-		InvalidData,
 		/// Epoch needs to be executed before you can collect
 		EpochNotExecutedYet,
 		/// There's no outstanding order that could be collected
@@ -488,6 +515,12 @@ pub mod pallet {
 		NoSolutionAvailable,
 		/// One of the runtime-level pool parameter bounds was violated
 		PoolParameterBoundViolated,
+		/// No update for the pool is scheduled
+		NoScheduledUpdate,
+		/// Scheduled time for this update is in the future
+		ScheduledTimeHasNotPassed,
+		/// Update cannot be fulfilled yet
+		UpdatePrerequesitesNotFulfilled,
 		/// A user has tried to create a pool with an invalid currency
 		InvalidCurrency,
 	}
@@ -500,9 +533,9 @@ pub mod pallet {
 		/// configuration. Tranche 0 is the equity tranche, and must
 		/// have zero interest and a zero risk buffer.
 		///
-		/// The minimum epoch length, epoch solution challenge
-		/// time, and maximum NAV age will be set to chain-wide
-		/// defaults. They can be updated with a call to `update`.
+		/// The minimum epoch length, and maximum NAV age will be
+		/// set to chain-wide defaults. They can be updated
+		/// with a call to `update`.
 		///
 		/// The caller will be given the `PoolAdmin` role for
 		/// the created pool. Additional administrators can be
@@ -556,13 +589,12 @@ pub mod pallet {
 						last_executed: Zero::zero(),
 					},
 					parameters: PoolParameters {
-						min_epoch_time: sp_std::cmp::max(
-							T::DefaultMinEpochTime::get(),
-							T::MinEpochTimeLowerBound::get(),
-						),
-						challenge_time: sp_std::cmp::max(
-							T::DefaultChallengeTime::get(),
-							T::ChallengeTimeLowerBound::get(),
+						min_epoch_time: sp_std::cmp::min(
+							sp_std::cmp::max(
+								T::DefaultMinEpochTime::get(),
+								T::MinEpochTimeLowerBound::get(),
+							),
+							T::MinEpochTimeUpperBound::get(),
 						),
 						max_nav_age: sp_std::cmp::min(
 							T::DefaultMaxNAVAge::get(),
@@ -588,19 +620,23 @@ pub mod pallet {
 
 		/// Update per-pool configuration settings.
 		///
-		/// This sets the minimum epoch length, epoch solution challenge
-		/// time, and maximum NAV age.
+		/// This updates the tranches of the pool,
+		/// sets the minimum epoch length, and maximum NAV age.
+		///
+		/// If no delay is required for updates and redemptions
+		/// don't have to be fulfilled, then this is executed
+		/// immediately. Otherwise, the update is scheduled
+		/// to be executed later.
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update())]
+		#[pallet::weight(T::WeightInfo::update_no_execution()
+			.max(T::WeightInfo::update_and_execute()))]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-			min_epoch_time: u64,
-			challenge_time: u64,
-			max_nav_age: u64,
-		) -> DispatchResult {
+			changes: PoolChanges<T::InterestRate>,
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has(
@@ -612,21 +648,94 @@ pub mod pallet {
 			);
 
 			ensure!(
-				min_epoch_time >= T::MinEpochTimeLowerBound::get()
-					&& challenge_time >= T::ChallengeTimeLowerBound::get()
-					&& max_nav_age <= T::MaxNAVAgeUpperBound::get(),
-				Error::<T>::PoolParameterBoundViolated
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
 			);
 
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+			if changes.min_epoch_time == Change::NoChange
+				&& changes.max_nav_age == Change::NoChange
+				&& changes.tranches == Change::NoChange
+			{
+				// If there's an existing update, we remove it
+				// If not, this transaction is a no-op
+				if ScheduledUpdate::<T>::contains_key(pool_id) {
+					ScheduledUpdate::<T>::remove(pool_id);
+				}
 
-				pool.parameters.min_epoch_time = min_epoch_time;
-				pool.parameters.challenge_time = challenge_time;
-				pool.parameters.max_nav_age = max_nav_age;
-				Self::deposit_event(Event::Updated(pool_id));
-				Ok(())
-			})
+				return Ok(Some(T::WeightInfo::update_no_execution()).into());
+			}
+
+			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
+				ensure!(
+					min_epoch_time >= T::MinEpochTimeLowerBound::get()
+						&& min_epoch_time <= T::MinEpochTimeUpperBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
+
+			if let Change::NewValue(max_nav_age) = changes.max_nav_age {
+				ensure!(
+					max_nav_age <= T::MaxNAVAgeUpperBound::get(),
+					Error::<T>::PoolParameterBoundViolated
+				);
+			}
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+			if let Change::NewValue(tranches) = &changes.tranches {
+				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
+			}
+
+			let now = Self::now();
+
+			let update = ScheduledUpdateDetails {
+				changes: changes.clone(),
+				scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
+			};
+
+			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
+				Self::do_update_pool(&pool_id, &changes)?;
+
+				Ok(Some(T::WeightInfo::update_and_execute()).into())
+			} else {
+				// If an update was already stored, this will override it
+				ScheduledUpdate::<T>::insert(pool_id, update);
+
+				Ok(Some(T::WeightInfo::update_no_execution()).into())
+			}
+		}
+
+		/// Executed a scheduled update to the pool.
+		///
+		/// This checks if the scheduled time is in the past
+		/// and, if required, if there are no outstanding
+		/// redeem orders. If both apply, then the scheduled
+		/// changes are applied.
+		#[pallet::weight(T::WeightInfo::execute_scheduled_update())]
+		pub fn execute_scheduled_update(
+			origin: OriginFor<T>,
+			pool_id: T::PoolId,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let update = ScheduledUpdate::<T>::try_get(pool_id)
+				.map_err(|_| Error::<T>::NoScheduledUpdate)?;
+
+			ensure!(
+				Self::now() >= update.scheduled_time,
+				Error::<T>::ScheduledTimeHasNotPassed
+			);
+
+			let pool = Pool::<T>::try_get(pool_id).map_err(|_| Error::<T>::NoSuchPool)?;
+
+			ensure!(
+				T::UpdateGuard::released(&pool, &update, Self::now()),
+				Error::<T>::UpdatePrerequesitesNotFulfilled
+			);
+
+			Self::do_update_pool(&pool_id, &update.changes)?;
+
+			Ok(())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
@@ -689,58 +798,6 @@ pub mod pallet {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.reserve.max = max_reserve;
 				Self::deposit_event(Event::MaxReserveSet(pool_id));
-				Ok(())
-			})
-		}
-
-		/// Update the tranche configuration for a pool
-		///
-		/// Can only be called by an account with the `PoolAdmin` role.
-		///
-		/// The interest rate, seniority, and minimum risk buffer
-		/// will be set based on the new tranche configuration
-		/// passed in. This configuration must contain the same
-		/// number of tranches that the pool was created with.
-		#[pallet::weight(T::WeightInfo::update_tranches(tranches.len().try_into().unwrap_or(u32::MAX)))]
-		#[transactional]
-		pub fn update_tranches(
-			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			tranches: Vec<TrancheInput<T::InterestRate>>,
-		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					who.clone(),
-					Role::PoolRole(PoolRole::PoolAdmin)
-				),
-				BadOrigin
-			);
-
-			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
-				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
-
-				ensure!(
-					EpochExecution::<T>::try_get(pool_id).is_err(),
-					Error::<T>::InSubmissionPeriod
-				);
-
-				Self::is_valid_tranche_change(Some(&pool.tranches), &tranches)?;
-
-				pool.tranches.combine_with_mut_residual_top(
-					tranches.into_iter(),
-					|tranche, (new_tranche_type, seniority)| {
-						tranche.tranche_type = new_tranche_type;
-
-						if let Some(new_seniority) = seniority {
-							tranche.seniority = new_seniority;
-						}
-						Ok(())
-					},
-				)?;
-
-				Self::deposit_event(Event::TranchesUpdated(pool_id));
 				Ok(())
 			})
 		}
@@ -916,6 +973,7 @@ pub mod pallet {
 
 			Self::do_collect(who, pool_id, tranche_loc, collect_n_epochs)
 		}
+
 		/// Collect the results of an executed invest or
 		/// redeem order for another account.
 		///
@@ -1158,7 +1216,7 @@ pub mod pallet {
 				// Challenge period starts when the first new solution has been submitted
 				if epoch.challenge_period_end.is_none() {
 					epoch.challenge_period_end =
-						Some(Self::now().saturating_add(pool.parameters.challenge_time));
+						Some(Self::current_block().saturating_add(T::ChallengeTime::get()));
 				}
 
 				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
@@ -1211,7 +1269,7 @@ pub mod pallet {
 					epoch
 						.challenge_period_end
 						.expect("Challenge period is some. qed.")
-						<= Self::now(),
+						<= Self::current_block(),
 					Error::<T>::ChallengeTimeHasNotPassed
 				);
 
@@ -1249,6 +1307,10 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		pub(crate) fn now() -> Moment {
 			T::Time::now().as_secs()
+		}
+
+		pub(crate) fn current_block() -> <T as frame_system::Config>::BlockNumber {
+			<frame_system::Pallet<T>>::block_number()
 		}
 
 		/// Scores a solution.
@@ -1350,6 +1412,47 @@ pub mod pallet {
 			}
 
 			Ok(state)
+		}
+
+		pub(crate) fn do_update_pool(
+			pool_id: &T::PoolId,
+			changes: &PoolChanges<T::InterestRate>,
+		) -> DispatchResult {
+			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
+				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
+
+				if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
+					pool.parameters.min_epoch_time = min_epoch_time;
+				}
+
+				if let Change::NewValue(max_nav_age) = changes.max_nav_age {
+					pool.parameters.max_nav_age = max_nav_age;
+				}
+
+				if let Change::NewValue(tranches) = &changes.tranches {
+					let now = Self::now();
+
+					pool.tranches.combine_with_mut_residual_top(
+						tranches.into_iter(),
+						|tranche, (new_tranche_type, seniority)| {
+							// Update debt of the tranche such that the interest is accrued until now with the previous interest rate
+							tranche.accrue(now)?;
+
+							tranche.tranche_type = new_tranche_type.clone();
+
+							if let Some(new_seniority) = seniority {
+								tranche.seniority = new_seniority.clone();
+							}
+							Ok(())
+						},
+					)?;
+				}
+
+				ScheduledUpdate::<T>::remove(pool_id);
+
+				Self::deposit_event(Event::Updated(pool_id.clone()));
+				Ok(())
+			})
 		}
 
 		pub(crate) fn do_collect(
