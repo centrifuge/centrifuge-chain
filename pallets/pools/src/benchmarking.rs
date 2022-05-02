@@ -62,19 +62,98 @@ benchmarks! {
 		assert_eq!(pool.reserve.available, Zero::zero());
 		assert_eq!(pool.reserve.total, Zero::zero());
 		assert_eq!(pool.parameters.min_epoch_time, T::DefaultMinEpochTime::get());
-		assert_eq!(pool.parameters.challenge_time, T::DefaultChallengeTime::get());
 		assert_eq!(pool.parameters.max_nav_age, T::DefaultMaxNAVAge::get());
 		assert_eq!(pool.metadata, None);
 	}
 
-	update {
-		let caller: T::AccountId = create_admin::<T>(0);
-		create_pool::<T>(1, caller.clone())?;
-	}: update(RawOrigin::Signed(caller), POOL, SECS_PER_DAY, SECS_PER_HOUR, SECS_PER_HOUR)
+	update_no_execution {
+		let admin: T::AccountId = create_admin::<T>(0);
+		let n in 1..T::MaxTranches::get();
+		let tranches = build_update_tranches::<T>(n);
+		create_pool::<T>(n, admin.clone())?;
+
+		let pool = get_pool::<T>();
+		let default_min_epoch_time = pool.parameters.min_epoch_time;
+		let default_max_nav_age = pool.parameters.max_nav_age;
+
+		// Submit redemption order so the update isn't executed
+		let amount = MAX_RESERVE / 2;
+		let investor = create_investor::<T>(0, TRANCHE)?;
+		let locator = get_tranche_id::<T>(TRANCHE);
+		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), amount)?;
+
+		let changes = PoolChanges {
+			tranches: Change::NoChange,
+			min_epoch_time: Change::NewValue(SECS_PER_DAY),
+			max_nav_age: Change::NewValue(SECS_PER_HOUR),
+		};
+	}: update(RawOrigin::Signed(admin), POOL, changes.clone())
+	verify {
+		// Should be the old values
+		let pool = get_pool::<T>();
+		assert_eq!(pool.parameters.min_epoch_time, default_min_epoch_time);
+		assert_eq!(pool.parameters.max_nav_age, default_max_nav_age);
+
+		let actual_update = get_scheduled_update::<T>();
+		assert_eq!(actual_update.changes, changes);
+	}
+
+	update_and_execute {
+		let admin: T::AccountId = create_admin::<T>(0);
+		let n in 1..T::MaxTranches::get();
+		let tranches = build_update_tranches::<T>(n);
+		create_pool::<T>(n, admin.clone())?;
+	}: update(RawOrigin::Signed(admin), POOL, PoolChanges {
+		tranches: Change::NewValue(build_update_tranches::<T>(n)),
+		min_epoch_time: Change::NewValue(SECS_PER_DAY),
+		max_nav_age: Change::NewValue(SECS_PER_HOUR),
+	})
+	verify {
+		// No redemption order was submitted and the MinUpdateDelay is 0 for benchmarks,
+		// so the update should have been executed immediately.
+		let pool = get_pool::<T>();
+		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
+		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
+		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
+	}
+
+	execute_scheduled_update {
+		let admin: T::AccountId = create_admin::<T>(0);
+		let n in 1..T::MaxTranches::get();
+		let tranches = build_update_tranches::<T>(n);
+		create_pool::<T>(n, admin.clone())?;
+
+		let pool = get_pool::<T>();
+		let default_min_epoch_time = pool.parameters.min_epoch_time;
+		let default_max_nav_age = pool.parameters.max_nav_age;
+
+		// Invest so we can redeem later
+		let investor = create_investor::<T>(0, TRANCHE)?;
+		let locator = get_tranche_id::<T>(TRANCHE);
+		Pallet::<T>::update_invest_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 100)?;
+		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
+		unrestrict_epoch_close::<T>();
+		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
+		Pallet::<T>::collect(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
+
+		// Submit redemption order so the update isn't immediately executed
+		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 1)?;
+
+		let changes = PoolChanges {
+			tranches: Change::NewValue(build_update_tranches::<T>(n)),
+			min_epoch_time: Change::NewValue(SECS_PER_DAY),
+			max_nav_age: Change::NewValue(SECS_PER_HOUR),
+		};
+
+		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
+
+		// Withdraw redeem order so the update can be executed after that
+		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 0)?;
+	}: execute_scheduled_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();
+		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 		assert_eq!(pool.parameters.min_epoch_time, SECS_PER_DAY);
-		assert_eq!(pool.parameters.challenge_time, SECS_PER_HOUR);
 		assert_eq!(pool.parameters.max_nav_age, SECS_PER_HOUR);
 	}
 
@@ -97,17 +176,6 @@ benchmarks! {
 	}: set_max_reserve(RawOrigin::Signed(caller), POOL, max_reserve)
 	verify {
 		assert_eq!(get_pool::<T>().reserve.max, max_reserve);
-	}
-
-	update_tranches {
-		let caller: T::AccountId = create_admin::<T>(0);
-		let n in 1..T::MaxTranches::get();
-		let tranches = build_update_tranches::<T>(n);
-		create_pool::<T>(n, caller.clone())?;
-	}: update_tranches(RawOrigin::Signed(caller), POOL, tranches.clone())
-	verify {
-		let pool = get_pool::<T>();
-		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
 	}
 
 	update_invest_order {
@@ -292,7 +360,6 @@ fn populate_epochs<T: Config<PoolId = u64, TrancheId = [u8; 16], EpochId = u32>>
 fn unrestrict_epoch_close<T: Config<PoolId = u64>>() {
 	Pool::<T>::mutate(POOL, |pool| {
 		let pool = pool.as_mut().unwrap();
-		pool.parameters.challenge_time = 0;
 		pool.parameters.min_epoch_time = 0;
 		pool.parameters.max_nav_age = u64::MAX;
 	});
@@ -310,6 +377,10 @@ fn assert_tranches_match<T: Config>(
 
 fn get_pool<T: Config<PoolId = u64>>() -> PoolDetailsOf<T> {
 	Pallet::<T>::pool(T::PoolId::from(POOL)).unwrap()
+}
+
+fn get_scheduled_update<T: Config<PoolId = u64>>() -> ScheduledUpdateDetails<T::InterestRate> {
+	Pallet::<T>::scheduled_update(T::PoolId::from(POOL)).unwrap()
 }
 
 fn get_tranche_id<T: Config<PoolId = u64>>(index: TrancheIndex) -> T::TrancheId {
