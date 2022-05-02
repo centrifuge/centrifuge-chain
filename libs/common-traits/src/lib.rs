@@ -157,6 +157,18 @@ pub trait Properties {
 	fn add(&mut self, property: Self::Property) -> Result<Self::Ok, Self::Error>;
 }
 
+pub trait PoolUpdateGuard {
+	type PoolDetails;
+	type ScheduledUpdateDetails;
+	type Moment: Copy;
+
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool;
+}
+
 pub trait PreConditions<T> {
 	type Result;
 

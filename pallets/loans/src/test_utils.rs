@@ -158,7 +158,6 @@ pub(crate) fn create<T>(
 	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
 		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;
 		pool.parameters.min_epoch_time = 0;
-		pool.parameters.challenge_time = 0;
 		pool.parameters.max_nav_age = 999_999_999_999;
 		Ok(())
 	})
