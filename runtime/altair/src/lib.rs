@@ -831,7 +831,7 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
-	type Role = Role<TrancheId, Moment>;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -843,17 +843,17 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<Role<TrancheId, Moment>>,
+		Option<Role>,
 		PermissionScope<PoolId, CurrencyId>,
-		Role<TrancheId, Moment>,
+		Role,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<Role<TrancheId, Moment>>,
+			Option<Role>,
 			PermissionScope<PoolId, CurrencyId>,
-			Role<TrancheId, Moment>,
+			Role,
 		),
 	) -> bool {
 		let (_editor, maybe_role, _pool, role) = t;

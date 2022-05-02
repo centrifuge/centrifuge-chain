@@ -162,13 +162,19 @@ where
 	);
 	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
 	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
+		CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pal_pool_id.into(),
+			tranche_id.into(),
+		)),
 		&pool_account,
 		(500 * CURRENCY).into(),
 	);
 	let tranche_id = get_tranche_id::<T>(pool_id.into(), 1);
 	make_free_token_balance::<T>(
-		CurrencyId::Tranche(pal_pool_id.into(), tranche_id.into()),
+		CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pal_pool_id.into(),
+			tranche_id.into(),
+		)),
 		&pool_account,
 		(500 * CURRENCY).into(),
 	);

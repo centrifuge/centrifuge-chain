@@ -95,7 +95,9 @@ where
 	T::CurrencyId: Into<CurrencyId>,
 {
 	let acc = get_account::<T>(name, false);
-	if let CurrencyId::Tranche(pool_id, tranche_id) = currency.into() {
+	if let CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool_id, tranche_id)) =
+		currency.into()
+	{
 		permission_for_tranche::<T>(acc.clone(), pool_id, tranche_id);
 	}
 
@@ -137,7 +139,9 @@ where
 		reserve_balance::<T>(currency, &acc, reserve);
 	}
 
-	if let CurrencyId::Tranche(pool_id, tranche_id) = currency.into() {
+	if let CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool_id, tranche_id)) =
+		currency.into()
+	{
 		permission_for_tranche::<T>(acc.clone(), pool_id, tranche_id);
 	}
 

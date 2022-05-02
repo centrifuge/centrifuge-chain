@@ -12,7 +12,7 @@ use sp_std::vec::Vec;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum PermissionedCurrency {
-	// TODO: Tranche variant from CurrencyId should be moved in here.
+	Tranche(u64, [u8; 16]),
 }
 
 #[derive(
@@ -22,7 +22,6 @@ pub enum PermissionedCurrency {
 pub enum CurrencyId {
 	Native,
 	Usd,
-	Tranche(u64, [u8; 16]),
 
 	/// Karura KSM
 	KSM,
@@ -38,14 +37,16 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"Native currency".to_vec(),
 			CurrencyId::Usd => b"USD stable coin".to_vec(),
+			CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool_id, tranche_id)) => {
+				format_runtime_string!(
+					"Tranche token of pool {} and tranche {:?}",
+					pool_id,
+					tranche_id,
+				)
+				.as_ref()
+				.to_vec()
+			}
 			CurrencyId::Permissioned(_) => b"Permissioned currency".to_vec(),
-			CurrencyId::Tranche(pool_id, tranche_id) => format_runtime_string!(
-				"Tranche token of pool {} and tranche {:?}",
-				pool_id,
-				tranche_id,
-			)
-			.as_ref()
-			.to_vec(),
 			CurrencyId::KUSD => b"Karura Dollar".to_vec(),
 			CurrencyId::KSM => b"Kusama".to_vec(),
 		}
@@ -55,12 +56,12 @@ impl TokenMetadata for CurrencyId {
 		match self {
 			CurrencyId::Native => b"CFG".to_vec(),
 			CurrencyId::Usd => b"USD".to_vec(),
-			CurrencyId::Permissioned(_) => b"PERM".to_vec(),
-			CurrencyId::Tranche(pool_id, tranche_id) => {
+			CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool_id, tranche_id)) => {
 				format_runtime_string!("TT:{}:{:?}", pool_id, tranche_id)
 					.as_ref()
 					.to_vec()
 			}
+			CurrencyId::Permissioned(_) => b"PERM".to_vec(),
 			CurrencyId::KUSD => b"KUSD".to_vec(),
 			CurrencyId::KSM => b"KSM".to_vec(),
 		}
@@ -69,8 +70,8 @@ impl TokenMetadata for CurrencyId {
 	fn decimals(&self) -> u8 {
 		match self {
 			CurrencyId::Native => 18,
+			CurrencyId::Permissioned(PermissionedCurrency::Tranche(_, _)) => 27,
 			CurrencyId::Permissioned(_) => 12,
-			CurrencyId::Tranche(_, _) => 27,
 			CurrencyId::Usd | CurrencyId::KUSD | CurrencyId::KSM => 12,
 		}
 	}
@@ -94,7 +95,8 @@ macro_rules! impl_tranche_token {
 				pool: Config::PoolId,
 				tranche: Config::TrancheId,
 			) -> Config::CurrencyId {
-				CurrencyId::Tranche(pool.into(), tranche.into()).into()
+				CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool.into(), tranche.into()))
+					.into()
 			}
 		}
 	};

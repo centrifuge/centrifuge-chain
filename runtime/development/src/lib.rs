@@ -868,10 +868,7 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _)
-			| CurrencyId::Native
-			| CurrencyId::KSM
-			| CurrencyId::Permissioned(_) => false,
+			CurrencyId::Native | CurrencyId::KSM | CurrencyId::Permissioned(_) => false,
 			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
 	}
@@ -1061,7 +1058,7 @@ parameter_types! {
 impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
-	type Role = Role<TrancheId, Moment>;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -1073,20 +1070,20 @@ pub struct Editors;
 impl
 	Contains<(
 		AccountId,
-		Option<Role<TrancheId, Moment>>,
+		Option<Role>,
 		PermissionScope<PoolId, CurrencyId>,
-		Role<TrancheId, Moment>,
+		Role,
 	)> for Editors
 {
 	fn contains(
 		t: &(
 			AccountId,
-			Option<Role<TrancheId, Moment>>,
+			Option<Role>,
 			PermissionScope<PoolId, CurrencyId>,
-			Role<TrancheId, Moment>,
+			Role,
 		),
 	) -> bool {
-		let (_editor, maybe_role, _scope, role) = t;
+		let (_editor, maybe_role, scope, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
 				Role::PoolRole(PoolRole::PoolAdmin) => true,
@@ -1123,17 +1120,6 @@ where
 
 		match id {
 			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
-			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has(
-					PermissionScope::Pool(pool_id),
-					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
-				) && P::has(
-					PermissionScope::Pool(pool_id),
-					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
-				)
-			}
 			CurrencyId::Permissioned(_) => {
 				P::has(
 					PermissionScope::Currency(id),

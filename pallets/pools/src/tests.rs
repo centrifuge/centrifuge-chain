@@ -94,25 +94,25 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let tranche_a = Tranche {
 			outstanding_invest_orders: 10,
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [0u8; 16])),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [1u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [1u8; 16])),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [2u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [2u8; 16])),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 10,
-			currency: CurrencyId::Tranche(0, [3u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [3u8; 16])),
 			..Default::default()
 		};
 		let tranches =
@@ -292,7 +292,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: 100,
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 3,
-			currency: CurrencyId::Tranche(0, [3u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [3u8; 16])),
 			..Default::default()
 		};
 		let tranche_b = Tranche {
@@ -303,7 +303,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: 30,
 			seniority: 2,
-			currency: CurrencyId::Tranche(0, [2u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [2u8; 16])),
 			..Default::default()
 		};
 		let tranche_c = Tranche {
@@ -314,7 +314,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 1,
-			currency: CurrencyId::Tranche(0, [1u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [1u8; 16])),
 			..Default::default()
 		};
 		let tranche_d = Tranche {
@@ -322,7 +322,7 @@ fn pool_constraints_pass() {
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			seniority: 0,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [0u8; 16])),
 			..Default::default()
 		};
 		let tranches =
@@ -512,14 +512,14 @@ fn epoch() {
 
 		assert_eq!(
 			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, JuniorTrancheId::get()),
+				CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, JuniorTrancheId::get())),
 				&0,
 			),
 			500 * CURRENCY,
 		);
 		assert_eq!(
 			<pallet_restricted_tokens::Pallet<Test> as fungibles::Inspect<u64>>::balance(
-				CurrencyId::Tranche(0, SeniorTrancheId::get()),
+				CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, SeniorTrancheId::get())),
 				&1,
 			),
 			500 * CURRENCY,
@@ -2413,7 +2413,7 @@ fn only_usd_as_pool_currency_allowed() {
 						None
 					)
 				],
-				CurrencyId::Tranche(0, [0u8; 16]),
+				CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [0u8; 16])),
 				200 * CURRENCY
 			),
 			Error::<Test>::InvalidCurrency

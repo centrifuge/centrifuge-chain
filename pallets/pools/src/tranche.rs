@@ -132,7 +132,7 @@ where
 		Self {
 			tranche_type: TrancheType::Residual,
 			seniority: 1,
-			currency: CurrencyId::Tranche(0, [0u8; 16]),
+			currency: CurrencyId::Permissioned(PermissionedCurrency::Tranche(0, [0u8; 16])),
 			outstanding_invest_orders: Zero::zero(),
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),

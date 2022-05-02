@@ -110,7 +110,7 @@ parameter_types! {
 impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Scope = PermissionScope<u64, CurrencyId>;
-	type Role = Role<TrancheId, Moment>;
+	type Role = Role;
 	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
@@ -248,7 +248,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Tranche(pool_id, tranche_id) => {
+			CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool_id, tranche_id)) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
 					send,
@@ -325,10 +325,7 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _)
-			| CurrencyId::Native
-			| CurrencyId::KSM
-			| CurrencyId::Permissioned(_) => false,
+			CurrencyId::Native | CurrencyId::KSM | CurrencyId::Permissioned(_) => false,
 			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
 	}

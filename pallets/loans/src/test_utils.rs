@@ -41,7 +41,7 @@ pub(crate) fn set_role<T: pallet_loans::Config>(
 		<T as pallet_loans::Config>::CurrencyId,
 	>,
 	who: T::AccountId,
-	role: Role<TrancheId, Moment>,
+	role: Role,
 ) {
 	PermissionsOf::<T>::add(scope, who, role).expect("adding permissions should not fail");
 }
@@ -173,14 +173,22 @@ pub(crate) fn create<T>(
 
 	// TODO(ved) do disbursal manually for now
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), JuniorTrancheId::get()).into(),
+		CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pool_id.into(),
+			JuniorTrancheId::get()
+		))
+		.into(),
 		&pool_account,
 		&junior_investor,
 		(500 * CURRENCY).into(),
 		false
 	));
 	assert_ok!(<T as pallet_pools::Config>::Tokens::transfer(
-		CurrencyId::Tranche(pool_id.into(), SeniorTrancheId::get()).into(),
+		CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pool_id.into(),
+			SeniorTrancheId::get()
+		))
+		.into(),
 		&pool_account,
 		&senior_investor,
 		(500 * CURRENCY).into(),
