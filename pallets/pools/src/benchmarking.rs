@@ -67,7 +67,7 @@ benchmarks! {
 	}
 
 	update_no_execution {
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
 		create_pool::<T>(n, admin.clone())?;
@@ -99,7 +99,7 @@ benchmarks! {
 	}
 
 	update_and_execute {
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
 		create_pool::<T>(n, admin.clone())?;
@@ -118,7 +118,7 @@ benchmarks! {
 	}
 
 	execute_scheduled_update {
-		let admin: T::AccountId = account("admin", 0, 0);
+		let admin: T::AccountId = create_admin::<T>(0);
 		let n in 1..T::MaxTranches::get();
 		let tranches = build_update_tranches::<T>(n);
 		create_pool::<T>(n, admin.clone())?;
@@ -147,10 +147,8 @@ benchmarks! {
 
 		Pallet::<T>::update(RawOrigin::Signed(admin.clone()).into(), POOL, changes)?;
 
-		// Close epoch so the update can be executed after that
-		T::NAV::initialise(RawOrigin::Signed(admin.clone()).into(), POOL, 0)?;
-		unrestrict_epoch_close::<T>();
-		Pallet::<T>::close_epoch(RawOrigin::Signed(admin.clone()).into(), POOL)?;
+		// Withdraw redeem order so the update can be executed after that
+		Pallet::<T>::update_redeem_order(RawOrigin::Signed(investor.clone()).into(), POOL, tranche_location::<T>(TRANCHE), 0)?;
 	}: execute_scheduled_update(RawOrigin::Signed(admin), POOL)
 	verify {
 		let pool = get_pool::<T>();
