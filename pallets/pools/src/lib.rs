@@ -635,7 +635,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
 			changes: PoolChanges<T::InterestRate>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ensure!(
 				T::Permission::has(
@@ -661,7 +661,7 @@ pub mod pallet {
 					ScheduledUpdate::<T>::remove(pool_id);
 				}
 
-				return Ok(());
+				return Ok(Some(T::WeightInfo::update_no_execution()).into());
 			}
 
 			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
@@ -693,12 +693,14 @@ pub mod pallet {
 			};
 
 			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
-				Self::do_update_pool(&pool_id, &changes)
+				Self::do_update_pool(&pool_id, &changes)?;
+
+				Ok(Some(T::WeightInfo::update_and_execute()).into())
 			} else {
 				// If an update was already stored, this will override it
 				ScheduledUpdate::<T>::insert(pool_id, update);
 
-				Ok(())
+				Ok(Some(T::WeightInfo::update_no_execution()).into())
 			}
 		}
 
