@@ -53,9 +53,21 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
-	fn update_tranches(n: u32) -> Weight {
-		(49_592_000 as Weight) // Standard Error: 119_000
-			.saturating_add((1_170_000 as Weight).saturating_mul(n as Weight))
+	fn update_no_execution() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn update_and_execute() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
+			.saturating_add(T::DbWeight::get().reads(3 as Weight))
+			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+	}
+	fn execute_scheduled_update() -> Weight {
+		(61_909_000 as Weight)
+			// Standard Error: 632_000
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}

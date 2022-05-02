@@ -17,6 +17,7 @@
 //! and some helper functions.
 use crate as pallet_loans;
 use crate::test_utils::{JuniorTrancheId, SeniorTrancheId};
+use common_traits::PoolUpdateGuard;
 use common_types::{
 	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
 };
@@ -28,6 +29,7 @@ use frame_support::{
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
+use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
 	Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
@@ -145,14 +147,17 @@ impl orml_tokens::Config for MockRuntime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
+	pub const ChallengeTime: u64 = 0; // disable challenge period
+	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const RequireRedeemFulfillmentsBeforeUpdates: bool = false;
+
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 0; // disable min epoch time checks
-	pub const DefaultChallengeTime: u64 = 0; // disable challenge period
 	pub const DefaultMaxNAVAge: u64 = u64::MAX; // disable max NAV age checks
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 0; // disable bound
-	pub const ChallengeTimeLowerBound: u64 = 0; // disable bound
+	pub const MinEpochTimeUpperBound: u64 = u64::MAX; // disable bound
 	pub const MaxNAVAgeUpperBound: u64 = u64::MAX; // disable bound
 
 	// Pool metadata limit
@@ -177,11 +182,12 @@ impl pallet_pools::Config for MockRuntime {
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
+	type ChallengeTime = ChallengeTime;
+	type MinUpdateDelay = MinUpdateDelay;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
-	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type PalletId = PoolPalletId;
 	type Permission = Permissions;
@@ -191,6 +197,31 @@ impl pallet_pools::Config for MockRuntime {
 	type PoolDeposit = ZeroDeposit;
 	type WeightInfo = ();
 	type TrancheWeight = runtime_common::TrancheWeight;
+	type UpdateGuard = UpdateGuard;
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type PoolDetails = PoolDetails<
+		CurrencyId,
+		u32,
+		Balance,
+		Rate,
+		MaxSizeMetadata,
+		runtime_common::TrancheWeight,
+		TrancheId,
+		PoolId,
+	>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type Moment = Moment;
+
+	fn released(
+		_pool: &Self::PoolDetails,
+		_update: &Self::ScheduledUpdateDetails,
+		_now: Self::Moment,
+	) -> bool {
+		true
+	}
 }
 
 // Implement FRAME balances pallet configuration trait for the mock runtime
