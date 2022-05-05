@@ -1,8 +1,10 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
 use common_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
-use common_types::{CurrencyId, Moment};
-use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
+use common_types::{CurrencyId, Moment, PermissionedCurrencyRole};
+use common_types::{
+	PermissionRoles, PermissionScope, PermissionedCurrency, PoolRole, Role, TimeProvider, UNION,
+};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::{Contains, SortedMembers};
 use frame_support::{
@@ -111,7 +113,7 @@ impl pallet_permissions::Config for Test {
 	type Event = Event;
 	type Scope = PermissionScope<u64, CurrencyId>;
 	type Role = Role;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, Moment>;
 	type AdminOrigin = EnsureSignedBy<One, u64>;
 	type Editors = frame_support::traits::Everything;
 	type MaxRolesPerScope = MaxRoles;
@@ -235,7 +237,7 @@ impl pallet_restricted_tokens::Config for Test {
 pub struct RestrictedTokens<P>(PhantomData<P>);
 impl<P> PreConditions<TransferDetails<u64, CurrencyId, Balance>> for RestrictedTokens<P>
 where
-	P: PermissionsT<u64, Scope = PermissionScope<u64, CurrencyId>, Role = Role<TrancheId>>,
+	P: PermissionsT<u64, Scope = PermissionScope<u64, CurrencyId>, Role = Role>,
 {
 	type Result = bool;
 
@@ -250,13 +252,17 @@ where
 		match id {
 			CurrencyId::Permissioned(PermissionedCurrency::Tranche(pool_id, tranche_id)) => {
 				P::has(
-					PermissionScope::Pool(pool_id),
+					PermissionScope::Currency(CurrencyId::Permissioned(
+						PermissionedCurrency::Tranche(pool_id, tranche_id),
+					)),
 					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 				) && P::has(
-					PermissionScope::Pool(pool_id),
+					PermissionScope::Currency(CurrencyId::Permissioned(
+						PermissionedCurrency::Tranche(pool_id, tranche_id),
+					)),
 					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
+					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 				)
 			}
 			_ => true,

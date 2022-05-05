@@ -2,7 +2,7 @@ use super::*;
 use crate::mock::TrancheToken as TT;
 use crate::mock::{self, *};
 use common_traits::Permissions as PermissionsT;
-use common_types::CurrencyId;
+use common_types::{CurrencyId, PermissionedCurrency};
 use frame_support::sp_std::convert::TryInto;
 use frame_support::traits::fungibles;
 use frame_support::{assert_err, assert_noop, assert_ok};
@@ -411,21 +411,28 @@ fn epoch() {
 	new_test_ext().execute_with(|| {
 		let junior_investor = Origin::signed(0);
 		let senior_investor = Origin::signed(1);
+		let pool_id = 0;
 		let pool_owner = 2_u64;
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let borrower = 3;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -659,16 +666,22 @@ fn submission_period() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -864,16 +877,22 @@ fn execute_info_removed_after_epoch_execute() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -968,16 +987,22 @@ fn collect_tranche_tokens() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1098,9 +1123,12 @@ fn invalid_tranche_id_is_err() {
 		let senior_investor = Origin::signed(1);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1142,9 +1170,12 @@ fn updating_with_same_amount_is_err() {
 		let senior_investor = Origin::signed(1);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1195,9 +1226,12 @@ fn pool_updates_should_be_constrained() {
 		));
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(pool_id),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1312,9 +1346,12 @@ fn updating_orders_updates_epoch() {
 		let pool_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(pool_id),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1362,9 +1399,12 @@ fn no_order_is_err() {
 		let pool_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(pool_id),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1404,9 +1444,12 @@ fn collecting_over_last_exec_epoch_is_err() {
 		let pool_id = 0;
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(pool_id),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1728,16 +1771,22 @@ fn triger_challange_period_with_zero_solution() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1837,16 +1886,22 @@ fn min_challenge_time_is_respected() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -1949,16 +2004,22 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
@@ -2166,16 +2227,22 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 		let pool_owner_origin = Origin::signed(pool_owner);
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				JuniorTrancheId::get().into(),
+			))),
 			ensure_signed(junior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
-			PermissionScope::Pool(0),
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				0,
+				SeniorTrancheId::get().into(),
+			))),
 			ensure_signed(senior_investor.clone()).unwrap(),
-			Role::PoolRole(PoolRole::TrancheInvestor(SeniorTrancheId::get(), u64::MAX)),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(u64::MAX)),
 		)
 		.unwrap();
 

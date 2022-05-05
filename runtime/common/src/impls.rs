@@ -2,7 +2,7 @@
 
 use super::*;
 use codec::{Decode, Encode};
-use common_types::CurrencyId;
+use common_types::{CurrencyId, PermissionedCurrency};
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
 use frame_support::traits::{Currency, OnUnbalanced};

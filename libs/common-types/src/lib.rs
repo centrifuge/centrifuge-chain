@@ -175,7 +175,7 @@ where
 	MinDelay: Get<Moment>,
 	Moment: From<u64> + PartialEq + PartialOrd + Saturating + Ord + Copy,
 {
-	type Property = Role;
+	type Property = Role<Moment>;
 	type Error = ();
 	type Ok = ();
 

@@ -16,7 +16,10 @@ use crate as pallet_loans;
 use crate::{AssetOf, PoolIdOf};
 use codec::Encode;
 use common_traits::{Permissions, PoolNAV};
-use common_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, Role};
+use common_types::{
+	CurrencyId, PermissionScope, PermissionedCurrency, PermissionedCurrencyRole, PoolLocator,
+	PoolRole, Role,
+};
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
@@ -96,9 +99,10 @@ pub(crate) fn create<T>(
 	senior_investor: T::AccountId,
 	currency_id: CurrencyId,
 ) where
-	T: pallet_pools::Config + frame_system::Config + pallet_loans::Config,
+	T: pallet_pools::Config<CurrencyId = CurrencyId>
+		+ frame_system::Config
+		+ pallet_loans::Config<CurrencyId = CurrencyId>,
 	<T as pallet_pools::Config>::Balance: From<u128>,
-	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
@@ -124,20 +128,20 @@ pub(crate) fn create<T>(
 	));
 
 	set_role::<T>(
-		PermissionScope::Pool(pool_id.into()),
-		junior_investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(
+		PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pool_id.into(),
 			JuniorTrancheId::get().into(),
-			999_999_999u32.into(),
-		)),
+		))),
+		junior_investor.clone(),
+		Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(999_999_999u32.into())),
 	);
 	set_role::<T>(
-		PermissionScope::Pool(pool_id.into()),
-		senior_investor.clone(),
-		Role::PoolRole(PoolRole::TrancheInvestor(
+		PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pool_id.into(),
 			SeniorTrancheId::get().into(),
-			999_999_999u32.into(),
-		)),
+		))),
+		junior_investor.clone(),
+		Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(999_999_999u32.into())),
 	);
 
 	assert_ok!(PoolPallet::<T>::update_invest_order(

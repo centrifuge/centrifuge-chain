@@ -31,7 +31,9 @@ use codec::HasCompact;
 use common_traits::{
 	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
 };
-use common_types::{Moment, PermissionScope, PoolLocator, PoolRole, Role};
+use common_types::{
+	Moment, PermissionScope, PermissionedCurrencyRole, PoolLocator, PoolRole, Role,
+};
 use frame_support::traits::{
 	fungibles::{Inspect, Mutate, Transfer},
 	ReservableCurrency,
@@ -314,7 +316,7 @@ pub mod pallet {
 		type Permission: Permissions<
 			Self::AccountId,
 			Scope = PermissionScope<Self::PoolId, Self::CurrencyId>,
-			Role = Role<Self::TrancheId, Moment>,
+			Role = Role<Moment>,
 			Error = DispatchError,
 		>;
 
@@ -831,14 +833,21 @@ pub mod pallet {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 					let tranche_id = pool
 						.tranches
-						.tranche_id(tranche_loc)
+						.tranche_id(tranche_loc.clone())
+						.ok_or(Error::<T>::InvalidTrancheId)?;
+
+					let tranche = pool
+						.tranches
+						.get_tranche(tranche_loc)
 						.ok_or(Error::<T>::InvalidTrancheId)?;
 
 					ensure!(
 						T::Permission::has(
-							PermissionScope::Pool(pool_id),
+							PermissionScope::Currency(tranche.currency),
 							who.clone(),
-							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+							Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(
+								Self::now()
+							))
 						),
 						BadOrigin
 					);
@@ -908,14 +917,21 @@ pub mod pallet {
 					let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 					let tranche_id = pool
 						.tranches
-						.tranche_id(tranche_loc)
+						.tranche_id(tranche_loc.clone())
+						.ok_or(Error::<T>::InvalidTrancheId)?;
+
+					let tranche = pool
+						.tranches
+						.get_tranche(tranche_loc)
 						.ok_or(Error::<T>::InvalidTrancheId)?;
 
 					ensure!(
 						T::Permission::has(
-							PermissionScope::Pool(pool_id),
+							PermissionScope::Currency(tranche.currency),
 							who.clone(),
-							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+							Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(
+								Self::now()
+							))
 						),
 						BadOrigin
 					);

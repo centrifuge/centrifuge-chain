@@ -22,7 +22,7 @@
 use super::*;
 use common_traits::TrancheToken as TrancheTokenT;
 #[cfg(test)]
-use common_types::CurrencyId;
+use common_types::{CurrencyId, PermissionedCurrency};
 use frame_support::{sp_runtime::ArithmeticError, sp_std::convert::TryInto, StorageHasher};
 use rev_slice::{RevSlice, SliceExt};
 use sp_arithmetic::traits::{checked_pow, BaseArithmetic, Unsigned};

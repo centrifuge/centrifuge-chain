@@ -1059,7 +1059,7 @@ impl pallet_permissions::Config for Runtime {
 	type Event = Event;
 	type Scope = PermissionScope<PoolId, CurrencyId>;
 	type Role = Role;
-	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, TrancheId, Moment>;
+	type Storage = PermissionRoles<TimeProvider<Timestamp>, MinDelay, Moment>;
 	type Editors = Editors;
 	type AdminOrigin = EnsureRootOr<HalfOfCouncil>;
 	type MaxRolesPerScope = MaxRolesPerPool;
@@ -1087,10 +1087,6 @@ impl
 		if let Some(with_role) = maybe_role {
 			match *with_role {
 				Role::PoolRole(PoolRole::PoolAdmin) => true,
-				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
-					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
-					_ => false,
-				},
 				Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager) => match *role {
 					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(_)) => true,
 					_ => false,
