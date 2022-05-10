@@ -1,7 +1,7 @@
 name: docker
 on:
   push:
-    branches: [master, parachain]
+    branches: [master, parachain, altair/xcm-air-fix]
   workflow_dispatch:
     inputs:
       docker_tag:

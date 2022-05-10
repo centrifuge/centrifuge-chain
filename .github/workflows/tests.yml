@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain]
+    branches: [master, parachain, altair/xcm-air-fix]
   pull_request:
 name: Tests
 jobs:
