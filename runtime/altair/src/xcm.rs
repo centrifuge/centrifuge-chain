@@ -62,7 +62,6 @@ pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
-
 	// An extra rule handling AIR in its canonical representation. This is currently useful
 	// for testing the transfer of AIR bidirectionally between Altair and a sibling parachain.
 	FixedRateOfFungible<AirPerSecondCanonical, ToTreasury>,
@@ -194,7 +193,6 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			),
 			_ => return None,
 		};
-
 		Some(x)
 	}
 }
