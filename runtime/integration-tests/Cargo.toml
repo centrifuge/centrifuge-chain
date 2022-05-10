@@ -84,7 +84,7 @@ pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 
 [features]
-default = [ "runtime-development" ]
+default = [ "runtime-development"]
 runtime-benchmarks = [ "default", "development-runtime/runtime-benchmarks", "frame-benchmarking/runtime-benchmarks"]
 runtime-development = []
 runtime-altair = []

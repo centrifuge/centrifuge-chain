@@ -62,6 +62,10 @@ pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+
+	// An extra rule handling AIR in its canonical representation. This is currently useful
+	// for testing the transfer of AIR bidirectionally between Altair and a sibling parachain.
+	FixedRateOfFungible<AirPerSecondCanonical, ToTreasury>,
 );
 
 parameter_types! {
@@ -69,8 +73,8 @@ parameter_types! {
 
 	pub AirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			0,
+			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
@@ -85,6 +89,14 @@ parameter_types! {
 		).into(),
 		// KUSD:KSM = 400:1
 		ksm_per_second() * 400
+	);
+
+	pub AirPerSecondCanonical: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+		).into(),
+		native_per_second(),
 	);
 }
 
@@ -182,6 +194,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			),
 			_ => return None,
 		};
+
 		Some(x)
 	}
 }
@@ -196,6 +209,13 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 		}
 
 		match location.clone() {
+			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => match &key[..] {
+				parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+				_ => Err(location.clone()),
+			},
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
