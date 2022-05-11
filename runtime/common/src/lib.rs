@@ -257,11 +257,6 @@ pub mod xcm_fees {
 	use frame_support::weights::constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND};
 
 	use super::types::Balance;
-	use super::CENTI_CFG as CENTI_CURRENCY;
-
-	pub fn base_tx_in_air() -> Balance {
-		CENTI_CURRENCY / 10
-	}
 
 	// The fee cost per second for transferring the native token in cents.
 	pub fn native_per_second() -> Balance {
