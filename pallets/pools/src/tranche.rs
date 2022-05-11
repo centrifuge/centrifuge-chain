@@ -115,6 +115,7 @@ pub struct Tranche<Balance, Rate, Weight, Currency> {
 
 	pub(super) debt: Balance,
 	pub(super) reserve: Balance,
+	pub(super) loss: Balance,
 	pub(super) ratio: Perquintill,
 	pub(super) last_updated_interest: Moment,
 
@@ -137,6 +138,7 @@ where
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
+			loss: Zero::zero(),
 			ratio: Perquintill::one(),
 			last_updated_interest: 0,
 			_phantom: PhantomData::default(),
@@ -479,6 +481,7 @@ where
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
+			loss: Zero::zero(),
 			ratio: Perquintill::zero(),
 			last_updated_interest: now,
 			_phantom: Default::default(),

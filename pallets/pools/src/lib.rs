@@ -66,11 +66,19 @@ where
 	pub parameters: PoolParameters,
 	/// Metadata that specifies the pool.
 	pub metadata: Option<BoundedVec<u8, MetaSize>>,
+	/// The status the pool is currently in.
+	pub status: PoolStatus,
 	/// Details about the epochs of the pool.
 	pub epoch: EpochState<EpochId>,
 	/// Details about the reserve (unused capital) in the pool.
 	pub reserve: ReserveDetails<Balance>,
 }
+
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+pub enum PoolStatus {
+	Open,
+}
+
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct ReserveDetails<Balance> {
 	/// Investments will be allowed up to this amount.
@@ -582,6 +590,7 @@ pub mod pallet {
 				PoolDetails {
 					currency,
 					tranches,
+					status: PoolStatus::Open,
 					epoch: EpochState {
 						current: One::one(),
 						last_closed: now,
