@@ -172,7 +172,8 @@ pub mod pallet {
 	/// Stores the next loan tokenID to be created
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_id)]
-	pub(crate) type NextLoanId<T: Config> = StorageValue<_, u128, ValueQuery, OnNextLoanIdEmpty>;
+	pub(crate) type NextLoanId<T: Config> =
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery, OnNextLoanIdEmpty>;
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]

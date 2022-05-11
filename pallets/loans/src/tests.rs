@@ -108,7 +108,7 @@ where
 
 	// post issue checks
 	// next loan id should 2
-	assert_eq!(NextLoanId::<T>::get(), 2u128.into());
+	assert_eq!(NextLoanId::<T>::get(pr_pool_id), 2u128.into());
 
 	// loanId should be 1
 	let loan_id = 1u128.into();
