@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::TypeId;
 ///! Common-types of the Centrifuge chain.
 use sp_std::cmp::{Ord, PartialEq, PartialOrd};
+use sp_std::convert::TryInto;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
@@ -54,6 +55,24 @@ pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	MemberListAdmin,
 	RiskAdmin,
 	TrancheInvestor(TrancheId, Moment),
+}
+
+/// Try and convert `PoolRole` into `PoolAdminRoles`.
+/// For variants where such conversion is not viable, pass said variant in the result `Err`.
+impl TryInto<PoolAdminRoles> for PoolRole<TrancheId = [u8; 16], Moment = u64> {
+	type Error = Self;
+
+	fn try_into(self) -> Result<PoolAdminRoles, Self::Error> {
+		match self {
+			Self::Borrower => Ok(PoolAdminRoles::BORROWER),
+			Self::LiquidityAdmin => Ok(PoolAdminRoles::LIQUIDITY_ADMIN),
+			Self::PoolAdmin => Ok(PoolAdminRoles::POOL_ADMIN),
+			Self::PricingAdmin => Ok(PoolAdminRoles::PRICING_ADMIN),
+			Self::MemberListAdmin => Ok(PoolAdminRoles::MEMBER_LIST_ADMIN),
+			Self::RiskAdmin => Ok(PoolAdminRoles::RISK_ADMIN),
+			Self::TrancheInvestor(_, _) => Err(self),
+		}
+	}
 }
 
 #[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, TypeInfo, Debug)]
@@ -218,18 +237,10 @@ where
 
 	fn exists(&self, property: Self::Property) -> bool {
 		match property {
-			Role::PoolRole(pool_role) => match pool_role {
-				PoolRole::Borrower => self.pool_admin.contains(PoolAdminRoles::BORROWER),
-				PoolRole::LiquidityAdmin => {
-					self.pool_admin.contains(PoolAdminRoles::LIQUIDITY_ADMIN)
-				}
-				PoolRole::PoolAdmin => self.pool_admin.contains(PoolAdminRoles::POOL_ADMIN),
-				PoolRole::PricingAdmin => self.pool_admin.contains(PoolAdminRoles::PRICING_ADMIN),
-				PoolRole::MemberListAdmin => {
-					self.pool_admin.contains(PoolAdminRoles::MEMBER_LIST_ADMIN)
-				}
-				PoolRole::RiskAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
-				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
+			Role::PoolRole(pool_role) => match pool_role.try_into() {
+				Ok(pole_admin_role) => self.pool_admin.contains(pole_admin_role),
+				Err(PoolRole::TrancheInvestor(id, _)) => self.tranche_investor.contains(id),
+				_ => false,
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -256,18 +267,12 @@ where
 
 	fn rm(&mut self, property: Self::Property) -> Result<(), ()> {
 		match property {
-			Role::PoolRole(pool_role) => match pool_role {
-				PoolRole::Borrower => Ok(self.pool_admin.remove(PoolAdminRoles::BORROWER)),
-				PoolRole::LiquidityAdmin => {
-					Ok(self.pool_admin.remove(PoolAdminRoles::LIQUIDITY_ADMIN))
+			Role::PoolRole(pool_role) => match pool_role.try_into() {
+				Ok(pool_admin_role) => Ok(self.pool_admin.remove(pool_admin_role)),
+				Err(PoolRole::TrancheInvestor(id, delta)) => {
+					self.tranche_investor.remove(id, delta)
 				}
-				PoolRole::PoolAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::POOL_ADMIN)),
-				PoolRole::PricingAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => {
-					Ok(self.pool_admin.remove(PoolAdminRoles::MEMBER_LIST_ADMIN))
-				}
-				PoolRole::RiskAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
-				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
+				_ => Err(()),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
@@ -287,18 +292,12 @@ where
 
 	fn add(&mut self, property: Self::Property) -> Result<(), ()> {
 		match property {
-			Role::PoolRole(pool_role) => match pool_role {
-				PoolRole::Borrower => Ok(self.pool_admin.insert(PoolAdminRoles::BORROWER)),
-				PoolRole::LiquidityAdmin => {
-					Ok(self.pool_admin.insert(PoolAdminRoles::LIQUIDITY_ADMIN))
+			Role::PoolRole(pool_role) => match pool_role.try_into() {
+				Ok(pool_admin_role) => Ok(self.pool_admin.insert(pool_admin_role)),
+				Err(PoolRole::TrancheInvestor(id, delta)) => {
+					self.tranche_investor.insert(id, delta)
 				}
-				PoolRole::PoolAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::POOL_ADMIN)),
-				PoolRole::PricingAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::PRICING_ADMIN)),
-				PoolRole::MemberListAdmin => {
-					Ok(self.pool_admin.insert(PoolAdminRoles::MEMBER_LIST_ADMIN))
-				}
-				PoolRole::RiskAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
-				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
+				_ => Err(()),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
 				match permissioned_currency_role {
