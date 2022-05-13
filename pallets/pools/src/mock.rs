@@ -298,7 +298,6 @@ impl Config for Test {
 	type CurrencyId = CurrencyId;
 	type Currency = Balances;
 	type Tokens = Tokens;
-	type LoanAmount = Balance;
 	type NAV = FakeNav;
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;

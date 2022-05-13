@@ -273,7 +273,6 @@ impl pallet_interest_accrual::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
 	type InterestRate = Rate;
-	type NormalizedDebt = Balance;
 	type Time = Timestamp;
 }
 
@@ -314,7 +313,6 @@ impl pallet_loans::Config for MockRuntime {
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
-	type NormalizedDebt = Balance;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;

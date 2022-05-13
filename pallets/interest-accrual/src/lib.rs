@@ -122,7 +122,7 @@ pub mod pallet {
 	}
 
 	#[pallet::storage]
-	#[pallet::getter(fn get_sale)]
+	#[pallet::getter(fn get_rate)]
 	pub(super) type Rate<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::InterestRate, RateDetailsOf<T>, OptionQuery>;
 
