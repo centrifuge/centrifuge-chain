@@ -99,6 +99,7 @@ pub struct LoanDetails<Asset> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
+	pub(crate) loan_type: LoanType<Rate, Balance>,
 
 	// interest rate per second
 	pub(crate) interest_rate_per_sec: Rate,
@@ -171,7 +172,7 @@ where
 /// Types to ease function signatures
 pub(crate) type ClassIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ClassId;
-	
+
 pub(crate) type InstanceIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::InstanceId;
 
@@ -186,6 +187,16 @@ pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as Interes
 	Adjustment<<T as Config>::Balance>,
 >>::NormalizedDebt;
 
-pub(crate) type LoanDetailsOf<T> = LoanDetails<Asset<<T as Config>::ClassId, <T as Config>::LoanId>>;
+pub(crate) type LoanDetailsOf<T> =
+	LoanDetails<Asset<<T as Config>::ClassId, <T as Config>::LoanId>>;
 
-pub(crate) type ActiveLoanDetailsOf<T> = ActiveLoanDetails<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::Balance, <<T as Config>::InterestAccrual as InterestAccrualT< <T as Config>::Rate, <T as Config>::Balance, Adjustment<<T as Config>::Balance>, >>::NormalizedDebt>;
+pub(crate) type ActiveLoanDetailsOf<T> = ActiveLoanDetails<
+	<T as Config>::LoanId,
+	<T as Config>::Rate,
+	<T as Config>::Balance,
+	<<T as Config>::InterestAccrual as InterestAccrualT<
+		<T as Config>::Rate,
+		<T as Config>::Balance,
+		Adjustment<<T as Config>::Balance>,
+	>>::NormalizedDebt,
+>;

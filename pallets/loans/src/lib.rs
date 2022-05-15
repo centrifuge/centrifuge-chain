@@ -190,11 +190,11 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub(crate) type ActiveLoans<T: Config> = StorageMap<
-			_,
-			Blake2_128Concat,
-			PoolIdOf<T>,
-			Vec<ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>>,
-			ValueQuery
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		Vec<ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>>,
+		ValueQuery,
 	>;
 
 	/// Stores the pool nav against poolId
