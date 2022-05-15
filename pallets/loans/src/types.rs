@@ -90,10 +90,15 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
+pub struct LoanDetails<Asset> {
 	pub(crate) collateral: Asset,
-	pub(crate) loan_type: LoanType<Rate, Balance>,
 	pub(crate) status: LoanStatus,
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
+	pub(crate) loan_id: LoanId,
 
 	// interest rate per second
 	pub(crate) interest_rate_per_sec: Rate,
@@ -118,7 +123,7 @@ pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
 	pub(crate) admin_written_off: bool,
 }
 
-impl<Rate, Balance, Asset, NormalizedDebt> LoanDetails<Rate, Balance, Asset, NormalizedDebt>
+impl<LoanId, Rate, Balance, NormalizedDebt> ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt>
 where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
@@ -163,20 +168,24 @@ where
 	}
 }
 
-/// type alias to Non fungible ClassId type
+/// Types to ease function signatures
 pub(crate) type ClassIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ClassId;
-/// type alias to Non fungible InstanceId type
+	
 pub(crate) type InstanceIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::InstanceId;
-/// type alias to Non fungible Asset
+
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
-/// type alias for poolId type
+
 pub(crate) type PoolIdOf<T> =
 	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
-/// type alias for a normalized balance type
+
 pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as InterestAccrualT<
 	<T as Config>::Rate,
 	<T as Config>::Balance,
 	Adjustment<<T as Config>::Balance>,
 >>::NormalizedDebt;
+
+pub(crate) type LoanDetailsOf<T> = LoanDetails<Asset<<T as Config>::ClassId, <T as Config>::LoanId>>;
+
+pub(crate) type ActiveLoanDetailsOf<T> = ActiveLoanDetails<<T as Config>::LoanId, <T as Config>::Rate, <T as Config>::Balance, <<T as Config>::InterestAccrual as InterestAccrualT< <T as Config>::Rate, <T as Config>::Balance, Adjustment<<T as Config>::Balance>, >>::NormalizedDebt>;

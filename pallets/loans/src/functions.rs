@@ -54,6 +54,21 @@ impl<T: Config> Pallet<T> {
 		Ok(Asset(loan_class_id, loan_id))
 	}
 
+	pub(crate) fn get_active_loan(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+	) -> Option<ActiveLoanDetailsOf<T>> {
+		let active_loans = ActiveLoans::<T>::get(pool_id);
+
+		for active_loan in active_loans.iter() {
+			if active_loan.loan_id == loan_id {
+				return Some(active_loan.clone())
+			}
+		}
+
+		None
+	}
+
 	/// issues a new loan nft and returns the LoanID
 	pub(crate) fn create_loan(
 		pool_id: PoolIdOf<T>,
@@ -99,15 +114,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			LoanDetails {
 				collateral,
-				loan_type: Default::default(),
-				status: LoanStatus::Created,
-				interest_rate_per_sec: Zero::zero(),
-				origination_date: None,
-				normalized_debt: Zero::zero(),
-				total_borrowed: Zero::zero(),
-				total_repaid: Zero::zero(),
-				admin_written_off: false,
-				write_off_index: None,
+				status: LoanStatus::Created
 			},
 		);
 		Ok(loan_id)
@@ -139,10 +146,23 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::LoanValueInvalid
 			);
 
-			// update the loan info
-			loan.interest_rate_per_sec = interest_rate_per_sec;
+			let active_loan = ActiveLoanDetails {
+				loan_type,
+				interest_rate_per_sec,
+				origination_date: None,
+				normalized_debt: Zero::zero(),
+				total_borrowed: Zero::zero(),
+				total_repaid: Zero::zero(),
+				admin_written_off: false,
+				write_off_index: None,
+			};
+
+			let index = ActiveLoans::<T>::mutate(pool_id, |active_loans| -> u32 {
+				active_loans.push(active_loan);
+			});
+
+			// update the loan status
 			loan.status = LoanStatus::Active;
-			loan.loan_type = loan_type;
 
 			Ok(())
 		})
@@ -487,7 +507,6 @@ impl<T: Config> Pallet<T> {
 			number_of_write_off_groups + 1 <= T::MaxWriteOffGroups::get() as usize,
 			Error::<T>::TooManyWriteOffGroups
 		);
-
 
 		// append new group
 		let index = PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| -> u32 {
