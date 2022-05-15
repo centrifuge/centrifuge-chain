@@ -280,6 +280,10 @@ pub mod pallet {
 		InvalidWriteOffGroupIndex,
 		/// Emits when new write off group is invalid
 		InvalidWriteOffGroup,
+		/// Emits when the max number of write off groups was reached
+		TooManyWriteOffGroups,
+		/// Emits when the max number of active loans was reached
+		TooManyActiveLoans,
 	}
 
 	#[pallet::call]

@@ -481,6 +481,14 @@ impl<T: Config> Pallet<T> {
 			Error::<T>::InvalidWriteOffGroup
 		);
 
+		// ensure we have not exceeded the max number of write off groups
+		let number_of_write_off_groups = PoolWriteOffGroups::<T>::get(pool_id).len();
+		ensure!(
+			number_of_write_off_groups + 1 <= T::MaxWriteOffGroups::get() as usize,
+			Error::<T>::TooManyWriteOffGroups
+		);
+
+
 		// append new group
 		let index = PoolWriteOffGroups::<T>::mutate(pool_id, |write_off_groups| -> u32 {
 			write_off_groups.push(group);
