@@ -522,61 +522,36 @@ impl<T: Config> Pallet<T> {
 
 	/// accrues rate and debt of a given loan and updates it
 	/// returns the present value of the loan accounting any write offs
-	pub(crate) fn accrue_and_update_loan(
-		pool_id: PoolIdOf<T>,
-		loan_id: T::LoanId,
+	pub(crate) fn accrue_debt_and_calculate_present_value(
+		active_loan: ActiveLoanDetailsOf<T>,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Balance, DispatchError> {
-		Loan::<T>::try_mutate(
-			pool_id,
-			loan_id,
-			|loan| -> Result<T::Balance, DispatchError> {
-				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
-
-				// if the loan is not active, then skip updating and return PV as zero
-				if loan.status != LoanStatus::Active {
-					return Ok(Zero::zero());
-				}
-
-				ActiveLoans::<T>::try_mutate(
-					pool_id,
-					|active_loans| -> Result<T::Balance, DispatchError> {
-						let mut active_loan = None;
-						for active_loan_option in active_loans.iter_mut() {
-							if active_loan_option.loan_id == loan_id {
-								active_loan = Some(active_loan_option);
-							}
-						}
-
-						let active_loan = active_loan.ok_or(Error::<T>::MissingLoan)?;
-
-						let interest_rate_with_penalty: T::Rate = match active_loan.write_off_status {
-							WriteOffStatus::None => active_loan.interest_rate_per_sec,
-							WriteOffStatus::WrittenOff { write_off_index } => {
-								let group = write_off_groups.get(write_off_index as usize).expect("Written off to invalid write off group.");
-								active_loan.interest_rate_per_sec.checked_add(&group.penalty_interest_rate_per_sec)?
-							},
-							WriteOffStatus::WrittenOffByAdmin { percentage, penalty_interest_rate_per_sec } => {
-								active_loan.interest_rate_per_sec.checked_add(&penalty_interest_rate_per_sec)?
-							}
-						};
-		
-						let debt = T::InterestAccrual::current_debt(
-							interest_rate_with_penalty,
-							active_.normalized_debt,
-						)?;
-
-						let now: Moment = Self::now();
-
-						let present_value = active_loan
-							.present_value(debt, write_off_groups, now)
-							.ok_or(Error::<T>::LoanPresentValueFailed)?;
-
-						Ok(present_value)
-					},
-				)
+		let interest_rate_with_penalty: T::Rate = match active_loan.write_off_status {
+			WriteOffStatus::None => active_loan.interest_rate_per_sec,
+			WriteOffStatus::WrittenOff { write_off_index } => {
+				let group = write_off_groups.get(write_off_index as usize).expect("Written off to invalid write off group.");
+				active_loan.interest_rate_per_sec.checked_add(&group.penalty_interest_rate_per_sec)?
 			},
-		)
+			WriteOffStatus::WrittenOffByAdmin { percentage, penalty_interest_rate_per_sec } => {
+				active_loan.interest_rate_per_sec.checked_add(&penalty_interest_rate_per_sec)?
+			}
+		};
+
+		// TODO: this will do 1 storage read and up to 1 storage write.
+		// Could we optimize this? Or if not, should we return here whether a storage
+		// write was performed (i.e. the debt wasn't updated yet), so that the end
+		// of the update_nav extrinsic, we can only charge for the number of storage
+		// writes that were actually performed.
+		let debt = T::InterestAccrual::current_debt(
+			interest_rate_with_penalty,
+			active_loan.normalized_debt,
+		)?;
+
+		let present_value = active_loan
+			.present_value(debt, write_off_groups, Self::now())
+			.ok_or(Error::<T>::LoanPresentValueFailed)?;
+
+		Ok(present_value)
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
@@ -584,16 +559,22 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 	) -> Result<(T::Balance, Moment), DispatchError> {
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-		let mut updated_loans = 0;
-		let nav = Loan::<T>::iter_key_prefix(pool_id).try_fold(
+
+		// Only active loans can have a non-zero present value
+		let active_loans = ActiveLoans::<T>::get(pool_id);
+		
+		// Loop over all loans and sum all present values, to calculate the Net Asset Value (NAV)
+		let nav = active_loans.try_fold(
 			Zero::zero(),
-			|sum, loan_id| -> Result<T::Balance, DispatchError> {
-				let pv = Self::accrue_and_update_loan(pool_id, loan_id, &write_off_groups)?;
-				updated_loans += 1;
-				sum.checked_add(&pv)
-					.ok_or(Error::<T>::LoanAccrueFailed.into())
+			|sum, active_loan| -> Result<T::Balance, DispatchError> {
+				let present_value = Self::accrue_debt_and_calculate_present_value(active_loan, &write_off_groups)?;
+
+				sum.checked_add(&present_value)
+					.ok_or(ArithmeticError::Overflow)
 			},
 		)?;
+
+		// Store the latest NAV
 		PoolNAV::<T>::insert(
 			pool_id,
 			NAVDetails {
@@ -601,7 +582,8 @@ impl<T: Config> Pallet<T> {
 				last_updated: Self::now(),
 			},
 		);
-		Ok((nav, updated_loans))
+
+		Ok((nav, active_loans.len()))
 	}
 
 	pub(crate) fn add_write_off_group_to_pool(
@@ -646,7 +628,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn write_off_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		action: WriteOffAction
+		action: WriteOffAction<T::Rate>
 	) -> Result<u32, DispatchError> {
 		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
 			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;

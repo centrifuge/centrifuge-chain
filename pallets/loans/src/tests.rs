@@ -208,7 +208,7 @@ fn price_test_loan<T>(
 	assert_eq!(active_loan.interest_rate_per_sec, rp);
 	assert_eq!(active_loan.loan_type, loan_type);
 	assert_eq!(active_loan.max_borrow_amount(0), 100 * USD);
-	assert_eq!(active_loan.write_off_status, WriteOffStatus:::None);
+	assert_eq!(active_loan.write_off_status, WriteOffStatus::None);
 }
 
 fn price_bullet_loan<T>(
