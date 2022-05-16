@@ -70,19 +70,18 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// pub(crate) fn get_active_loan_mut<'a>(
-	// 	pool_id: PoolIdOf<T>,
-	// 	loan_id: T::LoanId,
-	// ) -> Result<&'a mut ActiveLoanDetailsOf<T>, DispatchError> {
-	// 	ActiveLoans::<T>::try_mutate(pool_id, |active_loans| -> Result<&'a mut ActiveLoanDetailsOf<T>, DispatchError> {
-	// 		let mut active_loan = None;
-	// 		for active_loan_option in active_loans.iter_mut() {
-	// 			if active_loan_option.loan_id == loan_id {
-	// 				active_loan = Some(active_loan_option);
-	// 			}
-	// 		};
+	// 	mut active_loans: Vec<ActiveLoanDetailsOf<T>>
+	// ) -> (Option<ActiveLoanDetailsOf<T>>, u32) {
+	// 	let mut active_loan = None;
+	// 	let active_loan_idx = 0;
+	// 	for (index, active_loan_option) in active_loans.iter_mut().enumerate() {
+	// 		if active_loan_option.loan_id == loan_id {
+	// 			active_loan = Some(active_loan_option);
+	// 			active_loan_idx = index;
+	// 		}
+	// 	}
 
-	// 		return active_loan.ok_or(Error::<T>::MissingLoan)
-	// 	})
+	// 	return (active_loan, active_loan_idx);
 	// }
 
 	/// issues a new loan nft and returns the LoanID
