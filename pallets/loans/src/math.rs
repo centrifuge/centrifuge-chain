@@ -359,26 +359,32 @@ mod tests {
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 3,
+				penalty_interest_rate_per_sec: ()
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 5,
+				penalty_interest_rate_per_sec: ()
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 6,
+				penalty_interest_rate_per_sec: ()
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 14,
+				penalty_interest_rate_per_sec: ()
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 9,
+				penalty_interest_rate_per_sec: ()
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 7,
+				penalty_interest_rate_per_sec: ()
 			},
 		];
 

@@ -187,8 +187,7 @@ impl<T: Config> Pallet<T> {
 					normalized_debt: Zero::zero(),
 					total_borrowed: Zero::zero(),
 					total_repaid: Zero::zero(),
-					admin_written_off: false,
-					write_off_index: None,
+					write_off_status: WriteOffStatus::None,
 				};
 
 				ActiveLoans::<T>::mutate(pool_id, |active_loans| {
@@ -241,20 +240,26 @@ impl<T: Config> Pallet<T> {
 						// if not, we check if the loan is written of 100%
 						let written_off = match (
 							active_loan.normalized_debt == Zero::zero(),
-							active_loan.write_off_index,
+							active_loan.write_off_status,
 						) {
 							// debt is cleared
 							(true, _) => Ok(false),
 							// debt not cleared and loan not written off
-							(_, None) => Err(Error::<T>::LoanNotRepaid),
+							(_, WriteOffStatus::None) => Err(Error::<T>::LoanNotRepaid),
 							// debt not cleared but loan is written off
 							// if written off completely, then we can close it
-							(_, Some(write_off_index)) => {
+							(_, WriteOffStatus::WrittenOff { write_off_index }) => {
 								let groups = PoolWriteOffGroups::<T>::get(pool_id);
 								let group = groups
 									.get(write_off_index as usize)
 									.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
 								ensure!(group.percentage == One::one(), Error::<T>::LoanNotRepaid);
+								Ok(true)
+							},
+							// debt not cleared but loan is written off by admin
+							// if written off completely, then we can close it
+							(_, WriteOffStatus::WrittenOffByAdmin { percentage, .. }) => {
+								ensure!(percentage == One::one(), Error::<T>::LoanNotRepaid);
 								Ok(true)
 							}
 						}?;
@@ -316,7 +321,7 @@ impl<T: Config> Pallet<T> {
 
 				// ensure loan is not written off
 				ensure!(
-					active_loan.write_off_index.is_none(),
+					active_loan.write_off_status == WriteOffStatus::None,
 					Error::<T>::WrittenOffByAdmin
 				);
 
@@ -545,9 +550,20 @@ impl<T: Config> Pallet<T> {
 
 						let active_loan = active_loan.ok_or(Error::<T>::MissingLoan)?;
 
+						let interest_rate_with_penalty: T::Rate = match active_loan.write_off_status {
+							WriteOffStatus::None => active_loan.interest_rate_per_sec,
+							WriteOffStatus::WrittenOff { write_off_index } => {
+								let group = write_off_groups.get(write_off_index as usize).expect("Written off to invalid write off group.");
+								active_loan.interest_rate_per_sec.checked_add(&group.penalty_interest_rate_per_sec)?
+							},
+							WriteOffStatus::WrittenOffByAdmin { percentage, penalty_interest_rate_per_sec } => {
+								active_loan.interest_rate_per_sec.checked_add(&penalty_interest_rate_per_sec)?
+							}
+						};
+		
 						let debt = T::InterestAccrual::current_debt(
-							active_loan.interest_rate_per_sec,
-							active_loan.normalized_debt,
+							interest_rate_with_penalty,
+							active_.normalized_debt,
 						)?;
 
 						let now: Moment = Self::now();
@@ -630,7 +646,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn write_off_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		override_write_off_index: Option<u32>,
+		action: WriteOffAction
 	) -> Result<u32, DispatchError> {
 		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
 			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
@@ -650,7 +666,7 @@ impl<T: Config> Pallet<T> {
 
 				// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-				let write_off_group_index = match override_write_off_index {
+				let (write_off_group_index, percentage, penalty_interest_rate_per_sec) = match override_write_off_index {
 					// admin is trying to write off
 					Some(index) => {
 						// check if the write off group exists

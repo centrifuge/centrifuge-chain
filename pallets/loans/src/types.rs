@@ -60,6 +60,38 @@ pub struct WriteOffGroup<Rate> {
 
 	/// number in days after the maturity has passed at which this write off group is valid
 	pub(crate) overdue_days: u64,
+
+	/// additional interest that accrues on the written off loan as penalty
+	pub(crate) penalty_interest_rate_per_sec: Rate,
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum WriteOffStatus<Rate> {
+	None,
+	WrittenOff {
+		/// write off group index in the vec of write off groups
+		write_off_index: u32
+	},
+	// an admin can write off an asset to specific percentage and penalty rate
+	WrittenOffByAdmin {
+		/// percentage of outstanding debt we are going to write off on a loan
+		percentage: Rate,
+		/// additional interest that accrues on the written off loan as penalty
+		penalty_interest_rate_per_sec: Rate
+	}
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum WriteOffAction<Rate> {
+	WriteOffToCurrentGroup,
+	WriteOffAsAdmin {
+		percentage: Rate,
+		penalty_interest_rate_per_sec: Rate
+	}
 }
 
 /// The data structure for storing loan status
@@ -72,7 +104,7 @@ pub enum LoanStatus {
 	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
-	// loan is closed and collateral nft is transferred back to borrower and loan nft is transferred back to pool account
+	// loan is closed and collateral nft is transferred back to borrower and loan nft is burned
 	Closed,
 }
 
@@ -114,14 +146,8 @@ pub struct ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) total_borrowed: Balance,
 	pub(crate) total_repaid: Balance,
 
-	// write off group index in the vec of write off groups
-	// none, the loan is not written off yet
-	// some(index), loan is written off and write off details are found under the given index
-	pub(crate) write_off_index: Option<u32>,
-
-	// whether the loan written off by admin
-	// if so, we wont update the write off group on this loan further from permission less call
-	pub(crate) admin_written_off: bool,
+	// whether the loan has been written off
+	pub(crate) write_off_status: WriteOffStatus<Rate>,
 }
 
 impl<LoanId, Rate, Balance, NormalizedDebt> ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt>
@@ -139,12 +165,17 @@ where
 		now: Moment,
 	) -> Option<Balance> {
 		// if the debt is written off, write off accordingly
-		let debt = if let Some(index) = self.write_off_index {
-			let group = write_off_groups.get(index as usize)?;
-			let write_off_amount = group.percentage.checked_mul_int(debt)?;
-			debt.checked_sub(&write_off_amount)?
-		} else {
-			debt
+		let debt = match self.write_off_status {
+			WriteOffStatus::None => debt,
+			WriteOffStatus::WrittenOff { write_off_index } => {
+				let group = write_off_groups.get(write_off_index as usize)?;
+				let write_off_amount = group.percentage.checked_mul_int(debt)?;
+				debt.checked_sub(&write_off_amount)?
+			},
+			WriteOffStatus::WrittenOffByAdmin { percentage, .. } => {
+				let write_off_amount = percentage.checked_mul_int(debt)?;
+				debt.checked_sub(&write_off_amount)?
+			}
 		};
 
 		match self.loan_type {
