@@ -1027,7 +1027,7 @@ impl pallet_collator_selection::Config for Runtime {
 
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
-	pub const MaxLoansPerPool: u64 = 50;
+	pub const MaxActiveLoansPerPool: u64 = 50;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
 
@@ -1045,7 +1045,7 @@ impl pallet_loans::Config for Runtime {
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
-	type MaxLoansPerPool = MaxLoansPerPool;
+	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 }
 

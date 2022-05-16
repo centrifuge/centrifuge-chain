@@ -173,6 +173,13 @@ impl<T: Config> Pallet<T> {
 					Error::<T>::LoanValueInvalid
 				);
 
+				// ensure we have not exceeded the max number of active loans
+				let number_of_active_loans = ActiveLoans::<T>::get(pool_id).len();
+				ensure!(
+					number_of_active_loans + 1 <= T::MaxActiveLoansPerPool::get() as usize,
+					Error::<T>::TooManyActiveLoans
+				);
+
 				let active_loan = ActiveLoanDetails {
 					loan_id,
 					loan_type,
@@ -220,9 +227,11 @@ impl<T: Config> Pallet<T> {
 					pool_id,
 					|active_loans| -> Result<ClosedLoan<T>, DispatchError> {
 						let mut active_loan = None;
-						for active_loan_option in active_loans.iter_mut() {
+						let mut active_loan_idx = 0;
+						for (index, active_loan_option) in active_loans.iter_mut().enumerate() {
 							if active_loan_option.loan_id == loan_id {
 								active_loan = Some(active_loan_option);
+								active_loan_idx = index;
 							}
 						}
 
@@ -263,6 +272,9 @@ impl<T: Config> Pallet<T> {
 						// burn loan nft
 						let (loan_class_id, loan_id) = loan_nft.destruct();
 						T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
+
+						// remove from active loans
+						active_loans.remove(active_loan_idx);
 
 						// update loan status
 						loan.status = LoanStatus::Closed;

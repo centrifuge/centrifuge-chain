@@ -142,12 +142,10 @@ pub mod pallet {
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
 
-		/// This is a soft limit for maximum loans we can expect in a pool.
-		/// this is mainly used to calculate estimated weight for NAV calculation.
-		type MaxLoansPerPool: Get<u64>;
+		/// Max number of active loans per pool.
+		type MaxActiveLoansPerPool: Get<u64>;
 
-		/// This is a soft limit for maximum number of write off groups
-		/// we will have per pool. This is mainly used to calculate maximum weight for write off extrinsics
+		/// Max number of write-off groups per pool.
 		type MaxWriteOffGroups: Get<u32>;
 	}
 
@@ -471,7 +469,7 @@ pub mod pallet {
 		/// So instead, we calculate weight for one loan. We assume a maximum of 200 loans and deposit that weight
 		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
 		/// transaction payment can return the deposit.
-		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxLoansPerPool::get()))]
+		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxActiveLoansPerPool::get()))]
 		pub fn update_nav(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -487,7 +485,7 @@ pub mod pallet {
 
 			// if the total loans updated are more than max loans, we are charging lower txn fees for this pool nav calculation.
 			// there is nothing we can do right now. return Ok
-			if updated_loans > T::MaxLoansPerPool::get() {
+			if updated_loans > T::MaxActiveLoansPerPool::get() {
 				return Ok(().into());
 			}
 
