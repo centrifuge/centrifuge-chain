@@ -682,9 +682,12 @@ impl<T: Config> Pallet<T> {
 								// cannot be written off to the current group anymore.
 								let is_written_off_by_admin = match active_loan.write_off_status {
 									WriteOffStatus::WrittenOffByAdmin { .. } => true,
-									_ => false
+									_ => false,
 								};
-								ensure!( is_written_off_by_admin, Error::<T>::WrittenOffByAdmin);
+								ensure!(
+									is_written_off_by_admin != true,
+									Error::<T>::WrittenOffByAdmin
+								);
 
 								let maturity_date = active_loan
 									.loan_type
@@ -704,17 +707,17 @@ impl<T: Config> Pallet<T> {
 								)?
 								.ok_or(Error::<T>::NoValidWriteOffGroup)?;
 
-								Ok((
+								(
 									Some(write_off_index),
 									group.percentage,
 									group.penalty_interest_rate_per_sec,
 									WriteOffStatus::WrittenOff { write_off_index },
-								))
+								)
 							}
 							WriteOffAction::WriteOffAsAdmin {
 								percentage,
 								penalty_interest_rate_per_sec,
-							} => Ok((
+							} => (
 								None,
 								percentage,
 								penalty_interest_rate_per_sec,
@@ -722,8 +725,8 @@ impl<T: Config> Pallet<T> {
 									percentage,
 									penalty_interest_rate_per_sec,
 								},
-							)),
-						}?;
+							),
+						};
 
 						let debt = T::InterestAccrual::current_debt(
 							active_loan.interest_rate_per_sec,

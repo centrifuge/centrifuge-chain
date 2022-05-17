@@ -1144,7 +1144,7 @@ macro_rules! test_pool_nav {
 				}
 				.expect("must be a loan written off event");
 				// it must be 2 with overdue days as 7 and write off percentage as 20%
-				assert_eq!(write_off_index, 2);
+				assert_eq!(write_off_index, Some(2));
 
 				// update nav
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
@@ -1364,7 +1364,7 @@ macro_rules! test_write_off_maturity_loan {
 						_ => None,
 					}
 					.expect("must be a Loan issue event");
-					assert_eq!(write_off_index, days_index.1);
+					assert_eq!(write_off_index, Some(days_index.1));
 					let active_loan = Loans::get_active_loan(pool_id, loan_id)
 						.expect("ActiveLoanDetails should be present");
 					assert_eq!(
@@ -1433,10 +1433,11 @@ macro_rules! test_admin_write_off_loan_type {
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
-							percentage: Rate::saturating_from_rational(group.1, 100),
+							percentage: Rate::saturating_from_rational(group.1 as u64, 100),
 							overdue_days: group.0,
 							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
+								group.2 as u64,
+								100,
 							),
 						},
 					);
@@ -1454,8 +1455,8 @@ macro_rules! test_admin_write_off_loan_type {
 							Origin::signed(risk_admin),
 							pool_id,
 							loan_id,
-							groups[index].0,
-							groups[index].2,
+							Rate::saturating_from_rational(groups[index].0, 100),
+							Rate::saturating_from_rational(groups[index].2, 100),
 						);
 						assert_ok!(res);
 
@@ -1468,13 +1469,13 @@ macro_rules! test_admin_write_off_loan_type {
 							_ => None,
 						}
 						.expect("must be a Loan issue event");
-						assert_eq!(write_off_index, index);
+						assert_eq!(write_off_index, Some(index));
 						let active_loan = Loans::get_active_loan(pool_id, loan_id)
 							.expect("ActiveLoanDetails should be present");
 						assert_eq!(
 							active_loan.write_off_status,
 							WriteOffStatus::WrittenOff {
-								write_off_index: index
+								write_off_index: index as u32
 							}
 						);
 					}
@@ -1579,7 +1580,7 @@ macro_rules! test_close_written_off_loan_type {
 						_ => None,
 					}
 					.expect("must be a Loan issue event");
-					assert_eq!(write_off_index, 1);
+					assert_eq!(write_off_index, Some(1));
 					let res = Loans::close(Origin::signed(borrower), pool_id, loan_id);
 					assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
@@ -1609,7 +1610,7 @@ macro_rules! test_close_written_off_loan_type {
 					_ => None,
 				}
 				.expect("must be a Loan written off event");
-				assert_eq!(write_off_index, 4);
+				assert_eq!(write_off_index, Some(4));
 
 				// nav should be zero
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
