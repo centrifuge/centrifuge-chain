@@ -67,7 +67,7 @@ where
 			PoolId = PoolId,
 			TrancheId = [u8; 16],
 			EpochId = u32,
-		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId, CurrencyId = CurrencyId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
 		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>
 		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
