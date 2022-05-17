@@ -1428,16 +1428,16 @@ macro_rules! test_admin_write_off_loan_type {
 
 				// add write off groups
 				let groups = vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)];
-				for group in groups {
+				for group in groups.clone() {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
-							percentage: Rate::saturating_from_rational(group.1 as u64, 100),
+							percentage: Rate::saturating_from_rational(group.1 as u64, 100u64),
 							overdue_days: group.0,
 							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
 								group.2 as u64,
-								100,
+								100u64,
 							),
 						},
 					);
@@ -1455,8 +1455,8 @@ macro_rules! test_admin_write_off_loan_type {
 							Origin::signed(risk_admin),
 							pool_id,
 							loan_id,
-							Rate::saturating_from_rational(groups[index].0, 100),
-							Rate::saturating_from_rational(groups[index].2, 100),
+							Rate::saturating_from_rational(groups.clone()[index].0, 100u64),
+							Rate::saturating_from_rational(groups.clone()[index].2, 100u64),
 						);
 						assert_ok!(res);
 
@@ -1469,7 +1469,7 @@ macro_rules! test_admin_write_off_loan_type {
 							_ => None,
 						}
 						.expect("must be a Loan issue event");
-						assert_eq!(write_off_index, Some(index));
+						assert_eq!(write_off_index, Some(index as u32));
 						let active_loan = Loans::get_active_loan(pool_id, loan_id)
 							.expect("ActiveLoanDetails should be present");
 						assert_eq!(
