@@ -1137,7 +1137,7 @@ macro_rules! test_pool_nav {
 				}
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 						Some((pool_id, loan_id, write_off_index))
 					}
 					_ => None,
@@ -1358,7 +1358,7 @@ macro_rules! test_write_off_maturity_loan {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+						LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 							Some((pool_id, loan_id, write_off_index))
 						}
 						_ => None,
@@ -1462,7 +1462,7 @@ macro_rules! test_admin_write_off_loan_type {
 						let loan_event =
 							fetch_loan_event(last_event()).expect("should be a loan event");
 						let (_pool_id, _loan_id, write_off_index) = match loan_event {
-							LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+							LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 								Some((pool_id, loan_id, write_off_index))
 							}
 							_ => None,
@@ -1573,7 +1573,7 @@ macro_rules! test_close_written_off_loan_type {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+						LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 							Some((pool_id, loan_id, write_off_index))
 						}
 						_ => None,
@@ -1603,7 +1603,7 @@ macro_rules! test_close_written_off_loan_type {
 
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 						Some((pool_id, loan_id, write_off_index))
 					}
 					_ => None,

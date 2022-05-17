@@ -156,12 +156,12 @@ pub(crate) fn valid_write_off_group<Rate>(
 			.ok_or_else::<DispatchError, _>(|| ArithmeticError::Overflow.into())?;
 
 		if overdue_days >= highest_overdue_days && now >= offset {
-			current_group = Some((idx, group));
+			current_group = Some((idx as u32, group));
 			highest_overdue_days = overdue_days;
 		}
 	}
 
-	Ok(current_group)
+	Ok(current_group.clone())
 }
 
 /// calculates max_borrow_amount for a loan,

@@ -537,14 +537,20 @@ impl<T: Config> Pallet<T> {
 					.expect("Written off to invalid write off group.");
 				active_loan
 					.interest_rate_per_sec
-					.checked_add(&group.penalty_interest_rate_per_sec)?
+					.checked_add(&group.penalty_interest_rate_per_sec)
+					.ok_or(sp_runtime::DispatchError::Arithmetic(
+						ArithmeticError::Overflow,
+					))?
 			}
 			WriteOffStatus::WrittenOffByAdmin {
 				percentage,
 				penalty_interest_rate_per_sec,
 			} => active_loan
 				.interest_rate_per_sec
-				.checked_add(&penalty_interest_rate_per_sec)?,
+				.checked_add(&penalty_interest_rate_per_sec)
+				.ok_or(sp_runtime::DispatchError::Arithmetic(
+					ArithmeticError::Overflow,
+				))?,
 		};
 
 		// TODO: this will do 1 storage read and up to 1 storage write.
@@ -674,12 +680,11 @@ impl<T: Config> Pallet<T> {
 							WriteOffAction::WriteOffToCurrentGroup => {
 								// Loans that were already written off by an admin,
 								// cannot be written off to the current group anymore.
-								match active_loan.write_off_status {
-									WriteOffStatus::WrittenOffByAdmin { .. } => {
-										Err(Error::<T>::WrittenOffByAdmin.into())
-									}
-									_ => Ok(()),
-								}?;
+								ensure!(
+									active_loan.write_off_status
+										!= WriteOffStatus::WrittenOffByAdmin { .. },
+									Error::<T>::WrittenOffByAdmin
+								);
 
 								let maturity_date = active_loan
 									.loan_type
@@ -697,7 +702,7 @@ impl<T: Config> Pallet<T> {
 									now,
 									&write_off_groups,
 								)?
-								.ok_or(Error::<T>::NoValidWriteOffGroup);
+								.ok_or(Error::<T>::NoValidWriteOffGroup)?;
 
 								Ok((
 									Some(write_off_index),

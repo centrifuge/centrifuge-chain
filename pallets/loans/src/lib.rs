@@ -231,8 +231,8 @@ pub mod pallet {
 		NAVUpdated(PoolIdOf<T>, T::Balance, NAVUpdateType),
 		/// A write-off group was added to a pool. [pool, write_off_group]
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
-		/// A loan was written off. [pool, loan, percentage, penalty_interest_rate_per_sec]
-		WrittenOff(PoolIdOf<T>, T::LoanId, T::Rate, T::Rate),
+		/// A loan was written off. [pool, loan, percentage, penalty_interest_rate_per_sec, write_off_group_index]
+		WrittenOff(PoolIdOf<T>, T::LoanId, T::Rate, T::Rate, Option<u32>),
 	}
 
 	#[pallet::error]
@@ -540,6 +540,7 @@ pub mod pallet {
 				loan_id,
 				percentage,
 				penalty_interest_rate_per_sec,
+				index,
 			));
 
 			// since the write off group index is picked in loop sequentially,
@@ -580,6 +581,7 @@ pub mod pallet {
 				loan_id,
 				percentage,
 				penalty_interest_rate_per_sec,
+				None,
 			));
 			Ok(())
 		}
