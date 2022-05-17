@@ -144,8 +144,8 @@ pub(crate) fn valid_write_off_group<Rate>(
 	maturity_date: Moment,
 	now: Moment,
 	write_off_groups: &[WriteOffGroup<Rate>],
-) -> Result<Option<u32>, DispatchError> {
-	let mut index = None;
+) -> Result<Option<(u32, WriteOffGroup<Rate>)>, DispatchError> {
+	let mut current_group = None;
 	let mut highest_overdue_days = 0;
 	let seconds_per_day = seconds_per_day();
 	for (idx, group) in write_off_groups.iter().enumerate() {
@@ -156,12 +156,12 @@ pub(crate) fn valid_write_off_group<Rate>(
 			.ok_or_else::<DispatchError, _>(|| ArithmeticError::Overflow.into())?;
 
 		if overdue_days >= highest_overdue_days && now >= offset {
-			index = Some(idx as u32);
+			current_group = Some((idx, group));
 			highest_overdue_days = overdue_days;
 		}
 	}
 
-	Ok(index)
+	Ok(current_group)
 }
 
 /// calculates max_borrow_amount for a loan,
@@ -359,32 +359,32 @@ mod tests {
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 3,
-				penalty_interest_rate_per_sec: ()
+				penalty_interest_rate_per_sec: (),
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 5,
-				penalty_interest_rate_per_sec: ()
+				penalty_interest_rate_per_sec: (),
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 6,
-				penalty_interest_rate_per_sec: ()
+				penalty_interest_rate_per_sec: (),
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 14,
-				penalty_interest_rate_per_sec: ()
+				penalty_interest_rate_per_sec: (),
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 9,
-				penalty_interest_rate_per_sec: ()
+				penalty_interest_rate_per_sec: (),
 			},
 			WriteOffGroup {
 				percentage: (),
 				overdue_days: 7,
-				penalty_interest_rate_per_sec: ()
+				penalty_interest_rate_per_sec: (),
 			},
 		];
 
@@ -396,26 +396,26 @@ mod tests {
 			(0, 0, None),
 			(0, 1, None),
 			// now is 3 and less than 5 days, the index is valid
-			(0, 3, Some(0)),
-			(0, 4, Some(0)),
+			(0, 3, Some((0, groups[0]))),
+			(0, 4, Some((0, groups[0]))),
 			// now is 5 and less than 6 days, the index is valid
-			(0, 5, Some(1)),
+			(0, 5, Some((1, groups[1]))),
 			// now is 6 and less than 7 days, the index is valid
-			(0, 6, Some(2)),
+			(0, 6, Some((2, groups[2]))),
 			// now is 7 and 8 and less than 9 days, the index is valid
-			(0, 7, Some(5)),
-			(0, 8, Some(5)),
+			(0, 7, Some((5, groups[5]))),
+			(0, 8, Some((5, groups[5]))),
 			// 9 <= now < 14, the index is valid
-			(0, 9, Some(4)),
+			(0, 9, Some((4, groups[4]))),
 			// 14 <= now , the index is valid
-			(0, 15, Some(3)),
+			(0, 15, Some((3, groups[3]))),
 		];
 		tests.into_iter().for_each(|(maturity, now, index)| {
 			let md = maturity * sec_per_day;
 			let now = md + now * sec_per_day;
 			let got_index = valid_write_off_group(md, now, &groups);
 			assert_ok!(got_index);
-			assert_eq!(index, got_index.unwrap());
+			assert_eq!(index, got_index.unwrap().0);
 		})
 	}
 }

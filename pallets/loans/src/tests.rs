@@ -639,20 +639,34 @@ macro_rules! test_borrow_loan {
 					PermissionScope::Pool(pool_id),
 					Role::PoolRole(PoolRole::RiskAdmin),
 				));
-				for group in vec![(3, 0, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4), (120, 100, 5)] {
+				for group in vec![
+					(3, 0, 1),
+					(5, 15, 2),
+					(7, 20, 3),
+					(20, 30, 4),
+					(120, 100, 5),
+				] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational::<u64, u64>(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
 				}
 
-				let res = Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
+				let res = Loans::admin_write_off(
+					Origin::signed(risk_admin),
+					pool_id,
+					loan_id,
+					Rate::saturating_from_rational::<u64, u64>(3, 100),
+					Rate::saturating_from_rational::<u64, u64>(1, 100),
+				);
 				assert_ok!(res);
 
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
@@ -1098,7 +1112,9 @@ macro_rules! test_pool_nav {
 					let group = WriteOffGroup {
 						percentage: Rate::saturating_from_rational::<u128, u128>(group.1, 100),
 						overdue_days: group.0,
-						penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+						penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+							group.2, 100,
+						),
 					};
 					let res =
 						Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
@@ -1106,8 +1122,13 @@ macro_rules! test_pool_nav {
 				}
 
 				if $admin_write_off {
-					let res =
-						Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 2);
+					let res = Loans::admin_write_off(
+						Origin::signed(risk_admin),
+						pool_id,
+						loan_id,
+						Rate::saturating_from_rational::<u64, u64>(7, 100),
+						Rate::saturating_from_rational::<u64, u64>(3, 100),
+					);
 					assert_ok!(res);
 				} else {
 					// write off loan. someone calls write off
@@ -1227,7 +1248,9 @@ fn test_add_write_off_groups() {
 				let group = WriteOffGroup {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
-					penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(5, 100),
+					penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+						5, 100,
+					),
 				};
 				let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 				assert_ok!(res);
@@ -1310,7 +1333,9 @@ macro_rules! test_write_off_maturity_loan {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
@@ -1342,8 +1367,12 @@ macro_rules! test_write_off_maturity_loan {
 					assert_eq!(write_off_index, days_index.1);
 					let active_loan = Loans::get_active_loan(pool_id, loan_id)
 						.expect("ActiveLoanDetails should be present");
-					assert_eq!(active_loan.write_off_index, Some(days_index.1));
-					assert!(!active_loan.admin_written_off);
+					assert_eq!(
+						active_loan.write_off_status,
+						WriteOffStatus::WrittenOff {
+							write_off_index: days_index.1
+						}
+					);
 				}
 			})
 	};
@@ -1397,25 +1426,18 @@ macro_rules! test_admin_write_off_loan_type {
 					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 
-				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
-				let res = Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
-				assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroupIndex);
-
-				// let the maturity date passes + 1 day
-				let t = math::seconds_per_year() * 2 + math::seconds_per_day();
-				Timestamp::set_timestamp(t * 1000);
-				let res = Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
-				assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroupIndex);
-
 				// add write off groups
-				for group in vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)] {
+				let groups = vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)];
+				for group in groups {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
@@ -1432,7 +1454,8 @@ macro_rules! test_admin_write_off_loan_type {
 							Origin::signed(risk_admin),
 							pool_id,
 							loan_id,
-							index,
+							groups[index].0,
+							groups[index].2,
 						);
 						assert_ok!(res);
 
@@ -1448,8 +1471,12 @@ macro_rules! test_admin_write_off_loan_type {
 						assert_eq!(write_off_index, index);
 						let active_loan = Loans::get_active_loan(pool_id, loan_id)
 							.expect("ActiveLoanDetails should be present");
-						assert_eq!(active_loan.write_off_index, Some(index));
-						assert!(active_loan.admin_written_off);
+						assert_eq!(
+							active_loan.write_off_status,
+							WriteOffStatus::WrittenOff {
+								write_off_index: index
+							}
+						);
 					}
 				}
 
@@ -1518,14 +1545,22 @@ macro_rules! test_close_written_off_loan_type {
 					PermissionScope::Pool(pool_id),
 					Role::PoolRole(PoolRole::RiskAdmin),
 				));
-				for group in vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4), (120, 100, 5)] {
+				for group in vec![
+					(3, 10, 1),
+					(5, 15, 2),
+					(7, 20, 3),
+					(20, 30, 4),
+					(120, 100, 5),
+				] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
@@ -1556,8 +1591,13 @@ macro_rules! test_close_written_off_loan_type {
 					assert_ok!(res);
 				} else {
 					// write off as admin
-					let res =
-						Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 4);
+					let res = Loans::admin_write_off(
+						Origin::signed(risk_admin),
+						pool_id,
+						loan_id,
+						Rate::saturating_from_rational::<u64, u64>(120, 100),
+						Rate::saturating_from_rational::<u64, u64>(5, 100),
+					);
 					assert_ok!(res);
 				}
 
@@ -1702,14 +1742,21 @@ macro_rules! write_off_overflow {
 					Role::PoolRole(PoolRole::RiskAdmin),
 				));
 				//for group in vec![(3, 10), (313503982334601, 20)] {
-				for group in vec![(3, 10, 1), (313503982334601, 15, 2), (10, 20, 3), (10, 30, 4)] {
+				for group in vec![
+					(3, 10, 1),
+					(313503982334601, 15, 2),
+					(10, 20, 3),
+					(10, 30, 4),
+				] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);

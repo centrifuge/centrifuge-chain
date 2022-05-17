@@ -72,15 +72,15 @@ pub enum WriteOffStatus<Rate> {
 	None,
 	WrittenOff {
 		/// write off group index in the vec of write off groups
-		write_off_index: u32
+		write_off_index: u32,
 	},
 	// an admin can write off an asset to specific percentage and penalty rate
 	WrittenOffByAdmin {
 		/// percentage of outstanding debt we are going to write off on a loan
 		percentage: Rate,
 		/// additional interest that accrues on the written off loan as penalty
-		penalty_interest_rate_per_sec: Rate
-	}
+		penalty_interest_rate_per_sec: Rate,
+	},
 }
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
@@ -90,8 +90,8 @@ pub enum WriteOffAction<Rate> {
 	WriteOffToCurrentGroup,
 	WriteOffAsAdmin {
 		percentage: Rate,
-		penalty_interest_rate_per_sec: Rate
-	}
+		penalty_interest_rate_per_sec: Rate,
+	},
 }
 
 /// The data structure for storing loan status
@@ -171,7 +171,7 @@ where
 				let group = write_off_groups.get(write_off_index as usize)?;
 				let write_off_amount = group.percentage.checked_mul_int(debt)?;
 				debt.checked_sub(&write_off_amount)?
-			},
+			}
 			WriteOffStatus::WrittenOffByAdmin { percentage, .. } => {
 				let write_off_amount = percentage.checked_mul_int(debt)?;
 				debt.checked_sub(&write_off_amount)?

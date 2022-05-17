@@ -232,7 +232,7 @@ pub mod pallet {
 		/// A write-off group was added to a pool. [pool, write_off_group]
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
 		/// A loan was written off. [pool, loan, percentage, penalty_interest_rate_per_sec]
-		WrittenOff(PoolIdOf<T>, T::LoanId, percentage, penalty_interest_rate_per_sec),
+		WrittenOff(PoolIdOf<T>, T::LoanId, T::Rate, T::Rate),
 	}
 
 	#[pallet::error]
@@ -533,12 +533,18 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			// try to write off
-			let (index, percentage, penalty_interest_rate_per_sec) = Self::write_off_loan(pool_id, loan_id, WriteOffAction::WriteOffToCurrentGroup)?;
-			Self::deposit_event(Event::<T>::WrittenOff(pool_id, loan_id, percentage, penalty_interest_rate_per_sec));
+			let (index, percentage, penalty_interest_rate_per_sec) =
+				Self::write_off_loan(pool_id, loan_id, WriteOffAction::WriteOffToCurrentGroup)?;
+			Self::deposit_event(Event::<T>::WrittenOff(
+				pool_id,
+				loan_id,
+				percentage,
+				penalty_interest_rate_per_sec,
+			));
 
 			// since the write off group index is picked in loop sequentially,
 			// total loops = index+1
-			let count = index + 1;
+			let count = index.expect("Write offs should always return a valid index") + 1;
 			Ok(Some(Self::write_off_group_weight(count as u64)).into())
 		}
 
@@ -555,17 +561,26 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			percentage: T::Rate,
-			penalty_interest_rate_per_sec: T::Rate
+			penalty_interest_rate_per_sec: T::Rate,
 		) -> DispatchResult {
 			// ensure this is a call from risk admin
 			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
-			
+
 			// try to write off
-			let index = Self::write_off_loan(pool_id, loan_id, WriteOffAction::WriteOffAsAdmin {
+			let (.., percentage, penalty_interest_rate_per_sec) = Self::write_off_loan(
+				pool_id,
+				loan_id,
+				WriteOffAction::WriteOffAsAdmin {
+					percentage,
+					penalty_interest_rate_per_sec,
+				},
+			)?;
+			Self::deposit_event(Event::<T>::WrittenOff(
+				pool_id,
+				loan_id,
 				percentage,
 				penalty_interest_rate_per_sec,
-			})?;
-			Self::deposit_event(Event::<T>::WrittenOff(pool_id, loan_id, percentage, penalty_interest_rate_per_sec));
+			));
 			Ok(())
 		}
 	}
