@@ -26,6 +26,7 @@ use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 use altair_runtime::{
 	AirPerSecond, Balances, KUsdPerSecond, KsmPerSecond, Origin, OrmlTokens, XTokens,
 };
+use common_types::PermissionedCurrency;
 use runtime_common::{parachains, Balance};
 
 #[test]
@@ -311,9 +312,11 @@ pub mod currency_id_convert {
 	fn convert_unsupported_currency() {
 		Altair::execute_with(|| {
 			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Tranche(
-					0,
-					[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Permissioned(
+					PermissionedCurrency::Tranche(
+						0,
+						[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+					)
 				)),
 				None
 			)

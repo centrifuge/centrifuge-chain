@@ -23,7 +23,10 @@ use crate::pools::utils::{
 };
 use codec::Encode;
 use common_traits::Permissions as PermissionsT;
-use common_types::{CurrencyId, Moment, PermissionScope, PoolId, PoolRole, Role};
+use common_types::{
+	CurrencyId, Moment, PermissionScope, PermissionedCurrency, PermissionedCurrencyRole, PoolId,
+	PoolRole, Role,
+};
 use frame_support::{Blake2_128, StorageHasher};
 use fudge::primitives::Chain;
 use pallet_permissions::Call as PermissionsCall;
@@ -302,13 +305,18 @@ pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> V
 }
 
 /// Whitelist a given investor for a fiven pool and tranche for 1 year of time
-pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> Call {
-	permission_call(
-		PoolRole::PoolAdmin,
-		investor.to_account_id(),
-		pool,
-		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
-	)
+pub fn whitelist_investor_call(pool_id: PoolId, investor: Keyring, tranche_id: TrancheId) -> Call {
+	Call::Permissions(PermissionsCall::add {
+		to: investor.to_account_id(),
+		scope: PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+			pool_id.into(),
+			tranche_id,
+		))),
+		with_role: Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Manager),
+		role: Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(
+			999_999_999u32.into(),
+		)),
+	})
 }
 
 /// Creates a permission xt with the given input
@@ -444,11 +452,15 @@ mod with_ext {
 	/// Role is permitted for 1 year.
 	///
 	/// **Needs: Mut Externalities to persist**
-	pub fn permit_investor(investor: u32, pool: PoolId, tranche: TrancheId) {
-		permission_for(
+	pub fn permit_investor(investor: u32, pool_id: PoolId, tranche_id: TrancheId) {
+		<Permissions as PermissionsT<AccountId>>::add(
+			PermissionScope::Currency(CurrencyId::Permissioned(PermissionedCurrency::Tranche(
+				pool_id.into(),
+				tranche_id,
+			))),
 			Keyring::TrancheInvestor(investor).into(),
-			pool,
-			PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
+			Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(999_999_999u32.into())),
 		)
+		.expect("ESSENTIAL: Adding a permission for a role should not fail.");
 	}
 }
