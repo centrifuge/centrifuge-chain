@@ -42,7 +42,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::Usd,
+			currency: CurrencyId::KUSD,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -134,7 +134,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::Usd,
+			currency: CurrencyId::KUSD,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -235,7 +235,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::Usd,
+			currency: CurrencyId::KUSD,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -348,7 +348,7 @@ fn pool_constraints_pass() {
 		);
 
 		let pool = &PoolDetails {
-			currency: CurrencyId::Usd,
+			currency: CurrencyId::KUSD,
 			tranches,
 			status: PoolStatus::Open,
 			epoch: EpochState {
@@ -452,7 +452,7 @@ fn epoch() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 		assert_ok!(Pools::set_metadata(
@@ -695,7 +695,7 @@ fn submission_period() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 		assert_ok!(Pools::update_invest_order(
@@ -901,7 +901,7 @@ fn execute_info_removed_after_epoch_execute() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1004,7 +1004,7 @@ fn collect_tranche_tokens() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1113,7 +1113,7 @@ fn invalid_tranche_id_is_err() {
 			1_u64,
 			0,
 			vec![(TrancheType::Residual, None)],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1157,7 +1157,7 @@ fn updating_with_same_amount_is_err() {
 			1_u64,
 			0,
 			vec![(TrancheType::Residual, None)],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1194,7 +1194,7 @@ fn pool_updates_should_be_constrained() {
 			pool_owner.clone(),
 			pool_id,
 			vec![(TrancheType::Residual, None)],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1327,7 +1327,7 @@ fn updating_orders_updates_epoch() {
 			pool_owner,
 			pool_id,
 			vec![(TrancheType::Residual, None)],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1377,7 +1377,7 @@ fn no_order_is_err() {
 			pool_owner,
 			pool_id,
 			vec![(TrancheType::Residual, None)],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1419,7 +1419,7 @@ fn collecting_over_last_exec_epoch_is_err() {
 			pool_owner,
 			pool_id,
 			vec![(TrancheType::Residual, None)],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1502,7 +1502,7 @@ fn tranche_ids_are_unique() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1534,7 +1534,7 @@ fn tranche_ids_are_unique() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1559,7 +1559,7 @@ fn same_pool_id_not_possible() {
 			0,
 			pool_id_1,
 			vec![(TrancheType::Residual, None),],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1569,7 +1569,7 @@ fn same_pool_id_not_possible() {
 				0,
 				pool_id_1,
 				vec![(TrancheType::Residual, None),],
-				CurrencyId::Usd,
+				CurrencyId::KUSD,
 				10_000 * CURRENCY
 			),
 			Error::<Test>::PoolInUse
@@ -1615,7 +1615,7 @@ fn valid_tranche_structure_is_enforced() {
 						None
 					)
 				],
-				CurrencyId::Usd,
+				CurrencyId::KUSD,
 				10_000 * CURRENCY
 			),
 			Error::<Test>::InvalidTrancheStructure
@@ -1651,7 +1651,7 @@ fn valid_tranche_structure_is_enforced() {
 						None
 					)
 				],
-				CurrencyId::Usd,
+				CurrencyId::KUSD,
 				10_000 * CURRENCY
 			),
 			Error::<Test>::InvalidTrancheStructure
@@ -1686,7 +1686,7 @@ fn valid_tranche_structure_is_enforced() {
 						None
 					)
 				],
-				CurrencyId::Usd,
+				CurrencyId::KUSD,
 				10_000 * CURRENCY
 			),
 			Error::<Test>::InvalidJuniorTranche
@@ -1715,7 +1715,7 @@ fn valid_tranche_structure_is_enforced() {
 						None
 					),
 				],
-				CurrencyId::Usd,
+				CurrencyId::KUSD,
 				10_000 * CURRENCY
 			),
 			Error::<Test>::InvalidTrancheStructure
@@ -1765,7 +1765,7 @@ fn triger_challange_period_with_zero_solution() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1874,7 +1874,7 @@ fn min_challenge_time_is_respected() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			10_000 * CURRENCY
 		));
 
@@ -1986,7 +1986,7 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			200 * CURRENCY
 		));
 
@@ -2203,7 +2203,7 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			200 * CURRENCY
 		));
 
@@ -2437,7 +2437,7 @@ fn only_usd_as_pool_currency_allowed() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			200 * CURRENCY
 		));
 	});
@@ -2470,7 +2470,7 @@ fn creation_takes_deposit() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			200 * CURRENCY
 		));
 		let pool = crate::PoolDeposit::<Test>::get(0).unwrap();
@@ -2496,7 +2496,7 @@ fn creation_takes_deposit() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			200 * CURRENCY
 		));
 		let pool = crate::PoolDeposit::<Test>::get(1).unwrap();
@@ -2524,7 +2524,7 @@ fn creation_takes_deposit() {
 					None
 				)
 			],
-			CurrencyId::Usd,
+			CurrencyId::KUSD,
 			200 * CURRENCY
 		));
 

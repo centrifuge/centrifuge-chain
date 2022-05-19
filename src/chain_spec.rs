@@ -808,25 +808,18 @@ fn altair_genesis(
 	council_members: Vec<altair_runtime::AccountId>,
 ) -> altair_runtime::GenesisConfig {
 	let num_endowed_accounts = endowed_accounts.len();
-	let (balances, token_balances) = match total_issuance {
+	let balances = match total_issuance {
 		Some(total_issuance) => {
 			let balance_per_endowed = total_issuance
 				.checked_div(num_endowed_accounts as altair_runtime::Balance)
 				.unwrap_or(0 as altair_runtime::Balance);
-			(
-				endowed_accounts
-					.iter()
-					.cloned()
-					.map(|k| (k, balance_per_endowed))
-					.collect(),
-				endowed_accounts
-					.iter()
-					.cloned()
-					.map(|k| (k, altair_runtime::CurrencyId::Usd, balance_per_endowed))
-					.collect(),
-			)
+			endowed_accounts
+				.iter()
+				.cloned()
+				.map(|k| (k, balance_per_endowed))
+				.collect()
 		}
-		None => (vec![], vec![]),
+		None => (vec![]),
 	};
 
 	altair_runtime::GenesisConfig {
@@ -836,9 +829,7 @@ fn altair_genesis(
 				.to_vec(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
-		orml_tokens: altair_runtime::OrmlTokensConfig {
-			balances: token_balances,
-		},
+		orml_tokens: altair_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {
 			members: council_members,
@@ -913,10 +904,17 @@ fn development_genesis(
 					.cloned()
 					.map(|k| (k, balance_per_endowed))
 					.collect(),
+				// We can only mint kUSD in development
 				endowed_accounts
 					.iter()
 					.cloned()
-					.map(|k| (k, development_runtime::CurrencyId::Usd, balance_per_endowed))
+					.map(|k| {
+						(
+							k,
+							development_runtime::CurrencyId::KUSD,
+							balance_per_endowed,
+						)
+					})
 					.collect(),
 			)
 		}

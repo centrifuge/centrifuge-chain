@@ -1,6 +1,4 @@
 #![feature(stmt_expr_attributes)]
-//TODO(nuno): re-enable this line below once pools are re-enabled
-// #![feature(destructuring_assignment)]
 // Copyright 2021 Centrifuge GmbH (centrifuge.io).
 // This file is part of Centrifuge chain project.
 

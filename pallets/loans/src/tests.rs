@@ -80,7 +80,7 @@ where
 		pool_admin,
 		JuniorInvestor::get(),
 		SeniorInvestor::get(),
-		CurrencyId::Usd,
+		CurrencyId::KUSD,
 	);
 	// add borrower role and price admin role
 	assert_ok!(pallet_permissions::Pallet::<T>::add(
@@ -523,10 +523,10 @@ macro_rules! test_borrow_loan {
 				// successful issue
 				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
 				// successful pricing
@@ -563,9 +563,9 @@ macro_rules! test_borrow_loan {
 					.unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 				// pool should have 50 less token
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, 50 * USD);
 				// nav should be updated to latest present value
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
@@ -595,9 +595,9 @@ macro_rules! test_borrow_loan {
 					.unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 930 * USD);
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, 70 * USD);
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
 				let pv = loan.present_value(&vec![]).unwrap();
@@ -687,10 +687,10 @@ macro_rules! test_repay_loan {
 				let (pool_id, loan_nft, collateral_nft) =
 					issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan_nft.1;
 
@@ -715,9 +715,9 @@ macro_rules! test_repay_loan {
 					.unwrap();
 				assert_eq!(loan.principal_debt, p_debt);
 				// pool should have 50 less token
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, 50 * USD);
 				// nav should be updated to latest present value
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
@@ -745,9 +745,9 @@ macro_rules! test_repay_loan {
 				// principal debt should still be more than 30 due to interest
 				assert!(loan.principal_debt > Amount::from_inner(30 * USD));
 				// pool should have 30 less token
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 970 * USD);
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, 30 * USD);
 				// nav should be updated to latest present value
 				let current_nav = <Loans as TPoolNav<PoolId, Amount>>::nav(pool_id).unwrap().0;
@@ -820,7 +820,7 @@ macro_rules! test_repay_loan {
 				let res = Tokens::transfer(
 					Origin::signed(dummy),
 					dest,
-					CurrencyId::Usd,
+					CurrencyId::KUSD,
 					transfer_amount,
 				);
 				assert_ok!(res);
@@ -857,12 +857,12 @@ macro_rules! test_repay_loan {
 				assert_eq!(current_nav, Zero::zero());
 
 				// pool balance should be 1000 + interest
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				let expected_balance = 1000 * USD + transfer_amount;
 				assert_eq!(pool_balance, expected_balance);
 
 				// owner balance should be zero
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
 				// owner account should own the collateral NFT
@@ -906,10 +906,10 @@ macro_rules! test_pool_nav {
 				// successful issue
 				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan.1;
 
@@ -1149,7 +1149,7 @@ fn test_add_write_off_groups() {
 				pool_admin,
 				JuniorInvestor::get(),
 				SeniorInvestor::get(),
-				CurrencyId::Usd,
+				CurrencyId::KUSD,
 			);
 			let pr_pool_id: PoolIdOf<MockRuntime> = pool_id.into();
 			initialise_test_pool::<MockRuntime>(pr_pool_id, 1, pool_admin, None);
@@ -1206,10 +1206,10 @@ macro_rules! test_write_off_maturity_loan {
 				// successful issue
 				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan.1;
 
@@ -1309,10 +1309,10 @@ macro_rules! test_admin_write_off_loan_type {
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
 				let loan_id = loan.1;
@@ -1424,10 +1424,10 @@ macro_rules! test_close_written_off_loan_type {
 				// successful issue
 				let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
 				let loan_id = loan.1;
@@ -1555,10 +1555,10 @@ macro_rules! repay_too_early {
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
 				let loan_id = loan.1;
@@ -1572,10 +1572,10 @@ macro_rules! repay_too_early {
 				assert_ok!(res);
 
 				// check balances
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 900 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, 100 * USD);
 
 				// repay in the same instant
@@ -1588,10 +1588,10 @@ macro_rules! repay_too_early {
 				assert_ok!(res);
 
 				// check balances
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 
 				// close loan
@@ -1618,10 +1618,10 @@ macro_rules! write_off_overflow {
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
 				let pool_account = PoolLocator { pool_id }.into_account();
-				let pool_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &pool_account);
+				let pool_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
-				let owner_balance = balance_of::<MockRuntime>(CurrencyId::Usd, &borrower);
+				let owner_balance = balance_of::<MockRuntime>(CurrencyId::KUSD, &borrower);
 				assert_eq!(owner_balance, Zero::zero());
 				let loan_id = loan.1;
 
