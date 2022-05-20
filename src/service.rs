@@ -15,6 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::api::{Anchor, AnchorApi};
+use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::BlockAnnounceValidator;
@@ -23,8 +24,8 @@ use cumulus_client_service::{
 };
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
-use cumulus_relay_chain_local::build_relay_chain_interface;
 use node_primitives::{Block, Hash};
+use polkadot_primitives::v2::{CollatorPair};
 use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
@@ -300,12 +301,12 @@ where
 	let backend = params.backend.clone();
 	let mut task_manager = params.task_manager;
 
-	let (relay_chain_interface, collator_key) =
-		build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager)
-			.map_err(|e| match e {
-				polkadot_service::Error::Sub(x) => x,
-				s => format!("{}", s).into(),
-			})?;
+	let (relay_chain_interface, collator_key) = panic!("TODO(nuno)");
+		// build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager)
+		// 	.map_err(|e| match e {
+		// 		polkadot_service::Error::Sub(x) => x,
+		// 		s => format!("{}", s).into(),
+		// 	})?;
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;
@@ -862,3 +863,20 @@ pub async fn start_development_node(
 	)
 	.await
 }
+
+//TODO(nuno)
+// async fn build_relay_chain_interface(
+// 	polkadot_config: Configuration,
+// 	parachain_config: &Configuration,
+// 	telemetry_worker_handle: Option<TelemetryWorkerHandle>,
+// 	task_manager: &mut TaskManager,
+// 	collator_options: CollatorOptions,
+// ) -> RelayChainResult<(Arc<(dyn RelayChainInterface + 'static)>, Option<CollatorPair>)> {
+// 	match relay_chain_rpc_url {
+// 		Some(relay_chain_url) => Ok((
+// 			Arc::new(RelayChainRPCInterface::new(relay_chain_url).await?) as Arc<_>,
+// 			None,
+// 		)),
+// 		None => build_inprocess_relay_chain(polkadot_config, parachain_config, telemetry_worker_handle, task_manager),
+// 	}
+// }
