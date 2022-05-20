@@ -25,7 +25,7 @@ use cumulus_client_service::{
 use cumulus_primitives_core::ParaId;
 use cumulus_relay_chain_interface::RelayChainInterface;
 use node_primitives::{Block, Hash};
-use polkadot_primitives::v2::{CollatorPair};
+use polkadot_primitives::v2::CollatorPair;
 use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
 use sc_network::NetworkService;
@@ -302,11 +302,11 @@ where
 	let mut task_manager = params.task_manager;
 
 	let (relay_chain_interface, collator_key) = panic!("TODO(nuno)");
-		// build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager)
-		// 	.map_err(|e| match e {
-		// 		polkadot_service::Error::Sub(x) => x,
-		// 		s => format!("{}", s).into(),
-		// 	})?;
+	// build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager)
+	// 	.map_err(|e| match e {
+	// 		polkadot_service::Error::Sub(x) => x,
+	// 		s => format!("{}", s).into(),
+	// 	})?;
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;

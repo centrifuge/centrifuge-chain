@@ -13,8 +13,8 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 serde = { version = "1.0.102" }
-codec = { package = 'parity-scale-codec', version = '2.0.0', features = ['derive'] , default-features = false }
-scale-info = { version = "1.0", default-features = false, features = ["derive"] }
+codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
+scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 rev_slice = { version = "0.1.5", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false , optional = true , branch = "polkadot-v0.9.20" }

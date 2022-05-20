@@ -48,7 +48,7 @@ members = [
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
-	"runtime/integration-tests",
+#	"runtime/integration-tests",
 ]
 
 [dependencies]
@@ -151,7 +151,7 @@ node-primitives = { git = "https://github.com/paritytech/substrate", branch = "p
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.20" }
 
 # testing
-runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
+#runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
 
 [build-dependencies]
 vergen = "3.0.4"
@@ -179,5 +179,5 @@ runtime-benchmarks = [
 ]
 test-benchmarks = [
 	"runtime-benchmarks",
-        "runtime-integration-tests/runtime-benchmarks",
+#        "runtime-integration-tests/runtime-benchmarks",
 ]
