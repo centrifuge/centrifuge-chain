@@ -197,7 +197,7 @@ impl<T: Config> Pallet<T> {
 
 				// burn loan nft
 				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
+				T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 				// update loan status
 				loan.status = LoanStatus::Closed;

@@ -142,6 +142,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::SaturatedConversion;
+	use sp_std::convert::TryInto;
 
 	// NFT pallet type declaration.
 	//

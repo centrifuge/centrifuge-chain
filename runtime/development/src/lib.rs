@@ -10,11 +10,11 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
 		Contains, EnsureOneOf, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote,
+		U128CurrencyToVote, AsEnsureOriginWithArg
 	},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
-		DispatchClass, Weight,
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
+		DispatchClass, Weight, ConstantMultiplier
 	},
 	PalletId, RuntimeDebug,
 };
@@ -28,10 +28,9 @@ use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::AccountIdConversion;
@@ -44,6 +43,7 @@ use sp_runtime::{
 	Permill, Perquintill,
 };
 use sp_std::prelude::*;
+use sp_std::convert::{TryInto, TryFrom};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -211,12 +211,8 @@ impl pallet_timestamp::Config for Runtime {
 
 // money stuff
 parameter_types! {
-	/// TransactionByteFee is set to 0.01 MicroRAD
+	/// TransactionByteFee is set to 0.01 MicroCFG
 	pub const TransactionByteFee: Balance = 1 * (MICRO_CFG / 100);
-	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
-	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
-	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 	/// This value increases the priority of `Operational` transactions by adding
 	/// a "virtual tip" that's equal to the `OperationalFeeMultiplier * final_fee`.
 	pub const OperationalFeeMultiplier: u8 = 5;
@@ -224,9 +220,9 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees<Runtime>>;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = WeightToFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 }
 
@@ -489,13 +485,13 @@ parameter_types! {
 type CouncilCollective = pallet_collective::Instance1;
 
 /// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
 
 /// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
 
 /// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
@@ -689,6 +685,7 @@ impl pallet_uniques::Config for Runtime {
 	type Currency = Tokens;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -745,7 +742,7 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Tokens;
 	// either democracy or 75% of council votes
 	type ApproveOrigin = EnsureRootOr<
-		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 	>;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -1004,7 +1001,7 @@ parameter_types! {
 
 type CollatorSelectionUpdateOrigin = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
 // Implement Collator Selection pallet configuration trait for the runtime
@@ -1198,14 +1195,16 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2128(b"cent_nft_hash"));
 	//TODO rename xRAD to xCFG and create new mapping
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2128(b"xRAD"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
@@ -1214,7 +1213,7 @@ impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 	type AdminOrigin =
-		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
 	type Currency = Balances;
 	type Event = Event;
 	type NativeTokenId = NativeTokenId;
@@ -1234,7 +1233,7 @@ impl chainbridge::Config for Runtime {
 	type Event = Event;
 	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin =
-		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 	type Proposal = Call;
 	type ChainId = ChainId;
 	type PalletId = ChainBridgePalletId;
