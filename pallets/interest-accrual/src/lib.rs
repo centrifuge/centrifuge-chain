@@ -29,6 +29,7 @@
 //! this indirectly updates the debt of all loans outstanding using this
 //! interest rate.
 //!
+//! ```text
 //!                    ar = accumulated rate
 //!                    nd = normalized debt
 //!       
@@ -49,7 +50,7 @@
 //!            ar   = 1.0     ar   = 1.5
 //!            nd   = 10      nd   = 10 + (20 / 1.5) = 23.33
 //!            debt = 10      debt = 35
-//!
+//! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode};
