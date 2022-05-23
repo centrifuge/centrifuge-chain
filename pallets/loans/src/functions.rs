@@ -108,6 +108,7 @@ impl<T: Config> Pallet<T> {
 				total_repaid: Zero::zero(),
 				admin_written_off: false,
 				write_off_index: None,
+				last_updated: Self::now(),
 			},
 		);
 		Ok(loan_id)
@@ -255,7 +256,7 @@ impl<T: Config> Pallet<T> {
 			// we already know that that loan is not written off,
 			// means we wont need to have write off groups. so save a DB read and pass empty
 			let old_pv = loan
-				.present_value(old_debt, &vec![], now)
+				.present_value(old_debt, &vec![], loan.last_updated)
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 			let new_total_borrowed = loan
@@ -279,6 +280,7 @@ impl<T: Config> Pallet<T> {
 
 			loan.total_borrowed = new_total_borrowed;
 			loan.normalized_debt = normalized_debt;
+			loan.last_updated = now;
 
 			let new_debt =
 				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
@@ -358,15 +360,16 @@ impl<T: Config> Pallet<T> {
 				ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 				// TODO: this should calculate debt at the last NAV update
-				let old_debt = T::InterestAccrual::current_debt(
+				let old_debt = T::InterestAccrual::previous_debt(
 					loan.interest_rate_per_sec,
 					loan.normalized_debt,
+					loan.last_updated,
 				)?;
 
 				// calculate old present_value
 				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 				let old_pv = loan
-					.present_value(old_debt, &write_off_groups, now)
+					.present_value(old_debt, &write_off_groups, loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 				// ensure amount is not more than current debt
@@ -386,6 +389,7 @@ impl<T: Config> Pallet<T> {
 
 				loan.total_repaid = new_total_repaid;
 				loan.normalized_debt = normalized_debt;
+				loan.last_updated = now;
 
 				let new_debt = T::InterestAccrual::current_debt(
 					loan.interest_rate_per_sec,
@@ -430,6 +434,7 @@ impl<T: Config> Pallet<T> {
 				)?;
 
 				let now: Moment = Self::now();
+				loan.last_updated = now;
 
 				let present_value = loan
 					.present_value(debt, write_off_groups, now)
@@ -544,15 +549,21 @@ impl<T: Config> Pallet<T> {
 
 			let debt =
 				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
+			let old_debt = T::InterestAccrual::previous_debt(
+				loan.interest_rate_per_sec,
+				loan.normalized_debt,
+				loan.last_updated,
+			)?;
 
 			let now: Moment = Self::now();
 
 			// get old present value accounting for any write offs
 			let old_pv = loan
-				.present_value(debt, &write_off_groups, now)
+				.present_value(old_debt, &write_off_groups, loan.last_updated)
 				.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 			loan.write_off_index = Some(write_off_group_index);
+			loan.last_updated = now;
 
 			// calculate updated write off adjusted present value
 			let new_pv = loan

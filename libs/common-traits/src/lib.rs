@@ -34,6 +34,8 @@ use sp_std::hash::Hash;
 use sp_std::str::FromStr;
 use sp_std::vec::Vec;
 
+pub type Moment = u64;
+
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
 /// ## Overview
@@ -134,6 +136,13 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	fn current_debt(
 		interest_rate_per_sec: InterestRate,
 		normalized_debt: Self::NormalizedDebt,
+	) -> Result<Balance, DispatchError>;
+
+	/// Calculate a previous debt using normalized debt * previous cumulative rate
+	fn previous_debt(
+		interest_rate_per_sec: InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+		when: Moment,
 	) -> Result<Balance, DispatchError>;
 
 	/// Increase or decrease the normalized debt

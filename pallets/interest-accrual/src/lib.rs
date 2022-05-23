@@ -60,7 +60,7 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_runtime::ArithmeticError;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedSub},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -176,6 +176,45 @@ pub mod pallet {
 			)
 		}
 
+		pub fn get_previous_debt(
+			interest_rate_per_sec: T::InterestRate,
+			normalized_debt: T::Balance,
+			when: Moment,
+		) -> Result<T::Balance, DispatchError> {
+			Rate::<T>::try_mutate(
+				interest_rate_per_sec,
+				|rate_details| -> Result<T::Balance, DispatchError> {
+					let rate = if let Some(rate) = rate_details {
+						let new_accumulated_rate = Self::calculate_accumulated_rate(
+							interest_rate_per_sec,
+							rate.accumulated_rate,
+							rate.last_updated,
+						)
+						.map_err(|_| Error::<T>::DebtCalculationFailed)?;
+
+						rate.accumulated_rate = new_accumulated_rate;
+						rate.last_updated = Self::now();
+
+						rate
+					} else {
+						*rate_details = Some(RateDetails {
+							accumulated_rate: One::one(),
+							last_updated: Self::now(),
+						});
+						rate_details.as_mut().expect("RateDetails now Some. qed.")
+					};
+
+					let age = Self::now().checked_sub(when).unwrap();
+					let discount = checked_pow(interest_rate_per_sec, age as usize).unwrap();
+					let previous_rate = rate.accumulated_rate.checked_div(&discount).unwrap();
+
+					let debt = Self::calculate_debt(normalized_debt, previous_rate)
+						.ok_or(Error::<T>::DebtCalculationFailed)?;
+					Ok(debt)
+				},
+			)
+		}
+
 		pub fn do_adjust_normalized_debt(
 			interest_rate_per_sec: T::InterestRate,
 			normalized_debt: T::Balance,
@@ -244,6 +283,14 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 		normalized_debt: Self::NormalizedDebt,
 	) -> Result<T::Amount, DispatchError> {
 		Pallet::<T>::get_current_debt(interest_rate_per_sec, normalized_debt)
+	}
+
+	fn previous_debt(
+		interest_rate_per_sec: T::InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+		when: Moment,
+	) -> Result<T::Balance, DispatchError> {
+		Pallet::<T>::get_previous_debt(interest_rate_per_sec, normalized_debt, when)
 	}
 
 	fn adjust_normalized_debt(

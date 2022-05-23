@@ -116,6 +116,9 @@ pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
 	// whether the loan written off by admin
 	// if so, we wont update the write off group on this loan further from permission less call
 	pub(crate) admin_written_off: bool,
+
+	// When the loan's PV was last updated
+	pub(crate) last_updated: Moment,
 }
 
 impl<Rate, Balance, Asset, NormalizedDebt> LoanDetails<Rate, Balance, Asset, NormalizedDebt>
