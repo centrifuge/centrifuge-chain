@@ -24,6 +24,7 @@ use crate::{
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
+use frame_benchmarking_cli::BenchmarkCmd;
 use log::info;
 use node_primitives::Block;
 use polkadot_parachain::primitives::AccountIdConversion;
@@ -349,16 +350,27 @@ pub fn run() -> Result<()> {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
 
-				match runner.config().chain_spec.identify() {
-					ChainIdentity::Altair => runner.sync_run(|config| {
-						cmd.run::<altair_runtime::Block, AltairRuntimeExecutor>(config)
-					}),
-					ChainIdentity::Centrifuge => runner.sync_run(|config| {
-						cmd.run::<centrifuge_runtime::Block, CentrifugeRuntimeExecutor>(config)
-					}),
-					ChainIdentity::Development => runner.sync_run(|config| {
-						cmd.run::<development_runtime::Block, DevelopmentRuntimeExecutor>(config)
-					}),
+				// Handle the exact benchmark sub-command accordingly
+				match cmd {
+					BenchmarkCmd::Pallet(cmd) => match runner.config().chain_spec.identify() {
+						ChainIdentity::Altair => runner.sync_run(|config| {
+							cmd.run::<altair_runtime::Block, AltairRuntimeExecutor>(config)
+						}),
+						ChainIdentity::Centrifuge => runner.sync_run(|config| {
+							cmd.run::<centrifuge_runtime::Block, CentrifugeRuntimeExecutor>(config)
+						}),
+						ChainIdentity::Development => runner.sync_run(|config| {
+							cmd.run::<development_runtime::Block, DevelopmentRuntimeExecutor>(
+								config,
+							)
+						}),
+					},
+					BenchmarkCmd::Block(_)
+					| BenchmarkCmd::Storage(_)
+					| BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+					BenchmarkCmd::Machine(cmd) => {
+						return runner.sync_run(|config| cmd.run(&config));
+					}
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
