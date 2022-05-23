@@ -42,17 +42,17 @@ sc-consensus-uncles = { git = "https://github.com/paritytech/substrate", branch 
 node-primitives = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 # Polkadot
-pallet-xcm = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-polkadot-parachain = {git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-polkadot-primitives = {git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-xcm = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-xcm-builder = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-polkadot-runtime = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-kusama-runtime = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-rococo-runtime = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
-polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", tag = "v0.9.20" }
+pallet-xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+polkadot-parachain = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+polkadot-primitives = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+polkadot-runtime-parachains = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+polkadot-core-primitives = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+xcm = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+xcm-builder = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+kusama-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+rococo-runtime = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
+polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.20" }
 
 # Cumulus
 cumulus-primitives-core = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
@@ -76,7 +76,7 @@ centrifuge-runtime = { path = "../centrifuge" }
 
 [dev-dependencies]
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
-xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , tag = "v0.9.20" }
+xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.20" }
 common-traits = { path = "../../libs/common-traits" }
 common-types = { path = "../../libs/common-types" }
 pallet-pools = { path = "../../pallets/pools" }
