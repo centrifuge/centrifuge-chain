@@ -125,6 +125,7 @@ pallet-im-online = { default-features = false, git = "https://github.com/parityt
 # Cumulus dependencies
 cumulus-client-network = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-client-consensus-relay-chain = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
+cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 #cumulus-relay-chain-local = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-primitives-core = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }

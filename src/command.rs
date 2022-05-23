@@ -376,7 +376,7 @@ pub fn run() -> Result<()> {
 				let id = cli.parachain_id.unwrap_or(10001).into();
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
+					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(&id);
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 				let block: Block = generate_genesis_block(&config.chain_spec, state_version)
