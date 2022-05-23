@@ -151,4 +151,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2 as Weight))
 			.saturating_add(T::DbWeight::get().writes(1 as Weight))
 	}
+
+	fn set_accept_ownership() -> Weight {
+		todo!("TODO(nuno): run the benchmarks in the cloud to generate this value")
+	}
 }
