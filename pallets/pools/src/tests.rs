@@ -44,6 +44,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -56,7 +57,6 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 			},
 			parameters: PoolParameters {
 				min_epoch_time: 0,
-				challenge_time: 0,
 				max_nav_age: 60,
 			},
 			metadata: None,
@@ -136,6 +136,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -148,7 +149,6 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 			},
 			parameters: PoolParameters {
 				min_epoch_time: 0,
-				challenge_time: 0,
 				max_nav_age: 60,
 			},
 			metadata: None,
@@ -237,6 +237,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -249,7 +250,6 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 			},
 			parameters: PoolParameters {
 				min_epoch_time: 0,
-				challenge_time: 0,
 				max_nav_age: 60,
 			},
 			metadata: None,
@@ -350,6 +350,7 @@ fn pool_constraints_pass() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -362,7 +363,6 @@ fn pool_constraints_pass() {
 			},
 			parameters: PoolParameters {
 				min_epoch_time: 0,
-				challenge_time: 0,
 				max_nav_age: 60,
 			},
 			metadata: None,
@@ -475,19 +475,26 @@ fn epoch() {
 			500 * CURRENCY
 		));
 
-		assert_ok!(Pools::update(pool_owner_origin.clone(), 0, 30 * 60, 1, 0));
+		assert_ok!(Pools::update(
+			pool_owner_origin.clone(),
+			0,
+			PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(30 * 60),
+				max_nav_age: Change::NewValue(0),
+			}
+		));
 
 		assert_err!(
 			Pools::close_epoch(pool_owner_origin.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
 		);
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -704,12 +711,11 @@ fn submission_period() {
 			500 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -899,12 +905,11 @@ fn execute_info_removed_after_epoch_execute() {
 			10_000 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -1017,12 +1022,11 @@ fn collect_tranche_tokens() {
 			500 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -1177,9 +1181,11 @@ fn updating_with_same_amount_is_err() {
 }
 
 #[test]
-fn pool_parameters_should_be_constrained() {
+fn pool_updates_should_be_constrained() {
 	new_test_ext().execute_with(|| {
 		let pool_owner = 0_u64;
+		let jun_invest_id = 1u64;
+		let junior_investor = Origin::signed(jun_invest_id);
 		let pool_owner_origin = Origin::signed(pool_owner);
 		let pool_id = 0;
 
@@ -1192,17 +1198,47 @@ fn pool_parameters_should_be_constrained() {
 			10_000 * CURRENCY
 		));
 
+		<<Test as Config>::Permission as PermissionsT<u64>>::add(
+			PermissionScope::Pool(pool_id),
+			ensure_signed(junior_investor.clone()).unwrap(),
+			Role::PoolRole(PoolRole::TrancheInvestor(JuniorTrancheId::get(), u64::MAX)),
+		)
+		.unwrap();
+
+		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
+			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
+			Ok(())
+		})
+		.unwrap();
+
+		assert_ok!(Pools::update_invest_order(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			100_000
+		));
+		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), 0));
+		assert_ok!(Pools::collect(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			1
+		));
+
+		let initial_pool = &crate::Pool::<Test>::try_get(pool_id).unwrap();
 		let realistic_min_epoch_time = 24 * 60 * 60; // 24 hours
-		let realistic_challenge_time = 30 * 60; // 30 mins
 		let realistic_max_nav_age = 1 * 60; // 1 min
 
 		assert_err!(
 			Pools::update(
 				pool_owner_origin.clone(),
 				pool_id,
-				0,
-				realistic_challenge_time,
-				realistic_max_nav_age
+				PoolChanges {
+					tranches: Change::NoChange,
+					min_epoch_time: Change::NewValue(0),
+					max_nav_age: Change::NewValue(realistic_max_nav_age),
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
@@ -1210,30 +1246,63 @@ fn pool_parameters_should_be_constrained() {
 			Pools::update(
 				pool_owner_origin.clone(),
 				pool_id,
-				realistic_min_epoch_time,
-				0,
-				realistic_max_nav_age
-			),
-			Error::<Test>::PoolParameterBoundViolated
-		);
-		assert_err!(
-			Pools::update(
-				pool_owner_origin.clone(),
-				pool_id,
-				realistic_min_epoch_time,
-				realistic_challenge_time,
-				7 * 24 * 60 * 60
+				PoolChanges {
+					tranches: Change::NoChange,
+					min_epoch_time: Change::NewValue(realistic_min_epoch_time),
+					max_nav_age: Change::NewValue(7 * 24 * 60 * 60),
+				}
 			),
 			Error::<Test>::PoolParameterBoundViolated
 		);
 
+		assert_ok!(Pools::update_redeem_order(
+			junior_investor.clone(),
+			pool_id,
+			TrancheLoc::Id(JuniorTrancheId::get()),
+			100
+		));
+
 		assert_ok!(Pools::update(
 			pool_owner_origin.clone(),
 			pool_id,
-			realistic_min_epoch_time,
-			realistic_challenge_time,
-			realistic_max_nav_age
+			PoolChanges {
+				tranches: Change::NoChange,
+				min_epoch_time: Change::NewValue(realistic_min_epoch_time),
+				max_nav_age: Change::NewValue(realistic_max_nav_age),
+			}
 		));
+
+		// Since there's a redemption order, the above update should not have been executed yet
+		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
+		assert_eq!(
+			pool.tranches
+				.acc_outstanding_redemptions()
+				.unwrap_or(Balance::MAX),
+			100
+		);
+		assert_eq!(
+			pool.parameters.min_epoch_time,
+			initial_pool.parameters.min_epoch_time
+		);
+
+		assert_err!(
+			Pools::execute_scheduled_update(pool_owner_origin.clone(), pool_id),
+			Error::<Test>::UpdatePrerequesitesNotFulfilled
+		);
+
+		next_block();
+		test_nav_update(0, 0, START_DATE + DefaultMaxNAVAge::get() + 1);
+		assert_ok!(Pools::close_epoch(pool_owner_origin.clone(), pool_id));
+
+		// Now it works since the epoch was executed and the redemption order was fulfilled
+		assert_ok!(Pools::execute_scheduled_update(
+			pool_owner_origin.clone(),
+			pool_id
+		));
+
+		// And the parameter should be updated now
+		let pool = crate::Pool::<Test>::try_get(pool_id).unwrap();
+		assert_eq!(pool.parameters.min_epoch_time, realistic_min_epoch_time);
 	});
 }
 
@@ -1700,12 +1769,11 @@ fn triger_challange_period_with_zero_solution() {
 			10_000 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -1810,12 +1878,11 @@ fn min_challenge_time_is_respected() {
 			10_000 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -1923,12 +1990,11 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 			200 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})
@@ -2141,12 +2207,11 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 			200 * CURRENCY
 		));
 
-		// Force min_epoch_time and challenge time to 0 without using update
+		// Force min_epoch_time to 0 without using update
 		// as this breaks the runtime-defined pool
 		// parameter bounds and update will not allow this.
 		crate::Pool::<Test>::try_mutate(0, |maybe_pool| -> Result<(), ()> {
 			maybe_pool.as_mut().unwrap().parameters.min_epoch_time = 0;
-			maybe_pool.as_mut().unwrap().parameters.challenge_time = 0;
 			maybe_pool.as_mut().unwrap().parameters.max_nav_age = u64::MAX;
 			Ok(())
 		})

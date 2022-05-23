@@ -86,6 +86,66 @@ fn transfer_air_to_sibling() {
 }
 
 #[test]
+fn transfer_air_sibling_to_altair() {
+	TestNet::reset();
+
+	// In order to be able to transfer AIR from Sibling to Altair, we need to first send
+	// AIR from Altair to Sibling, or else it fails since it'd be like Sibling had minted
+	// AIR on their side.
+	transfer_air_to_sibling();
+
+	let alice_initial_balance = air_amount(10);
+	let bob_initial_balance = air_amount(10);
+	let transfer_amount = air_amount(1);
+
+	Sibling::execute_with(|| {
+		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
+		assert_eq!(Balances::free_balance(&altair_account()), 0);
+	});
+
+	Altair::execute_with(|| {
+		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
+		assert_eq!(Balances::free_balance(&sibling_account()), transfer_amount);
+	});
+
+	Sibling::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			CurrencyId::Native,
+			transfer_amount,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::altair::ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000_000,
+		));
+
+		// Confirm that Alice's balance is initial balance - amount transferred
+		assert_eq!(
+			Balances::free_balance(&ALICE.into()),
+			alice_initial_balance - transfer_amount
+		);
+	});
+
+	Altair::execute_with(|| {
+		// Verify that BOB now has initial balance + amount transferred - fee
+		assert_eq!(
+			Balances::free_balance(&BOB.into()),
+			bob_initial_balance + transfer_amount - air_fee(),
+		);
+	});
+}
+
+#[test]
 fn transfer_kusd_to_development() {
 	TestNet::reset();
 
@@ -234,7 +294,17 @@ pub mod currency_id_convert {
 	fn convert_air() {
 		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
-		let air_location: MultiLocation = MultiLocation::new(
+		// The way AIR is represented relative within the Altair runtime
+		let air_location_inner: MultiLocation =
+			MultiLocation::new(0, X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())));
+
+		assert_eq!(
+			<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
+			Ok(CurrencyId::Native),
+		);
+
+		// The canonical way AIR is represented out in the wild
+		let air_location_canonical: MultiLocation = MultiLocation::new(
 			1,
 			X2(
 				Parachain(parachains::altair::ID),
@@ -242,15 +312,10 @@ pub mod currency_id_convert {
 			),
 		);
 
-		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(air_location.clone()),
-			Ok(CurrencyId::Native),
-		);
-
 		Altair::execute_with(|| {
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-				Some(air_location)
+				Some(air_location_canonical)
 			)
 		});
 	}

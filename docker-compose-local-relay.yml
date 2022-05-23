@@ -56,4 +56,4 @@ services:
       --rpc-cors all
       --rpc-methods=Unsafe
       --bob
-      --log="main,info"
+      --log="main,info,xcm=trace,xcm-executor=trace"

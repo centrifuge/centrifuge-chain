@@ -1,6 +1,6 @@
 use crate::{self as pallet_pools, Config, DispatchResult, Error, TrancheLoc};
 use codec::Encode;
-use common_traits::{Permissions as PermissionsT, PreConditions};
+use common_traits::{Permissions as PermissionsT, PoolUpdateGuard, PreConditions};
 use common_types::{CurrencyId, Moment};
 use common_types::{PermissionRoles, PermissionScope, PoolRole, Role, TimeProvider, UNION};
 use frame_support::sp_std::marker::PhantomData;
@@ -13,7 +13,9 @@ use frame_support::{
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
+use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::TransferDetails;
+use runtime_common::BlockNumber;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -266,14 +268,16 @@ parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 	pub const MaxTranches: u32 = 5;
 
+	pub const MinUpdateDelay: u64 = 0; // no delay
+	pub const ChallengeTime: BlockNumber = 0;
+
 	// Defaults for pool parameters
 	pub const DefaultMinEpochTime: u64 = 1;
-	pub const DefaultChallengeTime: u64 = 1;
 	pub const DefaultMaxNAVAge: u64 = 24 * 60 * 60;
 
 	// Runtime-defined constraints for pool parameters
 	pub const MinEpochTimeLowerBound: u64 = 1;
-	pub const ChallengeTimeLowerBound: u64 = 1;
+	pub const MinEpochTimeUpperBound: u64 = 24 * 60 * 60;
 	pub const MaxNAVAgeUpperBound: u64 = 24 * 60 * 60;
 
 	// Pool metadata limit
@@ -297,11 +301,12 @@ impl Config for Test {
 	type NAV = FakeNav;
 	type TrancheToken = TrancheToken<Test>;
 	type Time = Timestamp;
+	type ChallengeTime = ChallengeTime;
+	type MinUpdateDelay = MinUpdateDelay;
 	type DefaultMinEpochTime = DefaultMinEpochTime;
-	type DefaultChallengeTime = DefaultChallengeTime;
 	type DefaultMaxNAVAge = DefaultMaxNAVAge;
 	type MinEpochTimeLowerBound = MinEpochTimeLowerBound;
-	type ChallengeTimeLowerBound = ChallengeTimeLowerBound;
+	type MinEpochTimeUpperBound = MinEpochTimeUpperBound;
 	type PoolCreateOrigin = EnsureSigned<u64>;
 	type MaxNAVAgeUpperBound = MaxNAVAgeUpperBound;
 	type Permission = Permissions;
@@ -312,6 +317,7 @@ impl Config for Test {
 	type WeightInfo = ();
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
+	type UpdateGuard = UpdateGuard;
 }
 
 pub struct PoolCurrency;
@@ -324,6 +330,43 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Permissioned(_) => false,
 			CurrencyId::Usd | CurrencyId::KUSD => true,
 		}
+	}
+}
+
+pub struct UpdateGuard;
+impl PoolUpdateGuard for UpdateGuard {
+	type PoolDetails =
+		PoolDetails<CurrencyId, u32, Balance, Rate, MaxSizeMetadata, TrancheWeight, TrancheId, u64>;
+	type ScheduledUpdateDetails = ScheduledUpdateDetails<Rate>;
+	type Moment = Moment;
+
+	fn released(
+		pool: &Self::PoolDetails,
+		update: &Self::ScheduledUpdateDetails,
+		now: Self::Moment,
+	) -> bool {
+		if now < update.scheduled_time {
+			return false;
+		}
+
+		// The epoch in which the redemptions were fulfilled,
+		// should have closed after the scheduled time already,
+		// to ensure that investors had the `MinUpdateDelay`
+		// to submit their redemption orders.
+		if now < pool.epoch.last_closed {
+			return false;
+		}
+
+		// There should be no outstanding redemption orders.
+		let acc_outstanding_redemptions = pool
+			.tranches
+			.acc_outstanding_redemptions()
+			.unwrap_or(Balance::MAX);
+		if acc_outstanding_redemptions != 0u128 {
+			return false;
+		}
+
+		return true;
 	}
 }
 
