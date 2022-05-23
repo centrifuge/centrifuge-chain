@@ -442,9 +442,9 @@ pub fn build_altair_import_queue(
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*time,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 			Ok((time, slot))
@@ -525,9 +525,9 @@ pub async fn start_altair_node(
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 								*time,
-								slot_duration.slot_duration(),
+								slot_duration,
 							);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
@@ -596,9 +596,9 @@ pub fn build_centrifuge_import_queue(
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*time,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 			Ok((time, slot))
@@ -679,9 +679,9 @@ pub async fn start_centrifuge_node(
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 								*time,
-								slot_duration.slot_duration(),
+								slot_duration,
 							);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
@@ -750,9 +750,9 @@ pub fn build_development_import_queue(
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*time,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 			Ok((time, slot))
@@ -833,9 +833,9 @@ pub async fn start_development_node(
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 								*time,
-								slot_duration.slot_duration(),
+								slot_duration,
 							);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
