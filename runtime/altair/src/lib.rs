@@ -8,12 +8,12 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		Contains, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote, AsEnsureOriginWithArg
+		AsEnsureOriginWithArg, Contains, EqualPrivilegeOnly, Everything, InstanceFilter,
+		LockIdentifier, U128CurrencyToVote,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		DispatchClass, Weight, ConstantMultiplier
+		ConstantMultiplier, DispatchClass, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -41,10 +41,10 @@ use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
-	Permill, Perquintill,
+	Permill,
 };
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
-use sp_std::convert::{TryInto, TryFrom};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -670,8 +670,7 @@ impl pallet_treasury::Config for Runtime {
 	// either democracy or 66% of council votes
 	type ApproveOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	// either democracy or more than 50% council votes
-	type RejectOrigin =
-		EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
+	type RejectOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -951,7 +950,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	type WeightInfo = ();
+	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 }
 
 /// The config for the Downward Message Passing Queue, i.e., how messages coming from the

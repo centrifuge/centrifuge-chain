@@ -9,12 +9,12 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		Contains, EnsureOneOf, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote, AsEnsureOriginWithArg
+		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
+		InstanceFilter, LockIdentifier, U128CurrencyToVote,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		DispatchClass, Weight, ConstantMultiplier
+		ConstantMultiplier, DispatchClass, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -40,10 +40,10 @@ use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
-	Permill, Perquintill,
+	Permill,
 };
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
-use sp_std::convert::{TryInto, TryFrom};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -1202,9 +1202,9 @@ impl orml_tokens::Config for Runtime {
 
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
-	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2128(b"cent_nft_hash"));
+	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
 	//TODO rename xRAD to xCFG and create new mapping
-	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2128(b"xRAD"));
+	pub NativeTokenId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"xRAD"));
 	pub const NativeTokenTransferFee: u128 = NATIVE_TOKEN_TRANSFER_FEE;
 	pub const NftTransferFee: u128 = NFT_TOKEN_TRANSFER_FEE;
 }
@@ -1358,6 +1358,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 }
 
 /// Block type as expected by this runtime.

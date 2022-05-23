@@ -11,7 +11,7 @@ use frame_support::{
 	traits::{EqualPrivilegeOnly, InstanceFilter, LockIdentifier, U128CurrencyToVote},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-		DispatchClass, Weight, ConstantMultiplier
+		ConstantMultiplier, DispatchClass, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -38,8 +38,8 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
 	Perquintill,
 };
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
-use sp_std::convert::{TryInto, TryFrom};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;

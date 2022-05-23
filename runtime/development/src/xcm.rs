@@ -11,7 +11,7 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{parameter_type_with_key, MultiCurrency, location::AbsoluteReserveProvider};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -333,6 +333,8 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {
