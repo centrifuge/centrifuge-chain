@@ -392,7 +392,9 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
-				Call::Pools(pallet_pools::Call::execute_epoch{..})
+				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
+				Call::Loans(pallet_utility::Call::batch_all{..}) |
+				Call::Loans(pallet_utility::Call::batch{..})
 			),
 			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
 			ProxyType::Invest => matches!(
@@ -405,7 +407,9 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
-				Call::Pools(pallet_pools::Call::execute_epoch{..})
+				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
+				Call::Loans(pallet_utility::Call::batch_all{..}) |
+				Call::Loans(pallet_utility::Call::batch{..})
 			),
 		}
 	}
