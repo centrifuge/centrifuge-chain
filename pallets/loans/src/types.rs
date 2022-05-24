@@ -148,6 +148,9 @@ pub struct ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 
 	// whether the loan has been written off
 	pub(crate) write_off_status: WriteOffStatus<Rate>,
+
+	// When the loan's PV was last updated
+	pub(crate) last_updated: Moment,
 }
 
 impl<LoanId, Rate, Balance, NormalizedDebt> ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt>

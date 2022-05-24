@@ -587,11 +587,6 @@ macro_rules! test_borrow_loan {
 					.expect("ActiveLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
-				// accumulated rate is rate*rate^1000
-				assert_eq!(
-					rate_info.accumulated_rate,
-					checked_pow(rate, 1000).unwrap().checked_mul(&rate).unwrap()
-				);
 				assert_eq!(active_loan.total_borrowed, 70 * USD);
 				let c_debt = math::debt(p_debt, rate_info.accumulated_rate)
 					.unwrap()
@@ -756,7 +751,9 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.0;
 				let now = Loans::now();
-				let pv = active_loan.present_value(p_debt, &vec![], now).unwrap();
+				let debt = InterestAccrual::current_debt(active_loan.interest_rate_per_sec, p_debt)
+					.unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 20 after 1000 seconds
@@ -791,7 +788,9 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.0;
 				let now = Loans::now();
-				let pv = active_loan.present_value(p_debt, &vec![], now).unwrap();
+				let debt = InterestAccrual::current_debt(active_loan.interest_rate_per_sec, p_debt)
+					.unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 30 more after another 1000 seconds
@@ -1180,7 +1179,7 @@ fn test_pool_nav_bullet_loan() {
 		// present value at the instant of origination
 		48969664319886742807u128,
 		// present value after 200 days
-		50054820713981957085u128
+		50054820713981957086u128
 	)
 }
 
@@ -1195,7 +1194,7 @@ fn test_pool_nav_credit_line_with_maturity_loan() {
 		// present value at the instant of origination
 		48969664319886742807u128,
 		// present value after 200 days
-		50054820713981957085u128
+		50054820713981957086u128
 	)
 }
 
@@ -1210,7 +1209,7 @@ fn test_pool_nav_credit_line_loan() {
 		// present value at the instant of origination
 		50000000000000000000u128,
 		// present value after 200 days
-		51388800811704851014u128
+		51388800811704851015u128
 	)
 }
 

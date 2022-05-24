@@ -44,6 +44,7 @@ fn core_constraints_currency_available_cant_cover_redemptions() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -135,6 +136,7 @@ fn pool_constraints_pool_reserve_above_max_reserve() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -235,6 +237,7 @@ fn pool_constraints_tranche_violates_risk_buffer() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,
@@ -347,6 +350,7 @@ fn pool_constraints_pass() {
 		let pool = &PoolDetails {
 			currency: CurrencyId::Usd,
 			tranches,
+			status: PoolStatus::Open,
 			epoch: EpochState {
 				current: Zero::zero(),
 				last_closed: 0,

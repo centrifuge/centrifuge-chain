@@ -130,6 +130,7 @@ impl<T: Config> Pallet<T> {
 			LoanDetails {
 				collateral,
 				status: LoanStatus::Created,
+				last_updated: Self::now(),
 			},
 		);
 		Ok(loan_id)
@@ -338,6 +339,51 @@ impl<T: Config> Pallet<T> {
 
 				// check for max borrow amount
 				let old_debt = T::InterestAccrual::current_debt(
+					loan.interest_rate_per_sec,
+					loan.normalized_debt,
+				)?;
+
+				let max_borrow_amount = loan.max_borrow_amount(old_debt);
+				ensure!(
+					amount <= max_borrow_amount,
+					Error::<T>::MaxBorrowAmountExceeded
+				);
+
+				// get previous present value so that we can update the nav accordingly
+				// we already know that that loan is not written off,
+				// means we wont need to have write off groups. so save a DB read and pass empty
+				let old_pv = loan
+					.present_value(old_debt, &vec![], loan.last_updated)
+					.ok_or(Error::<T>::LoanPresentValueFailed)?;
+
+				let new_total_borrowed = loan
+					.total_borrowed
+					.checked_add(&amount)
+					.ok_or(ArithmeticError::Overflow)?;
+
+				// calculate new normalized debt with adjustment amount
+				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+					loan.interest_rate_per_sec,
+					loan.normalized_debt,
+					Adjustment::Increase(amount),
+				)?;
+
+				// update loan
+				let first_borrow = loan.total_borrowed == Zero::zero();
+
+				if first_borrow {
+					loan.origination_date = Some(now);
+				}
+
+				loan.total_borrowed = new_total_borrowed;
+				loan.normalized_debt = normalized_debt;
+				loan.last_updated = now;
+
+				// ensure borrow amount is positive
+				ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
+
+				// check for max borrow amount
+				let old_debt = T::InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec,
 					active_loan.normalized_debt,
 				)?;
@@ -470,15 +516,16 @@ impl<T: Config> Pallet<T> {
 						ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 						// TODO: this should calculate debt at the last NAV update
-						let old_debt = T::InterestAccrual::current_debt(
+						let old_debt = T::InterestAccrual::previous_debt(
 							active_loan.interest_rate_per_sec,
 							active_loan.normalized_debt,
+							active_loan.last_updated,
 						)?;
 
 						// calculate old present_value
 						let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 						let old_pv = active_loan
-							.present_value(old_debt, &write_off_groups, now)
+							.present_value(old_debt, &write_off_groups, active_loan.last_updated)
 							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 						// ensure amount is not more than current debt
@@ -498,6 +545,7 @@ impl<T: Config> Pallet<T> {
 
 						active_loan.total_repaid = new_total_repaid;
 						active_loan.normalized_debt = normalized_debt;
+						active_loan.last_updated = now;
 
 						let new_debt = T::InterestAccrual::current_debt(
 							active_loan.interest_rate_per_sec,
@@ -562,6 +610,9 @@ impl<T: Config> Pallet<T> {
 			interest_rate_with_penalty,
 			active_loan.normalized_debt,
 		)?;
+
+		let now: Moment = Self::now();
+		loan.last_updated = now;
 
 		let present_value = active_loan
 			.present_value(debt, write_off_groups, Self::now())
@@ -732,15 +783,21 @@ impl<T: Config> Pallet<T> {
 							active_loan.interest_rate_per_sec,
 							active_loan.normalized_debt,
 						)?;
+						let old_debt = T::InterestAccrual::previous_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+							active_loan.last_updated,
+						)?;
 
 						let now: Moment = Self::now();
 
 						// get old present value accounting for any write offs
 						let old_pv = active_loan
-							.present_value(debt, &write_off_groups, now)
+							.present_value(old_debt, &write_off_groups, loan.last_updated)
 							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 						active_loan.write_off_status = new_write_off_status;
+						active_loan.last_updated = now;
 
 						// calculate updated write off adjusted present value
 						let new_pv = active_loan
