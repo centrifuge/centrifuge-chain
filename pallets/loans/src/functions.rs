@@ -307,10 +307,10 @@ impl<T: Config> Pallet<T> {
 					.and_then(|positive_diff| nav.latest.checked_add(&positive_diff))
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
-				false => old_pv
+				false => Ok(old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+					.unwrap_or_else(Zero::zero)),
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
