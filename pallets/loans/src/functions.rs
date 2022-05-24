@@ -129,7 +129,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			LoanDetails {
 				collateral,
-				status: LoanStatus::Created
+				status: LoanStatus::Created,
 			},
 		);
 		Ok(loan_id)

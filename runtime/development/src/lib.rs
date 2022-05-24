@@ -356,9 +356,8 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
-	Borrow,
-	Price,
-	Invest,
+	Borrower,
+	Investor,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -380,7 +379,7 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, Call::Proxy(..))
 			}
-			ProxyType::Borrow => matches!(
+			ProxyType::Borrower => matches!(
 				c,
 				Call::Loans(pallet_loans::Call::create{..}) |
 				Call::Loans(pallet_loans::Call::borrow{..}) |
@@ -392,12 +391,9 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
-				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
-				Call::Loans(pallet_utility::Call::batch_all{..}) |
-				Call::Loans(pallet_utility::Call::batch{..})
+				Call::Pools(pallet_pools::Call::execute_epoch{..})
 			),
-			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
-			ProxyType::Invest => matches!(
+			ProxyType::Investor => matches!(
 				c,
 				Call::Pools(pallet_pools::Call::update_invest_order{..}) |
 				Call::Pools(pallet_pools::Call::update_redeem_order{..}) |
@@ -407,9 +403,7 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
-				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
-				Call::Loans(pallet_utility::Call::batch_all{..}) |
-				Call::Loans(pallet_utility::Call::batch{..})
+				Call::Pools(pallet_pools::Call::execute_epoch{..})
 			),
 		}
 	}
