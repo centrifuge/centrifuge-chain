@@ -48,7 +48,7 @@ members = [
 	"runtime/altair",
 	"runtime/centrifuge",
 	"runtime/common",
-#	"runtime/integration-tests",
+	"runtime/integration-tests",
 ]
 
 [dependencies]
@@ -127,7 +127,6 @@ cumulus-client-network = {git = "https://github.com/paritytech/cumulus", branch 
 cumulus-client-consensus-relay-chain = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-relay-chain-inprocess-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-relay-chain-interface = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
-#cumulus-relay-chain-local = { git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-primitives-core = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-client-service = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
 cumulus-client-consensus-aura = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.20" }
@@ -151,8 +150,8 @@ node-primitives = { git = "https://github.com/paritytech/substrate", branch = "p
 # benchmarking
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", optional = true, branch = "polkadot-v0.9.20" }
 
-# testing
-#runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
+# integration testing
+runtime-integration-tests = { path = "runtime/integration-tests", optional = true }
 
 [build-dependencies]
 vergen = "3.0.4"
@@ -180,5 +179,5 @@ runtime-benchmarks = [
 ]
 test-benchmarks = [
 	"runtime-benchmarks",
-#        "runtime-integration-tests/runtime-benchmarks",
+	"runtime-integration-tests/runtime-benchmarks",
 ]

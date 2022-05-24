@@ -65,7 +65,7 @@ orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-modu
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", branch = "master" }
 
 # Misc
-xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev="24ccbce563d1f99019b4cdfa2f3af4e99bac0dfc" }
+xcm-emulator = { git = "https://github.com/shaunxw/xcm-simulator", rev="65cdc715c4927b75285a09897e8cdafd793d02b7" }
 
 # Local
 runtime-common = { path = "../common" }
