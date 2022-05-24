@@ -12,7 +12,7 @@ use std::sync::Arc;
 #[rpc]
 pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
 	#[rpc(name = "pools_poolCurrency")]
-	fn pool_currency(&self, poold_id: PoolId) -> Result<Currency>;
+	fn currency(&self, poold_id: PoolId) -> Result<Currency>;
 
 	#[rpc(name = "pools_inspectEpochSolution")]
 	fn inspect_epoch_solution(
@@ -63,12 +63,12 @@ where
 	Currency: Codec,
 	BalanceRatio: Codec,
 {
-	fn pool_currency(&self, pool_id: PoolId) -> Result<Currency> {
+	fn currency(&self, pool_id: PoolId) -> Result<Currency> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
-		api.pool_currency(&at, pool_id)
+		api.currency(&at, pool_id)
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
 				message: "Unable to query currency of pool.".into(),

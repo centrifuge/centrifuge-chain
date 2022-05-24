@@ -1540,16 +1540,7 @@ impl_runtime_apis! {
 	}
 
 	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
-		fn pool_value(pool_id: PoolId) -> Option<Balance> {
-			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
-				.ok()
-				.map(|(latest, _)| latest.into())?;
-
-			Some(pool.reserve.total.saturating_add(nav))
-		}
-
-		fn pool_currency(pool_id: PoolId) -> Option<CurrencyId>{
+		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pools::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
 		}
 
