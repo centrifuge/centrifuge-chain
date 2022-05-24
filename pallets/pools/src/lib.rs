@@ -834,6 +834,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			ensure!(
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
+			);
+
 			let (tranche_id, old_order) = Pool::<T>::try_mutate(
 				pool_id,
 				|pool| -> Result<(T::TrancheId, T::Balance), DispatchError> {
@@ -910,6 +915,11 @@ pub mod pallet {
 			new_order: T::Balance,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+
+			ensure!(
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
+			);
 
 			let (tranche_id, old_order) = Pool::<T>::try_mutate(
 				pool_id,
