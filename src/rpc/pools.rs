@@ -11,10 +11,6 @@ use std::sync::Arc;
 
 #[rpc]
 pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
-	/// Returns an anchor given an anchor id from the runtime storage
-	#[rpc(name = "pools_poolValue")]
-	fn pool_value(&self, pool_id: PoolId) -> Result<Balance>;
-
 	#[rpc(name = "pools_poolCurrency")]
 	fn pool_currency(&self, poold_id: PoolId) -> Result<Currency>;
 
@@ -67,24 +63,6 @@ where
 	Currency: Codec,
 	BalanceRatio: Codec,
 {
-	fn pool_value(&self, pool_id: PoolId) -> Result<Balance> {
-		let api = self.client.runtime_api();
-		let best = self.client.info().best_hash;
-		let at = BlockId::hash(best);
-
-		api.pool_value(&at, pool_id)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query value of pool.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool not found.".into(),
-				data: Some(format!("PoolId: {:?}", pool_id).into()),
-			})
-	}
-
 	fn pool_currency(&self, pool_id: PoolId) -> Result<Currency> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
