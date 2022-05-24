@@ -26,11 +26,7 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
 	) -> Result<EpochSolution<Balance>>;
 
 	#[rpc(name = "pools_trancheTokenPrice")]
-	fn tranche_token_price(
-		&self,
-		pool_id: PoolId,
-		tranche: TrancheLoc<TrancheId>,
-	) -> Result<BalanceRatio>;
+	fn tranche_token_price(&self, pool_id: PoolId, tranche: TrancheId) -> Result<BalanceRatio>;
 
 	#[rpc(name = "pools_trancheTokenPrices")]
 	fn tranche_token_prices(&self, pool_id: PoolId) -> Result<Vec<BalanceRatio>>;
@@ -42,11 +38,7 @@ pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
 	fn tranche_id(&self, pool_id: PoolId, tranche_index: TrancheIndex) -> Result<TrancheId>;
 
 	#[rpc(name = "pools_trancheCurrency")]
-	fn tranche_currency(
-		&self,
-		pool_id: PoolId,
-		tranche_loc: TrancheLoc<TrancheId>,
-	) -> Result<Currency>;
+	fn tranche_currency(&self, pool_id: PoolId, tranche_id: TrancheId) -> Result<Currency>;
 }
 
 pub struct Pools<C, P> {
@@ -133,16 +125,12 @@ where
 			})
 	}
 
-	fn tranche_token_price(
-		&self,
-		pool_id: PoolId,
-		tranche: TrancheLoc<TrancheId>,
-	) -> Result<BalanceRatio> {
+	fn tranche_token_price(&self, pool_id: PoolId, tranche_id: TrancheId) -> Result<BalanceRatio> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
-		api.tranche_token_price(&at, pool_id, tranche.clone())
+		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
 				message: "Unable to query tranche token price.".into(),
@@ -151,7 +139,7 @@ where
 			.ok_or(RpcError {
 				code: ErrorCode::InvalidParams,
 				message: "Pool or tranche not found.".into(),
-				data: Some(format!("PoolId: {:?}, Tranche: {:?}", pool_id, tranche).into()),
+				data: Some(format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id).into()),
 			})
 	}
 
@@ -211,16 +199,12 @@ where
 			})
 	}
 
-	fn tranche_currency(
-		&self,
-		pool_id: PoolId,
-		tranche_loc: TrancheLoc<TrancheId>,
-	) -> Result<Currency> {
+	fn tranche_currency(&self, pool_id: PoolId, tranche_id: TrancheId) -> Result<Currency> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
-		api.tranche_currency(&at, pool_id, tranche_loc.clone())
+		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
 			.map_err(|e| RpcError {
 				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
 				message: "Unable to query tranche currency.".into(),
@@ -229,7 +213,7 @@ where
 			.ok_or(RpcError {
 				code: ErrorCode::InvalidParams,
 				message: "Pool or tranche not found.".into(),
-				data: Some(format!("PoolId: {:?}, TrancheLoc: {:?}", pool_id, tranche_loc).into()),
+				data: Some(format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id).into()),
 			})
 	}
 }
