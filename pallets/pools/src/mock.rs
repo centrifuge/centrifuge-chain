@@ -10,7 +10,6 @@ use frame_support::{
 	traits::{GenesisBuild, Hooks},
 	Blake2_128, StorageHasher,
 };
-use sp_std::convert::{TryInto, TryFrom};
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
@@ -22,6 +21,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 pub use runtime_common::{Rate, TrancheWeight};
 

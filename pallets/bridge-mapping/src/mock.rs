@@ -16,6 +16,7 @@ use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
+use core::convert::{TryFrom, TryInto};
 use frame_support::parameter_types;
 use frame_support::traits::Everything;
 use frame_support::PalletId;

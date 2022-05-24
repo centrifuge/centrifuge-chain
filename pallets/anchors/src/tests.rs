@@ -697,7 +697,7 @@ fn pre_commit_and_then_evict() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: [1, 0, 0, 0],
+				error: [10, 0, 0, 0],
 				message: Some("EvictionNotPossible"),
 			})
 		);

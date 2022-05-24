@@ -13,17 +13,17 @@
 
 pub use crate::{self as nft_sales};
 use common_types::CurrencyId;
-use frame_support::traits::{Everything, GenesisBuild, AsEnsureOriginWithArg};
+use frame_support::traits::{AsEnsureOriginWithArg, Everything, GenesisBuild};
 use frame_support::{parameter_types, PalletId};
-use frame_system::{EnsureSignedBy, EnsureSigned};
+use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use runtime_common::{Balance, ClassId, InstanceId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
-use sp_std::convert::{TryInto, TryFrom};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -49,7 +49,7 @@ parameter_types! {
 }
 
 impl orml_tokens::Config for Test {
-	type Event = Event;
+	type Event = ();
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;

@@ -26,10 +26,7 @@ pub mod weights;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
-use sp_std::{
-	convert::TryInto,
-	vec::Vec,
-};
+use sp_std::{convert::TryInto, vec::Vec};
 pub use weights::*;
 
 #[cfg(feature = "std")]

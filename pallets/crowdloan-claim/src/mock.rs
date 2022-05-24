@@ -34,7 +34,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	AccountId32,
 };
-use sp_std::convert::{TryInto, TryFrom};
+use sp_std::convert::{TryFrom, TryInto};
 
 // ----------------------------------------------------------------------------
 // Type alias, constants

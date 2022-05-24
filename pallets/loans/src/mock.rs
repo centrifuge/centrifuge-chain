@@ -21,11 +21,10 @@ use common_traits::PoolUpdateGuard;
 use common_types::{
 	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
 };
-use sp_std::convert::{TryInto, TryFrom};
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
-	traits::{GenesisBuild, SortedMembers, AsEnsureOriginWithArg},
+	traits::{AsEnsureOriginWithArg, GenesisBuild, SortedMembers},
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -42,6 +41,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -262,7 +262,7 @@ impl pallet_uniques::Config for MockRuntime {
 	type InstanceId = InstanceId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
