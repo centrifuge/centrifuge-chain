@@ -146,7 +146,7 @@ pub trait BenchRole {
 
 impl BenchRole for Role {
 	fn editor() -> Self {
-		Self::PoolRole(PoolRole::PoolAdmin)
+		Self::PoolRole(PoolRole::PermissionAdmin)
 	}
 
 	fn user() -> Self {

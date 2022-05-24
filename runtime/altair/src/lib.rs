@@ -859,7 +859,7 @@ impl
 		let (_editor, maybe_role, _pool, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::PermissionAdmin) => true,
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,

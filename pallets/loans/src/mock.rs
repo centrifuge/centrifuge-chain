@@ -327,11 +327,12 @@ impl Default for TestExternalitiesBuilder {
 }
 
 parameter_types! {
-	pub const PoolAdmin: u64 = 1;
-	pub const Borrower: u64 = 2;
-	pub const RiskAdmin: u64 = 3;
-	pub const SeniorInvestor: u64 = 4;
-	pub const JuniorInvestor: u64 = 5;
+	pub const PermissionAdmin: u64 = 1;
+	pub const PoolAdmin: u64 = 2;
+	pub const Borrower: u64 = 3;
+	pub const LoanAdmin: u64 = 4;
+	pub const SeniorInvestor: u64 = 5;
+	pub const JuniorInvestor: u64 = 6;
 }
 
 impl TestExternalitiesBuilder {

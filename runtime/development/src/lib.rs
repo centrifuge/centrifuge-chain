@@ -393,8 +393,8 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
 				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
-				Call::Loans(pallet_utility::Call::batch_all{..}) |
-				Call::Loans(pallet_utility::Call::batch{..})
+				Call::Utility(pallet_utility::Call::batch_all{..}) |
+				Call::Utility(pallet_utility::Call::batch{..})
 			),
 			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
 			ProxyType::Invest => matches!(
@@ -408,8 +408,8 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
 				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
-				Call::Loans(pallet_utility::Call::batch_all{..}) |
-				Call::Loans(pallet_utility::Call::batch{..})
+				Call::Utility(pallet_utility::Call::batch_all{..}) |
+				Call::Utility(pallet_utility::Call::batch{..})
 			),
 		}
 	}
@@ -1095,7 +1095,7 @@ impl
 		let (_editor, maybe_role, _scope, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::PermissionAdmin) => true,
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,

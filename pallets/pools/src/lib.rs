@@ -620,6 +620,11 @@ pub mod pallet {
 			T::Permission::add(
 				PermissionScope::Pool(pool_id),
 				admin.clone(),
+				Role::PoolRole(PoolRole::PermissionAdmin),
+			)?;
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				admin.clone(),
 				Role::PoolRole(PoolRole::PoolAdmin),
 			)?;
 			Self::deposit_event(Event::Created(pool_id, admin));
