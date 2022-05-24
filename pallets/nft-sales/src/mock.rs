@@ -13,12 +13,13 @@
 
 pub use crate::{self as nft_sales};
 use common_types::CurrencyId;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{Everything, GenesisBuild, AsEnsureOriginWithArg};
 use frame_support::{parameter_types, PalletId};
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureSignedBy, EnsureSigned};
 use orml_traits::parameter_type_with_key;
 use runtime_common::{Balance, ClassId, InstanceId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
+use sp_std::convert::{TryInto, TryFrom};
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -43,8 +44,12 @@ frame_support::construct_runtime!(
 	}
 );
 
+parameter_types! {
+	pub const MaxReserves: u32 = 50;
+}
+
 impl orml_tokens::Config for Test {
-	type Event = ();
+	type Event = Event;
 	type Balance = Balance;
 	type Amount = i64;
 	type CurrencyId = CurrencyId;
@@ -53,6 +58,8 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {
@@ -73,6 +80,7 @@ impl pallet_uniques::Config for Test {
 	type InstanceId = InstanceId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;

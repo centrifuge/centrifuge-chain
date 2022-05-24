@@ -10,6 +10,7 @@ use frame_support::{
 	traits::{GenesisBuild, Hooks},
 	Blake2_128, StorageHasher,
 };
+use sp_std::convert::{TryInto, TryFrom};
 use frame_system as system;
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
@@ -190,7 +191,8 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const MaxLocks: u32 = 100;
+	pub MaxLocks: u32 = 2;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for Test {
@@ -203,6 +205,8 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {

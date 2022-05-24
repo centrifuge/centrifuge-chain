@@ -21,10 +21,11 @@ use common_traits::PoolUpdateGuard;
 use common_types::{
 	CurrencyId, PermissionRoles, PermissionScope, PoolId, PoolLocator, Role, TimeProvider,
 };
+use sp_std::convert::{TryInto, TryFrom};
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
-	traits::{GenesisBuild, SortedMembers},
+	traits::{GenesisBuild, SortedMembers, AsEnsureOriginWithArg},
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -129,18 +130,21 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub MaxLocks: u32 = 2;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
-	type Amount = i128;
+	type Amount = i64;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {
@@ -258,6 +262,7 @@ impl pallet_uniques::Config for MockRuntime {
 	type InstanceId = InstanceId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;

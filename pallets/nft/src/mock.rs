@@ -26,7 +26,7 @@ use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
-
+use sp_std::convert::{TryFrom, TryInto};
 use frame_support::{
 	parameter_types,
 	traits::{FindAuthor, GenesisBuild, SortedMembers},
