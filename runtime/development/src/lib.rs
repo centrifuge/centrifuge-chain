@@ -694,6 +694,8 @@ impl pallet_uniques::Config for Runtime {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 parameter_types! {

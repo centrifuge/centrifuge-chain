@@ -141,6 +141,7 @@ where
 	<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 	<T as ORMLConfig>::Balance: From<u128>,
+	<T as pallet_uniques::Config>::ClassId: Default,
 {
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
@@ -295,6 +296,7 @@ benchmarks! {
 		<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
 		<T as pallet_pools::Config>::EpochId: From<u32>,
 		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+		<T as pallet_uniques::Config>::ClassId: Default,
 	}
 
 	initialise_pool {
