@@ -90,6 +90,8 @@ impl pallet_uniques::Config for Test {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 parameter_types! {
