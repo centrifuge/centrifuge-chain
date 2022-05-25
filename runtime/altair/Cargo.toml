@@ -235,7 +235,7 @@ runtime-benchmarks = [
     'pallet-collator-selection/runtime-benchmarks',
     'pallet-balances/runtime-benchmarks',
     "pallet-permissions/runtime-benchmarks",
-#    "pallet-restricted-tokens/runtime-benchmarks",
+    "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
 ]
 
