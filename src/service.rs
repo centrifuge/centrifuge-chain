@@ -14,7 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::api::{Anchor, AnchorApi};
+use crate::{
+	api::{Anchor, AnchorApi},
+	cli::RpcConfig,
+};
+
 use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
@@ -222,6 +226,7 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
@@ -398,8 +403,7 @@ where
 			relay_chain_slot_duration,
 			import_queue,
 			collator_options: CollatorOptions {
-				//TODO(nuno): we should inject this value from the cli
-				relay_chain_rpc_url: Default::default(),
+				relay_chain_rpc_url: rpc_config.relay_chain_rpc_url,
 			},
 		};
 
@@ -471,6 +475,7 @@ pub async fn start_altair_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<
@@ -485,6 +490,7 @@ pub async fn start_altair_node(
 		parachain_config,
 		polkadot_config,
 		id,
+		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
@@ -625,6 +631,7 @@ pub async fn start_centrifuge_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<
@@ -639,6 +646,7 @@ pub async fn start_centrifuge_node(
 		parachain_config,
 		polkadot_config,
 		id,
+		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
@@ -779,6 +787,7 @@ pub async fn start_development_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<
@@ -793,6 +802,7 @@ pub async fn start_development_node(
 		parachain_config,
 		polkadot_config,
 		id,
+		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));

@@ -144,3 +144,6 @@ impl RelayChainCli {
 		}
 	}
 }
+pub struct RpcConfig {
+	pub relay_chain_rpc_url: Option<url::Url>,
+}

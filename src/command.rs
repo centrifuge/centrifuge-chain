@@ -16,7 +16,7 @@
 
 use crate::{
 	chain_spec,
-	cli::{Cli, RelayChainCli, Subcommand},
+	cli::{Cli, RelayChainCli, RpcConfig, Subcommand},
 	service::{
 		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
 	},
@@ -389,6 +389,10 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
+				let rpc_config = RpcConfig {
+					relay_chain_rpc_url: cli.run.relay_chain_rpc_url,
+				};
+
 				let id = cli.parachain_id.unwrap_or(10001).into();
 
 				let parachain_account =
@@ -425,23 +429,29 @@ pub fn run() -> Result<()> {
 
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, id)
+						crate::service::start_altair_node(config, polkadot_config, id, rpc_config)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
 					}
-					ChainIdentity::Centrifuge => {
-						crate::service::start_centrifuge_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
-					ChainIdentity::Development => {
-						crate::service::start_development_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
+					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
+						config,
+						polkadot_config,
+						id,
+						rpc_config,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into),
+					ChainIdentity::Development => crate::service::start_development_node(
+						config,
+						polkadot_config,
+						id,
+						rpc_config,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into),
 				}
 			})
 		}

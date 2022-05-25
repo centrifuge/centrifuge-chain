@@ -1204,6 +1204,7 @@ dependencies = [
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
  "tempfile",
+ "url 2.2.2",
  "vergen",
 ]
 
