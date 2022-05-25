@@ -212,6 +212,8 @@ where
 	class_id
 }
 
+/// Only used for runtime benchmarks at the moment
+#[cfg(feature = "runtime-benchmarks")]
 pub(crate) fn get_tranche_id<T>(
 	pool_id: <T as pallet_pools::Config>::PoolId,
 	index: u64,

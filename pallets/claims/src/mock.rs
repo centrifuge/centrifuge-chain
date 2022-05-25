@@ -34,13 +34,13 @@ use frame_system::EnsureSignedBy;
 use sp_core::H256;
 use sp_io::TestExternalities;
 
+use crate::traits::WeightInfo;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 	transaction_validity::TransactionPriority,
 };
-
-use crate::traits::WeightInfo;
+use sp_std::convert::{TryFrom, TryInto};
 
 use frame_support::traits::Everything;
 pub use pallet_balances as balances;

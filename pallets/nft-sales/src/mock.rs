@@ -13,9 +13,9 @@
 
 pub use crate::{self as nft_sales};
 use common_types::CurrencyId;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{AsEnsureOriginWithArg, Everything, GenesisBuild};
 use frame_support::{parameter_types, PalletId};
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use runtime_common::{Balance, ClassId, InstanceId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
@@ -23,6 +23,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -43,6 +44,10 @@ frame_support::construct_runtime!(
 	}
 );
 
+parameter_types! {
+	pub const MaxReserves: u32 = 50;
+}
+
 impl orml_tokens::Config for Test {
 	type Event = ();
 	type Balance = Balance;
@@ -53,6 +58,8 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {
@@ -73,6 +80,7 @@ impl pallet_uniques::Config for Test {
 	type InstanceId = InstanceId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -82,6 +90,8 @@ impl pallet_uniques::Config for Test {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 parameter_types! {

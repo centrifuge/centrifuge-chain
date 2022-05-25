@@ -109,7 +109,7 @@ fn pre_commit_fail_anchor_exists() {
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 0,
+				error: [0, 0, 0, 0],
 				message: Some("AnchorAlreadyExists"),
 			})
 		);
@@ -136,7 +136,7 @@ fn pre_commit_fail_anchor_exists_different_acc() {
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 0,
+				error: [0, 0, 0, 0],
 				message: Some("AnchorAlreadyExists"),
 			})
 		);
@@ -168,7 +168,7 @@ fn pre_commit_fail_pre_commit_exists() {
 			Anchors::pre_commit(Origin::signed(1), anchor_id, signing_root),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 4,
+				error: [4, 0, 0, 0],
 				message: Some("PreCommitAlreadyExists"),
 			})
 		);
@@ -208,7 +208,7 @@ fn pre_commit_fail_pre_commit_exists_different_acc() {
 			Anchors::pre_commit(Origin::signed(2), anchor_id, signing_root),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 4,
+				error: [4, 0, 0, 0],
 				message: Some("PreCommitAlreadyExists"),
 			})
 		);
@@ -291,7 +291,7 @@ fn basic_commit() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 1,
+				error: [1, 0, 0, 0],
 				message: Some("AnchorStoreDateInPast"),
 			})
 		);
@@ -328,7 +328,7 @@ fn commit_fail_anchor_exists() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 0,
+				error: [0, 0, 0, 0],
 				message: Some("AnchorAlreadyExists"),
 			})
 		);
@@ -344,7 +344,7 @@ fn commit_fail_anchor_exists() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 0,
+				error: [0, 0, 0, 0],
 				message: Some("AnchorAlreadyExists"),
 			})
 		);
@@ -377,7 +377,7 @@ fn basic_pre_commit_commit() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 6,
+				error: [6, 0, 0, 0],
 				message: Some("InvalidPreCommitProof"),
 			})
 		);
@@ -453,7 +453,7 @@ fn pre_commit_commit_fail_from_another_acc() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 5,
+				error: [5, 0, 0, 0],
 				message: Some("NotOwnerOfPreCommit"),
 			})
 		);
@@ -697,7 +697,7 @@ fn pre_commit_and_then_evict() {
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 10,
+				error: [10, 0, 0, 0],
 				message: Some("EvictionNotPossible"),
 			})
 		);
@@ -791,7 +791,7 @@ fn pre_commit_at_7999_and_then_evict_before_expire_and_collaborator_succeed_comm
 			),
 			DispatchError::Module(ModuleError {
 				index: 5,
-				error: 5,
+				error: [5, 0, 0, 0],
 				message: Some("NotOwnerOfPreCommit"),
 			})
 		);

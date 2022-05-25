@@ -407,6 +407,7 @@ parameter_types! {
 	pub const MaxLocks: u32 = 100;
 	pub const ExistentialDeposit: u64 = 1;
 }
+
 impl pallet_balances::Config for MockRuntime {
 	type MaxLocks = MaxLocks;
 	type Balance = Balance;
@@ -419,6 +420,10 @@ impl pallet_balances::Config for MockRuntime {
 	type ReserveIdentifier = ();
 }
 
+parameter_types! {
+	pub const MaxReserves: u32 = 50;
+}
+
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -429,6 +434,8 @@ impl orml_tokens::Config for MockRuntime {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {
