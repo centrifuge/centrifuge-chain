@@ -220,31 +220,31 @@ pub fn create_tranche_input(
 pub fn whitelist_admin(admin: AccountId, pool_id: PoolId) -> Vec<Call> {
 	let mut calls = Vec::new();
 	calls.push(permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::PermissionAdmin,
 		admin.clone(),
 		pool_id,
 		PoolRole::Borrower,
 	));
 	calls.push(permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::PermissionAdmin,
 		admin.clone(),
 		pool_id,
 		PoolRole::LiquidityAdmin,
 	));
 	calls.push(permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::PermissionAdmin,
 		admin.clone(),
 		pool_id,
 		PoolRole::LoanAdmin,
 	));
 	calls.push(permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::PermissionAdmin,
 		admin.clone(),
 		pool_id,
 		PoolRole::MemberListAdmin,
 	));
 	calls.push(permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::PermissionAdmin,
 		admin.clone(),
 		pool_id,
 		PoolRole::PricingAdmin,
@@ -304,7 +304,7 @@ pub fn whitelist_10_for_each_tranche_calls(pool: PoolId, num_tranches: u32) -> V
 /// Whitelist a given investor for a fiven pool and tranche for 1 year of time
 pub fn whitelist_investor_call(pool: PoolId, investor: Keyring, tranche: TrancheId) -> Call {
 	permission_call(
-		PoolRole::PoolAdmin,
+		PoolRole::PermissionAdmin,
 		investor.to_account_id(),
 		pool,
 		PoolRole::TrancheInvestor(tranche, SECONDS_PER_YEAR),
