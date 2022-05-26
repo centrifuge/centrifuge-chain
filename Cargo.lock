@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.13"
+version = "0.10.14"
 dependencies = [
  "common-traits",
  "common-types",
@@ -1115,7 +1115,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.13"
+version = "0.10.14"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -1210,7 +1210,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.5"
+version = "0.10.6"
 dependencies = [
  "chainbridge",
  "cumulus-pallet-aura-ext",
@@ -1264,6 +1264,7 @@ dependencies = [
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-treasury",
  "pallet-utility",
  "pallet-vesting",
  "pallet-xcm",
