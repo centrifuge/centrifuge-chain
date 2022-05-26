@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::rpc::{
-	anchor::{Anchor, AnchorApi},
-	loans::{Loans, LoansApi},
-	pools::{Pools, PoolsApi},
+use crate::{
+	cli::RpcConfig,
+	rpc::{
+		anchor::{Anchor, AnchorApi},
+		loans::{Loans, LoansApi},
+		pools::{Pools, PoolsApi},
+	},
 };
+
+use cumulus_client_cli::CollatorOptions;
 use cumulus_client_consensus_aura::{AuraConsensus, BuildAuraConsensusParams, SlotProportion};
 use cumulus_client_consensus_common::ParachainConsensus;
 use cumulus_client_network::BlockAnnounceValidator;
@@ -26,8 +31,8 @@ use cumulus_client_service::{
 	prepare_node_config, start_collator, start_full_node, StartCollatorParams, StartFullNodeParams,
 };
 use cumulus_primitives_core::ParaId;
-use cumulus_relay_chain_interface::RelayChainInterface;
-use cumulus_relay_chain_local::build_relay_chain_interface;
+use cumulus_relay_chain_inprocess_interface::build_inprocess_relay_chain;
+use cumulus_relay_chain_interface::{RelayChainError, RelayChainInterface};
 use node_primitives::{Block, Hash};
 use sc_client_api::ExecutorProvider;
 use sc_executor::NativeElseWasmExecutor;
@@ -36,7 +41,6 @@ use sc_rpc_api::DenyUnsafe;
 use sc_service::{Configuration, PartialComponents, Role, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sp_api::ConstructRuntimeApi;
-use sp_consensus::SlotData;
 use sp_keystore::SyncCryptoStorePtr;
 use sp_runtime::traits::BlakeTwo256;
 use std::{sync::Arc, time::Duration};
@@ -226,6 +230,7 @@ async fn start_node_impl<RuntimeApi, Executor, RB, BIQ, BIC>(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 	rpc_ext_builder: RB,
 	build_import_queue: BIQ,
 	build_consensus: BIC,
@@ -304,12 +309,16 @@ where
 	let backend = params.backend.clone();
 	let mut task_manager = params.task_manager;
 
-	let (relay_chain_interface, collator_key) =
-		build_relay_chain_interface(polkadot_config, telemetry_worker_handle, &mut task_manager)
-			.map_err(|e| match e {
-				polkadot_service::Error::Sub(x) => x,
-				s => format!("{}", s).into(),
-			})?;
+	let (relay_chain_interface, collator_key) = build_inprocess_relay_chain(
+		polkadot_config,
+		&parachain_config,
+		telemetry_worker_handle,
+		&mut task_manager,
+	)
+	.map_err(|e| match e {
+		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
+		s => s.to_string().into(),
+	})?;
 	let block_announce_validator = BlockAnnounceValidator::new(relay_chain_interface.clone(), id);
 
 	let force_authoring = parachain_config.force_authoring;
@@ -381,7 +390,9 @@ where
 			spawner,
 			parachain_consensus,
 			import_queue,
-			collator_key,
+			collator_key: collator_key.ok_or(sc_service::error::Error::Other(
+				"Collator Key is None".to_string(),
+			))?,
 			relay_chain_slot_duration,
 		};
 
@@ -393,8 +404,11 @@ where
 			task_manager: &mut task_manager,
 			para_id: id,
 			relay_chain_interface,
-			import_queue,
 			relay_chain_slot_duration,
+			import_queue,
+			collator_options: CollatorOptions {
+				relay_chain_rpc_url: rpc_config.relay_chain_rpc_url,
+			},
 		};
 
 		start_full_node(params)?;
@@ -445,9 +459,9 @@ pub fn build_altair_import_queue(
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*time,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 			Ok((time, slot))
@@ -465,6 +479,7 @@ pub async fn start_altair_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<
@@ -479,6 +494,7 @@ pub async fn start_altair_node(
 		parachain_config,
 		polkadot_config,
 		id,
+		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
@@ -528,9 +544,9 @@ pub async fn start_altair_node(
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 								*time,
-								slot_duration.slot_duration(),
+								slot_duration,
 							);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
@@ -599,9 +615,9 @@ pub fn build_centrifuge_import_queue(
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*time,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 			Ok((time, slot))
@@ -619,6 +635,7 @@ pub async fn start_centrifuge_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<
@@ -633,6 +650,7 @@ pub async fn start_centrifuge_node(
 		parachain_config,
 		polkadot_config,
 		id,
+		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
@@ -682,9 +700,9 @@ pub async fn start_centrifuge_node(
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 								*time,
-								slot_duration.slot_duration(),
+								slot_duration,
 							);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {
@@ -753,9 +771,9 @@ pub fn build_development_import_queue(
 			let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 			let slot =
-				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+				sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 					*time,
-					slot_duration.slot_duration(),
+					slot_duration,
 				);
 
 			Ok((time, slot))
@@ -773,6 +791,7 @@ pub async fn start_development_node(
 	parachain_config: Configuration,
 	polkadot_config: Configuration,
 	id: ParaId,
+	rpc_config: RpcConfig,
 ) -> sc_service::error::Result<(
 	TaskManager,
 	Arc<
@@ -787,6 +806,7 @@ pub async fn start_development_node(
 		parachain_config,
 		polkadot_config,
 		id,
+		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
 			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
@@ -839,9 +859,9 @@ pub async fn start_development_node(
 						let time = sp_timestamp::InherentDataProvider::from_system_time();
 
 						let slot =
-							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_duration(
+							sp_consensus_aura::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 								*time,
-								slot_duration.slot_duration(),
+								slot_duration,
 							);
 
 						let parachain_inherent = parachain_inherent.ok_or_else(|| {

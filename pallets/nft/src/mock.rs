@@ -26,13 +26,13 @@ use chainbridge::{
 	constants::DEFAULT_RELAYER_VOTE_THRESHOLD,
 	types::{ChainId, ResourceId},
 };
-
 use frame_support::{
 	parameter_types,
 	traits::{FindAuthor, GenesisBuild, SortedMembers},
 	weights::Weight,
 	ConsensusEngineId, PalletId,
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 use frame_system::EnsureSignedBy;
 use proofs::Proof;

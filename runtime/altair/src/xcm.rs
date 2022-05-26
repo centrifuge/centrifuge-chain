@@ -11,7 +11,7 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -20,10 +20,9 @@ use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, ConvertedConcreteAssetId, EnsureXcmOrigin, FixedRateOfFungible,
-	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentAsSuperuser, ParentIsPreset,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue,
-	TakeWeightCredit,
+	FixedWeightBounds, FungiblesAdapter, LocationInverter, ParentIsPreset, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeRevenue, TakeWeightCredit,
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
@@ -43,7 +42,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-	type IsReserve = MultiNativeAsset;
+	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
@@ -62,6 +61,9 @@ pub type Trader = (
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	// An extra rule handling AIR in its canonical representation. This is currently useful
+	// for testing the transfer of AIR bidirectionally between Altair and a sibling parachain.
+	FixedRateOfFungible<AirPerSecondCanonical, ToTreasury>,
 );
 
 parameter_types! {
@@ -69,8 +71,8 @@ parameter_types! {
 
 	pub AirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			0,
+			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
@@ -85,6 +87,14 @@ parameter_types! {
 		).into(),
 		// KUSD:KSM = 400:1
 		ksm_per_second() * 400
+	);
+
+	pub AirPerSecondCanonical: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+		).into(),
+		native_per_second(),
 	);
 }
 
@@ -197,6 +207,13 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 
 		match location.clone() {
 			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => match &key[..] {
+				parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+				_ => Err(location.clone()),
+			},
+			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
@@ -276,7 +293,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// into the right message queues.
 pub type XcmRouter = (
 	// Use UMP to communicate with the relay chain
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
@@ -295,9 +312,6 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	// Native converter for sibling Parachains; will convert to a `SiblingPara` origin when
 	// recognized.
 	SiblingParachainAsNative<cumulus_pallet_xcm::Origin, Origin>,
-	// Superuser converter for the Relay-chain (Parent) location. This will allow it to issue a
-	// transaction from the Root origin.
-	ParentAsSuperuser<Origin>,
 	// Native signed account converter; this just converts an `AccountId32` origin into a normal
 	// `Origin::Signed` origin of the same 32-byte value.
 	SignedAccountId32AsNative<RelayNetwork, Origin>,
@@ -316,11 +330,8 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> u128 {
-		#[allow(clippy::match_ref_pats)] // false positive
-		match (location.parents, location.first_interior()) {
-			_ => u128::MAX,
-		}
+	pub ParachainMinFee: |_location: MultiLocation| -> u128 {
+		u128::MAX
 	};
 }
 
@@ -337,6 +348,8 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

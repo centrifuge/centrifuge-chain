@@ -197,7 +197,7 @@ impl<T: Config> Pallet<T> {
 
 				// burn loan nft
 				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
+				T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
@@ -307,10 +307,10 @@ impl<T: Config> Pallet<T> {
 					.and_then(|positive_diff| nav.latest.checked_add(&positive_diff))
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
-				false => old_pv
+				false => Ok(old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+					.unwrap_or_else(Zero::zero)),
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
