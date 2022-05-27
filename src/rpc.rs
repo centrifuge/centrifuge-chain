@@ -13,24 +13,24 @@
 //! Centrifuge specific rpc endpoints (common endpoints across all environments)
 
 use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
-use runtime_common::{AccountId, Balance, Index};
+use runtime_common::{AccountId, Balance, Hash, Index};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
-use substrate_frame_rpc_system::{FullSystem, SystemApi};
+use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
 
 /// A type representing all RPC extensions.
-pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
+pub type RpcExtension = jsonrpsee::RpcModule<()>;
 
 /// Instantiate all Full RPC extensions.
 pub fn create_full<C, P, Block>(
 	client: Arc<C>,
 	pool: Arc<P>,
 	deny_unsafe: DenyUnsafe,
-) -> RpcExtension
+) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
 	Block: sp_api::BlockT,
 	C: ProvideRuntimeApi<Block>,
@@ -41,17 +41,10 @@ where
 	C::Api: BlockBuilder<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 {
-	let mut io = jsonrpc_core::IoHandler::default();
+	let mut module = RpcExtension::new(());
 
-	io.extend_with(SystemApi::to_delegate(FullSystem::new(
-		client.clone(),
-		pool,
-		deny_unsafe,
-	)));
+	module.merge(SystemRpc::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	module.merge(TransactionPaymentRpc::new(client.clone()).into_rpc())?;
 
-	io.extend_with(TransactionPaymentApi::to_delegate(
-		TransactionPaymentRpc::new(client.clone()),
-	));
-
-	io
+	Ok(module)
 }
