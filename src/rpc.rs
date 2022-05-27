@@ -13,7 +13,7 @@
 //! Centrifuge specific rpc endpoints (common endpoints across all environments)
 
 use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
-use runtime_common::{AccountId, Balance, Hash, Index};
+use runtime_common::{AccountId, Balance, Index};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
