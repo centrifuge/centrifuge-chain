@@ -259,7 +259,7 @@ where
 				>,
 			>,
 			DenyUnsafe,
-		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
+		) -> Result<crate::rpc::RpcExtension, sc_service::Error>
 		+ Send
 		+ Sync
 		+ 'static,
@@ -338,10 +338,7 @@ where
 
 	let rpc_client = client.clone();
 	let pool = transaction_pool.clone();
-	let rpc_builder = {
-		let client = client.clone();
-		move |_, _| rpc_ext_builder(client.clone())
-	};
+	let rpc_builder = { move |deny, _| rpc_ext_builder(rpc_client.clone(), pool.clone(), deny) };
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
 		rpc_builder: Box::new(rpc_builder),
@@ -494,9 +491,9 @@ pub async fn start_altair_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
-			Ok(io)
+			let /*mut*/ module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			// module.merge(AnchorApi::to_delegate(Anchor::new(client)).into_rpc()).expect("TODO(nuno)");
+			Ok(module)
 		},
 		build_altair_import_queue,
 		|client,
@@ -650,9 +647,9 @@ pub async fn start_centrifuge_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
-			Ok(io)
+			let /*mut*/ module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			// module.merge(AnchorApi::to_delegate(Anchor::new(client)).into_rpc()).expect("TODO(nuno)");
+			Ok(module)
 		},
 		build_centrifuge_import_queue,
 		|client,
@@ -800,17 +797,17 @@ pub async fn start_development_node(
 		>,
 	>,
 )> {
-	let rpc_builder = {
-		let client = client.clone();
-		move |_, _| {
-			let deps = crate::rpc::FullDeps {
-				client: client.clone(),
-				command_sink: rpc_sink.clone(),
-				_marker: Default::default(),
-			};
-			crate::rpc::create_full(deps).map_err(Into::into)
-		}
-	};
+	// let rpc_builder = {
+	// 	let client = client.clone();
+	// 	move |_, _| {
+	// 		let deps = crate::rpc::FullDeps {
+	// 			client: client.clone(),
+	// 			command_sink: rpc_sink.clone(),
+	// 			_marker: Default::default(),
+	// 		};
+	// 		crate::rpc::create_full(deps).map_err(Into::into)
+	// 	}
+	// };
 
 	start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
@@ -818,9 +815,9 @@ pub async fn start_development_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
-			Ok(io)
+			let /*mut*/ module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			// module.merge(AnchorApi::to_delegate(Anchor::new(client)).into_rpc()).expect("TODO(nuno)");
+			Ok(module)
 		},
 		build_development_import_queue,
 		|client,
