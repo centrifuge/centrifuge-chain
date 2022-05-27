@@ -263,6 +263,7 @@ impl pallet_uniques::Config for MockRuntime {
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
+	type Locker = ();
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;

@@ -81,6 +81,7 @@ impl pallet_uniques::Config for Test {
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Locker = ();
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;

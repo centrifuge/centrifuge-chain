@@ -48,4 +48,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn dispatch_as() -> Weight {
 		(24_091_000 as Weight)
 	}
+	fn force_batch(_c: u32) -> Weight {
+		todo!()
+	}
 }

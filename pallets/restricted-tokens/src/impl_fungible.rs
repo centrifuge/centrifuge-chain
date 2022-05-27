@@ -66,8 +66,8 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		))
 	}
 
-	fn can_deposit(who: &T::AccountId, amount: Self::Balance) -> DepositConsequence {
-		<T::NativeFungible as Inspect<T::AccountId>>::can_deposit(who, amount)
+	fn can_deposit(who: &T::AccountId, amount: Self::Balance, mint: bool) -> DepositConsequence {
+		<T::NativeFungible as Inspect<T::AccountId>>::can_deposit(who, amount, mint)
 	}
 
 	fn can_withdraw(

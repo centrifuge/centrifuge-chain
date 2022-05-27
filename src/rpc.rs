@@ -12,7 +12,7 @@
 
 //! Centrifuge specific rpc endpoints (common endpoints across all environments)
 
-use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
+use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
 use runtime_common::{AccountId, Balance, Index};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::TransactionPool;
@@ -49,9 +49,9 @@ where
 		deny_unsafe,
 	)));
 
-	io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
-		client.clone(),
-	)));
+	io.extend_with(TransactionPaymentApi::to_delegate(
+		TransactionPaymentRpc::new(client.clone()),
+	));
 
 	io
 }
