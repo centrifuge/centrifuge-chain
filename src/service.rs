@@ -310,6 +310,7 @@ where
 		&parachain_config,
 		telemetry_worker_handle,
 		&mut task_manager,
+		None,
 	)
 	.map_err(|e| match e {
 		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
@@ -337,12 +338,13 @@ where
 
 	let rpc_client = client.clone();
 	let pool = transaction_pool.clone();
-	let rpc_extensions_builder = Box::new(move |deny, _subscription_executor| {
-		rpc_ext_builder(rpc_client.clone(), pool.clone(), deny)
-	});
+	let rpc_builder = {
+		let client = client.clone();
+		move |_, _| rpc_ext_builder(client.clone())
+	};
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_extensions_builder,
+		rpc_builder: Box::new(rpc_builder),
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
@@ -798,6 +800,18 @@ pub async fn start_development_node(
 		>,
 	>,
 )> {
+	let rpc_builder = {
+		let client = client.clone();
+		move |_, _| {
+			let deps = crate::rpc::FullDeps {
+				client: client.clone(),
+				command_sink: rpc_sink.clone(),
+				_marker: Default::default(),
+			};
+			crate::rpc::create_full(deps).map_err(Into::into)
+		}
+	};
+
 	start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,

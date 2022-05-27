@@ -1105,6 +1105,7 @@ dependencies = [
  "jsonrpc-core-client",
  "jsonrpc-derive",
  "jsonrpc-pubsub",
+ "jsonrpsee",
  "log 0.4.17",
  "node-inspect",
  "node-primitives",
