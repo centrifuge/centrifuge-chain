@@ -111,11 +111,12 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		asset: Self::AssetId,
 		who: &T::AccountId,
 		amount: Self::Balance,
+		mint: bool,
 	) -> DepositConsequence {
 		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::Inspect<T::AccountId>>::can_deposit(who, amount)
+			<Pallet<T> as fungible::Inspect<T::AccountId>>::can_deposit(who, amount, mint)
 		} else {
-			<T::Fungibles as Inspect<T::AccountId>>::can_deposit(asset, who, amount)
+			<T::Fungibles as Inspect<T::AccountId>>::can_deposit(asset, who, amount, mint)
 		}
 	}
 

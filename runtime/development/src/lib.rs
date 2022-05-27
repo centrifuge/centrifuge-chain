@@ -691,6 +691,7 @@ impl pallet_uniques::Config for Runtime {
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Locker = ();
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
