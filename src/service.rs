@@ -15,7 +15,7 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{
-	api::{Anchor, AnchorApi},
+	api::{AnchorApiServer, AnchorRpc},
 	cli::RpcConfig,
 };
 
@@ -491,8 +491,10 @@ pub async fn start_altair_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let /*mut*/ module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
-			// module.merge(AnchorApi::to_delegate(Anchor::new(client)).into_rpc()).expect("TODO(nuno)");
+			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			module
+				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
 		build_altair_import_queue,
@@ -647,8 +649,10 @@ pub async fn start_centrifuge_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let /*mut*/ module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
-			// module.merge(AnchorApi::to_delegate(Anchor::new(client)).into_rpc()).expect("TODO(nuno)");
+			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			module
+				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
 		build_centrifuge_import_queue,
@@ -815,8 +819,10 @@ pub async fn start_development_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let /*mut*/ module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
-			// module.merge(AnchorApi::to_delegate(Anchor::new(client)).into_rpc()).expect("TODO(nuno)");
+			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			module
+				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
 		build_development_import_queue,
