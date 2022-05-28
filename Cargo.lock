@@ -533,9 +533,9 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "beef"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bed554bd50246729a1ec158d08aa3235d1b69d94ad120ebe187e28894787e736"
+checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
 dependencies = [
  "serde",
 ]
@@ -3728,9 +3728,9 @@ dependencies = [
 
 [[package]]
 name = "hyper"
-version = "0.14.18"
+version = "0.14.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b26ae0a80afebe130861d90abf98e3814a4f28a4c6ffeb5ab8ebb2be311e0ef2"
+checksum = "42dc3c131584288d375f2d07f822b0cb012d8c6fb899a5b9fdb3cb7eb9b6004f"
 dependencies = [
  "bytes 1.1.0",
  "futures-channel",
@@ -3758,7 +3758,7 @@ checksum = "5f9f7a97316d44c0af9b0301e65010573a853a9fc97046d7331d7f6bc0fd5a64"
 dependencies = [
  "ct-logs",
  "futures-util",
- "hyper 0.14.18",
+ "hyper 0.14.19",
  "log 0.4.17",
  "rustls 0.19.1",
  "rustls-native-certs 0.5.0",
@@ -3848,9 +3848,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f647032dfaa1f8b6dc29bd3edb7bbef4861b8b8007ebb118d6db284fd59f6ee"
+checksum = "e6012d540c5baa3589337a98ce73408de9b5a25ec9fc2c6fd6be8f0d39e0ca5a"
 dependencies = [
  "autocfg 1.1.0",
  "hashbrown 0.11.2",
@@ -3967,7 +3967,7 @@ checksum = "d2b99d4207e2a04fb4581746903c2bb7eb376f88de9c699d0f3e10feeac0cd3a"
 dependencies = [
  "derive_more",
  "futures 0.3.21",
- "hyper 0.14.18",
+ "hyper 0.14.19",
  "jsonrpc-core",
  "jsonrpc-pubsub",
  "log 0.4.17",
@@ -4080,7 +4080,7 @@ dependencies = [
  "futures-channel",
  "futures-timer",
  "futures-util",
- "hyper 0.14.18",
+ "hyper 0.14.19",
  "jsonrpsee-types",
  "parking_lot 0.12.0",
  "rand 0.8.5",
@@ -4102,7 +4102,7 @@ dependencies = [
  "futures-channel",
  "futures-util",
  "globset",
- "hyper 0.14.18",
+ "hyper 0.14.19",
  "jsonrpsee-core",
  "jsonrpsee-types",
  "lazy_static",
@@ -4964,9 +4964,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.6"
+version = "1.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e7e15d7610cce1d9752e137625f14e61a28cd45929b6e12e47b50fe154ee2e"
+checksum = "9702761c3935f8cc2f101793272e202c72b99da8f4224a19ddcf1279a6450bbf"
 dependencies = [
  "cc",
  "pkg-config",
@@ -10312,7 +10312,7 @@ dependencies = [
  "futures 0.3.21",
  "futures-timer",
  "hex",
- "hyper 0.14.18",
+ "hyper 0.14.19",
  "hyper-rustls",
  "num_cpus",
  "once_cell",
@@ -12045,7 +12045,7 @@ version = "0.10.0-dev"
 source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.22#616d33ea23bab86cafffaf116fc607b6790fb4eb"
 dependencies = [
  "futures-util",
- "hyper 0.14.18",
+ "hyper 0.14.19",
  "log 0.4.17",
  "prometheus",
  "thiserror",
