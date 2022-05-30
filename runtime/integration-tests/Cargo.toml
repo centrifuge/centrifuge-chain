@@ -10,7 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # TODO(protocol): make fudge non-optional once it's operational again
-#fudge = { git = "https://github.com/centrifuge/fudge", branch = "v0.9.22", optional = true }
+fudge = { git = "https://github.com/centrifuge/fudge", branch = "v0.9.22" }
 tokio = { version = "1.15", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
@@ -34,6 +34,7 @@ sp-authorship = { git = "https://github.com/paritytech/substrate", branch = "pol
 sp-consensus-babe = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 sp-tracing = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.22" }
 ## Substrate-Client
 sc-service = { git = "https://github.com/paritytech/substrate", features = ["db", "test-helpers"], branch = "polkadot-v0.9.22" }

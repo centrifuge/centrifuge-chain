@@ -3256,6 +3256,85 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 
 [[package]]
+name = "fudge"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?branch=v0.9.22#97d3fae7d30d66c84cabb9be93fcbceada6d7b81"
+dependencies = [
+ "fudge-companion",
+ "fudge-core",
+ "polkadot-parachain",
+ "sc-executor",
+ "sc-service",
+ "sp-io",
+]
+
+[[package]]
+name = "fudge-companion"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?branch=v0.9.22#97d3fae7d30d66c84cabb9be93fcbceada6d7b81"
+dependencies = [
+ "proc-macro-crate 1.1.3",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "fudge-core"
+version = "0.0.7"
+source = "git+https://github.com/centrifuge/fudge?branch=v0.9.22#97d3fae7d30d66c84cabb9be93fcbceada6d7b81"
+dependencies = [
+ "async-trait",
+ "cumulus-primitives-parachain-inherent",
+ "cumulus-relay-chain-inprocess-interface",
+ "cumulus-relay-chain-interface",
+ "frame-support",
+ "frame-system",
+ "fudge-companion",
+ "futures 0.3.21",
+ "lazy_static",
+ "node-primitives",
+ "pallet-babe",
+ "parity-scale-codec",
+ "parking_lot 0.12.0",
+ "polkadot-core-primitives",
+ "polkadot-parachain",
+ "polkadot-primitives",
+ "polkadot-runtime-parachains",
+ "polkadot-service",
+ "sc-basic-authorship",
+ "sc-block-builder",
+ "sc-client-api",
+ "sc-client-db",
+ "sc-consensus",
+ "sc-consensus-uncles",
+ "sc-executor",
+ "sc-offchain",
+ "sc-service",
+ "sc-transaction-pool",
+ "sc-transaction-pool-api",
+ "sp-api",
+ "sp-authorship",
+ "sp-block-builder",
+ "sp-consensus",
+ "sp-consensus-aura",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-database",
+ "sp-externalities",
+ "sp-inherents",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-state-machine",
+ "sp-std",
+ "sp-storage",
+ "sp-timestamp",
+ "sp-transaction-pool",
+ "tracing",
+]
+
+[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9434,6 +9513,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "fudge",
  "kusama-runtime",
  "lazy_static",
  "node-primitives",
@@ -9470,6 +9550,7 @@ dependencies = [
  "sp-inherents",
  "sp-io",
  "sp-runtime",
+ "sp-std",
  "sp-tracing",
  "tokio",
  "tracing",

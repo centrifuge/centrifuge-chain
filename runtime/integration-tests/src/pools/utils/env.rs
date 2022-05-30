@@ -25,6 +25,7 @@ use frame_support::traits::GenesisBuild;
 use frame_system::EventRecord;
 use fudge::digest::FudgeBabeDigest;
 use fudge::primitives::{Chain, PoolState};
+use sp_consensus_babe::SlotDuration;
 use fudge::{
 	digest::DigestCreator,
 	inherent::{
@@ -692,14 +693,14 @@ fn test_env(
 
 				let timestamp = FudgeInherentTimestamp::new(
 					0,
-					std::time::Duration::from_secs(6),
+					sp_std::time::Duration::from_secs(6),
 					Some(std::time::Duration::from_millis(START_DATE)),
-				);
+				).expect("Nuno: Should be fine");
 
 				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
+					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(6),
+						slot_duration_from_secs(6)
 					);
 
 				let relay_para_inherent = FudgeDummyInherentRelayParachain::new(parent_header);
@@ -710,13 +711,14 @@ fn test_env(
 		let dp = Box::new(move || async move {
 			let mut digest = sp_runtime::Digest::default();
 
-			let slot_duration = pallet_babe::Pallet::<RelayRt>::slot_duration();
+			let babe_slot_duration = pallet_babe::Pallet::<RelayRt>::slot_duration();
+			let slot_duration =  slot_duration_from_secs(sp_std::time::Duration::from_millis(babe_slot_duration).as_secs());
 			digest.push(<DigestItem as CompatibleDigestItem>::babe_pre_digest(
 				FudgeBabeDigest::pre_digest(
 					FudgeInherentTimestamp::get_instance(0)
 						.expect("Instance is initialised. qed")
 						.current_time(),
-					std::time::Duration::from_millis(slot_duration),
+					slot_duration,
 				),
 			));
 
@@ -765,12 +767,12 @@ fn test_env(
 					1,
 					std::time::Duration::from_secs(12),
 					Some(std::time::Duration::from_millis(START_DATE)),
-				);
+				).expect("Should work");
 
 				let slot =
-					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_duration(
+					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
 						timestamp.current_time(),
-						std::time::Duration::from_secs(12),
+						sp_consensus_babe::SlotDuration::from_millis(std::time::Duration::from_secs(12).as_millis() as u64),
 					);
 				let inherent = inherent_builder_clone
 					.parachain_inherent()
@@ -807,4 +809,9 @@ pub fn pass_n(env: &mut TestEnv, n: u64) -> Result<(), ()> {
 	}
 
 	Ok(())
+}
+
+
+fn slot_duration_from_secs(secs: u64) -> SlotDuration {
+	SlotDuration::from_millis(secs * 1000)
 }

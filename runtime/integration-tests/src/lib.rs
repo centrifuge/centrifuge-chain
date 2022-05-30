@@ -1,6 +1,5 @@
 #![feature(stmt_expr_attributes)]
-//TODO(nuno): re-enable this line below once pools are re-enabled
-// #![feature(destructuring_assignment)]
+#![feature(destructuring_assignment)]
 // Copyright 2021 Centrifuge GmbH (centrifuge.io).
 // This file is part of Centrifuge chain project.
 
@@ -16,8 +15,7 @@
 #![cfg(test)]
 #![allow(unused)]
 
-//TODO(nuno): re-enable pools once fudge is compatible with polkadot 0.9.20
-// mod pools;
+mod pools;
 mod xcm;
 
 /// Re-exports the correct runtimes that we run the integration tests with
