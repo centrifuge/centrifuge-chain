@@ -333,7 +333,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Native
 			| CurrencyId::KSM
 			| CurrencyId::Permissioned(_) => false,
-			CurrencyId::KUSD => true,
+			CurrencyId::KUSD | CurrencyId::AUSD => true,
 		}
 	}
 }
@@ -404,7 +404,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_tokens::GenesisConfig::<Test> {
 		balances: (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::KUSD, 1000 * CURRENCY))
+			.map(|idx| (idx, CurrencyId::AUSD, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)

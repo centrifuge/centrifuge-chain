@@ -36,7 +36,7 @@ benchmarks! {
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
 		let (class_id, instance_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
-		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::KUSD.into(), amount: 10_000u128.into() };
+		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::AUSD.into(), amount: 10_000u128.into() };
 
 	}: _(seller_origin, class_id, instance_id, price)
 	verify {

@@ -30,6 +30,9 @@ pub enum CurrencyId {
 
 	/// Karura Dollar
 	KUSD,
+	/// Acala Dollar
+	/// Note: KUSD and AUSD will be merged into a single token, AUSD.
+	AUSD,
 
 	Permissioned(PermissionedCurrency),
 }
@@ -47,6 +50,7 @@ impl TokenMetadata for CurrencyId {
 			.as_ref()
 			.to_vec(),
 			CurrencyId::KUSD => b"Karura Dollar".to_vec(),
+			CurrencyId::AUSD => b"Acala Dollar".to_vec(),
 			CurrencyId::KSM => b"Kusama".to_vec(),
 		}
 	}
@@ -61,6 +65,7 @@ impl TokenMetadata for CurrencyId {
 					.to_vec()
 			}
 			CurrencyId::KUSD => b"KUSD".to_vec(),
+			CurrencyId::AUSD => b"AUSD".to_vec(),
 			CurrencyId::KSM => b"KSM".to_vec(),
 		}
 	}
@@ -70,7 +75,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::Native => 18,
 			CurrencyId::Permissioned(_) => 12,
 			CurrencyId::Tranche(_, _) => 27,
-			CurrencyId::KUSD | CurrencyId::KSM => 12,
+			CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => 12,
 		}
 	}
 }

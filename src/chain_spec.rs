@@ -911,7 +911,7 @@ fn development_genesis(
 					.map(|k| {
 						(
 							k,
-							development_runtime::CurrencyId::KUSD,
+							development_runtime::CurrencyId::AUSD,
 							balance_per_endowed,
 						)
 					})

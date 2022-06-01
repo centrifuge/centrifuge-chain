@@ -878,7 +878,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Native
 			| CurrencyId::KSM
 			| CurrencyId::Permissioned(_) => false,
-			CurrencyId::KUSD => true,
+			CurrencyId::AUSD | CurrencyId::KUSD => true,
 		}
 	}
 }
@@ -1128,7 +1128,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
+			CurrencyId::Native | CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
