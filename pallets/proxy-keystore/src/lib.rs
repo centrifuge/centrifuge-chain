@@ -13,36 +13,40 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
+pub use weights::*;
 use sp_std::vec::Vec;
 use frame_support::pallet_prelude::*;
+use scale_info::TypeInfo;
+
+pub mod weights;
 
 // make sure representation is 1 byte
 // TODO(cdamian): Given the above, should we use #[pallet::compact]?
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-enum KeyPurpose {
+pub enum KeyPurpose {
     P2PDiscovery,
     P2PDocumentSigning
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-enum KeyType {
+pub enum KeyType {
     ECDSA,
     EDDSA
 }
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-struct Key<T: Config> {
+pub struct Key<BlockNumber,Balance> {
     purpose: KeyPurpose,
     key_type: KeyType,
-    revoked_at: Option<T::BlockNumber>,
-    deposit: T::Balance,
+    revoked_at: Option<BlockNumber>,
+    deposit: Balance,
 }
 
-type KeyId<T: Config> = (T::Hash, KeyPurpose);
+pub type KeyId<Hash> = (Hash, KeyPurpose);
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-struct AddKey<T: Config> {
-    key: T::Hash,
+pub struct AddKey<Hash> {
+    key: Hash,
     purpose: KeyPurpose,
     key_type: KeyType,
 }
@@ -55,12 +59,6 @@ pub mod pallet {
     use sp_std::convert::TryInto;
     use sp_runtime::traits::AtLeast32BitUnsigned;
     use sp_runtime::FixedPointOperand;
-
-    #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
-    // TODO(cdamian): W/ or w/o storage info?
-    #[pallet::without_storage_info]
-    pub struct Pallet<T>(_);
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -89,11 +87,16 @@ pub mod pallet {
         /// Origin used when setting a deposit.
         type AdminOrigin: EnsureOrigin<Self::Origin>;
 
+        /// Weight information.
         // TODO(cdamian): Run benchmark to get these weights.
-        // Weight information.
-        // type WeightInfo: WeightInfo;
+        type WeightInfo: WeightInfo;
     }
 
+    #[pallet::pallet]
+    #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::without_storage_info]
+    // TODO(cdamian): W/ or w/o storage info?
+    pub struct Pallet<T>(_);
 
     /// Keys that are currently stored.
     #[pallet::storage]
@@ -103,8 +106,8 @@ pub mod pallet {
         Blake2_128Concat,
         T::AccountId,
         Blake2_128Concat,
-        KeyId<T>,
-        Key<T>,
+        KeyId<T::Hash>,
+        Key<T::BlockNumber, T::Balance>,
     >;
 
     /// Storage used for retrieving last key by purpose.
@@ -116,7 +119,7 @@ pub mod pallet {
         T::AccountId,
         Blake2_128Concat,
         KeyPurpose,
-        KeyId<T>,
+        KeyId<T::Hash>,
     >;
 
     /// Stores the current deposit that will be taken when saving a key.
@@ -171,8 +174,8 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
 
         /// Create a new keystore for a specific account.
-        #[pallet::weight(T::WeightInfo::create_keystore().max(T::WeightInfo::create_keystore()))]
-        pub fn create_keystore(origin: OriginFor<T>, keys: Vec<AddKey<T>>) -> DispatchResult {
+        #[pallet::weight(T::WeightInfo::create_keystore(T::MaxKeys::get() as u32))]
+        pub fn create_keystore(origin: OriginFor<T>, keys: Vec<AddKey<T::Hash>>) -> DispatchResult {
             let identity = ensure_signed(origin)?;
 
             // Validate number of keys.
@@ -180,7 +183,7 @@ pub mod pallet {
             ensure!(keys.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
 
             // Should we check if origin is Proxy?
-            ensure!(!<KeystoreExists<T>>::contains_key(identity), Error::<T>::KeystoreExists);
+            ensure!(!<KeystoreExists<T>>::contains_key(identity.clone()), Error::<T>::KeystoreExists);
 
             <KeystoreExists<T>>::insert(identity.clone(), true);
 
@@ -188,8 +191,8 @@ pub mod pallet {
 
             // Add keys & take deposit per key.
             for add_key in keys {
-                Self::add_key(identity.clone(), add_key, key_deposit)?;
-                Self::reserve_key_deposit(identity.clone(), key_deposit)?;
+                Self::add_key(identity.clone(), add_key.clone(), key_deposit.clone())?;
+                Self::reserve_key_deposit(identity.clone(), key_deposit.clone())?;
 
                 Self::deposit_event(
                     Event::Added(
@@ -205,8 +208,8 @@ pub mod pallet {
         }
 
         /// Add keys to an existing account keystore.
-        #[pallet::weight(T::WeightInfo::add_keys().max(T::WeightInfo::add_keys()))]
-        pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T>>) -> DispatchResult {
+        #[pallet::weight(T::WeightInfo::add_keys(T::MaxKeys::get() as u32))]
+        pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T::Hash>>) -> DispatchResult {
             let identity = ensure_signed(origin)?;
 
             // Validate number of keys.
@@ -214,12 +217,12 @@ pub mod pallet {
             ensure!(keys.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
 
             // Ensure identity is created.
-            ensure!(<KeystoreExists<T>>::contains_key(identity), Error::<T>::KeystoreDoesNotExist);
+            ensure!(<KeystoreExists<T>>::contains_key(identity.clone()), Error::<T>::KeystoreDoesNotExist);
 
             let key_deposit = <KeyDeposit<T>>::get();
 
             for add_key in keys {
-                Self::add_key(identity.clone(), add_key, key_deposit)?;
+                Self::add_key(identity.clone(), add_key.clone(), key_deposit.clone())?;
 
                 Self::deposit_event(
                     Event::Added(
@@ -234,7 +237,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(T::WeightInfo::revoke_keys().max(T::WeightInfo::revoke_keys()))]
+        #[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
         pub fn revoke_keys(origin: OriginFor<T>, key_hashes: Vec<T::Hash>) -> DispatchResult {
             let identity = ensure_signed(origin)?;
 
@@ -243,18 +246,18 @@ pub mod pallet {
             ensure!(key_hashes.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
 
             // Ensure identity is created.
-            ensure!(<KeystoreExists<T>>::contains_key(identity), Error::<T>::KeystoreDoesNotExist);
+            ensure!(<KeystoreExists<T>>::contains_key(identity.clone()), Error::<T>::KeystoreDoesNotExist);
 
             let block_number = <frame_system::Pallet<T>>::block_number();
 
             for key_hash in key_hashes {
-                Self::revoke_key(identity.clone(), key_hash, block_number)?;
+                Self::revoke_key(identity.clone(), key_hash.clone(), block_number.clone())?;
 
                 Self::deposit_event(
                     Event::Revoked(
                         identity.clone(),
-                        key_hash,
-                        block_number,
+                        key_hash.clone(),
+                        block_number.clone(),
                     ),
                 )
             }
@@ -262,7 +265,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(T::WeightInfo::revoke_keys().max(T::WeightInfo::set_deposit()))]
+        #[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
         pub fn set_deposit(origin: OriginFor<T>, new_deposit: T::Balance) -> DispatchResult {
             // Ensure that the origin is council or root.
             Self::ensure_admin_origin(origin)?;
@@ -315,10 +318,10 @@ pub mod pallet {
         /// The `key_deposit` is reserved upon success.
         fn add_key(
             account_id: T::AccountId,
-            add_key: AddKey<T>,
+            add_key: AddKey<T::Hash>,
             key_deposit: T::Balance,
         ) -> DispatchResult {
-            let key_id: KeyId<T> = (add_key.key.clone(), add_key.purpose.clone());
+            let key_id: KeyId<T::Hash> = (add_key.key.clone(), add_key.purpose.clone());
 
             // Check if we have a key with the same ID.
             if <Keys<T>>::contains_key(account_id.clone(), key_id.clone()) {
@@ -355,7 +358,7 @@ pub mod pallet {
                     }
 
                     // Replace the any value that we might have in there since checks were OK.
-                    let _ = key_id_opt.insert(key_id);
+                    let _ = key_id_opt.insert(key_id.clone());
 
                     Ok(())
                 },
@@ -365,7 +368,7 @@ pub mod pallet {
             <Keys<T>>::insert(
                 account_id.clone(),
                 key_id.clone(),
-                Key::<T>{
+                Key{
                     purpose: add_key.purpose.clone(),
                     key_type: add_key.key_type.clone(),
                     revoked_at: None,
@@ -389,7 +392,7 @@ pub mod pallet {
             key_hash: T::Hash,
             block_number: T::BlockNumber,
         ) -> DispatchResult {
-            let mut key_id_opt: Option<KeyId<T>> = None;
+            let mut key_id_opt: Option<KeyId<T::Hash>> = None;
 
             let iter = <Keys<T>>::iter_prefix(account_id.clone());
 
@@ -409,7 +412,7 @@ pub mod pallet {
                     <Keys<T>>::try_mutate(
                         account_id.clone(),
                         key_id,
-                        |key_opt| -> Result<T::Balance, DispatchError>  {
+                        |key_opt| -> DispatchResult  {
                             return match key_opt {
                                 Some(key) => {
                                     // Check if key was already revoked.
@@ -424,7 +427,7 @@ pub mod pallet {
                                     <LastKeyByPurpose<T>>::try_mutate(
                                         account_id.clone(),
                                         key.purpose.clone(),
-                                        |mut last_key_id_opt| -> DispatchResult {
+                                        |last_key_id_opt| -> DispatchResult {
                                             return match last_key_id_opt {
                                                 Some(last_key_id) => {
                                                     if last_key_id.0 == key_hash {

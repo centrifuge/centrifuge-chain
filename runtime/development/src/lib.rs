@@ -1259,7 +1259,7 @@ impl pallet_sudo::Config for Runtime {
 }
 
 parameter_types! {
-	pub const MaxKeys = 10;
+	pub const MaxKeys: u32 = 10;
 	pub const DefaultKeyDeposit: Balance = 100 * CFG;
 }
 
@@ -1270,6 +1270,7 @@ impl pallet_proxy_keystore::pallet::Config for Runtime {
 	type MaxKeys = MaxKeys;
 	type DefaultKeyDeposit = DefaultKeyDeposit;
 	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type WeightInfo = weights::pallet_proxy_keystore::SubstrateWeight<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -1328,6 +1329,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
+		ProxyKeystore: pallet_proxy_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
