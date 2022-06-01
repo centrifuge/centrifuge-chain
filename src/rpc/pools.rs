@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 #[rpc]
 pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
-	#[rpc(name = "pools_poolCurrency")]
+	#[rpc(name = "pools_currency")]
 	fn currency(&self, poold_id: PoolId) -> Result<Currency>;
 
 	#[rpc(name = "pools_inspectEpochSolution")]
