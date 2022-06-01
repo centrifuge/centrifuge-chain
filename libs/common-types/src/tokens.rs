@@ -20,8 +20,9 @@ pub enum PermissionedCurrency {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
+	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	Native,
-	Usd,
+	// A Tranche token
 	Tranche(u64, [u8; 16]),
 
 	/// Karura KSM
@@ -29,6 +30,9 @@ pub enum CurrencyId {
 
 	/// Karura Dollar
 	KUSD,
+	/// Acala Dollar
+	/// Note: KUSD and AUSD will be merged into a single token, AUSD.
+	AUSD,
 
 	Permissioned(PermissionedCurrency),
 }
@@ -37,7 +41,6 @@ impl TokenMetadata for CurrencyId {
 	fn name(&self) -> Vec<u8> {
 		match self {
 			CurrencyId::Native => b"Native currency".to_vec(),
-			CurrencyId::Usd => b"USD stable coin".to_vec(),
 			CurrencyId::Permissioned(_) => b"Permissioned currency".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => format_runtime_string!(
 				"Tranche token of pool {} and tranche {:?}",
@@ -47,6 +50,7 @@ impl TokenMetadata for CurrencyId {
 			.as_ref()
 			.to_vec(),
 			CurrencyId::KUSD => b"Karura Dollar".to_vec(),
+			CurrencyId::AUSD => b"Acala Dollar".to_vec(),
 			CurrencyId::KSM => b"Kusama".to_vec(),
 		}
 	}
@@ -54,7 +58,6 @@ impl TokenMetadata for CurrencyId {
 	fn symbol(&self) -> Vec<u8> {
 		match self {
 			CurrencyId::Native => b"CFG".to_vec(),
-			CurrencyId::Usd => b"USD".to_vec(),
 			CurrencyId::Permissioned(_) => b"PERM".to_vec(),
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				format_runtime_string!("TT:{}:{:?}", pool_id, tranche_id)
@@ -62,6 +65,7 @@ impl TokenMetadata for CurrencyId {
 					.to_vec()
 			}
 			CurrencyId::KUSD => b"KUSD".to_vec(),
+			CurrencyId::AUSD => b"AUSD".to_vec(),
 			CurrencyId::KSM => b"KSM".to_vec(),
 		}
 	}
@@ -71,7 +75,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::Native => 18,
 			CurrencyId::Permissioned(_) => 12,
 			CurrencyId::Tranche(_, _) => 27,
-			CurrencyId::Usd | CurrencyId::KUSD | CurrencyId::KSM => 12,
+			CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => 12,
 		}
 	}
 }

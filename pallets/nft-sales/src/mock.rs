@@ -203,7 +203,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_tokens::GenesisConfig::<Test> {
 		balances: (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::Usd, 1000 * CURRENCY))
+			.map(|idx| (idx, CurrencyId::KUSD, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)
