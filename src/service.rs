@@ -15,8 +15,11 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{
-	api::{Anchor, AnchorApi},
 	cli::RpcConfig,
+	rpc::{
+		anchor::{Anchor, AnchorApi},
+		pools::{Pools, PoolsApi},
+	},
 };
 
 use cumulus_client_cli::CollatorOptions;
@@ -805,7 +808,9 @@ pub async fn start_development_node(
 		rpc_config,
 		|client, pool, deny_unsafe| {
 			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
+			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
+			io.extend_with(PoolsApi::to_delegate(Pools::new(client)));
+
 			Ok(io)
 		},
 		build_development_import_queue,

@@ -77,6 +77,7 @@ sp-inherents = { git = "https://github.com/paritytech/substrate", branch = "polk
 sp-consensus = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-api = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-blockchain = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-block-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 sp-runtime-interface = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.20" }
@@ -117,8 +118,12 @@ sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = 
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 node-inspect = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
+# local dependencies
+pallet-anchors = { path = "./pallets/anchors" }
+pallet-loans = { path = "./pallets/loans" }
+pallet-pools = { path = "./pallets/pools" }
+
 # frame dependencies
-pallet-anchors = { path = "./pallets/anchors", default-features = false }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 substrate-frame-rpc-system  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
