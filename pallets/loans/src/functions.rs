@@ -73,7 +73,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// create new loan nft
-		let nonce = NextLoanId::<T>::get();
+		let nonce = NextLoanId::<T>::get(pool_id);
 		let loan_id: T::LoanId = nonce.into();
 		let loan_class_id =
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::PoolNotInitialised)?;
@@ -91,7 +91,7 @@ impl<T: Config> Pallet<T> {
 		let next_loan_id = nonce
 			.checked_add(1)
 			.ok_or(Error::<T>::NftTokenNonceOverflowed)?;
-		NextLoanId::<T>::set(next_loan_id);
+		NextLoanId::<T>::mutate(pool_id, |loan_id| *loan_id = next_loan_id);
 
 		// create loan
 		Loan::<T>::insert(
