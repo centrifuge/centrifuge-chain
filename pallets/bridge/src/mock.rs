@@ -27,6 +27,7 @@ use chainbridge::{
 	types::{ChainId, ResourceId},
 	EnsureBridge,
 };
+use core::convert::{TryFrom, TryInto};
 
 use frame_support::{
 	parameter_types,

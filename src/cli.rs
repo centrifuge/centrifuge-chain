@@ -49,8 +49,9 @@ pub enum Subcommand {
 	/// Revert the chain to a previous state.
 	Revert(sc_cli::RevertCmd),
 
-	/// The custom benchmark subcommmand benchmarking runtime pallets.
-	#[clap(name = "benchmark", about = "Benchmark runtime pallets.")]
+	/// Sub-commands concerned with benchmarking.
+	/// The pallet benchmarking moved to the `pallet` sub-command.
+	#[clap(subcommand)]
 	Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 }
 
@@ -142,4 +143,7 @@ impl RelayChainCli {
 			base: polkadot_cli::RunCmd::parse_from(relay_chain_args),
 		}
 	}
+}
+pub struct RpcConfig {
+	pub relay_chain_rpc_url: Option<url::Url>,
 }

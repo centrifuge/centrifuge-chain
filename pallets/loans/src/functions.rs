@@ -197,7 +197,7 @@ impl<T: Config> Pallet<T> {
 
 				// burn loan nft
 				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
+				T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
@@ -431,9 +431,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
-	pub(crate) fn update_nav_of_pool(
-		pool_id: PoolIdOf<T>,
-	) -> Result<(T::Amount, Moment), DispatchError> {
+	pub fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<(T::Amount, Moment), DispatchError> {
 		let now = Self::now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;

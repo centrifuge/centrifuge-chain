@@ -9,6 +9,7 @@ use frame_support::{
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
 };
 use frame_system::ensure_root;
+use sp_std::convert::TryInto;
 
 pub use pallet::*;
 #[cfg(test)]

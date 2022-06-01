@@ -21,6 +21,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 pub use runtime_common::{Rate, TrancheWeight};
 
@@ -190,7 +191,8 @@ impl pallet_balances::Config for Test {
 }
 
 parameter_types! {
-	pub const MaxLocks: u32 = 100;
+	pub MaxLocks: u32 = 2;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for Test {
@@ -203,6 +205,8 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {
