@@ -1258,6 +1258,20 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const MaxKeys = 10;
+	pub const DefaultKeyDeposit: Balance = 100 * CFG;
+}
+
+impl pallet_proxy_keystore::pallet::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Currency = Balances;
+	type MaxKeys = MaxKeys;
+	type DefaultKeyDeposit = DefaultKeyDeposit;
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades

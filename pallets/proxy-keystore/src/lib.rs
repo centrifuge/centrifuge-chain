@@ -1,0 +1,458 @@
+// Copyright 2022 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+#![cfg_attr(not(feature = "std"), no_std)]
+
+pub use pallet::*;
+use sp_std::vec::Vec;
+use frame_support::pallet_prelude::*;
+
+// make sure representation is 1 byte
+// TODO(cdamian): Given the above, should we use #[pallet::compact]?
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+enum KeyPurpose {
+    P2PDiscovery,
+    P2PDocumentSigning
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+enum KeyType {
+    ECDSA,
+    EDDSA
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+struct Key<T: Config> {
+    purpose: KeyPurpose,
+    key_type: KeyType,
+    revoked_at: Option<T::BlockNumber>,
+    deposit: T::Balance,
+}
+
+type KeyId<T: Config> = (T::Hash, KeyPurpose);
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+struct AddKey<T: Config> {
+    key: T::Hash,
+    purpose: KeyPurpose,
+    key_type: KeyType,
+}
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use frame_support::traits::ReservableCurrency;
+    use frame_system::pallet_prelude::*;
+    use sp_std::convert::TryInto;
+    use sp_runtime::traits::AtLeast32BitUnsigned;
+    use sp_runtime::FixedPointOperand;
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub (super) trait Store)]
+    // TODO(cdamian): W/ or w/o storage info?
+    #[pallet::without_storage_info]
+    pub struct Pallet<T>(_);
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+        type Balance: Member
+        + Parameter
+        + AtLeast32BitUnsigned
+        + Default
+        + Copy
+        + MaxEncodedLen
+        + FixedPointOperand
+        + From<u64>
+        + From<u128>
+        + TypeInfo
+        + TryInto<u64>;
+
+        type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
+
+        /// Maximum number of keys that can be added at a time.
+        type MaxKeys: Get<u32>;
+
+        /// Default deposit that will be taken when adding a key.
+        type DefaultKeyDeposit: Get<Self::Balance>;
+
+        /// Origin used when setting a deposit.
+        type AdminOrigin: EnsureOrigin<Self::Origin>;
+
+        // TODO(cdamian): Run benchmark to get these weights.
+        // Weight information.
+        // type WeightInfo: WeightInfo;
+    }
+
+
+    /// Keys that are currently stored.
+    #[pallet::storage]
+    #[pallet::getter(fn get_key)]
+    pub type Keys<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        KeyId<T>,
+        Key<T>,
+    >;
+
+    /// Storage used for retrieving last key by purpose.
+    #[pallet::storage]
+    #[pallet::getter(fn get_last_key_by_purpose)]
+    pub type LastKeyByPurpose<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        KeyPurpose,
+        KeyId<T>,
+    >;
+
+    /// Stores the current deposit that will be taken when saving a key.
+    #[pallet::storage]
+    #[pallet::getter(fn get_key_deposit)]
+    pub(crate) type KeyDeposit<T: Config> = StorageValue<_, T::Balance, ValueQuery, T::DefaultKeyDeposit>;
+
+    /// Storage for keeping track of keystores that are created for accounts.
+    #[pallet::storage]
+    #[pallet::getter(fn keystore_exists)]
+    pub type KeystoreExists<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool>;
+
+    #[pallet::event]
+    #[pallet::generate_deposit(pub (super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// A key was added.
+        Added(T::AccountId, T::Hash, KeyPurpose, KeyType),
+        /// A key was revoked.
+        Revoked(T::AccountId, T::Hash, T::BlockNumber),
+        /// A deposit was set.
+        DepositSet(T::Balance),
+    }
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// No keys were provided.
+        NoKeys,
+
+        /// More than MAX_KEYS keys were provided.
+        TooManyKeys,
+
+        /// The keystore was already created.
+        KeystoreExists,
+
+        /// The keystore does not exist.
+        KeystoreDoesNotExist,
+
+        /// A key with that purpose already exists.
+        KeyWithPurposeExists,
+
+        /// A key with that hash already exists.
+        KeyWithHashExists,
+
+        /// The key was not found in storage.
+        KeyNotFound,
+
+        /// The key was already revoked.
+        KeyRevoked,
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+
+        /// Create a new keystore for a specific account.
+        #[pallet::weight(T::WeightInfo::create_keystore().max(T::WeightInfo::create_keystore()))]
+        pub fn create_keystore(origin: OriginFor<T>, keys: Vec<AddKey<T>>) -> DispatchResult {
+            let identity = ensure_signed(origin)?;
+
+            // Validate number of keys.
+            ensure!(keys.len() > 0, Error::<T>::NoKeys);
+            ensure!(keys.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
+
+            // Should we check if origin is Proxy?
+            ensure!(!<KeystoreExists<T>>::contains_key(identity), Error::<T>::KeystoreExists);
+
+            <KeystoreExists<T>>::insert(identity.clone(), true);
+
+            let key_deposit = <KeyDeposit<T>>::get();
+
+            // Add keys & take deposit per key.
+            for add_key in keys {
+                Self::add_key(identity.clone(), add_key, key_deposit)?;
+                Self::reserve_key_deposit(identity.clone(), key_deposit)?;
+
+                Self::deposit_event(
+                    Event::Added(
+                        identity.clone(),
+                        add_key.key.clone(),
+                        add_key.purpose.clone(),
+                        add_key.key_type.clone(),
+                    ),
+                )
+            }
+
+            Ok(())
+        }
+
+        /// Add keys to an existing account keystore.
+        #[pallet::weight(T::WeightInfo::add_keys().max(T::WeightInfo::add_keys()))]
+        pub fn add_keys(origin: OriginFor<T>, keys: Vec<AddKey<T>>) -> DispatchResult {
+            let identity = ensure_signed(origin)?;
+
+            // Validate number of keys.
+            ensure!(keys.len() > 0, Error::<T>::NoKeys);
+            ensure!(keys.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
+
+            // Ensure identity is created.
+            ensure!(<KeystoreExists<T>>::contains_key(identity), Error::<T>::KeystoreDoesNotExist);
+
+            let key_deposit = <KeyDeposit<T>>::get();
+
+            for add_key in keys {
+                Self::add_key(identity.clone(), add_key, key_deposit)?;
+
+                Self::deposit_event(
+                    Event::Added(
+                        identity.clone(),
+                        add_key.key.clone(),
+                        add_key.purpose.clone(),
+                        add_key.key_type.clone(),
+                    ),
+                )
+            }
+
+            Ok(())
+        }
+
+        #[pallet::weight(T::WeightInfo::revoke_keys().max(T::WeightInfo::revoke_keys()))]
+        pub fn revoke_keys(origin: OriginFor<T>, key_hashes: Vec<T::Hash>) -> DispatchResult {
+            let identity = ensure_signed(origin)?;
+
+            // Validate number of keys.
+            ensure!(key_hashes.len() > 0, Error::<T>::NoKeys);
+            ensure!(key_hashes.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
+
+            // Ensure identity is created.
+            ensure!(<KeystoreExists<T>>::contains_key(identity), Error::<T>::KeystoreDoesNotExist);
+
+            let block_number = <frame_system::Pallet<T>>::block_number();
+
+            for key_hash in key_hashes {
+                Self::revoke_key(identity.clone(), key_hash, block_number)?;
+
+                Self::deposit_event(
+                    Event::Revoked(
+                        identity.clone(),
+                        key_hash,
+                        block_number,
+                    ),
+                )
+            }
+
+            Ok(())
+        }
+
+        #[pallet::weight(T::WeightInfo::revoke_keys().max(T::WeightInfo::set_deposit()))]
+        pub fn set_deposit(origin: OriginFor<T>, new_deposit: T::Balance) -> DispatchResult {
+            // Ensure that the origin is council or root.
+            Self::ensure_admin_origin(origin)?;
+
+            // Set the new deposit.
+            Self::set_new_deposit(new_deposit)?;
+
+            // Deposit the event.
+            Self::deposit_event(
+                Event::DepositSet(new_deposit),
+            );
+
+            Ok(())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        /// Ensure that the origin of a call is either an Admin, which is configured in the runtime,
+        /// or Root.
+        // TODO(cdamian): How do we ensure that this came from democracy and not council?
+        fn ensure_admin_origin(origin: OriginFor<T>) -> DispatchResult {
+            T::AdminOrigin::try_origin(origin.clone())
+                .map(|_| ())
+                .or_else(ensure_root)?;
+            Ok(())
+        }
+
+        /// Reserve the key deposit for the provided account.
+        fn reserve_key_deposit(account_id: T::AccountId, key_deposit: T::Balance) -> DispatchResult {
+            T::Currency::reserve(&account_id, key_deposit)
+        }
+
+        /// Return the key deposit for the provided account.
+        fn return_key_deposit(account_id: T::AccountId, key_deposit: T::Balance) {
+            let _ = T::Currency::unreserve(&account_id, key_deposit);
+        }
+
+        /// Set the new deposit that will be used when adding keys.
+        fn set_new_deposit(new_deposit: T::Balance) -> DispatchResult {
+            // TODO(cdamian): Add more validation?
+            <KeyDeposit<T>>::set(new_deposit);
+            Ok(())
+        }
+
+        /// Add a key to the `Keys` and `LastKeyByPurpose` storages if the following checks pass:
+        ///
+        /// - A key with the same hash does not exist in the storage;
+        /// - An un-revoked key with the same purpose does not exist in the storage;
+        ///
+        /// The `key_deposit` is reserved upon success.
+        fn add_key(
+            account_id: T::AccountId,
+            add_key: AddKey<T>,
+            key_deposit: T::Balance,
+        ) -> DispatchResult {
+            let key_id: KeyId<T> = (add_key.key.clone(), add_key.purpose.clone());
+
+            // Check if we have a key with the same ID.
+            if <Keys<T>>::contains_key(account_id.clone(), key_id.clone()) {
+                return Err(Error::<T>::KeyWithHashExists.into())
+            }
+
+            // Check if we have a key with the same purpose and/or hash.
+            <LastKeyByPurpose<T>>::try_mutate(
+                account_id.clone(),
+                add_key.purpose.clone(),
+                |key_id_opt| -> DispatchResult {
+                    match key_id_opt {
+                        // Last key by purpose found.
+                        Some(old_key_id) => {
+                            // Check if we have a key with the same hash.
+                            if old_key_id.0 == add_key.key {
+                                return Err(Error::<T>::KeyWithHashExists.into())
+                            }
+
+                            // Check if we have a key with the same purpose that is NOT revoked.
+                            match <Keys<T>>::try_get(account_id.clone(), old_key_id) {
+                                Ok(key) => {
+                                    if let None = key.revoked_at {
+                                        // Non-revoked key with the same purpose exists.
+                                        return Err(Error::<T>::KeyWithPurposeExists.into())
+                                    }
+                                },
+                                // TODO(cdamian): This is an invalid state that we should™ never reach. Do we need extra handling?
+                                Err(_) => return Err(Error::<T>::KeyNotFound.into()),
+                            };
+                        },
+                        // No last key by purpose, we can continue.
+                        None => {},
+                    }
+
+                    // Replace the any value that we might have in there since checks were OK.
+                    let _ = key_id_opt.insert(key_id);
+
+                    Ok(())
+                },
+            )?;
+
+            // Insert the new key.
+            <Keys<T>>::insert(
+                account_id.clone(),
+                key_id.clone(),
+                Key::<T>{
+                    purpose: add_key.purpose.clone(),
+                    key_type: add_key.key_type.clone(),
+                    revoked_at: None,
+                    deposit: key_deposit,
+                },
+            );
+
+            Self::reserve_key_deposit(account_id.clone(), key_deposit)?;
+
+            Ok(())
+        }
+
+        /// Revoke a key with `key_hash` at the current `block_number` in the `Keys` storage
+        /// iff the key is present and *not* revoked.
+        ///
+        /// Any key that matches the `key_hash` in the `LastKeyByPurpose` storage is removed.
+        ///
+        /// The key deposit is returned upon success.
+        fn revoke_key(
+            account_id: T::AccountId,
+            key_hash: T::Hash,
+            block_number: T::BlockNumber,
+        ) -> DispatchResult {
+            let mut key_id_opt: Option<KeyId<T>> = None;
+
+            let iter = <Keys<T>>::iter_prefix(account_id.clone());
+
+            // Search for a key that has the key_hash that we are looking for.
+            for (key_id, _) in iter {
+                if key_id.0 == key_hash {
+                    key_id_opt = Some(key_id);
+                    break
+                }
+            }
+
+            return match key_id_opt {
+                Some(key_id) => {
+                    // Retrieve the key from storage.
+                    // TODO(cdamian): Just use `mutate` since we retrieved the key_id before this?
+                    // TODO(cdamian): Given the above, are there any chances of a race here?
+                    <Keys<T>>::try_mutate(
+                        account_id.clone(),
+                        key_id,
+                        |key_opt| -> Result<T::Balance, DispatchError>  {
+                            return match key_opt {
+                                Some(key) => {
+                                    // Check if key was already revoked.
+                                    if let Some(_) = key.revoked_at {
+                                        return Err(Error::<T>::KeyRevoked.into())
+                                    }
+
+                                    // Revoke it at the current block number.
+                                    key.revoked_at = Some(block_number);
+
+                                    // Check if we have a key by purpose that matches our key_hash.
+                                    <LastKeyByPurpose<T>>::try_mutate(
+                                        account_id.clone(),
+                                        key.purpose.clone(),
+                                        |mut last_key_id_opt| -> DispatchResult {
+                                            return match last_key_id_opt {
+                                                Some(last_key_id) => {
+                                                    if last_key_id.0 == key_hash {
+                                                        // Key by purpose found, clear it.
+                                                        *last_key_id_opt = None;
+                                                    }
+
+                                                    Ok(())
+                                                },
+                                                None => Ok(()),
+                                            }
+                                        },
+                                    )?;
+
+                                    // Return the deposit.
+                                    Self::return_key_deposit(account_id, key.deposit);
+
+                                    Ok(())
+                                },
+                                // TODO(cdamian): This is an invalid state that we should™ never reach. Do we need extra handling?
+                                None => Err(Error::<T>::KeyNotFound.into()),
+                            }
+                        }
+                    )
+                },
+                None => Err(Error::<T>::KeyNotFound.into())
+            }
+        }
+    }
+}
+
