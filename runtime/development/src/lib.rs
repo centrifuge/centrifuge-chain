@@ -1528,24 +1528,6 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::LoansApi<Block, PoolId, InstanceId, Balance> for Runtime {
-		fn nav(id: PoolId) -> Option<Balance> {
-			// TODO: Error out if pool does not exists in the loans-pallet
-			if !pallet_pools::Pool::<Runtime>::get(id).is_some() {
-				return None;
-			}
-			pallet_loans::Pallet::<Runtime>::update_nav_of_pool(id)
-				.ok()
-				.map(|(latest, _)| latest.into())
-		}
-
-		fn max_borrow_amount(id: PoolId, loan_id: InstanceId) -> Option<Balance> {
-			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			pallet_loans::Loan::<Runtime>::get(id, loan_id)
-				.map(|loan_details| loan_details.max_borrow_amount(now).into())
-		}
-	}
-
 	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
 		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
 			pallet_pools::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
