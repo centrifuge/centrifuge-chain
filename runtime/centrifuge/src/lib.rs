@@ -34,7 +34,9 @@ use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
-use sp_runtime::{create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill};
+use sp_runtime::{
+	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
+};
 use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
@@ -63,7 +65,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("centrifuge"),
 	impl_name: create_runtime_str!("centrifuge"),
 	authoring_version: 1,
-	spec_version: 1005,
+	spec_version: 1006,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -470,8 +472,8 @@ parameter_types! {
 	pub const VotingBond: Balance = 50 * CENTI_CFG;
 	pub const VotingBondBase: Balance = 50 * CENTI_CFG;
 	pub const TermDuration: BlockNumber = 7 * DAYS;
-	pub const DesiredMembers: u32 = 7;
-	pub const DesiredRunnersUp: u32 = 3;
+	pub const DesiredMembers: u32 = 9;
+	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
@@ -495,8 +497,8 @@ impl pallet_elections_phragmen::Config for Runtime {
 	/// How much should be locked up in order to be able to submit votes.
 	type VotingBondFactor = VotingBond;
 
-	type LoserCandidate = ();
-	type KickedMember = ();
+	type LoserCandidate = Treasury;
+	type KickedMember = Treasury;
 
 	/// Number of members to elect.
 	type DesiredMembers = DesiredMembers;
@@ -579,7 +581,7 @@ impl pallet_democracy::Config for Runtime {
 	type PreimageByteDeposit = PreimageByteDeposit;
 	type OperationalPreimageOrigin = EnsureMember<AccountId, CouncilCollective>;
 	/// Handler for the unbalanced reduction when slashing a preimage deposit.
-	type Slash = ();
+	type Slash = Treasury;
 	type Scheduler = Scheduler;
 	type PalletsOrigin = OriginCaller;
 	type MaxVotes = MaxVotes;
@@ -605,7 +607,7 @@ impl pallet_identity::Config for Runtime {
 	type MaxSubAccounts = MaxSubAccounts;
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
-	type Slashed = ();
+	type Slashed = Treasury;
 	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type RegistrarOrigin =
 		EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
@@ -623,6 +625,55 @@ impl pallet_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type WeightInfo = weights::pallet_vesting::SubstrateWeight<Runtime>;
 	const MAX_VESTING_SCHEDULES: u32 = 3;
+}
+
+parameter_types! {
+	// 5% of the proposal value need to be bonded. This will be returned
+	pub const ProposalBond: Permill = Permill::from_percent(5);
+
+	// Minimum amount to bond per proposal. This will be the least that gets bonded per proposal
+	// if the above yields to lower value
+	pub const ProposalBondMinimum: Balance = 1000 * CFG;
+
+	// Maximum amount to bond per proposal. This will be the most that gets bonded per proposal
+	pub const ProposalBondMaximum: Balance = 5000 * CFG;
+
+	// periods between treasury spends
+	pub const SpendPeriod: BlockNumber = 14 * DAYS;
+
+	// percentage of treasury we burn per Spend period if there is a surplus
+	// If the treasury is able to spend on all the approved proposals and didn't miss any
+	// then we burn % amount of remaining balance
+	// If the treasury couldn't spend on all the approved proposals, then we dont burn any
+	pub const Burn: Permill = Permill::from_percent(0);
+
+	// treasury pallet account id
+	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+
+	// Maximum number of approvals that can be in the spending queue
+	pub const MaxApprovals: u32 = 100;
+}
+
+impl pallet_treasury::Config for Runtime {
+	type Currency = Balances;
+	// either democracy or 50% of council votes
+	type ApproveOrigin = EnsureRootOr<HalfOfCouncil>;
+	// either democracy or more than 50% council votes
+	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Event = Event;
+	// slashed amount goes to treasury account
+	type OnSlash = Treasury;
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type ProposalBondMaximum = ProposalBondMaximum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type PalletId = TreasuryPalletId;
+	// we burn and dont handle the unbalance
+	type BurnDestination = ();
+	type WeightInfo = weights::pallet_treasury::SubstrateWeight<Self>;
+	type SpendFunds = ();
+	type MaxApprovals = MaxApprovals;
 }
 
 // our pallets
@@ -775,6 +826,7 @@ construct_runtime!(
 		Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 67,
 		Vesting: pallet_vesting::{Pallet, Call, Storage, Event<T>, Config<T>} = 68,
 		Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 69,
+		Treasury: pallet_treasury::{Pallet, Call, Storage, Config, Event<T>} = 70,
 
 		// our pallets
 		Fees: pallet_fees::{Pallet, Call, Storage, Config<T>, Event<T>} = 90,
@@ -954,6 +1006,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_democracy, Democracy);
 			list_benchmark!(list, extra, pallet_identity, Identity);
 			list_benchmark!(list, extra, pallet_vesting, Vesting);
+			list_benchmark!(list, extra, pallet_treasury, Treasury);
 			list_benchmark!(list, extra, pallet_preimage, Preimage);
 			list_benchmark!(list, extra, pallet_fees, Fees);
 			list_benchmark!(list, extra, pallet_migration_manager, Migration);
@@ -1001,6 +1054,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_democracy, Democracy);
 			add_benchmark!(params, batches, pallet_identity, Identity);
 			add_benchmark!(params, batches, pallet_vesting, Vesting);
+			add_benchmark!(params, batches, pallet_treasury, Treasury);
 			add_benchmark!(params, batches, pallet_preimage, Preimage);
 			add_benchmark!(params, batches, pallet_fees, Fees);
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
