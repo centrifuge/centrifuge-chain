@@ -19,7 +19,27 @@ pub trait WeightInfo {
 pub struct SubstrateWeight<T>(PhantomData<T>);
 
 // TODO(cdamian): Update this.
+
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
+    fn create_keystore(_n: u32) -> Weight {
+        10 as Weight
+    }
+
+    fn add_keys(_n: u32) -> Weight {
+        10 as Weight
+    }
+
+    fn revoke_keys(_n: u32) -> Weight {
+        10 as Weight
+    }
+
+    fn set_deposit() -> Weight {
+        10 as Weight
+    }
+}
+
+// For backwards compatibility and tests.
+impl WeightInfo for () {
     fn create_keystore(_n: u32) -> Weight {
         10 as Weight
     }

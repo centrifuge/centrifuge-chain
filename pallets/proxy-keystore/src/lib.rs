@@ -18,6 +18,11 @@ use sp_std::vec::Vec;
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
 
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
+mod tests;
+
 pub mod weights;
 
 // make sure representation is 1 byte
@@ -79,6 +84,7 @@ pub mod pallet {
         type Currency: ReservableCurrency<Self::AccountId, Balance = Self::Balance>;
 
         /// Maximum number of keys that can be added at a time.
+        #[pallet::constant]
         type MaxKeys: Get<u32>;
 
         /// Default deposit that will be taken when adding a key.
@@ -95,13 +101,12 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
-    // TODO(cdamian): W/ or w/o storage info?
     pub struct Pallet<T>(_);
 
     /// Keys that are currently stored.
     #[pallet::storage]
     #[pallet::getter(fn get_key)]
-    pub type Keys<T: Config> = StorageDoubleMap<
+    pub(crate) type Keys<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         T::AccountId,
@@ -113,7 +118,7 @@ pub mod pallet {
     /// Storage used for retrieving last key by purpose.
     #[pallet::storage]
     #[pallet::getter(fn get_last_key_by_purpose)]
-    pub type LastKeyByPurpose<T: Config> = StorageDoubleMap<
+    pub(crate) type LastKeyByPurpose<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         T::AccountId,
@@ -130,15 +135,17 @@ pub mod pallet {
     /// Storage for keeping track of keystores that are created for accounts.
     #[pallet::storage]
     #[pallet::getter(fn keystore_exists)]
-    pub type KeystoreExists<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool>;
+    pub(crate) type KeystoreExists<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, bool>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
+        /// A keystore was created.
+        KeystoreCreated(T::AccountId),
         /// A key was added.
-        Added(T::AccountId, T::Hash, KeyPurpose, KeyType),
+        KeyAdded(T::AccountId, T::Hash, KeyPurpose, KeyType),
         /// A key was revoked.
-        Revoked(T::AccountId, T::Hash, T::BlockNumber),
+        KeyRevoked(T::AccountId, T::Hash, T::BlockNumber),
         /// A deposit was set.
         DepositSet(T::Balance),
     }
@@ -147,25 +154,18 @@ pub mod pallet {
     pub enum Error<T> {
         /// No keys were provided.
         NoKeys,
-
-        /// More than MAX_KEYS keys were provided.
+        /// More than T::MaxKeys keys were provided.
         TooManyKeys,
-
         /// The keystore was already created.
         KeystoreExists,
-
         /// The keystore does not exist.
         KeystoreDoesNotExist,
-
         /// A key with that purpose already exists.
         KeyWithPurposeExists,
-
         /// A key with that hash already exists.
         KeyWithHashExists,
-
         /// The key was not found in storage.
         KeyNotFound,
-
         /// The key was already revoked.
         KeyRevoked,
     }
@@ -183,19 +183,21 @@ pub mod pallet {
             ensure!(keys.len() <= T::MaxKeys::get() as usize, Error::<T>::TooManyKeys);
 
             // Should we check if origin is Proxy?
+            // TODO(cdamian): Clarify proxy.
             ensure!(!<KeystoreExists<T>>::contains_key(identity.clone()), Error::<T>::KeystoreExists);
 
             <KeystoreExists<T>>::insert(identity.clone(), true);
+
+            Self::deposit_event(Event::KeystoreCreated(identity.clone()));
 
             let key_deposit = <KeyDeposit<T>>::get();
 
             // Add keys & take deposit per key.
             for add_key in keys {
                 Self::add_key(identity.clone(), add_key.clone(), key_deposit.clone())?;
-                Self::reserve_key_deposit(identity.clone(), key_deposit.clone())?;
 
                 Self::deposit_event(
-                    Event::Added(
+                    Event::KeyAdded(
                         identity.clone(),
                         add_key.key.clone(),
                         add_key.purpose.clone(),
@@ -225,7 +227,7 @@ pub mod pallet {
                 Self::add_key(identity.clone(), add_key.clone(), key_deposit.clone())?;
 
                 Self::deposit_event(
-                    Event::Added(
+                    Event::KeyAdded(
                         identity.clone(),
                         add_key.key.clone(),
                         add_key.purpose.clone(),
@@ -254,7 +256,7 @@ pub mod pallet {
                 Self::revoke_key(identity.clone(), key_hash.clone(), block_number.clone())?;
 
                 Self::deposit_event(
-                    Event::Revoked(
+                    Event::KeyRevoked(
                         identity.clone(),
                         key_hash.clone(),
                         block_number.clone(),
@@ -265,7 +267,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
+        #[pallet::weight(T::WeightInfo::set_deposit())]
         pub fn set_deposit(origin: OriginFor<T>, new_deposit: T::Balance) -> DispatchResult {
             // Ensure that the origin is council or root.
             Self::ensure_admin_origin(origin)?;
@@ -305,15 +307,15 @@ pub mod pallet {
 
         /// Set the new deposit that will be used when adding keys.
         fn set_new_deposit(new_deposit: T::Balance) -> DispatchResult {
-            // TODO(cdamian): Add more validation?
             <KeyDeposit<T>>::set(new_deposit);
             Ok(())
         }
 
         /// Add a key to the `Keys` and `LastKeyByPurpose` storages if the following checks pass:
         ///
-        /// - A key with the same hash does not exist in the storage;
-        /// - An un-revoked key with the same purpose does not exist in the storage;
+        /// - The account has enough funds to cover the `key_deposit`;
+        /// - A key with the same hash does not exist in the storages;
+        /// - An un-revoked key with the same purpose does not exist in the storages;
         ///
         /// The `key_deposit` is reserved upon success.
         fn add_key(
@@ -321,14 +323,31 @@ pub mod pallet {
             add_key: AddKey<T::Hash>,
             key_deposit: T::Balance,
         ) -> DispatchResult {
-            let key_id: KeyId<T::Hash> = (add_key.key.clone(), add_key.purpose.clone());
+            Self::reserve_key_deposit(account_id.clone(), key_deposit)?;
 
-            // Check if we have a key with the same ID.
-            if <Keys<T>>::contains_key(account_id.clone(), key_id.clone()) {
-                return Err(Error::<T>::KeyWithHashExists.into())
+            let keys_iter = <Keys<T>>::iter_prefix(account_id.clone());
+
+            // Check Keys storage.
+            for (key_id, key) in keys_iter {
+                if key_id.0 == add_key.key {
+                    // Key with the same hash exists.
+                    return Err(Error::<T>::KeyWithHashExists.into())
+                }
+
+                if key_id.1 != add_key.purpose {
+                    continue
+                }
+
+                // Key with the same purpose was found, check if it's revoked.
+                if let None = key.revoked_at {
+                    // Non-revoked key with the same purpose exists.
+                    return Err(Error::<T>::KeyWithPurposeExists.into())
+                }
             }
 
-            // Check if we have a key with the same purpose and/or hash.
+            let key_id: KeyId<T::Hash> = (add_key.key.clone(), add_key.purpose.clone());
+
+            // Check LastKeyByPurpose storage.
             <LastKeyByPurpose<T>>::try_mutate(
                 account_id.clone(),
                 add_key.purpose.clone(),
@@ -336,28 +355,16 @@ pub mod pallet {
                     match key_id_opt {
                         // Last key by purpose found.
                         Some(old_key_id) => {
-                            // Check if we have a key with the same hash.
+                            // Extra check to ensure that we don't have any invalid keys in here.
                             if old_key_id.0 == add_key.key {
                                 return Err(Error::<T>::KeyWithHashExists.into())
                             }
-
-                            // Check if we have a key with the same purpose that is NOT revoked.
-                            match <Keys<T>>::try_get(account_id.clone(), old_key_id) {
-                                Ok(key) => {
-                                    if let None = key.revoked_at {
-                                        // Non-revoked key with the same purpose exists.
-                                        return Err(Error::<T>::KeyWithPurposeExists.into())
-                                    }
-                                },
-                                // TODO(cdamian): This is an invalid state that we should™ never reach. Do we need extra handling?
-                                Err(_) => return Err(Error::<T>::KeyNotFound.into()),
-                            };
                         },
                         // No last key by purpose, we can continue.
                         None => {},
                     }
 
-                    // Replace the any value that we might have in there since checks were OK.
+                    // Replace any value that we might have in there since checks were OK.
                     let _ = key_id_opt.insert(key_id.clone());
 
                     Ok(())
@@ -367,7 +374,7 @@ pub mod pallet {
             // Insert the new key.
             <Keys<T>>::insert(
                 account_id.clone(),
-                key_id.clone(),
+                key_id,
                 Key{
                     purpose: add_key.purpose.clone(),
                     key_type: add_key.key_type.clone(),
@@ -376,15 +383,14 @@ pub mod pallet {
                 },
             );
 
-            Self::reserve_key_deposit(account_id.clone(), key_deposit)?;
-
             Ok(())
         }
 
         /// Revoke a key with `key_hash` at the current `block_number` in the `Keys` storage
-        /// iff the key is present and *not* revoked.
+        /// if the key is found and *not* revoked.
         ///
-        /// Any key that matches the `key_hash` in the `LastKeyByPurpose` storage is removed.
+        /// Any entry that matches the `key_hash` and the key purpose in the `LastKeyByPurpose`
+        /// storage is removed.
         ///
         /// The key deposit is returned upon success.
         fn revoke_key(
@@ -407,7 +413,6 @@ pub mod pallet {
             return match key_id_opt {
                 Some(key_id) => {
                     // Retrieve the key from storage.
-                    // TODO(cdamian): Just use `mutate` since we retrieved the key_id before this?
                     // TODO(cdamian): Given the above, are there any chances of a race here?
                     <Keys<T>>::try_mutate(
                         account_id.clone(),
