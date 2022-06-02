@@ -10,7 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 
 [dependencies]
 # TODO(protocol): make fudge non-optional once it's operational again
-fudge = { git = "https://github.com/centrifuge/fudge", branch = "v0.9.22" }
+fudge = { git = "https://github.com/centrifuge/fudge", rev = "149a19fc57fd209fd957543dc5777cfc5b69f8b6" }
 tokio = { version = "1.15", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"

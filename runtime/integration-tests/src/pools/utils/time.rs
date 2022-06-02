@@ -12,7 +12,7 @@
 
 //! Time constants and utlities around time
 
-/// Start date used for timestamps in test-enviornments
+/// Start date used for timestamps in test-environments
 /// Sat Jan 01 2022 00:00:00 GMT+0000
 pub const START_DATE: u64 = 1640995200u64;
 
