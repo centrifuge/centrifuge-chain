@@ -9,12 +9,12 @@ use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		Contains, EnsureOneOf, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote,
+		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
+		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
 	},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
-		DispatchClass, Weight,
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
+		ConstantMultiplier, DispatchClass, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
@@ -28,10 +28,9 @@ use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::AccountIdConversion;
@@ -40,9 +39,9 @@ use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
-	Permill, Perquintill,
+	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
 };
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -54,11 +53,13 @@ use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolUpdateGuard, PreConditions};
 pub use common_types::CurrencyId;
 use common_types::{
-	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
-	TimeProvider, UNION, PermissionedCurrency,
+	PermissionRoles, PermissionScope, PermissionedCurrency, PermissionedCurrencyRole, PoolId,
+	PoolRole, Role, TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
-use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
+use pallet_pools::{
+	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
+};
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, MutateDetails, TransferDetails,
 };
@@ -211,12 +212,8 @@ impl pallet_timestamp::Config for Runtime {
 
 // money stuff
 parameter_types! {
-	/// TransactionByteFee is set to 0.01 MicroRAD
+	/// TransactionByteFee is set to 0.01 MicroCFG
 	pub const TransactionByteFee: Balance = 1 * (MICRO_CFG / 100);
-	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
-	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
-	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 	/// This value increases the priority of `Operational` transactions by adding
 	/// a "virtual tip" that's equal to the `OperationalFeeMultiplier * final_fee`.
 	pub const OperationalFeeMultiplier: u8 = 5;
@@ -224,9 +221,9 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees<Runtime>>;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = WeightToFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 }
 
@@ -356,8 +353,9 @@ pub enum ProxyType {
 	Governance,
 	_Staking, // Deprecated ProxyType, that we are keeping due to the migration
 	NonProxy,
-	Borrower,
-	Investor,
+	Borrow,
+	Price,
+	Invest,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -379,7 +377,7 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(c, Call::Proxy(pallet_proxy::Call::proxy { .. }))
 					|| !matches!(c, Call::Proxy(..))
 			}
-			ProxyType::Borrower => matches!(
+			ProxyType::Borrow => matches!(
 				c,
 				Call::Loans(pallet_loans::Call::create{..}) |
 				Call::Loans(pallet_loans::Call::borrow{..}) |
@@ -391,9 +389,12 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
-				Call::Pools(pallet_pools::Call::execute_epoch{..})
+				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
+				Call::Utility(pallet_utility::Call::batch_all{..}) |
+				Call::Utility(pallet_utility::Call::batch{..})
 			),
-			ProxyType::Investor => matches!(
+			ProxyType::Price => matches!(c, Call::Loans(pallet_loans::Call::price { .. })),
+			ProxyType::Invest => matches!(
 				c,
 				Call::Pools(pallet_pools::Call::update_invest_order{..}) |
 				Call::Pools(pallet_pools::Call::update_redeem_order{..}) |
@@ -403,7 +404,9 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Loans(pallet_loans::Call::update_nav{..}) |
 				Call::Pools(pallet_pools::Call::close_epoch{..}) |
 				Call::Pools(pallet_pools::Call::submit_solution{..}) |
-				Call::Pools(pallet_pools::Call::execute_epoch{..})
+				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
+				Call::Utility(pallet_utility::Call::batch_all{..}) |
+				Call::Utility(pallet_utility::Call::batch{..})
 			),
 		}
 	}
@@ -489,13 +492,13 @@ parameter_types! {
 type CouncilCollective = pallet_collective::Instance1;
 
 /// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
+type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
 
 /// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
+type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
 
 /// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
@@ -689,6 +692,7 @@ impl pallet_uniques::Config for Runtime {
 	type Currency = Tokens;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -698,6 +702,8 @@ impl pallet_uniques::Config for Runtime {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Self>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 parameter_types! {
@@ -745,7 +751,7 @@ impl pallet_treasury::Config for Runtime {
 	type Currency = Tokens;
 	// either democracy or 75% of council votes
 	type ApproveOrigin = EnsureRootOr<
-		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 	>;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
@@ -869,6 +875,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
 			CurrencyId::Usd
+			| CurrencyId::AUSD
 			| CurrencyId::KUSD
 			| CurrencyId::Permissioned(PermissionedCurrency::PermissionedEur) => true,
 			CurrencyId::Tranche(_, _)
@@ -1006,7 +1013,7 @@ parameter_types! {
 
 type CollatorSelectionUpdateOrigin = EnsureOneOf<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
 // Implement Collator Selection pallet configuration trait for the runtime
@@ -1124,7 +1131,7 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Usd | CurrencyId::Native | CurrencyId::KUSD | CurrencyId::KSM => true,
+			CurrencyId::Native | CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
@@ -1234,6 +1241,8 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 }
 
@@ -1250,7 +1259,7 @@ impl pallet_bridge::Config for Runtime {
 	type BridgePalletId = BridgePalletId;
 	type BridgeOrigin = chainbridge::EnsureBridge<Runtime>;
 	type AdminOrigin =
-		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
 	type Currency = Balances;
 	type Event = Event;
 	type NativeTokenId = NativeTokenId;
@@ -1270,7 +1279,7 @@ impl chainbridge::Config for Runtime {
 	type Event = Event;
 	/// A 75% majority of the council can update bridge settings.
 	type AdminOrigin =
-		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
+		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 	type Proposal = Call;
 	type ChainId = ChainId;
 	type PalletId = ChainBridgePalletId;
@@ -1395,6 +1404,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 }
 
 /// Block type as expected by this runtime.
@@ -1549,9 +1559,69 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::AnchorApi<Block> for Runtime {
+	impl runtime_common::apis::AnchorApi<Block, Hash, BlockNumber> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
 			Anchor::get_anchor_by_id(id)
+		}
+	}
+
+	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
+		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
+			pallet_pools::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
+		}
+
+		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>{
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let epoch_execution_info = pallet_pools::EpochExecution::<Runtime>::get(pool_id)?;
+			pallet_pools::Pallet::<Runtime>::score_solution(
+				&pool,
+				&epoch_execution_info,
+				&solution
+			).ok()
+		}
+
+		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
+			let total_assets = pool.reserve.total.saturating_add(nav);
+			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
+			let prices = pool
+				.tranches
+				.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
+				.ok()?;
+			prices.get(index).map(|rate: &Rate| rate.clone())
+		}
+
+		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
+			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
+			let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
+				.ok()
+				.map(|(latest, _)| latest.into())?;
+			let total_assets = pool.reserve.total.saturating_add(nav);
+			pool
+				.tranches
+				.calculate_prices::<Rate, OrmlTokens, AccountId>(total_assets, now)
+				.ok()
+		}
+
+		fn tranche_ids(pool_id: PoolId) -> Option<Vec<TrancheId>>{
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			Some(pool.tranches.ids_residual_top())
+		}
+
+		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			let index: usize = tranche_index.try_into().ok()?;
+			pool.tranches.ids_residual_top().get(index).map(|id| id.clone())
+		}
+
+		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
+			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
+			pool.tranches.tranche_currency(tranche_loc)
 		}
 	}
 

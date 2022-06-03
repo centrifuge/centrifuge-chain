@@ -141,6 +141,7 @@ where
 	<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 	<T as ORMLConfig>::Balance: From<u128>,
+	<T as pallet_uniques::Config>::ClassId: Default,
 {
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
@@ -148,8 +149,8 @@ where
 	let (senior_inv, junior_inv) = investors::<T>();
 	make_free_cfg_balance::<T>(senior_inv.clone());
 	make_free_cfg_balance::<T>(junior_inv.clone());
-	make_free_token_balance::<T>(CurrencyId::Usd, &senior_inv, (500 * CURRENCY).into());
-	make_free_token_balance::<T>(CurrencyId::Usd, &junior_inv, (500 * CURRENCY).into());
+	make_free_token_balance::<T>(CurrencyId::AUSD, &senior_inv, (500 * CURRENCY).into());
+	make_free_token_balance::<T>(CurrencyId::AUSD, &junior_inv, (500 * CURRENCY).into());
 	let pool_id: PoolIdOf<T> = Default::default();
 	let pool_account = pool_account::<T>(pool_id.into());
 	let pal_pool_id: T::PoolId = pool_id.into();
@@ -158,7 +159,7 @@ where
 		pool_owner.clone(),
 		junior_inv,
 		senior_inv,
-		CurrencyId::Usd,
+		CurrencyId::AUSD,
 	);
 	let tranche_id = get_tranche_id::<T>(pool_id.into(), 0);
 	make_free_token_balance::<T>(
@@ -295,6 +296,7 @@ benchmarks! {
 		<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
 		<T as pallet_pools::Config>::EpochId: From<u32>,
 		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
+		<T as pallet_uniques::Config>::ClassId: Default,
 	}
 
 	initialise_pool {
@@ -381,11 +383,11 @@ benchmarks! {
 		// pool reserve should have 100 USD less = 900 USD
 		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &pool_reserve_account, pool_reserve_balance);
 
 		// loan owner should have 100 USD
 		let loan_owner_balance: <T as ORMLConfig>::Balance = (100 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, loan_owner_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &loan_owner, loan_owner_balance);
 	}
 
 	further_borrows {
@@ -407,11 +409,11 @@ benchmarks! {
 		// pool reserve should have 100 USD less = 900 USD
 		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (910 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &pool_reserve_account, pool_reserve_balance);
 
 		// loan owner should have 100 USD
 		let loan_owner_balance: <T as ORMLConfig>::Balance = (90 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, loan_owner_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &loan_owner, loan_owner_balance);
 	}
 
 	repay {
@@ -433,11 +435,11 @@ benchmarks! {
 		// pool reserve should have 1000 USD
 		let pool_reserve_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &pool_reserve_account, pool_reserve_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &pool_reserve_account, pool_reserve_balance);
 
 		// loan owner should have 0 USD
 		let loan_owner_balance: <T as ORMLConfig>::Balance = (0 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, loan_owner_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &loan_owner, loan_owner_balance);
 
 		// current debt should not be zero
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
@@ -505,7 +507,7 @@ benchmarks! {
 		TimestampPallet::<T>::set(RawOrigin::None.into(), after_two_years.into()).expect("timestamp set should not fail");
 		// repay all. sent more than current debt
 		let owner_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		make_free_token_balance::<T>(CurrencyId::Usd, &loan_owner, owner_balance);
+		make_free_token_balance::<T>(CurrencyId::AUSD, &loan_owner, owner_balance);
 		let amount = Amount::from_inner(200 * CURRENCY).into();
 		LoansPallet::<T>::repay(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("repay should not fail");
 	}:close(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id)
@@ -514,7 +516,7 @@ benchmarks! {
 		// pool reserve should have more 1000 USD. this is with interest
 		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (1000 * CURRENCY).into();
-		assert!(get_free_token_balance::<T>(CurrencyId::Usd, &pool_account) > pool_reserve_balance);
+		assert!(get_free_token_balance::<T>(CurrencyId::AUSD, &pool_account) > pool_reserve_balance);
 
 		// Loan should be closed
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
@@ -550,7 +552,7 @@ benchmarks! {
 		// pool reserve should have 900 USD since loan is written off 100%
 		let pool_account = pool_account::<T>(pool_id.into());
 		let pool_reserve_balance: <T as ORMLConfig>::Balance = (900 * CURRENCY).into();
-		check_free_token_balance::<T>(CurrencyId::Usd, &pool_account, pool_reserve_balance);
+		check_free_token_balance::<T>(CurrencyId::AUSD, &pool_account, pool_reserve_balance);
 
 		// Loan should be closed
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");

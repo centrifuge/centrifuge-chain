@@ -32,6 +32,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	Perbill,
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type Balance = u64;
 

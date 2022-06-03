@@ -70,7 +70,7 @@ fn fee_payment_errors_if_not_set() {
 			Fees::pay_fee(1, fee_key),
 			DispatchError::Module(ModuleError {
 				index: 3,
-				error: 0,
+				error: [0, 0, 0, 0],
 				message: Some("FeeNotFoundForKey"),
 			})
 		);
@@ -88,7 +88,7 @@ fn fee_payment_errors_if_not_set() {
 			Fees::pay_fee(1, fee_key),
 			DispatchError::Module(ModuleError {
 				index: 2,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some("InsufficientBalance"),
 			})
 		);
@@ -108,7 +108,7 @@ fn fee_payment_errors_if_insufficient_balance() {
 			Fees::pay_fee(3, fee_key),
 			DispatchError::Module(ModuleError {
 				index: 2,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some("InsufficientBalance"),
 			})
 		);
@@ -131,7 +131,7 @@ fn fee_payment_subtracts_fees_from_account() {
 			Fees::pay_fee(1, fee_key),
 			DispatchError::Module(ModuleError {
 				index: 2,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some("InsufficientBalance"),
 			})
 		);
@@ -176,7 +176,7 @@ fn fee_burn_fee_from_account() {
 			Fees::burn_fee(&100, account_new_balance + 1),
 			DispatchError::Module(ModuleError {
 				index: 2,
-				error: 2,
+				error: [2, 0, 0, 0],
 				message: Some("InsufficientBalance"),
 			})
 		);

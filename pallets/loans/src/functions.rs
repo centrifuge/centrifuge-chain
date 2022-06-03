@@ -73,7 +73,7 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// create new loan nft
-		let nonce = NextLoanId::<T>::get();
+		let nonce = NextLoanId::<T>::get(pool_id);
 		let loan_id: T::LoanId = nonce.into();
 		let loan_class_id =
 			PoolToLoanNftClass::<T>::get(pool_id).ok_or(Error::<T>::PoolNotInitialised)?;
@@ -91,7 +91,7 @@ impl<T: Config> Pallet<T> {
 		let next_loan_id = nonce
 			.checked_add(1)
 			.ok_or(Error::<T>::NftTokenNonceOverflowed)?;
-		NextLoanId::<T>::set(next_loan_id);
+		NextLoanId::<T>::mutate(pool_id, |loan_id| *loan_id = next_loan_id);
 
 		// create loan
 		Loan::<T>::insert(
@@ -197,7 +197,7 @@ impl<T: Config> Pallet<T> {
 
 				// burn loan nft
 				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
+				T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 				// update loan status
 				loan.status = LoanStatus::Closed;
@@ -307,10 +307,10 @@ impl<T: Config> Pallet<T> {
 					.and_then(|positive_diff| nav.latest.checked_add(&positive_diff))
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
-				false => old_pv
+				false => Ok(old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+					.unwrap_or_else(Zero::zero)),
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
@@ -431,9 +431,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
-	pub(crate) fn update_nav_of_pool(
-		pool_id: PoolIdOf<T>,
-	) -> Result<(T::Amount, Moment), DispatchError> {
+	pub fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<(T::Amount, Moment), DispatchError> {
 		let now = Self::now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;

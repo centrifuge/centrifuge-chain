@@ -22,6 +22,7 @@ use frame_support::{
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AccountIdConversion;
+use sp_std::convert::TryInto;
 
 pub use pallet::*;
 

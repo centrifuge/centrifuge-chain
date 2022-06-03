@@ -24,7 +24,7 @@ use common_types::{
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
-	traits::{GenesisBuild, SortedMembers},
+	traits::{AsEnsureOriginWithArg, GenesisBuild, SortedMembers},
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
@@ -41,6 +41,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -129,18 +130,21 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub MaxLocks: u32 = 2;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
-	type Amount = i128;
+	type Amount = i64;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 }
 
 parameter_types! {
@@ -258,6 +262,7 @@ impl pallet_uniques::Config for MockRuntime {
 	type InstanceId = InstanceId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type ClassDeposit = ClassDeposit;
 	type InstanceDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
@@ -267,6 +272,8 @@ impl pallet_uniques::Config for MockRuntime {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 parameter_types! {
@@ -311,7 +318,7 @@ impl pallet_loans::Config for MockRuntime {
 }
 
 // USD currencyId
-pub const USD: CurrencyId = CurrencyId::Usd;
+pub const USD: CurrencyId = CurrencyId::AUSD;
 
 // Test externalities builder
 //

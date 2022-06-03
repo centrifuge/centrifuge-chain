@@ -70,6 +70,7 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::traits::BadOrigin;
+	use sp_std::convert::TryInto;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -166,12 +167,13 @@ pub mod pallet {
 	/// Stores the next loan tokenID to be created
 	#[pallet::storage]
 	#[pallet::getter(fn get_next_loan_id)]
-	pub(crate) type NextLoanId<T: Config> = StorageValue<_, u128, ValueQuery, OnNextLoanIdEmpty>;
+	pub(crate) type NextLoanId<T: Config> =
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, u128, ValueQuery, OnNextLoanIdEmpty>;
 
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan)]
-	pub(crate) type Loan<T: Config> = StorageDoubleMap<
+	pub type Loan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
@@ -184,7 +186,7 @@ pub mod pallet {
 	/// Stores the pool nav against poolId
 	#[pallet::storage]
 	#[pallet::getter(fn nav)]
-	pub(crate) type PoolNAV<T: Config> =
+	pub type PoolNAV<T: Config> =
 		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Amount>, OptionQuery>;
 
 	/// Stores the pool associated with the its write off groups

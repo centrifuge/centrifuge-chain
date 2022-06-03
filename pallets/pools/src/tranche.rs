@@ -57,7 +57,8 @@ pub(super) type TrancheOf<T> = Tranche<
 pub type Seniority = u32;
 pub type TrancheInput<Rate> = (TrancheType<Rate>, Option<Seniority>);
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo, RuntimeDebug)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TrancheLoc<TrancheId> {
 	Index(TrancheIndex),
 	Id(TrancheId),
@@ -108,13 +109,14 @@ where
 pub struct Tranche<Balance, Rate, Weight, Currency> {
 	pub(super) tranche_type: TrancheType<Rate>,
 	pub(super) seniority: Seniority,
-	pub(super) currency: Currency,
+	pub currency: Currency,
 
 	pub(super) outstanding_invest_orders: Balance,
 	pub(super) outstanding_redeem_orders: Balance,
 
 	pub(super) debt: Balance,
 	pub(super) reserve: Balance,
+	pub(super) loss: Balance,
 	pub(super) ratio: Perquintill,
 	pub(super) last_updated_interest: Moment,
 
@@ -137,6 +139,7 @@ where
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
+			loss: Zero::zero(),
 			ratio: Perquintill::one(),
 			last_updated_interest: 0,
 			_phantom: PhantomData::default(),
@@ -341,6 +344,10 @@ where
 		})
 	}
 
+	pub fn tranche_currency(&self, id: TrancheLoc<TrancheId>) -> Option<CurrencyId> {
+		self.get_tranche(id).map(|tranche| tranche.currency)
+	}
+
 	pub fn tranche_id(&self, id: TrancheLoc<TrancheId>) -> Option<TrancheId> {
 		match id {
 			TrancheLoc::Id(id) => Some(id),
@@ -479,6 +486,7 @@ where
 			outstanding_redeem_orders: Zero::zero(),
 			debt: Zero::zero(),
 			reserve: Zero::zero(),
+			loss: Zero::zero(),
 			ratio: Perquintill::zero(),
 			last_updated_interest: now,
 			_phantom: Default::default(),

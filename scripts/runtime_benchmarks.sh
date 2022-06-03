@@ -20,7 +20,7 @@ run_benchmark() {
   pallet=$1
   output=$2
 
-  cmd="target/release/centrifuge-chain benchmark \
+  cmd="target/release/centrifuge-chain benchmark pallet \
     --chain="${chain}" \
     --steps=50 \
     --repeat=20 \
