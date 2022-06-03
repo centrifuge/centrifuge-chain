@@ -37,6 +37,12 @@ pub enum CurrencyId {
 	Permissioned(PermissionedCurrency),
 }
 
+impl Default for CurrencyId {
+	fn default() -> Self {
+		CurrencyId::Native
+	}
+}
+
 impl TokenMetadata for CurrencyId {
 	fn name(&self) -> Vec<u8> {
 		match self {

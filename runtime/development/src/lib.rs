@@ -1212,12 +1212,50 @@ impl orml_tokens::Config for Runtime {
 
 impl orml_asset_registry::Config for Runtime {
 	type Event = Event;
-	type CustomMetadata = (); //TODO(nuno)
-	type AssetId = u32; //TODO(nuno)
+	type CustomMetadata = CustomMetadata; //TODO(nuno)
+	type AssetId = CurrencyId; //TODO(nuno)
 	type AuthorityOrigin = EnsureRootOr<HalfOfCouncil>;
-	type AssetProcessor = orml_asset_registry::SequentialId<Runtime>; //TODO(nuno)
+	type AssetProcessor = AssetProcessor; //orml_asset_registry::SequentialId<Runtime>; //TODO(nuno)
 	type Balance = Balance;
 	type WeightInfo = ();
+}
+
+//TODO(nuno): move this to common-types
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+pub struct CustomMetadata {}
+
+//TODO(nuno): move this to common-types
+#[derive(
+	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+)]
+pub struct AssetProcessor {}
+
+impl
+	orml_traits::asset_registry::AssetProcessor<
+		CurrencyId,
+		orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+	> for AssetProcessor
+{
+	fn pre_register(
+		_id: Option<CurrencyId>,
+		_asset_metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+	) -> Result<
+		(
+			CurrencyId,
+			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+		),
+		sp_runtime::DispatchError,
+	> {
+		todo!("Nuno")
+	}
+	fn post_register(
+		_id: CurrencyId,
+		_asset_metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+	) -> Result<(), sp_runtime::DispatchError> {
+		Ok(())
+	}
 }
 
 parameter_types! {
