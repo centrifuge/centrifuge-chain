@@ -919,6 +919,16 @@ impl orml_tokens::Config for Runtime {
 	type OnKilledTokenAccount = ();
 }
 
+impl orml_asset_registry::Config for Runtime {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin, EnsureRootOr<HalfOfCouncil>>;
+	type AssetProcessor = asset_registry::CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
+}
+
 parameter_types! {
 	pub const NftSalesPalletId: PalletId = PalletId(*b"pal/nfts");
 }
@@ -1194,6 +1204,8 @@ construct_runtime!(
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Event<T>, Config<T>} = 151,
+
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,
