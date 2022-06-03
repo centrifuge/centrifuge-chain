@@ -928,6 +928,7 @@ fn development_genesis(
 				.to_vec(),
 		},
 		balances: development_runtime::BalancesConfig { balances },
+		orml_asset_registry: Default::default(),
 		orml_tokens: development_runtime::OrmlTokensConfig {
 			balances: token_balances,
 		},
