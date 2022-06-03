@@ -58,24 +58,31 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<CanonicalAirPerSecond, ToTreasury>,
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
-	// An extra rule handling AIR in its canonical representation. This is currently useful
-	// for testing the transfer of AIR bidirectionally between Altair and a sibling parachain.
-	FixedRateOfFungible<AirPerSecondCanonical, ToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 );
 
 parameter_types! {
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-
-	pub AirPerSecond: (AssetId, u128) = (
+	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
+	pub CanonicalAirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
 			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
+
+	pub AirPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+		).into(),
+		native_per_second(),
+	);
+
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
 	pub KUsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -89,13 +96,6 @@ parameter_types! {
 		ksm_per_second() * 400
 	);
 
-	pub AirPerSecondCanonical: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
-		).into(),
-		native_per_second(),
-	);
 }
 
 pub struct ToTreasury;

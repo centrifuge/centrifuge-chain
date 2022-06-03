@@ -58,21 +58,31 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<AirPerSecond, ToTreasury>,
+	FixedRateOfFungible<CanonicalNativePerSecond, ToTreasury>,
+	FixedRateOfFungible<NativePerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 );
 
 parameter_types! {
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
+	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
+	pub CanonicalNativePerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			0,
+			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+		).into(),
+		native_per_second(),
+	);
 
-	pub AirPerSecond: (AssetId, u128) = (
+	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
+
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
 	pub KUsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -85,6 +95,7 @@ parameter_types! {
 		// KUSD:KSM = 400:1
 		ksm_per_second() * 400
 	);
+
 }
 
 pub struct ToTreasury;
@@ -196,6 +207,13 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 
 		match location.clone() {
 			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => match &key[..] {
+				parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+				_ => Err(location.clone()),
+			},
+			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
@@ -275,7 +293,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// into the right message queues.
 pub type XcmRouter = (
 	// Use UMP to communicate with the relay chain
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
@@ -312,11 +330,8 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> u128 {
-		#[allow(clippy::match_ref_pats)] // false positive
-		match (location.parents, location.first_interior()) {
-			_ => u128::MAX,
-		}
+	pub ParachainMinFee: |_location: MultiLocation| -> u128 {
+		u128::MAX
 	};
 }
 
