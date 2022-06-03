@@ -1216,7 +1216,7 @@ impl orml_asset_registry::Config for Runtime {
 	type CustomMetadata = CustomMetadata; //TODO(nuno)
 	type AssetId = CurrencyId; //TODO(nuno)
 	type AuthorityOrigin = EnsureRootOr<HalfOfCouncil>;
-	type AssetProcessor = AssetProcessor; //orml_asset_registry::SequentialId<Runtime>; //TODO(nuno)
+	type AssetProcessor = CustomAssetProcessor;
 	type Balance = Balance;
 	type WeightInfo = ();
 }
@@ -1231,17 +1231,16 @@ pub struct CustomMetadata {}
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
-pub struct AssetProcessor {}
+pub struct CustomAssetProcessor {}
 
-impl
-	orml_traits::asset_registry::AssetProcessor<
-		CurrencyId,
-		orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-	> for AssetProcessor
+use orml_traits::asset_registry::AssetProcessor;
+
+impl AssetProcessor<CurrencyId, orml_asset_registry::AssetMetadata<Balance, CustomMetadata>>
+	for CustomAssetProcessor
 {
 	fn pre_register(
-		_id: Option<CurrencyId>,
-		_asset_metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
+		id: Option<CurrencyId>,
+		metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
 	) -> Result<
 		(
 			CurrencyId,
@@ -1249,8 +1248,15 @@ impl
 		),
 		sp_runtime::DispatchError,
 	> {
-		todo!("Nuno")
+		match id {
+			// TODO(nuno): ideally, we can just apply the identity function the native tokens ids and their metadata,
+			// and offer something like orml_asset_registry::SequentialId for the ForeignAsset variants. It's not
+			// trivial since said AssetProcessor impl expects to operate on `CurrencyId` and bounds to AtLeast32BitUnsigned.
+			Some(CurrencyId::ForeignAsset(_)) | None => todo!("nuno"),
+			Some(id) => Ok((id, metadata)),
+		}
 	}
+
 	fn post_register(
 		_id: CurrencyId,
 		_asset_metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
