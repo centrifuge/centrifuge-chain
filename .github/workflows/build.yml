@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain, mintable-currencies]
+    branches: [master, parachain]
   pull_request:
 name: Build
 jobs:
