@@ -569,7 +569,7 @@ pub mod currency_id_convert {
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::AUSD),
 				Some(ausd_location)
-			)
+			);
 		});
 	}
 
