@@ -35,7 +35,28 @@ pub enum CurrencyId {
 	AUSD,
 
 	Permissioned(PermissionedCurrency),
+
+	/// An foreign asset
+	ForeignAsset(ForeignAssetId),
 }
+
+#[derive(
+	Clone,
+	Copy,
+	Decode,
+	Default,
+	Debug,
+	Encode,
+	Eq,
+	Hash,
+	MaxEncodedLen,
+	Ord,
+	PartialEq,
+	PartialOrd,
+	TypeInfo,
+)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub struct ForeignAssetId(u32);
 
 impl Default for CurrencyId {
 	fn default() -> Self {
@@ -58,6 +79,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::KUSD => b"Karura Dollar".to_vec(),
 			CurrencyId::AUSD => b"Acala Dollar".to_vec(),
 			CurrencyId::KSM => b"Kusama".to_vec(),
+			_ => todo!("TODO(nuno): deprecate this in favour of AssetRegistry's metadata"),
 		}
 	}
 
@@ -73,6 +95,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::KUSD => b"KUSD".to_vec(),
 			CurrencyId::AUSD => b"AUSD".to_vec(),
 			CurrencyId::KSM => b"KSM".to_vec(),
+			_ => todo!("TODO(nuno): deprecate this in favour of AssetRegistry's metadata"),
 		}
 	}
 
@@ -82,6 +105,7 @@ impl TokenMetadata for CurrencyId {
 			CurrencyId::Permissioned(_) => 12,
 			CurrencyId::Tranche(_, _) => 27,
 			CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => 12,
+			_ => todo!("TODO(nuno): deprecate this in favour of AssetRegistry's metadata"),
 		}
 	}
 }

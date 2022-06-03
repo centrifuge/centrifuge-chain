@@ -878,6 +878,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::KSM
 			| CurrencyId::Permissioned(_) => false,
 			CurrencyId::AUSD | CurrencyId::KUSD => true,
+			CurrencyId::ForeignAsset(_) => todo!("nuno: it would be interesting to decide this based on some metadata field stored in AssetRegistry?")
 		}
 	}
 }
@@ -1127,7 +1128,6 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Native | CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
@@ -1150,6 +1150,7 @@ where
 					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
 				)
 			}
+			_ => true,
 		}
 	}
 }
