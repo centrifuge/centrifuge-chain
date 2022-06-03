@@ -696,7 +696,7 @@ fn test_env(
 					sp_std::time::Duration::from_secs(6),
 					Some(std::time::Duration::from_millis(START_DATE)),
 				)
-				.expect("Nuno: Should be fine");
+				.expect("Should be fine");
 
 				let slot =
 					sp_consensus_babe::inherents::InherentDataProvider::from_timestamp_and_slot_duration(
