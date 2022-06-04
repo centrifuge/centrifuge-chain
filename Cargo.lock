@@ -9491,6 +9491,7 @@ dependencies = [
  "kusama-runtime",
  "lazy_static",
  "node-primitives",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "orml-xcm-support",

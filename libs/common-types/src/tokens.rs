@@ -56,7 +56,7 @@ pub enum CurrencyId {
 	TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct ForeignAssetId(u32);
+pub struct ForeignAssetId(pub u32);
 
 impl Default for CurrencyId {
 	fn default() -> Self {

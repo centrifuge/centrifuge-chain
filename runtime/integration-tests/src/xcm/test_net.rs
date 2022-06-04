@@ -54,6 +54,16 @@ decl_test_parachain! {
 }
 
 decl_test_parachain! {
+	pub struct Development {
+		Runtime = development_runtime::Runtime,
+		Origin = development_runtime::Origin,
+		XcmpMessageHandler = development_runtime::XcmpQueue,
+		DmpMessageHandler = development_runtime::DmpQueue,
+		new_ext = para_ext(3001),
+	}
+}
+
+decl_test_parachain! {
 	pub struct Karura {
 		Runtime = altair_runtime::Runtime,
 		Origin = altair_runtime::Origin,
@@ -76,6 +86,8 @@ decl_test_network! {
 			(3000, Sibling),
 			// Be sure to use `parachains::karura::ID`
 			(2000, Karura),
+			// Be sure to use `parachains::karura::ID`
+			(3001, Development),
 		],
 	}
 }

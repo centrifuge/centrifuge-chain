@@ -21,7 +21,7 @@ use crate::xcm::setup::{
 	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
 	CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
 };
-use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
+use crate::xcm::test_net::{Altair, Development, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{
 	AirPerSecond, Balances, KUsdPerSecond, KsmPerSecond, Origin, OrmlTokens, XTokens,
@@ -288,6 +288,7 @@ pub mod currency_id_convert {
 	use super::*;
 	use altair_runtime::CurrencyIdConvert;
 	use sp_runtime::traits::Convert as C2;
+	use xcm::VersionedMultiLocation;
 	use xcm_executor::traits::Convert as C1;
 
 	#[test]
@@ -382,6 +383,67 @@ pub mod currency_id_convert {
 				)),
 				None
 			)
+		});
+	}
+}
+
+// TODO(nuno): move this to another module?
+pub mod asset_registry {
+	use super::{assert_ok, parachains, Development, GeneralKey, MultiLocation, X1};
+	use development_runtime::{
+		Balance, CurrencyId, CustomMetadata, ForeignAssetId, Origin, OrmlAssetRegistry,
+	};
+	use orml_asset_registry::AssetMetadata;
+	use xcm::prelude::{Parachain, X2};
+	use xcm::VersionedMultiLocation;
+	use xcm_emulator::TestExt;
+
+	#[test]
+	fn register_air_works() {
+		Development::execute_with(|| {
+			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				decimals: 18,
+				name: "Altair".into(),
+				symbol: "AIR".into(),
+				existential_deposit: 1_000_000_000_000,
+				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+					0,
+					X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+				))),
+				additional: CustomMetadata {},
+			};
+
+			assert_ok!(OrmlAssetRegistry::register_asset(
+				Origin::root(),
+				meta,
+				Some(CurrencyId::Native)
+			));
+		});
+	}
+
+	#[test]
+	fn register_foreign_asset_works() {
+		Development::execute_with(|| {
+			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				decimals: 12,
+				name: "Acala Dollar".into(),
+				symbol: "AUSD".into(),
+				existential_deposit: 1_000_000,
+				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+					1,
+					X2(
+						Parachain(2000),
+						GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+					),
+				))),
+				additional: CustomMetadata {},
+			};
+
+			assert_ok!(OrmlAssetRegistry::register_asset(
+				Origin::root(),
+				meta,
+				Some(CurrencyId::ForeignAsset(ForeignAssetId(42)))
+			));
 		});
 	}
 }

@@ -51,7 +51,7 @@ use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolUpdateGuard, PreConditions};
-pub use common_types::CurrencyId;
+pub use common_types::{CurrencyId, ForeignAssetId};
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
@@ -1252,7 +1252,7 @@ impl AssetProcessor<CurrencyId, orml_asset_registry::AssetMetadata<Balance, Cust
 			// TODO(nuno): ideally, we can just apply the identity function the native tokens ids and their metadata,
 			// and offer something like orml_asset_registry::SequentialId for the ForeignAsset variants. It's not
 			// trivial since said AssetProcessor impl expects to operate on `CurrencyId` and bounds to AtLeast32BitUnsigned.
-			Some(CurrencyId::ForeignAsset(_)) | None => todo!("nuno"),
+			None => todo!("nuno"),
 			Some(id) => Ok((id, metadata)),
 		}
 	}
