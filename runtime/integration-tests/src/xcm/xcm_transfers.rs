@@ -393,7 +393,9 @@ pub mod asset_registry {
 	use development_runtime::{
 		Balance, CurrencyId, CustomMetadata, ForeignAssetId, Origin, OrmlAssetRegistry,
 	};
+	use frame_support::assert_noop;
 	use orml_asset_registry::AssetMetadata;
+	use sp_runtime::traits::BadOrigin;
 	use xcm::prelude::{Parachain, X2};
 	use xcm::VersionedMultiLocation;
 	use xcm_emulator::TestExt;
@@ -443,6 +445,43 @@ pub mod asset_registry {
 				Origin::root(),
 				meta,
 				Some(CurrencyId::ForeignAsset(ForeignAssetId(42)))
+			));
+		});
+	}
+
+	#[test]
+	// Verify that only the pool admin can register the asset.
+	fn register_tranche_asset_works() {
+		Development::execute_with(|| {
+			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+				decimals: 12,
+				name: "Tranche Token 1".into(),
+				symbol: "TRNCH".into(),
+				existential_deposit: 1_000_000,
+				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+					1,
+					X2(Parachain(2000), GeneralKey(vec![42])),
+				))),
+				additional: CustomMetadata {},
+			};
+
+			// It fails when root attempts to register it...
+			let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
+			assert_noop!(
+				OrmlAssetRegistry::register_asset(
+					Origin::root(),
+					meta.clone(),
+					Some(asset_id.clone())
+				),
+				BadOrigin
+			);
+
+			// But it works with the pool admin...
+			// TODO(nuno): we need to use the real pool admin here
+			assert_ok!(OrmlAssetRegistry::register_asset(
+				Origin::signed(development_runtime::MockPoolAdmin::get()),
+				meta,
+				Some(asset_id)
 			));
 		});
 	}
