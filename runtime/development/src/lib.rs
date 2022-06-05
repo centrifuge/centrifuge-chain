@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
-	construct_runtime, parameter_types,
+	construct_runtime, ord_parameter_types, parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
 		InstanceFilter, LockIdentifier, U128CurrencyToVote,
@@ -20,7 +20,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot, EnsureSigned,
+	EnsureRoot, EnsureSigned, EnsureSignedBy,
 };
 use orml_traits::parameter_type_with_key;
 pub use pallet_balances::Call as BalancesCall;
@@ -65,6 +65,7 @@ use pallet_restricted_tokens::{
 pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -1215,10 +1216,41 @@ impl orml_asset_registry::Config for Runtime {
 	type Event = Event;
 	type CustomMetadata = CustomMetadata; //TODO(nuno)
 	type AssetId = CurrencyId; //TODO(nuno)
-	type AuthorityOrigin = EnsureRootOr<HalfOfCouncil>;
+	type Authority = AssetAuthority;
 	type AssetProcessor = CustomAssetProcessor;
 	type Balance = Balance;
 	type WeightInfo = ();
+}
+
+pub const MOCK_POOL_ADMIN: AccountId = AccountId::new([42u8; 32]);
+
+ord_parameter_types! {
+	pub const MockPoolAdmin: AccountId = MOCK_POOL_ADMIN;
+}
+
+pub struct AssetAuthority;
+impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
+	type Success = ();
+
+	fn try_origin(origin: Origin, asset_id: &Option<CurrencyId>) -> Result<Self::Success, Origin> {
+		match asset_id {
+			// For Tranche tokens, we need to ensure that the origin is the respective pool's admin.
+			// Todo(nuno): lookup pool admin instead of using placeholder account
+			Some(CurrencyId::Tranche(_, _)) => {
+				EnsureSignedBy::<MockPoolAdmin, AccountId>::try_origin(origin.clone())
+					.map(|_| ())
+					.map_err(|_| origin)
+			}
+
+			// Any other `asset_id` defaults to EnsureRoot
+			_ => EnsureRoot::try_origin(origin),
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin(a: &u32) -> OO {
+		todo!()
+	}
 }
 
 //TODO(nuno): move this to common-types
