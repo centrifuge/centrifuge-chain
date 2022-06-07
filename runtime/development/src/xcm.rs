@@ -193,7 +193,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(id)
-				.and_then(|m| location)
+				.and_then(|m| m.location)
 				.and_then(|l| l.try_into().ok()),
 			_ => return None,
 		}
@@ -232,7 +232,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				},
 				_ => Err(location.clone()),
 			},
-			_ => Err(location.clone()),
+			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
 	}
 }
