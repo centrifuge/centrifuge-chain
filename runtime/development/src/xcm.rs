@@ -1,6 +1,6 @@
 use super::{
-	AccountId, Balance, Call, Event, Origin, OrmlTokens, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
+	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 pub use cumulus_primitives_core::ParaId;
@@ -169,30 +169,34 @@ where
 /// in the form of a `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
 pub struct CurrencyIdConvert;
 
+use core::convert::TryInto;
+
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
 /// Other chains need to know how this conversion takes place in order to
 /// handle it on their side.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		let x = match id {
-			CurrencyId::KSM => MultiLocation::parent(),
-			CurrencyId::KUSD => MultiLocation::new(
+		match id {
+			CurrencyId::KSM => Some(MultiLocation::parent()),
+			CurrencyId::KUSD => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::karura::ID),
 					GeneralKey(parachains::karura::KUSD_KEY.into()),
 				),
-			),
-			CurrencyId::Native => MultiLocation::new(
+			)),
+			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::altair::ID),
 					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 				),
-			),
+			)),
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(id)
+				.and_then(|m| location)
+				.and_then(|l| l.try_into().ok()),
 			_ => return None,
-		};
-		Some(x)
+		}
 	}
 }
 
