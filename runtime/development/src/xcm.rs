@@ -3,6 +3,7 @@ use super::{
 	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
+use core::convert::TryInto;
 pub use cumulus_primitives_core::ParaId;
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::fungibles;
@@ -11,7 +12,11 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
+use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
+use orml_traits::{
+	location::AbsoluteReserveProvider, parameter_type_with_key, FixedConversionRateProvider,
+	MultiCurrency,
+};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -62,7 +67,15 @@ pub type Trader = (
 	FixedRateOfFungible<NativePerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	AssetRegistryTrader<FixedRateAssetRegistryTrader<MyFixedConversionRateProvider>, ToTreasury>,
 );
+
+pub struct MyFixedConversionRateProvider;
+impl FixedConversionRateProvider for MyFixedConversionRateProvider {
+	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
+		todo!("nuno: look this up from the custom metadata?")
+	}
+}
 
 parameter_types! {
 	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
@@ -168,8 +181,6 @@ where
 /// A currency locally is identified with a `CurrencyId` variant but in the network it is identified
 /// in the form of a `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
 pub struct CurrencyIdConvert;
-
-use core::convert::TryInto;
 
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
 /// Other chains need to know how this conversion takes place in order to
