@@ -105,6 +105,7 @@ dependencies = [
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",
+ "orml-asset-registry",
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xcm-support 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
@@ -360,7 +361,7 @@ dependencies = [
  "async-io",
  "async-lock",
  "async-process",
- "crossbeam-utils 0.8.8",
+ "crossbeam-utils 0.8.9",
  "futures-channel",
  "futures-core",
  "futures-io",
@@ -1645,7 +1646,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aaa7bd5fb665c6864b5f963dd9097905c54125909c7aa94c9e18507cdbe6c53"
 dependencies = [
  "cfg-if 1.0.0",
- "crossbeam-utils 0.8.8",
+ "crossbeam-utils 0.8.9",
 ]
 
 [[package]]
@@ -1656,7 +1657,7 @@ checksum = "6455c0ca19f0d2fbf751b908d5c55c1f5cbc65e03c4225427254b46890bdde1e"
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-epoch",
- "crossbeam-utils 0.8.8",
+ "crossbeam-utils 0.8.9",
 ]
 
 [[package]]
@@ -1667,7 +1668,7 @@ checksum = "1145cf131a2c6ba0615079ab6a638f7e1973ac9c2634fcbeaaad6114246efe8c"
 dependencies = [
  "autocfg 1.1.0",
  "cfg-if 1.0.0",
- "crossbeam-utils 0.8.8",
+ "crossbeam-utils 0.8.9",
  "lazy_static",
  "memoffset",
  "scopeguard",
@@ -1680,7 +1681,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f25d8400f4a7a5778f0e4e52384a48cbd9b5c495d110786187fc750075277a2"
 dependencies = [
  "cfg-if 1.0.0",
- "crossbeam-utils 0.8.8",
+ "crossbeam-utils 0.8.9",
 ]
 
 [[package]]
@@ -1696,12 +1697,12 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.8"
+version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bf124c720b7686e3c2663cf54062ab0f68a88af2fb6a030e87e30bf721fcb38"
+checksum = "8ff1f980957787286a554052d03c7aee98d99cc32e09f6d45f0a814133c87978"
 dependencies = [
  "cfg-if 1.0.0",
- "lazy_static",
+ "once_cell",
 ]
 
 [[package]]
@@ -5783,11 +5784,11 @@ dependencies = [
 [[package]]
 name = "orml-asset-registry"
 version = "0.4.1-dev"
-source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24#41dddc878ecef961b9b20207713abdcb8d84ae53"
+source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24#29442c0a2f8ec8d76dc2287afc977e608cbcf7c2"
 dependencies = [
  "frame-support",
  "frame-system",
- "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+ "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "pallet-xcm",
  "parity-scale-codec",
  "scale-info",
@@ -9213,7 +9214,7 @@ checksum = "258bcdb5ac6dad48491bb2992db6b7cf74878b0384908af124823d118c99683f"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",
- "crossbeam-utils 0.8.8",
+ "crossbeam-utils 0.8.9",
  "num_cpus",
 ]
 
@@ -9538,7 +9539,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "node-primitives",
- "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+ "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
@@ -9572,11 +9573,10 @@ dependencies = [
  "kusama-runtime",
  "lazy_static",
  "node-primitives",
- "orml-asset-registry",
- "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
- "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
- "orml-xcm-support 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
- "orml-xtokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+ "orml-tokens 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+ "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+ "orml-xcm-support 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+ "orml-xtokens 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "pallet-asset-tx-payment",
  "pallet-babe",
  "pallet-balances",

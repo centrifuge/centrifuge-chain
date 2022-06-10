@@ -1,6 +1,6 @@
 use super::{
-	AccountId, Balance, Call, Event, Origin, OrmlTokens, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
+	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 pub use cumulus_primitives_core::ParaId;
@@ -11,6 +11,7 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
+use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
 use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
@@ -27,6 +28,7 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 pub use common_types::CurrencyId;
+use runtime_common::xcm_fees::base_tx_per_second;
 use runtime_common::{
 	parachains,
 	xcm_fees::{ksm_per_second, native_per_second},
@@ -62,7 +64,18 @@ pub type Trader = (
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	AssetRegistryTrader<FixedRateAssetRegistryTrader<FixedConversionRateProvider>, ToTreasury>,
 );
+
+pub struct FixedConversionRateProvider;
+
+impl orml_traits::FixedConversionRateProvider for FixedConversionRateProvider {
+	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
+		let asset_id = OrmlAssetRegistry::location_to_asset_id(location.clone())?;
+		// TODO(nuno): discuss internally
+		Some(base_tx_per_second(asset_id))
+	}
+}
 
 parameter_types! {
 	// Canonical location: https://github.com/paritytech/polkadot/pull/4470

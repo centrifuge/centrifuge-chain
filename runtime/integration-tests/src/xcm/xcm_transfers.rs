@@ -389,12 +389,12 @@ pub mod currency_id_convert {
 
 // TODO(nuno): move this to another module?
 pub mod asset_registry {
-	use super::{assert_ok, parachains, Development, GeneralKey, MultiLocation, X1};
-	use development_runtime::{
-		Balance, CurrencyId, CustomMetadata, ForeignAssetId, Origin, OrmlAssetRegistry,
-	};
+	use super::{assert_ok, parachains, Altair, GeneralKey, MultiLocation, X1};
+	use altair_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
+	use common_types::ForeignAssetId;
 	use frame_support::assert_noop;
 	use orml_asset_registry::AssetMetadata;
+	use orml_traits::currency::MultiCurrency;
 	use sp_runtime::traits::BadOrigin;
 	use xcm::prelude::{Parachain, X2};
 	use xcm::VersionedMultiLocation;
@@ -402,7 +402,7 @@ pub mod asset_registry {
 
 	#[test]
 	fn register_air_works() {
-		Development::execute_with(|| {
+		Altair::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 18,
 				name: "Altair".into(),
@@ -425,7 +425,7 @@ pub mod asset_registry {
 
 	#[test]
 	fn register_foreign_asset_works() {
-		Development::execute_with(|| {
+		Altair::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 12,
 				name: "Acala Dollar".into(),
@@ -450,9 +450,9 @@ pub mod asset_registry {
 	}
 
 	#[test]
-	// Verify that only the pool admin can register the asset.
-	fn register_tranche_asset_works() {
-		Development::execute_with(|| {
+	// Verify that registering tranche tokens is not allowed through extrinsics
+	fn register_tranche_asset_blocked() {
+		Altair::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 12,
 				name: "Tranche Token 1".into(),
@@ -465,7 +465,8 @@ pub mod asset_registry {
 				additional: CustomMetadata {},
 			};
 
-			// It fails when root attempts to register it...
+			// It fails with `BadOrigin` even when submitted with `Origin::root` since we only
+			// allow for tranche tokens to be registered through the pools pallet.
 			let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
 			assert_noop!(
 				OrmlAssetRegistry::register_asset(
@@ -475,14 +476,6 @@ pub mod asset_registry {
 				),
 				BadOrigin
 			);
-
-			// But it works with the pool admin...
-			// TODO(nuno): we need to use the real pool admin here
-			assert_ok!(OrmlAssetRegistry::register_asset(
-				Origin::signed(development_runtime::MockPoolAdmin::get()),
-				meta,
-				Some(asset_id)
-			));
 		});
 	}
 }

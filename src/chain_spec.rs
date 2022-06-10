@@ -829,6 +829,7 @@ fn altair_genesis(
 				.to_vec(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
+		orml_asset_registry: Default::default(),
 		orml_tokens: altair_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {

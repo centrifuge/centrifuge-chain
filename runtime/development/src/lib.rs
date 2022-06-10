@@ -1248,7 +1248,7 @@ impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin(a: &u32) -> OO {
+	fn successful_origin(_: &Option<u32>) -> Origin {
 		todo!()
 	}
 }
