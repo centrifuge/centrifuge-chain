@@ -230,11 +230,10 @@ pub mod pallet {
 	pub(super) type ClaimedAmounts<T: Config> =
 		StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
-	/// Map of root hashes that correspond to lists of reward claim amounts per account.
+	/// Root hash that correspond to lists of reward claim amounts per account.
 	#[pallet::storage]
 	#[pallet::getter(fn get_root_hash)]
-	pub(super) type RootHashes<T: Config> =
-		StorageMap<_, Blake2_128Concat, T::Hash, bool, ValueQuery>;
+	pub(super) type RootHash<T: Config> = StorageValue<_, T::Hash, OptionQuery>;
 
 	/// Account that is allowed to upload new root hashes.
 	#[pallet::storage]
@@ -392,7 +391,7 @@ pub mod pallet {
 				Error::<T>::MustBeAdmin
 			);
 
-			<RootHashes<T>>::insert(root_hash, true);
+			<RootHash<T>>::put(root_hash);
 
 			Self::deposit_event(Event::RootHashStored(root_hash));
 
@@ -483,6 +482,6 @@ impl<T: Config> Pallet<T> {
 			root_hash = leaf_hash;
 		}
 
-		Self::get_root_hash(root_hash)
+		Self::get_root_hash() == Some(root_hash)
 	}
 }
