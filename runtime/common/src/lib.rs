@@ -270,18 +270,20 @@ pub mod xcm_fees {
 	pub fn base_tx_per_second(currency: CurrencyId) -> Balance {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
 		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
-		base_tx_per_second * base_tx(currency)
+		base_tx_per_second * base_fee(currency.decimals().into())
 	}
 
-	fn base_tx(currency: CurrencyId) -> Balance {
-		cent(currency) / 10
+	pub fn foreign_tx_per_second(decimals: u32) -> Balance {
+		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
+		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		base_tx_per_second * base_fee(decimals)
 	}
 
-	pub fn dollar(currency_id: common_types::CurrencyId) -> Balance {
-		10u128.saturating_pow(currency_id.decimals().into())
+	fn base_fee(decimals: u32) -> Balance {
+		dollar(decimals) / 100
 	}
 
-	pub fn cent(currency_id: CurrencyId) -> Balance {
-		dollar(currency_id) / 100
+	pub fn dollar(decimals: u32) -> Balance {
+		10u128.saturating_pow(decimals.into())
 	}
 }

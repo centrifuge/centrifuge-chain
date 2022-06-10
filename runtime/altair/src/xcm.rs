@@ -2,7 +2,7 @@ use super::{
 	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
 	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
-
+use core::convert::TryInto;
 pub use cumulus_primitives_core::ParaId;
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::fungibles;
@@ -28,7 +28,7 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 pub use common_types::CurrencyId;
-use runtime_common::xcm_fees::base_tx_per_second;
+use runtime_common::xcm_fees::foreign_tx_per_second;
 use runtime_common::{
 	parachains,
 	xcm_fees::{ksm_per_second, native_per_second},
@@ -71,9 +71,9 @@ pub struct FixedConversionRateProvider;
 
 impl orml_traits::FixedConversionRateProvider for FixedConversionRateProvider {
 	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
-		let asset_id = OrmlAssetRegistry::location_to_asset_id(location.clone())?;
+		let metadata = OrmlAssetRegistry::fetch_metadata_by_location(&location)?;
 		// TODO(nuno): discuss internally
-		Some(base_tx_per_second(asset_id))
+		Some(foreign_tx_per_second(metadata.decimals) / 10)
 	}
 }
 
@@ -187,25 +187,27 @@ pub struct CurrencyIdConvert;
 /// handle it on their side.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		let x = match id {
-			CurrencyId::KSM => MultiLocation::parent(),
-			CurrencyId::KUSD => MultiLocation::new(
+		match id {
+			CurrencyId::KSM => Some(MultiLocation::parent()),
+			CurrencyId::KUSD => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::karura::ID),
 					GeneralKey(parachains::karura::KUSD_KEY.into()),
 				),
-			),
-			CurrencyId::Native => MultiLocation::new(
+			)),
+			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::altair::ID),
 					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 				),
-			),
-			_ => return None,
-		};
-		Some(x)
+			)),
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(id)
+				.and_then(|m| m.location)
+				.and_then(|l| l.try_into().ok()),
+			_ => None,
+		}
 	}
 }
 
@@ -239,9 +241,9 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
 					_ => Err(location.clone()),
 				},
-				_ => Err(location.clone()),
+				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
-			_ => Err(location.clone()),
+			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
 	}
 }

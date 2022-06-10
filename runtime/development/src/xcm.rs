@@ -90,7 +90,7 @@ parameter_types! {
 	pub NativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
@@ -199,7 +199,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::altair::ID),
+					Parachain(ParachainInfo::parachain_id().into()),
 					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 				),
 			)),
@@ -232,7 +232,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
-				parachains::altair::ID => match &key[..] {
+				3001 => match &key[..] {
 					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
 					_ => Err(location.clone()),
 				},

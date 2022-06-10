@@ -11,21 +11,25 @@
 // GNU General Public License for more details.
 
 use frame_support::assert_ok;
+use orml_asset_registry::AssetMetadata;
 use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 
 use orml_traits::MultiCurrency;
+use xcm::VersionedMultiLocation;
 
 use crate::xcm::setup::{
 	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
-	CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
+	CurrencyId, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
 };
 use crate::xcm::test_net::{Altair, Development, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{
-	AirPerSecond, Balances, KUsdPerSecond, KsmPerSecond, Origin, OrmlTokens, XTokens,
+	AirPerSecond, Balances, CustomMetadata, KUsdPerSecond, KsmPerSecond, Origin, OrmlAssetRegistry,
+	OrmlTokens, XTokens,
 };
+use common_types::ForeignAssetId;
 use runtime_common::{parachains, Balance};
 
 #[test]
@@ -227,7 +231,7 @@ fn transfer_kusd_to_development() {
 }
 
 #[test]
-fn transfer_from_relay_chain() {
+fn transfer_ksm_from_relay_chain() {
 	let transfer_amount: Balance = ksm_amount(1);
 
 	KusamaNet::execute_with(|| {
@@ -280,6 +284,73 @@ fn transfer_ksm_to_relay_chain() {
 		assert_eq!(
 			kusama_runtime::Balances::free_balance(&BOB.into()),
 			999988476752
+		);
+	});
+}
+
+#[test]
+fn transfer_foreign_sibling_to_altair() {
+	TestNet::reset();
+
+	let alice_initial_balance = air_amount(10);
+	let bob_initial_balance = air_amount(10);
+	let transfer_amount = air_amount(1);
+	let devel_asset_id = CurrencyId::ForeignAsset(ForeignAssetId(1));
+
+	Altair::execute_with(|| {
+		// First, register the asset in altair
+		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			decimals: 18,
+			name: "Development's Native Token".into(),
+			symbol: "DEVEL".into(),
+			existential_deposit: 1_000_000,
+			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+				1,
+				X2(Parachain(PARA_ID_DEVELOPMENT), GeneralKey(vec![0, 1])),
+			))),
+			additional: CustomMetadata {},
+		};
+
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta,
+			Some(devel_asset_id)
+		));
+	});
+
+	Development::execute_with(|| {
+		assert_ok!(development_runtime::XTokens::transfer(
+			development_runtime::Origin::signed(ALICE.into()),
+			CurrencyId::Native,
+			transfer_amount,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::altair::ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000_000,
+		));
+
+		// Confirm that Alice's balance is initial balance - amount transferred
+		assert_eq!(
+			Balances::free_balance(&ALICE.into()),
+			alice_initial_balance - transfer_amount
+		);
+	});
+
+	Altair::execute_with(|| {
+		// Verify that BOB now has initial balance + amount transferred - fee
+		assert_eq!(
+			OrmlTokens::free_balance(devel_asset_id, &BOB.into()),
+			bob_initial_balance + transfer_amount - air_fee(),
 		);
 	});
 }
