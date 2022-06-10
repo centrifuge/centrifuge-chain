@@ -267,7 +267,7 @@ pub mod xcm_fees {
 		base_tx_per_second(CurrencyId::KSM) / 50
 	}
 
-	fn base_tx_per_second(currency: CurrencyId) -> Balance {
+	pub fn base_tx_per_second(currency: CurrencyId) -> Balance {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
 		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
 		base_tx_per_second * base_tx(currency)
