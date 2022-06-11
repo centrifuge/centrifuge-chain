@@ -37,8 +37,8 @@ fn transfer_air_to_sibling() {
 	TestNet::reset();
 
 	let alice_initial_balance = air_amount(10);
-	let bob_initial_balance = air_amount(10);
-	let transfer_amount = air_amount(1);
+	let transfer_amount = air_amount(5);
+	let air_in_sibling = CurrencyId::ForeignAsset(ForeignAssetId(12));
 
 	Altair::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
@@ -46,7 +46,31 @@ fn transfer_air_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
+		assert_eq!(
+			OrmlTokens::free_balance(air_in_sibling.clone(), &BOB.into()),
+			0
+		);
+
+		// Register AIR as foreign asset in the sibling parachain
+		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+			decimals: 18,
+			name: "Altair".into(),
+			symbol: "AIR".into(),
+			existential_deposit: 1_000_000_000_000,
+			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+				1,
+				X2(
+					Parachain(parachains::altair::ID),
+					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+				),
+			))),
+			additional: CustomMetadata {},
+		};
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta,
+			Some(air_in_sibling.clone())
+		));
 	});
 
 	Altair::execute_with(|| {
@@ -81,10 +105,10 @@ fn transfer_air_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		// Verify that BOB now has initial balance + amount transferred - fee
+		// Verify that BOB now has (amount transferred - fee)
 		assert_eq!(
-			Balances::free_balance(&BOB.into()),
-			bob_initial_balance + transfer_amount - air_fee(),
+			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
+			transfer_amount - air_fee(),
 		);
 	});
 }
@@ -98,24 +122,27 @@ fn transfer_air_sibling_to_altair() {
 	// AIR on their side.
 	transfer_air_to_sibling();
 
-	let alice_initial_balance = air_amount(10);
-	let bob_initial_balance = air_amount(10);
+	let alice_initial_balance = air_amount(5);
+	let bob_initial_balance = air_amount(5) - air_fee();
 	let transfer_amount = air_amount(1);
-
-	Sibling::execute_with(|| {
-		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
-		assert_eq!(Balances::free_balance(&altair_account()), 0);
-	});
+	let air_in_sibling = CurrencyId::ForeignAsset(ForeignAssetId(12));
 
 	Altair::execute_with(|| {
-		assert_eq!(Balances::free_balance(&BOB.into()), bob_initial_balance);
-		assert_eq!(Balances::free_balance(&sibling_account()), transfer_amount);
+		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
+	});
+
+	Sibling::execute_with(|| {
+		assert_eq!(Balances::free_balance(&altair_account()), 0);
+		assert_eq!(
+			OrmlTokens::free_balance(air_in_sibling.clone(), &BOB.into()),
+			bob_initial_balance
+		);
 	});
 
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
-			Origin::signed(ALICE.into()),
-			CurrencyId::Native,
+			Origin::signed(BOB.into()),
+			air_in_sibling.clone(),
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -124,7 +151,7 @@ fn transfer_air_sibling_to_altair() {
 						Parachain(parachains::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
-							id: BOB.into(),
+							id: ALICE.into(),
 						}
 					)
 				)
@@ -133,24 +160,24 @@ fn transfer_air_sibling_to_altair() {
 			8_000_000_000_000,
 		));
 
-		// Confirm that Alice's balance is initial balance - amount transferred
+		// Confirm that Bobs's balance is initial balance - amount transferred
 		assert_eq!(
-			Balances::free_balance(&ALICE.into()),
-			alice_initial_balance - transfer_amount
+			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
+			bob_initial_balance - transfer_amount
 		);
 	});
 
 	Altair::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
-			Balances::free_balance(&BOB.into()),
-			bob_initial_balance + transfer_amount - air_fee(),
+			Balances::free_balance(&ALICE.into()),
+			alice_initial_balance + transfer_amount - air_fee(),
 		);
 	});
 }
 
 #[test]
-fn transfer_kusd_to_development() {
+fn transfer_kusd_to_altair() {
 	TestNet::reset();
 
 	let alice_initial_balance = kusd_amount(10);
@@ -294,27 +321,21 @@ fn transfer_foreign_sibling_to_altair() {
 
 	let alice_initial_balance = air_amount(10);
 	let transfer_amount = air_amount(1);
-	let devel_asset_id = CurrencyId::ForeignAsset(ForeignAssetId(1));
+	let sibling_asset_id = CurrencyId::ForeignAsset(ForeignAssetId(1));
+	let asset_location =
+		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), GeneralKey(vec![0, 1])));
 
-	Development::execute_with(|| {
-		assert_eq!(
-			development_runtime::OrmlTokens::free_balance(devel_asset_id, &BOB.into()),
-			0
-		)
+	Sibling::execute_with(|| {
+		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)
 	});
-
-	let asset_location = MultiLocation::new(
-		1,
-		X2(Parachain(PARA_ID_DEVELOPMENT), GeneralKey(vec![0, 1])),
-	);
 
 	Altair::execute_with(|| {
 		// First, register the asset in altair
 		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 			decimals: 18,
-			name: "Development's Native Token".into(),
-			symbol: "DEVEL".into(),
-			existential_deposit: 1_000_000,
+			name: "Sibling Native Token".into(),
+			symbol: "SBLNG".into(),
+			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(asset_location.clone())),
 			additional: CustomMetadata {},
 		};
@@ -322,13 +343,13 @@ fn transfer_foreign_sibling_to_altair() {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			Origin::root(),
 			meta,
-			Some(devel_asset_id)
+			Some(sibling_asset_id)
 		));
 	});
 
-	Development::execute_with(|| {
-		assert_ok!(development_runtime::XTokens::transfer(
-			development_runtime::Origin::signed(ALICE.into()),
+	Sibling::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
 			CurrencyId::Native,
 			transfer_amount,
 			Box::new(
@@ -355,7 +376,7 @@ fn transfer_foreign_sibling_to_altair() {
 	});
 
 	Altair::execute_with(|| {
-		let bob_balance = OrmlTokens::free_balance(devel_asset_id, &BOB.into());
+		let bob_balance = OrmlTokens::free_balance(sibling_asset_id, &BOB.into());
 
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(bob_balance, transfer_amount - foreign_fee(&asset_location));
@@ -413,12 +434,12 @@ pub mod currency_id_convert {
 			),
 		);
 
-		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(kusd_location.clone()),
-			Ok(CurrencyId::KUSD),
-		);
-
 		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C1<_, _>>::convert(kusd_location.clone()),
+				Ok(CurrencyId::KUSD),
+			);
+
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KUSD),
 				Some(kusd_location)
@@ -430,12 +451,12 @@ pub mod currency_id_convert {
 	fn convert_ksm() {
 		let ksm_location: MultiLocation = MultiLocation::parent().into();
 
-		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
-			Ok(CurrencyId::KSM),
-		);
-
 		Altair::execute_with(|| {
+			assert_eq!(
+				<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
+				Ok(CurrencyId::KSM),
+			);
+
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KSM),
 				Some(ksm_location)
@@ -450,7 +471,9 @@ pub mod currency_id_convert {
 			X2(Parachain(parachains::altair::ID), GeneralKey([42].to_vec())),
 		);
 
-		assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+		Altair::execute_with(|| {
+			assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
+		});
 	}
 
 	#[test]
@@ -510,7 +533,7 @@ pub mod asset_registry {
 				decimals: 12,
 				name: "Acala Dollar".into(),
 				symbol: "AUSD".into(),
-				existential_deposit: 1_000_000,
+				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 					1,
 					X2(
@@ -537,7 +560,7 @@ pub mod asset_registry {
 				decimals: 12,
 				name: "Tranche Token 1".into(),
 				symbol: "TRNCH".into(),
-				existential_deposit: 1_000_000,
+				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 					1,
 					X2(Parachain(2000), GeneralKey(vec![42])),
