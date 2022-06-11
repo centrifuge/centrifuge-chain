@@ -73,7 +73,7 @@ impl orml_traits::FixedConversionRateProvider for FixedConversionRateProvider {
 	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 		let metadata = OrmlAssetRegistry::fetch_metadata_by_location(&location)?;
 		// TODO(nuno): discuss internally
-		Some(foreign_tx_per_second(metadata.decimals) / 10)
+		Some(foreign_tx_per_second(metadata.decimals))
 	}
 }
 

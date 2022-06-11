@@ -16,7 +16,7 @@ use xcm_emulator::TestExt;
 
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 
-use orml_traits::MultiCurrency;
+use orml_traits::{FixedConversionRateProvider, MultiCurrency};
 use xcm::VersionedMultiLocation;
 
 use crate::xcm::setup::{
@@ -293,9 +293,20 @@ fn transfer_foreign_sibling_to_altair() {
 	TestNet::reset();
 
 	let alice_initial_balance = air_amount(10);
-	let bob_initial_balance = air_amount(10);
 	let transfer_amount = air_amount(1);
 	let devel_asset_id = CurrencyId::ForeignAsset(ForeignAssetId(1));
+
+	Development::execute_with(|| {
+		assert_eq!(
+			development_runtime::OrmlTokens::free_balance(devel_asset_id, &BOB.into()),
+			0
+		)
+	});
+
+	let asset_location = MultiLocation::new(
+		1,
+		X2(Parachain(PARA_ID_DEVELOPMENT), GeneralKey(vec![0, 1])),
+	);
 
 	Altair::execute_with(|| {
 		// First, register the asset in altair
@@ -304,10 +315,7 @@ fn transfer_foreign_sibling_to_altair() {
 			name: "Development's Native Token".into(),
 			symbol: "DEVEL".into(),
 			existential_deposit: 1_000_000,
-			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
-				1,
-				X2(Parachain(PARA_ID_DEVELOPMENT), GeneralKey(vec![0, 1])),
-			))),
+			location: Some(VersionedMultiLocation::V1(asset_location.clone())),
 			additional: CustomMetadata {},
 		};
 
@@ -347,11 +355,12 @@ fn transfer_foreign_sibling_to_altair() {
 	});
 
 	Altair::execute_with(|| {
+		let bob_balance = OrmlTokens::free_balance(devel_asset_id, &BOB.into());
+
 		// Verify that BOB now has initial balance + amount transferred - fee
-		assert_eq!(
-			OrmlTokens::free_balance(devel_asset_id, &BOB.into()),
-			bob_initial_balance + transfer_amount - air_fee(),
-		);
+		assert_eq!(bob_balance, transfer_amount - foreign_fee(&asset_location));
+		// Sanity check to ensure the calculated is what is expected
+		assert_eq!(bob_balance, 993600000000000000);
 	});
 }
 
@@ -558,6 +567,16 @@ fn air_fee() -> Balance {
 	// time the transfers take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
 	fee.div_euclid(10_000) * 8
+}
+
+// The fee associated with transferring foreign assets
+fn foreign_fee(location: &MultiLocation) -> Balance {
+	let fee_per_second = altair_runtime::FixedConversionRateProvider::get_fee_per_second(location)
+		.expect("Tested assets should always resolve a fee per second");
+	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
+	// time the transfers take.
+	// NOTE: it is possible that in different machines this value may differ. We shall see.
+	fee_per_second.div_euclid(10_000) * 8
 }
 
 // The fee associated with transferring KUSD tokens

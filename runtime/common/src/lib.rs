@@ -280,7 +280,11 @@ pub mod xcm_fees {
 	}
 
 	fn base_fee(decimals: u32) -> Balance {
-		dollar(decimals) / 100
+		dollar(decimals)
+			// cents
+			.saturating_div(100)
+			// a tenth of a cent
+			.saturating_div(10)
 	}
 
 	pub fn dollar(decimals: u32) -> Balance {
