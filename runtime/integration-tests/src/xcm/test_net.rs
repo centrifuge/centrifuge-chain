@@ -23,9 +23,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use altair_runtime::CurrencyId;
 use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{
-	air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
-};
+use crate::xcm::setup::{air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {
@@ -56,16 +54,6 @@ decl_test_parachain! {
 }
 
 decl_test_parachain! {
-	pub struct Development {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_DEVELOPMENT),
-	}
-}
-
-decl_test_parachain! {
 	pub struct Karura {
 		Runtime = altair_runtime::Runtime,
 		Origin = altair_runtime::Origin,
@@ -88,8 +76,6 @@ decl_test_network! {
 			(3000, Sibling),
 			// Be sure to use `parachains::karura::ID`
 			(2000, Karura),
-			// Be sure to use `PARA_ID_DEVELOPMENT`
-			(3001, Development),
 		],
 	}
 }

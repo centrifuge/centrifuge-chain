@@ -22,7 +22,6 @@ pub const BOB: [u8; 32] = [5u8; 32];
 /// A PARA ID used for a sibling parachain.
 /// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
-pub const PARA_ID_DEVELOPMENT: u32 = 3001;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,

@@ -21,9 +21,9 @@ use xcm::VersionedMultiLocation;
 
 use crate::xcm::setup::{
 	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
-	CurrencyId, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
+	CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
 };
-use crate::xcm::test_net::{Altair, Development, Karura, KusamaNet, Sibling, TestNet};
+use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{
 	AirPerSecond, Balances, CustomMetadata, KUsdPerSecond, KsmPerSecond, Origin, OrmlAssetRegistry,
