@@ -106,10 +106,17 @@ dependencies = [
  "integer-sqrt",
  "node-primitives",
  "orml-asset-registry",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xcm-support 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xtokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-tokens",
+ "orml-traits",
+ "orml-xcm-support",
+ "orml-xtokens",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
@@ -2355,10 +2362,18 @@ dependencies = [
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xcm-support 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xtokens 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "orml-xcm-support",
+ "orml-xtokens",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
@@ -5788,8 +5803,12 @@ source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?branc
 dependencies = [
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "pallet-xcm",
+=======
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "parity-scale-codec",
  "scale-info",
  "sp-runtime",
@@ -5802,6 +5821,7 @@ dependencies = [
 [[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
+<<<<<<< HEAD
 source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24#29442c0a2f8ec8d76dc2287afc977e608cbcf7c2"
 dependencies = [
  "frame-support",
@@ -5818,10 +5838,17 @@ dependencies = [
 name = "orml-tokens"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24#41dddc878ecef961b9b20207713abdcb8d84ae53"
+=======
+source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?rev=bd2032fb952ad5519871faf1a2cedda0bac86dba#bd2032fb952ad5519871faf1a2cedda0bac86dba"
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
 dependencies = [
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -5832,6 +5859,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
+<<<<<<< HEAD
 source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24#29442c0a2f8ec8d76dc2287afc977e608cbcf7c2"
 dependencies = [
  "frame-support",
@@ -5851,11 +5879,18 @@ dependencies = [
 name = "orml-traits"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24#41dddc878ecef961b9b20207713abdcb8d84ae53"
+=======
+source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?rev=bd2032fb952ad5519871faf1a2cedda0bac86dba#bd2032fb952ad5519871faf1a2cedda0bac86dba"
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
  "num-traits",
+<<<<<<< HEAD
  "orml-utilities 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-utilities",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -5868,6 +5903,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
+<<<<<<< HEAD
 source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24#29442c0a2f8ec8d76dc2287afc977e608cbcf7c2"
 dependencies = [
  "frame-support",
@@ -5883,6 +5919,9 @@ dependencies = [
 name = "orml-utilities"
 version = "0.4.1-dev"
 source = "git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24#41dddc878ecef961b9b20207713abdcb8d84ae53"
+=======
+source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?rev=bd2032fb952ad5519871faf1a2cedda0bac86dba#bd2032fb952ad5519871faf1a2cedda0bac86dba"
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -5898,8 +5937,13 @@ name = "orml-xcm-support"
 version = "0.4.1-dev"
 source = "git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24#29442c0a2f8ec8d76dc2287afc977e608cbcf7c2"
 dependencies = [
+<<<<<<< HEAD
  "frame-support",
  "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.20)",
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "parity-scale-codec",
  "sp-runtime",
  "sp-std",
@@ -5929,9 +5973,14 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xcm-support 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "pallet-xcm",
+=======
+ "orml-traits",
+ "orml-xcm-support",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -6589,8 +6638,13 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-tokens",
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-balances",
  "pallet-permissions",
  "pallet-pools",
@@ -6727,8 +6781,13 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-tokens",
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-balances",
  "pallet-uniques",
  "parity-scale-codec",
@@ -6813,8 +6872,13 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-tokens",
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-balances",
  "pallet-permissions",
  "pallet-restricted-tokens",
@@ -6901,8 +6965,13 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/open-web3-stack/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-tokens",
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-balances",
  "pallet-permissions",
  "parity-scale-codec",
@@ -9539,7 +9608,11 @@ dependencies = [
  "frame-support",
  "frame-system",
  "node-primitives",
+<<<<<<< HEAD
  "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-traits",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
@@ -9573,10 +9646,18 @@ dependencies = [
  "kusama-runtime",
  "lazy_static",
  "node-primitives",
+<<<<<<< HEAD
  "orml-tokens 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-traits 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xcm-support 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
  "orml-xtokens 0.4.1-dev (git+https://github.com/NunoAlexandre/open-runtime-module-library?branch=polkadot-v0.9.24)",
+=======
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "orml-xcm-support",
+ "orml-xtokens",
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
  "pallet-asset-tx-payment",
  "pallet-babe",
  "pallet-balances",

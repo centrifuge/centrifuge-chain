@@ -24,6 +24,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate",  default-fe
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.24" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
+
 common-types = { path = "../../libs/common-types", default-features = false, optional = true }
 runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
 

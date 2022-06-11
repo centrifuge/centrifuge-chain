@@ -28,7 +28,11 @@ sp-consensus-aura = { git = "https://github.com/paritytech/substrate",  default-
 sp-runtime = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 
 # ORML dependencies
+<<<<<<< HEAD
 orml-traits = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+=======
+orml-traits = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, rev = "bd2032fb952ad5519871faf1a2cedda0bac86dba" }
+>>>>>>> 1fc36aaa (Use same orml pallets all around)
 
 # Local Dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
