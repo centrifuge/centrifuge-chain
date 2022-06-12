@@ -2,6 +2,7 @@ use super::{
 	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
 	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
+use common_traits::TokenMetadata;
 use core::convert::TryInto;
 pub use cumulus_primitives_core::ParaId;
 use frame_support::sp_std::marker::PhantomData;
@@ -28,7 +29,7 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 pub use common_types::CurrencyId;
-use runtime_common::xcm_fees::foreign_tx_per_second;
+use runtime_common::xcm_fees::default_per_second;
 use runtime_common::{
 	parachains,
 	xcm_fees::{ksm_per_second, native_per_second},
@@ -73,7 +74,7 @@ impl orml_traits::FixedConversionRateProvider for FixedConversionRateProvider {
 	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
 		let metadata = OrmlAssetRegistry::fetch_metadata_by_location(&location)?;
 		// TODO(nuno): discuss internally
-		Some(foreign_tx_per_second(metadata.decimals))
+		Some(default_per_second(metadata.decimals))
 	}
 }
 
@@ -90,7 +91,7 @@ parameter_types! {
 	pub AirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
@@ -105,8 +106,7 @@ parameter_types! {
 				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
 			)
 		).into(),
-		// KUSD:KSM = 400:1
-		ksm_per_second() * 400
+		default_per_second(CurrencyId::AUSD.decimals().into())
 	);
 
 }

@@ -28,8 +28,9 @@ use xcm_builder::{
 };
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
+use common_traits::TokenMetadata;
 pub use common_types::CurrencyId;
-use runtime_common::xcm_fees::base_tx_per_second;
+use runtime_common::xcm_fees::default_per_second;
 use runtime_common::{
 	parachains,
 	xcm_fees::{ksm_per_second, native_per_second},
@@ -71,9 +72,9 @@ pub type Trader = (
 pub struct FixedConversionRateProvider;
 impl orml_traits::FixedConversionRateProvider for FixedConversionRateProvider {
 	fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
-		let asset_id = OrmlAssetRegistry::location_to_asset_id(location.clone())?;
+		let metadata = OrmlAssetRegistry::fetch_metadata_by_location(&location)?;
 		// TODO(nuno): discuss internally
-		Some(base_tx_per_second(asset_id))
+		Some(default_per_second(metadata.decimals))
 	}
 }
 
@@ -105,8 +106,7 @@ parameter_types! {
 				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
 			)
 		).into(),
-		// KUSD:KSM = 400:1
-		ksm_per_second() * 400
+		default_per_second(CurrencyId::AUSD.decimals().into())
 	);
 
 }

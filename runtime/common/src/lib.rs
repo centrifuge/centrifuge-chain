@@ -260,23 +260,17 @@ pub mod xcm_fees {
 
 	// The fee cost per second for transferring the native token in cents.
 	pub fn native_per_second() -> Balance {
-		base_tx_per_second(CurrencyId::Native)
+		default_per_second(CurrencyId::Native.decimals().into())
 	}
 
 	pub fn ksm_per_second() -> Balance {
-		base_tx_per_second(CurrencyId::KSM) / 50
+		default_per_second(CurrencyId::KSM.decimals().into()) / 50
 	}
 
-	pub fn base_tx_per_second(currency: CurrencyId) -> Balance {
+	pub fn default_per_second(decimals: u32) -> Balance {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
-		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
-		base_tx_per_second * base_fee(currency.decimals().into())
-	}
-
-	pub fn foreign_tx_per_second(decimals: u32) -> Balance {
-		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
-		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
-		base_tx_per_second * base_fee(decimals)
+		let default_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		default_per_second * base_fee(decimals)
 	}
 
 	fn base_fee(decimals: u32) -> Balance {

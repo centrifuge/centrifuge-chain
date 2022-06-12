@@ -25,11 +25,8 @@ use crate::xcm::setup::{
 };
 use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
-use altair_runtime::{
-	AirPerSecond, Balances, CustomMetadata, KUsdPerSecond, KsmPerSecond, Origin, OrmlAssetRegistry,
-	OrmlTokens, XTokens,
-};
-use common_types::ForeignAssetId;
+use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{parachains, Balance};
 
 #[test]
@@ -38,7 +35,7 @@ fn transfer_air_to_sibling() {
 
 	let alice_initial_balance = air_amount(10);
 	let transfer_amount = air_amount(5);
-	let air_in_sibling = CurrencyId::ForeignAsset(ForeignAssetId(12));
+	let air_in_sibling = CurrencyId::ForeignAsset(12);
 
 	Altair::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
@@ -108,7 +105,7 @@ fn transfer_air_to_sibling() {
 		// Verify that BOB now has (amount transferred - fee)
 		assert_eq!(
 			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
-			transfer_amount - air_fee(),
+			transfer_amount - fee(18),
 		);
 	});
 }
@@ -123,9 +120,9 @@ fn transfer_air_sibling_to_altair() {
 	transfer_air_to_sibling();
 
 	let alice_initial_balance = air_amount(5);
-	let bob_initial_balance = air_amount(5) - air_fee();
+	let bob_initial_balance = air_amount(5) - fee(18);
 	let transfer_amount = air_amount(1);
-	let air_in_sibling = CurrencyId::ForeignAsset(ForeignAssetId(12));
+	let air_in_sibling = CurrencyId::ForeignAsset(12);
 
 	Altair::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
@@ -171,7 +168,7 @@ fn transfer_air_sibling_to_altair() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			Balances::free_balance(&ALICE.into()),
-			alice_initial_balance + transfer_amount - air_fee(),
+			alice_initial_balance + transfer_amount - fee(18),
 		);
 	});
 }
@@ -252,7 +249,7 @@ fn transfer_kusd_to_altair() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::KUSD, &BOB.into()),
-			bob_initial_balance + transfer_amount - kusd_fee()
+			bob_initial_balance + transfer_amount - fee(12)
 		);
 	});
 }
@@ -321,9 +318,17 @@ fn transfer_foreign_sibling_to_altair() {
 
 	let alice_initial_balance = air_amount(10);
 	let transfer_amount = air_amount(1);
-	let sibling_asset_id = CurrencyId::ForeignAsset(ForeignAssetId(1));
+	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
 		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), GeneralKey(vec![0, 1])));
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 18,
+		name: "Sibling Native Token".into(),
+		symbol: "SBLNG".into(),
+		existential_deposit: 1_000_000_000_000,
+		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		additional: CustomMetadata {},
+	};
 
 	Sibling::execute_with(|| {
 		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)
@@ -331,18 +336,9 @@ fn transfer_foreign_sibling_to_altair() {
 
 	Altair::execute_with(|| {
 		// First, register the asset in altair
-		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-			decimals: 18,
-			name: "Sibling Native Token".into(),
-			symbol: "SBLNG".into(),
-			existential_deposit: 1_000_000_000_000,
-			location: Some(VersionedMultiLocation::V1(asset_location.clone())),
-			additional: CustomMetadata {},
-		};
-
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			Origin::root(),
-			meta,
+			meta.clone(),
 			Some(sibling_asset_id)
 		));
 	});
@@ -379,7 +375,7 @@ fn transfer_foreign_sibling_to_altair() {
 		let bob_balance = OrmlTokens::free_balance(sibling_asset_id, &BOB.into());
 
 		// Verify that BOB now has initial balance + amount transferred - fee
-		assert_eq!(bob_balance, transfer_amount - foreign_fee(&asset_location));
+		assert_eq!(bob_balance, transfer_amount - fee(meta.decimals));
 		// Sanity check to ensure the calculated is what is expected
 		assert_eq!(bob_balance, 993600000000000000);
 	});
@@ -494,7 +490,6 @@ pub mod currency_id_convert {
 pub mod asset_registry {
 	use super::{assert_ok, parachains, Altair, GeneralKey, MultiLocation, X1};
 	use altair_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
-	use common_types::ForeignAssetId;
 	use frame_support::assert_noop;
 	use orml_asset_registry::AssetMetadata;
 	use orml_traits::currency::MultiCurrency;
@@ -547,7 +542,7 @@ pub mod asset_registry {
 			assert_ok!(OrmlAssetRegistry::register_asset(
 				Origin::root(),
 				meta,
-				Some(CurrencyId::ForeignAsset(ForeignAssetId(42)))
+				Some(CurrencyId::ForeignAsset(42))
 			));
 		});
 	}
@@ -583,37 +578,19 @@ pub mod asset_registry {
 	}
 }
 
-// The fee associated with transferring AIR tokens
-fn air_fee() -> Balance {
-	let (_asset, fee) = AirPerSecond::get();
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee.div_euclid(10_000) * 8
-}
-
-// The fee associated with transferring foreign assets
-fn foreign_fee(location: &MultiLocation) -> Balance {
-	let fee_per_second = altair_runtime::FixedConversionRateProvider::get_fee_per_second(location)
-		.expect("Tested assets should always resolve a fee per second");
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the transfers take.
-	// NOTE: it is possible that in different machines this value may differ. We shall see.
-	fee_per_second.div_euclid(10_000) * 8
-}
-
-// The fee associated with transferring KUSD tokens
-fn kusd_fee() -> Balance {
-	let (_asset, fee) = KUsdPerSecond::get();
-	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the transfers take.
-	fee.div_euclid(10_000) * 8
+// The fee for the
+fn fee(decimals: u32) -> Balance {
+	calc_fee(default_per_second(decimals))
 }
 
 // The fee associated with transferring KSM tokens
 fn ksm_fee() -> Balance {
-	let (_asset, fee) = KsmPerSecond::get();
-	// We divide the fee to align its unit and multiply by 8 as that seems to be the unit of
+	calc_fee(ksm_per_second())
+}
+
+fn calc_fee(fee_per_second: Balance) -> Balance {
+	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
 	// time the transfers take.
-	fee.div_euclid(10_000) * 8
+	// NOTE: it is possible that in different machines this value may differ. We shall see.
+	fee_per_second.div_euclid(10_000) * 8
 }

@@ -22,6 +22,7 @@ pub enum PermissionedCurrency {
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	Native,
+
 	// A Tranche token
 	Tranche(u64, [u8; 16]),
 
@@ -30,33 +31,18 @@ pub enum CurrencyId {
 
 	/// Karura Dollar
 	KUSD,
+
 	/// Acala Dollar
 	/// Note: KUSD and AUSD will be merged into a single token, AUSD.
 	AUSD,
 
 	Permissioned(PermissionedCurrency),
 
-	/// An foreign asset
+	/// A foreign asset
 	ForeignAsset(ForeignAssetId),
 }
 
-#[derive(
-	Clone,
-	Copy,
-	Decode,
-	Default,
-	Debug,
-	Encode,
-	Eq,
-	Hash,
-	MaxEncodedLen,
-	Ord,
-	PartialEq,
-	PartialOrd,
-	TypeInfo,
-)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct ForeignAssetId(pub u32);
+pub type ForeignAssetId = u32;
 
 impl Default for CurrencyId {
 	fn default() -> Self {

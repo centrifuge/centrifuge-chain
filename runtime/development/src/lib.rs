@@ -7,7 +7,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
-	construct_runtime, ord_parameter_types, parameter_types,
+	construct_runtime, parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
 		InstanceFilter, LockIdentifier, U128CurrencyToVote,
@@ -20,7 +20,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot, EnsureSigned, EnsureSignedBy,
+	EnsureRoot, EnsureSigned,
 };
 use orml_traits::parameter_type_with_key;
 pub use pallet_balances::Call as BalancesCall;
@@ -51,7 +51,7 @@ use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
 use common_traits::{PoolUpdateGuard, PreConditions};
-pub use common_types::{CurrencyId, ForeignAssetId};
+pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
 	TimeProvider, UNION,
@@ -1222,25 +1222,14 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
-pub const MOCK_POOL_ADMIN: AccountId = AccountId::new([42u8; 32]);
-
-ord_parameter_types! {
-	pub const MockPoolAdmin: AccountId = MOCK_POOL_ADMIN;
-}
-
 pub struct AssetAuthority;
 impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
 	type Success = ();
 
 	fn try_origin(origin: Origin, asset_id: &Option<CurrencyId>) -> Result<Self::Success, Origin> {
 		match asset_id {
-			// For Tranche tokens, we need to ensure that the origin is the respective pool's admin.
-			// Todo(nuno): lookup pool admin instead of using placeholder account
-			Some(CurrencyId::Tranche(_, _)) => {
-				EnsureSignedBy::<MockPoolAdmin, AccountId>::try_origin(origin.clone())
-					.map(|_| ())
-					.map_err(|_| origin)
-			}
+			// Only the pools pallet should directly register/update tranche tokens
+			Some(CurrencyId::Tranche(_, _)) => Err(origin),
 
 			// Any other `asset_id` defaults to EnsureRoot
 			_ => EnsureRoot::try_origin(origin),
@@ -1259,7 +1248,6 @@ impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
 )]
 pub struct CustomMetadata {}
 
-//TODO(nuno): move this to common-types
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
@@ -1281,11 +1269,10 @@ impl AssetProcessor<CurrencyId, orml_asset_registry::AssetMetadata<Balance, Cust
 		sp_runtime::DispatchError,
 	> {
 		match id {
-			// TODO(nuno): ideally, we can just apply the identity function the native tokens ids and their metadata,
-			// and offer something like orml_asset_registry::SequentialId for the ForeignAsset variants. It's not
-			// trivial since said AssetProcessor impl expects to operate on `CurrencyId` and bounds to AtLeast32BitUnsigned.
-			None => todo!("nuno"),
 			Some(id) => Ok((id, metadata)),
+			None => Err(sp_runtime::DispatchError::Other(
+				"asset-registry: AssetId is required",
+			)),
 		}
 	}
 
