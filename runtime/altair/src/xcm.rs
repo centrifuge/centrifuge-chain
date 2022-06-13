@@ -3,7 +3,6 @@ use super::{
 	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 use common_traits::TokenMetadata;
-use core::convert::TryInto;
 pub use cumulus_primitives_core::ParaId;
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::fungibles;
@@ -203,9 +202,7 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 				),
 			)),
-			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(id)
-				.and_then(|m| m.location)
-				.and_then(|l| l.try_into().ok()),
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
 			_ => None,
 		}
 	}
