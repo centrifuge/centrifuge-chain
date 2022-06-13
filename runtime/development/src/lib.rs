@@ -1216,7 +1216,7 @@ impl orml_asset_registry::Config for Runtime {
 	type Event = Event;
 	type CustomMetadata = CustomMetadata; //TODO(nuno)
 	type AssetId = CurrencyId; //TODO(nuno)
-	type Authority = AssetAuthority;
+	type AuthorityOrigin = AssetAuthority;
 	type AssetProcessor = CustomAssetProcessor;
 	type Balance = Balance;
 	type WeightInfo = ();
