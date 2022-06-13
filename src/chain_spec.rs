@@ -23,7 +23,7 @@ use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 use altair_runtime::constants::currency::AIR;
-use runtime_common::CFG;
+use runtime_common::{decimals, CFG};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use serde::{Deserialize, Serialize};
 
@@ -94,7 +94,7 @@ pub fn centrifuge_config() -> CentrifugeChainSpec {
 pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CFG".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge",
@@ -148,7 +148,7 @@ pub fn centrifuge_staging(para_id: ParaId) -> CentrifugeChainSpec {
 pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DCFG".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge Dev",
@@ -188,7 +188,7 @@ pub fn centrifuge_dev(para_id: ParaId) -> CentrifugeChainSpec {
 pub fn centrifuge_local(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DCFG".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Centrifuge Local",
@@ -223,7 +223,7 @@ pub fn catalyst_config() -> CentrifugeChainSpec {
 pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NCFG".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Catalyst Testnet",
@@ -280,7 +280,7 @@ pub fn catalyst_staging(para_id: ParaId) -> CentrifugeChainSpec {
 pub fn catalyst_local(para_id: ParaId) -> CentrifugeChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NCFG".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	CentrifugeChainSpec::from_genesis(
 		"Catalyst Local",
@@ -317,7 +317,7 @@ pub fn altair_config() -> AltairChainSpec {
 pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "AIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Altair",
@@ -369,7 +369,7 @@ pub fn altair_staging(para_id: ParaId) -> AltairChainSpec {
 pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Altair Dev",
@@ -409,7 +409,7 @@ pub fn altair_dev(para_id: ParaId) -> AltairChainSpec {
 pub fn altair_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Altair Local",
@@ -443,7 +443,7 @@ pub fn antares_config() -> AltairChainSpec {
 pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Antares Testnet",
@@ -501,7 +501,7 @@ pub fn antares_staging(para_id: ParaId) -> AltairChainSpec {
 pub fn antares_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "NAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Antares Local",
@@ -535,7 +535,7 @@ pub fn charcoal_config() -> AltairChainSpec {
 pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Charcoal Testnet",
@@ -587,7 +587,7 @@ pub fn charcoal_staging(para_id: ParaId) -> AltairChainSpec {
 pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "CAIR".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	AltairChainSpec::from_genesis(
 		"Charcoal Local",
@@ -617,7 +617,7 @@ pub fn charcoal_local(para_id: ParaId) -> AltairChainSpec {
 pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	DevelopmentChainSpec::from_genesis(
 		"Dev Live",
@@ -657,7 +657,7 @@ pub fn development(para_id: ParaId) -> DevelopmentChainSpec {
 pub fn development_local(para_id: ParaId) -> DevelopmentChainSpec {
 	let mut properties = Properties::new();
 	properties.insert("tokenSymbol".into(), "DEVEL".into());
-	properties.insert("tokenDecimals".into(), 18.into());
+	properties.insert("tokenDecimals".into(), decimals::NATIVE.into());
 
 	DevelopmentChainSpec::from_genesis(
 		"Dev Local",

@@ -1214,8 +1214,8 @@ impl orml_tokens::Config for Runtime {
 
 impl orml_asset_registry::Config for Runtime {
 	type Event = Event;
-	type CustomMetadata = CustomMetadata; //TODO(nuno)
-	type AssetId = CurrencyId; //TODO(nuno)
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
 	type AuthorityOrigin = AssetAuthority;
 	type AssetProcessor = CustomAssetProcessor;
 	type Balance = Balance;
