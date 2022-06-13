@@ -120,6 +120,8 @@ pub use crate::traits::WeightInfo as PalletWeightInfo;
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
 
+mod migration;
+
 // ----------------------------------------------------------------------------
 // Traits and types declaration
 // ----------------------------------------------------------------------------
@@ -273,7 +275,21 @@ pub mod pallet {
 	// ----------------------------------------------------------------------------
 
 	#[pallet::hooks]
-	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_runtime_upgrade() -> frame_support::weights::Weight {
+			migration::root_hashes::migrate::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<(), &'static str> {
+			migration::root_hashes::pre_migrate::<T>()
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade() -> Result<(), &'static str> {
+			migration::root_hashes::post_migrate::<T>()
+		}
+	}
 
 	// ------------------------------------------------------------------------
 	// Pallet errors

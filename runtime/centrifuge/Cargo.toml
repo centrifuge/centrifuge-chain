@@ -87,6 +87,7 @@ pallet-session-benchmarking = { git = "https://github.com/paritytech/substrate",
 pallet-staking = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.20" }
 pallet-staking-reward-curve = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.20" }
+frame-try-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", default-features = false, optional = true }
 pallet-utility = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.20" }
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.20" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.20" }
@@ -189,6 +190,7 @@ std = [
     "pallet-crowdloan-claim/std",
     "pallet-crowdloan-reward/std",
     "pallet-treasury/std",
+    "frame-try-runtime/std",
 ]
 
 runtime-benchmarks = [
@@ -218,6 +220,14 @@ runtime-benchmarks = [
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
+]
+
+try-runtime = [
+    "frame-executive/try-runtime",
+    "frame-try-runtime",
+    "frame-system/try-runtime",
+    "pallet-scheduler/try-runtime",
+    "pallet-claims/try-runtime"
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

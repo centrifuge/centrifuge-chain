@@ -116,6 +116,7 @@ sp-consensus-aura = { git = "https://github.com/paritytech/substrate", branch = 
 
 # Cli specific
 frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
+try-runtime-cli = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20", optional = true }
 node-inspect = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 # local dependencies
@@ -171,7 +172,7 @@ frame-system = { git = "https://github.com/paritytech/substrate", branch = "polk
 pallet-transaction-payment = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.20" }
 
 [features]
-default = [ "std" ]
+default = [ "std", "cli" ]
 std = [
 	"sc-service/db",
 	"substrate-build-script-utils",
@@ -186,4 +187,11 @@ runtime-benchmarks = [
 test-benchmarks = [
 	"runtime-benchmarks",
 	"runtime-integration-tests/runtime-benchmarks",
+]
+cli = [
+	'try-runtime-cli',
+]
+try-runtime = [
+	"centrifuge-runtime/try-runtime",
+	"try-runtime-cli"
 ]
