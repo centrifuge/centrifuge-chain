@@ -38,7 +38,7 @@ pub mod root_hashes {
 	}
 
 	pub fn migrate<T: Config>() -> Weight {
-		RootHashes::<T>::remove_all(Some(1000)); // large enough number in case we enable the tree update job before this upgrade goes through
+		RootHashes::<T>::remove_all(None); // All keys should be deleted
 		log::info!(target: "runtime::claims::migrate", "Done Migrating");
 		T::DbWeight::get().reads_writes(1, 1)
 	}
