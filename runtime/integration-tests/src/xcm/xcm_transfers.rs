@@ -20,8 +20,8 @@ use orml_traits::{FixedConversionRateProvider, MultiCurrency};
 use xcm::VersionedMultiLocation;
 
 use crate::xcm::setup::{
-	air_amount, altair_account, karura_account, ksm_amount, kusd_amount, sibling_account,
-	CurrencyId, ALICE, BOB, PARA_ID_SIBLING,
+	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId, ALICE,
+	BOB, PARA_ID_SIBLING,
 };
 use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
@@ -33,8 +33,8 @@ use runtime_common::{parachains, Balance};
 fn transfer_air_to_sibling() {
 	TestNet::reset();
 
-	let alice_initial_balance = air_amount(10);
-	let transfer_amount = air_amount(5);
+	let alice_initial_balance = air(10);
+	let transfer_amount = air(5);
 	let air_in_sibling = CurrencyId::ForeignAsset(12);
 
 	Altair::execute_with(|| {
@@ -119,9 +119,9 @@ fn transfer_air_sibling_to_altair() {
 	// AIR on their side.
 	transfer_air_to_sibling();
 
-	let alice_initial_balance = air_amount(5);
-	let bob_initial_balance = air_amount(5) - fee(18);
-	let transfer_amount = air_amount(1);
+	let alice_initial_balance = air(5);
+	let bob_initial_balance = air(5) - fee(18);
+	let transfer_amount = air(1);
 	let air_in_sibling = CurrencyId::ForeignAsset(12);
 
 	Altair::execute_with(|| {
@@ -177,9 +177,9 @@ fn transfer_air_sibling_to_altair() {
 fn transfer_kusd_to_altair() {
 	TestNet::reset();
 
-	let alice_initial_balance = kusd_amount(10);
-	let bob_initial_balance = kusd_amount(10);
-	let transfer_amount = kusd_amount(7);
+	let alice_initial_balance = ausd(10);
+	let bob_initial_balance = ausd(10);
+	let transfer_amount = ausd(7);
 
 	Karura::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
@@ -256,7 +256,7 @@ fn transfer_kusd_to_altair() {
 
 #[test]
 fn transfer_ksm_from_relay_chain() {
-	let transfer_amount: Balance = ksm_amount(1);
+	let transfer_amount: Balance = ksm(1);
 
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
@@ -289,7 +289,7 @@ fn transfer_ksm_to_relay_chain() {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::KSM,
-			ksm_amount(1),
+			ksm(1),
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -316,8 +316,7 @@ fn transfer_ksm_to_relay_chain() {
 fn transfer_foreign_sibling_to_altair() {
 	TestNet::reset();
 
-	let alice_initial_balance = air_amount(10);
-	let transfer_amount = air_amount(1);
+	let alice_initial_balance = air(10);
 	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
 		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), GeneralKey(vec![0, 1])));
@@ -329,6 +328,7 @@ fn transfer_foreign_sibling_to_altair() {
 		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
 		additional: CustomMetadata {},
 	};
+	let transfer_amount = foreign(1, meta.decimals);
 
 	Sibling::execute_with(|| {
 		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)

@@ -2,7 +2,6 @@ use super::{
 	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
 	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
-use common_traits::TokenMetadata;
 pub use cumulus_primitives_core::ParaId;
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::traits::fungibles;
@@ -28,10 +27,9 @@ use xcm_builder::{
 use xcm_executor::{traits::JustTry, XcmExecutor};
 
 pub use common_types::CurrencyId;
-use runtime_common::xcm_fees::default_per_second;
 use runtime_common::{
-	parachains,
-	xcm_fees::{ksm_per_second, native_per_second},
+	decimals, parachains,
+	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
 
 /// The main XCM config
@@ -105,7 +103,7 @@ parameter_types! {
 				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
 			)
 		).into(),
-		default_per_second(CurrencyId::AUSD.decimals().into())
+		default_per_second(decimals::AUSD)
 	);
 
 }

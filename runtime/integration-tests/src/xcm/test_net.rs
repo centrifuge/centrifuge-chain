@@ -23,7 +23,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use altair_runtime::CurrencyId;
 use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
+use crate::xcm::setup::{air, ksm, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {
@@ -125,13 +125,13 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), CurrencyId::Native, air_amount(10)),
-			(AccountId::from(BOB), CurrencyId::Native, air_amount(10)),
-			(AccountId::from(ALICE), CurrencyId::KSM, ksm_amount(10)),
+			(AccountId::from(ALICE), CurrencyId::Native, air(10)),
+			(AccountId::from(BOB), CurrencyId::Native, air(10)),
+			(AccountId::from(ALICE), CurrencyId::KSM, ksm(10)),
 			(
 				altair_runtime::TreasuryAccount::get(),
 				CurrencyId::KSM,
-				ksm_amount(1),
+				ksm(1),
 			),
 		])
 		.parachain_id(parachain_id)

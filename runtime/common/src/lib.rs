@@ -211,6 +211,13 @@ pub mod constants {
 	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
 	pub const CFG: Balance = 100 * CENTI_CFG;
 
+	// Native tokens' decimals
+	pub mod decimals {
+		pub const NATIVE: u32 = 18;
+		pub const AUSD: u32 = 12;
+		pub const KSM: u32 = 12;
+	}
+
 	/// Minimum vesting amount, in CFG/AIR
 	pub const MIN_VESTING: Balance = 10;
 
@@ -252,19 +259,17 @@ pub mod parachains {
 }
 
 pub mod xcm_fees {
-	use common_traits::TokenMetadata;
-	use common_types::CurrencyId;
 	use frame_support::weights::constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND};
 
-	use super::types::Balance;
+	use super::{decimals, Balance};
 
 	// The fee cost per second for transferring the native token in cents.
 	pub fn native_per_second() -> Balance {
-		default_per_second(CurrencyId::Native.decimals().into())
+		default_per_second(decimals::NATIVE)
 	}
 
 	pub fn ksm_per_second() -> Balance {
-		default_per_second(CurrencyId::KSM.decimals().into()) / 50
+		default_per_second(decimals::KSM) / 50
 	}
 
 	pub fn default_per_second(decimals: u32) -> Balance {
