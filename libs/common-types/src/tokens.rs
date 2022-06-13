@@ -1,6 +1,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 
+use crate::{PoolId, TrancheId};
 use common_traits::TokenMetadata;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -24,7 +25,7 @@ pub enum CurrencyId {
 	Native,
 
 	// A Tranche token
-	Tranche(u64, [u8; 16]),
+	Tranche(PoolId, TrancheId),
 
 	/// Karura KSM
 	KSM,

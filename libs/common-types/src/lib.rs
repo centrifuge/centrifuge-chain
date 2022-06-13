@@ -40,6 +40,9 @@ mod tokens;
 /// PoolId type we use.
 pub type PoolId = u64;
 
+/// A representation of a tranche identifier
+pub type TrancheId = [u8; 16];
+
 /// PoolRole can hold any type of role specific functions a user can do on a given pool.
 // NOTE: In order to not carry around the TrancheId and Moment types all the time, we give it a default.
 //       In case the Role we provide does not match what we expect. I.e. if we change the Moment
