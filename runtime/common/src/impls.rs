@@ -232,7 +232,7 @@ pub mod asset_registry {
 		}
 
 		#[cfg(feature = "runtime-benchmarks")]
-		fn successful_origin(_: &Option<CurrencyId>) -> Origin {
+		fn successful_origin(_asset_id: &Option<CurrencyId>) -> Origin {
 			unimplemented!()
 		}
 	}

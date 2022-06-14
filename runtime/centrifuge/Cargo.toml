@@ -220,6 +220,7 @@ runtime-benchmarks = [
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",
     "pallet-crowdloan-reward/runtime-benchmarks",
+    "runtime-common/runtime-benchmarks",
 ]
 
 try-runtime = [

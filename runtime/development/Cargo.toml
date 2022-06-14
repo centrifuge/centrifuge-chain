@@ -245,6 +245,7 @@ runtime-benchmarks = [
     "pallet-loans/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
     "pallet-uniques/runtime-benchmarks",
+    "runtime-common/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
