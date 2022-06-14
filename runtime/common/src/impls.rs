@@ -237,3 +237,32 @@ pub mod asset_registry {
 		}
 	}
 }
+
+pub mod xcm {
+	use crate::{xcm_fees::default_per_second, Balance, CustomMetadata};
+	use common_types::CurrencyId;
+	use frame_support::sp_std::marker::PhantomData;
+	use xcm::latest::MultiLocation;
+
+	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
+	/// the asset registry that were not already handled by native Trader rules.
+	pub struct FixedConversionRateProvider<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
+
+	impl<
+			OrmlAssetRegistry: orml_traits::asset_registry::Inspect<
+				AssetId = CurrencyId,
+				Balance = Balance,
+				CustomMetadata = CustomMetadata,
+			>,
+		> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
+	{
+		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
+			let metadata = OrmlAssetRegistry::metadata_by_location(&location)?;
+			metadata
+				.additional
+				.xcm
+				.fee_per_second
+				.or_else(|| Some(default_per_second(metadata.decimals)))
+		}
+	}
+}
