@@ -1,7 +1,7 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
 use super::*;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::CurrencyId;
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
@@ -175,5 +175,65 @@ impl Convert<TrancheWeight, Balance> for TrancheWeight {
 impl From<u128> for TrancheWeight {
 	fn from(v: u128) -> Self {
 		Self(v)
+	}
+}
+
+/// AssetRegistry's AssetProcessor
+pub mod asset_registry {
+	use super::*;
+	use frame_support::dispatch::RawOrigin;
+	use frame_support::sp_std::marker::PhantomData;
+	use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
+	use frame_system::EnsureRoot;
+	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use sp_runtime::DispatchError;
+
+	#[derive(
+		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	)]
+	pub struct CustomAssetProcessor;
+
+	impl AssetProcessor<CurrencyId, AssetMetadata<Balance, CustomMetadata>> for CustomAssetProcessor {
+		fn pre_register(
+			id: Option<CurrencyId>,
+			metadata: AssetMetadata<Balance, CustomMetadata>,
+		) -> Result<(CurrencyId, AssetMetadata<Balance, CustomMetadata>), DispatchError> {
+			match id {
+				Some(id) => Ok((id, metadata)),
+				None => Err(DispatchError::Other("asset-registry: AssetId is required")),
+			}
+		}
+
+		fn post_register(
+			_id: CurrencyId,
+			_asset_metadata: AssetMetadata<Balance, CustomMetadata>,
+		) -> Result<(), DispatchError> {
+			Ok(())
+		}
+	}
+
+	pub struct AuthorityOrigin<Origin>(PhantomData<Origin>);
+	impl<Origin: Into<Result<RawOrigin<AccountId>, Origin>> + From<RawOrigin<AccountId>>>
+		EnsureOriginWithArg<Origin, Option<CurrencyId>> for AuthorityOrigin<Origin>
+	{
+		type Success = ();
+
+		fn try_origin(
+			origin: Origin,
+			asset_id: &Option<CurrencyId>,
+		) -> Result<Self::Success, Origin> {
+			match asset_id {
+				// Only the pools pallet should directly register/update tranche tokens
+				Some(CurrencyId::Tranche(_, _)) => Err(origin),
+
+				// Any other `asset_id` defaults to EnsureRoot
+				_ => EnsureRoot::try_origin(origin),
+			}
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn successful_origin(_: &Option<CurrencyId>) -> Origin {
+			unimplemented!()
+		}
 	}
 }

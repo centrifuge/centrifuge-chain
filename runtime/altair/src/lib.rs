@@ -5,7 +5,6 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
@@ -22,7 +21,6 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot, EnsureSigned,
 };
-use orml_traits::asset_registry::AssetProcessor;
 use orml_traits::parameter_type_with_key;
 
 use pallet_anchors::AnchorData;
@@ -935,64 +933,10 @@ impl orml_asset_registry::Config for Runtime {
 	type Event = Event;
 	type CustomMetadata = CustomMetadata;
 	type AssetId = CurrencyId;
-	type AuthorityOrigin = AssetAuthority;
-	type AssetProcessor = CustomAssetProcessor;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin>;
+	type AssetProcessor = asset_registry::CustomAssetProcessor;
 	type Balance = Balance;
 	type WeightInfo = ();
-}
-
-pub struct AssetAuthority;
-impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
-	type Success = ();
-
-	fn try_origin(origin: Origin, asset_id: &Option<CurrencyId>) -> Result<Self::Success, Origin> {
-		match asset_id {
-			// Only the pools pallet should directly register/update tranche tokens
-			Some(CurrencyId::Tranche(_, _)) => Err(origin),
-
-			// Any other `asset_id` defaults to EnsureRoot
-			_ => EnsureRoot::try_origin(origin),
-		}
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn successful_origin(_: &Option<CurrencyId>) -> Origin {
-		todo!()
-	}
-}
-
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub struct CustomAssetProcessor;
-
-impl AssetProcessor<CurrencyId, orml_asset_registry::AssetMetadata<Balance, CustomMetadata>>
-	for CustomAssetProcessor
-{
-	fn pre_register(
-		id: Option<CurrencyId>,
-		metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-	) -> Result<
-		(
-			CurrencyId,
-			orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-		),
-		sp_runtime::DispatchError,
-	> {
-		match id {
-			Some(id) => Ok((id, metadata)),
-			None => Err(sp_runtime::DispatchError::Other(
-				"asset-registry: AssetId is required",
-			)),
-		}
-	}
-
-	fn post_register(
-		_id: CurrencyId,
-		_asset_metadata: orml_asset_registry::AssetMetadata<Balance, CustomMetadata>,
-	) -> Result<(), sp_runtime::DispatchError> {
-		Ok(())
-	}
 }
 
 parameter_types! {
