@@ -961,12 +961,6 @@ impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
 	}
 }
 
-//TODO(nuno): move this to common-types
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub struct CustomMetadata;
-
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]

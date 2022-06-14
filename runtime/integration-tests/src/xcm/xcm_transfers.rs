@@ -27,7 +27,7 @@ use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{parachains, Balance};
+use runtime_common::{decimals, parachains, Balance};
 
 #[test]
 fn transfer_air_to_sibling() {
@@ -61,7 +61,7 @@ fn transfer_air_to_sibling() {
 					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 				),
 			))),
-			additional: CustomMetadata {},
+			additional: CustomMetadata::default(),
 		};
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			Origin::root(),
@@ -326,7 +326,10 @@ fn transfer_foreign_sibling_to_altair() {
 		symbol: "SBLNG".into(),
 		existential_deposit: 1_000_000_000_000,
 		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
-		additional: CustomMetadata {},
+		additional: CustomMetadata {
+			fee_per_second: Some(8420000000000000000),
+			..CustomMetadata::default()
+		},
 	};
 	let transfer_amount = foreign(1, meta.decimals);
 
@@ -375,10 +378,20 @@ fn transfer_foreign_sibling_to_altair() {
 		let bob_balance = OrmlTokens::free_balance(sibling_asset_id, &BOB.into());
 
 		// Verify that BOB now has initial balance + amount transferred - fee
-		assert_eq!(bob_balance, transfer_amount - fee(meta.decimals));
+		assert_eq!(
+			bob_balance,
+			transfer_amount - calc_fee(meta.additional.fee_per_second.unwrap())
+		);
 		// Sanity check to ensure the calculated is what is expected
-		assert_eq!(bob_balance, 993600000000000000);
+		assert_eq!(bob_balance, 993264000000000000);
 	});
+}
+
+#[test]
+fn test_fee_per_second() {
+	assert_eq!(default_per_second(decimals::NATIVE), 8000000000000000000);
+	assert_eq!(default_per_second(decimals::AUSD), 8000000000000);
+	assert_eq!(ksm_per_second(), default_per_second(decimals::KSM) / 50);
 }
 
 pub mod currency_id_convert {
@@ -510,7 +523,7 @@ pub mod asset_registry {
 					0,
 					X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 				))),
-				additional: CustomMetadata {},
+				additional: CustomMetadata::default(),
 			};
 
 			assert_ok!(OrmlAssetRegistry::register_asset(
@@ -536,7 +549,7 @@ pub mod asset_registry {
 						GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 					),
 				))),
-				additional: CustomMetadata {},
+				additional: CustomMetadata::default(),
 			};
 
 			assert_ok!(OrmlAssetRegistry::register_asset(
@@ -560,7 +573,7 @@ pub mod asset_registry {
 					1,
 					X2(Parachain(2000), GeneralKey(vec![42])),
 				))),
-				additional: CustomMetadata {},
+				additional: CustomMetadata::default(),
 			};
 
 			// It fails with `BadOrigin` even when submitted with `Origin::root` since we only
@@ -578,7 +591,6 @@ pub mod asset_registry {
 	}
 }
 
-// The fee for the
 fn fee(decimals: u32) -> Balance {
 	calc_fee(default_per_second(decimals))
 }

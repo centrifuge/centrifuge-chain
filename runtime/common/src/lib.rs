@@ -14,7 +14,6 @@
 //! # Common types and primitives used for Centrifuge chain runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
 pub use apis::*;
 pub use constants::*;
 pub use impls::*;
@@ -40,6 +39,7 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
+	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use frame_support::traits::EnsureOneOf;
 	use frame_system::EnsureRoot;
 	use scale_info::TypeInfo;
@@ -102,20 +102,20 @@ pub mod types {
 	pub type Salt = FixedArray<u8, 32>;
 
 	/// A representation of registryID.
-	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(Encode, Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RegistryId(pub H160);
 
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(Encode, Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct TokenId(pub U256);
 
 	/// A generic representation of a local address. A resource id points to this. It may be a
 	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
 	/// as an upper bound to store efficiently.
-	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
 
@@ -133,37 +133,48 @@ pub mod types {
 
 	/// A representation of a tranche weight, used to weight
 	/// importance of a tranche
-	#[derive(
-		codec::Encode,
-		codec::Decode,
-		Copy,
-		Debug,
-		Default,
-		Clone,
-		PartialEq,
-		Eq,
-		TypeInfo,
-		codec::CompactAs,
-	)]
+	#[derive(Encode, Decode, Copy, Debug, Default, Clone, PartialEq, Eq, TypeInfo, CompactAs)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct TrancheWeight(pub u128);
 
 	/// A representation of ItemId for Uniques.
 	#[derive(
-		codec::Encode,
-		codec::Decode,
+		Encode,
+		Decode,
 		Default,
 		Copy,
 		Clone,
 		PartialEq,
 		Eq,
-		codec::CompactAs,
+		CompactAs,
 		Debug,
-		codec::MaxEncodedLen,
+		MaxEncodedLen,
 		TypeInfo,
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct ItemId(pub u128);
+
+	/// A type describing the additional metadata stored in the OrmlAssetRegistry
+	#[derive(
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
+	)]
+	pub struct CustomMetadata {
+		pub fee_per_second: Option<Balance>,
+		pub mintable: bool,
+		pub permissioned: bool,
+		pub pool_currency: bool,
+	}
 }
 
 /// Common constants for all runtimes

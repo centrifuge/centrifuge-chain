@@ -879,7 +879,9 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::KSM
 			| CurrencyId::Permissioned(_) => false,
 			CurrencyId::AUSD | CurrencyId::KUSD => true,
-			CurrencyId::ForeignAsset(_) => todo!("nuno: it would be interesting to decide this based on some metadata field stored in AssetRegistry?")
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
+				.map(|m| m.additional.pool_currency)
+				.unwrap_or(false),
 		}
 	}
 }
@@ -1241,12 +1243,6 @@ impl EnsureOriginWithArg<Origin, Option<CurrencyId>> for AssetAuthority {
 		todo!()
 	}
 }
-
-//TODO(nuno): move this to common-types
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-pub struct CustomMetadata {}
 
 #[derive(
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
