@@ -222,7 +222,9 @@ pub mod constants {
 	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
 	pub const CFG: Balance = 100 * CENTI_CFG;
 
-	// Native tokens' decimals
+	// The decimals for the tokens we handle natively in our runtimes.
+	// Other tokens are registered in the orml_asset_registry and
+	// their decimals can be found in their respective metadata.
 	pub mod decimals {
 		pub const NATIVE: u32 = 18;
 		pub const AUSD: u32 = 12;

@@ -229,16 +229,17 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
-				3001 => match &key[..] {
-					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
-					_ => Err(location.clone()),
-				},
-
 				parachains::karura::ID => match &key[..] {
 					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
 					_ => Err(location.clone()),
 				},
-				_ => Err(location.clone()),
+
+				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
+					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+					_ => Err(location.clone()),
+				},
+
+				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
 			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
