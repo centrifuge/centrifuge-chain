@@ -27,7 +27,7 @@ use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
-use runtime_common::{decimals, parachains, Balance};
+use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 
 #[test]
 fn transfer_air_to_sibling() {
@@ -327,7 +327,11 @@ fn transfer_foreign_sibling_to_altair() {
 		existential_deposit: 1_000_000_000_000,
 		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
 		additional: CustomMetadata {
-			fee_per_second: Some(8420000000000000000),
+			xcm: XcmMetadata {
+				// We specify a custom fee_per_second and verify below that this value is
+				// used when XCM transfer fees are charged for this token.
+				fee_per_second: Some(8420000000000000000),
+			},
 			..CustomMetadata::default()
 		},
 	};
@@ -380,7 +384,7 @@ fn transfer_foreign_sibling_to_altair() {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			bob_balance,
-			transfer_amount - calc_fee(meta.additional.fee_per_second.unwrap())
+			transfer_amount - calc_fee(meta.additional.xcm.fee_per_second.unwrap())
 		);
 		// Sanity check to ensure the calculated is what is expected
 		assert_eq!(bob_balance, 993264000000000000);

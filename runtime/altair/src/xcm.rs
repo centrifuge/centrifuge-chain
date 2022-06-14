@@ -72,6 +72,7 @@ impl orml_traits::FixedConversionRateProvider for FixedConversionRateProvider {
 		let metadata = OrmlAssetRegistry::fetch_metadata_by_location(&location)?;
 		metadata
 			.additional
+			.xcm
 			.fee_per_second
 			.or_else(|| Some(default_per_second(metadata.decimals)))
 	}
