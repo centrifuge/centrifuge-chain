@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-09-28}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-05-09}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" #Need to replicate job for all runtimes
 
 # Enable warnings about unused extern crates
