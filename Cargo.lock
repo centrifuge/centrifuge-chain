@@ -1207,6 +1207,7 @@ dependencies = [
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
  "tempfile",
+ "try-runtime-cli",
  "url 2.2.2",
  "vergen",
 ]
@@ -1230,6 +1231,7 @@ dependencies = [
  "frame-system",
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",
