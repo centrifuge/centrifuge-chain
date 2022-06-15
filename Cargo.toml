@@ -66,6 +66,7 @@ log = "0.4.8"
 serde_json = "1.0"
 clap = { version = "3.1", features = [ "derive" ] }
 url = "2.2.2"
+tracing-core = "=0.1.26"
 
 # primitives
 sp-authority-discovery = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }

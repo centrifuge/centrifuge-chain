@@ -202,6 +202,26 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
 }
 
+#[cfg(feature = "try-runtime")]
+macro_rules! with_runtime {
+	($chain_spec:expr, { $( $code:tt )* }) => {
+		match $chain_spec.identify() {
+			ChainIdentity::Altair => {
+				use AltairRuntimeExecutor as Executor;
+				$( $code )*
+			}
+			ChainIdentity::Centrifuge => {
+				use CentrifugeRuntimeExecutor as Executor;
+				$( $code )*
+			}
+			ChainIdentity::Development => {
+				use DevelopmentRuntimeExecutor as Executor;
+				$( $code )*
+			}
+		}
+	}
+}
+
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 	    let runner = $cli.create_runner($cmd)?;

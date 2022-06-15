@@ -48,7 +48,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	fn dispatch_as() -> Weight {
 		(24_091_000 as Weight)
 	}
-	fn force_batch(_c: u32) -> Weight {
-		todo!()
+	fn force_batch(c: u32) -> Weight {
+		(29_136_000 as Weight)
+			// Standard Error: 2_000
+			.saturating_add((5_697_000 as Weight).saturating_mul(c as Weight))
 	}
 }
