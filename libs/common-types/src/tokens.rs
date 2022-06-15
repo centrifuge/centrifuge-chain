@@ -9,14 +9,6 @@ use serde::{Deserialize, Serialize};
 	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum PermissionedCurrency {
-	// TODO: Tranche variant from CurrencyId should be moved in here.
-}
-
-#[derive(
-	Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyId {
 	// The Native token, representing AIR in Altair and CFG in Centrifuge.
 	Native,
@@ -33,8 +25,6 @@ pub enum CurrencyId {
 	/// Acala Dollar
 	/// Note: KUSD and AUSD will be merged into a single token, AUSD.
 	AUSD,
-
-	Permissioned(PermissionedCurrency),
 
 	/// A foreign asset
 	ForeignAsset(ForeignAssetId),

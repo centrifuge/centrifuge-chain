@@ -861,10 +861,7 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _)
-			| CurrencyId::Native
-			| CurrencyId::KSM
-			| CurrencyId::Permissioned(_) => false,
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
 			CurrencyId::AUSD | CurrencyId::KUSD => true,
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
 				.map(|m| m.additional.pool_currency)
@@ -1127,17 +1124,6 @@ where
 					PermissionScope::Pool(pool_id),
 					recv,
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
-				)
-			}
-			CurrencyId::Permissioned(_) => {
-				P::has(
-					PermissionScope::Currency(id),
-					send,
-					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
-				) && P::has(
-					PermissionScope::Currency(id),
-					recv,
-					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
 				)
 			}
 			_ => true,
