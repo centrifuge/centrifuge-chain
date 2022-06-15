@@ -1329,7 +1329,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		ProxyKeystore: pallet_proxy_keystore::{Pallet, Call, Storage, Event<T>} = 104,
+		ProxyKeystore: pallet_proxy_keystore::{Pallet, Call, Storage, Event<T>} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1575,6 +1575,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_proxy_keystore, ProxyKeystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1603,6 +1604,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_proxy_keystore, ProxyKeystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

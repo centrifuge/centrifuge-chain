@@ -15,10 +15,13 @@ serde = { version = "1.0.102" }
 codec = { package = 'parity-scale-codec', version = '3.0.0', features = ['derive'] , default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 
+frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false , optional = true , branch = "polkadot-v0.9.20" }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.20" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.20" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.20" }
 sp-std = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.20" }
+
+enum-iterator = { version = "1.1.1" }
 
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.20" }
@@ -27,6 +30,7 @@ pallet-balances = { git = "https://github.com/paritytech/substrate", default-fea
 
 [features]
 default = ['std']
+runtime-benchmarks = ['frame-benchmarking']
 std = [
     'codec/std',
     'frame-support/std',

@@ -2630,6 +2630,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-iterator"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a7cbade83f72b1330fa58dc6203176f374e61eb3682055b6d3df05f56723f85"
+dependencies = [
+ "enum-iterator-derive",
+]
+
+[[package]]
+name = "enum-iterator-derive"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a375a452d20c4dbbaa397e84cdfaa2712b4b3d22bf49426e9c8725d10fef005"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "enumflags2"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6786,6 +6806,8 @@ dependencies = [
 name = "pallet-proxy-keystore"
 version = "1.0.0"
 dependencies = [
+ "enum-iterator",
+ "frame-benchmarking",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.20)",
  "frame-system",
  "pallet-balances",

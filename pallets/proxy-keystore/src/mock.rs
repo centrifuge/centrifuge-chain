@@ -1,14 +1,29 @@
+// Copyright 2021 Centrifuge Foundation (centrifuge.io).
+// This file is part of Centrifuge chain project.
+
+// Centrifuge is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version (see http://www.gnu.org/licenses).
+
+// Centrifuge is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
 use crate::{self as pallet_proxy_keystore, Config};
 
 use frame_support::parameter_types;
+use frame_support::traits::EnsureOneOf;
 use frame_system as system;
-use frame_system::{EnsureSigned};
+use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
+use sp_std::convert::{TryFrom, TryInto};
+
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
-use sp_std::convert::{TryFrom, TryInto};
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -24,7 +39,6 @@ frame_support::construct_runtime!(
 );
 
 // System config
-
 parameter_types! {
 	pub const BlockHashCount: u64 = 250;
 	pub const SS58Prefix: u8 = 42;
@@ -63,18 +77,18 @@ pub type Balance = u128;
 pub const CURRENCY: Balance = 1_000_000_000_000_000_000;
 
 parameter_types! {
-	pub const MaxKeys: u32 = 3;
+	pub const MaxKeys: u32 = 10;
 	pub const DefaultKeyDeposit: Balance = 100 * CURRENCY;
 }
 
 impl Config for MockRuntime {
-    type Event = Event;
-    type Balance = Balance;
-    type Currency = Balances;
-    type MaxKeys = MaxKeys;
-    type DefaultKeyDeposit = DefaultKeyDeposit;
-    type AdminOrigin = EnsureSigned<u64>;
-    type WeightInfo = ();
+	type Event = Event;
+	type Balance = Balance;
+	type Currency = Balances;
+	type MaxKeys = MaxKeys;
+	type DefaultKeyDeposit = DefaultKeyDeposit;
+	type AdminOrigin = EnsureOneOf<EnsureRoot<Self::AccountId>, EnsureSigned<u64>>;
+	type WeightInfo = ();
 }
 
 // Balances pallet.
