@@ -436,6 +436,8 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {

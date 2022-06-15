@@ -120,12 +120,12 @@ where
 pub(crate) fn create_nft_class<T>(
 	class_id: u64,
 	owner: T::AccountId,
-) -> <T as pallet_nft_sales::Config>::ClassId
+) -> <T as pallet_nft_sales::Config>::CollectionId
 where
 	T: frame_system::Config
 		+ pallet_nft_sales::Config
 		+ pallet_uniques::Config
-		+ pallet_uniques::Config<ClassId = <T as Config>::ClassId>,
+		+ pallet_uniques::Config<ClassId = <T as Config>::CollectionId>,
 	<T as pallet_uniques::Config>::ClassId: From<u64>,
 {
 	// Create class. Shouldn't fail.
@@ -145,24 +145,24 @@ pub(crate) fn mint_nft<T>(
 	owner: &T::AccountId,
 ) -> (
 	<T as pallet_uniques::Config>::ClassId,
-	<T as pallet_nft_sales::Config>::InstanceId,
+	<T as pallet_nft_sales::Config>::ItemId,
 )
 where
 	T: frame_system::Config
 		+ pallet_nft_sales::Config
 		+ pallet_uniques::Config
-		+ pallet_uniques::Config<ClassId = <T as Config>::ClassId>
-		+ pallet_uniques::Config<InstanceId = <T as Config>::InstanceId>,
-	<T as pallet_uniques::Config>::InstanceId: From<InstanceIdOf<T>>,
-	<T as pallet_uniques::Config>::ClassId: From<ClassIdOf<T>>,
-	<T as pallet_nft_sales::Config>::ClassId: From<u64>,
+		+ pallet_uniques::Config<ClassId = <T as Config>::CollectionId>
+		+ pallet_uniques::Config<InstanceId = <T as Config>::ItemId>,
+	<T as pallet_uniques::Config>::InstanceId: From<ItemIdOf<T>>,
+	<T as pallet_uniques::Config>::ClassId: From<CollectionIdOf<T>>,
+	<T as pallet_nft_sales::Config>::CollectionId: From<u64>,
 {
 	// Create the NFT class
 	let class_id: <T as pallet_uniques::Config>::ClassId =
 		create_nft_class::<T>(class_id_raw, owner.clone());
 
 	// Mint the NFT
-	let instance_id: <T as pallet_nft_sales::Config>::InstanceId = instance_id_raw.into();
+	let instance_id: <T as pallet_nft_sales::Config>::ItemId = instance_id_raw.into();
 	<pallet_uniques::Pallet<T> as Mutate<T::AccountId>>::mint_into(&class_id, &instance_id, owner)
 		.expect("mint should not fail");
 

@@ -15,17 +15,18 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
+use frame_support::{log, traits::Get, weights::Weight, Blake2_128Concat};
+use frame_support::pallet_prelude::{ValueQuery};
 
-use frame_support::{generate_storage_alias, log, traits::Get, weights::Weight, Blake2_128Concat};
 
-generate_storage_alias!(
-	Claims,
-	RootHashes<T: Config> => Map<(Blake2_128Concat, T::Hash), bool>
-);
+#[frame_support::storage_alias]
+pub type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, <T as frame_system::Config>::Hash, bool, ValueQuery>;
+
 
 pub mod root_hashes {
 	use super::*;
 
+	#[allow(dead_code)]
 	pub fn pre_migrate<T: Config>() -> Result<(), &'static str> {
 		let count = RootHashes::<T>::iter_values().count();
 		ensure!(count != 0, "RootHashes storage items not found!");
@@ -43,6 +44,7 @@ pub mod root_hashes {
 		T::DbWeight::get().reads_writes(1, 1)
 	}
 
+	#[allow(dead_code)]
 	pub fn post_migrate<T: Config>() -> Result<(), &'static str> {
 		ensure!(
 			RootHashes::<T>::iter_values().count() == 0,

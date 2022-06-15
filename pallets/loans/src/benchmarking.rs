@@ -278,7 +278,7 @@ where
 }
 
 fn pool_account<T: pallet_pools::Config>(pool_id: T::PoolId) -> T::AccountId {
-	PoolLocator { pool_id }.into_account()
+	PoolLocator { pool_id }.into_account_truncating()
 }
 
 benchmarks! {

@@ -17,7 +17,7 @@ use common_types::CurrencyId;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_noop, assert_ok};
-use runtime_common::InstanceId;
+use runtime_common::ItemId;
 
 /// Verify that calling `NftSales::add` specifiying an nft that is not present in the
 /// underlying `pallet_uniques` fails with `nft_sales::Error::<T>::NotFound`.
@@ -25,7 +25,7 @@ use runtime_common::InstanceId;
 fn add_nft_not_found() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let unknown_nft = (0, InstanceId(1));
+		let unknown_nft = (0, ItemId(1));
 
 		assert_noop!(
 			NftSales::add(
@@ -388,8 +388,8 @@ fn buy_nft_respects_max_offer_currency() {
 }
 
 /// Mint an NFT class and instance and return its `(class_id, instance_id)`
-fn prepared_nft(owner: &Origin) -> (u64, InstanceId) {
-	let (class_id, instance_id) = (0, InstanceId(1));
+fn prepared_nft(owner: &Origin) -> (u64, ItemId) {
+	let (class_id, instance_id) = (0, ItemId(1));
 
 	// Mint the nft in the uniques pallet
 	assert_ok!(Uniques::create(owner.clone(), class_id, SELLER));

@@ -35,7 +35,7 @@ impl<T: Config> Pallet<T> {
 
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
-		T::LoansPalletId::get().into_account()
+		T::LoansPalletId::get().into_account_truncating()
 	}
 
 	/// check if the given loan belongs to the owner provided
@@ -80,7 +80,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock collateral nft
-		let pool_account = PoolLocator { pool_id }.into_account();
+		let pool_account = PoolLocator { pool_id }.into_account_truncating();
 		T::NonFungible::transfer(
 			&collateral_class_id.into(),
 			&instance_id.into(),

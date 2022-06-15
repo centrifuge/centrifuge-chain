@@ -31,7 +31,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
-	Amount, Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
+	Amount, Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -145,6 +145,8 @@ impl orml_tokens::Config for MockRuntime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -249,23 +251,23 @@ parameter_types! {
 	// Base deposit to add metadata is 0.1 Currency
 	pub const MetadataDepositBase: Balance = 10 * CENTI_CURRENCY;
 	// Deposit to create a class is 1 Currency
-	pub const ClassDeposit: Balance = CURRENCY;
+	pub const CollectionDeposit: Balance = CURRENCY;
 	// Deposit to create a class is 0.1 Currency
-	pub const InstanceDeposit: Balance = 10 * CENTI_CURRENCY;
+	pub const ItemDeposit: Balance = 10 * CENTI_CURRENCY;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
 
 impl pallet_uniques::Config for MockRuntime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Locker = ();
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type CollectionDeposit = ClassDeposit;
+	type ItemDeposit = InstanceDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
@@ -303,8 +305,8 @@ parameter_types! {
 
 impl pallet_loans::Config for MockRuntime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type LoanId = InstanceId;
+	type ClassId = CollectionId;
+	type LoanId = ItemId;
 	type Rate = Rate;
 	type Amount = Amount;
 	type NonFungible = Uniques;
@@ -375,12 +377,12 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				(
-					PoolLocator { pool_id: 0 }.into_account(),
+					PoolLocator { pool_id: 0 }.into_account_truncating(),
 					CurrencyId::Tranche(0, JuniorTrancheId::get()),
 					100_000 * CURRENCY,
 				),
 				(
-					PoolLocator { pool_id: 0 }.into_account(),
+					PoolLocator { pool_id: 0 }.into_account_truncating(),
 					CurrencyId::Tranche(0, SeniorTrancheId::get()),
 					100_000 * CURRENCY,
 				),

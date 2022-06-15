@@ -102,7 +102,7 @@ pub(crate) fn create<T>(
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
-	let pool_account = PoolLocator { pool_id }.into_account();
+	let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(

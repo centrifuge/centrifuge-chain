@@ -27,7 +27,7 @@ use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
 use node_primitives::Block;
-use polkadot_parachain::primitives::AccountIdConversion;
+use sp_runtime::traits::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
 	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
@@ -200,25 +200,6 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 		.top
 		.remove(sp_core::storage::well_known_keys::CODE)
 		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
-}
-
-macro_rules! with_runtime {
-	($chain_spec:expr, { $( $code:tt )* }) => {
-		match $chain_spec.identify() {
-			ChainIdentity::Altair => {
-				use AltairRuntimeExecutor as Executor;
-				$( $code )*
-			}
-			ChainIdentity::Centrifuge => {
-				use CentrifugeRuntimeExecutor as Executor;
-				$( $code )*
-			}
-			ChainIdentity::Development => {
-				use DevelopmentRuntimeExecutor as Executor;
-				$( $code )*
-			}
-		}
-	}
 }
 
 macro_rules! construct_async_run {
@@ -436,7 +417,7 @@ pub fn run() -> Result<()> {
 				let id = cli.parachain_id.unwrap_or(10001).into();
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account(&id);
+					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(&id);
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 				let block: Block = generate_genesis_block(&config.chain_spec, state_version)

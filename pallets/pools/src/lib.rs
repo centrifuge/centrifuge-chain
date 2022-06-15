@@ -1544,7 +1544,7 @@ pub mod pallet {
 
 			let collections = Self::calculate_collect(tranche_id, order, end_epoch)?;
 
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			if collections.payout_currency_amount > Zero::zero() {
 				T::Tokens::transfer(
 					pool.currency,
@@ -1611,7 +1611,7 @@ pub mod pallet {
 				.get_mut_tranche(TrancheLoc::Id(tranche_id))
 				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_invest_orders;
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 			let (send, recv, transfer_amount) = Self::update_order_amount(
 				who,
@@ -1638,7 +1638,7 @@ pub mod pallet {
 				.get_mut_tranche(TrancheLoc::Id(tranche_id))
 				.ok_or(Error::<T>::InvalidTrancheId)?;
 			let mut outstanding = &mut tranche.outstanding_redeem_orders;
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 			let (send, recv, transfer_amount) = Self::update_order_amount(
 				who,
@@ -1970,7 +1970,7 @@ pub mod pallet {
 			tranche.outstanding_redeem_orders -= token_redeem;
 
 			// Compute the tranche tokens that need to be minted or burned based on the execution
-			let pool_address = PoolLocator { pool_id }.into_account();
+			let pool_address = PoolLocator { pool_id }.into_account_truncating();
 			if token_invest > token_redeem {
 				let tokens_to_mint = token_invest - token_redeem;
 				T::Tokens::mint_into(tranche.currency, &pool_address, tokens_to_mint)?;
@@ -1995,7 +1995,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();
@@ -2047,7 +2047,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();

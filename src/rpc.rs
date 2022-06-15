@@ -12,7 +12,7 @@
 
 //! Centrifuge specific rpc endpoints (common endpoints across all environments)
 
-use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPaymentRpc};
+use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPayment};
 use runtime_common::{AccountId, Balance, Index};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::TransactionPool;
@@ -20,7 +20,7 @@ use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
-use substrate_frame_rpc_system::{SystemApiServer, SystemRpc};
+use substrate_frame_rpc_system::{SystemApiServer, System};
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
@@ -43,8 +43,8 @@ where
 {
 	let mut module = RpcExtension::new(());
 
-	module.merge(SystemRpc::new(client.clone(), pool, deny_unsafe).into_rpc())?;
-	module.merge(TransactionPaymentRpc::new(client.clone()).into_rpc())?;
+	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
 	Ok(module)
 }

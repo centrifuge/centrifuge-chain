@@ -216,10 +216,10 @@ where
 
 /// type alias to Non fungible ClassId type
 pub(crate) type ClassIdOf<T> =
-	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ClassId;
+	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 /// type alias to Non fungible InstanceId type
 pub(crate) type InstanceIdOf<T> =
-	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::InstanceId;
+	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 /// type alias to Non fungible Asset
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
 /// type alias for pool reserve balance type
