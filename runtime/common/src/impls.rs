@@ -184,7 +184,6 @@ pub mod asset_registry {
 	use frame_support::dispatch::RawOrigin;
 	use frame_support::sp_std::marker::PhantomData;
 	use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
-	use frame_system::EnsureRoot;
 	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
 	use sp_runtime::DispatchError;
 
@@ -212,9 +211,19 @@ pub mod asset_registry {
 		}
 	}
 
-	pub struct AuthorityOrigin<Origin>(PhantomData<Origin>);
-	impl<Origin: Into<Result<RawOrigin<AccountId>, Origin>> + From<RawOrigin<AccountId>>>
-		EnsureOriginWithArg<Origin, Option<CurrencyId>> for AuthorityOrigin<Origin>
+	/// The OrmlAssetRegistry::AuthorityOrigin impl
+	pub struct AuthorityOrigin<
+		// The origin type
+		Origin,
+		// The default EnsureOrigin impl used to authorize all
+		// assets besides tranche tokens.
+		DefaultEnsureOrigin,
+	>(PhantomData<(Origin, DefaultEnsureOrigin)>);
+
+	impl<
+			Origin: Into<Result<RawOrigin<AccountId>, Origin>> + From<RawOrigin<AccountId>>,
+			DefaultEnsureOrigin: EnsureOrigin<Origin>,
+		> EnsureOriginWithArg<Origin, Option<CurrencyId>> for AuthorityOrigin<Origin, DefaultEnsureOrigin>
 	{
 		type Success = ();
 
@@ -227,7 +236,7 @@ pub mod asset_registry {
 				Some(CurrencyId::Tranche(_, _)) => Err(origin),
 
 				// Any other `asset_id` defaults to EnsureRoot
-				_ => EnsureRoot::try_origin(origin),
+				_ => DefaultEnsureOrigin::try_origin(origin).map(|_| ()),
 			}
 		}
 

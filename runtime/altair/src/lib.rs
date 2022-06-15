@@ -918,7 +918,7 @@ impl orml_asset_registry::Config for Runtime {
 	type Event = Event;
 	type CustomMetadata = CustomMetadata;
 	type AssetId = CurrencyId;
-	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin>;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin, EnsureRootOr<HalfOfCouncil>>;
 	type AssetProcessor = asset_registry::CustomAssetProcessor;
 	type Balance = Balance;
 	type WeightInfo = ();
