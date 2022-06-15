@@ -67,9 +67,9 @@ where
 			PoolId = PoolId,
 			TrancheId = [u8; 16],
 			EpochId = u32,
-		> + pallet_loans::Config<ClassId=CollectionId, LoanId=ItemId>
+		> + pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
-		+ pallet_uniques::Config<CollectionId=CollectionId, ItemId=ItemId>
+		+ pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
 {
@@ -186,7 +186,7 @@ fn price_test_loan<T>(
 	loan_type: LoanType<Rate, Amount>,
 ) where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId =CollectionId, LoanId =ItemId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let res = Loans::price(Origin::signed(admin), pool_id, loan_id, rp, loan_type);
@@ -217,7 +217,7 @@ fn price_bullet_loan<T>(
 ) -> (Rate, LoanType<Rate, Amount>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId =CollectionId, LoanId =ItemId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_bullet_loan_params();
@@ -234,7 +234,7 @@ fn price_credit_line_loan<T>(
 ) -> (Rate, LoanType<Rate, Amount>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId =CollectionId, LoanId =ItemId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_credit_line_params();
@@ -251,7 +251,7 @@ fn price_credit_line_with_maturity_loan<T>(
 ) -> (Rate, LoanType<Rate, Amount>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId =CollectionId, LoanId =ItemId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_credit_line_with_maturity_params();
@@ -268,7 +268,7 @@ fn close_test_loan<T>(
 	collateral: AssetOf<T>,
 ) where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId =CollectionId, LoanId =ItemId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_id = loan.1;

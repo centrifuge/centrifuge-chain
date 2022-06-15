@@ -94,7 +94,10 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 				ParaId::from(parachains::altair::ID).into_account_truncating(),
 				air_amount(7),
 			),
-			(ParaId::from(PARA_ID_SIBLING).into_account_truncating(), air_amount(7)),
+			(
+				ParaId::from(PARA_ID_SIBLING).into_account_truncating(),
+				air_amount(7),
+			),
 		],
 	}
 	.assimilate_storage(&mut t)

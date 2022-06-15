@@ -15,13 +15,12 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
+use frame_support::pallet_prelude::ValueQuery;
 use frame_support::{log, traits::Get, weights::Weight, Blake2_128Concat};
-use frame_support::pallet_prelude::{ValueQuery};
-
 
 #[frame_support::storage_alias]
-pub type RootHashes<T: Config> = StorageMap<_, Blake2_128Concat, <T as frame_system::Config>::Hash, bool, ValueQuery>;
-
+pub type RootHashes<T: Config> =
+	StorageMap<_, Blake2_128Concat, <T as frame_system::Config>::Hash, bool, ValueQuery>;
 
 pub mod root_hashes {
 	use super::*;

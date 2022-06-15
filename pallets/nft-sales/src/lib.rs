@@ -48,10 +48,10 @@ type BalanceOf<T> =
 
 type SaleOf<T> = Sale<AccountIdOf<T>, CurrencyOf<T>, BalanceOf<T>>;
 
-type CollectionIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::CollectionId;
+type CollectionIdOf<T> =
+	<<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::CollectionId;
 
-type ItemIdOf<T> =
-	<<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ItemId;
+type ItemIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ItemId;
 
 // Storage types
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]

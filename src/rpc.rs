@@ -12,7 +12,7 @@
 
 //! Centrifuge specific rpc endpoints (common endpoints across all environments)
 
-use pallet_transaction_payment_rpc::{TransactionPaymentApiServer, TransactionPayment};
+use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 use runtime_common::{AccountId, Balance, Index};
 use sc_rpc_api::DenyUnsafe;
 use sc_service::TransactionPool;
@@ -20,7 +20,7 @@ use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
-use substrate_frame_rpc_system::{SystemApiServer, System};
+use substrate_frame_rpc_system::{System, SystemApiServer};
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
