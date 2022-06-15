@@ -22,25 +22,8 @@ use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
 use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
-pub mod anchor;
-pub mod pools;
-
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpc_core::IoHandler<sc_rpc::Metadata>;
-
-/// Error type of our RPC methods
-pub enum Error {
-	/// The call to runtime failed.
-	RuntimeError,
-}
-
-impl From<Error> for i64 {
-	fn from(e: Error) -> i64 {
-		match e {
-			Error::RuntimeError => 1,
-		}
-	}
-}
 
 /// Instantiate all Full RPC extensions.
 pub fn create_full<C, P, Block>(

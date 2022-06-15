@@ -26,6 +26,7 @@ mod solution;
 mod tests;
 mod tranche;
 pub mod weights;
+
 use codec::HasCompact;
 use common_traits::{
 	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
@@ -40,8 +41,6 @@ use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTim
 use frame_system::pallet_prelude::*;
 use orml_traits::Change;
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
-use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
@@ -1376,7 +1375,7 @@ pub mod pallet {
 		///
 		/// This function checks the state a pool would be in when applying a solution
 		/// to an epoch. Depending on the state, the correct scoring function is chosen.
-		pub fn score_solution(
+		pub(crate) fn score_solution(
 			pool_id: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],

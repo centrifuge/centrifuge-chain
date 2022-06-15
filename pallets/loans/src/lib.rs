@@ -173,7 +173,7 @@ pub mod pallet {
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan)]
-	pub type Loan<T: Config> = StorageDoubleMap<
+	pub(crate) type Loan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
@@ -186,7 +186,7 @@ pub mod pallet {
 	/// Stores the pool nav against poolId
 	#[pallet::storage]
 	#[pallet::getter(fn nav)]
-	pub type PoolNAV<T: Config> =
+	pub(crate) type PoolNAV<T: Config> =
 		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Amount>, OptionQuery>;
 
 	/// Stores the pool associated with the its write off groups
