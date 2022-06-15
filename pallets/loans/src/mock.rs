@@ -266,8 +266,8 @@ impl pallet_uniques::Config for MockRuntime {
 	type ForceOrigin = EnsureSignedBy<One, u64>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Locker = ();
-	type CollectionDeposit = ClassDeposit;
-	type ItemDeposit = InstanceDeposit;
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;

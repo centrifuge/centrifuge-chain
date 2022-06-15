@@ -14,13 +14,13 @@ benchmarks! {
 	where_clause {
 		where
 		T: Config
-			+ pallet_uniques::Config<ClassId = <T as Config>::ClassId>
-			+ pallet_uniques::Config<InstanceId = <T as Config>::InstanceId>
+			+ pallet_uniques::Config<CollectionId = <T as Config>::CollectionId>
+			+ pallet_uniques::Config<ItemId = <T as Config>::ItemId>
 			+ orml_tokens::Config<CurrencyId = crate::CurrencyOf<T>>
 			+ orml_tokens::Config<Balance = crate::BalanceOf<T>>
 			+ pallet_balances::Config,
 		<T as pallet_balances::Config>::Balance: From<u128>,
-		<T as pallet_nft_sales::Config>::ClassId: From<u64>,
+		<T as pallet_nft_sales::Config>::CollectionId: From<u64>,
 		<T as OrmlTokens::Config>::Balance: From<u128>,
 		<T as OrmlTokens::Config>::CurrencyId: From<CurrencyId>,
 		<<T as pallet_nft_sales::Config>::Fungibles as fungibles::Inspect<AccountIdOf<T>>>::AssetId: From<CurrencyId>,
@@ -34,13 +34,13 @@ benchmarks! {
 		deposit_native_balance::<T>(&seller_account);
 
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
-		let (class_id, instance_id) = mint_nft::<T>(0, 1, &seller_account);
+		let (collection_id, item_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
 		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::AUSD.into(), amount: 10_000u128.into() };
 
-	}: _(seller_origin, class_id, instance_id, price)
+	}: _(seller_origin, collection_id, item_id, price)
 	verify {
-		assert!(<Sales<T>>::contains_key(class_id, instance_id), "NFT should be for sale now");
+		assert!(<Sales<T>>::contains_key(collection_id, item_id), "NFT should be for sale now");
 	}
 
 	// Remove an NFT from sale
@@ -50,16 +50,16 @@ benchmarks! {
 		deposit_native_balance::<T>(&seller_account);
 
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
-		let (class_id, instance_id) = mint_nft::<T>(0, 1, &seller_account);
+		let (collection_id, item_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
 		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::KUSD.into(), amount: 10_000u128.into() };
 
 		// We need the nft in the storage beforehand to be able to remove it
-		<Sales<T>>::insert(class_id.clone(), instance_id.clone(), Sale { seller: seller_account, price});
+		<Sales<T>>::insert(collection_id.clone(), item_id.clone(), Sale { seller: seller_account, price});
 
-	}: _(seller_origin, class_id, instance_id)
+	}: _(seller_origin, collection_id, item_id)
 	verify {
-		assert!(<Sales<T>>::get(class_id, instance_id).is_none(), "The NFT should have been removed from sale");
+		assert!(<Sales<T>>::get(collection_id, item_id).is_none(), "The NFT should have been removed from sale");
 	}
 
 	// Remove an NFT from sale
@@ -69,21 +69,21 @@ benchmarks! {
 		deposit_native_balance::<T>(&seller_account);
 
 		// We need the NFT to exist in the pallet-uniques before we can put it for sale
-		let (class_id, instance_id) = mint_nft::<T>(0, 1, &seller_account);
+		let (collection_id, item_id) = mint_nft::<T>(0, 1, &seller_account);
 		// Define the price
 		let price: Price<crate::CurrencyOf<T>, crate::BalanceOf<T>> = Price { currency: CurrencyId::KUSD.into(), amount: 10_000u128.into() };
 
 		// We need the nft in the storage beforehand to be able to remove it
-		<Sales<T>>::insert(class_id.clone(), instance_id.clone(), Sale { seller: seller_account, price: price.clone()});
+		<Sales<T>>::insert(collection_id.clone(), item_id.clone(), Sale { seller: seller_account, price: price.clone()});
 
 		// We need the buyer to have enough balance to pay for the NFT
 		let buyer_account = account::<T::AccountId>("buyer", 0, 0);
 		let buyer_origin: RawOrigin<T::AccountId> = RawOrigin::Signed(buyer_account.clone()).into();
 		deposit_token_balance::<T>(&buyer_account, CurrencyId::KUSD, 100_000u128.into());
 
-	}: _(buyer_origin, class_id, instance_id, price)
+	}: _(buyer_origin, collection_id, item_id, price)
 	verify {
-		assert!(<Sales<T>>::get(class_id, instance_id).is_none(), "The NFT should have been removed from sale once bought");
+		assert!(<Sales<T>>::get(collection_id, item_id).is_none(), "The NFT should have been removed from sale once bought");
 	}
 }
 
@@ -118,19 +118,19 @@ where
 }
 
 pub(crate) fn create_nft_class<T>(
-	class_id: u64,
+	collection_id: u64,
 	owner: T::AccountId,
 ) -> <T as pallet_nft_sales::Config>::CollectionId
 where
 	T: frame_system::Config
 		+ pallet_nft_sales::Config
 		+ pallet_uniques::Config
-		+ pallet_uniques::Config<ClassId = <T as Config>::CollectionId>,
-	<T as pallet_uniques::Config>::ClassId: From<u64>,
+		+ pallet_uniques::Config<CollectionId = <T as Config>::CollectionId>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
 {
 	// Create class. Shouldn't fail.
-	let uniques_class_id: <T as pallet_uniques::Config>::ClassId = class_id.into();
-	<pallet_uniques::Pallet<T> as Create<T::AccountId>>::create_class(
+	let uniques_class_id: <T as pallet_uniques::Config>::CollectionId = collection_id.into();
+	<pallet_uniques::Pallet<T> as Create<T::AccountId>>::create_collection(
 		&uniques_class_id,
 		&owner,
 		&owner,
@@ -144,28 +144,28 @@ pub(crate) fn mint_nft<T>(
 	instance_id_raw: u128,
 	owner: &T::AccountId,
 ) -> (
-	<T as pallet_uniques::Config>::ClassId,
+	<T as pallet_uniques::Config>::CollectionId,
 	<T as pallet_nft_sales::Config>::ItemId,
 )
 where
 	T: frame_system::Config
 		+ pallet_nft_sales::Config
 		+ pallet_uniques::Config
-		+ pallet_uniques::Config<ClassId = <T as Config>::CollectionId>
-		+ pallet_uniques::Config<InstanceId = <T as Config>::ItemId>,
-	<T as pallet_uniques::Config>::InstanceId: From<ItemIdOf<T>>,
-	<T as pallet_uniques::Config>::ClassId: From<CollectionIdOf<T>>,
+		+ pallet_uniques::Config<CollectionId = <T as Config>::CollectionId>
+		+ pallet_uniques::Config<ItemId = <T as Config>::ItemId>,
+	<T as pallet_uniques::Config>::ItemId: From<ItemIdOf<T>>,
+	<T as pallet_uniques::Config>::CollectionId: From<CollectionIdOf<T>>,
 	<T as pallet_nft_sales::Config>::CollectionId: From<u64>,
 {
 	// Create the NFT class
-	let class_id: <T as pallet_uniques::Config>::ClassId =
+	let collection_id: <T as pallet_uniques::Config>::CollectionId =
 		create_nft_class::<T>(class_id_raw, owner.clone());
 
 	// Mint the NFT
-	let instance_id: <T as pallet_nft_sales::Config>::ItemId = instance_id_raw.into();
-	<pallet_uniques::Pallet<T> as Mutate<T::AccountId>>::mint_into(&class_id, &instance_id, owner)
+	let item_id: <T as pallet_nft_sales::Config>::ItemId = instance_id_raw.into();
+	<pallet_uniques::Pallet<T> as Mutate<T::AccountId>>::mint_into(&collection_id, &item_id, owner)
 		.expect("mint should not fail");
 
 	// Done
-	(class_id, instance_id)
+	(collection_id, item_id)
 }

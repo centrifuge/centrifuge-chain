@@ -38,7 +38,7 @@ use test_utils::{
 pub struct Pallet<T: Config>(LoansPallet<T>);
 
 pub trait Config:
-	LoanConfig<ClassId = <Self as pallet_uniques::Config>::ClassId>
+	LoanConfig<ClassId = <Self as pallet_uniques::Config>::CollectionId>
 	+ pallet_balances::Config
 	+ pallet_uniques::Config
 	+ pallet_pools::Config
@@ -133,7 +133,7 @@ fn create_and_init_pool<T: Config>(
 )
 where
 	<T as pallet_balances::Config>::Balance: From<u128>,
-	<T as pallet_uniques::Config>::ClassId: From<u64>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
 	<T as pallet_pools::Config>::Balance: From<u128>,
 	<T as pallet_pools::Config>::CurrencyId: From<CurrencyId>,
 	<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
@@ -141,7 +141,7 @@ where
 	<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
 	<T as ORMLConfig>::CurrencyId: From<CurrencyId>,
 	<T as ORMLConfig>::Balance: From<u128>,
-	<T as pallet_uniques::Config>::ClassId: Default,
+	<T as pallet_uniques::Config>::CollectionId: Default,
 {
 	// create pool
 	let pool_owner = account::<T::AccountId>("owner", 0, 0);
@@ -210,7 +210,7 @@ where
 fn create_asset<T: Config + frame_system::Config>() -> (T::AccountId, AssetOf<T>)
 where
 	<T as pallet_balances::Config>::Balance: From<u128>,
-	<T as pallet_uniques::Config>::ClassId: From<u64>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
 {
 	// create asset
 	let loan_owner = borrower::<T>();
@@ -284,7 +284,7 @@ fn pool_account<T: pallet_pools::Config>(pool_id: T::PoolId) -> T::AccountId {
 benchmarks! {
 	where_clause {
 		where
-		<T as pallet_uniques::Config>::ClassId: From<u64>,
+		<T as pallet_uniques::Config>::CollectionId: From<u64>,
 		<T as pallet_balances::Config>::Balance: From<u128>,
 		<T as LoanConfig>::Rate: From<Rate>,
 		<T as LoanConfig>::Amount: From<Amount>,
@@ -296,7 +296,7 @@ benchmarks! {
 		<T as pallet_pools::Config>::TrancheId: Into<[u8; 16]>,
 		<T as pallet_pools::Config>::EpochId: From<u32>,
 		<T as pallet_pools::Config>::PoolId: Into<u64> + IsType<PoolIdOf<T>>,
-		<T as pallet_uniques::Config>::ClassId: Default,
+		<T as pallet_uniques::Config>::CollectionId: Default,
 	}
 
 	initialise_pool {
