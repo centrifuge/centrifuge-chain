@@ -42,6 +42,7 @@ pub mod types {
 	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use frame_support::traits::EnsureOneOf;
 	use frame_system::EnsureRoot;
+	use pallet_collective::EnsureProportionAtLeast;
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
@@ -49,7 +50,23 @@ pub mod types {
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 	use sp_std::vec::Vec;
 
+	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
 	pub type EnsureRootOr<O> = EnsureOneOf<EnsureRoot<AccountId>, O>;
+
+	/// The council
+	pub type CouncilCollective = pallet_collective::Instance1;
+
+	/// All council members must vote yes to create this origin.
+	pub type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
+
+	/// 1/2 of all council members must vote yes to create this origin.
+	pub type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
+
+	/// 2/3 of all council members must vote yes to create this origin.
+	pub type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
+
+	/// 3/4 of all council members must vote yes to create this origin.
+	pub type ThreeFourthOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;

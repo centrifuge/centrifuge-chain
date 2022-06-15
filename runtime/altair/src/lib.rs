@@ -25,7 +25,7 @@ use orml_traits::parameter_type_with_key;
 
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
-use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -450,21 +450,6 @@ parameter_types! {
 	pub const CouncilMaxProposals: u32 = 100;
 	pub const CouncilMaxMembers: u32 = 100;
 }
-
-/// The council
-type CouncilCollective = pallet_collective::Instance1;
-
-/// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
-
-/// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
-
-/// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
-
-/// 3/4 of all council members must vote yes to create this origin.
-type ThreeFourthOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;

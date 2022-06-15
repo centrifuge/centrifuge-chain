@@ -9544,6 +9544,7 @@ dependencies = [
  "pallet-anchors",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-collective",
  "pallet-permissions",
  "pallet-pools",
  "parity-scale-codec",

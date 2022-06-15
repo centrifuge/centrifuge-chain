@@ -444,18 +444,6 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
-/// The council
-type CouncilCollective = pallet_collective::Instance1;
-
-/// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
-
-/// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
-
-/// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
-
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
