@@ -99,10 +99,10 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 
 # orml pallets
-orml-tokens = { git = "https://github.com//open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
-orml-traits = { git = "https://github.com//open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
-orml-xcm-support = { git = "https://github.com//open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
-orml-xtokens = { git = "https://github.com//open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 
 # our custom pallets
 runtime-common = { path = "../common", default-features = false }
