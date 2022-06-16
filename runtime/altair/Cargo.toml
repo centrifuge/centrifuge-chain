@@ -201,7 +201,8 @@ std = [
     "pallet-nft-sales/std",
     "pallet-permissions/std",
     "orml-tokens/std",
-    "orml-xtokens/std"
+    "orml-xtokens/std",
+    "orml-asset-registry/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",

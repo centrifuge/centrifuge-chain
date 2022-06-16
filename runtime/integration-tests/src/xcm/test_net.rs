@@ -89,14 +89,14 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), air_amount(2002)),
+			(AccountId::from(ALICE), air(2002)),
 			(
 				ParaId::from(parachains::altair::ID).into_account_truncating(),
-				air_amount(7),
+				air(7),
 			),
 			(
 				ParaId::from(PARA_ID_SIBLING).into_account_truncating(),
-				air_amount(7),
+				air(7),
 			),
 		],
 	}

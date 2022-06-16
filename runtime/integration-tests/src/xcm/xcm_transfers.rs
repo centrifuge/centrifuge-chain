@@ -102,11 +102,15 @@ fn transfer_air_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
+		let current_balance = OrmlTokens::free_balance(air_in_sibling, &BOB.into());
 		// Verify that BOB now has (amount transferred - fee)
-		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
-			transfer_amount - fee(18),
-		);
+		assert_eq!(current_balance, transfer_amount - fee(18));
+
+		// Sanity check for the actual amount the dest ends up with
+		assert_eq!(current_balance, 4990676000000000000);
+
+		// Verify that transfer-amount - fee is not a significant number
+		assert!((transfer_amount - current_balance) < air(1) / 10);
 	});
 }
 
@@ -392,10 +396,10 @@ fn transfer_foreign_sibling_to_altair() {
 }
 
 #[test]
-fn test_fee_per_second() {
-	assert_eq!(default_per_second(decimals::NATIVE), 8000000000000000000);
-	assert_eq!(default_per_second(decimals::AUSD), 8000000000000);
-	assert_eq!(ksm_per_second(), default_per_second(decimals::KSM) / 50);
+fn test_total_fee() {
+	assert_eq!(fee(decimals::NATIVE), 9324000000000000);
+	assert_eq!(fee(decimals::AUSD), 9324000000);
+	assert_eq!(fee(decimals::KSM), 9324000000);
 }
 
 pub mod currency_id_convert {
