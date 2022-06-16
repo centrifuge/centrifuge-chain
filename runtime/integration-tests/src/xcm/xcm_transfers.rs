@@ -414,8 +414,8 @@ fn transfer_foreign_sibling_to_altair() {
 
 pub mod asset_registry {
 	use super::{assert_ok, parachains, GeneralKey, MultiLocation, X1};
-	use crate::xcm::test_net::{Development, TestNet};
-	use development_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
+	use crate::xcm::test_net::{Altair, TestNet};
+	use altair_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
 	use frame_support::assert_noop;
 	use orml_traits::asset_registry::AssetMetadata;
 	use orml_traits::currency::MultiCurrency;
@@ -426,7 +426,7 @@ pub mod asset_registry {
 
 	#[test]
 	fn register_air_works() {
-		Development::execute_with(|| {
+		Altair::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 18,
 				name: "Altair".into(),
@@ -449,7 +449,7 @@ pub mod asset_registry {
 
 	#[test]
 	fn register_foreign_asset_works() {
-		Development::execute_with(|| {
+		Altair::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 12,
 				name: "Acala Dollar".into(),
@@ -476,7 +476,7 @@ pub mod asset_registry {
 	#[test]
 	// Verify that registering tranche tokens is not allowed through extrinsics
 	fn register_tranche_asset_blocked() {
-		Development::execute_with(|| {
+		Altair::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 12,
 				name: "Tranche Token 1".into(),
