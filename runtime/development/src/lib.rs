@@ -24,7 +24,7 @@ use frame_system::{
 };
 use orml_traits::parameter_type_with_key;
 pub use pallet_balances::Call as BalancesCall;
-use pallet_collective::{EnsureMember, EnsureProportionAtLeast};
+use pallet_collective::EnsureMember;
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
@@ -486,18 +486,6 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
-/// The council
-type CouncilCollective = pallet_collective::Instance1;
-
-/// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
-
-/// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
-
-/// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
-
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -873,11 +861,11 @@ pub struct PoolCurrency;
 impl Contains<CurrencyId> for PoolCurrency {
 	fn contains(id: &CurrencyId) -> bool {
 		match id {
-			CurrencyId::Tranche(_, _)
-			| CurrencyId::Native
-			| CurrencyId::KSM
-			| CurrencyId::Permissioned(_) => false,
+			CurrencyId::Tranche(_, _) | CurrencyId::Native | CurrencyId::KSM => false,
 			CurrencyId::AUSD | CurrencyId::KUSD => true,
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::metadata(&id)
+				.map(|m| m.additional.pool_currency)
+				.unwrap_or(false),
 		}
 	}
 }
@@ -1127,7 +1115,6 @@ where
 		} = details.clone();
 
 		match id {
-			CurrencyId::Native | CurrencyId::KUSD | CurrencyId::AUSD | CurrencyId::KSM => true,
 			CurrencyId::Tranche(pool_id, tranche_id) => {
 				P::has(
 					PermissionScope::Pool(pool_id),
@@ -1139,17 +1126,7 @@ where
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
 				)
 			}
-			CurrencyId::Permissioned(_) => {
-				P::has(
-					PermissionScope::Currency(id),
-					send,
-					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
-				) && P::has(
-					PermissionScope::Currency(id),
-					recv,
-					Role::PermissionedCurrencyRole(PermissionedCurrencyRole::Holder(UNION)),
-				)
-			}
+			_ => true,
 		}
 	}
 }
@@ -1208,6 +1185,16 @@ impl orml_tokens::Config for Runtime {
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
 	type OnNewTokenAccount = ();
 	type OnKilledTokenAccount = ();
+}
+
+impl orml_asset_registry::Config for Runtime {
+	type Event = Event;
+	type CustomMetadata = CustomMetadata;
+	type AssetId = CurrencyId;
+	type AuthorityOrigin = asset_registry::AuthorityOrigin<Origin, EnsureRootOr<HalfOfCouncil>>;
+	type AssetProcessor = asset_registry::CustomAssetProcessor;
+	type Balance = Balance;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1338,6 +1325,7 @@ construct_runtime!(
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 151,
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Event<T>, Config<T>} = 152,
 
 		// migration pallet
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 199,

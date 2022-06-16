@@ -14,7 +14,6 @@
 //! # Common types and primitives used for Centrifuge chain runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-
 pub use apis::*;
 pub use constants::*;
 pub use impls::*;
@@ -40,8 +39,10 @@ pub mod apis {
 
 /// Common types for all runtimes
 pub mod types {
+	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};
 	use frame_support::traits::EnsureOneOf;
 	use frame_system::EnsureRoot;
+	use pallet_collective::EnsureProportionAtLeast;
 	use scale_info::TypeInfo;
 	#[cfg(feature = "std")]
 	use serde::{Deserialize, Serialize};
@@ -49,7 +50,23 @@ pub mod types {
 	use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, Verify};
 	use sp_std::vec::Vec;
 
+	// Ensure that origin is either Root or fallback to use EnsureOrigin `O`
 	pub type EnsureRootOr<O> = EnsureOneOf<EnsureRoot<AccountId>, O>;
+
+	/// The council
+	pub type CouncilCollective = pallet_collective::Instance1;
+
+	/// All council members must vote yes to create this origin.
+	pub type AllOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
+
+	/// 1/2 of all council members must vote yes to create this origin.
+	pub type HalfOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 2>;
+
+	/// 2/3 of all council members must vote yes to create this origin.
+	pub type TwoThirdOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
+
+	/// 3/4 of all council members must vote yes to create this origin.
+	pub type ThreeFourthOfCouncil = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
 
 	/// An index to a block.
 	pub type BlockNumber = u32;
@@ -102,20 +119,20 @@ pub mod types {
 	pub type Salt = FixedArray<u8, 32>;
 
 	/// A representation of registryID.
-	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(Encode, Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct RegistryId(pub H160);
 
 	// The id of an asset as it corresponds to the "token id" of a Centrifuge document.
 	// A registry id is needed as well to uniquely identify an asset on-chain.
-	#[derive(codec::Encode, codec::Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(Encode, Decode, Default, Copy, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 	pub struct TokenId(pub U256);
 
 	/// A generic representation of a local address. A resource id points to this. It may be a
 	/// registry id (20 bytes) or a fungible asset type (in the future). Constrained to 32 bytes just
 	/// as an upper bound to store efficiently.
-	#[derive(codec::Encode, codec::Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
+	#[derive(Encode, Decode, Default, Clone, PartialEq, Eq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct EthAddress(pub Bytes32);
 
@@ -133,37 +150,80 @@ pub mod types {
 
 	/// A representation of a tranche weight, used to weight
 	/// importance of a tranche
-	#[derive(
-		codec::Encode,
-		codec::Decode,
-		Copy,
-		Debug,
-		Default,
-		Clone,
-		PartialEq,
-		Eq,
-		TypeInfo,
-		codec::CompactAs,
-	)]
+	#[derive(Encode, Decode, Copy, Debug, Default, Clone, PartialEq, Eq, TypeInfo, CompactAs)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct TrancheWeight(pub u128);
 
 	/// A representation of ItemId for Uniques.
 	#[derive(
-		codec::Encode,
-		codec::Decode,
+		Encode,
+		Decode,
 		Default,
 		Copy,
 		Clone,
 		PartialEq,
 		Eq,
-		codec::CompactAs,
+		CompactAs,
 		Debug,
-		codec::MaxEncodedLen,
+		MaxEncodedLen,
 		TypeInfo,
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct ItemId(pub u128);
+
+	/// A type describing our custom additional metadata stored in the OrmlAssetRegistry.
+	#[derive(
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
+	)]
+	pub struct CustomMetadata {
+		/// XCM-related metadata.
+		pub xcm: XcmMetadata,
+
+		/// Whether an asset can be minted.
+		/// When `true`, the right permissions will checked in the permissions
+		/// pallet to authorize asset minting by an origin.
+		pub mintable: bool,
+
+		/// Whether an asset is _permissioned_, i.e., whether the asset can only
+		/// be transferred from and to whitelisted accounts. When `true`, the
+		/// right permissions will checked in the permissions pallet to authorize
+		/// transfer between mutually allowed from and to accounts.
+		pub permissioned: bool,
+
+		/// Whether an asset can be used as a currency to fund Centrifuge Pools.
+		pub pool_currency: bool,
+	}
+
+	#[derive(
+		Clone,
+		Copy,
+		Default,
+		PartialOrd,
+		Ord,
+		PartialEq,
+		Eq,
+		Debug,
+		Encode,
+		Decode,
+		TypeInfo,
+		MaxEncodedLen,
+	)]
+	pub struct XcmMetadata {
+		/// The fee charged for every second that an XCM message takes to execute.
+		/// When `None`, the `default_per_second` will be used instead.
+		pub fee_per_second: Option<Balance>,
+	}
 }
 
 /// Common constants for all runtimes
@@ -211,6 +271,15 @@ pub mod constants {
 	pub const CENTI_CFG: Balance = 10 * MILLI_CFG; // 10−2 	0.01
 	pub const CFG: Balance = 100 * CENTI_CFG;
 
+	// The decimals for the tokens we handle natively in our runtimes.
+	// Other tokens are registered in the orml_asset_registry and
+	// their decimals can be found in their respective metadata.
+	pub mod decimals {
+		pub const NATIVE: u32 = 18;
+		pub const AUSD: u32 = 12;
+		pub const KSM: u32 = 12;
+	}
+
 	/// Minimum vesting amount, in CFG/AIR
 	pub const MIN_VESTING: Balance = 10;
 
@@ -252,36 +321,34 @@ pub mod parachains {
 }
 
 pub mod xcm_fees {
-	use common_traits::TokenMetadata;
-	use common_types::CurrencyId;
 	use frame_support::weights::constants::{ExtrinsicBaseWeight, WEIGHT_PER_SECOND};
 
-	use super::types::Balance;
+	use super::{decimals, Balance};
 
 	// The fee cost per second for transferring the native token in cents.
 	pub fn native_per_second() -> Balance {
-		base_tx_per_second(CurrencyId::Native)
+		default_per_second(decimals::NATIVE)
 	}
 
 	pub fn ksm_per_second() -> Balance {
-		base_tx_per_second(CurrencyId::KSM) / 50
+		default_per_second(decimals::KSM) / 50
 	}
 
-	fn base_tx_per_second(currency: CurrencyId) -> Balance {
+	pub fn default_per_second(decimals: u32) -> Balance {
 		let base_weight = Balance::from(ExtrinsicBaseWeight::get());
-		let base_tx_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
-		base_tx_per_second * base_tx(currency)
+		let default_per_second = (WEIGHT_PER_SECOND as u128) / base_weight;
+		default_per_second * base_fee(decimals)
 	}
 
-	fn base_tx(currency: CurrencyId) -> Balance {
-		cent(currency) / 10
+	fn base_fee(decimals: u32) -> Balance {
+		dollar(decimals)
+			// cents
+			.saturating_div(100)
+			// a tenth of a cent
+			.saturating_div(10)
 	}
 
-	pub fn dollar(currency_id: common_types::CurrencyId) -> Balance {
-		10u128.saturating_pow(currency_id.decimals().into())
-	}
-
-	pub fn cent(currency_id: CurrencyId) -> Balance {
-		dollar(currency_id) / 100
+	pub fn dollar(decimals: u32) -> Balance {
+		10u128.saturating_pow(decimals.into())
 	}
 }

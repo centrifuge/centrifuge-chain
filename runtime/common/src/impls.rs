@@ -1,7 +1,7 @@
 //! Some configurable implementations as associated type for the substrate runtime.
 
 use super::*;
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::CurrencyId;
 use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
@@ -175,5 +175,103 @@ impl Convert<TrancheWeight, Balance> for TrancheWeight {
 impl From<u128> for TrancheWeight {
 	fn from(v: u128) -> Self {
 		Self(v)
+	}
+}
+
+/// AssetRegistry's AssetProcessor
+pub mod asset_registry {
+	use super::*;
+	use frame_support::dispatch::RawOrigin;
+	use frame_support::sp_std::marker::PhantomData;
+	use frame_support::traits::{EnsureOrigin, EnsureOriginWithArg};
+	use orml_traits::asset_registry::{AssetMetadata, AssetProcessor};
+	use sp_runtime::DispatchError;
+
+	#[derive(
+		Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Encode, Decode, TypeInfo, MaxEncodedLen,
+	)]
+	pub struct CustomAssetProcessor;
+
+	impl AssetProcessor<CurrencyId, AssetMetadata<Balance, CustomMetadata>> for CustomAssetProcessor {
+		fn pre_register(
+			id: Option<CurrencyId>,
+			metadata: AssetMetadata<Balance, CustomMetadata>,
+		) -> Result<(CurrencyId, AssetMetadata<Balance, CustomMetadata>), DispatchError> {
+			match id {
+				Some(id) => Ok((id, metadata)),
+				None => Err(DispatchError::Other("asset-registry: AssetId is required")),
+			}
+		}
+
+		fn post_register(
+			_id: CurrencyId,
+			_asset_metadata: AssetMetadata<Balance, CustomMetadata>,
+		) -> Result<(), DispatchError> {
+			Ok(())
+		}
+	}
+
+	/// The OrmlAssetRegistry::AuthorityOrigin impl
+	pub struct AuthorityOrigin<
+		// The origin type
+		Origin,
+		// The default EnsureOrigin impl used to authorize all
+		// assets besides tranche tokens.
+		DefaultEnsureOrigin,
+	>(PhantomData<(Origin, DefaultEnsureOrigin)>);
+
+	impl<
+			Origin: Into<Result<RawOrigin<AccountId>, Origin>> + From<RawOrigin<AccountId>>,
+			DefaultEnsureOrigin: EnsureOrigin<Origin>,
+		> EnsureOriginWithArg<Origin, Option<CurrencyId>> for AuthorityOrigin<Origin, DefaultEnsureOrigin>
+	{
+		type Success = ();
+
+		fn try_origin(
+			origin: Origin,
+			asset_id: &Option<CurrencyId>,
+		) -> Result<Self::Success, Origin> {
+			match asset_id {
+				// Only the pools pallet should directly register/update tranche tokens
+				Some(CurrencyId::Tranche(_, _)) => Err(origin),
+
+				// Any other `asset_id` defaults to EnsureRoot
+				_ => DefaultEnsureOrigin::try_origin(origin).map(|_| ()),
+			}
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		fn successful_origin(_asset_id: &Option<CurrencyId>) -> Origin {
+			unimplemented!()
+		}
+	}
+}
+
+pub mod xcm {
+	use crate::{xcm_fees::default_per_second, Balance, CustomMetadata};
+	use common_types::CurrencyId;
+	use frame_support::sp_std::marker::PhantomData;
+	use xcm::latest::MultiLocation;
+
+	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
+	/// the asset registry that were not already handled by native Trader rules.
+	pub struct FixedConversionRateProvider<OrmlAssetRegistry>(PhantomData<OrmlAssetRegistry>);
+
+	impl<
+			OrmlAssetRegistry: orml_traits::asset_registry::Inspect<
+				AssetId = CurrencyId,
+				Balance = Balance,
+				CustomMetadata = CustomMetadata,
+			>,
+		> orml_traits::FixedConversionRateProvider for FixedConversionRateProvider<OrmlAssetRegistry>
+	{
+		fn get_fee_per_second(location: &MultiLocation) -> Option<u128> {
+			let metadata = OrmlAssetRegistry::metadata_by_location(&location)?;
+			metadata
+				.additional
+				.xcm
+				.fee_per_second
+				.or_else(|| Some(default_per_second(metadata.decimals)))
+		}
 	}
 }
