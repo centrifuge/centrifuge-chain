@@ -33,7 +33,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate",  default-feature
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.20" }
 
 # ORML dependencies
-orml-traits = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-traits = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 
 # Local Dependencies
 common-traits = { path = "../../libs/common-traits", default-features = false }
