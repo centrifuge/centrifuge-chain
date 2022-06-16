@@ -19,7 +19,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
-	RuntimeDebug, StateVersion,
+	StateVersion,
 };
 pub use pallet::*;
 pub mod weights;
@@ -69,8 +69,8 @@ pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 }
 
 /// The data structure for storing committed anchors.
-#[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct AnchorData<Hash, BlockNumber> {
 	id: Hash,
 	pub doc_root: Hash,

@@ -218,7 +218,7 @@ benchmarks! {
 		let expected = amount + MINT_AMOUNT;
 		let caller = create_investor::<T>(0, TRANCHE)?;
 		Pallet::<T>::update_invest_order(RawOrigin::Signed(caller.clone()).into(), POOL, tranche_location::<T>(TRANCHE), amount)?;
-		let pool_account = PoolLocator::<T::PoolId> { pool_id: POOL }.into_account();
+		let pool_account = PoolLocator::<T::PoolId> { pool_id: POOL }.into_account_truncating();
 		let currency = CurrencyId::Tranche(POOL, get_tranche_id::<T>(TRANCHE));
 		T::Tokens::mint_into(currency.clone(), &pool_account, MINT_AMOUNT)?;
 		populate_epochs::<T>(n)?;

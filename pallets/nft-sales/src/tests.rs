@@ -17,7 +17,7 @@ use common_types::CurrencyId;
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_noop, assert_ok};
-use runtime_common::InstanceId;
+use runtime_common::ItemId;
 
 /// Verify that calling `NftSales::add` specifiying an nft that is not present in the
 /// underlying `pallet_uniques` fails with `nft_sales::Error::<T>::NotFound`.
@@ -25,7 +25,7 @@ use runtime_common::InstanceId;
 fn add_nft_not_found() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let unknown_nft = (0, InstanceId(1));
+		let unknown_nft = (0, ItemId(1));
 
 		assert_noop!(
 			NftSales::add(
@@ -47,14 +47,14 @@ fn add_nft_not_found() {
 fn add_nft_not_owner() {
 	new_test_ext().execute_with(|| {
 		let owner: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&owner);
+		let (collection_id, item_id) = prepared_nft(&owner);
 
 		let bad_actor = Origin::signed(BAD_ACTOR);
 		assert_noop!(
 			NftSales::add(
 				bad_actor,
-				class_id,
-				instance_id,
+				collection_id,
+				item_id,
 				Price {
 					currency: CurrencyId::KUSD,
 					amount: 3
@@ -66,8 +66,8 @@ fn add_nft_not_owner() {
 		// Verify that the NFT is not listed under the BAD_ACTOR
 		assert!(!NftsBySeller::<Test>::contains_key((
 			BAD_ACTOR,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 	});
 }
@@ -76,7 +76,7 @@ fn add_nft_not_owner() {
 fn add_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
@@ -85,30 +85,30 @@ fn add_nft_works() {
 		// Set it for sale in the NftSales
 		assert_ok!(NftSales::add(
 			seller.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone(),
 		));
 
 		// Verify that if the seller tries to put it for sale again, that it fails with `NotOwner`
 		// given that the NFT is not owned by the nft-sales pallet.
 		assert_noop!(
-			NftSales::add(seller, class_id, instance_id, price.clone()),
+			NftSales::add(seller, collection_id, item_id, price.clone()),
 			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
 		);
 
 		// Verify that if the nft-sales pallet would go on trying to add it again,
 		// it would fail with `AlreadyForSale`.
 		assert_noop!(
-			NftSales::add(NftSales::origin(), class_id, instance_id, price),
+			NftSales::add(NftSales::origin(), collection_id, item_id, price),
 			DispatchError::from(nft_sales::Error::<Test>::AlreadyForSale)
 		);
 
 		// Verify that the nft is now listed in the storage
 		assert!(NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 	});
 }
@@ -118,34 +118,34 @@ fn add_nft_works() {
 fn remove_nft_bad_actor() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
 		};
 
 		// Set it for sale in the NftSales
-		assert_ok!(NftSales::add(seller, class_id, instance_id, price));
+		assert_ok!(NftSales::add(seller, collection_id, item_id, price));
 
 		// Verify that the nft is now listed in the storage
 		assert!(NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 
 		// Have a bad actor trying to remove it
 		let bad_actor = Origin::signed(BUYER);
 		assert_noop!(
-			NftSales::remove(bad_actor, class_id, instance_id),
+			NftSales::remove(bad_actor, collection_id, item_id),
 			DispatchError::from(nft_sales::Error::<Test>::NotOwner)
 		);
 
 		// Verify that the nft is still listed
 		assert!(NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 	});
 }
@@ -154,34 +154,34 @@ fn remove_nft_bad_actor() {
 fn remove_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
 		};
 
 		// Add it for sale
-		assert_ok!(NftSales::add(seller.clone(), class_id, instance_id, price));
+		assert_ok!(NftSales::add(seller.clone(), collection_id, item_id, price));
 
 		// Verify that it's now stored
 		assert!(NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 
-		assert_ok!(NftSales::remove(seller.clone(), class_id, instance_id));
+		assert_ok!(NftSales::remove(seller.clone(), collection_id, item_id));
 
 		// Verify that the nft is no longer listed in the storage
 		assert!(!NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 
 		// Verify that try and remove it again fails with `NotForSale`
 		assert_noop!(
-			NftSales::remove(seller, class_id, instance_id),
+			NftSales::remove(seller, collection_id, item_id),
 			DispatchError::from(nft_sales::Error::<Test>::NotForSale)
 		);
 	});
@@ -192,7 +192,7 @@ fn remove_nft_works() {
 fn buy_nft_seller() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
@@ -200,12 +200,12 @@ fn buy_nft_seller() {
 		// Set it for sale in the NftSales
 		assert_ok!(NftSales::add(
 			seller.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone(),
 		));
 
-		assert_ok!(NftSales::buy(seller, class_id, instance_id, price));
+		assert_ok!(NftSales::buy(seller, collection_id, item_id, price));
 	});
 }
 
@@ -213,7 +213,7 @@ fn buy_nft_seller() {
 fn buy_nft_not_for_sale() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let offer = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
@@ -222,7 +222,7 @@ fn buy_nft_not_for_sale() {
 		// Verify that the buyer cannot buy the nft because it's not for sale
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
-			NftSales::buy(buyer, class_id, instance_id, offer),
+			NftSales::buy(buyer, collection_id, item_id, offer),
 			DispatchError::from(nft_sales::Error::<Test>::NotForSale)
 		);
 	});
@@ -232,7 +232,7 @@ fn buy_nft_not_for_sale() {
 fn buy_nft_insufficient_balance() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: OrmlTokens::balance(CurrencyId::KUSD, &1) + 1,
@@ -241,8 +241,8 @@ fn buy_nft_insufficient_balance() {
 		// Set it for sale in the NftSales
 		assert_ok!(NftSales::add(
 			seller.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone(), // < Just too expensive
 		));
 
@@ -250,7 +250,7 @@ fn buy_nft_insufficient_balance() {
 		// exceeds the seller's balance.
 		let buyer: Origin = Origin::signed(BUYER);
 		assert_noop!(
-			NftSales::buy(buyer, class_id, instance_id, price),
+			NftSales::buy(buyer, collection_id, item_id, price),
 			DispatchError::from(orml_tokens::Error::<Test>::BalanceTooLow)
 		);
 	});
@@ -261,7 +261,7 @@ fn buy_nft_works() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
 		let seller_initial_balance = OrmlTokens::balance(CurrencyId::KUSD, &1);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
@@ -270,16 +270,16 @@ fn buy_nft_works() {
 		// Add it for sale
 		assert_ok!(NftSales::add(
 			seller.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone(),
 		));
 
 		// Verify that the nft is now listed in the storage
 		assert!(NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 
 		// Verify that the buyer can buy the nft
@@ -287,19 +287,19 @@ fn buy_nft_works() {
 		let buyer_initial_balance = OrmlTokens::balance(CurrencyId::KUSD, &BUYER);
 		assert_ok!(NftSales::buy(
 			buyer.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone()
 		));
 
 		// Verify that if the seller can't buy it back because it's no longer for sale
 		assert_noop!(
-			NftSales::buy(seller, class_id, instance_id, price.clone()),
+			NftSales::buy(seller, collection_id, item_id, price.clone()),
 			DispatchError::from(nft_sales::Error::<Test>::NotForSale)
 		);
 
 		// Verify that if the seller can't buy it back because it's no longer for sale
-		assert_eq!(Uniques::owner(class_id, instance_id), Some(BUYER));
+		assert_eq!(Uniques::owner(collection_id, item_id), Some(BUYER));
 
 		// Verify that the price of the nft was transferred to the seller's account
 		assert_eq!(
@@ -316,8 +316,8 @@ fn buy_nft_works() {
 		// Verify that the nft is no longer listed
 		assert!(!NftsBySeller::<Test>::contains_key((
 			SELLER,
-			class_id,
-			instance_id
+			collection_id,
+			item_id
 		)));
 	});
 }
@@ -328,7 +328,7 @@ fn buy_nft_works() {
 fn buy_nft_respects_max_offer_amount() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
@@ -337,8 +337,8 @@ fn buy_nft_respects_max_offer_amount() {
 		// Add it for sale
 		assert_ok!(NftSales::add(
 			seller.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone(),
 		));
 
@@ -348,7 +348,7 @@ fn buy_nft_respects_max_offer_amount() {
 			amount: price.amount - 1,
 		};
 		assert_noop!(
-			NftSales::buy(buyer.clone(), class_id, instance_id, offer),
+			NftSales::buy(buyer.clone(), collection_id, item_id, offer),
 			DispatchError::from(nft_sales::Error::<Test>::InvalidOffer)
 		);
 	});
@@ -360,7 +360,7 @@ fn buy_nft_respects_max_offer_amount() {
 fn buy_nft_respects_max_offer_currency() {
 	new_test_ext().execute_with(|| {
 		let seller: Origin = Origin::signed(SELLER);
-		let (class_id, instance_id) = prepared_nft(&seller);
+		let (collection_id, item_id) = prepared_nft(&seller);
 		let price = Price {
 			currency: CurrencyId::KUSD,
 			amount: 10_000,
@@ -369,8 +369,8 @@ fn buy_nft_respects_max_offer_currency() {
 		// Add it for sale
 		assert_ok!(NftSales::add(
 			seller.clone(),
-			class_id,
-			instance_id,
+			collection_id,
+			item_id,
 			price.clone(),
 		));
 
@@ -381,19 +381,19 @@ fn buy_nft_respects_max_offer_currency() {
 		};
 
 		assert_noop!(
-			NftSales::buy(buyer.clone(), class_id, instance_id, offer),
+			NftSales::buy(buyer.clone(), collection_id, item_id, offer),
 			DispatchError::from(nft_sales::Error::<Test>::InvalidOffer)
 		);
 	});
 }
 
-/// Mint an NFT class and instance and return its `(class_id, instance_id)`
-fn prepared_nft(owner: &Origin) -> (u64, InstanceId) {
-	let (class_id, instance_id) = (0, InstanceId(1));
+/// Mint an NFT class and instance and return its `(collection_id, item_id)`
+fn prepared_nft(owner: &Origin) -> (u64, ItemId) {
+	let (collection_id, item_id) = (0, ItemId(1));
 
 	// Mint the nft in the uniques pallet
-	assert_ok!(Uniques::create(owner.clone(), class_id, SELLER));
-	assert_ok!(Uniques::mint(owner.clone(), class_id, instance_id, SELLER));
+	assert_ok!(Uniques::create(owner.clone(), collection_id, SELLER));
+	assert_ok!(Uniques::mint(owner.clone(), collection_id, item_id, SELLER));
 
-	(class_id, instance_id)
+	(collection_id, item_id)
 }

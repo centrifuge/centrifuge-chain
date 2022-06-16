@@ -24,7 +24,19 @@ mod fixed_point;
 mod impls;
 
 pub use common_types::CurrencyId;
-pub mod apis;
+
+pub mod apis {
+	use node_primitives::{BlockNumber, Hash};
+	use pallet_anchors::AnchorData;
+	use sp_api::decl_runtime_apis;
+
+	decl_runtime_apis! {
+		/// The API to query anchoring info.
+		pub trait AnchorApi {
+			fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
+		}
+	}
+}
 
 /// Common types for all runtimes
 pub mod types {
@@ -113,8 +125,8 @@ pub mod types {
 	/// Amount with 18 precision fixed point decimal
 	pub type Amount = crate::fixed_point::Amount;
 
-	/// A representation of ClassId for Uniques
-	pub type ClassId = u64;
+	/// A representation of CollectionId for Uniques
+	pub type CollectionId = u64;
 
 	/// A representation of a tranche identifier
 	pub type TrancheId = [u8; 16];
@@ -136,7 +148,7 @@ pub mod types {
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 	pub struct TrancheWeight(pub u128);
 
-	/// A representation of InstanceId for Uniques.
+	/// A representation of ItemId for Uniques.
 	#[derive(
 		codec::Encode,
 		codec::Decode,
@@ -151,7 +163,7 @@ pub mod types {
 		TypeInfo,
 	)]
 	#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-	pub struct InstanceId(pub u128);
+	pub struct ItemId(pub u128);
 }
 
 /// Common constants for all runtimes

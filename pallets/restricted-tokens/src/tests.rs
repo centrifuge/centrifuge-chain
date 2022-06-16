@@ -383,7 +383,7 @@ fn fungible_can_deposit() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10) == DepositConsequence::Success);
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10, false) == DepositConsequence::Success);
 		})
 }
 
@@ -614,13 +614,13 @@ fn fungibles_can_deposit() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::can_deposit(CurrencyId::Cfg, &1, 10)
+				>>::can_deposit(CurrencyId::Cfg, &1, 10, false)
 					== DepositConsequence::Success
 			);
 			assert!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::can_deposit(CurrencyId::KUSD, &1, 10)
+				>>::can_deposit(CurrencyId::KUSD, &1, 10, false)
 					== DepositConsequence::Success
 			);
 		})

@@ -2,7 +2,7 @@
 
 set -eux
 
-RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2021-09-28}"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-nightly-2022-05-09}"
 PACKAGE="${PACKAGE:-centrifuge-runtime}" #Need to replicate job for all runtimes
 
 # Enable warnings about unused extern crates
@@ -25,7 +25,7 @@ case $TARGET in
     ;;
 
   tests)
-    RUST_MIN_STACK=8388608 cargo test --workspace --release --features test-benchmarks
+    RUST_MIN_STACK=8388608 cargo test --workspace --release --features test-benchmarks,try-runtime
     ;;
 
   integration)

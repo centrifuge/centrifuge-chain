@@ -15,11 +15,8 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{
+	api::{AnchorApiServer, AnchorRpc},
 	cli::RpcConfig,
-	rpc::{
-		anchor::{Anchor, AnchorApi},
-		pools::{Pools, PoolsApi},
-	},
 };
 
 use cumulus_client_cli::CollatorOptions;
@@ -262,7 +259,7 @@ where
 				>,
 			>,
 			DenyUnsafe,
-		) -> Result<jsonrpc_core::IoHandler<sc_rpc::Metadata>, sc_service::Error>
+		) -> Result<crate::rpc::RpcExtension, sc_service::Error>
 		+ Send
 		+ Sync
 		+ 'static,
@@ -313,6 +310,7 @@ where
 		&parachain_config,
 		telemetry_worker_handle,
 		&mut task_manager,
+		None,
 	)
 	.map_err(|e| match e {
 		RelayChainError::ServiceError(polkadot_service::Error::Sub(x)) => x,
@@ -340,12 +338,10 @@ where
 
 	let rpc_client = client.clone();
 	let pool = transaction_pool.clone();
-	let rpc_extensions_builder = Box::new(move |deny, _subscription_executor| {
-		rpc_ext_builder(rpc_client.clone(), pool.clone(), deny)
-	});
+	let rpc_builder = { move |deny, _| rpc_ext_builder(rpc_client.clone(), pool.clone(), deny) };
 
 	sc_service::spawn_tasks(sc_service::SpawnTasksParams {
-		rpc_extensions_builder,
+		rpc_builder: Box::new(rpc_builder),
 		client: client.clone(),
 		transaction_pool: transaction_pool.clone(),
 		task_manager: &mut task_manager,
@@ -495,9 +491,11 @@ pub async fn start_altair_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
-			Ok(io)
+			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			module
+				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			Ok(module)
 		},
 		build_altair_import_queue,
 		|client,
@@ -651,9 +649,11 @@ pub async fn start_centrifuge_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client)));
-			Ok(io)
+			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			module
+				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			Ok(module)
 		},
 		build_centrifuge_import_queue,
 		|client,
@@ -801,17 +801,29 @@ pub async fn start_development_node(
 		>,
 	>,
 )> {
+	// let rpc_builder = {
+	// 	let client = client.clone();
+	// 	move |_, _| {
+	// 		let deps = crate::rpc::FullDeps {
+	// 			client: client.clone(),
+	// 			command_sink: rpc_sink.clone(),
+	// 			_marker: Default::default(),
+	// 		};
+	// 		crate::rpc::create_full(deps).map_err(Into::into)
+	// 	}
+	// };
+
 	start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut io = crate::rpc::create_full(client.clone(), pool, deny_unsafe);
-			io.extend_with(AnchorApi::to_delegate(Anchor::new(client.clone())));
-			io.extend_with(PoolsApi::to_delegate(Pools::new(client)));
-
-			Ok(io)
+			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			module
+				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			Ok(module)
 		},
 		build_development_import_queue,
 		|client,

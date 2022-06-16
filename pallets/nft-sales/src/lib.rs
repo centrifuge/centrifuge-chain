@@ -48,10 +48,10 @@ type BalanceOf<T> =
 
 type SaleOf<T> = Sale<AccountIdOf<T>, CurrencyOf<T>, BalanceOf<T>>;
 
-type ClassIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ClassId;
+type CollectionIdOf<T> =
+	<<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::CollectionId;
 
-type InstanceIdOf<T> =
-	<<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::InstanceId;
+type ItemIdOf<T> = <<T as Config>::NonFungibles as nonfungibles::Inspect<AccountIdOf<T>>>::ItemId;
 
 // Storage types
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
@@ -95,23 +95,23 @@ pub mod pallet {
 		/// The NonFungibles trait impl that can transfer and inspect NFTs.
 		type NonFungibles: nonfungibles::Transfer<Self::AccountId>;
 
-		/// The NFT ClassId type
-		type ClassId: Parameter
+		/// The NFT CollectionId type
+		type CollectionId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Copy
 			+ Default
 			+ TypeInfo
-			+ IsType<ClassIdOf<Self>>;
+			+ IsType<CollectionIdOf<Self>>;
 
-		/// The NFT InstanceId type
-		type InstanceId: Parameter
+		/// The NFT ItemId type
+		type ItemId: Parameter
 			+ Member
 			+ MaybeSerializeDeserialize
 			+ Copy
 			+ TypeInfo
 			+ From<u128>
-			+ IsType<InstanceIdOf<Self>>;
+			+ IsType<ItemIdOf<Self>>;
 
 		/// The Id of this pallet
 		#[pallet::constant]
@@ -119,19 +119,19 @@ pub mod pallet {
 	}
 
 	/// The active sales.
-	/// A sale is an entry identified by an NFT class and instance id.
+	/// A sale is an entry identified by an NFT collection and item id.
 	#[pallet::storage]
 	#[pallet::getter(fn get_sale)]
 	pub(super) type Sales<T: Config> = StorageDoubleMap<
 		_,
 		// The hasher for the first key
 		Blake2_128Concat,
-		// The first key, the nft class Id
-		T::ClassId,
+		// The first key, the nft collection Id
+		T::CollectionId,
 		// The hasher for the second key
 		Blake2_128Concat,
-		// The second key, the nft instance id
-		T::InstanceId,
+		// The second key, the nft item id
+		T::ItemId,
 		// The data regarding the sale
 		SaleOf<T>,
 	>;
@@ -147,10 +147,8 @@ pub mod pallet {
 		(
 			// The AccountId of the seller
 			NMapKey<Blake2_128Concat, T::AccountId>,
-			// The NFT ClassId
-			NMapKey<Blake2_128Concat, T::ClassId>,
-			// The NFT InstanceId
-			NMapKey<Blake2_128Concat, T::InstanceId>,
+			NMapKey<Blake2_128Concat, T::CollectionId>,
+			NMapKey<Blake2_128Concat, T::ItemId>,
 		),
 		// The value; we don't need to store anything further in here
 		(),
@@ -162,21 +160,21 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// An NFT is now for sale
 		ForSale {
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 			sale: SaleOf<T>,
 		},
 
 		/// An NFT was removed
 		Removed {
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 		},
 
 		/// An NFT has been sold
 		Sold {
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 			sale: SaleOf<T>,
 			buyer: T::AccountId,
 		},
@@ -213,8 +211,8 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::add())]
 		pub fn add(
 			origin: OriginFor<T>,
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 			price: Price<CurrencyOf<T>, BalanceOf<T>>,
 		) -> DispatchResult {
 			let seller = ensure_signed(origin.clone())?;
@@ -262,8 +260,8 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::remove())]
 		pub fn remove(
 			origin: OriginFor<T>,
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 		) -> DispatchResult {
 			let who = ensure_signed(origin.clone())?;
 			let sale = <Sales<T>>::get(class_id, instance_id).ok_or(Error::<T>::NotForSale)?;
@@ -303,8 +301,8 @@ pub mod pallet {
 		#[transactional]
 		pub fn buy(
 			origin: OriginFor<T>,
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 			max_offer: Price<CurrencyOf<T>, BalanceOf<T>>,
 		) -> DispatchResult {
 			let buyer = ensure_signed(origin.clone())?;
@@ -353,8 +351,8 @@ pub mod pallet {
 		///     - Err(NotFound) when the NFT could not be found in T::NonFungibles
 		fn is_owner(
 			account: T::AccountId,
-			class_id: T::ClassId,
-			instance_id: T::InstanceId,
+			class_id: T::CollectionId,
+			instance_id: T::ItemId,
 		) -> Result<bool, Error<T>> {
 			T::NonFungibles::owner(&class_id.into(), &instance_id.into())
 				.map(|owner| owner == account)
@@ -366,17 +364,17 @@ pub mod pallet {
 		}
 
 		pub fn account() -> T::AccountId {
-			T::PalletId::get().into_account()
+			T::PalletId::get().into_account_truncating()
 		}
 
 		// Add a new sale to the storage
-		fn do_add(class_id: T::ClassId, instance_id: T::InstanceId, sale: SaleOf<T>) {
+		fn do_add(class_id: T::CollectionId, instance_id: T::ItemId, sale: SaleOf<T>) {
 			<Sales<T>>::insert(class_id, instance_id, sale.clone());
 			NftsBySeller::<T>::insert((sale.seller, class_id, instance_id), ());
 		}
 
 		// Remove a sale from the storage
-		fn do_remove(class_id: T::ClassId, instance_id: T::InstanceId, seller: T::AccountId) {
+		fn do_remove(class_id: T::CollectionId, instance_id: T::ItemId, seller: T::AccountId) {
 			<Sales<T>>::remove(class_id, instance_id);
 			NftsBySeller::<T>::remove((seller, class_id, instance_id));
 		}

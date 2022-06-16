@@ -29,7 +29,7 @@ use frame_support::traits::fungibles::Inspect;
 use frame_support::{assert_err, assert_ok};
 use loan_type::{BulletLoan, LoanType};
 use pallet_loans::Event as LoanEvent;
-use runtime_common::{Amount, Balance, ClassId, InstanceId, Rate, CFG as USD};
+use runtime_common::{Amount, Balance, CollectionId, ItemId, Rate, CFG as USD};
 use sp_arithmetic::traits::{checked_pow, CheckedDiv, CheckedMul, CheckedSub};
 use sp_arithmetic::FixedPointNumber;
 use sp_runtime::traits::StaticLookup;
@@ -67,9 +67,9 @@ where
 			PoolId = PoolId,
 			TrancheId = [u8; 16],
 			EpochId = u32,
-		> + pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		> + pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64, Origin = Origin>
-		+ pallet_uniques::Config<ClassId = ClassId, InstanceId = InstanceId>
+		+ pallet_uniques::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ pallet_permissions::Config<Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
 	PoolIdOf<T>: From<<T as pallet_pools::Config>::PoolId>,
 {
@@ -124,7 +124,7 @@ where
 	assert_eq!(loan.status, LoanStatus::Created);
 
 	// collateral nft owner is pool pallet
-	let pool_account = PoolLocator { pool_id }.into_account();
+	let pool_account = PoolLocator { pool_id }.into_account_truncating();
 	expect_asset_owner::<T>(collateral, pool_account);
 
 	// pool should be initialised
@@ -186,7 +186,7 @@ fn price_test_loan<T>(
 	loan_type: LoanType<Rate, Amount>,
 ) where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let res = Loans::price(Origin::signed(admin), pool_id, loan_id, rp, loan_type);
@@ -217,7 +217,7 @@ fn price_bullet_loan<T>(
 ) -> (Rate, LoanType<Rate, Amount>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_bullet_loan_params();
@@ -234,7 +234,7 @@ fn price_credit_line_loan<T>(
 ) -> (Rate, LoanType<Rate, Amount>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_credit_line_params();
@@ -251,7 +251,7 @@ fn price_credit_line_with_maturity_loan<T>(
 ) -> (Rate, LoanType<Rate, Amount>)
 where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_type = default_credit_line_with_maturity_params();
@@ -268,7 +268,7 @@ fn close_test_loan<T>(
 	collateral: AssetOf<T>,
 ) where
 	T: pallet_pools::Config<PoolId = PoolId>
-		+ pallet_loans::Config<ClassId = ClassId, LoanId = InstanceId>
+		+ pallet_loans::Config<ClassId = CollectionId, LoanId = ItemId>
 		+ frame_system::Config<AccountId = u64>,
 {
 	let loan_id = loan.1;
@@ -522,7 +522,7 @@ macro_rules! test_borrow_loan {
 				let borrower = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -686,7 +686,7 @@ macro_rules! test_repay_loan {
 				// successful issue
 				let (pool_id, loan_nft, collateral_nft) =
 					issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -905,7 +905,7 @@ macro_rules! test_pool_nav {
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -1205,7 +1205,7 @@ macro_rules! test_write_off_maturity_loan {
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _collateral) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -1308,7 +1308,7 @@ macro_rules! test_admin_write_off_loan_type {
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -1423,7 +1423,7 @@ macro_rules! test_close_written_off_loan_type {
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, asset) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -1554,7 +1554,7 @@ macro_rules! repay_too_early {
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 
@@ -1617,7 +1617,7 @@ macro_rules! write_off_overflow {
 				let borrower: u64 = Borrower::get();
 				// successful issue
 				let (pool_id, loan, _asset) = issue_test_loan::<MockRuntime>(0, borrower);
-				let pool_account = PoolLocator { pool_id }.into_account();
+				let pool_account = PoolLocator { pool_id }.into_account_truncating();
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
 

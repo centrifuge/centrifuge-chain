@@ -694,23 +694,24 @@ parameter_types! {
 	// Base deposit to add metadata is 0.1 AIR
 	pub const MetadataDepositBase: Balance = 10 * CENTI_AIR;
 	// Deposit to create a class is 1 AIR
-	pub const ClassDeposit: Balance = AIR;
+	pub const CollectionDeposit: Balance = AIR;
 	// Deposit to create a class is 0.1 AIR
-	pub const InstanceDeposit: Balance = 10 * CENTI_AIR;
+	pub const ItemDeposit: Balance = 10 * CENTI_AIR;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
 
 impl pallet_uniques::Config for Runtime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Balances;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
@@ -909,7 +910,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -924,6 +925,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -935,8 +938,8 @@ impl pallet_nft_sales::Config for Runtime {
 	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
 	type Fungibles = Tokens;
 	type NonFungibles = Uniques;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type PalletId = NftSalesPalletId;
 }
 
@@ -1163,7 +1166,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::AnchorApi<Block, Hash, BlockNumber> for Runtime {
+	impl runtime_common::AnchorApi<Block> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
 			Anchor::get_anchor_by_id(id)
 		}

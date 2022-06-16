@@ -10,7 +10,7 @@ use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EnsureOneOf, EqualPrivilegeOnly, Everything,
-		InstanceFilter, LockIdentifier, U128CurrencyToVote, UnixTime,
+		InstanceFilter, LockIdentifier, U128CurrencyToVote,
 	},
 	weights::{
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
@@ -57,9 +57,7 @@ use common_types::{
 	TimeProvider, UNION,
 };
 use pallet_anchors::AnchorData;
-use pallet_pools::{
-	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
-};
+use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use pallet_restricted_tokens::{
 	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
 };
@@ -678,23 +676,24 @@ parameter_types! {
 	// Base deposit to add metadata is 0.1 CFG
 	pub const MetadataDepositBase: Balance = 10 * CENTI_CFG;
 	// Deposit to create a class is 1 CFG
-	pub const ClassDeposit: Balance = CFG;
+	pub const CollectionDeposit: Balance = CFG;
 	// Deposit to create a class is 0.1 CFG
-	pub const InstanceDeposit: Balance = 10 * CENTI_CFG;
+	pub const ItemDeposit: Balance = 10 * CENTI_CFG;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
 
 impl pallet_uniques::Config for Runtime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Tokens;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
@@ -715,8 +714,8 @@ impl pallet_nft_sales::Config for Runtime {
 	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
 	type Fungibles = Tokens;
 	type NonFungibles = Uniques;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type PalletId = NftSalesPalletId;
 }
 
@@ -1038,8 +1037,8 @@ parameter_types! {
 
 impl pallet_loans::Config for Runtime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type LoanId = InstanceId;
+	type ClassId = CollectionId;
+	type LoanId = ItemId;
 	type Rate = Rate;
 	type Amount = Amount;
 	type NonFungible = Uniques;
@@ -1192,7 +1191,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -1207,6 +1206,8 @@ impl orml_tokens::Config for Runtime {
 	type MaxReserves = MaxReserves;
 	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -1522,69 +1523,9 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl runtime_common::apis::AnchorApi<Block, Hash, BlockNumber> for Runtime {
+	impl runtime_common::AnchorApi<Block> for Runtime {
 		fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>> {
 			Anchor::get_anchor_by_id(id)
-		}
-	}
-
-	impl runtime_common::apis::PoolsApi<Block, PoolId, TrancheId, Balance, CurrencyId, Rate> for Runtime {
-		fn currency(pool_id: PoolId) -> Option<CurrencyId>{
-			pallet_pools::Pool::<Runtime>::get(pool_id).map(|details| details.currency)
-		}
-
-		fn inspect_epoch_solution(pool_id: PoolId, solution: Vec<TrancheSolution>) -> Option<EpochSolution<Balance>>{
-			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			let epoch_execution_info = pallet_pools::EpochExecution::<Runtime>::get(pool_id)?;
-			pallet_pools::Pallet::<Runtime>::score_solution(
-				&pool,
-				&epoch_execution_info,
-				&solution
-			).ok()
-		}
-
-		fn tranche_token_price(pool_id: PoolId, tranche: TrancheLoc<TrancheId>) -> Option<Rate>{
-			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
-				.ok()
-				.map(|(latest, _)| latest.into())?;
-			let total_assets = pool.reserve.total.saturating_add(nav);
-			let index: usize = pool.tranches.tranche_index(&tranche)?.try_into().ok()?;
-			let prices = pool
-				.tranches
-				.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
-				.ok()?;
-			prices.get(index).map(|rate: &Rate| rate.clone())
-		}
-
-		fn tranche_token_prices(pool_id: PoolId) -> Option<Vec<Rate>>{
-			let now = <pallet_timestamp::Pallet::<Runtime> as UnixTime>::now().as_secs();
-			let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			let nav: Balance = pallet_loans::Pallet::<Runtime>::update_nav_of_pool(pool_id)
-				.ok()
-				.map(|(latest, _)| latest.into())?;
-			let total_assets = pool.reserve.total.saturating_add(nav);
-			pool
-				.tranches
-				.calculate_prices::<Rate, OrmlTokens, AccountId>(total_assets, now)
-				.ok()
-		}
-
-		fn tranche_ids(pool_id: PoolId) -> Option<Vec<TrancheId>>{
-			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			Some(pool.tranches.ids_residual_top())
-		}
-
-		fn tranche_id(pool_id: PoolId, tranche_index: TrancheIndex) -> Option<TrancheId>{
-			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			let index: usize = tranche_index.try_into().ok()?;
-			pool.tranches.ids_residual_top().get(index).map(|id| id.clone())
-		}
-
-		fn tranche_currency(pool_id: PoolId, tranche_loc: TrancheLoc<TrancheId>) -> Option<CurrencyId>{
-			let pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-			pool.tranches.tranche_currency(tranche_loc)
 		}
 	}
 

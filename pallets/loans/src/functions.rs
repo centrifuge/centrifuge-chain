@@ -35,7 +35,7 @@ impl<T: Config> Pallet<T> {
 
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
-		T::LoansPalletId::get().into_account()
+		T::LoansPalletId::get().into_account_truncating()
 	}
 
 	/// check if the given loan belongs to the owner provided
@@ -80,7 +80,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock collateral nft
-		let pool_account = PoolLocator { pool_id }.into_account();
+		let pool_account = PoolLocator { pool_id }.into_account_truncating();
 		T::NonFungible::transfer(
 			&collateral_class_id.into(),
 			&instance_id.into(),
@@ -431,7 +431,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
-	pub fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<(T::Amount, Moment), DispatchError> {
+	pub(crate) fn update_nav_of_pool(
+		pool_id: PoolIdOf<T>,
+	) -> Result<(T::Amount, Moment), DispatchError> {
 		let now = Self::now();
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 		let mut updated_loans = 0;

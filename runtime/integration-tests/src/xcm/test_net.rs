@@ -91,10 +91,13 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 		balances: vec![
 			(AccountId::from(ALICE), air_amount(2002)),
 			(
-				ParaId::from(parachains::altair::ID).into_account(),
+				ParaId::from(parachains::altair::ID).into_account_truncating(),
 				air_amount(7),
 			),
-			(ParaId::from(PARA_ID_SIBLING).into_account(), air_amount(7)),
+			(
+				ParaId::from(PARA_ID_SIBLING).into_account_truncating(),
+				air_amount(7),
+			),
 		],
 	}
 	.assimilate_storage(&mut t)

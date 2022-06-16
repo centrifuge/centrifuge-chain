@@ -154,13 +154,13 @@ impl From<U256> for TokenId {
 	}
 }
 
-impl From<u16> for InstanceId {
+impl From<u16> for ItemId {
 	fn from(v: u16) -> Self {
 		Self(v as u128)
 	}
 }
 
-impl From<u128> for InstanceId {
+impl From<u128> for ItemId {
 	fn from(v: u128) -> Self {
 		Self(v)
 	}
