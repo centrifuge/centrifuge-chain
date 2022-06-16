@@ -24,7 +24,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/substrate", default-fe
 sp-arithmetic = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
-orml-traits = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 common-traits = { path = "../../libs/common-traits", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false}
@@ -32,7 +32,7 @@ pallet-permissions = { path = "../../pallets/permissions", default-features = fa
 [dev-dependencies]
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
-orml-tokens = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 runtime-common = { path = "../../runtime/common", default-features = true }
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = true}
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true , branch = "polkadot-v0.9.24" }

@@ -26,14 +26,14 @@ common-types = { path = "../../libs/common-types", default-features = false }
 
 ## Benchmarkind dependencies
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
-orml-tokens = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
-orml-traits = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
 pallet-permissions = { path = "../permissions", default-features = false, optional = true }
 runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
 
 [dev-dependencies]
-orml-tokens = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.24" }
-orml-traits = { git = "https://github.com/NunoAlexandre/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.24" }
+orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.24" }
+orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = true, branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.24" }
 pallet-balances = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.24" }
 
