@@ -217,4 +217,9 @@ fn currency_id_encode_sanity() {
 	assert_eq!(CurrencyId::KSM.encode(), vec![2]);
 	assert_eq!(CurrencyId::KUSD.encode(), vec![3]);
 	assert_eq!(CurrencyId::AUSD.encode(), vec![4]);
+	assert_eq!(CurrencyId::ForeignAsset(1).encode(), vec![5, 1, 0, 0, 0]);
+	assert_eq!(
+		CurrencyId::ForeignAsset(789).encode(),
+		vec![5, 789, 0, 0, 0]
+	);
 }
