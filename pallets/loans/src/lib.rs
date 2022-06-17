@@ -191,6 +191,7 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
+		// BoundedVec<ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>, T::MaxActiveLoansPerPool>,
 		Vec<ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>>,
 		ValueQuery,
 	>;
