@@ -99,10 +99,11 @@ pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-fea
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
 
 # orml pallets
-orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
-orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
-orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-tokens = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-traits = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-xcm-support = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
+orml-xtokens = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 
 runtime-common = { path = "../common", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = false }
@@ -208,6 +209,7 @@ std = [
     "runtime-common/std",
     "orml-tokens/std",
     "orml-xtokens/std",
+    "orml-asset-registry/std",
     "pallet-loans/std",
     "pallet-uniques/std",
     "pallet-treasury/std",
@@ -244,6 +246,7 @@ runtime-benchmarks = [
     "pallet-loans/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
     "pallet-uniques/runtime-benchmarks",
+    "runtime-common/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain

@@ -177,9 +177,11 @@ std = [
 ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
 	"altair-runtime/runtime-benchmarks",
 	"centrifuge-runtime/runtime-benchmarks",
 	"development-runtime/runtime-benchmarks",
+	"runtime-common/runtime-benchmarks",
 ]
 test-benchmarks = [
 	"runtime-benchmarks",

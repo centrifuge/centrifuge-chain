@@ -237,6 +237,7 @@ runtime-benchmarks = [
     "pallet-permissions/runtime-benchmarks",
     "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
+    "runtime-common/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
