@@ -85,14 +85,6 @@ Summary:
 ```
 4. `Proposal` hash should match the runtime upgrade proposal
 
-## Upgrading Substrate, Polkadot, and Grandpa bridge gadget
-1. Pull the latest commit of `cumulus` that is building without issues.
-2. Then take the commits of `substrate, polkadot, and grandap-bridge-gadget` from Cargo.lock of cumulus.
-3. Move our substrate fork `master` branch to commit you derived above.
-4. Then for each repo in the order `grandpa-bridge-gadget, polkadot, and cumulus`, 
-   move our fork's `master` branch to the commit derived above and rebase those on `centrifuge` branch
-5. Then on centrifuge, deleting Cargo.lock file and running `cargo check`  will pull the latest commits from respective forks 
-
 ## Generate new Spec and Parachain files
 This script will take a valid chain-spec chain_id, a parachain_id and a flag to build new spec or not, and will output genesis spec (raw and plain), wasm and state files.
 ```shell
@@ -135,8 +127,49 @@ the collator node the parachain will be running on.
 ./scripts/runtime_benchmarks.sh <runtime>
 ```
 
-## Upgrading to latest cumulus(until they have tags for releases)
-1. First collect commits of Substrate, Grandpa-Bridge, Polkadot from the latest cumulus
-2. Bring our fork of all the above repos to the above commits
-3. Use diener in Grandpa brigde, polkadot, and cumulus to use our forks in `centrifuge` branch
-4. Then update deps on centrifuge chain
+# Upgrading to a newer Polkadot / Substrate / Cumulus version
+
+When a new version of Polkadot is released, a mirroring release hapens for the other 
+parity projects such as Substrate and Cumulus, but also for other third-party projects
+such as the `orml` pallets, `xcm-simulator`, etc.
+
+You can follow these steps tailored to update only one of those specific projects
+updating the three simultaneously is the most common flow.
+
+The flow to upgrade to a newer version of polkadot is usually as follows:
+
+1. Use `diener` to update Polkadot, Substrate, and Cumulus to said release
+
+```shell
+export POLKADOT_NEW_VERSION="<version>"; # for example, 0.9.24
+
+diener update --polkadot --branch release-v$POLKADOT_NEW_VERSION;
+diener update --substrate --branch polkadot-v$POLKADOT_NEW_VERSION;
+diener update --cumulus --branch polkadot-v$POLKADOT_NEW_VERSION;
+```
+
+2. Repeat step 1 for our other repos that we depend on:
+
+- [centrifuge/chainbridge-substrate](https://github.com/centrifuge/chainbridge-substrate)
+- [centrifuge/unique-assets](https://github.com/centrifuge/unique-assets)
+- [centrifuge/fudge](https://github.com/centrifuge/fudge)
+
+3. Make sure that we point to the latest revision of the projects altered in step 2
+
+Note: If pointing to `branch = "master"`, run `Cargo update`
+
+4. Repeat step 3 for other third-party dependencies that also depend on Polkadot/Substrate/Cumulus
+
+- [`orml` pallets](https://github.com/open-web3-stack/open-runtime-module-library) - All of them
+- [xcm-simulator](https://github.com/shaunxw/xcm-simulator)
+- potentially more
+
+Note: if any of the project do not yet have a cut for the target polkadot release, either wait or
+fork said project and run step 1 for it and open a PR and point that revision.
+
+5. Build and test the project and migrate any introduced change
+
+Tip: if you face compilation errors like "type X doesn't implement trait Y", and the compiler
+doesn't suggest you import any particular trait, experience is that there are different versions
+of Polkadot|Substrate|Cumulus being pulled; Look at `Cargo.lock` and find which project is still
+depending on an older version of any of those projects.
