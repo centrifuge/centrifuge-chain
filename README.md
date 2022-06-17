@@ -101,7 +101,9 @@ This script will take a valid chain-spec chain_id, a parachain_id and a flag to 
 Adapt parameters accordingly.
 
 
-## Benchmarking pallets
+## Benchmarking
+
+### Benchmarking pallets
 Pallets are to be benchmarked to find the correct weight for extrinsics. Follow substrate's benchmarking boiler-plate code
 and add pallet benchmark to the runtime. Then run the following script to generate a benchamarked `weights.rs` file for the pallet
 ```shell
@@ -115,6 +117,23 @@ Example command to generate `pallet_fees` with default `output`
 
 default output will be `./pallets/fees/src/weight.rs`
 You can override this by passing output path as last argument
+
+### Benchmarking runtimes
+
+When benchmarking pallets, we are just running the benchmarking scenarios they specify
+within their mocked runtime. This fails to actually benchmark said pallet in the context
+in which it will be actually used in production: within a specific runtime and composing
+with other pallets.
+
+To cover that, we run test for every pallet for a given runtime and use the output weights
+in production since those are the most trustworthy weights we can use.
+
+Note: This command should be run in a cloud environment that mimics closely the specs of
+the collator node the parachain will be running on.
+
+```shell
+./scripts/runtime_benchmarks.sh <runtime>
+```
 
 ## Upgrading to latest cumulus(until they have tags for releases)
 1. First collect commits of Substrate, Grandpa-Bridge, Polkadot from the latest cumulus
