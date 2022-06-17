@@ -243,10 +243,16 @@ impl<T: Config> Pallet<T> {
 			ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 			// check for max borrow amount
-			let old_debt =
+			let old_debt = T::InterestAccrual::previous_debt(
+				loan.interest_rate_per_sec,
+				loan.normalized_debt,
+				loan.last_updated,
+			)?;
+
+			let current_debt =
 				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
 
-			let max_borrow_amount = loan.max_borrow_amount(old_debt);
+			let max_borrow_amount = loan.max_borrow_amount(current_debt);
 			ensure!(
 				amount <= max_borrow_amount,
 				Error::<T>::MaxBorrowAmountExceeded
@@ -372,8 +378,13 @@ impl<T: Config> Pallet<T> {
 					.present_value(old_debt, &write_off_groups, loan.last_updated)
 					.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
+				let current_debt = T::InterestAccrual::current_debt(
+					loan.interest_rate_per_sec,
+					loan.normalized_debt,
+				)?;
+
 				// ensure amount is not more than current debt
-				let repay_amount = amount.min(old_debt);
+				let repay_amount = amount.min(current_debt);
 
 				let new_total_repaid = loan
 					.total_repaid
