@@ -13643,7 +13643,7 @@ dependencies = [
 [[package]]
 name = "xcm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/NunoAlexandre/xcm-simulator?branch=polkadot-v0.9.24#d21c372306f1cbf6a3b521d8b41e172587ae45e0"
+source = "git+https://github.com/shaunxw/xcm-simulator?branch=master#651af78d6d7521dc76e1f6bb257af485f8a454c7"
 dependencies = [
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
