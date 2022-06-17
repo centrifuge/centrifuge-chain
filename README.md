@@ -138,7 +138,7 @@ updating the three simultaneously is the most common flow.
 
 The flow to upgrade to a newer version of polkadot is usually as follows:
 
-1. Use `diener` to update Polkadot, Substrate, and Cumulus to said release
+1. Use [`diener`](https://github.com/bkchr/diener) to update Polkadot, Substrate, and Cumulus to said release
 
 ```shell
 export POLKADOT_NEW_VERSION="<version>"; # for example, 0.9.24
