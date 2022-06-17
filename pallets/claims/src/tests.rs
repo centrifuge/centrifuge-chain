@@ -183,7 +183,7 @@ fn store_root_hash() {
 			assert_ok!(Claims::set_upload_account(Origin::signed(ADMIN), ADMIN));
 			assert_eq!(Claims::get_upload_account(), Some(ADMIN));
 			assert_ok!(Claims::store_root_hash(Origin::signed(ADMIN), root_hash));
-			assert_eq!(Claims::get_root_hash(root_hash), true);
+			assert_eq!(Claims::get_root_hash(), Some(root_hash));
 		});
 }
 

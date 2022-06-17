@@ -34,7 +34,7 @@ fn transfer_works() {
 			assert_ok!(pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
 				Origin::signed(1),
 				2,
-				CurrencyId::USDT,
+				CurrencyId::AUSD,
 				DISTR_PER_ACCOUNT
 			));
 			assert_ok!(pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
@@ -64,7 +64,7 @@ fn transfer_fails() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer(
 					Origin::signed(10),
 					2,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					100
 				),
 				orml_tokens::Error::<MockRuntime>::BalanceTooLow
@@ -108,7 +108,7 @@ fn transfer_keep_alive_fails() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				),
 				orml_tokens::Error::<MockRuntime>::KeepAlive
@@ -142,7 +142,7 @@ fn transfer_keep_alive_works() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_keep_alive(
 					Origin::signed(1),
 					2,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT - 1
 				)
 			);
@@ -175,11 +175,11 @@ fn transfer_all_works() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
 					Origin::signed(1),
 					2,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					false
 				)
 			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(2, CurrencyId::USDT).free == 2000);
+			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(2, CurrencyId::AUSD).free == 2000);
 			assert_ok!(
 				pallet_restricted_tokens::Pallet::<MockRuntime>::transfer_all(
 					Origin::signed(100),
@@ -214,7 +214,7 @@ fn force_transfer_works() {
 					Origin::root(),
 					1,
 					2,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				)
 			);
@@ -250,7 +250,7 @@ fn force_transfer_fails() {
 					Origin::signed(1),
 					1,
 					2,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					DISTR_PER_ACCOUNT
 				)
 				.is_err()
@@ -291,14 +291,14 @@ fn set_balance_works() {
 				pallet_restricted_tokens::Pallet::<MockRuntime>::set_balance(
 					Origin::root(),
 					1,
-					CurrencyId::USDT,
+					CurrencyId::AUSD,
 					400,
 					200
 				)
 			);
-			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::USDT).free == 400);
+			assert!(orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).free == 400);
 			assert!(
-				orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::USDT).reserved == 200
+				orml_tokens::Pallet::<MockRuntime>::accounts(1, CurrencyId::AUSD).reserved == 200
 			);
 
 			assert_ok!(
@@ -383,7 +383,7 @@ fn fungible_can_deposit() {
 	TestExternalitiesBuilder::default()
 		.build(Some(|| {}))
 		.execute_with(|| {
-			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10) == DepositConsequence::Success);
+			assert!(<pallet_restricted_tokens::Pallet::<MockRuntime> as fungible::Inspect<AccountId>>::can_deposit(&1, 10, false) == DepositConsequence::Success);
 		})
 }
 
@@ -614,13 +614,13 @@ fn fungibles_can_deposit() {
 			assert!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::can_deposit(CurrencyId::Cfg, &1, 10)
+				>>::can_deposit(CurrencyId::Cfg, &1, 10, false)
 					== DepositConsequence::Success
 			);
 			assert!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::Inspect<
 					AccountId,
-				>>::can_deposit(CurrencyId::KUSD, &1, 10)
+				>>::can_deposit(CurrencyId::KUSD, &1, 10, false)
 					== DepositConsequence::Success
 			);
 		})
@@ -655,7 +655,7 @@ fn fungibles_balance_on_hold() {
 			assert_eq!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
 					AccountId,
-				>>::balance_on_hold(CurrencyId::USDT, &1,),
+				>>::balance_on_hold(CurrencyId::AUSD, &1,),
 				0
 			);
 		})
@@ -679,7 +679,7 @@ fn fungibles_can_hold() {
 			assert!(
 				!<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::InspectHold<
 					AccountId,
-				>>::can_hold(CurrencyId::USDT, &1, 0)
+				>>::can_hold(CurrencyId::AUSD, &1, 0)
 			);
 		})
 }
@@ -734,7 +734,7 @@ fn fungibles_hold() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::USDT, &1, 1),
+				>>::hold(CurrencyId::AUSD, &1, 1),
 				Error::<MockRuntime>::PreConditionsNotMet,
 			);
 		})
@@ -766,7 +766,7 @@ fn fungibles_release() {
 			assert_noop!(
 				<pallet_restricted_tokens::Pallet::<MockRuntime> as fungibles::MutateHold<
 					AccountId,
-				>>::hold(CurrencyId::USDT, &1, DISTR_PER_ACCOUNT),
+				>>::hold(CurrencyId::AUSD, &1, DISTR_PER_ACCOUNT),
 				Error::<MockRuntime>::PreConditionsNotMet
 			);
 		})

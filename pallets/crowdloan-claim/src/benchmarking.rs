@@ -1,7 +1,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
 use core::convert::TryInto;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
+use frame_benchmarking::{account, benchmarks};
 use frame_support::StorageHasher;
 use frame_support::Twox128;
 use frame_system::RawOrigin;

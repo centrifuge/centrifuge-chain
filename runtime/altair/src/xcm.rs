@@ -11,7 +11,7 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{parameter_type_with_key, MultiCurrency};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -42,7 +42,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-	type IsReserve = MultiNativeAsset;
+	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
@@ -58,24 +58,31 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	FixedRateOfFungible<CanonicalAirPerSecond, ToTreasury>,
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
-	// An extra rule handling AIR in its canonical representation. This is currently useful
-	// for testing the transfer of AIR bidirectionally between Altair and a sibling parachain.
-	FixedRateOfFungible<AirPerSecondCanonical, ToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 );
 
 parameter_types! {
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-
-	pub AirPerSecond: (AssetId, u128) = (
+	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
+	pub CanonicalAirPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
 			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
+
+	pub AirPerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+		).into(),
+		native_per_second(),
+	);
+
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
 	pub KUsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -89,13 +96,6 @@ parameter_types! {
 		ksm_per_second() * 400
 	);
 
-	pub AirPerSecondCanonical: (AssetId, u128) = (
-		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
-		).into(),
-		native_per_second(),
-	);
 }
 
 pub struct ToTreasury;
@@ -293,7 +293,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// into the right message queues.
 pub type XcmRouter = (
 	// Use UMP to communicate with the relay chain
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
@@ -330,11 +330,8 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> u128 {
-		#[allow(clippy::match_ref_pats)] // false positive
-		match (location.parents, location.first_interior()) {
-			_ => u128::MAX,
-		}
+	pub ParachainMinFee: |_location: MultiLocation| -> Option<u128> {
+		None
 	};
 }
 
@@ -351,6 +348,8 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

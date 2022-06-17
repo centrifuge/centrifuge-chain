@@ -15,7 +15,7 @@
 
 use cumulus_primitives_core::ParaId;
 use frame_support::traits::GenesisBuild;
-use polkadot_primitives::v1::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
+use polkadot_primitives::v2::{BlockNumber, MAX_CODE_SIZE, MAX_POV_SIZE};
 use polkadot_runtime_parachains::configuration::HostConfiguration;
 use sp_runtime::traits::AccountIdConversion;
 use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain};
@@ -23,7 +23,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use altair_runtime::CurrencyId;
 use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{air_amount, ksm_amount, ExtBuilder, ALICE, BOB, PARA_ID_SIBLING};
+use crate::xcm::setup::{air, ksm, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {
@@ -63,6 +63,16 @@ decl_test_parachain! {
 	}
 }
 
+decl_test_parachain! {
+	pub struct Development {
+		Runtime = development_runtime::Runtime,
+		Origin = development_runtime::Origin,
+		XcmpMessageHandler = development_runtime::XcmpQueue,
+		DmpMessageHandler = development_runtime::DmpQueue,
+		new_ext = para_ext(PARA_ID_DEVELOPMENT),
+	}
+}
+
 decl_test_network! {
 	pub struct TestNet {
 		relay_chain = KusamaNet,
@@ -76,6 +86,9 @@ decl_test_network! {
 			(3000, Sibling),
 			// Be sure to use `parachains::karura::ID`
 			(2000, Karura),
+
+			// Be sure to use `PARA_ID_DEVELOPMENT`
+			(3001, Development),
 		],
 	}
 }
@@ -89,12 +102,15 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Runtime> {
 		balances: vec![
-			(AccountId::from(ALICE), air_amount(2002)),
+			(AccountId::from(ALICE), air(2002)),
 			(
-				ParaId::from(parachains::altair::ID).into_account(),
-				air_amount(7),
+				ParaId::from(parachains::altair::ID).into_account_truncating(),
+				air(7),
 			),
-			(ParaId::from(PARA_ID_SIBLING).into_account(), air_amount(7)),
+			(
+				ParaId::from(PARA_ID_SIBLING).into_account_truncating(),
+				air(7),
+			),
 		],
 	}
 	.assimilate_storage(&mut t)
@@ -122,13 +138,13 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 pub fn para_ext(parachain_id: u32) -> sp_io::TestExternalities {
 	ExtBuilder::default()
 		.balances(vec![
-			(AccountId::from(ALICE), CurrencyId::Native, air_amount(10)),
-			(AccountId::from(BOB), CurrencyId::Native, air_amount(10)),
-			(AccountId::from(ALICE), CurrencyId::KSM, ksm_amount(10)),
+			(AccountId::from(ALICE), CurrencyId::Native, air(10)),
+			(AccountId::from(BOB), CurrencyId::Native, air(10)),
+			(AccountId::from(ALICE), CurrencyId::KSM, ksm(10)),
 			(
 				altair_runtime::TreasuryAccount::get(),
 				CurrencyId::KSM,
-				ksm_amount(1),
+				ksm(1),
 			),
 		])
 		.parachain_id(parachain_id)
@@ -151,7 +167,7 @@ fn default_parachains_host_configuration() -> HostConfiguration<BlockNumber> {
 		max_upward_queue_size: 1024 * 1024,
 		max_downward_message_size: 1024,
 		ump_service_total_weight: 4 * 1_000_000_000,
-		max_upward_message_size: 1024 * 1024,
+		max_upward_message_size: 50 * 1024,
 		max_upward_message_num_per_candidate: 5,
 		hrmp_sender_deposit: 0,
 		hrmp_recipient_deposit: 0,

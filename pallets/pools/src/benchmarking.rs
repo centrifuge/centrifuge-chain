@@ -55,7 +55,7 @@ benchmarks! {
 		let caller: T::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
-	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::Usd, MAX_RESERVE)
+	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE)
 	verify {
 		let pool = get_pool::<T>();
 		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
@@ -218,7 +218,7 @@ benchmarks! {
 		let expected = amount + MINT_AMOUNT;
 		let caller = create_investor::<T>(0, TRANCHE)?;
 		Pallet::<T>::update_invest_order(RawOrigin::Signed(caller.clone()).into(), POOL, tranche_location::<T>(TRANCHE), amount)?;
-		let pool_account = PoolLocator::<T::PoolId> { pool_id: POOL }.into_account();
+		let pool_account = PoolLocator::<T::PoolId> { pool_id: POOL }.into_account_truncating();
 		let currency = CurrencyId::Tranche(POOL, get_tranche_id::<T>(TRANCHE));
 		T::Tokens::mint_into(currency.clone(), &pool_account, MINT_AMOUNT)?;
 		populate_epochs::<T>(n)?;
@@ -412,7 +412,7 @@ where
 		investor.clone(),
 		Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, 0x0FFF_FFFF_FFFF_FFFF)),
 	)?;
-	T::Tokens::mint_into(CurrencyId::Usd, &investor.clone().into(), MINT_AMOUNT)?;
+	T::Tokens::mint_into(CurrencyId::AUSD, &investor.clone().into(), MINT_AMOUNT)?;
 	T::Tokens::mint_into(
 		CurrencyId::Tranche(POOL, tranche_id),
 		&investor.clone().into(),
@@ -453,7 +453,7 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 		caller,
 		POOL,
 		tranches,
-		CurrencyId::Usd,
+		CurrencyId::AUSD,
 		MAX_RESERVE,
 	)
 }

@@ -64,14 +64,14 @@ pub(crate) fn create_nft_class<T>(
 ) -> <T as pallet_loans::Config>::ClassId
 where
 	T: frame_system::Config
-		+ pallet_loans::Config<ClassId = <T as pallet_uniques::Config>::ClassId>
+		+ pallet_loans::Config<ClassId = <T as pallet_uniques::Config>::CollectionId>
 		+ pallet_uniques::Config,
-	<T as pallet_uniques::Config>::ClassId: From<u64>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
 {
 	// Create class. Shouldn't fail.
 	let admin = maybe_admin.unwrap_or(owner.clone());
-	let uniques_class_id: <T as pallet_uniques::Config>::ClassId = class_id.into();
-	<pallet_uniques::Pallet<T> as Create<T::AccountId>>::create_class(
+	let uniques_class_id: <T as pallet_uniques::Config>::CollectionId = class_id.into();
+	<pallet_uniques::Pallet<T> as Create<T::AccountId>>::create_collection(
 		&uniques_class_id,
 		&owner,
 		&admin,
@@ -103,7 +103,7 @@ pub(crate) fn create<T>(
 	<T as pallet_pools::Config>::EpochId: From<u32>,
 	<T as pallet_pools::Config>::PoolId: Into<u64> + Into<PoolIdOf<T>>,
 {
-	let pool_account = PoolLocator { pool_id }.into_account();
+	let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 	let mint_amount = <T as pallet_pools::Config>::PoolDeposit::get() * 2.into();
 	<T as pallet_pools::Config>::Currency::deposit_creating(&owner.clone().into(), mint_amount);
@@ -202,9 +202,9 @@ pub(crate) fn initialise_test_pool<T>(
 ) -> <T as pallet_loans::Config>::ClassId
 where
 	T: frame_system::Config
-		+ pallet_loans::Config<ClassId = <T as pallet_uniques::Config>::ClassId>
+		+ pallet_loans::Config<ClassId = <T as pallet_uniques::Config>::CollectionId>
 		+ pallet_uniques::Config,
-	<T as pallet_uniques::Config>::ClassId: From<u64>,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
 {
 	let class_id = create_nft_class::<T>(class_id, pool_owner.clone(), maybe_admin);
 	pallet_loans::Pallet::<T>::initialise_pool(
@@ -218,6 +218,7 @@ where
 	class_id
 }
 
+/// Only used for runtime benchmarks at the moment
 #[cfg(feature = "runtime-benchmarks")]
 pub(crate) fn get_tranche_id<T>(
 	pool_id: <T as pallet_pools::Config>::PoolId,

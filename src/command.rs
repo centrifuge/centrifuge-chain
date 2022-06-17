@@ -16,7 +16,7 @@
 
 use crate::{
 	chain_spec,
-	cli::{Cli, RelayChainCli, Subcommand},
+	cli::{Cli, RelayChainCli, RpcConfig, Subcommand},
 	service::{
 		new_partial, AltairRuntimeExecutor, CentrifugeRuntimeExecutor, DevelopmentRuntimeExecutor,
 	},
@@ -24,15 +24,16 @@ use crate::{
 use codec::Encode;
 use cumulus_client_service::genesis::generate_genesis_block;
 use cumulus_primitives_core::ParaId;
+use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
 use node_primitives::Block;
-use polkadot_parachain::primitives::AccountIdConversion;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
 	NetworkParams, Result, RuntimeVersion, SharedParams, SubstrateCli,
 };
 use sc_service::config::{BasePath, PrometheusConfig};
 use sp_core::hexdisplay::HexDisplay;
+use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::traits::Block as BlockT;
 use std::{io::Write, net::SocketAddr};
 
@@ -201,6 +202,26 @@ fn extract_genesis_wasm(chain_spec: &Box<dyn sc_service::ChainSpec>) -> Result<V
 		.ok_or_else(|| "Could not find wasm file in genesis state!".into())
 }
 
+#[cfg(feature = "try-runtime")]
+macro_rules! with_runtime {
+	($chain_spec:expr, { $( $code:tt )* }) => {
+		match $chain_spec.identify() {
+			ChainIdentity::Altair => {
+				use AltairRuntimeExecutor as Executor;
+				$( $code )*
+			}
+			ChainIdentity::Centrifuge => {
+				use CentrifugeRuntimeExecutor as Executor;
+				$( $code )*
+			}
+			ChainIdentity::Development => {
+				use DevelopmentRuntimeExecutor as Executor;
+				$( $code )*
+			}
+		}
+	}
+}
+
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 	    let runner = $cli.create_runner($cmd)?;
@@ -290,7 +311,11 @@ pub fn run() -> Result<()> {
 			})
 		}
 		Some(Subcommand::Revert(cmd)) => construct_async_run!(|components, cli, cmd, config| {
-			Ok(cmd.run(components.client, components.backend))
+			let aux_revert = Box::new(move |client, _, blocks| {
+				grandpa::revert(client, blocks)?;
+				Ok(())
+			});
+			Ok(cmd.run(components.client, components.backend, Some(aux_revert)))
 		}),
 		Some(Subcommand::ExportGenesisState(params)) => {
 			let mut builder = sc_cli::LoggerBuilder::new("");
@@ -341,20 +366,52 @@ pub fn run() -> Result<()> {
 
 			Ok(())
 		}
+
+		#[cfg(feature = "try-runtime")]
+		Some(Subcommand::TryRuntime(cmd)) => {
+			let runner = cli.create_runner(cmd)?;
+			let chain_spec = &runner.config().chain_spec;
+
+			with_runtime!(chain_spec, {
+				return runner.async_run(|config| {
+					let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
+					let task_manager =
+						sc_service::TaskManager::new(config.tokio_handle.clone(), registry)
+							.map_err(|e| {
+								sc_cli::Error::Service(sc_service::Error::Prometheus(e))
+							})?;
+					Ok((cmd.run::<Block, Executor>(config), task_manager))
+				});
+			})
+		}
+
 		Some(Subcommand::Benchmark(cmd)) => {
 			if cfg!(feature = "runtime-benchmarks") {
 				let runner = cli.create_runner(cmd)?;
 
-				match runner.config().chain_spec.identify() {
-					ChainIdentity::Altair => runner.sync_run(|config| {
-						cmd.run::<altair_runtime::Block, AltairRuntimeExecutor>(config)
-					}),
-					ChainIdentity::Centrifuge => runner.sync_run(|config| {
-						cmd.run::<centrifuge_runtime::Block, CentrifugeRuntimeExecutor>(config)
-					}),
-					ChainIdentity::Development => runner.sync_run(|config| {
-						cmd.run::<development_runtime::Block, DevelopmentRuntimeExecutor>(config)
-					}),
+				// Handle the exact benchmark sub-command accordingly
+				match cmd {
+					BenchmarkCmd::Pallet(cmd) => match runner.config().chain_spec.identify() {
+						ChainIdentity::Altair => runner.sync_run(|config| {
+							cmd.run::<altair_runtime::Block, AltairRuntimeExecutor>(config)
+						}),
+						ChainIdentity::Centrifuge => runner.sync_run(|config| {
+							cmd.run::<centrifuge_runtime::Block, CentrifugeRuntimeExecutor>(config)
+						}),
+						ChainIdentity::Development => runner.sync_run(|config| {
+							cmd.run::<development_runtime::Block, DevelopmentRuntimeExecutor>(
+								config,
+							)
+						}),
+					},
+					BenchmarkCmd::Block(_)
+					| BenchmarkCmd::Storage(_)
+					| BenchmarkCmd::Overhead(_) => Err("Unsupported benchmarking command".into()),
+					BenchmarkCmd::Machine(cmd) => {
+						return runner.sync_run(|config| {
+							cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())
+						});
+					}
 				}
 			} else {
 				Err("Benchmarking wasn't enabled when building the node. \
@@ -373,10 +430,14 @@ pub fn run() -> Result<()> {
 						.chain(cli.relaychain_args.iter()),
 				);
 
+				let rpc_config = RpcConfig {
+					relay_chain_rpc_url: cli.run.relay_chain_rpc_url,
+				};
+
 				let id = cli.parachain_id.unwrap_or(10001).into();
 
 				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::v0::AccountId>::into_account(&id);
+					AccountIdConversion::<polkadot_primitives::v2::AccountId>::into_account_truncating(&id);
 
 				let state_version = Cli::native_runtime_version(&config.chain_spec).state_version();
 				let block: Block = generate_genesis_block(&config.chain_spec, state_version)
@@ -409,23 +470,29 @@ pub fn run() -> Result<()> {
 
 				match config.chain_spec.identify() {
 					ChainIdentity::Altair => {
-						crate::service::start_altair_node(config, polkadot_config, id)
+						crate::service::start_altair_node(config, polkadot_config, id, rpc_config)
 							.await
 							.map(|r| r.0)
 							.map_err(Into::into)
 					}
-					ChainIdentity::Centrifuge => {
-						crate::service::start_centrifuge_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
-					ChainIdentity::Development => {
-						crate::service::start_development_node(config, polkadot_config, id)
-							.await
-							.map(|r| r.0)
-							.map_err(Into::into)
-					}
+					ChainIdentity::Centrifuge => crate::service::start_centrifuge_node(
+						config,
+						polkadot_config,
+						id,
+						rpc_config,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into),
+					ChainIdentity::Development => crate::service::start_development_node(
+						config,
+						polkadot_config,
+						id,
+						rpc_config,
+					)
+					.await
+					.map(|r| r.0)
+					.map_err(Into::into),
 				}
 			})
 		}
