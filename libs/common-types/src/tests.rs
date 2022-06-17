@@ -200,3 +200,21 @@ fn permission_roles_work() {
 	assert!(!roles.exists(Role::PoolRole(PoolRole::LiquidityAdmin)));
 	assert!(!roles.exists(Role::PoolRole(PoolRole::MemberListAdmin)));
 }
+
+/// Sanity check for every CurrencyId variant's encoding value.
+/// This will stop us from accidentally moving or dropping variants
+/// around which could have silent but serious negative consequences.
+#[test]
+fn currency_id_encode_sanity() {
+	assert_eq!(CurrencyId::Native.encode(), vec![0]);
+	assert_eq!(
+		CurrencyId::Tranche(42, [42; 16]).encode(),
+		[
+			1, 42, 0, 0, 0, 0, 0, 0, 0, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
+			42
+		]
+	);
+	assert_eq!(CurrencyId::KSM.encode(), vec![2]);
+	assert_eq!(CurrencyId::KUSD.encode(), vec![3]);
+	assert_eq!(CurrencyId::AUSD.encode(), vec![4]);
+}
