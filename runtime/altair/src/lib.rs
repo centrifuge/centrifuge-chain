@@ -525,12 +525,12 @@ impl pallet_elections_phragmen::Config for Runtime {
 
 parameter_types! {
 	pub LaunchPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "AIR_LAUNCH_PERIOD");
-	pub VotingPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "AIR_LAUNCH_PERIOD");
+	pub VotingPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "AIR_VOTING_PERIOD");
 	pub FastTrackVotingPeriod: BlockNumber = prod_or_fast!(3 * HOURS, 1 * MINUTES, "AIR_FAST_TRACK_VOTING_PERIOD");
 	pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 500 * AIR;
 	pub EnactmentPeriod: BlockNumber = prod_or_fast!(8 * DAYS, 1 * MINUTES, "AIR_ENACTMENT_PERIOD");
-	pub CooloffPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "AIR_ENACTMENT_PERIOD");
+	pub CooloffPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "AIR_COOLOFF_PERIOD");
 	pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }
