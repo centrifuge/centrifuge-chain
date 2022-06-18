@@ -1,7 +1,4 @@
-use jsonrpsee::{
-	core::RpcResult,
-	proc_macros::rpc,
-};
+use jsonrpsee::{core::RpcResult, proc_macros::rpc};
 
 use node_primitives::{BlockNumber, Hash};
 use pallet_anchors::AnchorData;
@@ -50,9 +47,6 @@ where
 		api.get_anchor_by_id(&at, id)
 			.ok()
 			.unwrap()
-			.ok_or(invalid_params_error(
-				"Unable to find anchor",
-				format!("Hash {:?}", id),
-			))
+			.ok_or(invalid_params_error("Unable to find anchor"))
 	}
 }

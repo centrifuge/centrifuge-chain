@@ -12,7 +12,6 @@
 
 //! Centrifuge specific rpcs endpoints (common endpoints across all environments)
 
-use std::fmt::Debug;
 use jsonrpsee::{
 	core::Error as JsonRpseeError,
 	types::error::{CallError, ErrorCode, ErrorObject},
@@ -24,6 +23,7 @@ use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
+use std::fmt::Debug;
 use std::sync::Arc;
 use substrate_frame_rpc_system::{System, SystemApiServer};
 
@@ -64,7 +64,10 @@ pub enum CustomServerError {
 	RuntimeError = 1,
 }
 
-pub fn runtime_error<InnerError: Debug>(message: &'static str, inner_error: InnerError) -> JsonRpseeError {
+pub fn runtime_error<InnerError: Debug>(
+	message: &'static str,
+	inner_error: InnerError,
+) -> JsonRpseeError {
 	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
 		ErrorCode::ServerError(CustomServerError::RuntimeError as i32).code(),
 		message,
@@ -72,10 +75,10 @@ pub fn runtime_error<InnerError: Debug>(message: &'static str, inner_error: Inne
 	)))
 }
 
-pub fn invalid_params_error(msg: &'static str, params: String) -> JsonRpseeError {
+pub fn invalid_params_error(msg: &'static str) -> JsonRpseeError {
 	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
 		ErrorCode::InvalidParams.code(),
 		msg,
-		Some(params),
+		Option::<()>::None,
 	)))
 }
