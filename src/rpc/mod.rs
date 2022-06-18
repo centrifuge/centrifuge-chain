@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Centrifuge specific rpc endpoints (common endpoints across all environments)
+//! Centrifuge specific rpcs endpoints (common endpoints across all environments)
 
 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 use runtime_common::{AccountId, Balance, Index};
@@ -21,6 +21,9 @@ use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockChainError, HeaderBackend, HeaderMetadata};
 use std::sync::Arc;
 use substrate_frame_rpc_system::{System, SystemApiServer};
+
+pub mod anchors;
+// pub mod pools; TODO(NUNO)
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
@@ -47,4 +50,20 @@ where
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
 	Ok(module)
+}
+
+//TODO(nuno): make sure we need this with jsonrpsee
+
+/// Error type of our RPC methods
+pub enum Error {
+	/// The call to runtime failed.
+	RuntimeError,
+}
+
+impl From<Error> for i64 {
+	fn from(e: Error) -> i64 {
+		match e {
+			Error::RuntimeError => 1,
+		}
+	}
 }

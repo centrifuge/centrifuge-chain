@@ -26,8 +26,8 @@ use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
 use sp_std::{convert::TryInto, vec::Vec};
 
-pub use weights::*;
 pub use pallet::*;
+pub use weights::*;
 pub mod weights;
 
 #[cfg(feature = "std")]
@@ -71,7 +71,7 @@ pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 
 /// The data structure for storing committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AnchorData<Hash, BlockNumber> {
 	id: Hash,
 	pub doc_root: Hash,

@@ -20,12 +20,12 @@ pub trait AnchorApi {
 }
 
 /// A struct that implements the [`AnchorApi`].
-pub struct AnchorRpc<C, P> {
+pub struct Anchors<C, P> {
 	client: Arc<C>,
 	_marker: std::marker::PhantomData<P>,
 }
 
-impl<C, P> AnchorRpc<C, P> {
+impl<C, P> Anchors<C, P> {
 	/// Create new `Anchor` with the given reference to the client.
 	pub fn new(client: Arc<C>) -> Self {
 		Self {
@@ -36,11 +36,11 @@ impl<C, P> AnchorRpc<C, P> {
 }
 
 #[async_trait]
-impl<C, Block> AnchorApiServer for AnchorRpc<C, Block>
+impl<C, Block> AnchorApiServer for Anchors<C, Block>
 where
 	Block: BlockT,
 	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-	C::Api: AnchorRuntimeApi<Block>,
+	C::Api: AnchorRuntimeApi<Block, Hash, BlockNumber>,
 {
 	async fn get_anchor_by_id(&self, id: Hash) -> RpcResult<AnchorData<Hash, BlockNumber>> {
 		let api = self.client.runtime_api();
