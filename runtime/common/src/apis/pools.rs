@@ -14,7 +14,6 @@ use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
 use sp_api::decl_runtime_apis;
 use sp_std::vec::Vec;
 
-//TODO(nuno): convert to latest quo
 decl_runtime_apis! {
 	/// Runtime for pallet-pools.
 	///

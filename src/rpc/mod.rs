@@ -12,6 +12,10 @@
 
 //! Centrifuge specific rpcs endpoints (common endpoints across all environments)
 
+use jsonrpsee::{
+	core::Error as JsonRpseeError,
+	types::error::{CallError, ErrorCode, ErrorObject},
+};
 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 use runtime_common::{AccountId, Balance, Index};
 use sc_rpc_api::DenyUnsafe;
@@ -23,7 +27,7 @@ use std::sync::Arc;
 use substrate_frame_rpc_system::{System, SystemApiServer};
 
 pub mod anchors;
-// pub mod pools; TODO(NUNO)
+pub mod pools;
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = jsonrpsee::RpcModule<()>;
@@ -52,18 +56,25 @@ where
 	Ok(module)
 }
 
-//TODO(nuno): make sure we need this with jsonrpsee
-
-/// Error type of our RPC methods
-pub enum Error {
-	/// The call to runtime failed.
-	RuntimeError,
+/// Our custom error type for RPC server errors
+#[repr(i32)]
+pub enum CustomServerError {
+	/// The call failed on the Runtime level
+	RuntimeError = 1,
 }
 
-impl From<Error> for i64 {
-	fn from(e: Error) -> i64 {
-		match e {
-			Error::RuntimeError => 1,
-		}
-	}
+pub fn runtime_error(message: &'static str, data: String) -> JsonRpseeError {
+	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+		ErrorCode::ServerError(CustomServerError::RuntimeError as i32).code(),
+		message,
+		Some(data),
+	)))
+}
+
+pub fn invalid_params_error(msg: &'static str, params: String) -> JsonRpseeError {
+	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
+		ErrorCode::InvalidParams.code(),
+		msg,
+		Some(params),
+	)))
 }

@@ -1,6 +1,6 @@
+use jsonrpsee::{core::RpcResult, proc_macros::rpc};
+
 use codec::Codec;
-use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
-use jsonrpc_derive::rpc;
 use pallet_pools::{EpochSolution, TrancheIndex, TrancheLoc, TrancheSolution};
 use runtime_common::apis::PoolsApi as PoolsRuntimeApi;
 use sp_api::ProvideRuntimeApi;
@@ -9,32 +9,34 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::fmt::Debug;
 use std::sync::Arc;
 
-#[rpc]
-pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
-	#[rpc(name = "pools_currency")]
-	fn currency(&self, poold_id: PoolId) -> Result<Currency>;
+use crate::rpc::{invalid_params_error, runtime_error};
 
-	#[rpc(name = "pools_inspectEpochSolution")]
+#[rpc(client, server)]
+pub trait PoolsApi<PoolId, TrancheId, Balance, Currency, BalanceRatio> {
+	#[method(name = "pools_currency")]
+	fn currency(&self, poold_id: PoolId) -> RpcResult<Currency>;
+
+	#[method(name = "pools_inspectEpochSolution")]
 	fn inspect_epoch_solution(
 		&self,
 		pool_id: PoolId,
 		solution: Vec<TrancheSolution>,
-	) -> Result<EpochSolution<Balance>>;
+	) -> RpcResult<EpochSolution<Balance>>;
 
-	#[rpc(name = "pools_trancheTokenPrice")]
-	fn tranche_token_price(&self, pool_id: PoolId, tranche: TrancheId) -> Result<BalanceRatio>;
+	#[method(name = "pools_trancheTokenPrice")]
+	fn tranche_token_price(&self, pool_id: PoolId, tranche: TrancheId) -> RpcResult<BalanceRatio>;
 
-	#[rpc(name = "pools_trancheTokenPrices")]
-	fn tranche_token_prices(&self, pool_id: PoolId) -> Result<Vec<BalanceRatio>>;
+	#[method(name = "pools_trancheTokenPrices")]
+	fn tranche_token_prices(&self, pool_id: PoolId) -> RpcResult<Vec<BalanceRatio>>;
 
-	#[rpc(name = "pools_trancheIds")]
-	fn tranche_ids(&self, pool_id: PoolId) -> Result<Vec<TrancheId>>;
+	#[method(name = "pools_trancheIds")]
+	fn tranche_ids(&self, pool_id: PoolId) -> RpcResult<Vec<TrancheId>>;
 
-	#[rpc(name = "pools_trancheId")]
-	fn tranche_id(&self, pool_id: PoolId, tranche_index: TrancheIndex) -> Result<TrancheId>;
+	#[method(name = "pools_trancheId")]
+	fn tranche_id(&self, pool_id: PoolId, tranche_index: TrancheIndex) -> RpcResult<TrancheId>;
 
-	#[rpc(name = "pools_trancheCurrency")]
-	fn tranche_currency(&self, pool_id: PoolId, tranche_id: TrancheId) -> Result<Currency>;
+	#[method(name = "pools_trancheCurrency")]
+	fn tranche_currency(&self, pool_id: PoolId, tranche_id: TrancheId) -> RpcResult<Currency>;
 }
 
 pub struct Pools<C, P> {
@@ -52,146 +54,120 @@ impl<C, P> Pools<C, P> {
 }
 
 impl<C, Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>
-PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio> for Pools<C, Block>
-	where
-		Block: BlockT,
-		C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
-		C::Api: PoolsRuntimeApi<Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>,
-		Balance: Codec + Copy,
-		PoolId: Codec + Copy + Debug,
-		TrancheId: Codec + Clone + Debug,
-		Currency: Codec,
-		BalanceRatio: Codec,
+	PoolsApiServer<PoolId, TrancheId, Balance, Currency, BalanceRatio> for Pools<C, Block>
+where
+	Block: BlockT,
+	C: Send + Sync + 'static + ProvideRuntimeApi<Block> + HeaderBackend<Block>,
+	C::Api: PoolsRuntimeApi<Block, PoolId, TrancheId, Balance, Currency, BalanceRatio>,
+	Balance: Codec + Copy,
+	PoolId: Codec + Copy + Debug,
+	TrancheId: Codec + Clone + Debug,
+	Currency: Codec,
+	BalanceRatio: Codec,
 {
-	fn currency(&self, pool_id: PoolId) -> Result<Currency> {
+	fn currency(&self, pool_id: PoolId) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.currency(&at, pool_id)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query currency of pool.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool not found.".into(),
-				data: Some(format!("PoolId: {:?}", pool_id).into()),
-			})
+			.map_err(|e| runtime_error("Unable to query pool currency", format!("{:?}", e)))?
+			.ok_or(invalid_params_error(
+				"Pool not found",
+				format!("PoolId: {:?}", pool_id),
+			))
 	}
 
 	fn inspect_epoch_solution(
 		&self,
 		pool_id: PoolId,
 		solution: Vec<TrancheSolution>,
-	) -> Result<EpochSolution<Balance>> {
+	) -> RpcResult<EpochSolution<Balance>> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.inspect_epoch_solution(&at, pool_id, solution.clone())
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query inspection for epoch solution.".into(),
-				data: Some(format!("{:?}", e).into()),
+			.map_err(|e| {
+				runtime_error(
+					"Unable to query inspection for epoch solution",
+					format!("{:?}", e),
+				)
 			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool not found or invalid solution.".into(),
-				data: Some(format!("PoolId: {:?}, Solution: {:?}", pool_id, solution).into()),
-			})
+			.ok_or(invalid_params_error(
+				"Pool not found or invalid solution",
+				format!("PoolId: {:?}, Solution: {:?}", pool_id, solution),
+			))
 	}
 
-	fn tranche_token_price(&self, pool_id: PoolId, tranche_id: TrancheId) -> Result<BalanceRatio> {
+	fn tranche_token_price(
+		&self,
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+	) -> RpcResult<BalanceRatio> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query tranche token price.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool or tranche not found.".into(),
-				data: Some(format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id).into()),
-			})
+			.map_err(|e| runtime_error("Unable to query tranche token price", format!("{:?}", e)))?
+			.ok_or(invalid_params_error(
+				"Pool or tranche not found",
+				format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id),
+			))
 	}
 
-	fn tranche_token_prices(&self, pool_id: PoolId) -> Result<Vec<BalanceRatio>> {
+	fn tranche_token_prices(&self, pool_id: PoolId) -> RpcResult<Vec<BalanceRatio>> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.tranche_token_prices(&at, pool_id)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query tranche token prices.".into(),
-				data: Some(format!("{:?}", e).into()),
+			.map_err(|e| {
+				runtime_error("Unable to query tranche token prices.", format!("{:?}", e))
 			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool not found.".into(),
-				data: Some(format!("PoolId: {:?}", pool_id).into()),
-			})
+			.ok_or(invalid_params_error(
+				"Pool not found.",
+				format!("PoolId: {:?}", pool_id),
+			))
 	}
 
-	fn tranche_ids(&self, pool_id: PoolId) -> Result<Vec<TrancheId>> {
+	fn tranche_ids(&self, pool_id: PoolId) -> RpcResult<Vec<TrancheId>> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.tranche_ids(&at, pool_id)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query tranche ids.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool not found.".into(),
-				data: Some(format!("PoolId: {:?}", pool_id).into()),
-			})
+			.map_err(|e| runtime_error("Unable to query tranche ids.", format!("{:?}", e)))?
+			.ok_or(invalid_params_error(
+				"Pool not found",
+				format!("PoolId: {:?}", pool_id),
+			))
 	}
 
-	fn tranche_id(&self, pool_id: PoolId, tranche_index: TrancheIndex) -> Result<TrancheId> {
+	fn tranche_id(&self, pool_id: PoolId, tranche_index: TrancheIndex) -> RpcResult<TrancheId> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.tranche_id(&at, pool_id, tranche_index)
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query tranche ids.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool or tranche not found.".into(),
-				data: Some(
-					format!("PoolId: {:?}, TrancheIndex: {:?}", pool_id, tranche_index).into(),
-				),
-			})
+			.map_err(|e| runtime_error("Unable to query tranche ids.", format!("{:?}", e)))?
+			.ok_or(invalid_params_error(
+				"Pool or tranche not found.",
+				format!("PoolId: {:?}, TrancheIndex: {:?}", pool_id, tranche_index),
+			))
 	}
 
-	fn tranche_currency(&self, pool_id: PoolId, tranche_id: TrancheId) -> Result<Currency> {
+	fn tranche_currency(&self, pool_id: PoolId, tranche_id: TrancheId) -> RpcResult<Currency> {
 		let api = self.client.runtime_api();
 		let best = self.client.info().best_hash;
 		let at = BlockId::hash(best);
 
 		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
-			.map_err(|e| RpcError {
-				code: ErrorCode::ServerError(crate::rpc::Error::RuntimeError.into()),
-				message: "Unable to query tranche currency.".into(),
-				data: Some(format!("{:?}", e).into()),
-			})?
-			.ok_or(RpcError {
-				code: ErrorCode::InvalidParams,
-				message: "Pool or tranche not found.".into(),
-				data: Some(format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id).into()),
-			})
+			.map_err(|e| runtime_error("Unable to query tranche currency.", format!("{:?}", e)))?
+			.ok_or(invalid_params_error(
+				"Pool or tranche not found.",
+				format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id),
+			))
 	}
 }

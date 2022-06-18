@@ -19,7 +19,7 @@ use crate::{
 	rpc::{
 		self,
 		anchors::{AnchorApiServer, Anchors},
-		// pools::{Pools, PoolsApiServer},
+		pools::{Pools, PoolsApiServer},
 	},
 };
 
@@ -818,10 +818,9 @@ pub async fn start_development_node(
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
-			//TODO(nuno):
-			// module
-			// 	.merge(Pool::new(client.clone()).into_rpc())
-			// 	.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(Pools::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
 		build_development_import_queue,

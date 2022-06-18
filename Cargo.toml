@@ -121,8 +121,13 @@ frame-benchmarking-cli = { git = "https://github.com/paritytech/substrate", bran
 try-runtime-cli = { git = "https://github.com/paritytech/substrate", optional = true , branch = "polkadot-v0.9.24" }
 node-inspect = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 
+
+# Local dependencies
+pallet-anchors = { path = "./pallets/anchors" }
+pallet-loans = { path = "./pallets/loans" }
+pallet-pools = { path = "./pallets/pools" }
+
 # frame dependencies
-pallet-anchors = { path = "./pallets/anchors", default-features = false }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 substrate-frame-rpc-system  = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
 pallet-im-online = { default-features = false, git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
