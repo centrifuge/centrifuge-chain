@@ -71,7 +71,7 @@ where
 		let at = BlockId::hash(best);
 
 		api.currency(&at, pool_id)
-			.map_err(|e| runtime_error("Unable to query pool currency", format!("{:?}", e)))?
+			.map_err(|e| runtime_error("Unable to query pool currency", e))?
 			.ok_or(invalid_params_error(
 				"Pool not found",
 				format!("PoolId: {:?}", pool_id),
@@ -91,7 +91,7 @@ where
 			.map_err(|e| {
 				runtime_error(
 					"Unable to query inspection for epoch solution",
-					format!("{:?}", e),
+					e,
 				)
 			})?
 			.ok_or(invalid_params_error(
@@ -110,7 +110,7 @@ where
 		let at = BlockId::hash(best);
 
 		api.tranche_token_price(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
-			.map_err(|e| runtime_error("Unable to query tranche token price", format!("{:?}", e)))?
+			.map_err(|e| runtime_error("Unable to query tranche token price", e))?
 			.ok_or(invalid_params_error(
 				"Pool or tranche not found",
 				format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id),
@@ -124,7 +124,7 @@ where
 
 		api.tranche_token_prices(&at, pool_id)
 			.map_err(|e| {
-				runtime_error("Unable to query tranche token prices.", format!("{:?}", e))
+				runtime_error("Unable to query tranche token prices.", e)
 			})?
 			.ok_or(invalid_params_error(
 				"Pool not found.",
@@ -138,7 +138,7 @@ where
 		let at = BlockId::hash(best);
 
 		api.tranche_ids(&at, pool_id)
-			.map_err(|e| runtime_error("Unable to query tranche ids.", format!("{:?}", e)))?
+			.map_err(|e| runtime_error("Unable to query tranche ids.", e))?
 			.ok_or(invalid_params_error(
 				"Pool not found",
 				format!("PoolId: {:?}", pool_id),
@@ -151,7 +151,7 @@ where
 		let at = BlockId::hash(best);
 
 		api.tranche_id(&at, pool_id, tranche_index)
-			.map_err(|e| runtime_error("Unable to query tranche ids.", format!("{:?}", e)))?
+			.map_err(|e| runtime_error("Unable to query tranche ids.", e))?
 			.ok_or(invalid_params_error(
 				"Pool or tranche not found.",
 				format!("PoolId: {:?}, TrancheIndex: {:?}", pool_id, tranche_index),
@@ -164,7 +164,7 @@ where
 		let at = BlockId::hash(best);
 
 		api.tranche_currency(&at, pool_id, TrancheLoc::Id(tranche_id.clone()))
-			.map_err(|e| runtime_error("Unable to query tranche currency.", format!("{:?}", e)))?
+			.map_err(|e| runtime_error("Unable to query tranche currency.", e))?
 			.ok_or(invalid_params_error(
 				"Pool or tranche not found.",
 				format!("PoolId: {:?}, TrancheId: {:?}", pool_id, tranche_id),

@@ -12,6 +12,7 @@
 
 //! Centrifuge specific rpcs endpoints (common endpoints across all environments)
 
+use std::fmt::Debug;
 use jsonrpsee::{
 	core::Error as JsonRpseeError,
 	types::error::{CallError, ErrorCode, ErrorObject},
@@ -63,11 +64,11 @@ pub enum CustomServerError {
 	RuntimeError = 1,
 }
 
-pub fn runtime_error(message: &'static str, data: String) -> JsonRpseeError {
+pub fn runtime_error<InnerError: Debug>(message: &'static str, inner_error: InnerError) -> JsonRpseeError {
 	JsonRpseeError::Call(CallError::Custom(ErrorObject::owned(
 		ErrorCode::ServerError(CustomServerError::RuntimeError as i32).code(),
 		message,
-		Some(data),
+		Some(format!("{:?}", inner_error)),
 	)))
 }
 
