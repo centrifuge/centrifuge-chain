@@ -10,7 +10,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-//! Centrifuge specific rpcs endpoints (common endpoints across all environments)
+//! Centrifuge RPC endpoints (common endpoints across all environments)
 
 use jsonrpsee::{
 	core::Error as JsonRpseeError,

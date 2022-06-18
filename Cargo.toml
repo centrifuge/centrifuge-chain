@@ -53,15 +53,11 @@ members = [
 
 [dependencies]
 # third-party dependencies
-jsonrpsee = { version = "0.13.0", features = ["server", "macros"] }
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
 serde = { version = "1.0.106", features = ["derive"] }
 futures = { version = "0.3.21", features = ["compat"] }
+jsonrpsee = { version = "0.13.0", features = ["server", "macros"] }
 hex-literal = "0.2.1"
-jsonrpc-core = "18.0.0"
-jsonrpc-core-client = { version = "18.0.0", features = ["http", "ws"] }
-jsonrpc-derive = "18.0.0"
-jsonrpc-pubsub = "18.0.0"
 log = "0.4.8"
 serde_json = "1.0"
 clap = { version = "3.1", features = [ "derive" ] }
