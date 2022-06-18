@@ -14,6 +14,7 @@
 //! Module provides base types and their functions
 use super::*;
 use common_traits::PoolInspect;
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
 
@@ -35,7 +36,7 @@ pub(crate) struct ClosedLoan<T: pallet::Config> {
 }
 
 /// The data structure for storing pool nav details
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
 pub struct NAVDetails<Amount> {
 	// this is the latest nav for the given pool.
@@ -45,15 +46,15 @@ pub struct NAVDetails<Amount> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest: Amount,
+	pub latest: Amount,
 
 	// this is the last time when the nav was calculated for the entire pool
-	pub(crate) last_updated: Moment,
+	pub last_updated: Moment,
 }
 
 /// The data structure for storing a specific write off group
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, RuntimeDebug, Debug))]
 pub struct WriteOffGroup<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
 	pub(crate) percentage: Rate,
@@ -89,7 +90,7 @@ pub enum NAVUpdateType {
 
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, RuntimeDebug, Debug))]
 pub struct LoanDetails<Rate, Amount, Asset> {
 	pub(crate) collateral: Asset,
 	pub(crate) loan_type: LoanType<Rate, Amount>,
@@ -193,7 +194,7 @@ where
 	}
 
 	/// returns the max_borrow_amount amount for the loan based on the loan type
-	pub(crate) fn max_borrow_amount(&self, now: Moment) -> Amount {
+	pub fn max_borrow_amount(&self, now: Moment) -> Amount {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
 			LoanType::CreditLine(cl) => {

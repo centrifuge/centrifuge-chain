@@ -1129,6 +1129,7 @@ dependencies = [
  "sp-runtime",
  "sp-runtime-interface",
  "sp-session",
+ "sp-std",
  "sp-timestamp",
  "sp-transaction-pool",
  "sp-trie",
