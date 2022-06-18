@@ -245,3 +245,6 @@ runtime-benchmarks = [
 on-chain-release-build = [
     "sp-api/disable-logging",
 ]
+
+# Set timing constants (e.g. session period) to faster versions to speed up testing.
+fast-runtime = []

@@ -192,3 +192,10 @@ try-runtime = [
 	"centrifuge-runtime/try-runtime",
 	"try-runtime-cli"
 ]
+
+fast-runtime = [
+	"altair-runtime/fast-runtime",
+	"centrifuge-runtime/fast-runtime"
+]
+
+

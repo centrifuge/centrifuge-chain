@@ -25,7 +25,7 @@ use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionM
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate, prod_or_fast};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
@@ -439,7 +439,7 @@ impl pallet_preimage::Config for Runtime {
 }
 
 parameter_types! {
-	pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
+	pub CouncilMotionDuration: BlockNumber = prod_or_fast!(5 * DAYS, 1 * MINUTES, "CFG_MOTION_DURATION");
 	pub const CouncilMaxProposals: u32 = 100;
 	pub const CouncilMaxMembers: u32 = 100;
 }
@@ -471,7 +471,7 @@ parameter_types! {
 	pub const CandidacyBond: Balance = 1000 * CFG;
 	pub const VotingBond: Balance = 50 * CENTI_CFG;
 	pub const VotingBondBase: Balance = 50 * CENTI_CFG;
-	pub const TermDuration: BlockNumber = 7 * DAYS;
+	pub TermDuration: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_TERM_DURATION");
 	pub const DesiredMembers: u32 = 9;
 	pub const DesiredRunnersUp: u32 = 9;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
@@ -514,13 +514,13 @@ impl pallet_elections_phragmen::Config for Runtime {
 }
 
 parameter_types! {
-	pub const LaunchPeriod: BlockNumber = 7 * DAYS;
-	pub const VotingPeriod: BlockNumber = 7 * DAYS;
-	pub const FastTrackVotingPeriod: BlockNumber = 3 * HOURS;
+	pub  LaunchPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_LAUNCH_PERIOD");
+	pub  VotingPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_LAUNCH_PERIOD");
+	pub  FastTrackVotingPeriod: BlockNumber = prod_or_fast!(3 * HOURS, 1 * MINUTES, "CFG_FAST_TRACK_VOTING_PERIOD");
 	pub const InstantAllowed: bool = false;
 	pub const MinimumDeposit: Balance = 1000 * CFG;
-	pub const EnactmentPeriod: BlockNumber = 8 * DAYS;
-	pub const CooloffPeriod: BlockNumber = 7 * DAYS;
+	pub  EnactmentPeriod: BlockNumber = prod_or_fast!(8 * DAYS, 1 * MINUTES, "CFG_ENACTMENT_PERIOD");
+	pub  CooloffPeriod: BlockNumber = prod_or_fast!(7 * DAYS, 1 * MINUTES, "CFG_ENACTMENT_PERIOD");
 	pub const MaxProposals: u32 = 100;
 	pub const MaxVotes: u32 = 100;
 }

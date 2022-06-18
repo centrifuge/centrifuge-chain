@@ -40,7 +40,7 @@ stop-parachain-docker)
 
 start-parachain)
   printf "\nBuilding parachain with runtime '$parachain' and id '$para_id'...\n"
-  cargo build --release
+  cargo build --release --features=fast-runtime
 
   parachain_dir=$base_dir/parachain/${para_id}
   mkdir -p $parachain_dir;
