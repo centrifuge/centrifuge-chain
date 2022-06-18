@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV RUST_TOOLCHAIN=$RUST_TOOLCHAIN
 
 ARG PROFILE=release
-ARG OPTS
+ARG OPTS=""
 WORKDIR /centrifuge-chain
 
 COPY . /centrifuge-chain
