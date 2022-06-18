@@ -25,7 +25,7 @@ use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionM
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate, prod_or_fast};
+use polkadot_runtime_common::{prod_or_fast, BlockHashCount, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
