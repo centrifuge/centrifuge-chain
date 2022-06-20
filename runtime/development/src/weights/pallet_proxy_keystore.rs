@@ -26,14 +26,8 @@ use frame_support::{
 	traits::Get,
 	weights::{constants::RocksDbWeight, Weight},
 };
+use pallet_proxy_keystore::weights::WeightInfo;
 use sp_std::marker::PhantomData;
-
-/// Weight functions needed for pallet_proxy_keystore.
-pub trait WeightInfo {
-	fn add_keys(n: u32) -> Weight;
-	fn revoke_keys(n: u32) -> Weight;
-	fn set_deposit() -> Weight;
-}
 
 /// Weights for pallet_proxy_keystore using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
@@ -54,26 +48,5 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	fn set_deposit() -> Weight {
 		(12_443_000 as Weight).saturating_add(T::DbWeight::get().writes(1 as Weight))
-	}
-}
-
-// For backwards compatibility and tests
-impl WeightInfo for () {
-	fn add_keys(n: u32) -> Weight {
-		(15_419_000 as Weight) // Standard Error: 35_000
-			.saturating_add((18_978_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().reads((1 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes((1 as Weight).saturating_mul(n as Weight)))
-	}
-	fn revoke_keys(n: u32) -> Weight {
-		(6_560_000 as Weight) // Standard Error: 31_000
-			.saturating_add((15_213_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads((2 as Weight).saturating_mul(n as Weight)))
-			.saturating_add(RocksDbWeight::get().writes((2 as Weight).saturating_mul(n as Weight)))
-	}
-	fn set_deposit() -> Weight {
-		(12_443_000 as Weight).saturating_add(RocksDbWeight::get().writes(1 as Weight))
 	}
 }
