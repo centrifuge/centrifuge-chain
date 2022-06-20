@@ -354,6 +354,11 @@ pub enum ProxyType {
 	Borrow,
 	Price,
 	Invest,
+	ProxyManagement,
+	ProxyKeystoreManagement,
+	NFTMint,
+	NFTTransfer,
+	NFTManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -405,6 +410,28 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Pools(pallet_pools::Call::execute_epoch{..}) |
 				Call::Utility(pallet_utility::Call::batch_all{..}) |
 				Call::Utility(pallet_utility::Call::batch{..})
+			),
+			ProxyType::ProxyManagement => matches!(
+				c,
+				Call::Proxy(..)
+			),
+			ProxyType::ProxyKeystoreManagement => matches!(
+				c,
+				Call::ProxyKeystore(pallet_proxy_keystore::Call::add_keys{..}) |
+				Call::ProxyKeystore(pallet_proxy_keystore::Call::revoke_keys{..})
+			),
+			ProxyType::NFTMint => matches!(
+				c,
+				Call::Uniques(pallet_uniques::Call::create{..}) |
+				Call::Uniques(pallet_uniques::Call::mint{..})
+			),
+			ProxyType::NFTTransfer => matches!(
+				c,
+				Call::Uniques(pallet_uniques::Call::transfer{..})
+			),
+			ProxyType::NFTManagement => matches!(
+				c,
+				Call::Uniques(..)
 			),
 		}
 	}
