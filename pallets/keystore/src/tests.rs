@@ -342,9 +342,8 @@ fn keys_are_in_storage(origin: u64, add_keys: Vec<AddKey<H256>>) -> Result<(), (
 			"key deposits do not match"
 		);
 
-		let last_key_id =
-			LastKeyByPurpose::<MockRuntime>::try_get(origin, add_key.purpose.clone())?;
-		assert_eq!(last_key_id, key_id, "key IDs do not match");
+		let last_key = LastKeyByPurpose::<MockRuntime>::try_get(origin, add_key.purpose.clone())?;
+		assert_eq!(add_key.key.clone(), last_key, "keys do not match");
 	}
 
 	Ok(())
@@ -396,7 +395,7 @@ fn insert_test_keys_in_storage(origin: u64, keys: Vec<AddKey<H256>>) {
 			},
 		);
 
-		LastKeyByPurpose::<MockRuntime>::insert(origin, key.purpose, key_id.clone());
+		LastKeyByPurpose::<MockRuntime>::insert(origin, key.purpose, key.key);
 	}
 }
 

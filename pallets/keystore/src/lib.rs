@@ -28,7 +28,6 @@ mod tests;
 pub mod weights;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-#[repr(u8)]
 pub enum KeyPurpose {
 	P2PDiscovery,
 	P2PDocumentSigning,
@@ -118,14 +117,8 @@ pub mod pallet {
 	/// Storage used for retrieving last key by purpose.
 	#[pallet::storage]
 	#[pallet::getter(fn get_last_key_by_purpose)]
-	pub(crate) type LastKeyByPurpose<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		KeyPurpose,
-		KeyId<T::Hash>,
-	>;
+	pub(crate) type LastKeyByPurpose<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, KeyPurpose, T::Hash>;
 
 	/// Stores the current deposit that will be taken when saving a key.
 	#[pallet::storage]
@@ -251,7 +244,11 @@ pub mod pallet {
 				},
 			)?;
 
-			<LastKeyByPurpose<T>>::insert(account_id.clone(), add_key.purpose.clone(), key_id);
+			<LastKeyByPurpose<T>>::insert(
+				account_id.clone(),
+				add_key.purpose.clone(),
+				add_key.key.clone(),
+			);
 
 			Self::deposit_event(Event::KeyAdded(
 				account_id.clone(),
