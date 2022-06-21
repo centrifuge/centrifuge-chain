@@ -411,28 +411,22 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Utility(pallet_utility::Call::batch_all{..}) |
 				Call::Utility(pallet_utility::Call::batch{..})
 			),
-			ProxyType::ProxyManagement => matches!(
-				c,
-				Call::Proxy(..)
-			),
+			ProxyType::ProxyManagement => matches!(c, Call::Proxy(..)),
 			ProxyType::KeystoreManagement => matches!(
 				c,
-				Call::Keystore(pallet_keystore::Call::add_keys{..}) |
-				Call::Keystore(pallet_keystore::Call::revoke_keys{..})
+				Call::Keystore(pallet_keystore::Call::add_keys { .. })
+					| Call::Keystore(pallet_keystore::Call::revoke_keys { .. })
 			),
 			ProxyType::NFTMint => matches!(
 				c,
-				Call::Uniques(pallet_uniques::Call::mint{..}) |
-				Call::Uniques(pallet_uniques::Call::set_metadata{..})
+				Call::Uniques(pallet_uniques::Call::mint { .. })
+					| Call::Uniques(pallet_uniques::Call::set_metadata { .. })
+					| Call::Uniques(pallet_uniques::Call::set_attribute { .. })
 			),
-			ProxyType::NFTTransfer => matches!(
-				c,
-				Call::Uniques(pallet_uniques::Call::transfer{..})
-			),
-			ProxyType::NFTManagement => matches!(
-				c,
-				Call::Uniques(..)
-			),
+			ProxyType::NFTTransfer => {
+				matches!(c, Call::Uniques(pallet_uniques::Call::transfer { .. }))
+			}
+			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
 		}
 	}
 

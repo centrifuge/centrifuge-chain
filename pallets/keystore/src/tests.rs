@@ -150,13 +150,11 @@ fn revoke_keys() {
 		for key in keys.clone() {
 			let vec: Vec<H256> = vec![key.key];
 
-			assert_ok!(
-				ProxyKeystore::revoke_keys(
-					Origin::signed(origin),
-					vec,
-					key.purpose,
-				),
-			);
+			assert_ok!(ProxyKeystore::revoke_keys(
+				Origin::signed(origin),
+				vec,
+				key.purpose,
+			),);
 		}
 
 		// Keys are still in storage but should be revoked.
@@ -217,7 +215,11 @@ fn revoke_keys_key_errors() {
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(1), key_hashes, KeyPurpose::P2PDocumentSigning),
+			ProxyKeystore::revoke_keys(
+				Origin::signed(1),
+				key_hashes,
+				KeyPurpose::P2PDocumentSigning
+			),
 			Error::<MockRuntime>::TooManyKeys
 		);
 		assert_eq!(
@@ -236,12 +238,20 @@ fn revoke_keys_key_not_found() {
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), KeyPurpose::P2PDocumentSigning),
+			ProxyKeystore::revoke_keys(
+				Origin::signed(origin),
+				key_hashes.clone(),
+				KeyPurpose::P2PDocumentSigning
+			),
 			Error::<MockRuntime>::KeyNotFound
 		);
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), KeyPurpose::P2PDiscovery),
+			ProxyKeystore::revoke_keys(
+				Origin::signed(origin),
+				key_hashes.clone(),
+				KeyPurpose::P2PDiscovery
+			),
 			Error::<MockRuntime>::KeyNotFound
 		);
 	});

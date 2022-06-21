@@ -28,6 +28,7 @@ mod tests;
 pub mod weights;
 
 #[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[repr(u8)]
 pub enum KeyPurpose {
 	P2PDiscovery,
 	P2PDocumentSigning,
@@ -181,7 +182,11 @@ pub mod pallet {
 
 		/// Revoke keys with specified purpose.
 		#[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
-		pub fn revoke_keys(origin: OriginFor<T>, keys: Vec<T::Hash>, key_purpose: KeyPurpose) -> DispatchResult {
+		pub fn revoke_keys(
+			origin: OriginFor<T>,
+			keys: Vec<T::Hash>,
+			key_purpose: KeyPurpose,
+		) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
 			ensure!(keys.len() > 0, Error::<T>::NoKeys);
@@ -260,7 +265,11 @@ pub mod pallet {
 
 		/// Revoke a key at the current `block_number` in the `Keys` storage
 		/// if the key is found and it's *not* already revoked.
-		fn revoke_key(account_id: T::AccountId, key: T::Hash, key_purpose: KeyPurpose) -> DispatchResult {
+		fn revoke_key(
+			account_id: T::AccountId,
+			key: T::Hash,
+			key_purpose: KeyPurpose,
+		) -> DispatchResult {
 			let key_id: KeyId<T::Hash> = (key, key_purpose);
 
 			<Keys<T>>::try_mutate(
