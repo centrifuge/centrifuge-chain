@@ -135,8 +135,6 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A keystore was created.
-		KeystoreCreated(T::AccountId),
 		/// A key was added.
 		KeyAdded(T::AccountId, T::Hash, KeyPurpose, KeyType),
 		/// A key was revoked.
