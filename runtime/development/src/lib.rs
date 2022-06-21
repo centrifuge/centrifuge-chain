@@ -422,7 +422,6 @@ impl InstanceFilter<Call> for ProxyType {
 			),
 			ProxyType::NFTMint => matches!(
 				c,
-				Call::Uniques(pallet_uniques::Call::create{..}) |
 				Call::Uniques(pallet_uniques::Call::mint{..})
 			),
 			ProxyType::NFTTransfer => matches!(
