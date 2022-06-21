@@ -355,7 +355,7 @@ pub enum ProxyType {
 	Price,
 	Invest,
 	ProxyManagement,
-	ProxyKeystoreManagement,
+	KeystoreManagement,
 	NFTMint,
 	NFTTransfer,
 	NFTManagement,
@@ -415,10 +415,10 @@ impl InstanceFilter<Call> for ProxyType {
 				c,
 				Call::Proxy(..)
 			),
-			ProxyType::ProxyKeystoreManagement => matches!(
+			ProxyType::KeystoreManagement => matches!(
 				c,
-				Call::ProxyKeystore(pallet_proxy_keystore::Call::add_keys{..}) |
-				Call::ProxyKeystore(pallet_proxy_keystore::Call::revoke_keys{..})
+				Call::Keystore(pallet_keystore::Call::add_keys{..}) |
+				Call::Keystore(pallet_keystore::Call::revoke_keys{..})
 			),
 			ProxyType::NFTMint => matches!(
 				c,
@@ -1290,14 +1290,14 @@ parameter_types! {
 	pub const DefaultKeyDeposit: Balance = 100 * CFG;
 }
 
-impl pallet_proxy_keystore::pallet::Config for Runtime {
+impl pallet_keystore::pallet::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type Currency = Balances;
 	type MaxKeys = MaxKeys;
 	type DefaultKeyDeposit = DefaultKeyDeposit;
 	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
-	type WeightInfo = weights::pallet_proxy_keystore::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_keystore::SubstrateWeight<Runtime>;
 }
 
 // Frame Order in this block dictates the index of each one in the metadata
@@ -1356,7 +1356,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		ProxyKeystore: pallet_proxy_keystore::{Pallet, Call, Storage, Event<T>} = 102,
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

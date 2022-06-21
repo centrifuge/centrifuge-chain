@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as pallet_proxy_keystore, Config};
+use crate::{self as pallet_keystore, Config};
 
 use frame_support::parameter_types;
 use frame_support::traits::EnsureOneOf;
@@ -33,7 +33,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		ProxyKeystore: pallet_proxy_keystore::{Pallet, Call, Storage, Event<T>},
+		ProxyKeystore: pallet_keystore::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
 	}
 );

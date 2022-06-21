@@ -2378,6 +2378,7 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-keystore",
  "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
@@ -2389,7 +2390,6 @@ dependencies = [
  "pallet-pools",
  "pallet-preimage",
  "pallet-proxy",
- "pallet-proxy-keystore",
  "pallet-randomness-collective-flip",
  "pallet-restricted-tokens",
  "pallet-scheduler",
@@ -6500,6 +6500,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-keystore"
+version = "1.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-loans"
 version = "1.0.0"
 dependencies = [
@@ -6777,23 +6794,6 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "scale-info",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-proxy-keystore"
-version = "1.0.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
