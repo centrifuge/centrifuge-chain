@@ -147,18 +147,26 @@ fn revoke_keys() {
 
 		insert_test_keys_in_storage(origin, keys.clone());
 
-		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
+		for key in keys.clone() {
+			let vec: Vec<H256> = vec![key.key];
 
-		assert_ok!(ProxyKeystore::revoke_keys(
-			Origin::signed(origin),
-			key_hashes.clone()
-		));
+			assert_ok!(
+				ProxyKeystore::revoke_keys(
+					Origin::signed(origin),
+					vec,
+					key.purpose,
+				),
+			);
+		}
+
 		// Keys are still in storage but should be revoked.
 		assert_eq!(
 			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
 			2,
 			"keys should still be in storage"
 		);
+
+		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		keys_are_revoked(key_hashes);
 
@@ -187,13 +195,13 @@ fn revoke_keys() {
 fn revoke_keys_key_errors() {
 	// 0 Keys
 	new_test_ext().execute_with(|| {
-		let keys: Vec<AddKey<H256>> = Vec::new();
-		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
+		let keys: Vec<H256> = Vec::new();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(1), key_hashes.clone()),
+			ProxyKeystore::revoke_keys(Origin::signed(1), keys, KeyPurpose::P2PDocumentSigning),
 			Error::<MockRuntime>::NoKeys
 		);
+
 		assert_eq!(
 			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
 			0,
@@ -209,7 +217,7 @@ fn revoke_keys_key_errors() {
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(1), key_hashes),
+			ProxyKeystore::revoke_keys(Origin::signed(1), key_hashes, KeyPurpose::P2PDocumentSigning),
 			Error::<MockRuntime>::TooManyKeys
 		);
 		assert_eq!(
@@ -228,7 +236,12 @@ fn revoke_keys_key_not_found() {
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone()),
+			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), KeyPurpose::P2PDocumentSigning),
+			Error::<MockRuntime>::KeyNotFound
+		);
+
+		assert_err!(
+			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), KeyPurpose::P2PDiscovery),
 			Error::<MockRuntime>::KeyNotFound
 		);
 	});
@@ -238,8 +251,9 @@ fn revoke_keys_key_not_found() {
 fn revoke_keys_key_already_revoked() {
 	new_test_ext().execute_with(|| {
 		let origin: u64 = 1;
+		let key_purpose = KeyPurpose::P2PDocumentSigning;
 		let key = Key {
-			purpose: KeyPurpose::P2PDocumentSigning,
+			purpose: key_purpose.clone(),
 			key_type: KeyType::EDDSA,
 			revoked_at: Some(1),
 			deposit: 1,
@@ -252,7 +266,7 @@ fn revoke_keys_key_already_revoked() {
 		let key_hashes: Vec<H256> = vec![key_id.0];
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone()),
+			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), key_purpose),
 			Error::<MockRuntime>::KeyAlreadyRevoked
 		);
 	});

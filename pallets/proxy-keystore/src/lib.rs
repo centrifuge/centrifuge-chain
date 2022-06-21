@@ -12,7 +12,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use enum_iterator::{all, Sequence};
 use frame_support::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
@@ -28,9 +27,7 @@ mod tests;
 
 pub mod weights;
 
-// make sure representation is 1 byte
-// TODO(cdamian): Given the above, should we use #[pallet::compact]?
-#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, Sequence)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub enum KeyPurpose {
 	P2PDiscovery,
 	P2PDocumentSigning,
@@ -184,9 +181,9 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Remove keys from the storages.
+		/// Revoke keys with specified purpose.
 		#[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
-		pub fn revoke_keys(origin: OriginFor<T>, keys: Vec<T::Hash>) -> DispatchResult {
+		pub fn revoke_keys(origin: OriginFor<T>, keys: Vec<T::Hash>, key_purpose: KeyPurpose) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
 			ensure!(keys.len() > 0, Error::<T>::NoKeys);
@@ -196,7 +193,7 @@ pub mod pallet {
 			);
 
 			for key in keys {
-				Self::revoke_key(account_id.clone(), key.clone())?;
+				Self::revoke_key(account_id.clone(), key, key_purpose.clone())?;
 			}
 
 			Ok(())
@@ -265,47 +262,35 @@ pub mod pallet {
 
 		/// Revoke a key at the current `block_number` in the `Keys` storage
 		/// if the key is found and it's *not* already revoked.
-		fn revoke_key(account_id: T::AccountId, key: T::Hash) -> DispatchResult {
-			let mut key_found = false;
+		fn revoke_key(account_id: T::AccountId, key: T::Hash, key_purpose: KeyPurpose) -> DispatchResult {
+			let key_id: KeyId<T::Hash> = (key, key_purpose);
 
-			for key_purpose in all::<KeyPurpose>() {
-				let key_id: KeyId<T::Hash> = (key.clone(), key_purpose.clone());
-
-				<Keys<T>>::mutate(
-					account_id.clone(),
-					key_id,
-					|storage_key_opt| -> DispatchResult {
-						match storage_key_opt {
-							Some(storage_key) => {
-								if let Some(_) = storage_key.revoked_at {
-									return Err(Error::<T>::KeyAlreadyRevoked.into());
-								}
-
-								key_found = true;
-
-								let block_number = <frame_system::Pallet<T>>::block_number();
-
-								storage_key.revoked_at = Some(block_number.clone());
-
-								Self::deposit_event(Event::KeyRevoked(
-									account_id.clone(),
-									key.clone(),
-									block_number,
-								));
-
-								Ok(())
+			<Keys<T>>::try_mutate(
+				account_id.clone(),
+				key_id,
+				|storage_key_opt| -> DispatchResult {
+					match storage_key_opt {
+						Some(storage_key) => {
+							if let Some(_) = storage_key.revoked_at {
+								return Err(Error::<T>::KeyAlreadyRevoked.into());
 							}
-							None => Ok(()),
+
+							let block_number = <frame_system::Pallet<T>>::block_number();
+
+							storage_key.revoked_at = Some(block_number.clone());
+
+							Self::deposit_event(Event::KeyRevoked(
+								account_id.clone(),
+								key.clone(),
+								block_number,
+							));
+
+							Ok(())
 						}
-					},
-				)?;
-			}
-
-			if !key_found {
-				return Err(Error::<T>::KeyNotFound.into());
-			}
-
-			Ok(().into())
+						None => return Err(Error::<T>::KeyNotFound.into()),
+					}
+				},
+			)
 		}
 	}
 }

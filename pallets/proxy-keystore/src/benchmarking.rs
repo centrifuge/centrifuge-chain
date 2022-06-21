@@ -47,7 +47,7 @@ benchmarks! {
 
 		let key_hashes: Vec<T::Hash> = test_keys.iter().map(|add_key| add_key.key).collect();
 		let origin = RawOrigin::Signed(caller.clone());
-	}: revoke_keys(origin, key_hashes)
+	}: revoke_keys(origin, key_hashes, KeyPurpose::P2PDiscovery)
 	verify {
 		assert_eq!(Keys::<T>::iter().collect::<Vec<_>>().len() as u32, n);
 		assert!(all_keys_are_revoked::<T>(caller.clone()));
