@@ -186,17 +186,17 @@ pub mod pallet {
 
 		/// Remove keys from the storages.
 		#[pallet::weight(T::WeightInfo::revoke_keys(T::MaxKeys::get() as u32))]
-		pub fn revoke_keys(origin: OriginFor<T>, key_hashes: Vec<T::Hash>) -> DispatchResult {
+		pub fn revoke_keys(origin: OriginFor<T>, keys: Vec<T::Hash>) -> DispatchResult {
 			let account_id = ensure_signed(origin)?;
 
-			ensure!(key_hashes.len() > 0, Error::<T>::NoKeys);
+			ensure!(keys.len() > 0, Error::<T>::NoKeys);
 			ensure!(
-				key_hashes.len() <= T::MaxKeys::get() as usize,
+				keys.len() <= T::MaxKeys::get() as usize,
 				Error::<T>::TooManyKeys
 			);
 
-			for key_hash in key_hashes {
-				Self::revoke_key(account_id.clone(), key_hash.clone())?;
+			for key in keys {
+				Self::revoke_key(account_id.clone(), key.clone())?;
 			}
 
 			Ok(())
