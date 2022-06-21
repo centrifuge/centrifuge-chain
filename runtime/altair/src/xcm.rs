@@ -61,7 +61,7 @@ impl xcm_executor::Config for XcmConfig {
 pub type Trader = (
 	FixedRateOfFungible<CanonicalAirPerSecond, ToTreasury>,
 	FixedRateOfFungible<AirPerSecond, ToTreasury>,
-	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<AUSDPerSecond, ToTreasury>,
 	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	AssetRegistryTrader<
 		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
@@ -89,12 +89,12 @@ parameter_types! {
 
 	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
-	pub KUsdPerSecond: (AssetId, u128) = (
+	pub AUSDPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(
 				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
+				GeneralKey(parachains::karura::AUSD_KEY.to_vec())
 			)
 		).into(),
 		default_per_second(decimals::AUSD)
@@ -180,11 +180,11 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		match id {
 			CurrencyId::KSM => Some(MultiLocation::parent()),
-			CurrencyId::KUSD => Some(MultiLocation::new(
+			CurrencyId::AUSD => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::karura::ID),
-					GeneralKey(parachains::karura::KUSD_KEY.into()),
+					GeneralKey(parachains::karura::AUSD_KEY.into()),
 				),
 			)),
 			CurrencyId::Native => Some(MultiLocation::new(
@@ -222,7 +222,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
 				parachains::karura::ID => match &key[..] {
-					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
+					parachains::karura::AUSD_KEY => Ok(CurrencyId::AUSD),
 					_ => Err(location.clone()),
 				},
 

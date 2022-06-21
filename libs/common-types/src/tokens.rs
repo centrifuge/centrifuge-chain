@@ -19,11 +19,9 @@ pub enum CurrencyId {
 	/// Karura KSM
 	KSM,
 
-	/// Karura Dollar
-	KUSD,
-
 	/// Acala Dollar
-	/// Note: KUSD and AUSD will be merged into a single token, AUSD.
+	/// In Altair, it represents AUSD in Kusama;
+	/// In Centrifuge, it represents AUSD in Polkadot;
 	AUSD,
 
 	/// A foreign asset

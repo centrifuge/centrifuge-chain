@@ -109,13 +109,13 @@ pub fn custom_pool(
 /// 	* Keyring::TrancheInvestor(index) accounts with index 20 - 29 for tranche with id 2
 /// 	* Keyring::TrancheInvestor(index) accounts with index 30 - 39 for tranche with id 3
 /// 	* Keyring::TrancheInvestor(index) accounts with index 40 - 49 for tranche with id 4
-/// * Currency: CurrencyId::KUSD,
-/// * MaxReserve: 100_000 KUSD
+/// * Currency: CurrencyId::AUSD,
+/// * MaxReserve: 100_000 AUSD
 pub fn default_pool_calls(admin: AccountId, pool_id: PoolId, nfts: &mut NftManager) -> Vec<Call> {
 	pool_setup_calls(
 		admin,
 		pool_id,
-		CurrencyId::KUSD,
+		CurrencyId::AUSD,
 		100_000 * DECIMAL_BASE_12,
 		create_tranche_input(
 			vec![None, Some(10), Some(7), Some(5), Some(3)],

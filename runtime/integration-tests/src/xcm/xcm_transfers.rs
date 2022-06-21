@@ -189,7 +189,7 @@ fn transfer_air_sibling_to_altair() {
 }
 
 #[test]
-fn transfer_kusd_to_altair() {
+fn transfer_ausd_to_altair() {
 	TestNet::reset();
 
 	let alice_initial_balance = ausd(10);
@@ -198,30 +198,30 @@ fn transfer_kusd_to_altair() {
 
 	Karura::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::KUSD,
+			CurrencyId::AUSD,
 			&ALICE.into(),
 			alice_initial_balance
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &altair_account()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &altair_account()),
 			0
 		);
 	});
 
 	Altair::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::KUSD,
+			CurrencyId::AUSD,
 			&BOB.into(),
 			bob_initial_balance
 		));
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &BOB.into()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
 			bob_initial_balance,
 		);
 
 		assert_ok!(OrmlTokens::deposit(
-			CurrencyId::KUSD,
+			CurrencyId::AUSD,
 			&karura_account().into(),
 			bob_initial_balance
 		));
@@ -230,7 +230,7 @@ fn transfer_kusd_to_altair() {
 	Karura::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
-			CurrencyId::KUSD,
+			CurrencyId::AUSD,
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
@@ -249,13 +249,13 @@ fn transfer_kusd_to_altair() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &ALICE.into()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &ALICE.into()),
 			alice_initial_balance - transfer_amount
 		);
 
 		// Verify that the amount transferred is now part of the altair parachain account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &altair_account()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &altair_account()),
 			transfer_amount
 		);
 	});
@@ -263,13 +263,13 @@ fn transfer_kusd_to_altair() {
 	Altair::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &BOB.into()),
-			bob_initial_balance + transfer_amount - kusd_fee()
+			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
+			bob_initial_balance + transfer_amount - ausd_fee()
 		);
 
 		// Sanity check the actual balance
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KUSD, &BOB.into()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
 			16990676000000
 		);
 	});
@@ -550,25 +550,25 @@ pub mod currency_id_convert {
 
 	#[test]
 	fn convert_ausd() {
-		assert_eq!(parachains::karura::KUSD_KEY.to_vec(), vec![0, 129]);
+		assert_eq!(parachains::karura::AUSD_KEY.to_vec(), vec![0, 129]);
 
-		let kusd_location: MultiLocation = MultiLocation::new(
+		let ausd_location: MultiLocation = MultiLocation::new(
 			1,
 			X2(
 				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::KUSD_KEY.to_vec()),
+				GeneralKey(parachains::karura::AUSD_KEY.to_vec()),
 			),
 		);
 
 		Altair::execute_with(|| {
 			assert_eq!(
-				<CurrencyIdConvert as C1<_, _>>::convert(kusd_location.clone()),
-				Ok(CurrencyId::KUSD),
+				<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
+				Ok(CurrencyId::AUSD),
 			);
 
 			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KUSD),
-				Some(kusd_location)
+				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::AUSD),
+				Some(ausd_location)
 			)
 		});
 	}
@@ -620,7 +620,7 @@ fn air_fee() -> Balance {
 	fee(decimals::NATIVE)
 }
 
-fn kusd_fee() -> Balance {
+fn ausd_fee() -> Balance {
 	fee(decimals::AUSD)
 }
 

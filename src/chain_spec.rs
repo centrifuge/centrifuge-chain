@@ -905,7 +905,7 @@ fn development_genesis(
 					.cloned()
 					.map(|k| (k, balance_per_endowed))
 					.collect(),
-				// We can only mint kUSD in development
+				// We can only mint AUSD in development
 				endowed_accounts
 					.iter()
 					.cloned()
