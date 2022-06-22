@@ -16,15 +16,15 @@ use frame_support::{
 	},
 	PalletId, RuntimeDebug,
 };
-use orml_traits::parameter_type_with_key;
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use orml_traits::parameter_type_with_key;
 use pallet_anchors::AnchorData;
-use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};

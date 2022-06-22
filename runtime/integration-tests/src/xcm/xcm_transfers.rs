@@ -523,8 +523,10 @@ pub mod currency_id_convert {
 		assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
 		// The way AIR is represented relative within the Altair runtime
-		let air_location_inner: MultiLocation =
-			MultiLocation::new(0, X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())));
+		let air_location_inner: MultiLocation = MultiLocation::new(
+			0,
+			X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+		);
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
@@ -594,7 +596,10 @@ pub mod currency_id_convert {
 	fn convert_unkown_multilocation() {
 		let unknown_location: MultiLocation = MultiLocation::new(
 			1,
-			X2(Parachain(parachains::kusama::altair::ID), GeneralKey([42].to_vec())),
+			X2(
+				Parachain(parachains::kusama::altair::ID),
+				GeneralKey([42].to_vec()),
+			),
 		);
 
 		Altair::execute_with(|| {

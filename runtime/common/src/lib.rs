@@ -321,7 +321,6 @@ pub mod parachains {
 			pub const CFG_KEY: &[u8] = &[0, 1];
 		}
 	}
-
 }
 
 pub mod xcm_fees {
