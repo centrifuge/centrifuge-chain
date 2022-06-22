@@ -34,7 +34,7 @@ impl Default for ExtBuilder {
 	fn default() -> Self {
 		Self {
 			balances: vec![],
-			parachain_id: parachains::altair::ID,
+			parachain_id: parachains::kusama::altair::ID,
 		}
 	}
 }
@@ -124,11 +124,11 @@ pub fn sibling_account() -> AccountId {
 }
 
 pub fn karura_account() -> AccountId {
-	parachain_account(parachains::karura::ID.into())
+	parachain_account(parachains::kusama::karura::ID.into())
 }
 
 pub fn altair_account() -> AccountId {
-	parachain_account(parachains::altair::ID.into())
+	parachain_account(parachains::kusama::altair::ID.into())
 }
 
 fn parachain_account(id: u32) -> AccountId {

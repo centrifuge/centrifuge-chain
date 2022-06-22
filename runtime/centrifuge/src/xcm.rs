@@ -29,7 +29,7 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 use runtime_common::{
 	decimals, parachains,
 	xcm::FixedConversionRateProvider,
-	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
+	xcm_fees::{default_per_second, native_per_second},
 	CurrencyId,
 };
 
@@ -59,10 +59,9 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<CanonicalAirPerSecond, ToTreasury>,
-	FixedRateOfFungible<AirPerSecond, ToTreasury>,
+	FixedRateOfFungible<CanonicalCfgPerSecond, ToTreasury>,
+	FixedRateOfFungible<CfgPerSecond, ToTreasury>,
 	FixedRateOfFungible<AUSDPerSecond, ToTreasury>,
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
 	AssetRegistryTrader<
 		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
 		ToTreasury,
@@ -71,30 +70,28 @@ pub type Trader = (
 
 parameter_types! {
 	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
-	pub CanonicalAirPerSecond: (AssetId, u128) = (
+	pub CanonicalCfgPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			X1(GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
 
-	pub AirPerSecond: (AssetId, u128) = (
+	pub CfgPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
-
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
 	pub AUSDPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::AUSD_KEY.to_vec())
+				Parachain(parachains::polkadot::acala::ID),
+				GeneralKey(parachains::polkadot::acala::AUSD_KEY.to_vec())
 			)
 		).into(),
 		default_per_second(decimals::AUSD)
@@ -170,7 +167,7 @@ where
 /// CurrencyIdConvert
 /// This type implements conversions from our `CurrencyId` type into `MultiLocation` and vice-versa.
 /// A currency locally is identified with a `CurrencyId` variant but in the network it is identified
-/// in the form of a `MultiLocation`, in this case a pair (Para-Id, Currency-Id).
+/// in the form of a `MultiLocation`, in this case a pCfg (Para-Id, Currency-Id).
 pub struct CurrencyIdConvert;
 
 /// Convert our `CurrencyId` type into its `MultiLocation` representation.
@@ -179,19 +176,18 @@ pub struct CurrencyIdConvert;
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
 		match id {
-			CurrencyId::KSM => Some(MultiLocation::parent()),
 			CurrencyId::AUSD => Some(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::karura::ID),
-					GeneralKey(parachains::karura::AUSD_KEY.into()),
+					Parachain(parachains::polkadot::acala::ID),
+					GeneralKey(parachains::polkadot::acala::AUSD_KEY.into()),
 				),
 			)),
 			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(ParachainInfo::get().into()),
-					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+					GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
@@ -205,29 +201,25 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 /// correctly convert their `MultiLocation` representation into our internal `CurrencyId` type.
 impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConvert {
 	fn convert(location: MultiLocation) -> Result<CurrencyId, MultiLocation> {
-		if location == MultiLocation::parent() {
-			return Ok(CurrencyId::KSM);
-		}
-
 		match location.clone() {
 			MultiLocation {
 				parents: 0,
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
-				parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+				parachains::polkadot::centrifuge::CFG_KEY => Ok(CurrencyId::Native),
 				_ => Err(location.clone()),
 			},
 			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
-				parachains::karura::ID => match &key[..] {
-					parachains::karura::AUSD_KEY => Ok(CurrencyId::AUSD),
+				parachains::polkadot::acala::ID => match &key[..] {
+					parachains::polkadot::acala::AUSD_KEY => Ok(CurrencyId::AUSD),
 					_ => Err(location.clone()),
 				},
 
 				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
-					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+					parachains::polkadot::centrifuge::CFG_KEY => Ok(CurrencyId::Native),
 					_ => Err(location.clone()),
 				},
 
@@ -272,8 +264,7 @@ impl pallet_xcm::Config for Runtime {
 }
 
 parameter_types! {
-	pub const KsmLocation: MultiLocation = MultiLocation::parent();
-	pub const RelayNetwork: NetworkId = NetworkId::Kusama;
+	pub const RelayNetwork: NetworkId = NetworkId::Polkadot;
 	pub RelayChainOrigin: Origin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub Ancestry: MultiLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 	pub CheckingAccount: AccountId = PolkadotXcm::check_account();

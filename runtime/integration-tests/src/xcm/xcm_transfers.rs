@@ -69,8 +69,8 @@ fn transfer_air_to_sibling() {
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::altair::ID),
-					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+					Parachain(parachains::kusama::altair::ID),
+					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -160,7 +160,7 @@ fn transfer_air_sibling_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::altair::ID),
+						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -236,7 +236,7 @@ fn transfer_ausd_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::altair::ID),
+						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -282,7 +282,7 @@ fn transfer_ksm_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(parachains::altair::ID).into().into()),
+			Box::new(Parachain(parachains::kusama::altair::ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					network: NetworkId::Any,
@@ -380,7 +380,7 @@ fn transfer_foreign_sibling_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::altair::ID),
+						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -434,7 +434,7 @@ pub mod asset_registry {
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 					0,
-					X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+					X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
 				))),
 				additional: CustomMetadata::default(),
 			};
@@ -459,7 +459,7 @@ pub mod asset_registry {
 					1,
 					X2(
 						Parachain(2000),
-						GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+						GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
 					),
 				))),
 				additional: CustomMetadata::default(),
@@ -520,11 +520,11 @@ pub mod currency_id_convert {
 
 	#[test]
 	fn convert_air() {
-		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0, 1]);
+		assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
 
 		// The way AIR is represented relative within the Altair runtime
 		let air_location_inner: MultiLocation =
-			MultiLocation::new(0, X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())));
+			MultiLocation::new(0, X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())));
 
 		assert_eq!(
 			<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
@@ -535,8 +535,8 @@ pub mod currency_id_convert {
 		let air_location_canonical: MultiLocation = MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::altair::ID),
-				GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+				Parachain(parachains::kusama::altair::ID),
+				GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
 			),
 		);
 
@@ -550,13 +550,13 @@ pub mod currency_id_convert {
 
 	#[test]
 	fn convert_ausd() {
-		assert_eq!(parachains::karura::AUSD_KEY.to_vec(), vec![0, 129]);
+		assert_eq!(parachains::kusama::karura::AUSD_KEY.to_vec(), vec![0, 129]);
 
 		let ausd_location: MultiLocation = MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::AUSD_KEY.to_vec()),
+				Parachain(parachains::kusama::karura::ID),
+				GeneralKey(parachains::kusama::karura::AUSD_KEY.to_vec()),
 			),
 		);
 
@@ -594,7 +594,7 @@ pub mod currency_id_convert {
 	fn convert_unkown_multilocation() {
 		let unknown_location: MultiLocation = MultiLocation::new(
 			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey([42].to_vec())),
+			X2(Parachain(parachains::kusama::altair::ID), GeneralKey([42].to_vec())),
 		);
 
 		Altair::execute_with(|| {

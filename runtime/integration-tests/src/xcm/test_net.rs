@@ -39,7 +39,7 @@ decl_test_parachain! {
 		Origin = altair_runtime::Origin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
-		new_ext = para_ext(parachains::altair::ID),
+		new_ext = para_ext(parachains::kusama::altair::ID),
 	}
 }
 
@@ -59,7 +59,7 @@ decl_test_parachain! {
 		Origin = altair_runtime::Origin,
 		XcmpMessageHandler = altair_runtime::XcmpQueue,
 		DmpMessageHandler = altair_runtime::DmpQueue,
-		new_ext = para_ext(parachains::karura::ID),
+		new_ext = para_ext(parachains::kusama::karura::ID),
 	}
 }
 
@@ -80,11 +80,11 @@ decl_test_network! {
 			// N.B: Ideally, we could use the defined para id constants but doing so
 			// fails with: "error: arbitrary expressions aren't allowed in patterns"
 
-			// Be sure to use `parachains::altair::ID`
+			// Be sure to use `parachains::kusama::altair::ID`
 			(2088, Altair),
 			// Be sure to use `PARA_ID_SIBLING`
 			(3000, Sibling),
-			// Be sure to use `parachains::karura::ID`
+			// Be sure to use `parachains::kusama::karura::ID`
 			(2000, Karura),
 
 			// Be sure to use `PARA_ID_DEVELOPMENT`
@@ -104,7 +104,7 @@ pub fn relay_ext() -> sp_io::TestExternalities {
 		balances: vec![
 			(AccountId::from(ALICE), air(2002)),
 			(
-				ParaId::from(parachains::altair::ID).into_account_truncating(),
+				ParaId::from(parachains::kusama::altair::ID).into_account_truncating(),
 				air(7),
 			),
 			(
