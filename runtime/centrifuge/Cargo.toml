@@ -31,7 +31,6 @@ cumulus-pallet-dmp-queue = {git = "https://github.com/paritytech/cumulus", defau
 cumulus-pallet-aura-ext = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.24" }
 cumulus-primitives-timestamp = {git = "https://github.com/paritytech/cumulus", default-features = false, branch = "polkadot-v0.9.24" }
 
-
 # polkadot dependencies
 polkadot-parachain = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.24" }
 polkadot-runtime-common = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.24" }
@@ -97,7 +96,6 @@ pallet-vesting = { git = "https://github.com/paritytech/substrate",  default-fea
 pallet-aura = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
 pallet-treasury = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
 
-
 #orml pallets
 orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
@@ -105,8 +103,9 @@ orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-li
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 orml-xtokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 
-
 # Our pallets and modules
+common-types = { path = "../../libs/common-types", default-features = false }
+common-traits = { path = "../../libs/common-traits", default-features = false }
 runtime-common = { path = "../common", default-features = false }
 pallet-anchors = { path = "../../pallets/anchors", default-features = false }
 pallet-fees = { path = "../../pallets/fees", default-features = false }
@@ -116,6 +115,7 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-migration-manager = { path = "../../pallets/migration", default-features = false }
+pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 
 # bridge pallets
 chainbridge = { git = "https://github.com/centrifuge/chainbridge-substrate.git", default-features = false, branch = "polkadot-v0.9.24" }
@@ -188,6 +188,7 @@ std = [
     "pallet-fees/std",
     "pallet-anchors/std",
     "pallet-claims/std",
+    "pallet-restricted-tokens/std",
     "runtime-common/std",
     "polkadot-runtime-common/std",
     "pallet-preimage/std",
@@ -199,6 +200,9 @@ std = [
     "pallet-crowdloan-reward/std",
     "pallet-treasury/std",
     "frame-try-runtime/std",
+    "orml-tokens/std",
+    "orml-xtokens/std",
+    "orml-asset-registry/std",
 ]
 
 runtime-benchmarks = [
@@ -224,6 +228,7 @@ runtime-benchmarks = [
     "pallet-xcm/runtime-benchmarks",
     "xcm-builder/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
+    "pallet-restricted-tokens/runtime-benchmarks",
     "chainbridge/runtime-benchmarks",
     "pallet-migration-manager/runtime-benchmarks",
     "pallet-crowdloan-claim/runtime-benchmarks",

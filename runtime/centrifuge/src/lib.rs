@@ -16,11 +16,13 @@ use frame_support::{
 	},
 	PalletId, RuntimeDebug,
 };
+use orml_traits::parameter_type_with_key;
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
 use pallet_anchors::AnchorData;
+use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 pub use pallet_balances::Call as BalancesCall;
 use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
 pub use pallet_timestamp::Call as TimestampCall;
@@ -31,7 +33,7 @@ use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
-use sp_runtime::traits::{BlakeTwo256, Block as BlockT, ConvertInto};
+use sp_runtime::traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto};
 use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -208,6 +210,62 @@ impl cumulus_pallet_dmp_queue::Config for Runtime {
 	type Event = Event;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+}
+
+parameter_types! {
+	pub const NativeToken: CurrencyId = CurrencyId::Native;
+}
+
+impl pallet_restricted_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type CurrencyId = CurrencyId;
+	type PreExtrTransfer = common_traits::Always;
+	type PreFungiblesInspect = FungiblesInspectPassthrough;
+	type PreFungiblesInspectHold = common_traits::Always;
+	type PreFungiblesMutate = common_traits::Always;
+	type PreFungiblesMutateHold = common_traits::Always;
+	type PreFungiblesTransfer = common_traits::Always;
+	type Fungibles = OrmlTokens;
+	type PreCurrency = common_traits::Always;
+	type PreReservableCurrency = common_traits::Always;
+	type PreFungibleInspect = FungibleInspectPassthrough;
+	type PreFungibleInspectHold = common_traits::Always;
+	type PreFungibleMutate = common_traits::Always;
+	type PreFungibleMutateHold = common_traits::Always;
+	type PreFungibleTransfer = common_traits::Always;
+	type NativeFungible = Balances;
+	type NativeToken = NativeToken;
+	type WeightInfo = weights::pallet_restricted_tokens::SubstrateWeight<Self>;
+}
+
+parameter_types! {
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |currency_id: CurrencyId| -> Balance {
+		match currency_id {
+			CurrencyId::Native => ExistentialDeposit::get(),
+			_ => 0,
+		}
+	};
+}
+
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = IBalance;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
+	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
+	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 impl orml_asset_registry::Config for Runtime {
@@ -861,6 +919,8 @@ construct_runtime!(
 		Migration: pallet_migration_manager::{Pallet, Call, Storage, Event<T>} = 95,
 		CrowdloanClaim: pallet_crowdloan_claim::{Pallet, Call, Storage, Event<T>} = 96,
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 97,
+		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 98,
+
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -871,7 +931,8 @@ construct_runtime!(
 
 		// 3rd party pallets
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
-		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Event<T>, Config<T>} = 151,
+		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 151,
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Event<T>, Config<T>} = 152,
 	}
 );
 

@@ -1112,6 +1112,8 @@ name = "centrifuge-runtime"
 version = "0.10.7"
 dependencies = [
  "chainbridge",
+ "common-traits",
+ "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -1161,6 +1163,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
+ "pallet-restricted-tokens",
  "pallet-scheduler",
  "pallet-session",
  "pallet-session-benchmarking",
