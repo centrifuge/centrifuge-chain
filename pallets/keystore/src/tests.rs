@@ -28,10 +28,7 @@ fn add_keys() {
 
 		Balances::set_balance(Origin::root(), origin, 10000 * CURRENCY, 0).unwrap();
 
-		assert_ok!(ProxyKeystore::add_keys(
-			Origin::signed(origin),
-			keys.clone()
-		));
+		assert_ok!(Keystore::add_keys(Origin::signed(origin), keys.clone()));
 		assert_eq!(
 			Keys::<MockRuntime>::iter().collect::<Vec<_>>().len(),
 			2,
@@ -79,7 +76,7 @@ fn add_keys_key_errors() {
 		let keys: Vec<AddKey<H256>> = Vec::new();
 
 		assert_err!(
-			ProxyKeystore::add_keys(Origin::signed(1), keys.clone()),
+			Keystore::add_keys(Origin::signed(1), keys.clone()),
 			Error::<MockRuntime>::NoKeys
 		);
 	});
@@ -90,7 +87,7 @@ fn add_keys_key_errors() {
 		let keys = get_n_test_keys(num_keys);
 
 		assert_err!(
-			ProxyKeystore::add_keys(Origin::signed(1), keys),
+			Keystore::add_keys(Origin::signed(1), keys),
 			Error::<MockRuntime>::TooManyKeys
 		);
 	});
@@ -120,7 +117,7 @@ fn add_keys_key_already_exists() {
 		);
 
 		assert_err!(
-			ProxyKeystore::add_keys(Origin::signed(1), keys),
+			Keystore::add_keys(Origin::signed(1), keys),
 			Error::<MockRuntime>::KeyAlreadyExists
 		)
 	});
@@ -133,7 +130,7 @@ fn add_keys_insufficient_balance() {
 		let origin: u64 = 1;
 
 		assert_err!(
-			ProxyKeystore::add_keys(Origin::signed(origin), keys.clone()),
+			Keystore::add_keys(Origin::signed(origin), keys.clone()),
 			pallet_balances::Error::<MockRuntime>::InsufficientBalance,
 		);
 	});
@@ -150,7 +147,7 @@ fn revoke_keys() {
 		for key in keys.clone() {
 			let vec: Vec<H256> = vec![key.key];
 
-			assert_ok!(ProxyKeystore::revoke_keys(
+			assert_ok!(Keystore::revoke_keys(
 				Origin::signed(origin),
 				vec,
 				key.purpose,
@@ -196,7 +193,7 @@ fn revoke_keys_key_errors() {
 		let keys: Vec<H256> = Vec::new();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(1), keys, KeyPurpose::P2PDocumentSigning),
+			Keystore::revoke_keys(Origin::signed(1), keys, KeyPurpose::P2PDocumentSigning),
 			Error::<MockRuntime>::NoKeys
 		);
 
@@ -215,7 +212,7 @@ fn revoke_keys_key_errors() {
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(
+			Keystore::revoke_keys(
 				Origin::signed(1),
 				key_hashes,
 				KeyPurpose::P2PDocumentSigning
@@ -238,7 +235,7 @@ fn revoke_keys_key_not_found() {
 		let key_hashes: Vec<H256> = keys.iter().map(|add_key| add_key.key).collect();
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(
+			Keystore::revoke_keys(
 				Origin::signed(origin),
 				key_hashes.clone(),
 				KeyPurpose::P2PDocumentSigning
@@ -247,7 +244,7 @@ fn revoke_keys_key_not_found() {
 		);
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(
+			Keystore::revoke_keys(
 				Origin::signed(origin),
 				key_hashes.clone(),
 				KeyPurpose::P2PDiscovery
@@ -276,7 +273,7 @@ fn revoke_keys_key_already_revoked() {
 		let key_hashes: Vec<H256> = vec![key_id.0];
 
 		assert_err!(
-			ProxyKeystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), key_purpose),
+			Keystore::revoke_keys(Origin::signed(origin), key_hashes.clone(), key_purpose),
 			Error::<MockRuntime>::KeyAlreadyRevoked
 		);
 	});
@@ -296,10 +293,7 @@ fn set_deposit() {
 
 		let new_deposit: u128 = 11;
 
-		assert_ok!(ProxyKeystore::set_deposit(
-			Origin::signed(origin),
-			new_deposit
-		));
+		assert_ok!(Keystore::set_deposit(Origin::signed(origin), new_deposit));
 		assert_eq!(
 			new_deposit,
 			KeyDeposit::<MockRuntime>::get(),

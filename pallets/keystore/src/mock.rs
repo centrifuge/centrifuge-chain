@@ -33,7 +33,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		ProxyKeystore: pallet_keystore::{Pallet, Call, Storage, Event<T>},
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Storage, Event<T>},
 	}
 );

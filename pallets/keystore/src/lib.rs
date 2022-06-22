@@ -275,12 +275,11 @@ pub mod pallet {
 				|storage_key_opt| -> DispatchResult {
 					match storage_key_opt {
 						Some(storage_key) => {
-							if let Some(_) = storage_key.revoked_at {
+							if storage_key.revoked_at.is_some() {
 								return Err(Error::<T>::KeyAlreadyRevoked.into());
 							}
 
 							let block_number = <frame_system::Pallet<T>>::block_number();
-
 							storage_key.revoked_at = Some(block_number.clone());
 
 							Self::deposit_event(Event::KeyRevoked(
