@@ -1596,7 +1596,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
-			add_benchmark!(params, batches, pallet_proxy_keystore, ProxyKeystore);
+			add_benchmark!(params, batches, pallet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1625,7 +1625,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
-			list_benchmark!(list, extra, pallet_proxy_keystore, ProxyKeystore);
+			list_benchmark!(list, extra, pallet_keystore, Keystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
