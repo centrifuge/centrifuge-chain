@@ -22,24 +22,22 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use frame_support::assert_ok;
-use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::VersionedMultiLocation;
-use xcm_emulator::TestExt;
-
-use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
-
+use super::register_dot;
 use crate::xcm::polkadot::setup::{
 	acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId, ALICE,
 	BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 };
 use crate::xcm::polkadot::test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet};
-
 use centrifuge_runtime::{
 	Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
 };
+use frame_support::assert_ok;
+use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
+use xcm::VersionedMultiLocation;
+use xcm_emulator::TestExt;
 
 #[test]
 fn transfer_cfg_to_sibling() {
@@ -640,29 +638,6 @@ pub mod currency_id_convert {
 	}
 }
 
-fn register_dot() {
-	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-		decimals: 12,
-		name: "Polkadot".into(),
-		symbol: "DOT".into(),
-		existential_deposit: 100_000_000,
-		location: Some(VersionedMultiLocation::V1(MultiLocation::parent())),
-		additional: CustomMetadata {
-			xcm: XcmMetadata {
-				// We specify a custom fee_per_second and verify below that this value is
-				// used when XCM transfer fees are charged for this token.
-				fee_per_second: Some(ksm_per_second()),
-			},
-			..CustomMetadata::default()
-		},
-	};
-	assert_ok!(OrmlAssetRegistry::register_asset(
-		Origin::root(),
-		meta,
-		Some(DOT_ASSET_ID)
-	));
-}
-
 fn cfg_fee() -> Balance {
 	fee(decimals::NATIVE)
 }
@@ -682,7 +657,7 @@ fn dot_fee() -> Balance {
 
 fn calc_fee(fee_per_second: Balance) -> Balance {
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the transfers take.
+	// time the tests take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
 	fee_per_second.div_euclid(10_000) * 8
 }

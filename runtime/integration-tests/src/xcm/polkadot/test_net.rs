@@ -23,9 +23,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use centrifuge_runtime::CurrencyId;
 use runtime_common::{parachains, AccountId};
 
-use super::setup::{
-	cfg, dot, ExtBuilder, ALICE, BOB, DOT_ASSET_ID, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING,
-};
+use super::setup::{cfg, dot, ExtBuilder, ALICE, BOB, DOT_ASSET_ID, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct PolkadotNet {
@@ -65,16 +63,6 @@ decl_test_parachain! {
 	}
 }
 
-decl_test_parachain! {
-	pub struct Development {
-		Runtime = development_runtime::Runtime,
-		Origin = development_runtime::Origin,
-		XcmpMessageHandler = development_runtime::XcmpQueue,
-		DmpMessageHandler = development_runtime::DmpQueue,
-		new_ext = para_ext(PARA_ID_DEVELOPMENT),
-	}
-}
-
 decl_test_network! {
 	pub struct TestNet {
 		relay_chain = PolkadotNet,
@@ -88,9 +76,6 @@ decl_test_network! {
 			(3000, Sibling),
 			// Be sure to use `parachains::polkadot::acala::ID`
 			(2000, Acala),
-
-			// Be sure to use `PARA_ID_DEVELOPMENT`
-			(3001, Development),
 		],
 	}
 }
