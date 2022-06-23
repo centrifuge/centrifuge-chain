@@ -23,7 +23,7 @@ use xcm_emulator::{decl_test_network, decl_test_parachain, decl_test_relay_chain
 use altair_runtime::CurrencyId;
 use runtime_common::{parachains, AccountId};
 
-use crate::xcm::setup::{air, ksm, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};
+use super::setup::{air, ksm, ExtBuilder, ALICE, BOB, PARA_ID_DEVELOPMENT, PARA_ID_SIBLING};
 
 decl_test_relay_chain! {
 	pub struct KusamaNet {

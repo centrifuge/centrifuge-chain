@@ -29,48 +29,50 @@ use xcm_emulator::TestExt;
 
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 
-use crate::xcm::setup::{
-	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId, ALICE,
-	BOB, PARA_ID_SIBLING,
+use crate::xcm::polkadot::setup::{
+	acala_account, ausd, centrifuge_account, cfg, dot, foreign, sibling_account, CurrencyId, ALICE,
+	BOB, DOT_ASSET_ID, PARA_ID_SIBLING,
 };
-use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
+use crate::xcm::polkadot::test_net::{Acala, Centrifuge, PolkadotNet, Sibling, TestNet};
 
-use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
+use centrifuge_runtime::{
+	Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens,
+};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 
 #[test]
-fn transfer_air_to_sibling() {
+fn transfer_cfg_to_sibling() {
 	TestNet::reset();
 
-	let alice_initial_balance = air(10);
-	let bob_initial_balance = air(10);
-	let transfer_amount = air(1);
-	let transfer_amount = air(5);
-	let air_in_sibling = CurrencyId::ForeignAsset(12);
+	let alice_initial_balance = cfg(10);
+	let bob_initial_balance = cfg(10);
+	let transfer_amount = cfg(1);
+	let transfer_amount = cfg(5);
+	let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 		assert_eq!(Balances::free_balance(&sibling_account()), 0);
 	});
 
 	Sibling::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(cfg_in_sibling.clone(), &BOB.into()),
 			0
 		);
 
-		// Register AIR as foreign asset in the sibling parachain
+		// Register CFG as foreign asset in the sibling parachain
 		let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 			decimals: 18,
-			name: "Altair".into(),
-			symbol: "AIR".into(),
+			name: "Centrifuge".into(),
+			symbol: "CFG".into(),
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::kusama::altair::ID),
-					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+					Parachain(parachains::polkadot::centrifuge::ID),
+					GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -78,11 +80,11 @@ fn transfer_air_to_sibling() {
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			Origin::root(),
 			meta,
-			Some(air_in_sibling.clone())
+			Some(cfg_in_sibling.clone())
 		));
 	});
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::Native,
@@ -114,7 +116,7 @@ fn transfer_air_to_sibling() {
 	});
 
 	Sibling::execute_with(|| {
-		let current_balance = OrmlTokens::free_balance(air_in_sibling, &BOB.into());
+		let current_balance = OrmlTokens::free_balance(cfg_in_sibling, &BOB.into());
 
 		// Verify that BOB now has (amount transferred - fee)
 		assert_eq!(current_balance, transfer_amount - fee(18));
@@ -125,28 +127,28 @@ fn transfer_air_to_sibling() {
 }
 
 #[test]
-fn transfer_air_sibling_to_altair() {
+fn transfer_cfg_sibling_to_centrifuge() {
 	TestNet::reset();
 
-	// In order to be able to transfer AIR from Sibling to Altair, we need to first send
-	// AIR from Altair to Sibling, or else it fails since it'd be like Sibling had minted
-	// AIR on their side.
-	transfer_air_to_sibling();
+	// In order to be able to transfer CFG from Sibling to Centrifuge, we need to first send
+	// CFG from Centrifuge to Sibling, or else it fails since it'd be like Sibling had minted
+	// CFG on their side.
+	transfer_cfg_to_sibling();
 
-	let alice_initial_balance = air(5);
-	let bob_initial_balance = air(5) - air_fee();
-	let transfer_amount = air(1);
-	// Note: This asset was registered in `transfer_air_to_sibling`
-	let air_in_sibling = CurrencyId::ForeignAsset(12);
+	let alice_initial_balance = cfg(5);
+	let bob_initial_balance = cfg(5) - cfg_fee();
+	let transfer_amount = cfg(1);
+	// Note: This asset was registered in `transfer_cfg_to_sibling`
+	let cfg_in_sibling = CurrencyId::ForeignAsset(12);
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), alice_initial_balance);
 	});
 
 	Sibling::execute_with(|| {
-		assert_eq!(Balances::free_balance(&altair_account()), 0);
+		assert_eq!(Balances::free_balance(&centrifuge_account()), 0);
 		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling.clone(), &BOB.into()),
+			OrmlTokens::free_balance(cfg_in_sibling.clone(), &BOB.into()),
 			bob_initial_balance
 		);
 	});
@@ -154,13 +156,13 @@ fn transfer_air_sibling_to_altair() {
 	Sibling::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(BOB.into()),
-			air_in_sibling.clone(),
+			cfg_in_sibling.clone(),
 			transfer_amount,
 			Box::new(
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::kusama::altair::ID),
+						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -174,29 +176,29 @@ fn transfer_air_sibling_to_altair() {
 
 		// Confirm that Bobs's balance is initial balance - amount transferred
 		assert_eq!(
-			OrmlTokens::free_balance(air_in_sibling, &BOB.into()),
+			OrmlTokens::free_balance(cfg_in_sibling, &BOB.into()),
 			bob_initial_balance - transfer_amount
 		);
 	});
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		// Verify that ALICE now has initial balance + amount transferred - fee
 		assert_eq!(
 			Balances::free_balance(&ALICE.into()),
-			alice_initial_balance + transfer_amount - air_fee(),
+			alice_initial_balance + transfer_amount - cfg_fee(),
 		);
 	});
 }
 
 #[test]
-fn transfer_ausd_to_altair() {
+fn transfer_ausd_to_centrifuge() {
 	TestNet::reset();
 
 	let alice_initial_balance = ausd(10);
 	let bob_initial_balance = ausd(10);
 	let transfer_amount = ausd(7);
 
-	Karura::execute_with(|| {
+	Acala::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::AUSD,
 			&ALICE.into(),
@@ -204,12 +206,12 @@ fn transfer_ausd_to_altair() {
 		));
 
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &altair_account()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
 			0
 		);
 	});
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::AUSD,
 			&BOB.into(),
@@ -222,12 +224,12 @@ fn transfer_ausd_to_altair() {
 
 		assert_ok!(OrmlTokens::deposit(
 			CurrencyId::AUSD,
-			&karura_account().into(),
+			&acala_account().into(),
 			bob_initial_balance
 		));
 	});
 
-	Karura::execute_with(|| {
+	Acala::execute_with(|| {
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
 			CurrencyId::AUSD,
@@ -236,7 +238,7 @@ fn transfer_ausd_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::kusama::altair::ID),
+						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -253,14 +255,14 @@ fn transfer_ausd_to_altair() {
 			alice_initial_balance - transfer_amount
 		);
 
-		// Verify that the amount transferred is now part of the altair parachain account here
+		// Verify that the amount transferred is now part of the centrifuge parachain account here
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::AUSD, &altair_account()),
+			OrmlTokens::free_balance(CurrencyId::AUSD, &centrifuge_account()),
 			transfer_amount
 		);
 	});
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		// Verify that BOB now has initial balance + amount transferred - fee
 		assert_eq!(
 			OrmlTokens::free_balance(CurrencyId::AUSD, &BOB.into()),
@@ -276,13 +278,19 @@ fn transfer_ausd_to_altair() {
 }
 
 #[test]
-fn transfer_ksm_from_relay_chain() {
-	let transfer_amount: Balance = ksm(1);
+fn transfer_dot_from_relay_chain() {
+	let transfer_amount: Balance = dot(1);
 
-	KusamaNet::execute_with(|| {
-		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
-			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(parachains::kusama::altair::ID).into().into()),
+	Centrifuge::execute_with(|| register_dot());
+
+	PolkadotNet::execute_with(|| {
+		assert_ok!(polkadot_runtime::XcmPallet::reserve_transfer_assets(
+			polkadot_runtime::Origin::signed(ALICE.into()),
+			Box::new(
+				Parachain(parachains::polkadot::centrifuge::ID)
+					.into()
+					.into()
+			),
 			Box::new(
 				Junction::AccountId32 {
 					network: NetworkId::Any,
@@ -296,21 +304,23 @@ fn transfer_ksm_from_relay_chain() {
 		));
 	});
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		assert_eq!(
-			OrmlTokens::free_balance(CurrencyId::KSM, &BOB.into()),
-			transfer_amount - ksm_fee()
+			OrmlTokens::free_balance(DOT_ASSET_ID, &BOB.into()),
+			transfer_amount - dot_fee()
 		);
 	});
 }
 
 #[test]
-fn transfer_ksm_to_relay_chain() {
-	Altair::execute_with(|| {
+fn transfer_dot_to_relay_chain() {
+	Centrifuge::execute_with(|| {
+		register_dot();
+
 		assert_ok!(XTokens::transfer(
 			Origin::signed(ALICE.into()),
-			CurrencyId::KSM,
-			ksm(1),
+			DOT_ASSET_ID,
+			dot(1),
 			Box::new(
 				MultiLocation::new(
 					1,
@@ -325,19 +335,19 @@ fn transfer_ksm_to_relay_chain() {
 		));
 	});
 
-	KusamaNet::execute_with(|| {
+	PolkadotNet::execute_with(|| {
 		assert_eq!(
-			kusama_runtime::Balances::free_balance(&BOB.into()),
-			999988476752
+			polkadot_runtime::Balances::free_balance(&BOB.into()),
+			999530582548
 		);
 	});
 }
 
 #[test]
-fn transfer_foreign_sibling_to_altair() {
+fn transfer_foreign_sibling_to_centrifuge() {
 	TestNet::reset();
 
-	let alice_initial_balance = air(10);
+	let alice_initial_balance = cfg(10);
 	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
 		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), GeneralKey(vec![0, 1])));
@@ -362,8 +372,8 @@ fn transfer_foreign_sibling_to_altair() {
 		assert_eq!(OrmlTokens::free_balance(sibling_asset_id, &BOB.into()), 0)
 	});
 
-	Altair::execute_with(|| {
-		// First, register the asset in altair
+	Centrifuge::execute_with(|| {
+		// First, register the asset in centrifuge
 		assert_ok!(OrmlAssetRegistry::register_asset(
 			Origin::root(),
 			meta.clone(),
@@ -380,7 +390,7 @@ fn transfer_foreign_sibling_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::kusama::altair::ID),
+						Parachain(parachains::polkadot::centrifuge::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -399,7 +409,7 @@ fn transfer_foreign_sibling_to_altair() {
 		);
 	});
 
-	Altair::execute_with(|| {
+	Centrifuge::execute_with(|| {
 		let bob_balance = OrmlTokens::free_balance(sibling_asset_id, &BOB.into());
 
 		// Verify that BOB now has initial balance + amount transferred - fee
@@ -414,8 +424,8 @@ fn transfer_foreign_sibling_to_altair() {
 
 pub mod asset_registry {
 	use super::{assert_ok, parachains, GeneralKey, MultiLocation, X1};
-	use crate::xcm::test_net::{Altair, TestNet};
-	use altair_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
+	use crate::xcm::polkadot::test_net::{Centrifuge, TestNet};
+	use centrifuge_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
 	use frame_support::assert_noop;
 	use orml_traits::asset_registry::AssetMetadata;
 	use orml_traits::currency::MultiCurrency;
@@ -425,16 +435,18 @@ pub mod asset_registry {
 	use xcm_emulator::TestExt;
 
 	#[test]
-	fn register_air_works() {
-		Altair::execute_with(|| {
+	fn register_cfg_works() {
+		Centrifuge::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 18,
-				name: "Altair".into(),
-				symbol: "AIR".into(),
+				name: "Centrifuge".into(),
+				symbol: "CFG".into(),
 				existential_deposit: 1_000_000_000_000,
 				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 					0,
-					X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+					X1(GeneralKey(
+						parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
+					)),
 				))),
 				additional: CustomMetadata::default(),
 			};
@@ -449,7 +461,7 @@ pub mod asset_registry {
 
 	#[test]
 	fn register_foreign_asset_works() {
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 12,
 				name: "Acala Dollar".into(),
@@ -459,7 +471,7 @@ pub mod asset_registry {
 					1,
 					X2(
 						Parachain(2000),
-						GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+						GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
 					),
 				))),
 				additional: CustomMetadata::default(),
@@ -476,7 +488,7 @@ pub mod asset_registry {
 	#[test]
 	// Verify that registering tranche tokens is not allowed through extrinsics
 	fn register_tranche_asset_blocked() {
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
 			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 				decimals: 12,
 				name: "Tranche Token 1".into(),
@@ -506,63 +518,68 @@ pub mod asset_registry {
 
 #[test]
 fn test_total_fee() {
-	assert_eq!(air_fee(), 9324000000000000);
+	assert_eq!(cfg_fee(), 9324000000000000);
 	assert_eq!(fee(decimals::AUSD), 9324000000);
 	assert_eq!(fee(decimals::KSM), 9324000000);
 }
 
 pub mod currency_id_convert {
 	use super::*;
-	use altair_runtime::CurrencyIdConvert;
+	use centrifuge_runtime::CurrencyIdConvert;
 	use sp_runtime::traits::Convert as C2;
 	use xcm::VersionedMultiLocation;
 	use xcm_executor::traits::Convert as C1;
 
 	#[test]
-	fn convert_air() {
-		assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
+	fn convert_cfg() {
+		assert_eq!(
+			parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
+			vec![0, 1]
+		);
 
-		// The way AIR is represented relative within the Altair runtime
-		let air_location_inner: MultiLocation = MultiLocation::new(
+		// The way CFG is represented relative within the Centrifuge runtime
+		let cfg_location_inner: MultiLocation = MultiLocation::new(
 			0,
-			X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+			X1(GeneralKey(
+				parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
+			)),
 		);
 
 		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
+			<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
 			Ok(CurrencyId::Native),
 		);
 
-		// The canonical way AIR is represented out in the wild
-		let air_location_canonical: MultiLocation = MultiLocation::new(
+		// The canonical way CFG is represented out in the wild
+		let cfg_location_canonical: MultiLocation = MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::kusama::altair::ID),
-				GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+				Parachain(parachains::polkadot::centrifuge::ID),
+				GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
 			),
 		);
 
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-				Some(air_location_canonical)
+				Some(cfg_location_canonical)
 			)
 		});
 	}
 
 	#[test]
 	fn convert_ausd() {
-		assert_eq!(parachains::kusama::karura::AUSD_KEY.to_vec(), vec![0, 129]);
+		assert_eq!(parachains::polkadot::acala::AUSD_KEY.to_vec(), vec![0, 1]);
 
 		let ausd_location: MultiLocation = MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::kusama::karura::ID),
-				GeneralKey(parachains::kusama::karura::AUSD_KEY.to_vec()),
+				Parachain(parachains::polkadot::acala::ID),
+				GeneralKey(parachains::polkadot::acala::AUSD_KEY.to_vec()),
 			),
 		);
 
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
 			assert_eq!(
 				<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
 				Ok(CurrencyId::AUSD),
@@ -571,23 +588,25 @@ pub mod currency_id_convert {
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::AUSD),
 				Some(ausd_location)
-			);
+			)
 		});
 	}
 
 	#[test]
-	fn convert_ksm() {
-		let ksm_location: MultiLocation = MultiLocation::parent().into();
+	fn convert_dot() {
+		let dot_location: MultiLocation = MultiLocation::parent().into();
 
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
+			register_dot();
+
 			assert_eq!(
-				<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
-				Ok(CurrencyId::KSM),
+				<CurrencyIdConvert as C1<_, _>>::convert(dot_location.clone()),
+				Ok(DOT_ASSET_ID),
 			);
 
 			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KSM),
-				Some(ksm_location)
+				<CurrencyIdConvert as C2<_, _>>::convert(DOT_ASSET_ID),
+				Some(dot_location)
 			)
 		});
 	}
@@ -597,19 +616,19 @@ pub mod currency_id_convert {
 		let unknown_location: MultiLocation = MultiLocation::new(
 			1,
 			X2(
-				Parachain(parachains::kusama::altair::ID),
+				Parachain(parachains::polkadot::centrifuge::ID),
 				GeneralKey([42].to_vec()),
 			),
 		);
 
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
 			assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
 		});
 	}
 
 	#[test]
 	fn convert_unsupported_currency() {
-		Altair::execute_with(|| {
+		Centrifuge::execute_with(|| {
 			assert_eq!(
 				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Tranche(
 					0,
@@ -621,7 +640,30 @@ pub mod currency_id_convert {
 	}
 }
 
-fn air_fee() -> Balance {
+fn register_dot() {
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 12,
+		name: "Polkadot".into(),
+		symbol: "DOT".into(),
+		existential_deposit: 100_000_000,
+		location: Some(VersionedMultiLocation::V1(MultiLocation::parent())),
+		additional: CustomMetadata {
+			xcm: XcmMetadata {
+				// We specify a custom fee_per_second and verify below that this value is
+				// used when XCM transfer fees are charged for this token.
+				fee_per_second: Some(ksm_per_second()),
+			},
+			..CustomMetadata::default()
+		},
+	};
+	assert_ok!(OrmlAssetRegistry::register_asset(
+		Origin::root(),
+		meta,
+		Some(DOT_ASSET_ID)
+	));
+}
+
+fn cfg_fee() -> Balance {
 	fee(decimals::NATIVE)
 }
 
@@ -634,7 +676,7 @@ fn fee(decimals: u32) -> Balance {
 }
 
 // The fee associated with transferring KSM tokens
-fn ksm_fee() -> Balance {
+fn dot_fee() -> Balance {
 	calc_fee(ksm_per_second())
 }
 
