@@ -354,6 +354,11 @@ pub enum ProxyType {
 	Borrow,
 	Price,
 	Invest,
+	ProxyManagement,
+	KeystoreManagement,
+	NFTMint,
+	NFTTransfer,
+	NFTManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -406,6 +411,22 @@ impl InstanceFilter<Call> for ProxyType {
 				Call::Utility(pallet_utility::Call::batch_all{..}) |
 				Call::Utility(pallet_utility::Call::batch{..})
 			),
+			ProxyType::ProxyManagement => matches!(c, Call::Proxy(..)),
+			ProxyType::KeystoreManagement => matches!(
+				c,
+				Call::Keystore(pallet_keystore::Call::add_keys { .. })
+					| Call::Keystore(pallet_keystore::Call::revoke_keys { .. })
+			),
+			ProxyType::NFTMint => matches!(
+				c,
+				Call::Uniques(pallet_uniques::Call::mint { .. })
+					| Call::Uniques(pallet_uniques::Call::set_metadata { .. })
+					| Call::Uniques(pallet_uniques::Call::set_attribute { .. })
+			),
+			ProxyType::NFTTransfer => {
+				matches!(c, Call::Uniques(pallet_uniques::Call::transfer { .. }))
+			}
+			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
 		}
 	}
 
@@ -1258,6 +1279,21 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
+parameter_types! {
+	pub const MaxKeys: u32 = 10;
+	pub const DefaultKeyDeposit: Balance = 100 * CFG;
+}
+
+impl pallet_keystore::pallet::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Currency = Balances;
+	type MaxKeys = MaxKeys;
+	type DefaultKeyDeposit = DefaultKeyDeposit;
+	type AdminOrigin = EnsureRootOr<AllOfCouncil>;
+	type WeightInfo = weights::pallet_keystore::SubstrateWeight<Runtime>;
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -1314,6 +1350,7 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 102,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1559,6 +1596,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_pools, Pools);
 			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
+			add_benchmark!(params, batches, pallet_keystore, Keystore);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
@@ -1587,6 +1625,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_pools, Pools);
 			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
+			list_benchmark!(list, extra, pallet_keystore, Keystore);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
