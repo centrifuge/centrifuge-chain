@@ -921,7 +921,6 @@ construct_runtime!(
 		CrowdloanReward: pallet_crowdloan_reward::{Pallet, Call, Storage, Event<T>} = 97,
 		Tokens: pallet_restricted_tokens::{Pallet, Call, Event<T>} = 98,
 
-
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin} = 121,

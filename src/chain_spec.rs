@@ -734,6 +734,8 @@ fn centrifuge_genesis(
 				.to_vec(),
 		},
 		balances: centrifuge_runtime::BalancesConfig { balances },
+		orml_asset_registry: Default::default(),
+		orml_tokens: centrifuge_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: centrifuge_runtime::ElectionsConfig { members: vec![] },
 		council: centrifuge_runtime::CouncilConfig {
 			members: council_members,
