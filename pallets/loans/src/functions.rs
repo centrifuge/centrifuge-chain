@@ -13,27 +13,11 @@
 
 //! Module provides loan related functions
 use super::*;
-use crate::weights::WeightInfo;
 use common_types::{Adjustment, PoolLocator};
 use core::convert::TryInto;
-use frame_support::weights::Weight;
 use sp_runtime::ArithmeticError;
 
 impl<T: Config> Pallet<T> {
-	// calculates write off group weight for count number of write off groups looped
-	// this function needs to adjusted when the reads and write changes for the write off group extrinsic
-	pub(crate) fn write_off_group_weight(count: u64) -> Weight {
-		T::WeightInfo::write_off()
-			.saturating_mul(count)
-			.saturating_sub(
-				(count - 1).saturating_mul(
-					T::DbWeight::get()
-						.reads(4)
-						.saturating_add(T::DbWeight::get().writes(2)),
-				),
-			)
-	}
-
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
 		T::LoansPalletId::get().into_account_truncating()
@@ -56,7 +40,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	// TODO: Move this to test-utils
-	#[cfg(test)]
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	pub(crate) fn get_active_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
@@ -144,8 +128,8 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		interest_rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Balance>,
-	) -> DispatchResult {
-		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
+	) -> Result<u32, DispatchError> {
+		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
 			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 			// ensure loan is created or priced but not yet borrowed against
@@ -178,13 +162,6 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::LoanValueInvalid
 			);
 
-			// ensure we have not exceeded the max number of active loans
-			let number_of_active_loans = ActiveLoans::<T>::get(pool_id).len();
-			ensure!(
-				number_of_active_loans + 1 <= T::MaxActiveLoansPerPool::get() as usize,
-				Error::<T>::TooManyActiveLoans
-			);
-
 			let active_loan = ActiveLoanDetails {
 				loan_id,
 				loan_type,
@@ -200,12 +177,13 @@ impl<T: Config> Pallet<T> {
 			active_loans
 				.try_push(active_loan)
 				.map_err(|_| Error::<T>::TooManyActiveLoans)?;
+			let count = active_loans.len();
 			ActiveLoans::<T>::insert(pool_id, active_loans);
 
 			// update the loan status
 			loan.status = LoanStatus::Active;
 
-			Ok(())
+			Ok(count.try_into().unwrap())
 		})
 	}
 
@@ -215,14 +193,14 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
-	) -> Result<ClosedLoan<T>, DispatchError> {
+	) -> Result<(u32, ClosedLoan<T>), DispatchError> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<ClosedLoan<T>, DispatchError> {
+			|loan| -> Result<(u32, ClosedLoan<T>), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
@@ -230,17 +208,12 @@ impl<T: Config> Pallet<T> {
 
 				ActiveLoans::<T>::try_mutate(
 					pool_id,
-					|active_loans| -> Result<ClosedLoan<T>, DispatchError> {
-						let mut active_loan = None;
-						let mut active_loan_idx = 0;
-						for (index, active_loan_option) in active_loans.iter_mut().enumerate() {
-							if active_loan_option.loan_id == loan_id {
-								active_loan = Some(active_loan_option);
-								active_loan_idx = index;
-							}
-						}
-
-						let active_loan = active_loan.ok_or(Error::<T>::MissingLoan)?;
+					|active_loans| -> Result<(u32, ClosedLoan<T>), DispatchError> {
+						let (active_loan_idx, active_loan) = active_loans
+							.iter_mut()
+							.enumerate()
+							.find(|(_, loan)| loan.loan_id == loan_id)
+							.ok_or(Error::<T>::MissingLoan)?;
 
 						// ensure debt is all paid
 						// we just need to ensure normalized debt is zero
@@ -285,14 +258,18 @@ impl<T: Config> Pallet<T> {
 						T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 						// remove from active loans
+						let active_count = active_loans.len();
 						active_loans.remove(active_loan_idx);
 
 						// update loan status
 						loan.status = LoanStatus::Closed;
-						Ok(ClosedLoan {
-							collateral,
-							written_off,
-						})
+						Ok((
+							active_count.try_into().unwrap(),
+							ClosedLoan {
+								collateral,
+								written_off,
+							},
+						))
 					},
 				)
 			},

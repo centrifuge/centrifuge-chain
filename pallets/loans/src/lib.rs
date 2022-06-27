@@ -367,8 +367,8 @@ pub mod pallet {
 		/// Collateral NFT is transferred back to the loan owner.
 		/// Loan NFT is transferred back to LoanAccount.
 		#[pallet::weight(
-			<T as Config>::WeightInfo::repay_and_close().max(
-				<T as Config>::WeightInfo::write_off_and_close()
+			<T as Config>::WeightInfo::repay_and_close(T::MaxActiveLoansPerPool::get()).max(
+				<T as Config>::WeightInfo::write_off_and_close(T::MaxActiveLoansPerPool::get())
 			)
 		)]
 		#[transactional]
@@ -378,14 +378,17 @@ pub mod pallet {
 			loan_id: T::LoanId,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let ClosedLoan {
-				collateral,
-				written_off,
-			} = Self::close_loan(pool_id, loan_id, owner)?;
+			let (
+				active_count,
+				ClosedLoan {
+					collateral,
+					written_off,
+				},
+			) = Self::close_loan(pool_id, loan_id, owner)?;
 			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, collateral));
 			match written_off {
-				true => Ok(Some(T::WeightInfo::write_off_and_close()).into()),
-				false => Ok(Some(T::WeightInfo::repay_and_close()).into()),
+				true => Ok(Some(T::WeightInfo::write_off_and_close(active_count)).into()),
+				false => Ok(Some(T::WeightInfo::repay_and_close(active_count)).into()),
 			}
 		}
 
@@ -400,8 +403,8 @@ pub mod pallet {
 		/// Pool NAV is updated to reflect new present value of the loan.
 		/// Amount of tokens of an Asset will be transferred from pool reserve to loan owner.
 		#[pallet::weight(
-			<T as Config>::WeightInfo::initial_borrow().max(
-				<T as Config>::WeightInfo::further_borrows()
+			<T as Config>::WeightInfo::initial_borrow(T::MaxActiveLoansPerPool::get()).max(
+				<T as Config>::WeightInfo::further_borrows(T::MaxActiveLoansPerPool::get())
 			)
 		)]
 		#[transactional]
@@ -415,10 +418,12 @@ pub mod pallet {
 			let (active_count, first_borrow) =
 				Self::borrow_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::Borrowed(pool_id, loan_id, amount));
-			match first_borrow {
-				true => Ok(Some(T::WeightInfo::initial_borrow()).into()),
-				false => Ok(Some(T::WeightInfo::further_borrows()).into()),
-			}
+
+			Ok(if first_borrow {
+				Some(T::WeightInfo::initial_borrow(active_count)).into()
+			} else {
+				Some(T::WeightInfo::further_borrows(active_count)).into()
+			})
 		}
 
 		/// Transfers amount borrowed to the pool reserve.
@@ -427,42 +432,43 @@ pub mod pallet {
 		/// Loan is accrued before transferring the amount to reserve.
 		/// If the repaying amount is more than current debt, only current debt is transferred.
 		/// Amount of token will be transferred from owner to Pool reserve.
-		#[pallet::weight(<T as Config>::WeightInfo::repay())]
+		#[pallet::weight(<T as Config>::WeightInfo::repay(T::MaxActiveLoansPerPool::get()))]
 		#[transactional]
 		pub fn repay(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			amount: T::Balance,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let (active_count, total_repaid) = Self::repay_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, total_repaid));
-			Ok(())
+			Ok(Some(T::WeightInfo::repay(active_count)).into())
 		}
 
 		/// Set pricing for the loan with loan specific details like Rate, Loan type
 		///
 		/// LoanStatus must be in Created state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
-		#[pallet::weight(<T as Config>::WeightInfo::price())]
+		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
 		pub fn price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			interest_rate_per_sec: T::Rate,
 			loan_type: LoanType<T::Rate, T::Balance>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
-			Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
+			let active_count =
+				Self::price_loan(pool_id, loan_id, interest_rate_per_sec, loan_type)?;
 			Self::deposit_event(Event::<T>::Priced(
 				pool_id,
 				loan_id,
 				interest_rate_per_sec,
 				loan_type,
 			));
-			Ok(())
+			Ok(Some(T::WeightInfo::price(active_count)).into())
 		}
 
 		/// Updates the NAV for a given pool
@@ -474,7 +480,7 @@ pub mod pallet {
 		/// So instead, we calculate weight for one loan. We assume a maximum of 200 loans and deposit that weight
 		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
 		/// transaction payment can return the deposit.
-		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxActiveLoansPerPool::get().into()))]
+		#[pallet::weight(T::WeightInfo::update_nav(T::MaxActiveLoansPerPool::get()))]
 		pub fn update_nav(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -488,10 +494,7 @@ pub mod pallet {
 				NAVUpdateType::Exact,
 			));
 
-			// calculate actual weight of the updating nav based on number of loan processed.
-			let total_weight =
-				T::WeightInfo::nav_update_single_loan().saturating_mul(active_count.into());
-			Ok(Some(total_weight).into())
+			Ok(Some(T::WeightInfo::update_nav(active_count)).into())
 		}
 
 		/// Appends a new write off group to the Pool
@@ -522,7 +525,7 @@ pub mod pallet {
 		///
 		/// Weight is calculated for one group. Since there is no extra read or writes for groups more than 1,
 		/// We need to ensure we are charging the reads and write only once but the actual compute to be equal to number of groups processed
-		#[pallet::weight(Pallet::<T>::write_off_group_weight(T::MaxWriteOffGroups::get() as u64))]
+		#[pallet::weight(<T as Config>::WeightInfo::write_off(T::MaxActiveLoansPerPool::get(), T::MaxWriteOffGroups::get()))]
 		pub fn write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -545,7 +548,7 @@ pub mod pallet {
 			// since the write off group index is picked in loop sequentially,
 			// total loops = index+1
 			let count = index.expect("Write offs should always return a valid index") + 1;
-			Ok(Some(Self::write_off_group_weight(count as u64)).into())
+			Ok(Some(T::WeightInfo::write_off(active_count, count)).into())
 		}
 
 		/// Write off an loan from admin origin
@@ -555,14 +558,14 @@ pub mod pallet {
 		/// AdminOrigin can write off a healthy loan as well.
 		/// Once admin writes off a loan, permission less `write_off_loan` wont be allowed after.
 		/// Admin can write off loan with any index potentially going up the index or down.
-		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off())]
+		#[pallet::weight(<T as Config>::WeightInfo::admin_write_off(T::MaxActiveLoansPerPool::get()))]
 		pub fn admin_write_off(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			percentage: T::Rate,
 			penalty_interest_rate_per_sec: T::Rate,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			// ensure this is a call from risk admin
 			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
 
@@ -583,7 +586,7 @@ pub mod pallet {
 				penalty_interest_rate_per_sec,
 				None,
 			));
-			Ok(())
+			Ok(Some(T::WeightInfo::admin_write_off(active_count)).into())
 		}
 	}
 }

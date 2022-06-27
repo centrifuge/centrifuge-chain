@@ -160,6 +160,12 @@ impl From<u16> for ItemId {
 	}
 }
 
+impl From<u32> for ItemId {
+	fn from(v: u32) -> Self {
+		Self(v as u128)
+	}
+}
+
 impl From<u128> for ItemId {
 	fn from(v: u128) -> Self {
 		Self(v)
