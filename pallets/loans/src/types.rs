@@ -222,9 +222,5 @@ pub(crate) type ActiveLoanDetailsOf<T> = ActiveLoanDetails<
 	<T as Config>::LoanId,
 	<T as Config>::Rate,
 	<T as Config>::Balance,
-	<<T as Config>::InterestAccrual as InterestAccrualT<
-		<T as Config>::Rate,
-		<T as Config>::Balance,
-		Adjustment<<T as Config>::Balance>,
-	>>::NormalizedDebt,
+	NormalizedDebtOf<T>,
 >;

@@ -210,7 +210,7 @@ impl<T: Config> Pallet<T> {
 					pool_id,
 					|active_loans| -> Result<(u32, ClosedLoan<T>), DispatchError> {
 						let (active_loan_idx, active_loan) = active_loans
-							.iter_mut()
+							.iter()
 							.enumerate()
 							.find(|(_, loan)| loan.loan_id == loan_id)
 							.ok_or(Error::<T>::MissingLoan)?;
@@ -256,6 +256,8 @@ impl<T: Config> Pallet<T> {
 						// burn loan nft
 						let (loan_class_id, loan_id) = loan_nft.destruct();
 						T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
+
+						ClosedLoans::<T>::insert(pool_id, loan_id, active_loan.clone());
 
 						// remove from active loans
 						let active_count = active_loans.len();

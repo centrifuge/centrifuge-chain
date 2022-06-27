@@ -192,11 +192,19 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		BoundedVec<
-			ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>,
-			T::MaxActiveLoansPerPool,
-		>,
+		BoundedVec<ActiveLoanDetailsOf<T>, T::MaxActiveLoansPerPool>,
 		ValueQuery,
+	>;
+
+	#[pallet::storage]
+	pub(crate) type ClosedLoans<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		PoolIdOf<T>,
+		Blake2_128Concat,
+		T::LoanId,
+		ActiveLoanDetailsOf<T>,
+		OptionQuery,
 	>;
 
 	/// Stores the pool nav against poolId
