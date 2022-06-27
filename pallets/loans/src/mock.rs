@@ -306,7 +306,7 @@ impl pallet_permissions::Config for MockRuntime {
 
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
-	pub const MaxActiveLoansPerPool: u64 = 200;
+	pub const MaxActiveLoansPerPool: u32 = 200;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
 

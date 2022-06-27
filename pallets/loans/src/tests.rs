@@ -976,7 +976,7 @@ macro_rules! test_repay_loan {
 				// check nav
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
-				let (nav, loans_updated) = res.unwrap();
+				let (loans_updated, nav) = res.unwrap();
 				assert_eq!(nav, Zero::zero());
 				assert_eq!(loans_updated, 0);
 			})
@@ -1052,7 +1052,7 @@ macro_rules! test_pool_nav {
 				Timestamp::set_timestamp(after_200_days * 1000);
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
-				let (nav, ..) = res.unwrap();
+				let (_, nav) = res.unwrap();
 				// present value should be 50.05
 				assert_eq!(nav, $pv_200);
 
@@ -1125,11 +1125,9 @@ macro_rules! test_pool_nav {
 				.unwrap();
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
-				let (pv, ..) = res.unwrap();
+				let (_, nav) = res.unwrap();
 				// present value should be equal to current outstanding debt
-				assert_eq!(pv, debt);
-				let (nav, ..) = res.unwrap();
-				assert_eq!(pv, nav);
+				assert_eq!(nav, debt);
 
 				// call update nav extrinsic and check for event
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);

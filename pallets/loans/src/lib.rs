@@ -144,7 +144,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// Max number of active loans per pool.
-		type MaxActiveLoansPerPool: Get<u64>;
+		type MaxActiveLoansPerPool: Get<u32>;
 
 		/// Max number of write-off groups per pool.
 		type MaxWriteOffGroups: Get<u32>;
@@ -192,8 +192,10 @@ pub mod pallet {
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
-		// BoundedVec<ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>, T::MaxActiveLoansPerPool>,
-		Vec<ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>>,
+		BoundedVec<
+			ActiveLoanDetails<T::LoanId, T::Rate, T::Balance, NormalizedDebtOf<T>>,
+			T::MaxActiveLoansPerPool,
+		>,
 		ValueQuery,
 	>;
 
@@ -410,7 +412,8 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
-			let first_borrow = Self::borrow_amount(pool_id, loan_id, owner, amount)?;
+			let (active_count, first_borrow) =
+				Self::borrow_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::Borrowed(pool_id, loan_id, amount));
 			match first_borrow {
 				true => Ok(Some(T::WeightInfo::initial_borrow()).into()),
@@ -433,7 +436,7 @@ pub mod pallet {
 			amount: T::Balance,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
-			let total_repaid = Self::repay_amount(pool_id, loan_id, owner, amount)?;
+			let (active_count, total_repaid) = Self::repay_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::Repaid(pool_id, loan_id, total_repaid));
 			Ok(())
 		}
@@ -471,29 +474,23 @@ pub mod pallet {
 		/// So instead, we calculate weight for one loan. We assume a maximum of 200 loans and deposit that weight
 		/// Once the NAV calculation is done, we check how many loans we have updated and return the actual weight so that
 		/// transaction payment can return the deposit.
-		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxActiveLoansPerPool::get()))]
+		#[pallet::weight(T::WeightInfo::nav_update_single_loan().saturating_mul(T::MaxActiveLoansPerPool::get().into()))]
 		pub fn update_nav(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 		) -> DispatchResultWithPostInfo {
 			// ensure signed so that caller pays for the update fees
 			ensure_signed(origin)?;
-			let (updated_nav, updated_loans) = Self::update_nav_of_pool(pool_id)?;
+			let (active_count, updated_nav) = Self::update_nav_of_pool(pool_id)?;
 			Self::deposit_event(Event::<T>::NAVUpdated(
 				pool_id,
 				updated_nav,
 				NAVUpdateType::Exact,
 			));
 
-			// if the total loans updated are more than max loans, we are charging lower txn fees for this pool nav calculation.
-			// there is nothing we can do right now. return Ok
-			if updated_loans > T::MaxActiveLoansPerPool::get() {
-				return Ok(().into());
-			}
-
 			// calculate actual weight of the updating nav based on number of loan processed.
 			let total_weight =
-				T::WeightInfo::nav_update_single_loan().saturating_mul(updated_loans);
+				T::WeightInfo::nav_update_single_loan().saturating_mul(active_count.into());
 			Ok(Some(total_weight).into())
 		}
 
@@ -535,7 +532,7 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			// try to write off
-			let (index, percentage, penalty_interest_rate_per_sec) =
+			let (active_count, (index, percentage, penalty_interest_rate_per_sec)) =
 				Self::write_off_loan(pool_id, loan_id, WriteOffAction::WriteOffToCurrentGroup)?;
 			Self::deposit_event(Event::<T>::WrittenOff(
 				pool_id,
@@ -570,14 +567,15 @@ pub mod pallet {
 			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
 
 			// try to write off
-			let (.., percentage, penalty_interest_rate_per_sec) = Self::write_off_loan(
-				pool_id,
-				loan_id,
-				WriteOffAction::WriteOffAsAdmin {
-					percentage,
-					penalty_interest_rate_per_sec,
-				},
-			)?;
+			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =
+				Self::write_off_loan(
+					pool_id,
+					loan_id,
+					WriteOffAction::WriteOffAsAdmin {
+						percentage,
+						penalty_interest_rate_per_sec,
+					},
+				)?;
 			Self::deposit_event(Event::<T>::WrittenOff(
 				pool_id,
 				loan_id,
@@ -598,7 +596,7 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {
 	}
 
 	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
-		let (updated_nav, ..) = Self::update_nav_of_pool(pool_id)?;
+		let (_, updated_nav) = Self::update_nav_of_pool(pool_id)?;
 		Ok(updated_nav)
 	}
 

@@ -1018,7 +1018,7 @@ impl pallet_collator_selection::Config for Runtime {
 
 parameter_types! {
 	pub const LoansPalletId: PalletId = PalletId(*b"roc/loan");
-	pub const MaxActiveLoansPerPool: u64 = 50;
+	pub const MaxActiveLoansPerPool: u32 = 50;
 	pub const MaxWriteOffGroups: u32 = 10;
 }
 
