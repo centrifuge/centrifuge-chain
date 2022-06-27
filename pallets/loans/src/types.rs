@@ -180,7 +180,6 @@ where
 				debt.checked_sub(&write_off_amount)?
 			}
 		};
-
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => {
 				bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
@@ -218,9 +217,6 @@ pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as Interes
 	<T as Config>::Balance,
 	Adjustment<<T as Config>::Balance>,
 >>::NormalizedDebt;
-
-pub(crate) type LoanDetailsOf<T> =
-	LoanDetails<Asset<<T as Config>::ClassId, <T as Config>::LoanId>>;
 
 pub(crate) type ActiveLoanDetailsOf<T> = ActiveLoanDetails<
 	<T as Config>::LoanId,

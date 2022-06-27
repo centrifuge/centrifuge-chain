@@ -658,12 +658,14 @@ macro_rules! test_borrow_loan {
 					assert_ok!(res);
 				}
 
+				let percentage = Rate::saturating_from_rational::<u64, u64>(3, 100);
+				let penalty = Rate::saturating_from_rational::<u64, u64>(1, 100);
 				let res = Loans::admin_write_off(
 					Origin::signed(risk_admin),
 					pool_id,
 					loan_id,
-					Rate::saturating_from_rational::<u64, u64>(3, 100),
-					Rate::saturating_from_rational::<u64, u64>(1, 100),
+					percentage,
+					penalty,
 				);
 				assert_ok!(res);
 
@@ -678,12 +680,14 @@ macro_rules! test_borrow_loan {
 					.expect("ActiveLoanDetails should be present");
 				// after maturity should be current outstanding
 				let debt = InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.interest_rate_per_sec + penalty,
 					active_loan.normalized_debt,
 				)
 				.expect("Interest should accrue");
+				let write_off = percentage.checked_mul_int(debt).unwrap();
 				assert_eq!(
-					updated_nav, debt,
+					updated_nav,
+					debt - write_off,
 					"should be equal to outstanding debt post maturity"
 				);
 			})
@@ -944,26 +948,14 @@ macro_rules! test_repay_loan {
 				// check loan data
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
-				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				assert_eq!(loan.status, LoanStatus::Closed);
-				assert_eq!(active_loan.normalized_debt, Zero::zero());
-				assert_eq!(active_loan.total_borrowed, 50 * USD);
 				assert_eq!(rate_info.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
 				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
 					.unwrap()
 					.0;
-				let now = Loans::now();
-				let old_debt = InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
-					active_loan.normalized_debt,
-				)
-				.expect("Debt should be calculatable");
-				let pv = active_loan.present_value(old_debt, &vec![], now).unwrap();
-				assert_eq!(current_nav, pv, "should be same due to single loan");
 				assert_eq!(current_nav, Zero::zero());
 
 				// pool balance should be 1000 + interest
@@ -986,7 +978,7 @@ macro_rules! test_repay_loan {
 				assert_ok!(res);
 				let (nav, loans_updated) = res.unwrap();
 				assert_eq!(nav, Zero::zero());
-				assert_eq!(loans_updated, 1);
+				assert_eq!(loans_updated, 0);
 			})
 	};
 }
@@ -1176,20 +1168,27 @@ macro_rules! test_pool_nav {
 					assert_ok!(res);
 				}
 
-				if $admin_write_off {
+				let (percentage, penalty) = if $admin_write_off {
+					let percentage = Rate::saturating_from_rational::<u64, u64>(7, 100);
+					let penalty = Rate::saturating_from_rational::<u64, u64>(3, 100);
 					let res = Loans::admin_write_off(
 						Origin::signed(risk_admin),
 						pool_id,
 						loan_id,
-						Rate::saturating_from_rational::<u64, u64>(7, 100),
-						Rate::saturating_from_rational::<u64, u64>(3, 100),
+						percentage,
+						penalty,
 					);
 					assert_ok!(res);
+					(percentage, penalty)
 				} else {
 					// write off loan. someone calls write off
 					let res = Loans::write_off(Origin::signed(100), pool_id, loan_id);
 					assert_ok!(res);
-				}
+					(
+						Rate::saturating_from_rational(20u64, 100),
+						Rate::saturating_from_rational(3u64, 100),
+					)
+				};
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
 					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
@@ -1199,7 +1198,11 @@ macro_rules! test_pool_nav {
 				}
 				.expect("must be a loan written off event");
 				// it must be 2 with overdue days as 7 and write off percentage as 20%
-				assert_eq!(write_off_index, Some(2));
+				if $admin_write_off {
+					assert_eq!(write_off_index, None);
+				} else {
+					assert_eq!(write_off_index, Some(2));
+				}
 
 				// update nav
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
@@ -1214,10 +1217,12 @@ macro_rules! test_pool_nav {
 				.expect("must be a Nav updated event");
 
 				// updated nav should be (1-20%) outstanding debt
-				let expected_nav = debt
-					- Rate::saturating_from_rational(20, 100)
-						.checked_mul_int(debt)
-						.unwrap();
+				let debt = InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec + penalty,
+					active_loan.normalized_debt,
+				)
+				.unwrap();
+				let expected_nav = debt - percentage.checked_mul_int(debt).unwrap();
 				assert_eq!(expected_nav, updated_nav);
 				assert_eq!(exact, NAVUpdateType::Exact);
 			})
@@ -1506,12 +1511,16 @@ macro_rules! test_admin_write_off_loan_type {
 				] {
 					Timestamp::set_timestamp(time * 1000);
 					for index in vec![0, 3, 2, 1, 0] {
+						let percentage =
+							Rate::saturating_from_rational(groups.clone()[index].0, 100u64);
+						let penalty_interest_rate_per_sec =
+							Rate::saturating_from_rational(groups.clone()[index].2, 100u64);
 						let res = Loans::admin_write_off(
 							Origin::signed(risk_admin),
 							pool_id,
 							loan_id,
-							Rate::saturating_from_rational(groups.clone()[index].0, 100u64),
-							Rate::saturating_from_rational(groups.clone()[index].2, 100u64),
+							percentage,
+							penalty_interest_rate_per_sec,
 						);
 						assert_ok!(res);
 
@@ -1524,13 +1533,14 @@ macro_rules! test_admin_write_off_loan_type {
 							_ => None,
 						}
 						.expect("must be a Loan issue event");
-						assert_eq!(write_off_index, Some(index as u32));
+						assert_eq!(write_off_index, None);
 						let active_loan = Loans::get_active_loan(pool_id, loan_id)
 							.expect("ActiveLoanDetails should be present");
 						assert_eq!(
 							active_loan.write_off_status,
-							WriteOffStatus::WrittenOff {
-								write_off_index: index as u32
+							WriteOffStatus::WrittenOffByAdmin {
+								percentage,
+								penalty_interest_rate_per_sec
 							}
 						);
 					}
@@ -1651,7 +1661,7 @@ macro_rules! test_close_written_off_loan_type {
 						Origin::signed(risk_admin),
 						pool_id,
 						loan_id,
-						Rate::saturating_from_rational::<u64, u64>(120, 100),
+						Rate::saturating_from_rational::<u64, u64>(100, 100),
 						Rate::saturating_from_rational::<u64, u64>(5, 100),
 					);
 					assert_ok!(res);
@@ -1665,7 +1675,11 @@ macro_rules! test_close_written_off_loan_type {
 					_ => None,
 				}
 				.expect("must be a Loan written off event");
-				assert_eq!(write_off_index, Some(4));
+				if $maturity_checks {
+					assert_eq!(write_off_index, Some(4));
+				} else {
+					assert_eq!(write_off_index, None);
+				}
 
 				// nav should be zero
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);

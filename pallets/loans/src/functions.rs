@@ -55,6 +55,8 @@ impl<T: Config> Pallet<T> {
 		Ok(Asset(loan_class_id, loan_id))
 	}
 
+	// TODO: Move this to test-utils
+	#[cfg(test)]
 	pub(crate) fn get_active_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
@@ -550,7 +552,7 @@ impl<T: Config> Pallet<T> {
 					))?
 			}
 			WriteOffStatus::WrittenOffByAdmin {
-				percentage,
+				percentage: _,
 				penalty_interest_rate_per_sec,
 			} => active_loan
 				.interest_rate_per_sec
@@ -574,7 +576,7 @@ impl<T: Config> Pallet<T> {
 		active_loan.last_updated = now;
 
 		let present_value = active_loan
-			.present_value(debt, write_off_groups, Self::now())
+			.present_value(debt, write_off_groups, now)
 			.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
 		Ok(present_value)
