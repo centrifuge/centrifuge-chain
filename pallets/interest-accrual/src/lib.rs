@@ -67,12 +67,6 @@ use sp_runtime::{
 
 pub use pallet::*;
 
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
 // Type aliases
 type RateDetailsOf<T> = RateDetails<<T as Config>::InterestRate, Moment>;
 
