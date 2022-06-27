@@ -43,6 +43,7 @@ members = [
 	"pallets/loans",
 	"pallets/permissions",
 	"pallets/interest-accrual",
+	"pallets/keystore",
 	"libs/common-traits",
 	"libs/common-types",
 	"libs/proofs",
@@ -194,4 +195,9 @@ cli = [
 try-runtime = [
 	"centrifuge-runtime/try-runtime",
 	"try-runtime-cli"
+]
+
+fast-runtime = [
+	"altair-runtime/fast-runtime",
+	"centrifuge-runtime/fast-runtime"
 ]

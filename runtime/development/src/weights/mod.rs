@@ -15,6 +15,7 @@ pub mod pallet_collator_allowlist;
 pub mod pallet_crowdloan_claim;
 pub mod pallet_crowdloan_reward;
 pub mod pallet_fees;
+pub mod pallet_keystore;
 pub mod pallet_loans;
 pub mod pallet_migration_manager;
 pub mod pallet_nft_sales;

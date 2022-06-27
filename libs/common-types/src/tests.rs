@@ -206,15 +206,40 @@ fn permission_roles_work() {
 /// around which could have silent but serious negative consequences.
 #[test]
 fn currency_id_encode_sanity() {
-	assert_eq!(CurrencyId::Native.encode(), vec![0]);
-	assert_eq!(
-		CurrencyId::Tranche(42, [42; 16]).encode(),
-		[
-			1, 42, 0, 0, 0, 0, 0, 0, 0, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42,
-			42
-		]
-	);
-	assert_eq!(CurrencyId::KSM.encode(), vec![2]);
-	assert_eq!(CurrencyId::KUSD.encode(), vec![3]);
-	assert_eq!(CurrencyId::AUSD.encode(), vec![4]);
+	use CurrencyId::*;
+
+	/// Verify that every variant encodes to what we would expect it to.
+	/// If this breaks, we must have changed the order of a variant, added
+	/// a new variant in between existing variants, or deleted one.
+	vec![
+		Native,
+		Tranche(42, [42; 16]),
+		KSM,
+		KUSD,
+		AUSD,
+		ForeignAsset(89),
+	]
+	.into_iter()
+	.for_each(|variant| {
+		let encoded_u64: Vec<u64> = variant.encode().iter().map(|x| *x as u64).collect();
+
+		assert_eq!(encoded_u64, expected_encoding_value(variant))
+	});
+
+	/// Return the expected encoding.
+	/// This is useful to force at compile time that we handle all existing variants.
+	fn expected_encoding_value(id: CurrencyId) -> Vec<u64> {
+		match id {
+			Native => vec![0],
+			Tranche(pool_id, tranche_id) => {
+				let mut r = vec![1, pool_id, 0, 0, 0, 0, 0, 0, 0];
+				r.append(&mut tranche_id.map(|x| x as u64).to_vec());
+				r
+			}
+			KSM => vec![2],
+			KUSD => vec![3],
+			AUSD => vec![4],
+			ForeignAsset(id) => vec![5, id as u64, 0, 0, 0],
+		}
+	}
 }

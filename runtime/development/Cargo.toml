@@ -128,6 +128,7 @@ pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false 
 pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
+pallet-keystore = { path = "../../pallets/keystore", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
@@ -221,6 +222,7 @@ std = [
     "chainbridge/std",
     "pallet-nft/std",
     "pallet-bridge/std",
+    "pallet-keystore/std",
 ]
 
 runtime-benchmarks = [
@@ -248,6 +250,7 @@ runtime-benchmarks = [
     "chainbridge/runtime-benchmarks",
     "pallet-uniques/runtime-benchmarks",
     "runtime-common/runtime-benchmarks",
+    "pallet-keystore/runtime-benchmarks",
 ]
 
 # A feature that should be enabled when the runtime should be build for on-chain
