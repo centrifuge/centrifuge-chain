@@ -15,6 +15,7 @@
 use super::*;
 use crate::weights::WeightInfo;
 use common_types::{Adjustment, PoolLocator};
+use core::convert::TryInto;
 use frame_support::weights::Weight;
 use sp_runtime::ArithmeticError;
 
@@ -35,7 +36,7 @@ impl<T: Config> Pallet<T> {
 
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
-		T::LoansPalletId::get().into_account()
+		T::LoansPalletId::get().into_account_truncating()
 	}
 
 	/// check if the given loan belongs to the owner provided
@@ -110,7 +111,7 @@ impl<T: Config> Pallet<T> {
 		T::NonFungible::mint_into(&loan_class_id.into(), &loan_id.into(), &owner)?;
 
 		// lock collateral nft
-		let pool_account = PoolLocator { pool_id }.into_account();
+		let pool_account = PoolLocator { pool_id }.into_account_truncating();
 		T::NonFungible::transfer(
 			&collateral_class_id.into(),
 			&instance_id.into(),
@@ -280,7 +281,7 @@ impl<T: Config> Pallet<T> {
 
 						// burn loan nft
 						let (loan_class_id, loan_id) = loan_nft.destruct();
-						T::NonFungible::burn_from(&loan_class_id.into(), &loan_id.into())?;
+						T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
 
 						// remove from active loans
 						active_loans.remove(active_loan_idx);
@@ -336,12 +337,18 @@ impl<T: Config> Pallet<T> {
 					ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
 					// check for max borrow amount
-					let old_debt = T::InterestAccrual::current_debt(
+					let old_debt = T::InterestAccrual::previous_debt(
+						active_loan.interest_rate_per_sec,
+						active_loan.normalized_debt,
+						active_loan.last_updated,
+					)?;
+
+					let current_debt = T::InterestAccrual::current_debt(
 						active_loan.interest_rate_per_sec,
 						active_loan.normalized_debt,
 					)?;
 
-					let max_borrow_amount = active_loan.max_borrow_amount(old_debt);
+					let max_borrow_amount = active_loan.max_borrow_amount(current_debt);
 					ensure!(
 						amount <= max_borrow_amount,
 						Error::<T>::MaxBorrowAmountExceeded
@@ -377,36 +384,6 @@ impl<T: Config> Pallet<T> {
 					active_loan.normalized_debt = normalized_debt;
 					active_loan.last_updated = now;
 
-					// ensure borrow amount is positive
-					ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
-					let max_borrow_amount = active_loan.max_borrow_amount(old_debt);
-					ensure!(
-						amount <= max_borrow_amount,
-						Error::<T>::MaxBorrowAmountExceeded
-					);
-
-					let new_total_borrowed = active_loan
-						.total_borrowed
-						.checked_add(&amount)
-						.ok_or(ArithmeticError::Overflow)?;
-
-					// calculate new normalized debt with adjustment amount
-					let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-						active_loan.interest_rate_per_sec,
-						active_loan.normalized_debt,
-						Adjustment::Increase(amount),
-					)?;
-
-					// update loan
-					let first_borrow = active_loan.total_borrowed == Zero::zero();
-
-					if first_borrow {
-						active_loan.origination_date = Some(now);
-					}
-
-					active_loan.total_borrowed = new_total_borrowed;
-					active_loan.normalized_debt = normalized_debt;
-
 					let new_debt = T::InterestAccrual::current_debt(
 						active_loan.interest_rate_per_sec,
 						active_loan.normalized_debt,
@@ -439,10 +416,10 @@ impl<T: Config> Pallet<T> {
 					.and_then(|positive_diff| nav.latest.checked_add(&positive_diff))
 					.ok_or(DispatchError::Arithmetic(ArithmeticError::Overflow)),
 				// repay since new pv is less than old
-				false => old_pv
+				false => Ok(old_pv
 					.checked_sub(&new_pv)
 					.and_then(|negative_diff| nav.latest.checked_sub(&negative_diff))
-					.ok_or(DispatchError::Arithmetic(ArithmeticError::Underflow)),
+					.unwrap_or_else(Zero::zero)),
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
@@ -505,8 +482,13 @@ impl<T: Config> Pallet<T> {
 							.present_value(old_debt, &write_off_groups, active_loan.last_updated)
 							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
+						let current_debt = T::InterestAccrual::current_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+						)?;
+
 						// ensure amount is not more than current debt
-						let repay_amount = amount.min(old_debt);
+						let repay_amount = amount.min(current_debt);
 
 						let new_total_repaid = active_loan
 							.total_repaid

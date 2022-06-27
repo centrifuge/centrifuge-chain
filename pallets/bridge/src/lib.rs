@@ -149,6 +149,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sp_std::convert::TryInto;
 
 	// Bridge pallet type declaration.
 	//
@@ -446,7 +447,7 @@ impl<T: Config> Pallet<T> {
 	/// This actually does computation. If you need to keep using it, then make
 	/// sure you cache the value and only call this once.
 	pub fn account_id() -> T::AccountId {
-		<T as pallet::Config>::BridgePalletId::get().into_account()
+		<T as pallet::Config>::BridgePalletId::get().into_account_truncating()
 	}
 
 	/// Initialize pallet's genesis configuration.

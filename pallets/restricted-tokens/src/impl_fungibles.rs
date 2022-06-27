@@ -12,27 +12,11 @@
 
 use super::*;
 use common_traits::PreConditions;
-use common_traits::TokenMetadata;
 use frame_support::traits::{
 	fungible,
-	fungibles::{Inspect, InspectHold, InspectMetadata, Mutate, MutateHold, Transfer},
+	fungibles::{Inspect, InspectHold, Mutate, MutateHold, Transfer},
 	tokens::{DepositConsequence, WithdrawConsequence},
 };
-use sp_std::vec::Vec;
-
-impl<T: Config> InspectMetadata<T::AccountId> for Pallet<T> {
-	fn name(asset: &Self::AssetId) -> Vec<u8> {
-		asset.name()
-	}
-
-	fn symbol(asset: &Self::AssetId) -> Vec<u8> {
-		asset.symbol()
-	}
-
-	fn decimals(asset: &Self::AssetId) -> u8 {
-		asset.decimals()
-	}
-}
 
 /// Represents the trait `fungibles::Inspect` effects that are called via
 /// the pallet-restricted-tokens.
@@ -111,11 +95,12 @@ impl<T: Config> Inspect<T::AccountId> for Pallet<T> {
 		asset: Self::AssetId,
 		who: &T::AccountId,
 		amount: Self::Balance,
+		mint: bool,
 	) -> DepositConsequence {
 		if asset == T::NativeToken::get() {
-			<Pallet<T> as fungible::Inspect<T::AccountId>>::can_deposit(who, amount)
+			<Pallet<T> as fungible::Inspect<T::AccountId>>::can_deposit(who, amount, mint)
 		} else {
-			<T::Fungibles as Inspect<T::AccountId>>::can_deposit(asset, who, amount)
+			<T::Fungibles as Inspect<T::AccountId>>::can_deposit(asset, who, amount, mint)
 		}
 	}
 

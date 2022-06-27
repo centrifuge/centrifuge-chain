@@ -634,7 +634,8 @@ macro_rules! implement_fixed {
 				let accuracy = $name::accuracy();
 
 				// Case where integer fits.
-				let a = $name::checked_from_integer(42).expect("42 * accuracy <= inner_max; qed");
+				let a =
+					$name::checked_from_integer(42u128).expect("42 * accuracy <= inner_max; qed");
 				assert_eq!(a.into_inner(), 42 * accuracy);
 
 				// Max integer that fit.
@@ -648,7 +649,7 @@ macro_rules! implement_fixed {
 
 				if $name::SIGNED {
 					// Case where integer fits.
-					let a = $name::checked_from_integer(0.saturating_sub(42))
+					let a = $name::checked_from_integer(0.saturating_sub(4u128))
 						.expect("-42 * accuracy >= inner_min; qed");
 					assert_eq!(a.into_inner(), 0 - 42 * accuracy);
 

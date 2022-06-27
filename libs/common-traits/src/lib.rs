@@ -32,7 +32,6 @@ use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
 use sp_std::str::FromStr;
-use sp_std::vec::Vec;
 
 pub type Moment = u64;
 
@@ -233,16 +232,6 @@ impl<T> PreConditions<T> for Never {
 	fn check(_t: T) -> bool {
 		false
 	}
-}
-
-/// A trait that Assets or Tokens can implement so that pallets
-/// can easily use the trait `InspectMetadata` with them.
-pub trait TokenMetadata {
-	fn name(&self) -> Vec<u8>;
-
-	fn symbol(&self) -> Vec<u8>;
-
-	fn decimals(&self) -> u8;
 }
 
 /// Trait for converting a pool+tranche ID pair to a CurrencyId

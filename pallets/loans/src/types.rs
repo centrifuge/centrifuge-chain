@@ -205,11 +205,9 @@ where
 
 /// Types to ease function signatures
 pub(crate) type ClassIdOf<T> =
-	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ClassId;
-
+	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 pub(crate) type InstanceIdOf<T> =
-	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::InstanceId;
-
+	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
 
 pub(crate) type PoolIdOf<T> =

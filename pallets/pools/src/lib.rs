@@ -417,46 +417,62 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was created. [pool, admin]
-		Created(T::PoolId, T::AccountId),
-		/// A pool was updated. [pool]
-		Updated(T::PoolId),
+		/// A pool was created.
+		Created {
+			pool_id: T::PoolId,
+			admin: T::AccountId,
+		},
+		/// A pool was updated.
+		Updated { pool_id: T::PoolId },
 		/// The tranches were rebalanced.
-		Rebalanced(T::PoolId),
-		/// The max reserve was updated. [pool]
-		MaxReserveSet(T::PoolId),
-		/// Pool metadata was set. [pool, metadata]
-		MetadataSet(T::PoolId, Vec<u8>),
-		/// An epoch was closed. [pool, epoch]
-		EpochClosed(T::PoolId, T::EpochId),
-		/// An epoch was executed. [pool, epoch, solution]
-		SolutionSubmitted(T::PoolId, T::EpochId, EpochSolution<T::Balance>),
-		/// An epoch was executed. [pool, epoch]
-		EpochExecuted(T::PoolId, T::EpochId),
-		/// Fulfilled orders were collected. [pool, tranche, end_epoch, user, outstanding_collections]
-		OrdersCollected(
-			T::PoolId,
-			T::TrancheId,
-			T::EpochId,
-			T::AccountId,
-			OutstandingCollections<T::Balance>,
-		),
-		/// An invest order was updated. [pool, tranche, account, old_order, new_order]
-		InvestOrderUpdated(
-			T::PoolId,
-			T::TrancheId,
-			T::AccountId,
-			T::Balance,
-			T::Balance,
-		),
-		/// A redeem order was updated. [pool, tranche, account, old_order, new_order]
-		RedeemOrderUpdated(
-			T::PoolId,
-			T::TrancheId,
-			T::AccountId,
-			T::Balance,
-			T::Balance,
-		),
+		Rebalanced { pool_id: T::PoolId },
+		/// The max reserve was updated.
+		MaxReserveSet { pool_id: T::PoolId },
+		/// Pool metadata was set.
+		MetadataSet {
+			pool_id: T::PoolId,
+			metadata: Vec<u8>,
+		},
+		/// An epoch was closed.
+		EpochClosed {
+			pool_id: T::PoolId,
+			epoch_id: T::EpochId,
+		},
+		/// An epoch was executed.
+		SolutionSubmitted {
+			pool_id: T::PoolId,
+			epoch_id: T::EpochId,
+			solution: EpochSolution<T::Balance>,
+		},
+		/// An epoch was executed.
+		EpochExecuted {
+			pool_id: T::PoolId,
+			epoch_id: T::EpochId,
+		},
+		/// Fulfilled orders were collected.
+		OrdersCollected {
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			end_epoch_id: T::EpochId,
+			account: T::AccountId,
+			outstanding_collections: OutstandingCollections<T::Balance>,
+		},
+		/// An invest order was updated.
+		InvestOrderUpdated {
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			account: T::AccountId,
+			old_order: T::Balance,
+			new_order: T::Balance,
+		},
+		/// A redeem order was updated.
+		RedeemOrderUpdated {
+			pool_id: T::PoolId,
+			tranche_id: T::TrancheId,
+			account: T::AccountId,
+			old_order: T::Balance,
+			new_order: T::Balance,
+		},
 	}
 
 	#[pallet::error]
@@ -620,7 +636,7 @@ pub mod pallet {
 				admin.clone(),
 				Role::PoolRole(PoolRole::PoolAdmin),
 			)?;
-			Self::deposit_event(Event::Created(pool_id, admin));
+			Self::deposit_event(Event::Created { pool_id, admin });
 			Ok(())
 		}
 
@@ -772,7 +788,7 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.metadata = Some(checked_meta);
-				Self::deposit_event(Event::MetadataSet(pool_id, metadata));
+				Self::deposit_event(Event::MetadataSet { pool_id, metadata });
 				Ok(())
 			})
 		}
@@ -803,7 +819,7 @@ pub mod pallet {
 			Pool::<T>::try_mutate(pool_id, |pool| -> DispatchResult {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				pool.reserve.max = max_reserve;
-				Self::deposit_event(Event::MaxReserveSet(pool_id));
+				Self::deposit_event(Event::MaxReserveSet { pool_id });
 				Ok(())
 			})
 		}
@@ -830,7 +846,12 @@ pub mod pallet {
 			tranche_loc: TrancheLoc<T::TrancheId>,
 			new_order: T::Balance,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			let account = ensure_signed(origin)?;
+
+			ensure!(
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
+			);
 
 			let (tranche_id, old_order) = Pool::<T>::try_mutate(
 				pool_id,
@@ -844,7 +865,7 @@ pub mod pallet {
 					ensure!(
 						T::Permission::has(
 							PermissionScope::Pool(pool_id),
-							who.clone(),
+							account.clone(),
 							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
@@ -852,7 +873,7 @@ pub mod pallet {
 
 					Order::<T>::try_mutate(
 						tranche_id,
-						&who,
+						&account,
 						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
 							let order = if let Some(order) = active_order {
 								order
@@ -870,7 +891,7 @@ pub mod pallet {
 							);
 
 							Self::do_update_invest_order(
-								&who, pool, order, new_order, pool_id, tranche_id,
+								&account, pool, order, new_order, pool_id, tranche_id,
 							)?;
 
 							Ok((tranche_id, old_order))
@@ -879,9 +900,13 @@ pub mod pallet {
 				},
 			)?;
 
-			Self::deposit_event(Event::InvestOrderUpdated(
-				pool_id, tranche_id, who, old_order, new_order,
-			));
+			Self::deposit_event(Event::InvestOrderUpdated {
+				pool_id,
+				tranche_id,
+				account,
+				old_order,
+				new_order,
+			});
 			Ok(())
 		}
 
@@ -907,7 +932,12 @@ pub mod pallet {
 			tranche_loc: TrancheLoc<T::TrancheId>,
 			new_order: T::Balance,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			let account = ensure_signed(origin)?;
+
+			ensure!(
+				EpochExecution::<T>::try_get(pool_id).is_err(),
+				Error::<T>::InSubmissionPeriod
+			);
 
 			let (tranche_id, old_order) = Pool::<T>::try_mutate(
 				pool_id,
@@ -921,7 +951,7 @@ pub mod pallet {
 					ensure!(
 						T::Permission::has(
 							PermissionScope::Pool(pool_id),
-							who.clone(),
+							account.clone(),
 							Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
 						),
 						BadOrigin
@@ -929,7 +959,7 @@ pub mod pallet {
 
 					Order::<T>::try_mutate(
 						tranche_id,
-						&who,
+						&account,
 						|active_order| -> Result<(T::TrancheId, T::Balance), DispatchError> {
 							let order = if let Some(order) = active_order {
 								order
@@ -947,7 +977,7 @@ pub mod pallet {
 							);
 
 							Self::do_update_redeem_order(
-								&who, pool, order, new_order, pool_id, tranche_id,
+								&account, pool, order, new_order, pool_id, tranche_id,
 							)?;
 
 							Ok((tranche_id, old_order))
@@ -956,9 +986,13 @@ pub mod pallet {
 				},
 			)?;
 
-			Self::deposit_event(Event::RedeemOrderUpdated(
-				pool_id, tranche_id, who, old_order, new_order,
-			));
+			Self::deposit_event(Event::RedeemOrderUpdated {
+				pool_id,
+				tranche_id,
+				account,
+				old_order,
+				new_order,
+			});
 			Ok(())
 		}
 
@@ -1090,7 +1124,10 @@ pub mod pallet {
 
 					pool.execute_previous_epoch()?;
 
-					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
+					Self::deposit_event(Event::EpochExecuted {
+						pool_id,
+						epoch_id: submission_period_epoch,
+					});
 
 					return Ok(Some(T::WeightInfo::close_epoch_no_orders(
 						pool.tranches
@@ -1136,7 +1173,10 @@ pub mod pallet {
 					challenge_period_end: None,
 				};
 
-				Self::deposit_event(Event::EpochClosed(pool_id, submission_period_epoch));
+				Self::deposit_event(Event::EpochClosed {
+					pool_id,
+					epoch_id: submission_period_epoch,
+				});
 
 				let full_execution_solution = pool.tranches.combine_residual_top(|_| {
 					Ok(TrancheSolution {
@@ -1152,7 +1192,10 @@ pub mod pallet {
 						== PoolState::Healthy
 				{
 					Self::do_execute_epoch(pool_id, pool, &epoch, &full_execution_solution)?;
-					Self::deposit_event(Event::EpochExecuted(pool_id, submission_period_epoch));
+					Self::deposit_event(Event::EpochExecuted {
+						pool_id,
+						epoch_id: submission_period_epoch,
+					});
 					Ok(Some(T::WeightInfo::close_epoch_execute(
 						pool.tranches
 							.num_tranches()
@@ -1223,7 +1266,11 @@ pub mod pallet {
 						Some(Self::current_block().saturating_add(T::ChallengeTime::get()));
 				}
 
-				Self::deposit_event(Event::SolutionSubmitted(pool_id, epoch.epoch, new_solution));
+				Self::deposit_event(Event::SolutionSubmitted {
+					pool_id,
+					epoch_id: epoch.epoch,
+					solution: new_solution,
+				});
 
 				Ok(Some(T::WeightInfo::submit_solution(
 					epoch
@@ -1290,7 +1337,10 @@ pub mod pallet {
 						.solution();
 
 					Self::do_execute_epoch(pool_id, pool, epoch, solution)?;
-					Self::deposit_event(Event::EpochExecuted(pool_id, epoch.epoch));
+					Self::deposit_event(Event::EpochExecuted {
+						pool_id,
+						epoch_id: epoch.epoch,
+					});
 					Ok(())
 				})?;
 
@@ -1454,7 +1504,9 @@ pub mod pallet {
 
 				ScheduledUpdate::<T>::remove(pool_id);
 
-				Self::deposit_event(Event::Updated(pool_id.clone()));
+				Self::deposit_event(Event::Updated {
+					pool_id: pool_id.clone(),
+				});
 				Ok(())
 			})
 		}
@@ -1488,7 +1540,7 @@ pub mod pallet {
 
 			let collections = Self::calculate_collect(tranche_id, order, end_epoch)?;
 
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			if collections.payout_currency_amount > Zero::zero() {
 				T::Tokens::transfer(
 					pool.currency,
@@ -1526,18 +1578,18 @@ pub mod pallet {
 				Order::<T>::remove(tranche_id, who.clone())
 			};
 
-			Self::deposit_event(Event::OrdersCollected(
+			Self::deposit_event(Event::OrdersCollected {
 				pool_id,
 				tranche_id,
-				end_epoch,
-				who.clone(),
-				OutstandingCollections {
+				end_epoch_id: end_epoch,
+				account: who.clone(),
+				outstanding_collections: OutstandingCollections {
 					payout_currency_amount: collections.payout_currency_amount,
 					payout_token_amount: collections.payout_token_amount,
 					remaining_invest_currency: collections.remaining_invest_currency,
 					remaining_redeem_token: collections.remaining_redeem_token,
 				},
-			));
+			});
 
 			Ok(Some(T::WeightInfo::collect(actual_epochs.into())).into())
 		}
@@ -1555,7 +1607,7 @@ pub mod pallet {
 				.get_mut_tranche(TrancheLoc::Id(tranche_id))
 				.ok_or(Error::<T>::InvalidTrancheId)?
 				.outstanding_invest_orders;
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 			let (send, recv, transfer_amount) = Self::update_order_amount(
 				who,
@@ -1582,7 +1634,7 @@ pub mod pallet {
 				.get_mut_tranche(TrancheLoc::Id(tranche_id))
 				.ok_or(Error::<T>::InvalidTrancheId)?;
 			let mut outstanding = &mut tranche.outstanding_redeem_orders;
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
 			let (send, recv, transfer_amount) = Self::update_order_amount(
 				who,
@@ -1882,7 +1934,7 @@ pub mod pallet {
 				tranche_ratios.as_slice(),
 				executed_amounts.as_slice(),
 			)?;
-			Self::deposit_event(Event::Rebalanced(pool_id));
+			Self::deposit_event(Event::Rebalanced { pool_id });
 
 			Ok(())
 		}
@@ -1914,7 +1966,7 @@ pub mod pallet {
 			tranche.outstanding_redeem_orders -= token_redeem;
 
 			// Compute the tranche tokens that need to be minted or burned based on the execution
-			let pool_address = PoolLocator { pool_id }.into_account();
+			let pool_address = PoolLocator { pool_id }.into_account_truncating();
 			if token_invest > token_redeem {
 				let tokens_to_mint = token_invest - token_redeem;
 				T::Tokens::mint_into(tranche.currency, &pool_address, tokens_to_mint)?;
@@ -1939,7 +1991,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();
@@ -1981,7 +2033,7 @@ pub mod pallet {
 				}
 
 				T::Tokens::transfer(pool.currency, &who, &pool_account, amount, false)?;
-				Self::deposit_event(Event::Rebalanced(pool_id));
+				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})
 		}
@@ -1991,7 +2043,7 @@ pub mod pallet {
 			pool_id: T::PoolId,
 			amount: T::Balance,
 		) -> DispatchResult {
-			let pool_account = PoolLocator { pool_id }.into_account();
+			let pool_account = PoolLocator { pool_id }.into_account_truncating();
 			Pool::<T>::try_mutate(pool_id, |pool| {
 				let pool = pool.as_mut().ok_or(Error::<T>::NoSuchPool)?;
 				let now = Self::now();
@@ -2033,7 +2085,7 @@ pub mod pallet {
 				}
 
 				T::Tokens::transfer(pool.currency, &pool_account, &who, amount, false)?;
-				Self::deposit_event(Event::Rebalanced(pool_id));
+				Self::deposit_event(Event::Rebalanced { pool_id });
 				Ok(())
 			})
 		}

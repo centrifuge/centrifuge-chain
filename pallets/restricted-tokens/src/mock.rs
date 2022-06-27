@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 
 pub use crate as pallet_restricted_tokens;
-use common_traits::{PreConditions, TokenMetadata};
+use common_traits::PreConditions;
 use common_types::Moment;
 use frame_support::parameter_types;
 use frame_support::sp_io::TestExternalities;
@@ -112,8 +112,8 @@ mod filter {
 			}
 		}
 
-		/// Dummmy filter for InspectHold, that does not allow any holding periods on KUSD or USDT and
-		/// forwards the result of the acutal holding period otherwise.
+		/// Dummmy filter for InspectHold, that does not allow any holding periods on KUSD or AUSD and
+		/// forwards the result of the actual holding period otherwise.
 		pub struct InspectHoldFilter;
 		impl PreConditions<FungiblesInspectHoldEffects<CurrencyId, AccountId, Balance>>
 			for InspectHoldFilter
@@ -130,7 +130,7 @@ mod filter {
 						_amount,
 						can_actually_hold,
 					) => match asset {
-						CurrencyId::KUSD | CurrencyId::USDT => false,
+						CurrencyId::KUSD | CurrencyId::AUSD => false,
 						_ => can_actually_hold,
 					},
 				}
@@ -313,37 +313,8 @@ mod filter {
 pub enum CurrencyId {
 	Cfg,
 	KUSD,
-	USDT,
+	AUSD,
 	RestrictedCoin,
-}
-
-impl TokenMetadata for CurrencyId {
-	fn name(&self) -> Vec<u8> {
-		match self {
-			CurrencyId::Cfg => b"Centrifuge".to_vec(),
-			CurrencyId::USDT => b"USD Tether".to_vec(),
-			CurrencyId::KUSD => b"Acala USD".to_vec(),
-			CurrencyId::RestrictedCoin => b"Restricted Token".to_vec(),
-		}
-	}
-
-	fn symbol(&self) -> Vec<u8> {
-		match self {
-			CurrencyId::Cfg => b"CFG".to_vec(),
-			CurrencyId::USDT => b"USDT".to_vec(),
-			CurrencyId::KUSD => b"KUSD".to_vec(),
-			CurrencyId::RestrictedCoin => b"RST".to_vec(),
-		}
-	}
-
-	fn decimals(&self) -> u8 {
-		match self {
-			CurrencyId::Cfg => 18,
-			CurrencyId::USDT => 12,
-			CurrencyId::KUSD => 12,
-			CurrencyId::RestrictedCoin => 27,
-		}
-	}
 }
 
 // Build mock runtime
@@ -407,6 +378,7 @@ parameter_types! {
 	pub const MaxLocks: u32 = 100;
 	pub const ExistentialDeposit: u64 = 1;
 }
+
 impl pallet_balances::Config for MockRuntime {
 	type MaxLocks = MaxLocks;
 	type Balance = Balance;
@@ -419,6 +391,10 @@ impl pallet_balances::Config for MockRuntime {
 	type ReserveIdentifier = ();
 }
 
+parameter_types! {
+	pub const MaxReserves: u32 = 50;
+}
+
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
@@ -429,6 +405,10 @@ impl orml_tokens::Config for MockRuntime {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -464,7 +444,7 @@ impl PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for Restrict
 
 	fn check(t: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
 		match t.id {
-			CurrencyId::KUSD | CurrencyId::USDT => true,
+			CurrencyId::KUSD | CurrencyId::AUSD => true,
 			CurrencyId::RestrictedCoin => t.recv >= 100 && t.send >= 100,
 			CurrencyId::Cfg => true,
 		}
@@ -492,7 +472,7 @@ impl TestExternalitiesBuilder {
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 		let usdt = (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::USDT, DISTR_PER_ACCOUNT))
+			.map(|idx| (idx, CurrencyId::AUSD, DISTR_PER_ACCOUNT))
 			.collect::<Vec<(AccountId, CurrencyId, Balance)>>();
 		let restric_1 = (0..10)
 			.into_iter()

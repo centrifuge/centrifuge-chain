@@ -13,16 +13,17 @@
 
 pub use crate::{self as nft_sales};
 use common_types::CurrencyId;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::{AsEnsureOriginWithArg, Everything, GenesisBuild};
 use frame_support::{parameter_types, PalletId};
-use frame_system::EnsureSignedBy;
+use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
-use runtime_common::{Balance, ClassId, InstanceId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
+use runtime_common::{Balance, CollectionId, ItemId, CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY};
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -43,6 +44,10 @@ frame_support::construct_runtime!(
 	}
 );
 
+parameter_types! {
+	pub const MaxReserves: u32 = 50;
+}
+
 impl orml_tokens::Config for Test {
 	type Event = ();
 	type Balance = Balance;
@@ -53,6 +58,10 @@ impl orml_tokens::Config for Test {
 	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -69,12 +78,14 @@ parameter_type_with_key! {
 
 impl pallet_uniques::Config for Test {
 	type Event = ();
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
@@ -82,6 +93,8 @@ impl pallet_uniques::Config for Test {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 parameter_types! {
@@ -91,10 +104,10 @@ parameter_types! {
 	pub const AttributeDepositBase: Balance = 10 * CENTI_CURRENCY;
 	// Base deposit to add metadata is 0.1 Currency
 	pub const MetadataDepositBase: Balance = 10 * CENTI_CURRENCY;
-	// Deposit to create a class is 1 Currency
-	pub const ClassDeposit: Balance = CURRENCY;
-	// Deposit to create a class is 0.1 Currency
-	pub const InstanceDeposit: Balance = 10 * CENTI_CURRENCY;
+	// Deposit to create a collection is 1 Currency
+	pub const CollectionDeposit: Balance = CURRENCY;
+	// Deposit to create an item is 0.1 Currency
+	pub const ItemDeposit: Balance = 10 * CENTI_CURRENCY;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
@@ -159,8 +172,8 @@ impl nft_sales::Config for Test {
 	type WeightInfo = ();
 	type Fungibles = OrmlTokens;
 	type NonFungibles = Uniques;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type PalletId = NftSalesPalletId;
 }
 
@@ -193,7 +206,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	orml_tokens::GenesisConfig::<Test> {
 		balances: (0..10)
 			.into_iter()
-			.map(|idx| (idx, CurrencyId::Usd, 1000 * CURRENCY))
+			.map(|idx| (idx, CurrencyId::KUSD, 1000 * CURRENCY))
 			.collect(),
 	}
 	.assimilate_storage(&mut t)

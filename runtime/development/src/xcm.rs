@@ -1,6 +1,6 @@
 use super::{
-	AccountId, Balance, Call, Event, Origin, OrmlTokens, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
+	AccountId, Balance, Call, Event, Origin, OrmlAssetRegistry, OrmlTokens, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, Tokens, TreasuryAccount, XcmpQueue,
 };
 
 pub use cumulus_primitives_core::ParaId;
@@ -11,7 +11,8 @@ pub use frame_support::{
 	traits::{Contains, Everything, Get, Nothing},
 	weights::Weight,
 };
-use orml_traits::{parameter_type_with_key, MultiCurrency};
+use orml_asset_registry::{AssetRegistryTrader, FixedRateAssetRegistryTrader};
+use orml_traits::{location::AbsoluteReserveProvider, parameter_type_with_key, MultiCurrency};
 use orml_xcm_support::MultiNativeAsset;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
@@ -28,8 +29,9 @@ use xcm_executor::{traits::JustTry, XcmExecutor};
 
 pub use common_types::CurrencyId;
 use runtime_common::{
-	parachains,
-	xcm_fees::{ksm_per_second, native_per_second},
+	decimals, parachains,
+	xcm::FixedConversionRateProvider,
+	xcm_fees::{default_per_second, ksm_per_second, native_per_second},
 };
 
 /// The main XCM config
@@ -42,7 +44,7 @@ impl xcm_executor::Config for XcmConfig {
 	// How to withdraw and deposit an asset.
 	type AssetTransactor = FungiblesTransactor;
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
-	type IsReserve = MultiNativeAsset;
+	type IsReserve = MultiNativeAsset<AbsoluteReserveProvider>;
 	type IsTeleporter = ();
 	type LocationInverter = LocationInverter<Ancestry>;
 	type Barrier = Barrier;
@@ -58,21 +60,35 @@ impl xcm_executor::Config for XcmConfig {
 /// We need to ensure we have at least one rule per token we want to handle or else
 /// the xcm executor won't know how to charge fees for a transfer of said token.
 pub type Trader = (
-	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
-	FixedRateOfFungible<AirPerSecond, ToTreasury>,
+	FixedRateOfFungible<CanonicalNativePerSecond, ToTreasury>,
+	FixedRateOfFungible<NativePerSecond, ToTreasury>,
 	FixedRateOfFungible<KUsdPerSecond, ToTreasury>,
+	FixedRateOfFungible<KsmPerSecond, ToTreasury>,
+	AssetRegistryTrader<
+		FixedRateAssetRegistryTrader<FixedConversionRateProvider<OrmlAssetRegistry>>,
+		ToTreasury,
+	>,
 );
 
 parameter_types! {
-	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
-
-	pub AirPerSecond: (AssetId, u128) = (
+	// Canonical location: https://github.com/paritytech/polkadot/pull/4470
+	pub CanonicalNativePerSecond: (AssetId, u128) = (
 		MultiLocation::new(
-			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+			0,
+			X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
 		).into(),
 		native_per_second(),
 	);
+
+	pub NativePerSecond: (AssetId, u128) = (
+		MultiLocation::new(
+			1,
+			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::altair::AIR_KEY.to_vec())),
+		).into(),
+		native_per_second(),
+	);
+
+	pub KsmPerSecond: (AssetId, u128) = (MultiLocation::parent().into(), ksm_per_second());
 
 	pub KUsdPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
@@ -82,9 +98,9 @@ parameter_types! {
 				GeneralKey(parachains::karura::KUSD_KEY.to_vec())
 			)
 		).into(),
-		// KUSD:KSM = 400:1
-		ksm_per_second() * 400
+		default_per_second(decimals::AUSD)
 	);
+
 }
 
 pub struct ToTreasury;
@@ -163,25 +179,25 @@ pub struct CurrencyIdConvert;
 /// handle it on their side.
 impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 	fn convert(id: CurrencyId) -> Option<MultiLocation> {
-		let x = match id {
-			CurrencyId::KSM => MultiLocation::parent(),
-			CurrencyId::KUSD => MultiLocation::new(
+		match id {
+			CurrencyId::KSM => Some(MultiLocation::parent()),
+			CurrencyId::KUSD => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(parachains::karura::ID),
 					GeneralKey(parachains::karura::KUSD_KEY.into()),
 				),
-			),
-			CurrencyId::Native => MultiLocation::new(
+			)),
+			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::altair::ID),
+					Parachain(ParachainInfo::parachain_id().into()),
 					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
 				),
-			),
+			)),
+			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,
 			_ => return None,
-		};
-		Some(x)
+		}
 	}
 }
 
@@ -196,21 +212,29 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 
 		match location.clone() {
 			MultiLocation {
+				parents: 0,
+				interior: X1(GeneralKey(key)),
+			} => match &key[..] {
+				parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+				_ => Err(location.clone()),
+			},
+			MultiLocation {
 				parents: 1,
 				interior: X2(Parachain(para_id), GeneralKey(key)),
 			} => match para_id {
-				parachains::altair::ID => match &key[..] {
-					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
-					_ => Err(location.clone()),
-				},
-
 				parachains::karura::ID => match &key[..] {
 					parachains::karura::KUSD_KEY => Ok(CurrencyId::KUSD),
 					_ => Err(location.clone()),
 				},
-				_ => Err(location.clone()),
+
+				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
+					parachains::altair::AIR_KEY => Ok(CurrencyId::Native),
+					_ => Err(location.clone()),
+				},
+
+				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
-			_ => Err(location.clone()),
+			_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 		}
 	}
 }
@@ -275,7 +299,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<Origin, AccountId, RelayNet
 /// into the right message queues.
 pub type XcmRouter = (
 	// Use UMP to communicate with the relay chain
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm>,
 	// Use XCMP to communicate with sibling parachains
 	XcmpQueue,
 );
@@ -312,11 +336,8 @@ parameter_types! {
 }
 
 parameter_type_with_key! {
-	pub ParachainMinFee: |location: MultiLocation| -> u128 {
-		#[allow(clippy::match_ref_pats)] // false positive
-		match (location.parents, location.first_interior()) {
-			_ => u128::MAX,
-		}
+	pub ParachainMinFee: |_location: MultiLocation| -> Option<u128> {
+		None
 	};
 }
 
@@ -333,6 +354,8 @@ impl orml_xtokens::Config for Runtime {
 	type LocationInverter = LocationInverter<Ancestry>;
 	type MaxAssetsForTransfer = MaxAssetsForTransfer;
 	type MinXcmFee = ParachainMinFee;
+	type MultiLocationsFilter = Everything;
+	type ReserveProvider = AbsoluteReserveProvider;
 }
 
 impl cumulus_pallet_xcm::Config for Runtime {

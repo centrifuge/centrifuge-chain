@@ -10,10 +10,11 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
+use altair_runtime::CustomMetadata;
 pub use altair_runtime::{AccountId, CurrencyId, Origin, Runtime, System};
-use common_traits::TokenMetadata;
 use frame_support::traits::GenesisBuild;
-use runtime_common::{parachains, Balance};
+use orml_traits::asset_registry::AssetMetadata;
+use runtime_common::{decimals, parachains, Balance};
 
 /// Accounts
 pub const ALICE: [u8; 32] = [4u8; 32];
@@ -22,6 +23,7 @@ pub const BOB: [u8; 32] = [5u8; 32];
 /// A PARA ID used for a sibling parachain.
 /// It must be one that doesn't collide with any other in use.
 pub const PARA_ID_SIBLING: u32 = 3000;
+pub const PARA_ID_DEVELOPMENT: u32 = 3001;
 
 pub struct ExtBuilder {
 	balances: Vec<(AccountId, CurrencyId, Balance)>,
@@ -97,20 +99,24 @@ impl ExtBuilder {
 	}
 }
 
-pub fn air_amount(amount: Balance) -> Balance {
-	amount * dollar(CurrencyId::Native)
+pub fn air(amount: Balance) -> Balance {
+	amount * dollar(decimals::NATIVE)
 }
 
-pub fn kusd_amount(amount: Balance) -> Balance {
-	amount * dollar(CurrencyId::KUSD)
+pub fn ausd(amount: Balance) -> Balance {
+	amount * dollar(decimals::AUSD)
 }
 
-pub fn ksm_amount(amount: Balance) -> Balance {
-	amount * dollar(CurrencyId::KSM)
+pub fn ksm(amount: Balance) -> Balance {
+	amount * dollar(decimals::KSM)
 }
 
-pub fn dollar(currency_id: CurrencyId) -> Balance {
-	10u128.saturating_pow(currency_id.decimals().into())
+pub fn foreign(amount: Balance, decimals: u32) -> Balance {
+	amount * dollar(decimals)
+}
+
+pub fn dollar(decimals: u32) -> Balance {
+	10u128.saturating_pow(decimals.into())
 }
 
 pub fn sibling_account() -> AccountId {
@@ -128,5 +134,5 @@ pub fn altair_account() -> AccountId {
 fn parachain_account(id: u32) -> AccountId {
 	use sp_runtime::traits::AccountIdConversion;
 
-	polkadot_parachain::primitives::Sibling::from(id).into_account()
+	polkadot_parachain::primitives::Sibling::from(id).into_account_truncating()
 }

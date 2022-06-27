@@ -24,14 +24,14 @@ use common_types::{
 use frame_support::traits::Everything;
 use frame_support::{
 	parameter_types,
-	traits::{GenesisBuild, SortedMembers},
+	traits::{AsEnsureOriginWithArg, GenesisBuild, SortedMembers},
 	PalletId,
 };
 use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
-	Balance, ClassId, InstanceId, Moment, Rate, TrancheId, TrancheToken,
+	Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -41,6 +41,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use sp_std::convert::{TryFrom, TryInto};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<MockRuntime>;
 type Block = frame_system::mocking::MockBlock<MockRuntime>;
@@ -130,18 +131,23 @@ parameter_type_with_key! {
 
 parameter_types! {
 	pub MaxLocks: u32 = 2;
+	pub const MaxReserves: u32 = 50;
 }
 
 impl orml_tokens::Config for MockRuntime {
 	type Event = Event;
 	type Balance = Balance;
-	type Amount = i128;
+	type Amount = i64;
 	type CurrencyId = CurrencyId;
-	type WeightInfo = ();
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = ();
+	type WeightInfo = ();
 	type MaxLocks = MaxLocks;
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -245,21 +251,23 @@ parameter_types! {
 	// Base deposit to add metadata is 0.1 Currency
 	pub const MetadataDepositBase: Balance = 10 * CENTI_CURRENCY;
 	// Deposit to create a class is 1 Currency
-	pub const ClassDeposit: Balance = CURRENCY;
+	pub const CollectionDeposit: Balance = CURRENCY;
 	// Deposit to create a class is 0.1 Currency
-	pub const InstanceDeposit: Balance = 10 * CENTI_CURRENCY;
+	pub const ItemDeposit: Balance = 10 * CENTI_CURRENCY;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
 
 impl pallet_uniques::Config for MockRuntime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Balances;
 	type ForceOrigin = EnsureSignedBy<One, u64>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
@@ -267,6 +275,8 @@ impl pallet_uniques::Config for MockRuntime {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 impl pallet_interest_accrual::Config for MockRuntime {
@@ -302,8 +312,8 @@ parameter_types! {
 
 impl pallet_loans::Config for MockRuntime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type LoanId = InstanceId;
+	type ClassId = CollectionId;
+	type LoanId = ItemId;
 	type Rate = Rate;
 	type Balance = Balance;
 	type NonFungible = Uniques;
@@ -319,7 +329,7 @@ impl pallet_loans::Config for MockRuntime {
 }
 
 // USD currencyId
-pub const USD: CurrencyId = CurrencyId::Usd;
+pub const USD: CurrencyId = CurrencyId::AUSD;
 
 // Test externalities builder
 //
@@ -375,12 +385,12 @@ impl TestExternalitiesBuilder {
 		orml_tokens::GenesisConfig::<MockRuntime> {
 			balances: vec![
 				(
-					PoolLocator { pool_id: 0 }.into_account(),
+					PoolLocator { pool_id: 0 }.into_account_truncating(),
 					CurrencyId::Tranche(0, JuniorTrancheId::get()),
 					100_000 * CURRENCY,
 				),
 				(
-					PoolLocator { pool_id: 0 }.into_account(),
+					PoolLocator { pool_id: 0 }.into_account_truncating(),
 					CurrencyId::Tranche(0, SeniorTrancheId::get()),
 					100_000 * CURRENCY,
 				),

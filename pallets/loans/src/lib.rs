@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
 use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Member};
 use sp_runtime::{DispatchError, FixedPointNumber, FixedPointOperand};
-use sp_std::{convert::TryInto, vec, vec::Vec};
+use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::fmt::Debug;
 use types::*;
@@ -70,6 +70,7 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::traits::BadOrigin;
+	use sp_std::convert::TryInto;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]

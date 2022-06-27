@@ -8,31 +8,30 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
-		Contains, EqualPrivilegeOnly, Everything, InstanceFilter, LockIdentifier,
-		U128CurrencyToVote,
+		AsEnsureOriginWithArg, Contains, EqualPrivilegeOnly, Everything, InstanceFilter,
+		LockIdentifier, U128CurrencyToVote,
 	},
 	weights::{
-		constants::{BlockExecutionWeight, ExtrinsicBaseWeight},
-		DispatchClass, Weight,
+		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
+		ConstantMultiplier, DispatchClass, Weight,
 	},
 	PalletId, RuntimeDebug,
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureRoot, EnsureSigned,
 };
 use orml_traits::parameter_type_with_key;
 
 use pallet_anchors::AnchorData;
 pub use pallet_balances::Call as BalancesCall;
-use pallet_collective::{EnsureMember, EnsureProportionAtLeast, EnsureProportionMoreThan};
+use pallet_collective::{EnsureMember, EnsureProportionMoreThan};
 pub use pallet_timestamp::Call as TimestampCall;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment_rpc_runtime_api::{FeeDetails, RuntimeDispatchInfo};
-use polkadot_runtime_common::{BlockHashCount, RocksDbWeight, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use scale_info::TypeInfo;
 use sp_api::impl_runtime_apis;
-use sp_core::u32_trait::{_1, _2, _3, _4};
 use sp_core::OpaqueMetadata;
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, ConvertInto};
@@ -41,9 +40,9 @@ use sp_runtime::transaction_validity::{TransactionSource, TransactionValidity};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, FixedPointNumber, Perbill,
-	Permill, Perquintill,
+	create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, Perbill, Permill,
 };
+use sp_std::convert::{TryFrom, TryInto};
 use sp_std::prelude::*;
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
@@ -87,7 +86,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("altair"),
 	impl_name: create_runtime_str!("altair"),
 	authoring_version: 1,
-	spec_version: 1013,
+	spec_version: 1015,
 	impl_version: 1,
 	#[cfg(not(feature = "disable-runtime-api"))]
 	apis: RUNTIME_API_VERSIONS,
@@ -210,12 +209,8 @@ impl pallet_timestamp::Config for Runtime {
 
 // money stuff
 parameter_types! {
-	/// TransactionByteFee is set to 0.01 MicroRAD
+	/// TransactionByteFee is set to 0.01 MicroAIR
 	pub const TransactionByteFee: Balance = 1 * (MICRO_AIR / 100);
-	// for a sane configuration, this should always be less than `AvailableBlockRatio`.
-	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(1, 100_000);
-	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000_000u128);
 	/// This value increases the priority of `Operational` transactions by adding
 	/// a "virtual tip" that's equal to the `OperationalFeeMultiplier * final_fee`.
 	pub const OperationalFeeMultiplier: u8 = 5;
@@ -223,9 +218,9 @@ parameter_types! {
 
 impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = CurrencyAdapter<Balances, DealWithFees<Runtime>>;
-	type TransactionByteFee = TransactionByteFee;
 	type OperationalFeeMultiplier = OperationalFeeMultiplier;
 	type WeightToFee = WeightToFee;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 }
 
@@ -456,21 +451,6 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
-/// The council
-type CouncilCollective = pallet_collective::Instance1;
-
-/// All council members must vote yes to create this origin.
-type AllOfCouncil = EnsureProportionAtLeast<_1, _1, AccountId, CouncilCollective>;
-
-/// 1/2 of all council members must vote yes to create this origin.
-type HalfOfCouncil = EnsureProportionAtLeast<_1, _2, AccountId, CouncilCollective>;
-
-/// 2/3 of all council members must vote yes to create this origin.
-type TwoThirdOfCouncil = EnsureProportionAtLeast<_2, _3, AccountId, CouncilCollective>;
-
-/// 3/4 of all council members must vote yes to create this origin.
-type ThreeFourthOfCouncil = EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>;
-
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
@@ -623,9 +603,9 @@ impl pallet_identity::Config for Runtime {
 	type MaxAdditionalFields = MaxAdditionalFields;
 	type MaxRegistrars = MaxRegistrars;
 	type Slashed = Treasury;
-	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type ForceOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type RegistrarOrigin =
-		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+		EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type WeightInfo = weights::pallet_identity::SubstrateWeight<Self>;
 }
 
@@ -674,8 +654,7 @@ impl pallet_treasury::Config for Runtime {
 	// either democracy or 66% of council votes
 	type ApproveOrigin = EnsureRootOr<TwoThirdOfCouncil>;
 	// either democracy or more than 50% council votes
-	type RejectOrigin =
-		EnsureRootOr<EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>>;
+	type RejectOrigin = EnsureRootOr<EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;
@@ -700,22 +679,24 @@ parameter_types! {
 	// Base deposit to add metadata is 0.1 AIR
 	pub const MetadataDepositBase: Balance = 10 * CENTI_AIR;
 	// Deposit to create a class is 1 AIR
-	pub const ClassDeposit: Balance = AIR;
+	pub const CollectionDeposit: Balance = AIR;
 	// Deposit to create a class is 0.1 AIR
-	pub const InstanceDeposit: Balance = 10 * CENTI_AIR;
+	pub const ItemDeposit: Balance = 10 * CENTI_AIR;
 	// Maximum limit of bytes for Metadata, Attribute key and Value
 	pub const Limit: u32 = 256;
 }
 
 impl pallet_uniques::Config for Runtime {
 	type Event = Event;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type Currency = Balances;
 	// a straight majority of council can act as force origin
 	type ForceOrigin = EnsureRootOr<HalfOfCouncil>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Locker = ();
+	type CollectionDeposit = CollectionDeposit;
+	type ItemDeposit = ItemDeposit;
 	type MetadataDepositBase = MetadataDepositBase;
 	type AttributeDepositBase = AttributeDepositBase;
 	type DepositPerByte = DepositPerByte;
@@ -723,6 +704,8 @@ impl pallet_uniques::Config for Runtime {
 	type KeyLimit = Limit;
 	type ValueLimit = Limit;
 	type WeightInfo = weights::pallet_uniques::SubstrateWeight<Self>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 // our pallets
@@ -912,7 +895,7 @@ parameter_type_with_key! {
 }
 
 parameter_types! {
-	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account();
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 
 impl orml_tokens::Config for Runtime {
@@ -924,7 +907,11 @@ impl orml_tokens::Config for Runtime {
 	type ExistentialDeposits = ExistentialDeposits;
 	type OnDust = orml_tokens::TransferDust<Runtime, TreasuryAccount>;
 	type MaxLocks = MaxLocks;
+	type MaxReserves = MaxReserves;
+	type ReserveIdentifier = [u8; 8];
 	type DustRemovalWhitelist = frame_support::traits::Nothing;
+	type OnNewTokenAccount = ();
+	type OnKilledTokenAccount = ();
 }
 
 parameter_types! {
@@ -936,8 +923,8 @@ impl pallet_nft_sales::Config for Runtime {
 	type WeightInfo = weights::pallet_nft_sales::SubstrateWeight<Self>;
 	type Fungibles = Tokens;
 	type NonFungibles = Uniques;
-	type ClassId = ClassId;
-	type InstanceId = InstanceId;
+	type CollectionId = CollectionId;
+	type ItemId = ItemId;
 	type PalletId = NftSalesPalletId;
 }
 
@@ -952,6 +939,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Self>;
 }
 
 /// The config for the Downward Message Passing Queue, i.e., how messages coming from the

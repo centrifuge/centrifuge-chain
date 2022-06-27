@@ -297,8 +297,12 @@ parameter_types! {
 
 pub struct WrapperAccount(u64);
 impl AccountIdConversion<AccountId> for WrapperAccount {
-	fn into_sub_account<S: Encode>(&self, _sub: S) -> AccountId {
+	fn into_sub_account_truncating<S: Encode>(&self, _sub: S) -> AccountId {
 		self.0
+	}
+
+	fn try_into_sub_account<S: Encode>(&self, _sub: S) -> Option<AccountId> {
+		todo!()
 	}
 
 	fn try_from_sub_account<S: Decode>(_x: &AccountId) -> Option<(Self, S)> {
