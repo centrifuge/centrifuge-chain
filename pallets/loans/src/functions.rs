@@ -451,7 +451,6 @@ impl<T: Config> Pallet<T> {
 						// ensure repay amount is positive
 						ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
-						// TODO: this should calculate debt at the last NAV update
 						let old_debt = T::InterestAccrual::previous_debt(
 							active_loan.interest_rate_per_sec,
 							active_loan.normalized_debt,
