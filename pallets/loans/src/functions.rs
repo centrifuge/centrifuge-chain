@@ -564,9 +564,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
-	pub(crate) fn update_nav_of_pool(
-		pool_id: PoolIdOf<T>,
-	) -> Result<(u32, T::Balance), DispatchError> {
+	pub fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<(u32, T::Balance), DispatchError> {
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 
 		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {

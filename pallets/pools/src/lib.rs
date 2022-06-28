@@ -12,21 +12,6 @@
 // GNU General Public License for more details.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use pallet::*;
-pub use solution::*;
-pub use tranche::*;
-pub use weights::*;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-#[cfg(test)]
-mod mock;
-mod solution;
-#[cfg(test)]
-mod tests;
-mod tranche;
-pub mod weights;
-
 use codec::HasCompact;
 use common_traits::{
 	Permissions, PoolInspect, PoolNAV, PoolReserve, PoolUpdateGuard, TrancheToken,
@@ -41,6 +26,8 @@ use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::UnixTim
 use frame_system::pallet_prelude::*;
 use orml_traits::Change;
 use scale_info::TypeInfo;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::BaseArithmetic;
 use sp_runtime::{
 	traits::{
@@ -50,6 +37,21 @@ use sp_runtime::{
 };
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
+
+pub use pallet::*;
+pub use solution::*;
+pub use tranche::*;
+pub use weights::*;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+#[cfg(test)]
+mod mock;
+mod solution;
+#[cfg(test)]
+mod tests;
+mod tranche;
+pub mod weights;
 
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct PoolDetails<CurrencyId, EpochId, Balance, Rate, MetaSize, Weight, TrancheId, PoolId>
@@ -1371,7 +1373,7 @@ pub mod pallet {
 		///
 		/// This function checks the state a pool would be in when applying a solution
 		/// to an epoch. Depending on the state, the correct scoring function is chosen.
-		pub(crate) fn score_solution(
+		pub fn score_solution(
 			pool_id: &PoolDetailsOf<T>,
 			epoch: &EpochExecutionInfoOf<T>,
 			solution: &[TrancheSolution],

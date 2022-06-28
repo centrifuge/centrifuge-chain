@@ -143,7 +143,7 @@ pub mod pallet {
 		) -> Result<T::Balance, DispatchError> {
 			Rate::<T>::try_mutate(
 				interest_rate_per_sec,
-				|rate_details| -> Result<T::Amount, DispatchError> {
+				|rate_details| -> Result<T::Balance, DispatchError> {
 					let rate = if let Some(rate) = rate_details {
 						let new_accumulated_rate = Self::calculate_accumulated_rate(
 							interest_rate_per_sec,
@@ -221,6 +221,12 @@ pub mod pallet {
 			let debt = Self::calculate_debt(normalized_debt, rate.accumulated_rate)
 				.ok_or(Error::<T>::DebtCalculationFailed)?;
 
+			let new_debt = match adjustment {
+				Adjustment::Increase(amount) => debt.checked_add(&amount),
+				Adjustment::Decrease(amount) => debt.checked_sub(&amount),
+			}
+			.ok_or(Error::<T>::DebtAdjustmentFailed)?;
+
 			let new_normalized_debt = rate
 				.accumulated_rate
 				.reciprocal()
@@ -254,16 +260,6 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow.into())
 		}
 
-		/// converts a fixed point from A precision to B precision
-		/// we don't convert from un-signed to signed or vice-verse
-		fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
-			if A::SIGNED != B::SIGNED {
-				return None;
-			}
-
-			B::checked_from_rational(a.into_inner(), A::accuracy())
-		}
-
 		fn now() -> Moment {
 			T::Time::now().as_secs()
 		}
@@ -276,7 +272,7 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 	fn current_debt(
 		interest_rate_per_sec: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
-	) -> Result<T::Amount, DispatchError> {
+	) -> Result<T::Balance, DispatchError> {
 		Pallet::<T>::get_current_debt(interest_rate_per_sec, normalized_debt)
 	}
 
@@ -291,7 +287,7 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 	fn adjust_normalized_debt(
 		interest_rate_per_sec: T::InterestRate,
 		normalized_debt: Self::NormalizedDebt,
-		adjustment: Adjustment<T::Amount>,
+		adjustment: Adjustment<T::Balance>,
 	) -> Result<Self::NormalizedDebt, DispatchError> {
 		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_sec, normalized_debt, adjustment)
 	}

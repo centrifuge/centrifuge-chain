@@ -177,7 +177,7 @@ pub mod pallet {
 	/// Stores the loan info for given pool and loan id
 	#[pallet::storage]
 	#[pallet::getter(fn get_loan)]
-	pub(crate) type Loan<T: Config> = StorageDoubleMap<
+	pub type Loan<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		PoolIdOf<T>,
@@ -210,7 +210,7 @@ pub mod pallet {
 	/// Stores the pool nav against poolId
 	#[pallet::storage]
 	#[pallet::getter(fn nav)]
-	pub(crate) type PoolNAV<T: Config> =
+	pub type PoolNAV<T: Config> =
 		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Balance>, OptionQuery>;
 
 	/// Stores the pool associated with the its write off groups
@@ -517,7 +517,7 @@ pub mod pallet {
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
-			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
+			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
 			let index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
@@ -575,7 +575,7 @@ pub mod pallet {
 			penalty_interest_rate_per_sec: T::Rate,
 		) -> DispatchResultWithPostInfo {
 			// ensure this is a call from risk admin
-			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
+			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
 
 			// try to write off
 			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =

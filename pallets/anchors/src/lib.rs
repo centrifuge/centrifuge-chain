@@ -19,15 +19,16 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
-	StateVersion,
+	RuntimeDebug, StateVersion,
 };
-pub use pallet::*;
-pub mod weights;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
 use sp_std::{convert::TryInto, vec::Vec};
+
+pub use pallet::*;
 pub use weights::*;
+pub mod weights;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -69,8 +70,8 @@ pub struct PreCommitData<Hash, AccountId, BlockNumber> {
 }
 
 /// The data structure for storing committed anchors.
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(Encode, Decode, Default, Clone, PartialEq, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AnchorData<Hash, BlockNumber> {
 	id: Hash,
 	pub doc_root: Hash,

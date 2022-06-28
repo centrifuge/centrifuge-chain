@@ -55,7 +55,7 @@ pub enum PoolRole<TrancheId = [u8; 16], Moment = u64> {
 	PricingAdmin,
 	LiquidityAdmin,
 	MemberListAdmin,
-	RiskAdmin,
+	LoanAdmin,
 	TrancheInvestor(TrancheId, Moment),
 }
 
@@ -231,7 +231,7 @@ where
 				PoolRole::MemberListAdmin => {
 					self.pool_admin.contains(PoolAdminRoles::MEMBER_LIST_ADMIN)
 				}
-				PoolRole::RiskAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
+				PoolRole::LoanAdmin => self.pool_admin.contains(PoolAdminRoles::RISK_ADMIN),
 				PoolRole::TrancheInvestor(id, _) => self.tranche_investor.contains(id),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
@@ -269,7 +269,7 @@ where
 				PoolRole::MemberListAdmin => {
 					Ok(self.pool_admin.remove(PoolAdminRoles::MEMBER_LIST_ADMIN))
 				}
-				PoolRole::RiskAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
+				PoolRole::LoanAdmin => Ok(self.pool_admin.remove(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.remove(id, delta),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
@@ -300,7 +300,7 @@ where
 				PoolRole::MemberListAdmin => {
 					Ok(self.pool_admin.insert(PoolAdminRoles::MEMBER_LIST_ADMIN))
 				}
-				PoolRole::RiskAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
+				PoolRole::LoanAdmin => Ok(self.pool_admin.insert(PoolAdminRoles::RISK_ADMIN)),
 				PoolRole::TrancheInvestor(id, delta) => self.tranche_investor.insert(id, delta),
 			},
 			Role::PermissionedCurrencyRole(permissioned_currency_role) => {
