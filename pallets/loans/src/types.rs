@@ -99,14 +99,14 @@ pub enum WriteOffAction<Rate> {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum LoanStatus {
+pub enum LoanStatus<BlockNumber> {
 	// this when asset is locked and loan nft is created.
 	Created,
 	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
 	// loan is closed and collateral nft is transferred back to borrower and loan nft is burned
-	Closed,
+	Closed { closed_at: BlockNumber },
 }
 
 /// Information about how the nav was updated
@@ -123,9 +123,9 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct LoanDetails<Asset> {
+pub struct LoanDetails<Asset, BlockNumber> {
 	pub(crate) collateral: Asset,
-	pub(crate) status: LoanStatus,
+	pub(crate) status: LoanStatus<BlockNumber>,
 }
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
@@ -213,6 +213,8 @@ pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId
 pub(crate) type PoolIdOf<T> =
 	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
 
+pub(crate) type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+
 pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as InterestAccrualT<
 	<T as Config>::Rate,
 	<T as Config>::Balance,
@@ -225,6 +227,8 @@ pub(crate) type PricedLoanDetailsOf<T> = PricedLoanDetails<
 	<T as Config>::Balance,
 	NormalizedDebtOf<T>,
 >;
+
+pub(crate) type LoanDetailsOf<T> = LoanDetails<AssetOf<T>, BlockNumberOf<T>>;
 
 pub(crate) type ActiveCount = u32;
 pub(crate) type WriteOffDetails<Rate> = (Option<u32>, Rate, Rate);

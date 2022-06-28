@@ -34,7 +34,7 @@ pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Member};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, BlockNumberProvider, Member};
 use sp_runtime::{DispatchError, FixedPointNumber, FixedPointOperand};
 use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
@@ -148,6 +148,9 @@ pub mod pallet {
 
 		/// Max number of write-off groups per pool.
 		type MaxWriteOffGroups: Get<u32>;
+
+		/// Source of the current block number
+		type BlockNumberProvider: BlockNumberProvider<BlockNumber = Self::BlockNumber>;
 	}
 
 	/// Stores the loan nft class ID against a given pool
@@ -183,7 +186,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanDetails<AssetOf<T>>,
+		LoanDetailsOf<T>,
 		OptionQuery,
 	>;
 

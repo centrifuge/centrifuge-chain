@@ -574,7 +574,10 @@ benchmarks! {
 
 		// Loan should be closed
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan.status, LoanStatus::Closed);
+		match loan.status {
+			LoanStatus::Closed { closed_at: _ } => (),
+			_ => assert!(false, "Loan status should be Closed"),
+		}
 
 		// asset owner must be loan owner
 		expect_asset_owner::<T>(asset, loan_owner);
@@ -618,7 +621,10 @@ benchmarks! {
 
 		// Loan should be closed
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
-		assert_eq!(loan.status, LoanStatus::Closed);
+		match loan.status {
+			LoanStatus::Closed { closed_at: _ } => (),
+			_ => assert!(false, "Loan status should be Closed"),
+		}
 
 		// asset owner must be loan owner
 		expect_asset_owner::<T>(asset, loan_owner);

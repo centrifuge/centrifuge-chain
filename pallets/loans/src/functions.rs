@@ -267,7 +267,8 @@ impl<T: Config> Pallet<T> {
 						active_loans.remove(active_loan_idx);
 
 						// update loan status
-						loan.status = LoanStatus::Closed;
+						let closed_at = T::BlockNumberProvider::current_block_number();
+						loan.status = LoanStatus::Closed { closed_at };
 						Ok((
 							active_count.try_into().unwrap(),
 							ClosedLoan {

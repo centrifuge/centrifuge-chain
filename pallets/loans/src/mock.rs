@@ -326,6 +326,7 @@ impl pallet_loans::Config for MockRuntime {
 	type WeightInfo = ();
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type BlockNumberProvider = System;
 }
 
 // USD currencyId

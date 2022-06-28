@@ -296,7 +296,10 @@ fn close_test_loan<T>(
 
 	// check loan status as Closed
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
-	assert_eq!(loan.status, LoanStatus::Closed);
+	match loan.status {
+		LoanStatus::Closed { closed_at: _ } => (),
+		_ => assert!(false, "Loan status should be Closed"),
+	}
 }
 
 #[test]
@@ -950,7 +953,10 @@ macro_rules! test_repay_loan {
 					.expect("LoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
-				assert_eq!(loan.status, LoanStatus::Closed);
+				match loan.status {
+					LoanStatus::Closed { closed_at: _ } => (),
+					_ => assert!(false, "Loan status should be Closed"),
+				}
 				assert_eq!(rate_info.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
 				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)

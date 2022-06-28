@@ -1061,6 +1061,7 @@ impl pallet_loans::Config for Runtime {
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
+	type BlockNumberProvider = System;
 }
 
 parameter_types! {
