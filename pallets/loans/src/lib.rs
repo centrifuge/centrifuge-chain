@@ -394,10 +394,13 @@ pub mod pallet {
 				},
 			) = Self::close_loan(pool_id, loan_id, owner)?;
 			Self::deposit_event(Event::<T>::Closed(pool_id, loan_id, collateral));
-			match written_off {
-				true => Ok(Some(T::WeightInfo::write_off_and_close(active_count)).into()),
-				false => Ok(Some(T::WeightInfo::repay_and_close(active_count)).into()),
-			}
+
+			let weight = if written_off {
+				T::WeightInfo::write_off_and_close(active_count)
+			} else {
+				T::WeightInfo::repay_and_close(active_count)
+			};
+			Ok(Some(weight).into())
 		}
 
 		/// Transfers borrow amount to the loan owner.
@@ -427,11 +430,12 @@ pub mod pallet {
 				Self::borrow_amount(pool_id, loan_id, owner, amount)?;
 			Self::deposit_event(Event::<T>::Borrowed(pool_id, loan_id, amount));
 
-			Ok(if first_borrow {
-				Some(T::WeightInfo::initial_borrow(active_count)).into()
+			let weight = if first_borrow {
+				T::WeightInfo::initial_borrow(active_count)
 			} else {
-				Some(T::WeightInfo::further_borrows(active_count)).into()
-			})
+				T::WeightInfo::further_borrows(active_count)
+			};
+			Ok(Some(weight).into())
 		}
 
 		/// Transfers amount borrowed to the pool reserve.
