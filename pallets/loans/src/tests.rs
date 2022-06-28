@@ -16,7 +16,7 @@ use super::*;
 use crate as pallet_loans;
 use crate::loan_type::{CreditLine, CreditLineWithMaturity};
 use crate::mock::{
-	Borrower, Event, JuniorInvestor, Loans, MockRuntime, Origin, RiskAdmin, SeniorInvestor,
+	Borrower, Event, JuniorInvestor, LoanAdmin, Loans, MockRuntime, Origin, SeniorInvestor,
 	Timestamp, Tokens,
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
@@ -622,13 +622,13 @@ macro_rules! test_borrow_loan {
 
 				// written off loan cannot borrow
 				// add write off groups
-				let risk_admin = RiskAdmin::get();
+				let risk_admin = LoanAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
 					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::RiskAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				for group in vec![(3, 0), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1028,13 +1028,13 @@ macro_rules! test_pool_nav {
 				assert_eq!(updated_nav, nav);
 				assert_eq!(exact, NAVUpdateType::Exact);
 
-				let risk_admin = RiskAdmin::get();
+				let risk_admin = LoanAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
 					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::RiskAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				// write off the loan and check for updated nav
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
@@ -1142,7 +1142,7 @@ fn test_add_write_off_groups() {
 		.build()
 		.execute_with(|| {
 			let pool_admin = PoolAdmin::get();
-			let risk_admin: u64 = RiskAdmin::get();
+			let risk_admin: u64 = LoanAdmin::get();
 			let pool_id = 0;
 			create::<MockRuntime>(
 				pool_id,
@@ -1158,7 +1158,7 @@ fn test_add_write_off_groups() {
 				Role::PoolRole(PoolRole::PoolAdmin),
 				risk_admin,
 				PermissionScope::Pool(pool_id),
-				Role::PoolRole(PoolRole::RiskAdmin),
+				Role::PoolRole(PoolRole::LoanAdmin),
 			));
 
 			// fetch write off groups
@@ -1236,13 +1236,13 @@ macro_rules! test_write_off_maturity_loan {
 				assert_err!(res, Error::<MockRuntime>::NoValidWriteOffGroup);
 
 				// add write off groups
-				let risk_admin = RiskAdmin::get();
+				let risk_admin = LoanAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
 					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::RiskAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
 					let res = Loans::add_write_off_group(
@@ -1328,13 +1328,13 @@ macro_rules! test_admin_write_off_loan_type {
 
 				// after one year
 				// caller should be admin, can write off before maturity
-				let risk_admin = RiskAdmin::get();
+				let risk_admin = LoanAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
 					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::RiskAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 
 				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
@@ -1449,13 +1449,13 @@ macro_rules! test_close_written_off_loan_type {
 				assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
 				// add write off groups
-				let risk_admin = RiskAdmin::get();
+				let risk_admin = LoanAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
 					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::RiskAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
 					let res = Loans::add_write_off_group(
@@ -1631,13 +1631,13 @@ macro_rules! write_off_overflow {
 				// anyone can trigger the call
 				let caller = 42;
 				// add write off groups
-				let risk_admin = RiskAdmin::get();
+				let risk_admin = LoanAdmin::get();
 				assert_ok!(pallet_permissions::Pallet::<MockRuntime>::add(
 					Origin::signed(pool_admin),
 					Role::PoolRole(PoolRole::PoolAdmin),
 					risk_admin,
 					PermissionScope::Pool(pool_id),
-					Role::PoolRole(PoolRole::RiskAdmin),
+					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				//for group in vec![(3, 10), (313503982334601, 20)] {
 				for group in vec![(3, 10), (313503982334601, 15), (10, 20), (10, 30)] {
