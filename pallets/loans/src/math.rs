@@ -38,6 +38,7 @@ pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
 	accumulated_rate.checked_mul_int(normalized_debt)
 }
 
+/// represents how much some other value should be incremented or decremented by
 pub enum Adjustment<Balance> {
 	Inc(Balance),
 	Dec(Balance),
