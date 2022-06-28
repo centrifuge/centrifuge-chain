@@ -56,20 +56,23 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		f: F,
-	) -> Result<(u32, R), DispatchError>
+	) -> Result<(ActiveCount, R), DispatchError>
 	where
 		F: FnOnce(&mut PricedLoanDetailsOf<T>) -> Result<R, DispatchError>,
 	{
-		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| -> Result<(u32, R), DispatchError> {
-			let len = active_loans.len().try_into().unwrap();
-			for active_loan_option in active_loans.iter_mut() {
-				if active_loan_option.loan_id == loan_id {
-					return f(active_loan_option).map(|r| (len, r));
+		ActiveLoans::<T>::try_mutate(
+			pool_id,
+			|active_loans| -> Result<(ActiveCount, R), DispatchError> {
+				let len = active_loans.len().try_into().unwrap();
+				for active_loan_option in active_loans.iter_mut() {
+					if active_loan_option.loan_id == loan_id {
+						return f(active_loan_option).map(|r| (len, r));
+					}
 				}
-			}
 
-			Err(Error::<T>::MissingLoan.into())
-		})
+				Err(Error::<T>::MissingLoan.into())
+			},
+		)
 	}
 
 	/// issues a new loan nft and returns the LoanID
@@ -193,14 +196,14 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
-	) -> Result<(u32, ClosedLoan<T>), DispatchError> {
+	) -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<(u32, ClosedLoan<T>), DispatchError> {
+			|loan| -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
@@ -208,7 +211,7 @@ impl<T: Config> Pallet<T> {
 
 				ActiveLoans::<T>::try_mutate(
 					pool_id,
-					|active_loans| -> Result<(u32, ClosedLoan<T>), DispatchError> {
+					|active_loans| -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
 						let (active_loan_idx, active_loan) = active_loans
 							.iter()
 							.enumerate()
@@ -285,14 +288,14 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 		amount: T::Balance,
-	) -> Result<(u32, bool), DispatchError> {
+	) -> Result<(ActiveCount, bool), DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<(u32, bool), DispatchError> {
+			|loan| -> Result<(ActiveCount, bool), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
@@ -421,14 +424,14 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 		amount: T::Balance,
-	) -> Result<(u32, T::Balance), DispatchError> {
+	) -> Result<(ActiveCount, T::Balance), DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<(u32, T::Balance), DispatchError> {
+			|loan| -> Result<(ActiveCount, T::Balance), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
@@ -564,7 +567,9 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
-	pub fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<(u32, T::Balance), DispatchError> {
+	pub fn update_nav_of_pool(
+		pool_id: PoolIdOf<T>,
+	) -> Result<(ActiveCount, T::Balance), DispatchError> {
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
 
 		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
@@ -639,17 +644,17 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		action: WriteOffAction<T::Rate>,
-	) -> Result<(u32, (Option<u32>, T::Rate, T::Rate)), DispatchError> {
+	) -> Result<(ActiveCount, WriteOffDetailsOf<T>), DispatchError> {
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<(u32, (Option<u32>, T::Rate, T::Rate)), DispatchError> {
+			|loan| -> Result<(ActiveCount, WriteOffDetailsOf<T>), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				Self::try_mutate_active_loan(
 					pool_id,
 					loan_id,
-					|active_loan| -> Result<(Option<u32>, T::Rate, T::Rate), DispatchError> {
+					|active_loan| -> Result<WriteOffDetailsOf<T>, DispatchError> {
 						// ensure loan is active
 						ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 

@@ -225,3 +225,7 @@ pub(crate) type PricedLoanDetailsOf<T> = PricedLoanDetails<
 	<T as Config>::Balance,
 	NormalizedDebtOf<T>,
 >;
+
+pub(crate) type ActiveCount = u32;
+pub(crate) type WriteOffDetails<Rate> = (Option<u32>, Rate, Rate);
+pub(crate) type WriteOffDetailsOf<T> = WriteOffDetails<<T as Config>::Rate>;
