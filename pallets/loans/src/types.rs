@@ -14,6 +14,7 @@
 //! Module provides base types and their functions
 use super::*;
 use common_traits::PoolInspect;
+use frame_support::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::Zero;
 
@@ -35,8 +36,8 @@ pub(crate) struct ClosedLoan<T: pallet::Config> {
 }
 
 /// The data structure for storing pool nav details
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NAVDetails<Balance> {
 	// this is the latest nav for the given pool.
 	// this will be updated on these scenarios
@@ -45,15 +46,15 @@ pub struct NAVDetails<Balance> {
 	// So NAV could be
 	//	approximate when current time != last_updated
 	//	exact when current time == last_updated
-	pub(crate) latest: Balance,
+	pub latest: Balance,
 
 	// this is the last time when the nav was calculated for the entire pool
-	pub(crate) last_updated: Moment,
+	pub last_updated: Moment,
 }
 
 /// The data structure for storing a specific write off group
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Default, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct WriteOffGroup<Rate> {
 	/// percentage of outstanding debt we are going to write off on a loan
 	pub(crate) percentage: Rate,
@@ -88,8 +89,8 @@ pub enum NAVUpdateType {
 }
 
 /// The data structure for storing loan info
-#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+#[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
 	pub(crate) collateral: Asset,
 	pub(crate) loan_type: LoanType<Rate, Balance>,
@@ -155,7 +156,7 @@ where
 		}
 	}
 
-	pub(crate) fn max_borrow_amount(&self, debt: Balance) -> Balance {
+	pub fn max_borrow_amount(&self, debt: Balance) -> Balance {
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => bl.max_borrow_amount(self.total_borrowed),
 			LoanType::CreditLine(cl) => cl.max_borrow_amount(debt),

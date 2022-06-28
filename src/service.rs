@@ -15,8 +15,12 @@
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::{
-	api::{AnchorApiServer, AnchorRpc},
 	cli::RpcConfig,
+	rpc::{
+		self,
+		anchors::{AnchorApiServer, Anchors},
+		pools::{Pools, PoolsApiServer},
+	},
 };
 
 use cumulus_client_cli::CollatorOptions;
@@ -259,7 +263,7 @@ where
 				>,
 			>,
 			DenyUnsafe,
-		) -> Result<crate::rpc::RpcExtension, sc_service::Error>
+		) -> Result<rpc::RpcExtension, sc_service::Error>
 		+ Send
 		+ Sync
 		+ 'static,
@@ -491,9 +495,9 @@ pub async fn start_altair_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
-				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
@@ -649,9 +653,9 @@ pub async fn start_centrifuge_node(
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
-				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
@@ -801,27 +805,18 @@ pub async fn start_development_node(
 		>,
 	>,
 )> {
-	// let rpc_builder = {
-	// 	let client = client.clone();
-	// 	move |_, _| {
-	// 		let deps = crate::rpc::FullDeps {
-	// 			client: client.clone(),
-	// 			command_sink: rpc_sink.clone(),
-	// 			_marker: Default::default(),
-	// 		};
-	// 		crate::rpc::create_full(deps).map_err(Into::into)
-	// 	}
-	// };
-
 	start_node_impl::<development_runtime::RuntimeApi, DevelopmentRuntimeExecutor, _, _, _>(
 		parachain_config,
 		polkadot_config,
 		id,
 		rpc_config,
 		|client, pool, deny_unsafe| {
-			let mut module = crate::rpc::create_full(client.clone(), pool, deny_unsafe)?;
+			let mut module = rpc::create_full(client.clone(), pool, deny_unsafe)?;
 			module
-				.merge(AnchorRpc::new(client.clone()).into_rpc())
+				.merge(Anchors::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(Pools::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
