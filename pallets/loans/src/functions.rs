@@ -44,7 +44,7 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn get_active_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-	) -> Option<ActiveLoanDetailsOf<T>> {
+	) -> Option<PricedLoanDetailsOf<T>> {
 		let active_loans = ActiveLoans::<T>::get(pool_id);
 
 		active_loans
@@ -58,7 +58,7 @@ impl<T: Config> Pallet<T> {
 		f: F,
 	) -> Result<(u32, R), DispatchError>
 	where
-		F: FnOnce(&mut ActiveLoanDetailsOf<T>) -> Result<R, DispatchError>,
+		F: FnOnce(&mut PricedLoanDetailsOf<T>) -> Result<R, DispatchError>,
 	{
 		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| -> Result<(u32, R), DispatchError> {
 			let len = active_loans.len().try_into().unwrap();
@@ -162,7 +162,7 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::LoanValueInvalid
 			);
 
-			let active_loan = ActiveLoanDetails {
+			let active_loan = PricedLoanDetails {
 				loan_id,
 				loan_type,
 				interest_rate_per_sec,
@@ -513,7 +513,7 @@ impl<T: Config> Pallet<T> {
 	/// accrues rate and debt of a given loan and updates it
 	/// returns the present value of the loan accounting any write offs
 	pub(crate) fn accrue_debt_and_calculate_present_value(
-		active_loan: &mut ActiveLoanDetailsOf<T>,
+		active_loan: &mut PricedLoanDetailsOf<T>,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Balance, DispatchError> {
 		// TODO: this won't just work, we will need to add a adjust_interest_rate method to the interest accrual pallet

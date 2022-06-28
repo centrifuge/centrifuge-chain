@@ -203,7 +203,7 @@ fn price_test_loan<T>(
 	// check loan status as Active
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
 	let active_loan =
-		Loans::get_active_loan(pool_id, loan_id).expect("ActiveLoanDetails should be present");
+		Loans::get_active_loan(pool_id, loan_id).expect("PricedLoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
 	assert_eq!(active_loan.interest_rate_per_sec, rp);
 	assert_eq!(active_loan.loan_type, loan_type);
@@ -553,7 +553,7 @@ macro_rules! test_borrow_loan {
 
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 
@@ -585,7 +585,7 @@ macro_rules! test_borrow_loan {
 				assert_ok!(res);
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				assert_eq!(active_loan.total_borrowed, 70 * USD);
@@ -677,7 +677,7 @@ macro_rules! test_borrow_loan {
 					<Loans as TPoolNav<PoolId, Balance>>::update_nav(pool_id).unwrap();
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				// after maturity should be current outstanding
 				let debt = InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec + penalty,
@@ -736,7 +736,7 @@ macro_rules! test_repay_loan {
 
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				// accumulated rate is now rate per sec
@@ -779,7 +779,7 @@ macro_rules! test_repay_loan {
 
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				assert_eq!(rate_info.last_updated, 1001);
@@ -832,7 +832,7 @@ macro_rules! test_repay_loan {
 
 				// check loan data
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				assert_eq!(rate_info.last_updated, 2001);
@@ -880,7 +880,7 @@ macro_rules! test_repay_loan {
 				let goal_debt = goal_interest.checked_mul_int(p_debt).unwrap();
 				Timestamp::set_timestamp(3001 * 1000);
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				// Since we don't do a loan operation, we need to invoke
 				// the InterestAccrual pallet to tick the rate forward.
 				let debt = InterestAccrual::get_current_debt(
@@ -910,7 +910,7 @@ macro_rules! test_repay_loan {
 
 				// repay more than the interest
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let total_repaid_pre = active_loan.total_repaid;
 				assert_eq!(
 					total_repaid_pre,
@@ -929,7 +929,7 @@ macro_rules! test_repay_loan {
 
 				// only the debt should have been repaid
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				assert_eq!(
 					active_loan.normalized_debt,
 					Zero::zero(),
@@ -1020,7 +1020,7 @@ macro_rules! test_pool_nav {
 
 				// present value should still be zero
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let now = Loans::now();
 				let old_debt = InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec,
@@ -1037,7 +1037,7 @@ macro_rules! test_pool_nav {
 
 				// check present value
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				let now = Loans::now();
 				let old_debt = InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec,
@@ -1061,7 +1061,7 @@ macro_rules! test_pool_nav {
 					// max_borrow_amount = 125 * 0.8 - debt
 					// check present value
 					let active_loan = Loans::get_active_loan(pool_id, loan_id)
-						.expect("ActiveLoanDetails should be present");
+						.expect("PricedLoanDetails should be present");
 					let debt = InterestAccrual::current_debt(
 						active_loan.interest_rate_per_sec,
 						active_loan.normalized_debt,
@@ -1116,7 +1116,7 @@ macro_rules! test_pool_nav {
 				// let the maturity has passed 2 years + 10 day
 				let after_2_years = (math::seconds_per_year() * 2) + math::seconds_per_day() * 10;
 				let active_loan = Loans::get_active_loan(pool_id, loan_id)
-					.expect("ActiveLoanDetails should be present");
+					.expect("PricedLoanDetails should be present");
 				Timestamp::set_timestamp(after_2_years * 1000);
 				let debt = InterestAccrual::current_debt(
 					active_loan.interest_rate_per_sec,
@@ -1424,7 +1424,7 @@ macro_rules! test_write_off_maturity_loan {
 					.expect("must be a Loan issue event");
 					assert_eq!(write_off_index, Some(days_index.1));
 					let active_loan = Loans::get_active_loan(pool_id, loan_id)
-						.expect("ActiveLoanDetails should be present");
+						.expect("PricedLoanDetails should be present");
 					assert_eq!(
 						active_loan.write_off_status,
 						WriteOffStatus::WrittenOff {
@@ -1533,7 +1533,7 @@ macro_rules! test_admin_write_off_loan_type {
 						.expect("must be a Loan issue event");
 						assert_eq!(write_off_index, None);
 						let active_loan = Loans::get_active_loan(pool_id, loan_id)
-							.expect("ActiveLoanDetails should be present");
+							.expect("PricedLoanDetails should be present");
 						assert_eq!(
 							active_loan.write_off_status,
 							WriteOffStatus::WrittenOffByAdmin {

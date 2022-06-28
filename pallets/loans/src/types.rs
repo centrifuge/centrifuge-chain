@@ -130,7 +130,7 @@ pub struct LoanDetails<Asset> {
 
 #[derive(Encode, Decode, Copy, Clone, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
-pub struct ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
+pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) loan_id: LoanId,
 	pub(crate) loan_type: LoanType<Rate, Balance>,
 
@@ -154,7 +154,7 @@ pub struct ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
 	pub(crate) last_updated: Moment,
 }
 
-impl<LoanId, Rate, Balance, NormalizedDebt> ActiveLoanDetails<LoanId, Rate, Balance, NormalizedDebt>
+impl<LoanId, Rate, Balance, NormalizedDebt> PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt>
 where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
@@ -219,7 +219,7 @@ pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as Interes
 	Adjustment<<T as Config>::Balance>,
 >>::NormalizedDebt;
 
-pub(crate) type ActiveLoanDetailsOf<T> = ActiveLoanDetails<
+pub(crate) type PricedLoanDetailsOf<T> = PricedLoanDetails<
 	<T as Config>::LoanId,
 	<T as Config>::Rate,
 	<T as Config>::Balance,
