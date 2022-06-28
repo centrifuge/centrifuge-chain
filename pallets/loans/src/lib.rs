@@ -558,8 +558,9 @@ pub mod pallet {
 			));
 
 			// since the write off group index is picked in loop sequentially,
-			// total loops = index+1
-			let count = index.expect("Write offs should always return a valid index") + 1;
+			// total loops = index+1. This cannot overflow since it is
+			// capped by `MaxWriteOffGroups`
+			let count = index.expect("non-admin write off always returns an index. qed") + 1;
 			Ok(Some(T::WeightInfo::write_off(active_count, count)).into())
 		}
 
