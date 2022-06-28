@@ -16,7 +16,7 @@ use super::*;
 use crate as pallet_loans;
 use crate::loan_type::{CreditLine, CreditLineWithMaturity};
 use crate::mock::{
-	Borrower, Event, JuniorInvestor, Loans, MockRuntime, Origin, LoanAdmin, SeniorInvestor,
+	Borrower, Event, JuniorInvestor, LoanAdmin, Loans, MockRuntime, Origin, SeniorInvestor,
 	Timestamp, Tokens,
 };
 use crate::mock::{PoolAdmin, TestExternalitiesBuilder};
