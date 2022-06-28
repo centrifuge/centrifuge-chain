@@ -303,7 +303,7 @@ mod tests {
 	#[test]
 	fn test_bullet_loan_expected_cash_flow() {
 		// debt is 100
-		let debt: u128 = 100 * USD;
+		let debt: Balance = 100 * USD;
 		// expected loss over asset maturity is 0.15% => 0.0015
 		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
 		// maturity date is 2 years
