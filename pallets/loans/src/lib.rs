@@ -497,7 +497,7 @@ pub mod pallet {
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
-			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
+			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
 			let index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded(pool_id, index));
 			Ok(())
@@ -554,7 +554,7 @@ pub mod pallet {
 			write_off_index: u32,
 		) -> DispatchResult {
 			// ensure this is a call from risk admin
-			ensure_role!(pool_id, origin, PoolRole::RiskAdmin);
+			ensure_role!(pool_id, origin, PoolRole::LoanAdmin);
 
 			// try to write off
 			let index = Self::write_off_loan(pool_id, loan_id, Some(write_off_index))?;

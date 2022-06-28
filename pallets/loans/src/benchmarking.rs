@@ -188,7 +188,7 @@ where
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		risk_admin::<T>(),
-		Role::PoolRole(PoolRole::RiskAdmin)
+		Role::PoolRole(PoolRole::LoanAdmin)
 	));
 
 	// initialise pool on loan
