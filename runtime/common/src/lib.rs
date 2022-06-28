@@ -14,28 +14,16 @@
 //! # Common types and primitives used for Centrifuge chain runtime.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+pub use common_types::CurrencyId;
+
 pub use apis::*;
 pub use constants::*;
 pub use impls::*;
 pub use types::*;
 
+pub mod apis;
 mod fixed_point;
 mod impls;
-
-pub use common_types::CurrencyId;
-
-pub mod apis {
-	use node_primitives::{BlockNumber, Hash};
-	use pallet_anchors::AnchorData;
-	use sp_api::decl_runtime_apis;
-
-	decl_runtime_apis! {
-		/// The API to query anchoring info.
-		pub trait AnchorApi {
-			fn get_anchor_by_id(id: Hash) -> Option<AnchorData<Hash, BlockNumber>>;
-		}
-	}
-}
 
 /// Common types for all runtimes
 pub mod types {
