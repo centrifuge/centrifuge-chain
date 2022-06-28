@@ -17,9 +17,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::{Decode, Encode};
-use common_traits::Permissions as PermissionsT;
+use common_traits::{InterestAccrual as InterestAccrualT, Permissions as PermissionsT};
 use common_traits::{PoolInspect, PoolNAV as TPoolNav, PoolReserve};
-pub use common_types::{Moment, PermissionScope, PoolRole, Role};
+pub use common_types::{Adjustment, Moment, PermissionScope, PoolRole, Role};
 use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::Get;
 use frame_support::sp_runtime::traits::{One, Zero};
@@ -33,9 +33,9 @@ use loan_type::LoanType;
 pub use pallet::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_arithmetic::traits::{CheckedAdd, CheckedSub};
-use sp_runtime::traits::{AccountIdConversion, Member};
-use sp_runtime::{DispatchError, FixedPointNumber};
+use sp_arithmetic::traits::{BaseArithmetic, CheckedAdd, CheckedSub};
+use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned, Member};
+use sp_runtime::{DispatchError, FixedPointNumber, FixedPointOperand};
 use sp_std::{vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::fmt::Debug;
@@ -103,13 +103,17 @@ pub mod pallet {
 		/// the rate type
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		/// the amount type
-		type Amount: Parameter
-			+ Member
-			+ MaybeSerializeDeserialize
-			+ FixedPointNumber
+		type Balance: Member
+			+ Parameter
+			+ AtLeast32BitUnsigned
+			+ Default
+			+ Copy
+			+ MaxEncodedLen
+			+ FixedPointOperand
+			+ From<u64>
+			+ From<u128>
 			+ TypeInfo
-			+ Into<ReserveBalanceOf<Self>>;
+			+ TryInto<u64>;
 
 		/// The NonFungible trait that can mint, transfer, and inspect assets.
 		type NonFungible: Transfer<Self::AccountId> + Mutate<Self::AccountId>;
@@ -122,7 +126,7 @@ pub mod pallet {
 		type LoansPalletId: Get<PalletId>;
 
 		/// Pool reserve type
-		type Pool: PoolReserve<Self::AccountId>;
+		type Pool: PoolReserve<Self::AccountId, Balance = Self::Balance>;
 
 		type CurrencyId: Parameter + Copy;
 
@@ -133,6 +137,8 @@ pub mod pallet {
 			Role = Role,
 			Error = DispatchError,
 		>;
+
+		type InterestAccrual: InterestAccrualT<Self::Rate, Self::Balance, Adjustment<Self::Balance>>;
 
 		/// Weight info trait for extrinsics
 		type WeightInfo: WeightInfo;
@@ -179,7 +185,7 @@ pub mod pallet {
 		PoolIdOf<T>,
 		Blake2_128Concat,
 		T::LoanId,
-		LoanDetails<T::Rate, T::Amount, AssetOf<T>>,
+		LoanDetails<T::Rate, T::Balance, AssetOf<T>, NormalizedDebtOf<T>>,
 		OptionQuery,
 	>;
 
@@ -187,7 +193,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn nav)]
 	pub type PoolNAV<T: Config> =
-		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Amount>, OptionQuery>;
+		StorageMap<_, Blake2_128Concat, PoolIdOf<T>, NAVDetails<T::Balance>, OptionQuery>;
 
 	/// Stores the pool associated with the its write off groups
 	#[pallet::storage]
@@ -209,14 +215,14 @@ pub mod pallet {
 			PoolIdOf<T>,
 			T::LoanId,
 			T::Rate,
-			LoanType<T::Rate, T::Amount>,
+			LoanType<T::Rate, T::Balance>,
 		),
 		/// An amount was borrowed for a loan. [pool, loan, amount]
-		Borrowed(PoolIdOf<T>, T::LoanId, T::Amount),
+		Borrowed(PoolIdOf<T>, T::LoanId, T::Balance),
 		/// An amount was repaid for a loan. [pool, loan, amount]
-		Repaid(PoolIdOf<T>, T::LoanId, T::Amount),
+		Repaid(PoolIdOf<T>, T::LoanId, T::Balance),
 		/// The NAV for a pool was updated. [pool, nav, update_type]
-		NAVUpdated(PoolIdOf<T>, T::Amount, NAVUpdateType),
+		NAVUpdated(PoolIdOf<T>, T::Balance, NAVUpdateType),
 		/// A write-off group was added to a pool. [pool, write_off_group]
 		WriteOffGroupAdded(PoolIdOf<T>, u32),
 		/// A loan was written off. [pool, loan, write_off_group]
@@ -238,7 +244,7 @@ pub mod pallet {
 		/// Emits when an operation lead to the number overflow
 		ValueOverflow,
 		/// Emits when principal debt calculation failed due to overflow
-		PrincipalDebtOverflow,
+		NormalizedDebtOverflow,
 		/// Emits when tries to update an active loan
 		LoanIsActive,
 		/// Emits when loan type given is not valid
@@ -389,7 +395,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			amount: T::Amount,
+			amount: T::Balance,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 			let first_borrow = Self::borrow_amount(pool_id, loan_id, owner, amount)?;
@@ -412,7 +418,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
-			amount: T::Amount,
+			amount: T::Balance,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin)?;
 			let total_repaid = Self::repay_amount(pool_id, loan_id, owner, amount)?;
@@ -430,7 +436,7 @@ pub mod pallet {
 			pool_id: PoolIdOf<T>,
 			loan_id: T::LoanId,
 			interest_rate_per_sec: T::Rate,
-			loan_type: LoanType<T::Rate, T::Amount>,
+			loan_type: LoanType<T::Rate, T::Balance>,
 		) -> DispatchResult {
 			// ensure sender has the pricing admin role in the pool
 			ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
@@ -558,14 +564,14 @@ pub mod pallet {
 	}
 }
 
-impl<T: Config> TPoolNav<PoolIdOf<T>, T::Amount> for Pallet<T> {
+impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {
 	type ClassId = T::ClassId;
 	type Origin = T::Origin;
-	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Amount, Moment)> {
+	fn nav(pool_id: PoolIdOf<T>) -> Option<(T::Balance, Moment)> {
 		PoolNAV::<T>::get(pool_id).map(|nav_details| (nav_details.latest, nav_details.last_updated))
 	}
 
-	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Amount, DispatchError> {
+	fn update_nav(pool_id: PoolIdOf<T>) -> Result<T::Balance, DispatchError> {
 		let (updated_nav, ..) = Self::update_nav_of_pool(pool_id)?;
 		Ok(updated_nav)
 	}

@@ -20,6 +20,7 @@ use common_types::{CurrencyId, Moment, PermissionScope, PoolLocator, PoolRole, R
 use frame_support::sp_runtime::traits::One;
 use frame_support::traits::fungibles::Transfer;
 use frame_support::traits::tokens::nonfungibles::{Create, Inspect, Mutate};
+use frame_support::traits::{Currency, Get};
 use frame_support::{assert_ok, parameter_types, Blake2_128, StorageHasher};
 use frame_system::RawOrigin;
 use pallet_pools::TrancheLoc;
@@ -104,6 +105,9 @@ pub(crate) fn create<T>(
 {
 	let pool_account = PoolLocator { pool_id }.into_account_truncating();
 
+	let mint_amount = <T as pallet_pools::Config>::PoolDeposit::get() * 2.into();
+	<T as pallet_pools::Config>::Currency::deposit_creating(&owner.clone().into(), mint_amount);
+
 	// Initialize pool with initial investments
 	assert_ok!(PoolPallet::<T>::create(
 		RawOrigin::Signed(owner.clone()).into(),
@@ -152,8 +156,10 @@ pub(crate) fn create<T>(
 		TrancheLoc::Id(SeniorTrancheId::get().into()),
 		(500 * CURRENCY).into(),
 	));
-	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, T::Amount>>::update_nav(pool_id.into())
-		.expect("update nav should work");
+	<pallet_loans::Pallet<T> as PoolNAV<PoolIdOf<T>, <T as pallet_loans::Config>::Balance>>::update_nav(
+		pool_id.into(),
+	)
+	.expect("update nav should work");
 
 	pallet_pools::Pool::<T>::try_mutate(pool_id, |pool| -> Result<(), pallet_pools::Error<T>> {
 		let pool = pool.as_mut().ok_or(pallet_pools::Error::<T>::NoSuchPool)?;

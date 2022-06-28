@@ -42,6 +42,7 @@ members = [
 	"pallets/pools",
 	"pallets/loans",
 	"pallets/permissions",
+	"pallets/interest-accrual",
 	"pallets/keystore",
 	"libs/common-traits",
 	"libs/common-types",

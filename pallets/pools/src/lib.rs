@@ -328,9 +328,7 @@ pub mod pallet {
 			Error = DispatchError,
 		>;
 
-		type LoanAmount: Into<Self::Balance>;
-
-		type NAV: PoolNAV<Self::PoolId, Self::LoanAmount>;
+		type NAV: PoolNAV<Self::PoolId, Self::Balance>;
 
 		/// A conversion from a tranche ID to a CurrencyId
 		type TrancheToken: TrancheToken<Self::PoolId, Self::TrancheId, Self::CurrencyId>;
@@ -1076,15 +1074,13 @@ pub mod pallet {
 					Error::<T>::MinEpochTimeHasNotPassed
 				);
 
-				let (nav_amount, nav_last_updated) =
-					T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
+				let (nav, nav_last_updated) = T::NAV::nav(pool_id).ok_or(Error::<T>::NoNAV)?;
 
 				ensure!(
 					now.saturating_sub(nav_last_updated.into()) <= pool.parameters.max_nav_age,
 					Error::<T>::NAVTooOld
 				);
 
-				let nav = nav_amount.into();
 				let submission_period_epoch = pool.epoch.current;
 				let total_assets = nav
 					.checked_add(&pool.reserve.total)

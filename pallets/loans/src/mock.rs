@@ -31,7 +31,7 @@ use frame_system::{EnsureSigned, EnsureSignedBy};
 use orml_traits::parameter_type_with_key;
 use pallet_pools::{PoolDetails, ScheduledUpdateDetails};
 use runtime_common::{
-	Amount, Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
+	Balance, CollectionId, ItemId, Moment, Rate, TrancheId, TrancheToken,
 	CENTI_CFG as CENTI_CURRENCY, CFG as CURRENCY,
 };
 use sp_core::H256;
@@ -60,7 +60,8 @@ frame_support::construct_runtime!(
 		Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
 		Tokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>},
 		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
-		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>}
+		Permissions: pallet_permissions::{Pallet, Call, Storage, Event<T>},
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>}
 	}
 );
 
@@ -184,7 +185,6 @@ impl pallet_pools::Config for MockRuntime {
 	type CurrencyId = CurrencyId;
 	type Currency = Balances;
 	type Tokens = Tokens;
-	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<MockRuntime>;
 	type Time = Timestamp;
@@ -279,6 +279,13 @@ impl pallet_uniques::Config for MockRuntime {
 	type Helper = ();
 }
 
+impl pallet_interest_accrual::Config for MockRuntime {
+	type Event = Event;
+	type Balance = Balance;
+	type InterestRate = Rate;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	pub const MaxTranches: u8 = 5;
 	#[derive(Debug, Eq, PartialEq, scale_info::TypeInfo, Clone)]
@@ -308,13 +315,14 @@ impl pallet_loans::Config for MockRuntime {
 	type ClassId = CollectionId;
 	type LoanId = ItemId;
 	type Rate = Rate;
-	type Amount = Amount;
+	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
+	type InterestAccrual = InterestAccrual;
 	type WeightInfo = ();
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;

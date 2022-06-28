@@ -12,11 +12,10 @@
 // GNU General Public License for more details.
 
 //! Module provides all the interest and rate related calculations
-use crate::math::Adjustment::{Dec, Inc};
 use crate::WriteOffGroup;
 pub use common_types::Moment;
 use sp_arithmetic::traits::{checked_pow, One};
-use sp_arithmetic::FixedPointNumber;
+use sp_arithmetic::{traits::BaseArithmetic, FixedPointNumber, FixedPointOperand};
 use sp_runtime::{ArithmeticError, DispatchError};
 
 /// calculates the latest accumulated rate since the last
@@ -31,43 +30,37 @@ pub fn calculate_accumulated_rate<Rate: FixedPointNumber>(
 		.and_then(|v| v.checked_mul(&current_accumulated_rate))
 }
 
-/// converts a fixed point from A precision to B precision
-/// we don't convert from un-signed to signed or vice-verse
-pub fn convert<A: FixedPointNumber, B: FixedPointNumber>(a: A) -> Option<B> {
-	if A::SIGNED != B::SIGNED {
-		return None;
-	}
-
-	B::checked_from_rational(a.into_inner(), A::accuracy())
-}
-
 /// calculates the debt using debt=principal_debt * cumulative_rate
-pub fn debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
-	principal_debt: Amount,
+pub fn debt<Balance: FixedPointOperand, Rate: FixedPointNumber>(
+	normalized_debt: Balance,
 	accumulated_rate: Rate,
-) -> Option<Amount> {
-	convert::<Rate, Amount>(accumulated_rate).and_then(|rate| principal_debt.checked_mul(&rate))
+) -> Option<Balance> {
+	accumulated_rate.checked_mul_int(normalized_debt)
 }
 
-pub enum Adjustment<Amount: FixedPointNumber> {
-	Inc(Amount),
-	Dec(Amount),
+/// represents how much some other value should be incremented or decremented by
+pub enum Adjustment<Balance> {
+	Inc(Balance),
+	Dec(Balance),
 }
 
 /// calculates the principal debt after the adjustment
 /// current_debt and cumulative_rate must be latest
-pub fn calculate_principal_debt<Amount: FixedPointNumber, Rate: FixedPointNumber>(
-	current_debt: Amount,
-	adjustment: Adjustment<Amount>,
+pub fn calculate_normalized_debt<
+	Balance: FixedPointOperand + BaseArithmetic,
+	Rate: FixedPointNumber,
+>(
+	current_debt: Balance,
+	adjustment: Adjustment<Balance>,
 	cumulative_rate: Rate,
-) -> Option<Amount> {
-	convert::<Rate, Amount>(cumulative_rate).and_then(|rate| {
-		match adjustment {
-			Inc(amount) => current_debt.checked_add(&amount),
-			Dec(amount) => current_debt.checked_sub(&amount),
-		}
-		.and_then(|current_debt| current_debt.checked_div(&rate))
-	})
+) -> Option<Balance> {
+	use Adjustment::*;
+	let current_debt = match adjustment {
+		Inc(amount) => current_debt.checked_add(&amount),
+		Dec(amount) => current_debt.checked_sub(&amount),
+	}?;
+	let rate = cumulative_rate.reciprocal()?;
+	rate.checked_mul_int(current_debt)
 }
 
 /// returns the seconds in a given normal day
@@ -94,15 +87,15 @@ pub fn interest_rate_per_sec<Rate: FixedPointNumber>(rate_per_annum: Rate) -> Op
 /// calculates the risk adjusted expected cash flow for bullet loan type
 /// assumes maturity date has not passed
 /// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
-pub fn bullet_loan_risk_adjusted_expected_cash_flow<Amount, Rate>(
-	debt: Amount,
+pub fn bullet_loan_risk_adjusted_expected_cash_flow<Balance, Rate>(
+	debt: Balance,
 	now: Moment,
 	maturity_date: Moment,
 	interest_rate_per_sec: Rate,
 	expected_loss_over_asset_maturity: Rate,
-) -> Option<Amount>
+) -> Option<Balance>
 where
-	Amount: FixedPointNumber,
+	Balance: FixedPointOperand,
 	Rate: FixedPointNumber + One,
 {
 	// check to be sure if the maturity date has not passed
@@ -111,32 +104,26 @@ where
 	}
 
 	// calculate the rate^(m-now)
-	checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)
-		// convert to amount
-		.and_then(|rate| convert::<Rate, Amount>(rate))
-		// calculate expected cash flow
-		.and_then(|amount| debt.checked_mul(&amount))
-		// calculate risk adjusted cash flow
-		.and_then(|cf| {
-			// cf*(1-expected_loss)
-			let one: Rate = One::one();
-			one.checked_sub(&expected_loss_over_asset_maturity)
-				.and_then(|rr| convert::<Rate, Amount>(rr))
-				.and_then(|rr| cf.checked_mul(&rr))
-		})
+	let rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
+	// calculate expected cash flow
+	let cf = rate.checked_mul_int(debt)?;
+	// calculate risk-adjusted cash flow
+	// cf * (1 - expected_loss)
+	let rr = Rate::one().checked_sub(&expected_loss_over_asset_maturity)?;
+	rr.checked_mul_int(cf)
 }
 
 /// calculates present value for bullet loan
 /// assumes maturity date has not passed
 /// https://docs.centrifuge.io/learn/pool-valuation/#simple-example-for-one-financing
-pub fn bullet_loan_present_value<Amount, Rate>(
-	expected_cash_flow: Amount,
+pub fn bullet_loan_present_value<Balance, Rate>(
+	expected_cash_flow: Balance,
 	now: Moment,
 	maturity_date: Moment,
 	discount_rate: Rate,
-) -> Option<Amount>
+) -> Option<Balance>
 where
-	Amount: FixedPointNumber,
+	Balance: FixedPointOperand,
 	Rate: FixedPointNumber,
 {
 	if now > maturity_date {
@@ -144,10 +131,10 @@ where
 	}
 
 	// calculate total discount rate
-	checked_pow(discount_rate, (maturity_date - now) as usize)
-		.and_then(|rate| convert::<Rate, Amount>(rate))
-		// calculate the present value
-		.and_then(|d| expected_cash_flow.checked_div(&d))
+	let rate = checked_pow(discount_rate, (maturity_date - now) as usize)?;
+	let d = rate.reciprocal()?;
+	// calculate the present value
+	d.checked_mul_int(expected_cash_flow)
 }
 
 /// returns the valid write off group given the maturity date and current time
@@ -180,14 +167,16 @@ pub(crate) fn valid_write_off_group<Rate>(
 
 /// calculates max_borrow_amount for a loan,
 /// max_borrow_amount = advance_rate * collateral_value - debt
-pub(crate) fn max_borrow_amount<Rate: FixedPointNumber, Amount: FixedPointNumber>(
+pub(crate) fn max_borrow_amount<
+	Rate: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
+>(
 	advance_rate: Rate,
-	value: Amount,
-	debt: Amount,
-) -> Option<Amount> {
-	convert::<Rate, Amount>(advance_rate)
-		.and_then(|ar| value.checked_mul(&ar))
-		.and_then(|val| val.checked_sub(&debt))
+	value: Balance,
+	debt: Balance,
+) -> Option<Balance> {
+	let val = advance_rate.checked_mul_int(value)?;
+	val.checked_sub(&debt)
 }
 
 /// calculates the expected loss over term
@@ -208,34 +197,32 @@ pub(crate) fn term_expected_loss<Rate: FixedPointNumber>(
 
 /// calculates expected cash flow from current debt till maturity at the given rate per second
 #[inline]
-pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
-	debt: Amount,
+pub(crate) fn expected_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOperand>(
+	debt: Balance,
 	now: Moment,
 	maturity_date: Moment,
 	interest_rate_per_sec: Rate,
-) -> Option<Amount> {
-	checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)
-		.and_then(|acc_rate| convert(acc_rate))
-		.and_then(|acc_rate| debt.checked_mul(&acc_rate))
+) -> Option<Balance> {
+	let acc_rate = checked_pow(interest_rate_per_sec, (maturity_date - now) as usize)?;
+	acc_rate.checked_mul_int(debt)
 }
 
 /// calculates discounted cash flow given the discount rate until maturity
 #[inline]
-pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Amount: FixedPointNumber>(
-	ra_ecf: Amount,
+pub(crate) fn discounted_cash_flow<Rate: FixedPointNumber, Balance: FixedPointOperand>(
+	ra_ecf: Balance,
 	discount_rate: Rate,
 	maturity: Moment,
 	now: Moment,
-) -> Option<Amount> {
+) -> Option<Balance> {
 	// calculate accumulated discount rate
-	checked_pow(discount_rate, (maturity - now) as usize)
-		.and_then(|rate| convert(rate))
-		// calculate the present value
-		.and_then(|d| ra_ecf.checked_div(&d))
+	let rate = checked_pow(discount_rate, (maturity - now) as usize)?;
+	let d = rate.reciprocal()?;
+	d.checked_mul_int(ra_ecf)
 }
 
-pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: FixedPointNumber>(
-	debt: Amount,
+pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Balance: FixedPointOperand>(
+	debt: Balance,
 	interest_rate_per_sec: Rate,
 	discount_rate: Rate,
 	probability_of_default: Rate,
@@ -243,9 +230,9 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 	origination_date: Option<Moment>,
 	maturity_date: Moment,
 	now: Moment,
-) -> Option<Amount> {
+) -> Option<Balance> {
 	if origination_date.is_none() {
-		return Some(Amount::zero());
+		return Some(Balance::zero());
 	}
 
 	// check if maturity is in the past
@@ -254,66 +241,24 @@ pub(crate) fn maturity_based_present_value<Rate: FixedPointNumber, Amount: Fixed
 	}
 
 	// calculate term expected loss
-	term_expected_loss(
+	let tel = term_expected_loss(
 		probability_of_default,
 		loss_given_default,
 		origination_date.expect("Origination date should be set"),
 		maturity_date,
-	)
-	.and_then(|tel| Rate::one().checked_sub(&tel).and_then(|diff| convert(diff)))
-	.and_then(|diff| {
-		// calculate expected cash flow from not till maturity
-		expected_cash_flow(debt, now, maturity_date, interest_rate_per_sec)
-			// calculate risk adjusted cash flow
-			.and_then(|ecf| ecf.checked_mul(&diff))
-	})
-	// calculate discounted cash flow
-	.and_then(|ra_ecf| discounted_cash_flow(ra_ecf, discount_rate, maturity_date, now))
+	)?;
+	let diff = Rate::one().checked_sub(&tel)?;
+	let ecf = expected_cash_flow(debt, now, maturity_date, interest_rate_per_sec)?;
+	let ra_ecf = diff.checked_mul_int(ecf)?;
+	discounted_cash_flow(ra_ecf, discount_rate, maturity_date, now)
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
 	use frame_support::assert_ok;
-	use frame_support::sp_runtime::traits::CheckedMul;
-	use runtime_common::{Amount, Rate, CFG as USD};
-	use sp_arithmetic::{FixedI128, PerThing};
-	use sp_arithmetic::{FixedU128, Percent};
-
-	#[test]
-	fn test_convert() {
-		// unsigned to signed should fail
-		let a = FixedU128::checked_from_rational(1, 23).unwrap();
-		assert!(
-			convert::<FixedU128, FixedI128>(a).is_none(),
-			"conversion should fail"
-		);
-
-		// signed to unsigned should fails
-		let b = FixedI128::checked_from_rational(1, 23).unwrap();
-		assert!(
-			convert::<FixedI128, FixedU128>(b).is_none(),
-			"conversion should fail"
-		);
-
-		// higher precision to lower
-		let c = Rate::checked_from_rational(1, 23).unwrap();
-		let conv = convert::<Rate, FixedU128>(c);
-		assert!(conv.is_some(), "conversion should pass");
-		assert_eq!(
-			conv.unwrap(),
-			FixedU128::checked_from_rational(1, 23).unwrap()
-		);
-
-		// lower precision to higher
-		let c = FixedU128::checked_from_rational(1, 23).unwrap();
-		let conv = convert::<FixedU128, Rate>(c);
-		assert!(conv.is_some(), "conversion should pass");
-		assert_eq!(
-			conv.unwrap(),
-			Rate::checked_from_rational(43478260869565217000000000u128, Rate::accuracy()).unwrap()
-		);
-	}
+	use runtime_common::{Rate, CFG as USD};
+	use sp_arithmetic::{PerThing, Percent};
 
 	#[test]
 	fn test_calculate_accumulated_rate() {
@@ -346,12 +291,12 @@ mod tests {
 		assert_eq!(expected_accumulated_rate, cumulative_rate);
 
 		// calculate debt after half a year if the principal amount is 100
-		let principal = FixedU128::from(100u128);
+		let principal = 100u128;
 		let maybe_debt = debt(principal, cumulative_rate);
 		assert!(maybe_debt.is_some(), "expect not to overflow");
 
-		let expected_debt = principal
-			.checked_mul(&convert::<Rate, FixedU128>(expected_accumulated_rate).unwrap())
+		let expected_debt = expected_accumulated_rate
+			.checked_mul_int(principal)
 			.unwrap();
 		assert_eq!(expected_debt, maybe_debt.unwrap())
 	}
@@ -359,7 +304,7 @@ mod tests {
 	#[test]
 	fn test_bullet_loan_expected_cash_flow() {
 		// debt is 100
-		let debt = Amount::from_inner(100 * USD);
+		let debt: u128 = 100 * USD;
 		// expected loss over asset maturity is 0.15% => 0.0015
 		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
 		// maturity date is 2 years
@@ -378,16 +323,13 @@ mod tests {
 			expected_loss_over_asset_maturity,
 		)
 		.unwrap();
-		assert_eq!(
-			cf,
-			Amount::saturating_from_rational(110351316161105372133u128, Amount::accuracy())
-		)
+		assert_eq!(cf, 110351316161105372142u128)
 	}
 
 	#[test]
 	fn test_bullet_loan_present_value() {
 		// debt is 100
-		let debt = Amount::from_inner(100 * USD);
+		let debt: u128 = 100 * USD;
 		// expected loss over asset maturity is 0.15% => 0.0015
 		let expected_loss_over_asset_maturity = Rate::saturating_from_rational(15, 10000);
 		// maturity date is 2 years
@@ -409,10 +351,7 @@ mod tests {
 		let discount_rate = interest_rate_per_sec(Rate::saturating_from_rational(4, 100)).unwrap();
 		// present value should be 101.87
 		let pv = bullet_loan_present_value(cf, now, md, discount_rate).unwrap();
-		assert_eq!(
-			pv,
-			Amount::saturating_from_rational(101867103798764401467u128, Amount::accuracy())
-		)
+		assert_eq!(pv, 101867103798764401444u128)
 	}
 
 	#[test]

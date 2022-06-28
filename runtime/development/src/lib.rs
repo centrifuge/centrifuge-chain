@@ -857,7 +857,6 @@ impl pallet_pools::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Currency = Balances;
 	type Tokens = Tokens;
-	type LoanAmount = Amount;
 	type NAV = Loans;
 	type TrancheToken = TrancheToken<Runtime>;
 	type Permission = Permissions;
@@ -1051,13 +1050,14 @@ impl pallet_loans::Config for Runtime {
 	type ClassId = CollectionId;
 	type LoanId = ItemId;
 	type Rate = Rate;
-	type Amount = Amount;
+	type Balance = Balance;
 	type NonFungible = Uniques;
 	type Time = Timestamp;
 	type LoansPalletId = LoansPalletId;
 	type Pool = Pools;
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
+	type InterestAccrual = InterestAccrual;
 	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxLoansPerPool = MaxLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
@@ -1220,6 +1220,13 @@ impl orml_asset_registry::Config for Runtime {
 	type WeightInfo = ();
 }
 
+impl pallet_interest_accrual::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type InterestRate = Rate;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
@@ -1352,7 +1359,8 @@ construct_runtime!(
 		NftSales: pallet_nft_sales::{Pallet, Call, Storage, Event<T>} = 100,
 		Nfts: pallet_nft::{Pallet, Call, Event<T>} = 103,
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
-		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 102,
+		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
+		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

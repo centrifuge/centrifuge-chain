@@ -18,7 +18,7 @@
 // Ensure we're `no_std` when compiling for WebAssembly.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::dispatch::{Codec, DispatchResult, DispatchResultWithPostInfo};
 use frame_support::scale_info::TypeInfo;
 use frame_support::Parameter;
@@ -32,6 +32,8 @@ use sp_runtime::DispatchError;
 use sp_std::fmt::Debug;
 use sp_std::hash::Hash;
 use sp_std::str::FromStr;
+
+pub type Moment = u64;
 
 /// A trait used for loosely coupling the claim pallet with a reward mechanism.
 ///
@@ -123,6 +125,31 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 
 	/// Deposit `amount` from the `from` account into the reserve.
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
+}
+
+/// A trait that can be used to calculate interest accrual for debt
+pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
+	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
+
+	/// Calculate the current debt using normalized debt * cumulative rate
+	fn current_debt(
+		interest_rate_per_sec: InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+	) -> Result<Balance, DispatchError>;
+
+	/// Calculate a previous debt using normalized debt * previous cumulative rate
+	fn previous_debt(
+		interest_rate_per_sec: InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+		when: Moment,
+	) -> Result<Balance, DispatchError>;
+
+	/// Increase or decrease the normalized debt
+	fn adjust_normalized_debt(
+		interest_rate_per_sec: InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+		adjustment: Adjustment,
+	) -> Result<Self::NormalizedDebt, DispatchError>;
 }
 
 pub trait Permissions<AccountId> {

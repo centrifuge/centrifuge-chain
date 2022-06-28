@@ -2319,6 +2319,7 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-interest-accrual",
  "pallet-keystore",
  "pallet-loans",
  "pallet-membership",
@@ -6146,6 +6147,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-interest-accrual"
+version = "0.1.0"
+dependencies = [
+ "bitflags",
+ "common-traits",
+ "common-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-arithmetic",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-keystore"
 version = "1.0.0"
 dependencies = [
@@ -6174,6 +6193,7 @@ dependencies = [
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
+ "pallet-interest-accrual",
  "pallet-permissions",
  "pallet-pools",
  "pallet-timestamp",

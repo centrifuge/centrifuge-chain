@@ -20,16 +20,16 @@ use sp_arithmetic::traits::Zero;
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum LoanType<Rate, Amount> {
-	BulletLoan(BulletLoan<Rate, Amount>),
-	CreditLine(CreditLine<Rate, Amount>),
-	CreditLineWithMaturity(CreditLineWithMaturity<Rate, Amount>),
+pub enum LoanType<Rate, Balance> {
+	BulletLoan(BulletLoan<Rate, Balance>),
+	CreditLine(CreditLine<Rate, Balance>),
+	CreditLineWithMaturity(CreditLineWithMaturity<Rate, Balance>),
 }
 
-impl<Rate, Amount> LoanType<Rate, Amount>
+impl<Rate, Balance> LoanType<Rate, Balance>
 where
 	Rate: FixedPointNumber,
-	Amount: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
 {
 	pub(crate) fn maturity_date(&self) -> Option<Moment> {
 		match self {
@@ -48,10 +48,10 @@ where
 	}
 }
 
-impl<Rate, Amount> Default for LoanType<Rate, Amount>
+impl<Rate, Balance> Default for LoanType<Rate, Balance>
 where
 	Rate: Zero,
-	Amount: Zero,
+	Balance: Zero,
 {
 	fn default() -> Self {
 		Self::BulletLoan(BulletLoan {
@@ -69,25 +69,25 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct BulletLoan<Rate, Amount> {
+pub struct BulletLoan<Rate, Balance> {
 	advance_rate: Rate,
 	probability_of_default: Rate,
 	loss_given_default: Rate,
-	value: Amount,
+	value: Balance,
 	discount_rate: Rate,
 	maturity_date: Moment,
 }
 
-impl<Rate, Amount> BulletLoan<Rate, Amount>
+impl<Rate, Balance> BulletLoan<Rate, Balance>
 where
 	Rate: FixedPointNumber,
-	Amount: FixedPointNumber,
+	Balance: FixedPointOperand + BaseArithmetic,
 {
 	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,
-		value: Amount,
+		value: Balance,
 		discount_rate: Rate,
 		maturity_date: Moment,
 	) -> Self {
@@ -106,11 +106,11 @@ where
 	/// The debt = current outstanding debt * (1 - written off percentage)
 	pub fn present_value(
 		&self,
-		debt: Amount,
+		debt: Balance,
 		origination_date: Option<Moment>,
 		now: Moment,
 		interest_rate_per_sec: Rate,
-	) -> Option<Amount> {
+	) -> Option<Balance> {
 		math::maturity_based_present_value(
 			debt,
 			interest_rate_per_sec,
@@ -138,7 +138,7 @@ where
 	/// calculates max_borrow_amount for bullet loan,
 	/// max_borrow_amount = advance_rate * collateral_value - borrowed
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling
-	pub fn max_borrow_amount(&self, total_borrowed: Amount) -> Option<Amount> {
+	pub fn max_borrow_amount(&self, total_borrowed: Balance) -> Option<Balance> {
 		math::max_borrow_amount(self.advance_rate, self.value, total_borrowed)
 	}
 }
@@ -147,14 +147,14 @@ where
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct CreditLine<Rate, Amount> {
+pub struct CreditLine<Rate, Balance> {
 	advance_rate: Rate,
-	value: Amount,
+	value: Balance,
 }
 
-impl<Rate, Amount> CreditLine<Rate, Amount> {
+impl<Rate, Balance> CreditLine<Rate, Balance> {
 	#[allow(dead_code)]
-	pub fn new(advance_rate: Rate, value: Amount) -> Self {
+	pub fn new(advance_rate: Rate, value: Balance) -> Self {
 		Self {
 			advance_rate,
 			value,
@@ -164,7 +164,7 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 	/// calculates the present value of the credit line loan
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Present-value1
 	/// The debt = current outstanding debt * (1 - written off percentage)
-	pub fn present_value(&self, debt: Amount) -> Option<Amount> {
+	pub fn present_value(&self, debt: Balance) -> Option<Balance> {
 		Some(debt)
 	}
 
@@ -176,10 +176,10 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 	/// calculates max_borrow_amount for credit line loan,
 	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
+	pub fn max_borrow_amount(&self, debt: Balance) -> Option<Balance>
 	where
 		Rate: FixedPointNumber,
-		Amount: FixedPointNumber,
+		Balance: FixedPointOperand + BaseArithmetic,
 	{
 		math::max_borrow_amount(self.advance_rate, self.value, debt)
 	}
@@ -189,22 +189,22 @@ impl<Rate, Amount> CreditLine<Rate, Amount> {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct CreditLineWithMaturity<Rate, Amount> {
+pub struct CreditLineWithMaturity<Rate, Balance> {
 	advance_rate: Rate,
 	probability_of_default: Rate,
 	loss_given_default: Rate,
-	value: Amount,
+	value: Balance,
 	discount_rate: Rate,
 	maturity_date: Moment,
 }
 
-impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
+impl<Rate: PartialOrd + One, Balance> CreditLineWithMaturity<Rate, Balance> {
 	#[allow(dead_code)]
 	pub fn new(
 		advance_rate: Rate,
 		probability_of_default: Rate,
 		loss_given_default: Rate,
-		value: Amount,
+		value: Balance,
 		discount_rate: Rate,
 		maturity_date: Moment,
 	) -> Self {
@@ -223,14 +223,14 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	/// The debt = current outstanding debt * (1 - written off percentage)
 	pub fn present_value(
 		&self,
-		debt: Amount,
+		debt: Balance,
 		origination_date: Option<Moment>,
 		now: Moment,
 		interest_rate_per_sec: Rate,
-	) -> Option<Amount>
+	) -> Option<Balance>
 	where
 		Rate: FixedPointNumber,
-		Amount: FixedPointNumber,
+		Balance: FixedPointOperand + BaseArithmetic,
 	{
 		math::maturity_based_present_value(
 			debt,
@@ -259,10 +259,10 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 	/// calculates max_borrow_amount for credit line loan,
 	/// max_borrow_amount = advance_rate * collateral_value - debt
 	/// https://centrifuge.hackmd.io/uJ3AXBUoQCijSIH9He-NxA#Ceiling1
-	pub fn max_borrow_amount(&self, debt: Amount) -> Option<Amount>
+	pub fn max_borrow_amount(&self, debt: Balance) -> Option<Balance>
 	where
 		Rate: FixedPointNumber,
-		Amount: FixedPointNumber,
+		Balance: FixedPointOperand + BaseArithmetic,
 	{
 		math::max_borrow_amount(self.advance_rate, self.value, debt)
 	}
@@ -271,13 +271,13 @@ impl<Rate: PartialOrd + One, Amount> CreditLineWithMaturity<Rate, Amount> {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use runtime_common::Rate;
 	use runtime_common::CFG as CURRENCY;
-	use runtime_common::{Amount, Rate};
 
 	#[test]
 	fn test_bullet_loan_is_valid() {
 		let ad = Rate::one();
-		let cv = Amount::one();
+		let cv: u128 = One::one();
 		let pd = Rate::zero();
 		let lgd = Rate::zero();
 		let now = 200;
@@ -308,22 +308,19 @@ mod tests {
 	#[test]
 	fn test_credit_line_max_borrow_amount() {
 		let ad = Rate::saturating_from_rational(80, 100);
-		let value = Amount::from_inner(100 * CURRENCY);
+		let value: u128 = 100 * CURRENCY;
 		let cl = CreditLine::new(ad, value);
 
 		// debt can be more
-		let debt = Amount::from_inner(120 * CURRENCY);
+		let debt: u128 = 120 * CURRENCY;
 		assert_eq!(cl.max_borrow_amount(debt), None);
 
 		// debt can be same
-		let debt = Amount::from_inner(80 * CURRENCY);
-		assert_eq!(cl.max_borrow_amount(debt), Some(Amount::from_inner(0)));
+		let debt: u128 = 80 * CURRENCY;
+		assert_eq!(cl.max_borrow_amount(debt), Some(0));
 
 		// debt can be less
-		let debt = Amount::from_inner(70 * CURRENCY);
-		assert_eq!(
-			cl.max_borrow_amount(debt),
-			Some(Amount::from_inner(10 * CURRENCY))
-		);
+		let debt: u128 = 70 * CURRENCY;
+		assert_eq!(cl.max_borrow_amount(debt), Some(10 * CURRENCY));
 	}
 }
