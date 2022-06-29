@@ -117,6 +117,9 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
+pallet-loans = { path = "../../pallets/loans", default-features = false }
+pallet-pools = { path = "../../pallets/pools", default-features = false }
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
