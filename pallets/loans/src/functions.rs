@@ -13,26 +13,11 @@
 
 //! Module provides loan related functions
 use super::*;
-use crate::weights::WeightInfo;
 use common_types::{Adjustment, PoolLocator};
-use frame_support::weights::Weight;
+use core::convert::TryInto;
 use sp_runtime::ArithmeticError;
 
 impl<T: Config> Pallet<T> {
-	// calculates write off group weight for count number of write off groups looped
-	// this function needs to adjusted when the reads and write changes for the write off group extrinsic
-	pub(crate) fn write_off_group_weight(count: u64) -> Weight {
-		T::WeightInfo::write_off()
-			.saturating_mul(count)
-			.saturating_sub(
-				(count - 1).saturating_mul(
-					T::DbWeight::get()
-						.reads(4)
-						.saturating_add(T::DbWeight::get().writes(2)),
-				),
-			)
-	}
-
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
 		T::LoansPalletId::get().into_account_truncating()
@@ -52,6 +37,42 @@ impl<T: Config> Pallet<T> {
 		ensure!(actual_owner == expected_owner, Error::<T>::NotAssetOwner);
 
 		Ok(Asset(loan_class_id, loan_id))
+	}
+
+	// TODO: Move this to test-utils
+	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	pub(crate) fn get_active_loan(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+	) -> Option<PricedLoanDetailsOf<T>> {
+		let active_loans = ActiveLoans::<T>::get(pool_id);
+
+		active_loans
+			.into_iter()
+			.find(|active_loan| active_loan.loan_id == loan_id)
+	}
+
+	pub(crate) fn try_mutate_active_loan<R, F>(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+		f: F,
+	) -> Result<(ActiveCount, R), DispatchError>
+	where
+		F: FnOnce(&mut PricedLoanDetailsOf<T>) -> Result<R, DispatchError>,
+	{
+		ActiveLoans::<T>::try_mutate(
+			pool_id,
+			|active_loans| -> Result<(ActiveCount, R), DispatchError> {
+				let len = active_loans.len().try_into().unwrap();
+				for active_loan_option in active_loans.iter_mut() {
+					if active_loan_option.loan_id == loan_id {
+						return f(active_loan_option).map(|r| (len, r));
+					}
+				}
+
+				Err(Error::<T>::MissingLoan.into())
+			},
+		)
 	}
 
 	/// issues a new loan nft and returns the LoanID
@@ -99,16 +120,7 @@ impl<T: Config> Pallet<T> {
 			loan_id,
 			LoanDetails {
 				collateral,
-				loan_type: Default::default(),
 				status: LoanStatus::Created,
-				interest_rate_per_sec: Zero::zero(),
-				origination_date: None,
-				normalized_debt: Zero::zero(),
-				total_borrowed: Zero::zero(),
-				total_repaid: Zero::zero(),
-				admin_written_off: false,
-				write_off_index: None,
-				last_updated: Self::now(),
 			},
 		);
 		Ok(loan_id)
@@ -119,16 +131,29 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		interest_rate_per_sec: T::Rate,
 		loan_type: LoanType<T::Rate, T::Balance>,
-	) -> DispatchResult {
-		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> DispatchResult {
+	) -> Result<u32, DispatchError> {
+		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
 			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 			// ensure loan is created or priced but not yet borrowed against
 			ensure!(
-				loan.status == LoanStatus::Created
-					|| loan.status == LoanStatus::Active && loan.total_borrowed == Zero::zero(),
+				loan.status == LoanStatus::Created || loan.status == LoanStatus::Active,
 				Error::<T>::LoanIsActive
 			);
+			let mut active_loans = ActiveLoans::<T>::get(pool_id);
+			if loan.status == LoanStatus::Active {
+				if let Some((idx, active_loan)) = active_loans
+					.iter()
+					.enumerate()
+					.find(|(_, active_loan)| active_loan.loan_id == loan_id)
+				{
+					ensure!(
+						active_loan.total_borrowed == Zero::zero(),
+						Error::<T>::LoanIsActive
+					);
+					active_loans.remove(idx);
+				}
+			}
 
 			// ensure loan_type is valid
 			let now = Self::now();
@@ -140,12 +165,28 @@ impl<T: Config> Pallet<T> {
 				Error::<T>::LoanValueInvalid
 			);
 
-			// update the loan info
-			loan.interest_rate_per_sec = interest_rate_per_sec;
-			loan.status = LoanStatus::Active;
-			loan.loan_type = loan_type;
+			let active_loan = PricedLoanDetails {
+				loan_id,
+				loan_type,
+				interest_rate_per_sec,
+				origination_date: None,
+				normalized_debt: Zero::zero(),
+				total_borrowed: Zero::zero(),
+				total_repaid: Zero::zero(),
+				write_off_status: WriteOffStatus::None,
+				last_updated: Self::now(),
+			};
 
-			Ok(())
+			active_loans
+				.try_push(active_loan)
+				.map_err(|_| Error::<T>::TooManyActiveLoans)?;
+			let count = active_loans.len();
+			ActiveLoans::<T>::insert(pool_id, active_loans);
+
+			// update the loan status
+			loan.status = LoanStatus::Active;
+
+			Ok(count.try_into().unwrap())
 		})
 	}
 
@@ -155,55 +196,88 @@ impl<T: Config> Pallet<T> {
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
 		owner: T::AccountId,
-	) -> Result<ClosedLoan<T>, DispatchError> {
+	) -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
 		// ensure owner is the loan nft owner
 		let loan_nft = Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<ClosedLoan<T>, DispatchError> {
+			|loan| -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
 				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
-				// ensure debt is all paid
-				// we just need to ensure normalized debt is zero
-				// if not, we check if the loan is written of 100%
-				let written_off = match (loan.normalized_debt == Zero::zero(), loan.write_off_index)
-				{
-					// debt is cleared
-					(true, _) => Ok(false),
-					// debt not cleared and loan not written off
-					(_, None) => Err(Error::<T>::LoanNotRepaid),
-					// debt not cleared but loan is written off
-					// if written off completely, then we can close it
-					(_, Some(write_off_index)) => {
-						let groups = PoolWriteOffGroups::<T>::get(pool_id);
-						let group = groups
-							.get(write_off_index as usize)
-							.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
-						ensure!(group.percentage == One::one(), Error::<T>::LoanNotRepaid);
-						Ok(true)
-					}
-				}?;
+				ActiveLoans::<T>::try_mutate(
+					pool_id,
+					|active_loans| -> Result<(ActiveCount, ClosedLoan<T>), DispatchError> {
+						let (active_loan_idx, active_loan) = active_loans
+							.iter()
+							.enumerate()
+							.find(|(_, loan)| loan.loan_id == loan_id)
+							.ok_or(Error::<T>::MissingLoan)?;
 
-				// transfer collateral nft to owner
-				let collateral = loan.collateral;
-				let (collateral_class_id, instance_id) = collateral.destruct();
-				T::NonFungible::transfer(&collateral_class_id.into(), &instance_id.into(), &owner)?;
+						// ensure debt is all paid
+						// we just need to ensure normalized debt is zero
+						// if not, we check if the loan is written of 100%
+						let written_off = match (
+							active_loan.normalized_debt == Zero::zero(),
+							active_loan.write_off_status,
+						) {
+							// debt is cleared
+							(true, _) => Ok(false),
+							// debt not cleared and loan not written off
+							(_, WriteOffStatus::None) => Err(Error::<T>::LoanNotRepaid),
+							// debt not cleared but loan is written off
+							// if written off completely, then we can close it
+							(_, WriteOffStatus::WrittenOff { write_off_index }) => {
+								let groups = PoolWriteOffGroups::<T>::get(pool_id);
+								let group = groups
+									.get(write_off_index as usize)
+									.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
+								ensure!(group.percentage == One::one(), Error::<T>::LoanNotRepaid);
+								Ok(true)
+							}
+							// debt not cleared but loan is written off by admin
+							// if written off completely, then we can close it
+							(_, WriteOffStatus::WrittenOffByAdmin { percentage, .. }) => {
+								ensure!(percentage == One::one(), Error::<T>::LoanNotRepaid);
+								Ok(true)
+							}
+						}?;
 
-				// burn loan nft
-				let (loan_class_id, loan_id) = loan_nft.destruct();
-				T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
+						// transfer collateral nft to owner
+						let collateral = loan.collateral;
+						let (collateral_class_id, instance_id) = collateral.destruct();
+						T::NonFungible::transfer(
+							&collateral_class_id.into(),
+							&instance_id.into(),
+							&owner,
+						)?;
 
-				// update loan status
-				loan.status = LoanStatus::Closed;
-				Ok(ClosedLoan {
-					collateral,
-					written_off,
-				})
+						// burn loan nft
+						let (loan_class_id, loan_id) = loan_nft.destruct();
+						T::NonFungible::burn(&loan_class_id.into(), &loan_id.into(), None)?;
+
+						ClosedLoans::<T>::insert(pool_id, loan_id, active_loan.clone());
+
+						// remove from active loans
+						let active_count = active_loans.len();
+						active_loans.remove(active_loan_idx);
+
+						// update loan status
+						let closed_at = T::BlockNumberProvider::current_block_number();
+						loan.status = LoanStatus::Closed { closed_at };
+						Ok((
+							active_count.try_into().unwrap(),
+							ClosedLoan {
+								collateral,
+								written_off,
+							},
+						))
+					},
+				)
 			},
 		)
 	}
@@ -215,89 +289,103 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 		amount: T::Balance,
-	) -> Result<bool, DispatchError> {
+	) -> Result<(ActiveCount, bool), DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
-		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<bool, DispatchError> {
-			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+		Loan::<T>::try_mutate(
+			pool_id,
+			loan_id,
+			|loan| -> Result<(ActiveCount, bool), DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
-			// ensure loan is active
-			ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
+				// ensure loan is active
+				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
-			// ensure loan is not written off
-			ensure!(
-				loan.write_off_index.is_none(),
-				Error::<T>::WrittenOffByAdmin
-			);
+				Self::try_mutate_active_loan(
+					pool_id,
+					loan_id,
+					|active_loan| -> Result<bool, DispatchError> {
+						// ensure loan is not written off
+						ensure!(
+							active_loan.write_off_status == WriteOffStatus::None,
+							Error::<T>::WrittenOffByAdmin
+						);
 
-			// ensure maturity date has not passed if the loan has a maturity date
-			let now: Moment = Self::now();
-			let valid = match loan.loan_type.maturity_date() {
-				Some(md) => md > now,
-				None => true,
-			};
-			ensure!(valid, Error::<T>::LoanMaturityDatePassed);
+						// ensure maturity date has not passed if the loan has a maturity date
+						let now: Moment = Self::now();
+						let valid = match active_loan.loan_type.maturity_date() {
+							Some(md) => md > now,
+							None => true,
+						};
+						ensure!(valid, Error::<T>::LoanMaturityDatePassed);
 
-			// ensure borrow amount is positive
-			ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
+						// ensure borrow amount is positive
+						ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
-			// check for max borrow amount
-			let old_debt = T::InterestAccrual::previous_debt(
-				loan.interest_rate_per_sec,
-				loan.normalized_debt,
-				loan.last_updated,
-			)?;
+						// check for max borrow amount
+						let old_debt = T::InterestAccrual::previous_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+							active_loan.last_updated,
+						)?;
 
-			let current_debt =
-				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
+						let current_debt = T::InterestAccrual::current_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+						)?;
 
-			let max_borrow_amount = loan.max_borrow_amount(current_debt);
-			ensure!(
-				amount <= max_borrow_amount,
-				Error::<T>::MaxBorrowAmountExceeded
-			);
+						let max_borrow_amount = active_loan.max_borrow_amount(current_debt);
+						ensure!(
+							amount <= max_borrow_amount,
+							Error::<T>::MaxBorrowAmountExceeded
+						);
 
-			// get previous present value so that we can update the nav accordingly
-			// we already know that that loan is not written off,
-			// means we wont need to have write off groups. so save a DB read and pass empty
-			let old_pv = loan
-				.present_value(old_debt, &vec![], loan.last_updated)
-				.ok_or(Error::<T>::LoanPresentValueFailed)?;
+						// get previous present value so that we can update the nav accordingly
+						// we already know that that loan is not written off,
+						// means we wont need to have write off groups. so save a DB read and pass empty
+						let old_pv = active_loan
+							.present_value(old_debt, &vec![], active_loan.last_updated)
+							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-			let new_total_borrowed = loan
-				.total_borrowed
-				.checked_add(&amount)
-				.ok_or(ArithmeticError::Overflow)?;
+						let new_total_borrowed = active_loan
+							.total_borrowed
+							.checked_add(&amount)
+							.ok_or(ArithmeticError::Overflow)?;
 
-			// calculate new normalized debt with adjustment amount
-			let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-				loan.interest_rate_per_sec,
-				loan.normalized_debt,
-				Adjustment::Increase(amount),
-			)?;
+						// calculate new normalized debt with adjustment amount
+						let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+							Adjustment::Increase(amount),
+						)?;
 
-			// update loan
-			let first_borrow = loan.total_borrowed == Zero::zero();
+						// update loan
+						let first_borrow = active_loan.total_borrowed == Zero::zero();
 
-			if first_borrow {
-				loan.origination_date = Some(now);
-			}
+						if first_borrow {
+							active_loan.origination_date = Some(now);
+						}
 
-			loan.total_borrowed = new_total_borrowed;
-			loan.normalized_debt = normalized_debt;
-			loan.last_updated = now;
+						active_loan.total_borrowed = new_total_borrowed;
+						active_loan.normalized_debt = normalized_debt;
+						active_loan.last_updated = now;
 
-			let new_debt =
-				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
+						let new_debt = T::InterestAccrual::current_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+						)?;
 
-			let new_pv = loan
-				.present_value(new_debt, &vec![], now)
-				.ok_or(Error::<T>::LoanPresentValueFailed)?;
-			Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-			T::Pool::withdraw(pool_id, owner, amount)?;
-			Ok(first_borrow)
-		})
+						let new_pv = active_loan
+							.present_value(new_debt, &vec![], now)
+							.ok_or(Error::<T>::LoanPresentValueFailed)?;
+						Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+						T::Pool::withdraw(pool_id, owner, amount)?;
+						Ok(first_borrow)
+					},
+				)
+			},
+		)
 	}
 
 	pub(crate) fn update_nav_with_updated_present_value(
@@ -337,81 +425,87 @@ impl<T: Config> Pallet<T> {
 		loan_id: T::LoanId,
 		owner: T::AccountId,
 		amount: T::Balance,
-	) -> Result<T::Balance, DispatchError> {
+	) -> Result<(ActiveCount, T::Balance), DispatchError> {
 		// ensure owner is the loan owner
 		Self::check_loan_owner(pool_id, loan_id, owner.clone())?;
 
 		Loan::<T>::try_mutate(
 			pool_id,
 			loan_id,
-			|loan| -> Result<T::Balance, DispatchError> {
+			|loan| -> Result<(ActiveCount, T::Balance), DispatchError> {
 				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
 				// ensure loan is active
 				ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
-				let now: Moment = Self::now();
+				Self::try_mutate_active_loan(
+					pool_id,
+					loan_id,
+					|active_loan| -> Result<T::Balance, DispatchError> {
+						let now: Moment = Self::now();
 
-				// ensure current time is more than origination time
-				// this is mainly to deal with how we calculate debt while trying to repay
-				// therefore we do not let users repay at same instant origination happened
-				ensure!(
-					now > loan
-						.origination_date
-						.expect("Active loan should have an origination date"),
-					Error::<T>::RepayTooEarly
-				);
+						// ensure current time is more than origination time
+						// this is mainly to deal with how we calculate debt while trying to repay
+						// therefore we do not let users repay at same instant origination happened
+						ensure!(
+							now > active_loan
+								.origination_date
+								.expect("Active loan should have an origination date"),
+							Error::<T>::RepayTooEarly
+						);
 
-				// ensure repay amount is positive
-				ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
+						// ensure repay amount is positive
+						ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
-				let old_debt = T::InterestAccrual::previous_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
-					loan.last_updated,
-				)?;
+						let old_debt = T::InterestAccrual::previous_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+							active_loan.last_updated,
+						)?;
 
-				// calculate old present_value
-				let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-				let old_pv = loan
-					.present_value(old_debt, &write_off_groups, loan.last_updated)
-					.ok_or(Error::<T>::LoanPresentValueFailed)?;
+						// calculate old present_value
+						let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+						let old_pv = active_loan
+							.present_value(old_debt, &write_off_groups, active_loan.last_updated)
+							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-				let current_debt = T::InterestAccrual::current_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
-				)?;
+						let current_debt = T::InterestAccrual::current_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+						)?;
 
-				// ensure amount is not more than current debt
-				let repay_amount = amount.min(current_debt);
+						// ensure amount is not more than current debt
+						let repay_amount = amount.min(current_debt);
 
-				let new_total_repaid = loan
-					.total_repaid
-					.checked_add(&repay_amount)
-					.ok_or(ArithmeticError::Overflow)?;
+						let new_total_repaid = active_loan
+							.total_repaid
+							.checked_add(&repay_amount)
+							.ok_or(ArithmeticError::Overflow)?;
 
-				// calculate new normalized debt with repaid amount
-				let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
-					Adjustment::Decrease(repay_amount),
-				)?;
+						// calculate new normalized debt with repaid amount
+						let normalized_debt = T::InterestAccrual::adjust_normalized_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+							Adjustment::Decrease(repay_amount),
+						)?;
 
-				loan.total_repaid = new_total_repaid;
-				loan.normalized_debt = normalized_debt;
-				loan.last_updated = now;
+						active_loan.total_repaid = new_total_repaid;
+						active_loan.normalized_debt = normalized_debt;
+						active_loan.last_updated = now;
 
-				let new_debt = T::InterestAccrual::current_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
-				)?;
+						let new_debt = T::InterestAccrual::current_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+						)?;
 
-				let new_pv = loan
-					.present_value(new_debt, &write_off_groups, now)
-					.ok_or(Error::<T>::LoanPresentValueFailed)?;
-				Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
-				T::Pool::deposit(pool_id, owner, repay_amount)?;
-				Ok(repay_amount)
+						let new_pv = active_loan
+							.present_value(new_debt, &write_off_groups, now)
+							.ok_or(Error::<T>::LoanPresentValueFailed)?;
+						Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+						T::Pool::deposit(pool_id, owner, repay_amount)?;
+						Ok(repay_amount)
+					},
+				)
 			},
 		)
 	}
@@ -422,60 +516,90 @@ impl<T: Config> Pallet<T> {
 
 	/// accrues rate and debt of a given loan and updates it
 	/// returns the present value of the loan accounting any write offs
-	pub(crate) fn accrue_and_update_loan(
-		pool_id: PoolIdOf<T>,
-		loan_id: T::LoanId,
+	pub(crate) fn accrue_debt_and_calculate_present_value(
+		active_loan: &mut PricedLoanDetailsOf<T>,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Balance, DispatchError> {
-		Loan::<T>::try_mutate(
-			pool_id,
-			loan_id,
-			|loan| -> Result<T::Balance, DispatchError> {
-				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+		// TODO: this won't just work, we will need to add a adjust_interest_rate method to the interest accrual pallet
+		// When writing off a loan to a new penalty interest rate, we need to calculate the normalized debt
+		// as it would have been using interest + penalty, based on the current debt based on interest.
+		let interest_rate_with_penalty: T::Rate = match active_loan.write_off_status {
+			WriteOffStatus::None => active_loan.interest_rate_per_sec,
+			WriteOffStatus::WrittenOff { write_off_index } => {
+				let group = write_off_groups
+					.get(write_off_index as usize)
+					.expect("Written off to invalid write off group.");
+				active_loan
+					.interest_rate_per_sec
+					.checked_add(&group.penalty_interest_rate_per_sec)
+					.ok_or(sp_runtime::DispatchError::Arithmetic(
+						ArithmeticError::Overflow,
+					))?
+			}
+			WriteOffStatus::WrittenOffByAdmin {
+				percentage: _,
+				penalty_interest_rate_per_sec,
+			} => active_loan
+				.interest_rate_per_sec
+				.checked_add(&penalty_interest_rate_per_sec)
+				.ok_or(sp_runtime::DispatchError::Arithmetic(
+					ArithmeticError::Overflow,
+				))?,
+		};
 
-				// if the loan is not active, then skip updating and return PV as zero
-				if loan.status != LoanStatus::Active {
-					return Ok(Zero::zero());
-				}
+		// TODO: this will do 1 storage read and up to 1 storage write.
+		// Could we optimize this? Or if not, should we return here whether a storage
+		// write was performed (i.e. the debt wasn't updated yet), so that the end
+		// of the update_nav extrinsic, we can only charge for the number of storage
+		// writes that were actually performed.
+		let debt = T::InterestAccrual::current_debt(
+			interest_rate_with_penalty,
+			active_loan.normalized_debt,
+		)?;
 
-				let debt = T::InterestAccrual::current_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
-				)?;
+		let now: Moment = Self::now();
+		active_loan.last_updated = now;
 
-				let now: Moment = Self::now();
-				loan.last_updated = now;
+		let present_value = active_loan
+			.present_value(debt, write_off_groups, now)
+			.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-				let present_value = loan
-					.present_value(debt, write_off_groups, now)
-					.ok_or(Error::<T>::LoanPresentValueFailed)?;
-
-				Ok(present_value)
-			},
-		)
+		Ok(present_value)
 	}
 
 	/// updates nav for the given pool and returns the latest NAV at this instant and number of loans accrued.
-	pub fn update_nav_of_pool(pool_id: PoolIdOf<T>) -> Result<(T::Balance, Moment), DispatchError> {
+	pub fn update_nav_of_pool(
+		pool_id: PoolIdOf<T>,
+	) -> Result<(ActiveCount, T::Balance), DispatchError> {
 		let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-		let mut updated_loans = 0;
-		let nav = Loan::<T>::iter_key_prefix(pool_id).try_fold(
-			Zero::zero(),
-			|sum, loan_id| -> Result<T::Balance, DispatchError> {
-				let pv = Self::accrue_and_update_loan(pool_id, loan_id, &write_off_groups)?;
-				updated_loans += 1;
-				sum.checked_add(&pv)
-					.ok_or(Error::<T>::LoanAccrueFailed.into())
-			},
-		)?;
-		PoolNAV::<T>::insert(
-			pool_id,
-			NAVDetails {
-				latest: nav,
-				last_updated: Self::now(),
-			},
-		);
-		Ok((nav, updated_loans))
+
+		ActiveLoans::<T>::try_mutate(pool_id, |active_loans| {
+			// Loop over all loans and sum all present values, to calculate the Net Asset Value (NAV)
+			let nav = active_loans.iter_mut().try_fold(
+				Zero::zero(),
+				|sum, active_loan| -> Result<T::Balance, DispatchError> {
+					let present_value = Self::accrue_debt_and_calculate_present_value(
+						active_loan,
+						&write_off_groups,
+					)?;
+
+					sum.checked_add(&present_value)
+						.ok_or(sp_runtime::DispatchError::Arithmetic(
+							ArithmeticError::Overflow,
+						))
+				},
+			)?;
+
+			// Store the latest NAV
+			PoolNAV::<T>::insert(
+				pool_id,
+				NAVDetails {
+					latest: nav,
+					last_updated: Self::now(),
+				},
+			);
+			Ok((active_loans.len().try_into().unwrap(), nav))
+		})
 	}
 
 	pub(crate) fn add_write_off_group_to_pool(
@@ -492,6 +616,13 @@ impl<T: Config> Pallet<T> {
 		ensure!(
 			group.percentage <= One::one(),
 			Error::<T>::InvalidWriteOffGroup
+		);
+
+		// ensure we have not exceeded the max number of write off groups
+		let number_of_write_off_groups = PoolWriteOffGroups::<T>::get(pool_id).len();
+		ensure!(
+			number_of_write_off_groups + 1 <= T::MaxWriteOffGroups::get() as usize,
+			Error::<T>::TooManyWriteOffGroups
 		);
 
 		// append new group
@@ -513,75 +644,115 @@ impl<T: Config> Pallet<T> {
 	pub(crate) fn write_off_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
-		override_write_off_index: Option<u32>,
-	) -> Result<u32, DispatchError> {
-		Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
-			let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
+		action: WriteOffAction<T::Rate>,
+	) -> Result<(ActiveCount, WriteOffDetailsOf<T>), DispatchError> {
+		Loan::<T>::try_mutate(
+			pool_id,
+			loan_id,
+			|loan| -> Result<(ActiveCount, WriteOffDetailsOf<T>), DispatchError> {
+				let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
-			// ensure loan is active
-			ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
+				Self::try_mutate_active_loan(
+					pool_id,
+					loan_id,
+					|active_loan| -> Result<WriteOffDetailsOf<T>, DispatchError> {
+						// ensure loan is active
+						ensure!(loan.status == LoanStatus::Active, Error::<T>::LoanNotActive);
 
-			// ensure loan was not overwritten by admin and try to fetch a valid write off group for loan
-			let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
-			let write_off_group_index = match override_write_off_index {
-				// admin is trying to write off
-				Some(index) => {
-					// check if the write off group exists
-					write_off_groups
-						.get(index as usize)
-						.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
-					loan.admin_written_off = true;
-					Ok(index)
-				}
-				None => {
-					// non-admin is trying to write off but admin already did. So error out
-					if loan.admin_written_off {
-						return Err(Error::<T>::WrittenOffByAdmin.into());
-					}
+						let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+						let (
+							write_off_group_index,
+							write_off_percentage,
+							write_off_penalty_rate,
+							new_write_off_status,
+						) = match action {
+							WriteOffAction::WriteOffToCurrentGroup => {
+								// Loans that were already written off by an admin,
+								// cannot be written off to the current group anymore.
+								let is_written_off_by_admin = match active_loan.write_off_status {
+									WriteOffStatus::WrittenOffByAdmin { .. } => true,
+									_ => false,
+								};
+								ensure!(
+									is_written_off_by_admin != true,
+									Error::<T>::WrittenOffByAdmin
+								);
 
-					let maturity_date = loan
-						.loan_type
-						.maturity_date()
-						.ok_or(Error::<T>::LoanTypeInvalid)?;
+								let maturity_date = active_loan
+									.loan_type
+									.maturity_date()
+									.ok_or(Error::<T>::LoanTypeInvalid)?;
 
-					// ensure loan's maturity date has passed
-					let now = Self::now();
-					ensure!(now > maturity_date, Error::<T>::LoanHealthy);
+								// ensure loan's maturity date has passed
+								let now = Self::now();
+								ensure!(now > maturity_date, Error::<T>::LoanHealthy);
 
-					// not written off by admin, and non admin trying to write off, then
-					// fetch the best write group available for this loan
-					math::valid_write_off_group(maturity_date, now, &write_off_groups)?
-						.ok_or(Error::<T>::NoValidWriteOffGroup)
-				}
-			}?;
+								// not written off by admin, and non admin trying to write off, then
+								// fetch the best write group available for this loan
+								let (write_off_index, group) = math::valid_write_off_group(
+									maturity_date,
+									now,
+									&write_off_groups,
+								)?
+								.ok_or(Error::<T>::NoValidWriteOffGroup)?;
 
-			let debt =
-				T::InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)?;
-			let old_debt = T::InterestAccrual::previous_debt(
-				loan.interest_rate_per_sec,
-				loan.normalized_debt,
-				loan.last_updated,
-			)?;
+								(
+									Some(write_off_index),
+									group.percentage,
+									group.penalty_interest_rate_per_sec,
+									WriteOffStatus::WrittenOff { write_off_index },
+								)
+							}
+							WriteOffAction::WriteOffAsAdmin {
+								percentage,
+								penalty_interest_rate_per_sec,
+							} => (
+								None,
+								percentage,
+								penalty_interest_rate_per_sec,
+								WriteOffStatus::WrittenOffByAdmin {
+									percentage,
+									penalty_interest_rate_per_sec,
+								},
+							),
+						};
 
-			let now: Moment = Self::now();
+						let debt = T::InterestAccrual::current_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+						)?;
+						let old_debt = T::InterestAccrual::previous_debt(
+							active_loan.interest_rate_per_sec,
+							active_loan.normalized_debt,
+							active_loan.last_updated,
+						)?;
 
-			// get old present value accounting for any write offs
-			let old_pv = loan
-				.present_value(old_debt, &write_off_groups, loan.last_updated)
-				.ok_or(Error::<T>::LoanPresentValueFailed)?;
+						let now: Moment = Self::now();
 
-			loan.write_off_index = Some(write_off_group_index);
-			loan.last_updated = now;
+						// get old present value accounting for any write offs
+						let old_pv = active_loan
+							.present_value(old_debt, &write_off_groups, active_loan.last_updated)
+							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-			// calculate updated write off adjusted present value
-			let new_pv = loan
-				.present_value(debt, &write_off_groups, now)
-				.ok_or(Error::<T>::LoanPresentValueFailed)?;
+						active_loan.write_off_status = new_write_off_status;
+						active_loan.last_updated = now;
 
-			// update nav
-			Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+						// calculate updated write off adjusted present value
+						let new_pv = active_loan
+							.present_value(debt, &write_off_groups, now)
+							.ok_or(Error::<T>::LoanPresentValueFailed)?;
 
-			Ok(write_off_group_index)
-		})
+						// update nav
+						Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
+
+						Ok((
+							write_off_group_index,
+							write_off_percentage,
+							write_off_penalty_rate,
+						))
+					},
+				)
+			},
+		)
 	}
 }

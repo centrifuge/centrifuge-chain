@@ -202,12 +202,13 @@ fn price_test_loan<T>(
 
 	// check loan status as Active
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
+	let active_loan =
+		Loans::get_active_loan(pool_id, loan_id).expect("PricedLoanDetails should be present");
 	assert_eq!(loan.status, LoanStatus::Active);
-	assert_eq!(loan.interest_rate_per_sec, rp);
-	assert_eq!(loan.loan_type, loan_type);
-	assert_eq!(loan.max_borrow_amount(0), 100 * USD);
-	assert_eq!(loan.write_off_index, None);
-	assert!(!loan.admin_written_off);
+	assert_eq!(active_loan.interest_rate_per_sec, rp);
+	assert_eq!(active_loan.loan_type, loan_type);
+	assert_eq!(active_loan.max_borrow_amount(0), 100 * USD);
+	assert_eq!(active_loan.write_off_status, WriteOffStatus::None);
 }
 
 fn price_bullet_loan<T>(
@@ -295,7 +296,10 @@ fn close_test_loan<T>(
 
 	// check loan status as Closed
 	let loan = Loan::<MockRuntime>::get(pool_id, loan_id).expect("LoanDetails should be present");
-	assert_eq!(loan.status, LoanStatus::Closed);
+	match loan.status {
+		LoanStatus::Closed { closed_at: _ } => (),
+		_ => assert!(false, "Loan status should be Closed"),
+	}
 }
 
 #[test]
@@ -551,18 +555,18 @@ macro_rules! test_borrow_loan {
 				assert_err!(res, Error::<MockRuntime>::LoanIsActive);
 
 				// check loan data
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(loan.interest_rate_per_sec)
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
+				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 
 				// accumulated rate is now rate per sec
-				assert_eq!(loan.interest_rate_per_sec, rate);
+				assert_eq!(active_loan.interest_rate_per_sec, rate);
 				assert_eq!(rate_info.last_updated, 1);
-				assert_eq!(loan.total_borrowed, 50 * USD);
+				assert_eq!(active_loan.total_borrowed, 50 * USD);
 				let inverse_rate = rate_info.accumulated_rate.reciprocal().unwrap();
 				let n_debt = inverse_rate.checked_mul_int(borrow_amount).unwrap();
-				assert_eq!(loan.normalized_debt, n_debt);
+				assert_eq!(active_loan.normalized_debt, n_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
@@ -574,7 +578,7 @@ macro_rules! test_borrow_loan {
 					.0;
 				let now = Loans::now();
 				let debt = math::debt(n_debt, rate_info.accumulated_rate).unwrap();
-				let pv = loan.present_value(debt, &vec![], now).unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// borrow another 20 after 1000 seconds
@@ -583,18 +587,18 @@ macro_rules! test_borrow_loan {
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
 				assert_ok!(res);
 				// check loan data
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(loan.interest_rate_per_sec)
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
+				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
-				assert_eq!(loan.total_borrowed, 70 * USD);
+				assert_eq!(active_loan.total_borrowed, 70 * USD);
 				let c_debt = math::debt(n_debt, rate_info.accumulated_rate)
 					.unwrap()
 					.checked_add(borrow_amount)
 					.unwrap();
 				let inverse_rate = rate_info.accumulated_rate.reciprocal().unwrap();
 				let n_debt = inverse_rate.checked_mul_int(c_debt).unwrap();
-				assert_eq!(loan.normalized_debt, n_debt);
+				assert_eq!(active_loan.normalized_debt, n_debt);
 
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 930 * USD);
@@ -605,8 +609,9 @@ macro_rules! test_borrow_loan {
 					.0;
 				let now = Loans::now();
 				let debt =
-					InterestAccrual::get_current_debt(loan.interest_rate_per_sec, n_debt).unwrap();
-				let pv = loan.present_value(debt, &vec![], now).unwrap();
+					InterestAccrual::get_current_debt(active_loan.interest_rate_per_sec, n_debt)
+						.unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// try to borrow more than max_borrow_amount
@@ -635,19 +640,36 @@ macro_rules! test_borrow_loan {
 					PermissionScope::Pool(pool_id),
 					Role::PoolRole(PoolRole::LoanAdmin),
 				));
-				for group in vec![(3, 0), (5, 15), (7, 20), (20, 30), (120, 100)] {
+				for group in vec![
+					(3, 0, 1),
+					(5, 15, 2),
+					(7, 20, 3),
+					(20, 30, 4),
+					(120, 100, 5),
+				] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational::<u64, u64>(group.1, 100),
 							overdue_days: group.0,
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
 				}
 
-				let res = Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
+				let percentage = Rate::saturating_from_rational::<u64, u64>(3, 100);
+				let penalty = Rate::saturating_from_rational::<u64, u64>(1, 100);
+				let res = Loans::admin_write_off(
+					Origin::signed(risk_admin),
+					pool_id,
+					loan_id,
+					percentage,
+					penalty,
+				);
 				assert_ok!(res);
 
 				let res = Loans::borrow(Origin::signed(borrower), pool_id, loan_id, borrow_amount);
@@ -657,14 +679,18 @@ macro_rules! test_borrow_loan {
 				let updated_nav =
 					<Loans as TPoolNav<PoolId, Balance>>::update_nav(pool_id).unwrap();
 				// check loan data
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
 				// after maturity should be current outstanding
-				let debt =
-					InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)
-						.expect("Interest should accrue");
+				let debt = InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec + penalty,
+					active_loan.normalized_debt,
+				)
+				.expect("Interest should accrue");
+				let write_off = percentage.checked_mul_int(debt).unwrap();
 				assert_eq!(
-					updated_nav, debt,
+					updated_nav,
+					debt - write_off,
 					"should be equal to outstanding debt post maturity"
 				);
 			})
@@ -712,19 +738,19 @@ macro_rules! test_repay_loan {
 				assert_ok!(res);
 
 				// check loan data
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(loan.interest_rate_per_sec)
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
+				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				// accumulated rate is now rate per sec
-				assert_eq!(loan.total_borrowed, 50 * USD);
+				assert_eq!(active_loan.total_borrowed, 50 * USD);
 				let n_debt = rate_info
 					.accumulated_rate
 					.reciprocal()
 					.unwrap()
 					.checked_mul_int(borrow_amount)
 					.unwrap();
-				assert_eq!(loan.normalized_debt, n_debt);
+				assert_eq!(active_loan.normalized_debt, n_debt);
 				// pool should have 50 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 950 * USD);
@@ -736,13 +762,13 @@ macro_rules! test_repay_loan {
 					.0;
 				let now = Loans::now();
 				let debt = math::debt(n_debt, rate_info.accumulated_rate).unwrap();
-				let pv = loan.present_value(debt, &vec![], now).unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 20 after 1000 seconds
 				let repay_amount = 20 * USD;
 				let p_debt = debt;
-				let goal_interest = checked_pow(loan.interest_rate_per_sec, 1000).unwrap();
+				let goal_interest = checked_pow(active_loan.interest_rate_per_sec, 1000).unwrap();
 				let goal_debt = goal_interest
 					.checked_mul_int(p_debt)
 					.unwrap()
@@ -750,18 +776,18 @@ macro_rules! test_repay_loan {
 					.unwrap();
 
 				Timestamp::set_timestamp(1001 * 1000);
-				assert_eq!(loan.total_repaid, 0);
+				assert_eq!(active_loan.total_repaid, 0);
 				let res = Loans::repay(Origin::signed(borrower), pool_id, loan_id, repay_amount);
 				assert_ok!(res);
 
 				// check loan data
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(loan.interest_rate_per_sec)
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
+				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				assert_eq!(rate_info.last_updated, 1001);
-				assert_eq!(loan.total_borrowed, 50 * USD);
-				assert_eq!(loan.total_repaid, 20 * USD);
+				assert_eq!(active_loan.total_borrowed, 50 * USD);
+				assert_eq!(active_loan.total_repaid, 20 * USD);
 				// pool should have 30 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 970 * USD);
@@ -783,10 +809,10 @@ macro_rules! test_repay_loan {
 				let inverse_rate = rate_info.accumulated_rate.reciprocal().unwrap();
 				let n_debt = inverse_rate.checked_mul_int(debt).unwrap();
 				assert_eq!(
-					loan.normalized_debt, n_debt,
+					active_loan.normalized_debt, n_debt,
 					"Normalized debt is incorrect after first repayment"
 				);
-				let pv = loan.present_value(debt, &vec![], now).unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// repay 30 more after another 1000 seconds
@@ -796,7 +822,7 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.checked_mul_int(debt)
 					.unwrap();
-				let goal_interest = checked_pow(loan.interest_rate_per_sec, 2000).unwrap();
+				let goal_interest = checked_pow(active_loan.interest_rate_per_sec, 2000).unwrap();
 				let goal_debt = goal_interest
 					.checked_mul_int(p_debt)
 					.unwrap()
@@ -808,13 +834,13 @@ macro_rules! test_repay_loan {
 				assert_ok!(res);
 
 				// check loan data
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(loan.interest_rate_per_sec)
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
+				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
 				assert_eq!(rate_info.last_updated, 2001);
-				assert_eq!(loan.total_borrowed, 50 * USD);
-				assert_eq!(loan.total_repaid, 50 * USD);
+				assert_eq!(active_loan.total_borrowed, 50 * USD);
+				assert_eq!(active_loan.total_repaid, 50 * USD);
 				// pool should have 30 less token
 				let pool_balance = balance_of::<MockRuntime>(CurrencyId::AUSD, &pool_account);
 				assert_eq!(pool_balance, 1000 * USD);
@@ -836,10 +862,10 @@ macro_rules! test_repay_loan {
 				let inverse_rate = rate_info.accumulated_rate.reciprocal().unwrap();
 				let n_debt = inverse_rate.checked_mul_int(debt).unwrap();
 				assert_eq!(
-					loan.normalized_debt, n_debt,
+					active_loan.normalized_debt, n_debt,
 					"Normalized debt is incorrect after second repayment"
 				);
-				let pv = loan.present_value(debt, &vec![], now).unwrap();
+				let pv = active_loan.present_value(debt, &vec![], now).unwrap();
 				assert_eq!(current_nav, pv, "should be same due to single loan");
 
 				// try and close the loan
@@ -853,16 +879,16 @@ macro_rules! test_repay_loan {
 					.unwrap()
 					.checked_mul_int(debt)
 					.unwrap();
-				let goal_interest = checked_pow(loan.interest_rate_per_sec, 3000).unwrap();
+				let goal_interest = checked_pow(active_loan.interest_rate_per_sec, 3000).unwrap();
 				let goal_debt = goal_interest.checked_mul_int(p_debt).unwrap();
 				Timestamp::set_timestamp(3001 * 1000);
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
 				// Since we don't do a loan operation, we need to invoke
 				// the InterestAccrual pallet to tick the rate forward.
 				let debt = InterestAccrual::get_current_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
 				)
 				.unwrap();
 				assert_eq!(
@@ -886,9 +912,9 @@ macro_rules! test_repay_loan {
 				assert_ok!(res);
 
 				// repay more than the interest
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
-				let total_repaid_pre = loan.total_repaid;
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
+				let total_repaid_pre = active_loan.total_repaid;
 				assert_eq!(
 					total_repaid_pre,
 					50 * USD,
@@ -896,8 +922,8 @@ macro_rules! test_repay_loan {
 				);
 
 				let debt = InterestAccrual::get_current_debt(
-					loan.interest_rate_per_sec,
-					loan.normalized_debt,
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
 				)
 				.unwrap();
 				let repay_amount = debt + 10 * USD;
@@ -905,15 +931,15 @@ macro_rules! test_repay_loan {
 				assert_ok!(res);
 
 				// only the debt should have been repaid
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
 				assert_eq!(
-					loan.normalized_debt,
+					active_loan.normalized_debt,
 					Zero::zero(),
 					"Total debt should be paid off"
 				);
 				assert_eq!(
-					loan.total_repaid,
+					active_loan.total_repaid,
 					debt + total_repaid_pre,
 					"Total repaid is wrong"
 				);
@@ -925,22 +951,17 @@ macro_rules! test_repay_loan {
 				// check loan data
 				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
 					.expect("LoanDetails should be present");
-				let rate_info = InterestAccrual::get_rate(loan.interest_rate_per_sec)
+				let rate_info = InterestAccrual::get_rate(active_loan.interest_rate_per_sec)
 					.expect("Rate information should be present");
-				assert_eq!(loan.status, LoanStatus::Closed);
-				assert_eq!(loan.normalized_debt, Zero::zero());
-				assert_eq!(loan.total_borrowed, 50 * USD);
+				match loan.status {
+					LoanStatus::Closed { closed_at: _ } => (),
+					_ => assert!(false, "Loan status should be Closed"),
+				}
 				assert_eq!(rate_info.last_updated, 3001);
 				// nav should be updated to latest present value and should be zero
 				let current_nav = <Loans as TPoolNav<PoolId, Balance>>::nav(pool_id)
 					.unwrap()
 					.0;
-				let now = Loans::now();
-				let old_debt =
-					InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)
-						.expect("Debt should be calculatable");
-				let pv = loan.present_value(old_debt, &vec![], now).unwrap();
-				assert_eq!(current_nav, pv, "should be same due to single loan");
 				assert_eq!(current_nav, Zero::zero());
 
 				// pool balance should be 1000 + interest
@@ -961,9 +982,9 @@ macro_rules! test_repay_loan {
 				// check nav
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
-				let (nav, loans_updated) = res.unwrap();
+				let (loans_updated, nav) = res.unwrap();
 				assert_eq!(nav, Zero::zero());
-				assert_eq!(loans_updated, 1);
+				assert_eq!(loans_updated, 0);
 			})
 	};
 }
@@ -1004,13 +1025,15 @@ macro_rules! test_pool_nav {
 				let (_rate, _loan_type) = $price_loan::<MockRuntime>(borrower, pool_id, loan_id);
 
 				// present value should still be zero
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
 				let now = Loans::now();
-				let old_debt =
-					InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)
-						.expect("Debt should be calculatable");
-				let pv = loan.present_value(old_debt, &vec![], now).unwrap();
+				let old_debt = InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
+				)
+				.expect("Debt should be calculatable");
+				let pv = active_loan.present_value(old_debt, &vec![], now).unwrap();
 				assert_eq!(pv, Zero::zero());
 
 				// borrow 50 amount at the instant
@@ -1019,13 +1042,15 @@ macro_rules! test_pool_nav {
 				assert_ok!(res);
 
 				// check present value
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
 				let now = Loans::now();
-				let old_debt =
-					InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)
-						.expect("Debt should be calculatable");
-				let pv = loan.present_value(old_debt, &vec![], now).unwrap();
+				let old_debt = InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
+				)
+				.expect("Debt should be calculatable");
+				let pv = active_loan.present_value(old_debt, &vec![], now).unwrap();
 				assert_eq!(pv, $pv_1);
 
 				// pass some time. maybe 200 days
@@ -1033,7 +1058,7 @@ macro_rules! test_pool_nav {
 				Timestamp::set_timestamp(after_200_days * 1000);
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
-				let (nav, ..) = res.unwrap();
+				let (_, nav) = res.unwrap();
 				// present value should be 50.05
 				assert_eq!(nav, $pv_200);
 
@@ -1041,11 +1066,11 @@ macro_rules! test_pool_nav {
 					// can borrow upto max_borrow_amount
 					// max_borrow_amount = 125 * 0.8 - debt
 					// check present value
-					let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-						.expect("LoanDetails should be present");
+					let active_loan = Loans::get_active_loan(pool_id, loan_id)
+						.expect("PricedLoanDetails should be present");
 					let debt = InterestAccrual::current_debt(
-						loan.interest_rate_per_sec,
-						loan.normalized_debt,
+						active_loan.interest_rate_per_sec,
+						active_loan.normalized_debt,
 					)
 					.unwrap();
 					let borrow_amount = (100 * USD).checked_sub(debt).unwrap();
@@ -1096,19 +1121,19 @@ macro_rules! test_pool_nav {
 
 				// let the maturity has passed 2 years + 10 day
 				let after_2_years = (math::seconds_per_year() * 2) + math::seconds_per_day() * 10;
-				let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-					.expect("LoanDetails should be present");
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("PricedLoanDetails should be present");
 				Timestamp::set_timestamp(after_2_years * 1000);
-				let debt =
-					InterestAccrual::current_debt(loan.interest_rate_per_sec, loan.normalized_debt)
-						.unwrap();
+				let debt = InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec,
+					active_loan.normalized_debt,
+				)
+				.unwrap();
 				let res = Loans::update_nav_of_pool(pool_id);
 				assert_ok!(res);
-				let (pv, ..) = res.unwrap();
+				let (_, nav) = res.unwrap();
 				// present value should be equal to current outstanding debt
-				assert_eq!(pv, debt);
-				let (nav, ..) = res.unwrap();
-				assert_eq!(pv, nav);
+				assert_eq!(nav, debt);
 
 				// call update nav extrinsic and check for event
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
@@ -1134,35 +1159,54 @@ macro_rules! test_pool_nav {
 					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				// write off the loan and check for updated nav
-				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				for group in vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)] {
 					let group = WriteOffGroup {
 						percentage: Rate::saturating_from_rational::<u128, u128>(group.1, 100),
 						overdue_days: group.0,
+						penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+							group.2, 100,
+						),
 					};
 					let res =
 						Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 					assert_ok!(res);
 				}
 
-				if $admin_write_off {
-					let res =
-						Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 2);
+				let (percentage, penalty) = if $admin_write_off {
+					let percentage = Rate::saturating_from_rational::<u64, u64>(7, 100);
+					let penalty = Rate::saturating_from_rational::<u64, u64>(3, 100);
+					let res = Loans::admin_write_off(
+						Origin::signed(risk_admin),
+						pool_id,
+						loan_id,
+						percentage,
+						penalty,
+					);
 					assert_ok!(res);
+					(percentage, penalty)
 				} else {
 					// write off loan. someone calls write off
 					let res = Loans::write_off(Origin::signed(100), pool_id, loan_id);
 					assert_ok!(res);
-				}
+					(
+						Rate::saturating_from_rational(20u64, 100),
+						Rate::saturating_from_rational(3u64, 100),
+					)
+				};
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 						Some((pool_id, loan_id, write_off_index))
 					}
 					_ => None,
 				}
 				.expect("must be a loan written off event");
 				// it must be 2 with overdue days as 7 and write off percentage as 20%
-				assert_eq!(write_off_index, 2);
+				if $admin_write_off {
+					assert_eq!(write_off_index, None);
+				} else {
+					assert_eq!(write_off_index, Some(2));
+				}
 
 				// update nav
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
@@ -1177,10 +1221,12 @@ macro_rules! test_pool_nav {
 				.expect("must be a Nav updated event");
 
 				// updated nav should be (1-20%) outstanding debt
-				let expected_nav = debt
-					- Rate::saturating_from_rational(20, 100)
-						.checked_mul_int(debt)
-						.unwrap();
+				let debt = InterestAccrual::current_debt(
+					active_loan.interest_rate_per_sec + penalty,
+					active_loan.normalized_debt,
+				)
+				.unwrap();
+				let expected_nav = debt - percentage.checked_mul_int(debt).unwrap();
 				assert_eq!(expected_nav, updated_nav);
 				assert_eq!(exact, NAVUpdateType::Exact);
 			})
@@ -1266,6 +1312,9 @@ fn test_add_write_off_groups() {
 				let group = WriteOffGroup {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
+					penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+						5, 100,
+					),
 				};
 				let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 				assert_ok!(res);
@@ -1286,6 +1335,7 @@ fn test_add_write_off_groups() {
 			let group = WriteOffGroup {
 				percentage: Rate::saturating_from_rational(110, 100),
 				overdue_days: 3,
+				penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(5, 100),
 			};
 			let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroup);
@@ -1340,13 +1390,16 @@ macro_rules! test_write_off_maturity_loan {
 					PermissionScope::Pool(pool_id),
 					Role::PoolRole(PoolRole::LoanAdmin),
 				));
-				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				for group in vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
@@ -1369,17 +1422,21 @@ macro_rules! test_write_off_maturity_loan {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+						LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 							Some((pool_id, loan_id, write_off_index))
 						}
 						_ => None,
 					}
 					.expect("must be a Loan issue event");
-					assert_eq!(write_off_index, days_index.1);
-					let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-						.expect("LoanDetails should be present");
-					assert_eq!(loan.write_off_index, Some(days_index.1));
-					assert!(!loan.admin_written_off);
+					assert_eq!(write_off_index, Some(days_index.1));
+					let active_loan = Loans::get_active_loan(pool_id, loan_id)
+						.expect("PricedLoanDetails should be present");
+					assert_eq!(
+						active_loan.write_off_status,
+						WriteOffStatus::WrittenOff {
+							write_off_index: days_index.1
+						}
+					);
 				}
 			})
 	};
@@ -1433,24 +1490,19 @@ macro_rules! test_admin_write_off_loan_type {
 					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 
-				Timestamp::set_timestamp(math::seconds_per_year() * 1000);
-				let res = Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
-				assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroupIndex);
-
-				// let the maturity date passes + 1 day
-				let t = math::seconds_per_year() * 2 + math::seconds_per_day();
-				Timestamp::set_timestamp(t * 1000);
-				let res = Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 0);
-				assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroupIndex);
-
 				// add write off groups
-				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30)] {
+				let groups = vec![(3, 10, 1), (5, 15, 2), (7, 20, 3), (20, 30, 4)];
+				for group in groups.clone() {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
-							percentage: Rate::saturating_from_rational(group.1, 100),
+							percentage: Rate::saturating_from_rational(group.1 as u64, 100u64),
 							overdue_days: group.0,
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2 as u64,
+								100u64,
+							),
 						},
 					);
 					assert_ok!(res);
@@ -1463,28 +1515,38 @@ macro_rules! test_admin_write_off_loan_type {
 				] {
 					Timestamp::set_timestamp(time * 1000);
 					for index in vec![0, 3, 2, 1, 0] {
+						let percentage =
+							Rate::saturating_from_rational(groups.clone()[index].0, 100u64);
+						let penalty_interest_rate_per_sec =
+							Rate::saturating_from_rational(groups.clone()[index].2, 100u64);
 						let res = Loans::admin_write_off(
 							Origin::signed(risk_admin),
 							pool_id,
 							loan_id,
-							index,
+							percentage,
+							penalty_interest_rate_per_sec,
 						);
 						assert_ok!(res);
 
 						let loan_event =
 							fetch_loan_event(last_event()).expect("should be a loan event");
 						let (_pool_id, _loan_id, write_off_index) = match loan_event {
-							LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+							LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 								Some((pool_id, loan_id, write_off_index))
 							}
 							_ => None,
 						}
 						.expect("must be a Loan issue event");
-						assert_eq!(write_off_index, index);
-						let loan = Loan::<MockRuntime>::get(pool_id, loan_id)
-							.expect("LoanDetails should be present");
-						assert_eq!(loan.write_off_index, Some(index));
-						assert!(loan.admin_written_off);
+						assert_eq!(write_off_index, None);
+						let active_loan = Loans::get_active_loan(pool_id, loan_id)
+							.expect("PricedLoanDetails should be present");
+						assert_eq!(
+							active_loan.write_off_status,
+							WriteOffStatus::WrittenOffByAdmin {
+								percentage,
+								penalty_interest_rate_per_sec
+							}
+						);
 					}
 				}
 
@@ -1553,13 +1615,22 @@ macro_rules! test_close_written_off_loan_type {
 					PermissionScope::Pool(pool_id),
 					Role::PoolRole(PoolRole::LoanAdmin),
 				));
-				for group in vec![(3, 10), (5, 15), (7, 20), (20, 30), (120, 100)] {
+				for group in vec![
+					(3, 10, 1),
+					(5, 15, 2),
+					(7, 20, 3),
+					(20, 30, 4),
+					(120, 100, 5),
+				] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);
@@ -1572,13 +1643,13 @@ macro_rules! test_close_written_off_loan_type {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+						LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 							Some((pool_id, loan_id, write_off_index))
 						}
 						_ => None,
 					}
 					.expect("must be a Loan issue event");
-					assert_eq!(write_off_index, 1);
+					assert_eq!(write_off_index, Some(1));
 					let res = Loans::close(Origin::signed(borrower), pool_id, loan_id);
 					assert_err!(res, Error::<MockRuntime>::LoanNotRepaid);
 
@@ -1590,20 +1661,29 @@ macro_rules! test_close_written_off_loan_type {
 					assert_ok!(res);
 				} else {
 					// write off as admin
-					let res =
-						Loans::admin_write_off(Origin::signed(risk_admin), pool_id, loan_id, 4);
+					let res = Loans::admin_write_off(
+						Origin::signed(risk_admin),
+						pool_id,
+						loan_id,
+						Rate::saturating_from_rational::<u64, u64>(100, 100),
+						Rate::saturating_from_rational::<u64, u64>(5, 100),
+					);
 					assert_ok!(res);
 				}
 
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::WrittenOff(pool_id, loan_id, write_off_index) => {
+					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
 						Some((pool_id, loan_id, write_off_index))
 					}
 					_ => None,
 				}
 				.expect("must be a Loan written off event");
-				assert_eq!(write_off_index, 4);
+				if $maturity_checks {
+					assert_eq!(write_off_index, Some(4));
+				} else {
+					assert_eq!(write_off_index, None);
+				}
 
 				// nav should be zero
 				let res = Loans::update_nav(Origin::signed(borrower), pool_id);
@@ -1736,13 +1816,21 @@ macro_rules! write_off_overflow {
 					Role::PoolRole(PoolRole::LoanAdmin),
 				));
 				//for group in vec![(3, 10), (313503982334601, 20)] {
-				for group in vec![(3, 10), (313503982334601, 15), (10, 20), (10, 30)] {
+				for group in vec![
+					(3, 10, 1),
+					(313503982334601, 15, 2),
+					(10, 20, 3),
+					(10, 30, 4),
+				] {
 					let res = Loans::add_write_off_group(
 						Origin::signed(risk_admin),
 						pool_id,
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
+							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
+								group.2, 100,
+							),
 						},
 					);
 					assert_ok!(res);

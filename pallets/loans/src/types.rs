@@ -61,20 +61,52 @@ pub struct WriteOffGroup<Rate> {
 
 	/// number in days after the maturity has passed at which this write off group is valid
 	pub(crate) overdue_days: u64,
+
+	/// additional interest that accrues on the written off loan as penalty
+	pub(crate) penalty_interest_rate_per_sec: Rate,
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum WriteOffStatus<Rate> {
+	None,
+	WrittenOff {
+		/// write off group index in the vec of write off groups
+		write_off_index: u32,
+	},
+	// an admin can write off an asset to specific percentage and penalty rate
+	WrittenOffByAdmin {
+		/// percentage of outstanding debt we are going to write off on a loan
+		percentage: Rate,
+		/// additional interest that accrues on the written off loan as penalty
+		penalty_interest_rate_per_sec: Rate,
+	},
+}
+
+#[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum WriteOffAction<Rate> {
+	WriteOffToCurrentGroup,
+	WriteOffAsAdmin {
+		percentage: Rate,
+		penalty_interest_rate_per_sec: Rate,
+	},
 }
 
 /// The data structure for storing loan status
 #[derive(Encode, Decode, Copy, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(any(feature = "std", feature = "runtime-benchmarks"), derive(Debug))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum LoanStatus {
+pub enum LoanStatus<BlockNumber> {
 	// this when asset is locked and loan nft is created.
 	Created,
 	// this is when loan is in active state. Either underwriters or oracles can move loan to this state
 	// by providing information like discount rates etc.. to loan
 	Active,
-	// loan is closed and collateral nft is transferred back to borrower and loan nft is transferred back to pool account
-	Closed,
+	// loan is closed and collateral nft is transferred back to borrower and loan nft is burned
+	Closed { closed_at: BlockNumber },
 }
 
 /// Information about how the nav was updated
@@ -91,10 +123,16 @@ pub enum NAVUpdateType {
 /// The data structure for storing loan info
 #[derive(Encode, Decode, Copy, Clone, RuntimeDebug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
+pub struct LoanDetails<Asset, BlockNumber> {
 	pub(crate) collateral: Asset,
+	pub(crate) status: LoanStatus<BlockNumber>,
+}
+
+#[derive(Encode, Decode, Copy, Clone, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug))]
+pub struct PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt> {
+	pub(crate) loan_id: LoanId,
 	pub(crate) loan_type: LoanType<Rate, Balance>,
-	pub(crate) status: LoanStatus,
 
 	// interest rate per second
 	pub(crate) interest_rate_per_sec: Rate,
@@ -109,20 +147,14 @@ pub struct LoanDetails<Rate, Balance, Asset, NormalizedDebt> {
 	pub(crate) total_borrowed: Balance,
 	pub(crate) total_repaid: Balance,
 
-	// write off group index in the vec of write off groups
-	// none, the loan is not written off yet
-	// some(index), loan is written off and write off details are found under the given index
-	pub(crate) write_off_index: Option<u32>,
-
-	// whether the loan written off by admin
-	// if so, we wont update the write off group on this loan further from permission less call
-	pub(crate) admin_written_off: bool,
+	// whether the loan has been written off
+	pub(crate) write_off_status: WriteOffStatus<Rate>,
 
 	// When the loan's PV was last updated
 	pub(crate) last_updated: Moment,
 }
 
-impl<Rate, Balance, Asset, NormalizedDebt> LoanDetails<Rate, Balance, Asset, NormalizedDebt>
+impl<LoanId, Rate, Balance, NormalizedDebt> PricedLoanDetails<LoanId, Rate, Balance, NormalizedDebt>
 where
 	Rate: FixedPointNumber,
 	Balance: FixedPointOperand + BaseArithmetic,
@@ -137,14 +169,18 @@ where
 		now: Moment,
 	) -> Option<Balance> {
 		// if the debt is written off, write off accordingly
-		let debt = if let Some(index) = self.write_off_index {
-			let group = write_off_groups.get(index as usize)?;
-			let write_off_amount = group.percentage.checked_mul_int(debt)?;
-			debt.checked_sub(&write_off_amount)?
-		} else {
-			debt
+		let debt = match self.write_off_status {
+			WriteOffStatus::None => debt,
+			WriteOffStatus::WrittenOff { write_off_index } => {
+				let group = write_off_groups.get(write_off_index as usize)?;
+				let write_off_amount = group.percentage.checked_mul_int(debt)?;
+				debt.checked_sub(&write_off_amount)?
+			}
+			WriteOffStatus::WrittenOffByAdmin { percentage, .. } => {
+				let write_off_amount = percentage.checked_mul_int(debt)?;
+				debt.checked_sub(&write_off_amount)?
+			}
 		};
-
 		match self.loan_type {
 			LoanType::BulletLoan(bl) => {
 				bl.present_value(debt, self.origination_date, now, self.interest_rate_per_sec)
@@ -167,20 +203,33 @@ where
 	}
 }
 
-/// type alias to Non fungible ClassId type
+/// Types to ease function signatures
 pub(crate) type ClassIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
-/// type alias to Non fungible InstanceId type
 pub(crate) type InstanceIdOf<T> =
 	<<T as Config>::NonFungible as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
-/// type alias to Non fungible Asset
 pub(crate) type AssetOf<T> = Asset<<T as Config>::ClassId, <T as Config>::LoanId>;
-/// type alias for poolId type
+
 pub(crate) type PoolIdOf<T> =
 	<<T as Config>::Pool as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
-/// type alias for a normalized balance type
+
+pub(crate) type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+
 pub(crate) type NormalizedDebtOf<T> = <<T as Config>::InterestAccrual as InterestAccrualT<
 	<T as Config>::Rate,
 	<T as Config>::Balance,
 	Adjustment<<T as Config>::Balance>,
 >>::NormalizedDebt;
+
+pub(crate) type PricedLoanDetailsOf<T> = PricedLoanDetails<
+	<T as Config>::LoanId,
+	<T as Config>::Rate,
+	<T as Config>::Balance,
+	NormalizedDebtOf<T>,
+>;
+
+pub(crate) type LoanDetailsOf<T> = LoanDetails<AssetOf<T>, BlockNumberOf<T>>;
+
+pub(crate) type ActiveCount = u32;
+pub(crate) type WriteOffDetails<Rate> = (Option<u32>, Rate, Rate);
+pub(crate) type WriteOffDetailsOf<T> = WriteOffDetails<<T as Config>::Rate>;

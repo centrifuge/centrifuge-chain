@@ -80,11 +80,41 @@ where
 	uniques_class_id
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub(crate) fn create_nft_class_if_needed<T>(
+	class_id: u64,
+	owner: T::AccountId,
+	maybe_admin: Option<T::AccountId>,
+) -> <T as pallet_loans::Config>::ClassId
+where
+	T: frame_system::Config
+		+ pallet_loans::Config<ClassId = <T as pallet_uniques::Config>::CollectionId>
+		+ pallet_uniques::Config,
+	<T as pallet_uniques::Config>::CollectionId: From<u64>,
+{
+	if pallet_uniques::Pallet::<T>::collection_owner(class_id.into()).is_none() {
+		create_nft_class::<T>(class_id, owner, maybe_admin)
+	} else {
+		class_id.into()
+	}
+}
+
+#[cfg(test)]
 pub(crate) fn mint_nft<T>(owner: T::AccountId, class_id: T::ClassId) -> T::LoanId
 where
 	T: frame_system::Config + pallet_loans::Config,
 {
-	let loan_id: T::LoanId = 1u128.into();
+	mint_nft_of::<T>(owner, class_id, 1.into())
+}
+
+pub(crate) fn mint_nft_of<T>(
+	owner: T::AccountId,
+	class_id: T::ClassId,
+	loan_id: T::LoanId,
+) -> T::LoanId
+where
+	T: frame_system::Config + pallet_loans::Config,
+{
 	T::NonFungible::mint_into(&class_id.into(), &loan_id.into(), &owner)
 		.expect("mint should not fail");
 	loan_id
