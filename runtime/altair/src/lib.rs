@@ -1204,7 +1204,7 @@ construct_runtime!(
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
-		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Event<T>, Config<T>} = 151,
+		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 151,
 
 
 		// migration pallet
