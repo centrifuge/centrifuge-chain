@@ -83,11 +83,15 @@ development-runtime = { path = "../development" }
 runtime-common = { path = "../common" }
 
 [dev-dependencies]
+hex = { version = "0.4.3", default_features = false }
+
 cfg-traits = { path = "../../libs/traits" }
 cfg-types = { path = "../../libs/types" }
+pallet-connectors = { path = "../../pallets/connectors" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
 pallet-pools = { path = "../../pallets/pools" }
+
 sp-io = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.29" }
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = true, branch = "polkadot-v0.9.29" }
 xcm-executor = { git = "https://github.com/paritytech/polkadot", default-features = true, branch = "release-v0.9.29" }
