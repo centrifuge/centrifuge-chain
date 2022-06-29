@@ -228,6 +228,20 @@ fn activate_test_loan_with_defaults<T: Config>(
 	<T as LoanConfig>::Rate: From<Rate>,
 	<T as LoanConfig>::Balance: From<u128>,
 {
+	// Note: Originally this was 5%. The with_rate version uses 5000
+	// as the denominator, so our numerator is 250
+	activate_test_loan_with_rate::<T>(pool_id, loan_id, borrower, 250)
+}
+
+fn activate_test_loan_with_rate<T: Config>(
+	pool_id: PoolIdOf<T>,
+	loan_id: T::LoanId,
+	borrower: T::AccountId,
+	rate: u32,
+) where
+	<T as LoanConfig>::Rate: From<Rate>,
+	<T as LoanConfig>::Balance: From<u128>,
+{
 	let loan_type = LoanType::CreditLineWithMaturity(CreditLineWithMaturity::new(
 		// advance rate 80%
 		Rate::saturating_from_rational(80, 100).into(),
@@ -244,8 +258,7 @@ fn activate_test_loan_with_defaults<T: Config>(
 		// 2 years
 		math::seconds_per_year() * 2,
 	));
-	// interest rate is 5%
-	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100))
+	let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(rate, 5000))
 		.unwrap()
 		.into();
 	LoansPallet::<T>::price(
@@ -637,29 +650,27 @@ benchmarks! {
 	update_nav {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let (_pool_owner, pool_id, _loan_account, _loan_class_id) = create_and_init_pool::<T>(true);
+		let amount = (CURRENCY / 4).into();
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
 			let (loan_owner, asset) = create_asset::<T>(loan_id);
 			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
-			activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner);
+			activate_test_loan_with_rate::<T>(pool_id, loan_id, loan_owner.clone(), idx+1);
+			LoansPallet::<T>::borrow(RawOrigin::Signed(loan_owner).into(), pool_id, loan_id, amount).expect("borrow should not fail");
 		}
 		let loan_owner = borrower::<T>();
-		let loan_id = n.into();
-		let amount = (100 * CURRENCY).into();
-		LoansPallet::<T>::borrow(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, loan_id, amount).expect("borrow should not fail");
+
 		// set timestamp to around 1 year
 		let now = TimestampPallet::<T>::get().into();
-		let after_one_year = now + math::seconds_per_year() * 1000;
-		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_year.into()).expect("timestamp set should not fail");
+		let after_one_month = now + math::seconds_per_day() * 30 * 1000;
+		TimestampPallet::<T>::set(RawOrigin::None.into(), after_one_month.into()).expect("timestamp set should not fail");
 		// add write off groups
 		add_test_write_off_groups::<T>(pool_id, risk_admin::<T>());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id)
 	verify {
 		let pool_nav = PoolNAV::<T>::get(pool_id).expect("pool nav should be present");
-		// pool nav should more than 100 USD(due to interest)
-		assert!(pool_nav.latest > amount);
 		// updated time should be after_one_years
-		assert_eq!(pool_nav.last_updated, after_one_year/1000);
+		assert_eq!(pool_nav.last_updated, after_one_month/1000);
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::NAVUpdated(pool_id, pool_nav.latest, NAVUpdateType::Exact).into());
 	}
 }
