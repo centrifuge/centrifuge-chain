@@ -654,8 +654,8 @@ pub mod pallet {
 		///
 		/// The caller must have the `PoolAdmin` role in order to
 		/// invoke this extrinsic.
-		#[pallet::weight(T::WeightInfo::update_no_execution()
-			.max(T::WeightInfo::update_and_execute()))]
+		#[pallet::weight(T::WeightInfo::update_no_execution(T::MaxTranches::get())
+			.max(T::WeightInfo::update_and_execute(T::MaxTranches::get())))]
 		pub fn update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
@@ -686,7 +686,7 @@ pub mod pallet {
 					ScheduledUpdate::<T>::remove(pool_id);
 				}
 
-				return Ok(Some(T::WeightInfo::update_no_execution()).into());
+				return Ok(Some(T::WeightInfo::update_no_execution(0)).into());
 			}
 
 			if let Change::NewValue(min_epoch_time) = changes.min_epoch_time {
@@ -717,15 +717,16 @@ pub mod pallet {
 				scheduled_time: now.saturating_add(T::MinUpdateDelay::get()),
 			};
 
+			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
 			if T::MinUpdateDelay::get() == 0 && T::UpdateGuard::released(&pool, &update, now) {
 				Self::do_update_pool(&pool_id, &changes)?;
 
-				Ok(Some(T::WeightInfo::update_and_execute()).into())
+				Ok(Some(T::WeightInfo::update_and_execute(num_tranches)).into())
 			} else {
 				// If an update was already stored, this will override it
 				ScheduledUpdate::<T>::insert(pool_id, update);
 
-				Ok(Some(T::WeightInfo::update_no_execution()).into())
+				Ok(Some(T::WeightInfo::update_no_execution(num_tranches)).into())
 			}
 		}
 
@@ -735,11 +736,11 @@ pub mod pallet {
 		/// and, if required, if there are no outstanding
 		/// redeem orders. If both apply, then the scheduled
 		/// changes are applied.
-		#[pallet::weight(T::WeightInfo::execute_scheduled_update())]
+		#[pallet::weight(T::WeightInfo::execute_scheduled_update(T::MaxTranches::get()))]
 		pub fn execute_scheduled_update(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			ensure_signed(origin)?;
 
 			let update = ScheduledUpdate::<T>::try_get(pool_id)
@@ -759,7 +760,8 @@ pub mod pallet {
 
 			Self::do_update_pool(&pool_id, &update.changes)?;
 
-			Ok(())
+			let num_tranches = pool.tranches.num_tranches().try_into().unwrap();
+			Ok(Some(T::WeightInfo::execute_scheduled_update(num_tranches)).into())
 		}
 
 		/// Sets the IPFS hash for the pool metadata information.
