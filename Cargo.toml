@@ -33,6 +33,7 @@ members = [
 	"pallets/anchors",
 	"pallets/claims",
 	"pallets/collator-allowlist",
+	"pallets/connectors",
 	"pallets/crowdloan-claim",
 	"pallets/crowdloan-reward",
 	"pallets/migration",
