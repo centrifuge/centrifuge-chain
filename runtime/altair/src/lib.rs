@@ -1034,9 +1034,19 @@ parameter_types! {
 	pub const DefaultMaxNAVAge: u64 = 0;
 
 	// Runtime-defined constraints for pool parameters
-	pub const MinEpochTimeLowerBound: u64 = 1 * SECONDS_PER_HOUR; // 1 hour
+	pub const MinEpochTimeLowerBound: u64 = if cfg!(feature = "runtime-benchmarks") {
+		// Allow short epoch time in benchmarks
+		1
+	} else {
+		1 * SECONDS_PER_HOUR // 1 hour
+	};
 	pub const MinEpochTimeUpperBound: u64 = 30 * SECONDS_PER_DAY; // 1 month
-	pub const MaxNAVAgeUpperBound: u64 = 0;
+	pub const MaxNAVAgeUpperBound: u64 = if cfg!(feature = "runtime-benchmarks") {
+		// Allow an aged NAV in benchmarks
+		SECONDS_PER_HOUR
+	} else {
+		0
+	};
 
 	// Pool metadata limit
 	#[derive(scale_info::TypeInfo, Eq, PartialEq, Debug, Clone, Copy )]
@@ -1045,6 +1055,13 @@ parameter_types! {
 	// Deposit to create a pool. This covers pool data, loan data, and permissions data.
 	pub const PoolDeposit: Balance = 0;
 }
+
+// The pool benchmarks can't handle a required root origin (yet).
+// TODO: Fix those benchmarks and remove this
+#[cfg(not(feature = "runtime-benchmarks"))]
+type PoolCreateOrigin = EnsureRoot<AccountId>;
+#[cfg(feature = "runtime-benchmarks")]
+type PoolCreateOrigin = EnsureSigned<AccountId>;
 
 impl pallet_pools::Config for Runtime {
 	type Event = Event;
@@ -1072,7 +1089,7 @@ impl pallet_pools::Config for Runtime {
 	type MaxSizeMetadata = MaxSizeMetadata;
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
-	type PoolCreateOrigin = EnsureRoot<AccountId>;
+	type PoolCreateOrigin = PoolCreateOrigin;
 	type WeightInfo = pallet_pools::weights::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
