@@ -1109,7 +1109,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.7"
+version = "0.10.8"
 dependencies = [
  "chainbridge",
  "common-traits",
