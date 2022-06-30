@@ -1424,6 +1424,7 @@ impl_runtime_apis! {
 			use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
 
 			let mut list = Vec::<BenchmarkList>::new();
 
@@ -1461,6 +1462,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_permissions, Permissions);
 			// list_benchmark!(list, extra, pallet_restricted_tokens, Tokens);
 			list_benchmark!(list, extra, pallet_nft_sales, NftSales);
+			list_benchmark!(list, extra, pallet_pools, Pools);
+			list_benchmark!(list, extra, pallet_loans, LoansPallet::<Runtime>);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -1492,6 +1495,9 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
+			use pallet_loans::benchmarking::Pallet as LoansPallet;
+			impl pallet_loans::benchmarking::Config for Runtime {}
+
 			// Note: Only add working benches here. Commenting out will still
 			//       result in the runtime_benchmarks.sh script trying to
 			//       the benches for the given pallet.
@@ -1516,6 +1522,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_migration_manager, Migration);
 			add_benchmark!(params, batches, pallet_permissions, Permissions);
 			add_benchmark!(params, batches, pallet_nft_sales, NftSales);
+			add_benchmark!(params, batches, pallet_pools, Pools);
+			add_benchmark!(params, batches, pallet_loans, LoansPallet::<Runtime>);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

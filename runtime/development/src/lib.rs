@@ -1656,7 +1656,7 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
-			use pallet_loans::benchmarking::Pallet as LoansPallet;
+ 			use pallet_loans::benchmarking::Pallet as LoansPallet;
 			impl pallet_loans::benchmarking::Config for Runtime {}
 
 			add_benchmark!(params, batches, pallet_fees, Fees);
