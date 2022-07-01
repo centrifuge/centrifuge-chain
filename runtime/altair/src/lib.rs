@@ -1021,7 +1021,12 @@ impl pallet_loans::Config for Runtime {
 parameter_types! {
 	pub const PoolPalletId: frame_support::PalletId = frame_support::PalletId(*b"roc/pool");
 
-	pub const MinUpdateDelay: u64 = 2 * SECONDS_PER_DAY;
+	pub const MinUpdateDelay: u64 = if cfg!(feature = "runtime-benchmarks") {
+		0
+	} else {
+		2 * SECONDS_PER_DAY
+	};
+
 	pub const ChallengeTime: BlockNumber = if cfg!(feature = "runtime-benchmarks") {
 		// Disable challenge time in benchmarks
 		0
