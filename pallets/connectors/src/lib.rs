@@ -23,6 +23,7 @@ pub mod weights;
 
 // Type aliases
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type PoolIdOf<T> = <T as pallet::Config>::PoolId;
 
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
@@ -34,6 +35,7 @@ pub struct Price<CurrencyId, Balance> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use sp_std::collections::btree_map::BTreeMap;
 	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 	use frame_support::{transactional, PalletId};
@@ -58,6 +60,8 @@ pub mod pallet {
 		+ Copy
 		+ MaybeSerializeDeserialize
 		+ MaxEncodedLen;
+
+		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
 		type PoolId: Member
 		+ Parameter
@@ -84,6 +88,18 @@ pub mod pallet {
 		type PoolInspect: Member;
 	}
 
+	#[pallet::event]
+	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	pub enum Event<T: Config> {
+		/// A pool was added to the domain
+		AddedPool {
+			pool_id: T::PoolId,
+			domain: Domain,
+		}
+	}
+
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Debug))]
 	pub enum Domain {
 		Centrifuge,
 		Moonbeam,
@@ -92,20 +108,51 @@ pub mod pallet {
 		Gnosis,
 	}
 
-	struct DomainAddress(pub [u8; 32]);
+	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct DomainAddress(pub [u8; 32]);
 
+	#[derive(Decode, Clone, PartialEq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Debug))]
 	pub enum Message<T: Config> {
-		AddPool { pool_id: T::PoolId }
+		AddPool { pool_id: PoolIdOf<T> }
 		// More to come...
 	}
 
+	impl<T: Config> Encode for Message<T>
+	where T: Config,
+	{
+		fn encode(&self) -> Vec<u8> {
+			match self {
+				Message::AddPool { pool_id } => {
+					let mut message: Vec<u8> = vec![0u8];
+					message.append(&mut vec![1,2,3]); //todo(nuno): &mut pool_id.as_bytes().to_vec());
+					message
+				}
+			}
+		}
+	}
+
+	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Debug))]
 	pub enum Router {
 		Nomad(NomadRouter),
 		XCM(XCMRouter),
 	}
 
+	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct NomadRouter {
+		forwardingContract: String // TODO(nuno): make it a MultiLocation
+	}
 
-	// Storage
+	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct XCMRouter {
+		multilocations: () // TODO(nuno): make it a Map<Domain, MultiLocation>
+	}
+
+	#[pallet::storage]
 	pub(crate) type Routers<T: Config> = StorageMap<
 		_,
 		Blake2_128Concat,
@@ -113,6 +160,7 @@ pub mod pallet {
 		Router,
 	>;
 
+	#[pallet::storage]
 	pub(crate) type LinkedAddressesByAccount<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -122,15 +170,17 @@ pub mod pallet {
 		DomainAddress
 	>;
 
+	#[pallet::storage]
 	pub(crate) type LinkedAddresses<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		Domain,
 		Blake2_128Concat,
 		DomainAddress,
-		Bool
+		bool
 	>;
 
+	#[pallet::storage]
 	pub(crate) type DomainBalances<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
@@ -148,7 +198,7 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Add a pool to a given domain
-		#[pallet::weight(<T as Config>::WeightInfo::add())]
+		#[pallet::weight(<T as Config>::WeightInfo::add_pool())]
 		pub fn add_pool(
 			origin: OriginFor<T>,
 			pool_id: T::PoolId,
