@@ -7,7 +7,6 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, parameter_types,
-	sp_std::marker::PhantomData,
 	traits::{
 		AsEnsureOriginWithArg, Contains, EqualPrivilegeOnly, Everything, InstanceFilter,
 		LockIdentifier, U128CurrencyToVote, UnixTime,
@@ -54,20 +53,17 @@ use static_assertions::const_assert;
 use constants::currency::*;
 use xcm_executor::XcmExecutor;
 
-use common_traits::Permissions as PermissionsT;
-use common_traits::{PoolUpdateGuard, PreConditions};
+use common_traits::PoolUpdateGuard;
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
-	TimeProvider, UNION,
+	TimeProvider,
 };
 
 use pallet_pools::{
 	EpochSolution, PoolDetails, ScheduledUpdateDetails, TrancheIndex, TrancheLoc, TrancheSolution,
 };
-use pallet_restricted_tokens::{
-	FungibleInspectPassthrough, FungiblesInspectPassthrough, TransferDetails,
-};
+use pallet_restricted_tokens::{FungibleInspectPassthrough, FungiblesInspectPassthrough};
 
 use crate::xcm::{XcmConfig, XcmOriginToTransactDispatchOrigin};
 pub use runtime_common::*;
@@ -867,38 +863,6 @@ impl
 	}
 }
 
-pub struct RestrictedTokens<P>(PhantomData<P>);
-impl<P> PreConditions<TransferDetails<AccountId, CurrencyId, Balance>> for RestrictedTokens<P>
-where
-	P: PermissionsT<AccountId, Scope = PermissionScope<PoolId, CurrencyId>, Role = Role>,
-{
-	type Result = bool;
-
-	fn check(details: TransferDetails<AccountId, CurrencyId, Balance>) -> bool {
-		let TransferDetails {
-			send,
-			recv,
-			id,
-			amount: _amount,
-		} = details.clone();
-
-		match id {
-			CurrencyId::Tranche(pool_id, tranche_id) => {
-				P::has(
-					PermissionScope::Pool(pool_id),
-					send,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
-				) && P::has(
-					PermissionScope::Pool(pool_id),
-					recv,
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, UNION)),
-				)
-			}
-			_ => true,
-		}
-	}
-}
-
 parameter_types! {
 	pub const NativeToken: CurrencyId = CurrencyId::Native;
 }
@@ -907,7 +871,7 @@ impl pallet_restricted_tokens::Config for Runtime {
 	type Event = Event;
 	type Balance = Balance;
 	type CurrencyId = CurrencyId;
-	type PreExtrTransfer = RestrictedTokens<Permissions>;
+	type PreExtrTransfer = common_traits::Always;
 	type PreFungiblesInspect = FungiblesInspectPassthrough;
 	type PreFungiblesInspectHold = common_traits::Always;
 	type PreFungiblesMutate = common_traits::Always;
