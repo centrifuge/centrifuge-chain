@@ -1012,7 +1012,7 @@ impl pallet_loans::Config for Runtime {
 	type CurrencyId = CurrencyId;
 	type Permission = Permissions;
 	type InterestAccrual = InterestAccrual;
-	type WeightInfo = pallet_loans::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_loans::SubstrateWeight<Self>;
 	type MaxActiveLoansPerPool = MaxActiveLoansPerPool;
 	type MaxWriteOffGroups = MaxWriteOffGroups;
 	type BlockNumberProvider = System;
@@ -1095,7 +1095,7 @@ impl pallet_pools::Config for Runtime {
 	type MaxTranches = MaxTranches;
 	type PoolDeposit = PoolDeposit;
 	type PoolCreateOrigin = PoolCreateOrigin;
-	type WeightInfo = pallet_pools::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_pools::SubstrateWeight<Runtime>;
 	type TrancheWeight = TrancheWeight;
 	type PoolCurrency = PoolCurrency;
 	type UpdateGuard = UpdateGuard;
