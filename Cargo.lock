@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.15"
+version = "0.10.16"
 dependencies = [
  "common-traits",
  "common-types",
@@ -127,12 +127,15 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-interest-accrual",
+ "pallet-loans",
  "pallet-membership",
  "pallet-migration-manager",
  "pallet-multisig",
  "pallet-nft-sales",
  "pallet-offences",
  "pallet-permissions",
+ "pallet-pools",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
@@ -1008,7 +1011,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.15"
+version = "0.10.16"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",

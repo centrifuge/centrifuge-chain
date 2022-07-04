@@ -499,6 +499,9 @@ pub async fn start_altair_node(
 			module
 				.merge(Anchors::new(client.clone()).into_rpc())
 				.map_err(|e| sc_service::Error::Application(e.into()))?;
+			module
+				.merge(Pools::new(client.clone()).into_rpc())
+				.map_err(|e| sc_service::Error::Application(e.into()))?;
 			Ok(module)
 		},
 		build_altair_import_queue,

@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.15"
+version = "0.10.16"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2018"
 build = "build.rs"
@@ -117,6 +117,9 @@ pallet-crowdloan-reward = { path = "../../pallets/crowdloan-reward", default-fea
 pallet-restricted-tokens = { path = "../../pallets/restricted-tokens", default-features = false }
 pallet-nft-sales = { path = "../../pallets/nft-sales", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
+pallet-loans = { path = "../../pallets/loans", default-features = false }
+pallet-pools = { path = "../../pallets/pools", default-features = false }
+pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
@@ -237,6 +240,8 @@ runtime-benchmarks = [
     "pallet-permissions/runtime-benchmarks",
     "pallet-restricted-tokens/runtime-benchmarks",
     "pallet-nft-sales/runtime-benchmarks",
+    "pallet-pools/runtime-benchmarks",
+    "pallet-loans/runtime-benchmarks",
     "runtime-common/runtime-benchmarks",
 ]
 
