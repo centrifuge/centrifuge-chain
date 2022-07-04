@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [master, parachain, fix-parachain]
+    branches: [master, parachain]
   pull_request:
 name: Tests
 jobs:
