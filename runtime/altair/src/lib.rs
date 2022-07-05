@@ -1083,7 +1083,7 @@ impl Contains<CurrencyId> for PoolCurrency {
 			| CurrencyId::Native
 			| CurrencyId::KSM
 			| CurrencyId::ForeignAsset(_) => false,
-			CurrencyId::AUSD | CurrencyId::KUSD => true,
+			CurrencyId::AUSD => true,
 		}
 	}
 }
