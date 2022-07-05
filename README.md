@@ -33,7 +33,11 @@ cargo build --release
 cargo test -p centrifuge-runtime --release
 ```
 
-### Start local Relay chain(alice and bob) and Parachain(alice)  
+### Start local Relay chain(alice and bob) and Parachain(alice)
+
+Prerequisites:
+- [docker](https://docs.docker.com/get-docker/)
+- [*jd*](https://stedolan.github.io/jq/)
 
 Start relay chain
 ```bash
@@ -45,7 +49,7 @@ Start  centrifuge-chain as parachain
 ./scripts/init.sh start-parachain
 ```
 
-Note: above command will show logs and block until parachain is stopped  
+Note: above command will show logs and block until parachain is stopped
 Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
 
 Onboard parachain to Relay chain
@@ -129,7 +133,7 @@ the collator node the parachain will be running on.
 
 # Upgrading to a newer Polkadot / Substrate / Cumulus version
 
-When a new version of Polkadot is released, a mirroring release hapens for the other 
+When a new version of Polkadot is released, a mirroring release hapens for the other
 parity projects such as Substrate and Cumulus, but also for other third-party projects
 such as the `orml` pallets, `xcm-simulator`, etc.
 
