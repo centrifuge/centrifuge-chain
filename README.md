@@ -133,7 +133,7 @@ the collator node the parachain will be running on.
 
 # Upgrading to a newer Polkadot / Substrate / Cumulus version
 
-When a new version of Polkadot is released, a mirroring release hapens for the other
+When a new version of Polkadot is released, a mirroring release happens for the other
 parity projects such as Substrate and Cumulus, but also for other third-party projects
 such as the `orml` pallets, `xcm-simulator`, etc.
 
