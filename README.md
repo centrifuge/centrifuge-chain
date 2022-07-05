@@ -49,7 +49,7 @@ Start  centrifuge-chain as parachain
 ./scripts/init.sh start-parachain
 ```
 
-Note: above command will show logs and block until parachain is stopped
+Note: the command above will show logs and block until the parachain is stopped
 Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
 
 Onboard parachain to Relay chain
