@@ -3,9 +3,8 @@
 use super::*;
 use codec::{Decode, Encode, MaxEncodedLen};
 use common_types::CurrencyId;
-use core::marker::PhantomData;
 use frame_support::sp_runtime::app_crypto::sp_core::U256;
-use frame_support::traits::{Currency, OnUnbalanced};
+use frame_support::traits::{Currency, Imbalance, OnUnbalanced};
 use frame_support::weights::{
 	constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
 	WeightToFeePolynomial,
@@ -23,17 +22,22 @@ use sp_std::vec::Vec;
 
 common_types::impl_tranche_token!();
 
-pub struct DealWithFees<Config>(PhantomData<Config>);
-pub type NegativeImbalance<Config> =
-	<Balances<Config> as Currency<<Config as SystemConfig>::AccountId>>::NegativeImbalance;
-impl<Config> OnUnbalanced<NegativeImbalance<Config>> for DealWithFees<Config>
+pub type NegativeImbalance<R> =
+	<Balances<R> as Currency<<R as SystemConfig>::AccountId>>::NegativeImbalance;
+
+pub struct DealWithFees<R>(sp_std::marker::PhantomData<R>);
+impl<R> OnUnbalanced<NegativeImbalance<R>> for DealWithFees<R>
 where
-	Config: AuthorshipConfig + BalancesConfig + SystemConfig,
+	R: AuthorshipConfig + BalancesConfig + SystemConfig + pallet_treasury::Config,
+	pallet_treasury::Pallet<R>: OnUnbalanced<NegativeImbalance<R>>,
 {
-	fn on_nonzero_unbalanced(amount: NegativeImbalance<Config>) {
-		if let Some(who) = Authorship::<Config>::author() {
-			Balances::<Config>::resolve_creating(&who, amount);
+	fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
+		let split = amount.ration(50, 50);
+		if let Some(who) = Authorship::<R>::author() {
+			Balances::<R>::resolve_creating(&who, split.0);
 		}
+
+		<pallet_treasury::Pallet<R> as OnUnbalanced<_>>::on_unbalanced(split.1);
 	}
 }
 
