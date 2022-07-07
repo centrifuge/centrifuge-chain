@@ -9,9 +9,6 @@ use frame_support::weights::{
 	constants::ExtrinsicBaseWeight, WeightToFeeCoefficient, WeightToFeeCoefficients,
 	WeightToFeePolynomial,
 };
-use frame_system::pallet::Config as SystemConfig;
-use pallet_authorship::{Config as AuthorshipConfig, Pallet as Authorship};
-use pallet_balances::{Config as BalancesConfig, Pallet as Balances};
 use scale_info::TypeInfo;
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
@@ -22,22 +19,41 @@ use sp_std::vec::Vec;
 
 common_types::impl_tranche_token!();
 
-pub type NegativeImbalance<R> =
-	<Balances<R> as Currency<<R as SystemConfig>::AccountId>>::NegativeImbalance;
+pub type NegativeImbalance<R> = <pallet_balances::Pallet<R> as Currency<
+	<R as frame_system::Config>::AccountId,
+>>::NegativeImbalance;
+
+struct ToAuthor<R>(sp_std::marker::PhantomData<R>);
+impl<R> OnUnbalanced<NegativeImbalance<R>> for ToAuthor<R>
+where
+	R: pallet_balances::Config + pallet_authorship::Config,
+{
+	fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
+		if let Some(author) = <pallet_authorship::Pallet<R>>::author() {
+			<pallet_balances::Pallet<R>>::resolve_creating(&author, amount);
+		}
+	}
+}
 
 pub struct DealWithFees<R>(sp_std::marker::PhantomData<R>);
 impl<R> OnUnbalanced<NegativeImbalance<R>> for DealWithFees<R>
 where
-	R: AuthorshipConfig + BalancesConfig + SystemConfig + pallet_treasury::Config,
+	R: pallet_balances::Config + pallet_treasury::Config + pallet_authorship::Config,
 	pallet_treasury::Pallet<R>: OnUnbalanced<NegativeImbalance<R>>,
 {
-	fn on_nonzero_unbalanced(amount: NegativeImbalance<R>) {
-		let split = amount.ration(50, 50);
-		if let Some(who) = Authorship::<R>::author() {
-			Balances::<R>::resolve_creating(&who, split.0);
-		}
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = NegativeImbalance<R>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			let trasury_amount = super::TREASURY_FEE_RATIO * fees.peek();
+			let mut split = fees.split(trasury_amount);
+			if let Some(tips) = fees_then_tips.next() {
+				// for tips, if any, 100% to author
+				tips.merge_into(&mut split.1);
+			}
 
-		<pallet_treasury::Pallet<R> as OnUnbalanced<_>>::on_unbalanced(split.1);
+			use pallet_treasury::Pallet as Treasury;
+			<Treasury<R> as OnUnbalanced<_>>::on_unbalanced(split.0);
+			<ToAuthor<R> as OnUnbalanced<_>>::on_unbalanced(split.1);
+		}
 	}
 }
 

@@ -280,6 +280,9 @@ pub mod constants {
 	/// Additional fee charged when validating NFT proofs
 	pub const NFT_PROOF_VALIDATION_FEE: Balance = 10 * CFG;
 
+	/// % of fee addressed to the Treasury. The reminder % will be for the block author.
+	pub const TREASURY_FEE_RATIO: Perbill = Perbill::from_percent(80);
+
 	// Represents the protobuf encoding - "NFTS". All Centrifuge documents are formatted in this way.
 	/// These are pre/appended to the registry id before being set as a [RegistryInfo] field in [create_registry].
 	pub const NFTS_PREFIX: &'static [u8] = &[1, 0, 0, 0, 0, 0, 0, 20];

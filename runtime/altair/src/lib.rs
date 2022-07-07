@@ -212,7 +212,7 @@ impl pallet_timestamp::Config for Runtime {
 
 // money stuff
 parameter_types! {
-	/// TransactionByteFee is set to 0.01 MicroCFG
+	/// TransactionByteFee is set to 0.01 MicroAIR
 	pub const TransactionByteFee: Balance = 1 * (MICRO_AIR / 100);
 	/// This value increases the priority of `Operational` transactions by adding
 	/// a "virtual tip" that's equal to the `OperationalFeeMultiplier * final_fee`.
