@@ -43,6 +43,9 @@ pallet-pools = { path = "../../pallets/pools", default-features = false }
 common-types = { path = "../../libs/common-types", default-features = false }
 pallet-permissions = { path = "../../pallets/permissions", default-features = false }
 
+[dev-dependencies]
+sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.24" }
+
 [features]
 default = ["std"]
 std = [
