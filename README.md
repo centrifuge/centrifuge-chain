@@ -33,7 +33,11 @@ cargo build --release
 cargo test -p centrifuge-runtime --release
 ```
 
-### Start local Relay chain(alice and bob) and Parachain(alice)  
+### Start local Relay chain(alice and bob) and Parachain(alice)
+
+Prerequisites:
+- [docker](https://docs.docker.com/get-docker/)
+- [*jd*](https://stedolan.github.io/jq/)
 
 Start relay chain
 ```bash
@@ -45,19 +49,13 @@ Start  centrifuge-chain as parachain
 ./scripts/init.sh start-parachain
 ```
 
-Note: above command will show logs and block until parachain is stopped  
+Note: the command above will show logs and block until the parachain is stopped
 Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
 
 Onboard parachain to Relay chain
 ```bash
 ./scripts/init.sh onboard-parachain
 ```
-
-### Generating a new genesis file
-
-1. Be sure to change the `id` and `protocol_id` in `src/chain_spec.rs`
-2. Run `cargo run --release build-spec --disable-default-bootnode --chain fulvous > res/[name]-spec.json` to export the chain spec
-3. Commit
 
 ## Linting
 
@@ -129,7 +127,7 @@ the collator node the parachain will be running on.
 
 # Upgrading to a newer Polkadot / Substrate / Cumulus version
 
-When a new version of Polkadot is released, a mirroring release hapens for the other 
+When a new version of Polkadot is released, a mirroring release happens for the other
 parity projects such as Substrate and Cumulus, but also for other third-party projects
 such as the `orml` pallets, `xcm-simulator`, etc.
 
