@@ -14,7 +14,6 @@
 //! Module provides loan related functions
 use super::*;
 use common_types::{Adjustment, PoolLocator};
-use core::convert::TryInto;
 use sp_runtime::ArithmeticError;
 
 impl<T: Config> Pallet<T> {

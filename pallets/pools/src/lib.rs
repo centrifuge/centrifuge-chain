@@ -235,7 +235,6 @@ pub mod pallet {
 	use frame_support::PalletId;
 	use sp_runtime::traits::BadOrigin;
 	use sp_runtime::ArithmeticError;
-	use sp_std::convert::TryInto;
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -1447,7 +1446,7 @@ pub mod pallet {
 		/// Validates if the maximal reserve of a pool is exceeded or it
 		/// any of the risk buffers falls below its minium.
 		///
-		/// **IMPORTANT NOTE:**  
+		/// **IMPORTANT NOTE:**
 		/// * min_risk_buffers => MUST be sorted from junior-to-senior tranche
 		/// * risk_buffers => MUST be sorted from junior-to-senior tranche
 		fn validate_pool_constraints(

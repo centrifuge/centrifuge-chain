@@ -17,7 +17,6 @@ use common_traits::PoolNAV;
 use common_types::CurrencyId;
 
 use codec::EncodeLike;
-use core::convert::TryInto;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::Currency;
 use frame_system::RawOrigin;

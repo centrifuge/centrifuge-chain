@@ -26,7 +26,6 @@ use frame_support::{dispatch::DispatchResult, traits::ValidatorRegistration};
 
 use frame_system::ensure_root;
 pub use pallet::*;
-use sp_std::convert::TryInto;
 
 pub mod weights;
 pub use weights::*;
