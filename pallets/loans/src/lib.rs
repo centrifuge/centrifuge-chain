@@ -70,7 +70,6 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
 	use sp_runtime::traits::BadOrigin;
-	use sp_std::convert::TryInto;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]

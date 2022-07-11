@@ -104,7 +104,6 @@ use sp_runtime::{
 	traits::{AccountIdConversion, Hash, Verify, Zero},
 	MultiSignature,
 };
-use sp_std::convert::TryInto;
 
 // Re-export in crate namespace (for runtime construction)
 pub use pallet::*;
