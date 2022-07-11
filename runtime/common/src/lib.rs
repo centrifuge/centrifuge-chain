@@ -25,6 +25,10 @@ pub mod apis;
 mod fixed_point;
 mod impls;
 
+// Pallet mock runtime
+#[cfg(test)]
+mod mock;
+
 /// Common types for all runtimes
 pub mod types {
 	use codec::{CompactAs, Decode, Encode, MaxEncodedLen};

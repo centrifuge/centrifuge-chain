@@ -58,6 +58,7 @@ std = [
     "pallet-authorship/std",
     "pallet-balances/std",
     "pallet-collective/std",
+    "pallet-treasury/std",
     "pallet-permissions/std",
     "serde",
     "sp-core/std",
