@@ -2,7 +2,7 @@
 name = 'pallet-claims'
 description = 'Pallet for processing token claims for Tinlake investments.'
 authors = ['The Centrifugians Tribe']
-edition = '2018'
+edition = '2021'
 homepage = 'https://centrifuge.io'
 license = "LGPL-3.0"
 repository = 'https://github.com/centrifuge/centrifuge-chain'

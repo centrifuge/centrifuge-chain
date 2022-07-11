@@ -1,7 +1,7 @@
 [package]
 authors = ['buterajay@protonmail.com']
 description = 'Access control list for bridge paths across chains'
-edition = '2018'
+edition = '2021'
 license = "LGPL-3.0"
 name = 'pallet-bridge-mapping'
 repository = "https://github.com/centrifuge/centrifuge-chain/pallets/bridge-mapping"
