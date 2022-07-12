@@ -1,6 +1,6 @@
 [package]
 name = "altair-runtime"
-version = "0.10.16"
+version = "0.10.17"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
@@ -99,6 +99,7 @@ pallet-treasury = { git = "https://github.com/paritytech/substrate", default-fea
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , branch = "polkadot-v0.9.24" }
 
 # orml pallets
+orml-asset-registry = {  git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
 orml-xcm-support = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, branch = "polkadot-v0.9.24" }
@@ -204,6 +205,7 @@ std = [
     "pallet-permissions/std",
     "orml-tokens/std",
     "orml-xtokens/std",
+    "orml-asset-registry/std",
     "pallet-loans/std",
     "pallet-pools/std",
     "pallet-interest-accrual/std",

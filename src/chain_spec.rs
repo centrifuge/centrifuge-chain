@@ -829,6 +829,7 @@ fn altair_genesis(
 				.to_vec(),
 		},
 		balances: altair_runtime::BalancesConfig { balances },
+		orml_asset_registry: Default::default(),
 		orml_tokens: altair_runtime::OrmlTokensConfig { balances: vec![] },
 		elections: altair_runtime::ElectionsConfig { members: vec![] },
 		council: altair_runtime::CouncilConfig {
@@ -904,7 +905,7 @@ fn development_genesis(
 					.cloned()
 					.map(|k| (k, balance_per_endowed))
 					.collect(),
-				// We can only mint kUSD in development
+				// We can only mint AUSD in development
 				endowed_accounts
 					.iter()
 					.cloned()

@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.16"
+version = "0.10.17"
 dependencies = [
  "common-traits",
  "common-types",
@@ -105,6 +105,7 @@ dependencies = [
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "orml-xcm-support",
@@ -1011,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.16"
+version = "0.10.17"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -9018,6 +9019,7 @@ dependencies = [
  "kusama-runtime",
  "lazy_static",
  "node-primitives",
+ "orml-asset-registry",
  "orml-tokens",
  "orml-traits",
  "orml-xcm-support",

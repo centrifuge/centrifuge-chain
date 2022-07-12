@@ -299,7 +299,7 @@ pub mod constants {
 pub mod parachains {
 	pub mod karura {
 		pub const ID: u32 = 2000;
-		pub const KUSD_KEY: &[u8] = &[0, 129];
+		pub const AUSD_KEY: &[u8] = &[0, 129];
 	}
 
 	pub mod altair {
