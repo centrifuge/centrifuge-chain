@@ -61,7 +61,7 @@ use scale_info::TypeInfo;
 use sp_arithmetic::traits::{checked_pow, One};
 use sp_runtime::ArithmeticError;
 use sp_runtime::{
-	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedSub},
+	traits::{AtLeast32BitUnsigned, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub},
 	DispatchError, FixedPointNumber, FixedPointOperand,
 };
 
@@ -174,8 +174,10 @@ pub mod pallet {
 			let _bits = Moment::BITS - delta.leading_zeros();
 			Rate::<T>::translate(|per_sec, mut rate: RateDetailsOf<T>| {
 				let new_rate =
-					Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then)
-						.expect("Our values are too small to overflow");
+					match Self::calculate_accumulated_rate(per_sec, rate.accumulated_rate, then) {
+						Ok(rate) => rate,
+						Err(e) => panic!("Failure of interest accrual for rate {:?}", per_sec),
+					};
 				rate.accumulated_rate = new_rate;
 				weight += T::DbWeight::get().reads_writes(1, 1);
 				// weight += T::Weight::calculate_accumulated_rate(_bits);
@@ -248,6 +250,27 @@ pub mod pallet {
 			Ok(new_normalized_debt)
 		}
 
+		pub fn do_renormalize_debt(
+			old_interest_rate: T::InterestRate,
+			new_interest_rate: T::InterestRate,
+			normalized_debt: T::Balance,
+		) -> Result<T::Balance, DispatchError> {
+			let old_rate =
+				Rate::<T>::try_get(old_interest_rate).map_err(|_| Error::<T>::NoSuchRate)?;
+			let new_rate =
+				Rate::<T>::try_get(new_interest_rate).map_err(|_| Error::<T>::NoSuchRate)?;
+
+			let debt = Self::calculate_debt(normalized_debt, old_rate.accumulated_rate)
+				.ok_or(Error::<T>::DebtCalculationFailed)?;
+			let new_normalized_debt = new_rate
+				.accumulated_rate
+				.reciprocal()
+				.and_then(|inv_rate| inv_rate.checked_mul_int(debt))
+				.ok_or(Error::<T>::DebtAdjustmentFailed)?;
+
+			Ok(new_normalized_debt)
+		}
+
 		/// Calculates the debt using debt = normalized_debt * accumulated_rate
 		fn calculate_debt(
 			normalized_debt: T::Balance,
@@ -266,10 +289,17 @@ pub mod pallet {
 				.checked_sub(last_updated)
 				.ok_or(ArithmeticError::Underflow)?;
 
-			checked_pow(interest_rate_per_sec, time_difference_secs as usize)
-				.ok_or(ArithmeticError::Overflow)?
-				.checked_mul(&accumulated_rate)
-				.ok_or(ArithmeticError::Overflow.into())
+			Ok(
+				checked_pow(interest_rate_per_sec, time_difference_secs as usize)
+					.unwrap_or_else(|| {
+						panic!(
+							"Pow overflowed: {:?} {:?}",
+							interest_rate_per_sec, time_difference_secs,
+						)
+					})
+					.checked_mul(&accumulated_rate)
+					.expect("mul overflows"),
+			)
 		}
 
 		pub fn now() -> Moment {
@@ -329,6 +359,14 @@ impl<T: Config> InterestAccrual<T::InterestRate, T::Balance, Adjustment<T::Balan
 		adjustment: Adjustment<T::Balance>,
 	) -> Result<Self::NormalizedDebt, DispatchError> {
 		Pallet::<T>::do_adjust_normalized_debt(interest_rate_per_sec, normalized_debt, adjustment)
+	}
+
+	fn renormalize_debt(
+		old_interest_rate: T::InterestRate,
+		new_interest_rate: T::InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+	) -> Result<Self::NormalizedDebt, DispatchError> {
+		Pallet::<T>::do_renormalize_debt(old_interest_rate, new_interest_rate, normalized_debt)
 	}
 
 	fn reference_rate(interest_rate_per_sec: T::InterestRate) {

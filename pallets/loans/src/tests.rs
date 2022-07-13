@@ -658,9 +658,10 @@ macro_rules! test_borrow_loan {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational::<u64, u64>(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -688,7 +689,7 @@ macro_rules! test_borrow_loan {
 					.expect("PricedLoanDetails should be present");
 				// after maturity should be current outstanding
 				let debt = InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.interest_rate_per_sec + penalty,
 					active_loan.normalized_debt,
 				)
 				.expect("Interest should accrue");
@@ -1168,9 +1169,10 @@ macro_rules! test_pool_nav {
 					let group = WriteOffGroup {
 						percentage: Rate::saturating_from_rational::<u128, u128>(group.1, 100),
 						overdue_days: group.0,
-						penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-							group.2, 100,
-						),
+						penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+							Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+						)
+						.unwrap(),
 					};
 					let res =
 						Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
@@ -1195,7 +1197,10 @@ macro_rules! test_pool_nav {
 					assert_ok!(res);
 					(
 						Rate::saturating_from_rational(20u64, 100),
-						Rate::saturating_from_rational(3u64, 100),
+						math::penalty_interest_rate_per_sec(Rate::saturating_from_rational(
+							3u64, 100,
+						))
+						.unwrap(),
 					)
 				};
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
@@ -1225,12 +1230,15 @@ macro_rules! test_pool_nav {
 				}
 				.expect("must be a Nav updated event");
 
+				// We need to re-fetch the active loan details to get the newly renormalized debt.
+				let active_loan = Loans::get_active_loan(pool_id, loan_id)
+					.expect("Active loan must still exist after a write-off");
 				// updated nav should be (1-20%) outstanding debt
 				let debt = InterestAccrual::current_debt(
-					active_loan.interest_rate_per_sec,
+					active_loan.interest_rate_per_sec + penalty,
 					active_loan.normalized_debt,
 				)
-				.unwrap();
+				.expect("Current debt should be valid");
 				let expected_nav = debt - percentage.checked_mul_int(debt).unwrap();
 				assert_eq!(expected_nav, updated_nav);
 				assert_eq!(exact, NAVUpdateType::Exact);
@@ -1317,9 +1325,10 @@ fn test_add_write_off_groups() {
 				let group = WriteOffGroup {
 					percentage: Rate::saturating_from_rational(percentage, 100),
 					overdue_days: 3,
-					penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-						5, 100,
-					),
+					penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+						Rate::saturating_from_rational::<u64, u64>(5, 100),
+					)
+					.unwrap(),
 				};
 				let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 				assert_ok!(res);
@@ -1340,7 +1349,10 @@ fn test_add_write_off_groups() {
 			let group = WriteOffGroup {
 				percentage: Rate::saturating_from_rational(110, 100),
 				overdue_days: 3,
-				penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(5, 100),
+				penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+					Rate::saturating_from_rational::<u64, u64>(5, 100),
+				)
+				.unwrap(),
 			};
 			let res = Loans::add_write_off_group(Origin::signed(risk_admin), pool_id, group);
 			assert_err!(res, Error::<MockRuntime>::InvalidWriteOffGroup);
@@ -1405,9 +1417,10 @@ macro_rules! test_write_off_maturity_loan {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1510,10 +1523,10 @@ macro_rules! test_admin_write_off_loan_type {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1 as u64, 100u64),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2 as u64,
-								100u64,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1529,8 +1542,11 @@ macro_rules! test_admin_write_off_loan_type {
 					for index in vec![0, 3, 2, 1, 0] {
 						let percentage =
 							Rate::saturating_from_rational(groups.clone()[index].0, 100u64);
-						let penalty_interest_rate_per_sec =
-							Rate::saturating_from_rational(groups.clone()[index].2, 100u64);
+						let penalty_interest_rate_per_sec = math::penalty_interest_rate_per_sec(
+							Rate::saturating_from_rational(groups.clone()[index].2, 100u64),
+						)
+						.unwrap();
+
 						let res = Loans::admin_write_off(
 							Origin::signed(risk_admin),
 							pool_id,
@@ -1642,9 +1658,10 @@ macro_rules! test_close_written_off_loan_type {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);
@@ -1845,9 +1862,10 @@ macro_rules! write_off_overflow {
 						WriteOffGroup {
 							percentage: Rate::saturating_from_rational(group.1, 100),
 							overdue_days: group.0,
-							penalty_interest_rate_per_sec: Rate::saturating_from_rational::<u64, u64>(
-								group.2, 100,
-							),
+							penalty_interest_rate_per_sec: math::penalty_interest_rate_per_sec(
+								Rate::saturating_from_rational::<u64, u64>(group.2, 100),
+							)
+							.unwrap(),
 						},
 					);
 					assert_ok!(res);

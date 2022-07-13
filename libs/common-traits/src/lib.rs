@@ -151,6 +151,13 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
 
+	/// Re-normalize a debt for a new interest rate
+	fn renormalize_debt(
+		old_interest_rate: InterestRate,
+		new_interest_rate: InterestRate,
+		normalized_debt: Self::NormalizedDebt,
+	) -> Result<Self::NormalizedDebt, DispatchError>;
+
 	/// Indicate that a rate is in use
 	fn reference_rate(interest_rate_per_sec: InterestRate);
 

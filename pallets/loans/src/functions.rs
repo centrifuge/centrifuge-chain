@@ -222,12 +222,12 @@ impl<T: Config> Pallet<T> {
 						// ensure debt is all paid
 						// we just need to ensure normalized debt is zero
 						// if not, we check if the loan is written of 100%
-						let written_off = match (
+						let (interest_rate_with_penalty, written_off) = match (
 							active_loan.normalized_debt == Zero::zero(),
 							active_loan.write_off_status,
 						) {
 							// debt is cleared
-							(true, _) => Ok(false),
+							(true, _) => Ok((active_loan.interest_rate_per_sec, false)),
 							// debt not cleared and loan not written off
 							(_, WriteOffStatus::None) => Err(Error::<T>::LoanNotRepaid),
 							// debt not cleared but loan is written off
@@ -238,13 +238,27 @@ impl<T: Config> Pallet<T> {
 									.get(write_off_index as usize)
 									.ok_or(Error::<T>::InvalidWriteOffGroupIndex)?;
 								ensure!(group.percentage == One::one(), Error::<T>::LoanNotRepaid);
-								Ok(true)
+								let interest_rate_with_penalty = active_loan
+									.interest_rate_per_sec
+									.checked_add(&group.penalty_interest_rate_per_sec)
+									.ok_or(ArithmeticError::Overflow)?;
+								Ok((interest_rate_with_penalty, true))
 							}
 							// debt not cleared but loan is written off by admin
 							// if written off completely, then we can close it
-							(_, WriteOffStatus::WrittenOffByAdmin { percentage, .. }) => {
+							(
+								_,
+								WriteOffStatus::WrittenOffByAdmin {
+									percentage,
+									penalty_interest_rate_per_sec,
+								},
+							) => {
 								ensure!(percentage == One::one(), Error::<T>::LoanNotRepaid);
-								Ok(true)
+								let interest_rate_with_penalty = active_loan
+									.interest_rate_per_sec
+									.checked_add(&penalty_interest_rate_per_sec)
+									.ok_or(ArithmeticError::Overflow)?;
+								Ok((interest_rate_with_penalty, true))
 							}
 						}?;
 
@@ -263,7 +277,7 @@ impl<T: Config> Pallet<T> {
 
 						ClosedLoans::<T>::insert(pool_id, loan_id, active_loan.clone());
 
-						T::InterestAccrual::unreference_rate(active_loan.interest_rate_per_sec)?;
+						T::InterestAccrual::unreference_rate(interest_rate_with_penalty)?;
 						let active_count = active_loans.len();
 						active_loans.remove(active_loan_idx);
 
@@ -458,8 +472,30 @@ impl<T: Config> Pallet<T> {
 						// ensure repay amount is positive
 						ensure!(amount > Zero::zero(), Error::<T>::LoanValueInvalid);
 
+						let write_off_groups = PoolWriteOffGroups::<T>::get(pool_id);
+						let interest_rate_with_penalty: T::Rate = match active_loan.write_off_status
+						{
+							WriteOffStatus::None => active_loan.interest_rate_per_sec,
+							WriteOffStatus::WrittenOff { write_off_index } => {
+								let group = write_off_groups
+									.get(write_off_index as usize)
+									.expect("Written off to invalid write off group.");
+								active_loan
+									.interest_rate_per_sec
+									.checked_add(&group.penalty_interest_rate_per_sec)
+									.ok_or(ArithmeticError::Overflow)?
+							}
+							WriteOffStatus::WrittenOffByAdmin {
+								percentage: _,
+								penalty_interest_rate_per_sec,
+							} => active_loan
+								.interest_rate_per_sec
+								.checked_add(&penalty_interest_rate_per_sec)
+								.ok_or(ArithmeticError::Overflow)?,
+						};
+
 						let old_debt = T::InterestAccrual::previous_debt(
-							active_loan.interest_rate_per_sec,
+							interest_rate_with_penalty,
 							active_loan.normalized_debt,
 							active_loan.last_updated,
 						)?;
@@ -495,7 +531,7 @@ impl<T: Config> Pallet<T> {
 						active_loan.last_updated = now;
 
 						let new_debt = T::InterestAccrual::current_debt(
-							active_loan.interest_rate_per_sec,
+							interest_rate_with_penalty,
 							active_loan.normalized_debt,
 						)?;
 
@@ -521,28 +557,26 @@ impl<T: Config> Pallet<T> {
 		active_loan: &mut PricedLoanDetailsOf<T>,
 		write_off_groups: &Vec<WriteOffGroup<T::Rate>>,
 	) -> Result<T::Balance, DispatchError> {
-		// TODO: this won't just work, we will need to add a adjust_interest_rate method to the interest accrual pallet
-		// When writing off a loan to a new penalty interest rate, we need to calculate the normalized debt
-		// as it would have been using interest + penalty, based on the current debt based on interest.
 		let interest_rate_with_penalty: T::Rate = match active_loan.write_off_status {
 			WriteOffStatus::None => active_loan.interest_rate_per_sec,
 			WriteOffStatus::WrittenOff { write_off_index } => {
 				let group = write_off_groups
 					.get(write_off_index as usize)
 					.expect("Written off to invalid write off group.");
-				active_loan.interest_rate_per_sec
+				active_loan
+					.interest_rate_per_sec
+					.checked_add(&group.penalty_interest_rate_per_sec)
+					.ok_or(ArithmeticError::Overflow)?
 			}
 			WriteOffStatus::WrittenOffByAdmin {
 				percentage: _,
 				penalty_interest_rate_per_sec,
-			} => active_loan.interest_rate_per_sec,
+			} => active_loan
+				.interest_rate_per_sec
+				.checked_add(&penalty_interest_rate_per_sec)
+				.ok_or(ArithmeticError::Overflow)?,
 		};
 
-		// TODO: this will do 1 storage read and up to 1 storage write.
-		// Could we optimize this? Or if not, should we return here whether a storage
-		// write was performed (i.e. the debt wasn't updated yet), so that the end
-		// of the update_nav extrinsic, we can only charge for the number of storage
-		// writes that were actually performed.
 		let debt = T::InterestAccrual::current_debt(
 			interest_rate_with_penalty,
 			active_loan.normalized_debt,
@@ -656,14 +690,34 @@ impl<T: Config> Pallet<T> {
 							write_off_percentage,
 							write_off_penalty_rate,
 							new_write_off_status,
+							previous_interest_rate,
 						) = match action {
 							WriteOffAction::WriteOffToCurrentGroup => {
 								// Loans that were already written off by an admin,
 								// cannot be written off to the current group anymore.
-								let is_written_off_by_admin = match active_loan.write_off_status {
-									WriteOffStatus::WrittenOffByAdmin { .. } => true,
-									_ => false,
-								};
+								let (previous_interest_rate, is_written_off_by_admin) =
+									match active_loan.write_off_status {
+										WriteOffStatus::None => {
+											(active_loan.interest_rate_per_sec, false)
+										}
+										WriteOffStatus::WrittenOff { write_off_index } => {
+											let group = write_off_groups
+												.get(write_off_index as usize)
+												.expect("Written off to invalid write off group.");
+											(
+												active_loan
+													.interest_rate_per_sec
+													.checked_add(
+														&group.penalty_interest_rate_per_sec,
+													)
+													.ok_or(ArithmeticError::Overflow)?,
+												false,
+											)
+										}
+										WriteOffStatus::WrittenOffByAdmin { .. } => {
+											(Default::default(), true)
+										}
+									};
 								ensure!(
 									is_written_off_by_admin != true,
 									Error::<T>::WrittenOffByAdmin
@@ -692,28 +746,52 @@ impl<T: Config> Pallet<T> {
 									group.percentage,
 									group.penalty_interest_rate_per_sec,
 									WriteOffStatus::WrittenOff { write_off_index },
+									previous_interest_rate,
 								)
 							}
 							WriteOffAction::WriteOffAsAdmin {
 								percentage,
 								penalty_interest_rate_per_sec,
-							} => (
-								None,
-								percentage,
-								penalty_interest_rate_per_sec,
-								WriteOffStatus::WrittenOffByAdmin {
+							} => {
+								let previous_interest_rate = match active_loan.write_off_status {
+									WriteOffStatus::None => active_loan.interest_rate_per_sec,
+									WriteOffStatus::WrittenOff { write_off_index } => {
+										let group = write_off_groups
+											.get(write_off_index as usize)
+											.expect("Written off to invalid write off group.");
+										active_loan
+											.interest_rate_per_sec
+											.checked_add(&group.penalty_interest_rate_per_sec)
+											.ok_or(ArithmeticError::Overflow)?
+									}
+
+									WriteOffStatus::WrittenOffByAdmin {
+										penalty_interest_rate_per_sec,
+										..
+									} => active_loan
+										.interest_rate_per_sec
+										.checked_add(&penalty_interest_rate_per_sec)
+										.ok_or(ArithmeticError::Overflow)?,
+								};
+								(
+									None,
 									percentage,
 									penalty_interest_rate_per_sec,
-								},
-							),
+									WriteOffStatus::WrittenOffByAdmin {
+										percentage,
+										penalty_interest_rate_per_sec,
+									},
+									previous_interest_rate,
+								)
+							}
 						};
 
 						let debt = T::InterestAccrual::current_debt(
-							active_loan.interest_rate_per_sec,
+							previous_interest_rate,
 							active_loan.normalized_debt,
 						)?;
 						let old_debt = T::InterestAccrual::previous_debt(
-							active_loan.interest_rate_per_sec,
+							previous_interest_rate,
 							active_loan.normalized_debt,
 							active_loan.last_updated,
 						)?;
@@ -732,6 +810,19 @@ impl<T: Config> Pallet<T> {
 						let new_pv = active_loan
 							.present_value(debt, &write_off_groups, now)
 							.ok_or(Error::<T>::LoanPresentValueFailed)?;
+
+						// Migrate written-off loan to new interest rate
+						let interest_rate_with_penalty = active_loan
+							.interest_rate_per_sec
+							.checked_add(&write_off_penalty_rate)
+							.ok_or(ArithmeticError::Overflow)?;
+						T::InterestAccrual::reference_rate(interest_rate_with_penalty);
+						active_loan.normalized_debt = T::InterestAccrual::renormalize_debt(
+							previous_interest_rate,
+							interest_rate_with_penalty,
+							active_loan.normalized_debt,
+						)?;
+						T::InterestAccrual::unreference_rate(previous_interest_rate)?;
 
 						// update nav
 						Self::update_nav_with_updated_present_value(pool_id, new_pv, old_pv)?;
