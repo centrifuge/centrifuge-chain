@@ -71,9 +71,9 @@ It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     ```bash
     ./scripts/init.sh onboard-parachain
     ```
-    When you have run the command, you could see in the relay chain client that there is a parachain
-    that will be connected in one/two minutes.
-    Once connected, you could see a block production in the *Centrifuge Chain* client.
+    When you have run the command, you should see in the relay-chain dashboard that there is a parachain
+    that will be onboarded in one/two minutes.
+    Once onboarded, block production should start soon after in the parachain.
 
 That's all! The environment is set.
 You can play with it from the *Centrifuge Chain* client, make transfers, inspect events, etc.
