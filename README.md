@@ -67,7 +67,8 @@ It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     Similar to the relay chain, you can explore the *Centrifuge Chain* using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
     You will see the block production frozen until you connect it to the relay chain.
 
-3. Onboard parachain to Relay chain (it will connect the *Centrifuge Chain* to the relay chain).
+3. Onboard the parachain
+    This step will have the targeted parachain onboarded in the relay chain. The parachain will NOT produce blocks until this step is completed successfully.
     ```bash
     ./scripts/init.sh onboard-parachain
     ```
