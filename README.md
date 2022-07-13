@@ -30,7 +30,7 @@ and another one to verify how it works in a more real environment as a parachain
 
 ### Chain tests
 
-The following command will run unitary and integration tests:
+The following command will the unit and the integration tests:
 
 ```bash
 cargo test -p centrifuge-runtime --release
