@@ -143,9 +143,11 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 
 		/// Max number of active loans per pool.
+		#[pallet::constant]
 		type MaxActiveLoansPerPool: Get<u32>;
 
 		/// Max number of write-off groups per pool.
+		#[pallet::constant]
 		type MaxWriteOffGroups: Get<u32>;
 
 		/// Source of the current block number

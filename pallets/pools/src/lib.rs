@@ -335,27 +335,40 @@ pub mod pallet {
 		type Time: UnixTime;
 
 		/// Challenge time
+		#[pallet::constant]
 		type ChallengeTime: Get<<Self as frame_system::Config>::BlockNumber>;
 
 		/// Pool parameter defaults
+		#[pallet::constant]
 		type DefaultMinEpochTime: Get<u64>;
+
+		#[pallet::constant]
 		type DefaultMaxNAVAge: Get<u64>;
 
 		/// Pool parameter bounds
+		#[pallet::constant]
 		type MinEpochTimeLowerBound: Get<u64>;
+
+		#[pallet::constant]
 		type MinEpochTimeUpperBound: Get<u64>;
+
+		#[pallet::constant]
 		type MaxNAVAgeUpperBound: Get<u64>;
 
 		/// Pool update settings
+		#[pallet::constant]
 		type MinUpdateDelay: Get<u64>;
 
 		/// Max size of Metadata
+		#[pallet::constant]
 		type MaxSizeMetadata: Get<u32> + Copy + Member + scale_info::TypeInfo;
 
 		/// Max number of Tranches
+		#[pallet::constant]
 		type MaxTranches: Get<u32>;
 
 		/// The amount that must be reserved to create a pool
+		#[pallet::constant]
 		type PoolDeposit: Get<Self::Balance>;
 
 		/// The origin permitted to create pools
