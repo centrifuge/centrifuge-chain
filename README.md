@@ -7,11 +7,7 @@ Centrifuge Chain is [Centrifuge](https://centrifuge.io)'s [substrate](https://gi
 
 ## Build
 
-Install Rust:
-
-```bash
-curl https://sh.rustup.rs -sSf | sh
-```
+Install [Rust](https://www.rust-lang.org/tools/install):
 
 Initialize your Wasm Build environment:
 
@@ -25,37 +21,62 @@ Build Wasm and native code:
 cargo build --release
 ```
 
-## Run
+Great! You have already compile the Centrifuge Chain!
 
-### Tests
+## Tests
+
+There are two kinds of tests, one related to how the *Centrifuge Chain* works itself
+and another one to verify how it works in a more real environment as a parachain.
+
+### Chain tests
+
+The following command will run unitary and integration tests:
 
 ```bash
 cargo test -p centrifuge-runtime --release
 ```
 
-### Start local Relay chain(alice and bob) and Parachain(alice)
+### Environment tests
 
-Prerequisites:
-- [docker](https://docs.docker.com/get-docker/)
-- [*jd*](https://stedolan.github.io/jq/)
+You can deploy a relay chain and connect a Centrifuge Chain node as parachain
+to it to verify how it behaves in the entire environment (end-to-end).
 
-Start relay chain
-```bash
-./scripts/init.sh start-relay-chain
-```
+0. Prerequisites. You must install these tools before:
+    - [docker](https://docs.docker.com/get-docker/)
+    - [*jd*](https://stedolan.github.io/jq/)
 
-Start  centrifuge-chain as parachain
-```bash
-./scripts/init.sh start-parachain
-```
+1. Start a local [relay chain](https://wiki.polkadot.network/docs/learn-architecture#relay-chain).
+It contains two [validator](https://wiki.polkadot.network/docs/learn-validator) nodes
+    (Alice and Bob):
+    ```bash
+    ./scripts/init.sh start-relay-chain
+    ```
+    After a few seconds you can see the block production of the relay chain using the [polkadot.js (on localhost:9944)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9944#/explorer) client.
 
-Note: the command above will show logs and block until the parachain is stopped
-Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
+    *Note: You can stop the relay chain using `./scripts/init.sh stop-relay-chain`*
 
-Onboard parachain to Relay chain
-```bash
-./scripts/init.sh onboard-parachain
-```
+2. Start a *Centrifuge Chain* as [parachain](https://wiki.polkadot.network/docs/learn-parachains).
+It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
+    ```bash
+    ./scripts/init.sh start-parachain
+    ```
+    *Note: the command above will show logs and block until the parachain is stopped.
+    Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
+    If you had a previous state, you can reset the node using `purge` after the command.*
+
+    Similar to the relay chain, you can explore the *Centrifuge Chain* using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
+    You will see the block production frozen until you connect it to the relay chain.
+
+3. Onboard parachain to Relay chain (it will connect the *Centrifuge Chain* to the relay chain).
+    ```bash
+    ./scripts/init.sh onboard-parachain
+    ```
+    When you have run the command, you could see in the relay chain client that there is a parachain
+    that will be connected in one/two minutes.
+    Once connected, you could see a block production in the *Centrifuge Chain* client.
+
+That's all! The environment is set.
+You can play with it from the *Centrifuge Chain* client, make transfers, inspect events, etc.
 
 ## Linting
 
