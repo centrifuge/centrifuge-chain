@@ -150,6 +150,12 @@ pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 		normalized_debt: Self::NormalizedDebt,
 		adjustment: Adjustment,
 	) -> Result<Self::NormalizedDebt, DispatchError>;
+
+	/// Indicate that a rate is in use
+	fn reference_rate(interest_rate_per_sec: InterestRate);
+
+	/// Indicate that a rate is no longer in use
+	fn unreference_rate(interest_rate_per_sec: InterestRate) -> DispatchResult;
 }
 
 pub trait Permissions<AccountId> {

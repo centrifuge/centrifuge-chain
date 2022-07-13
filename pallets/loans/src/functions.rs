@@ -176,6 +176,7 @@ impl<T: Config> Pallet<T> {
 				write_off_status: WriteOffStatus::None,
 				last_updated: Self::now(),
 			};
+			T::InterestAccrual::reference_rate(interest_rate_per_sec);
 
 			active_loans
 				.try_push(active_loan)
@@ -262,7 +263,7 @@ impl<T: Config> Pallet<T> {
 
 						ClosedLoans::<T>::insert(pool_id, loan_id, active_loan.clone());
 
-						// remove from active loans
+						T::InterestAccrual::unreference_rate(active_loan.interest_rate_per_sec)?;
 						let active_count = active_loans.len();
 						active_loans.remove(active_loan_idx);
 
@@ -529,22 +530,12 @@ impl<T: Config> Pallet<T> {
 				let group = write_off_groups
 					.get(write_off_index as usize)
 					.expect("Written off to invalid write off group.");
-				active_loan
-					.interest_rate_per_sec
-					.checked_add(&group.penalty_interest_rate_per_sec)
-					.ok_or(sp_runtime::DispatchError::Arithmetic(
-						ArithmeticError::Overflow,
-					))?
+				active_loan.interest_rate_per_sec
 			}
 			WriteOffStatus::WrittenOffByAdmin {
 				percentage: _,
 				penalty_interest_rate_per_sec,
-			} => active_loan
-				.interest_rate_per_sec
-				.checked_add(&penalty_interest_rate_per_sec)
-				.ok_or(sp_runtime::DispatchError::Arithmetic(
-					ArithmeticError::Overflow,
-				))?,
+			} => active_loan.interest_rate_per_sec,
 		};
 
 		// TODO: this will do 1 storage read and up to 1 storage write.
