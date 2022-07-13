@@ -502,7 +502,7 @@ pub mod pallet {
 			Self::deposit_event(Event::<T>::Repaid {
 				pool_id,
 				loan_id,
-				total_repaid,
+				amount: total_repaid,
 			});
 			Ok(Some(T::WeightInfo::repay(active_count)).into())
 		}
@@ -612,7 +612,9 @@ pub mod pallet {
 			// since the write off group index is picked in loop sequentially,
 			// total loops = index+1. This cannot overflow since it is
 			// capped by `MaxWriteOffGroups`
-			let count = index.expect("non-admin write off always returns an index. qed") + 1;
+			let count = write_off_group_index
+				.expect("non-admin write off always returns an index. qed")
+				+ 1;
 			Ok(Some(T::WeightInfo::write_off(active_count, count)).into())
 		}
 
