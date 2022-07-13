@@ -324,7 +324,7 @@ benchmarks! {
 
 	create {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		let (loan_owner, asset) = create_asset::<T>(1.into());
+		let (loan_owner, collateral) = create_asset::<T>(1.into());
 	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, collateral)
 	verify {
 		// assert loan issue event
@@ -593,7 +593,7 @@ benchmarks! {
 		}
 
 		// asset owner must be loan owner
-		expect_asset_owner::<T>(asset, loan_owner);
+		expect_asset_owner::<T>(collateral, loan_owner);
 
 		// loan nft owner is pool account
 		let loan_asset = Asset(loan_class_id, loan_id);
@@ -640,7 +640,7 @@ benchmarks! {
 		}
 
 		// asset owner must be loan owner
-		expect_asset_owner::<T>(asset, loan_owner);
+		expect_asset_owner::<T>(collateral, loan_owner);
 
 		// loan nft owner is pool account
 		let loan_asset = Asset(loan_class_id, loan_id);
