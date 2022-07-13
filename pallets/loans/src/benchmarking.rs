@@ -325,15 +325,15 @@ benchmarks! {
 	create {
 		let (pool_owner, pool_id, loan_account, loan_class_id) = create_and_init_pool::<T>(true);
 		let (loan_owner, asset) = create_asset::<T>(1.into());
-	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, asset)
+	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, collateral)
 	verify {
 		// assert loan issue event
 		let loan_id: T::LoanId = 1u128.into();
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Created { pool_id, loan_id, collateral }.into());
 
-		// asset owner must be pool account
+		// collateral owner must be pool account
 		let pool_account = pool_account::<T>(pool_id.into());
-		expect_asset_owner::<T>(asset, pool_account);
+		expect_asset_owner::<T>(collateral, pool_account);
 
 		// loan owner must be caller
 		let loan_asset = Asset(loan_class_id, loan_id);
@@ -369,15 +369,15 @@ benchmarks! {
 			math::seconds_per_year() * 2,
 		));
 		// interest rate is 5%
-		let rp: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
-	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, rp, loan_type)
+		let interest_rate_per_sec: T::Rate = math::interest_rate_per_sec(Rate::saturating_from_rational(5, 100)).unwrap().into();
+	}:_(RawOrigin::Signed(loan_owner.clone()), pool_id, loan_id, interest_rate_per_sec, loan_type)
 	verify {
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::Priced { pool_id, loan_id, interest_rate_per_sec, loan_type }.into());
 		let loan = Loan::<T>::get(pool_id, loan_id).expect("loan info should be present");
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).expect("Active loan info should be present");
 		assert_eq!(active_loan.loan_type, loan_type);
 		assert_eq!(loan.status, LoanStatus::Active);
-		assert_eq!(active_loan.interest_rate_per_sec, rp);
+		assert_eq!(active_loan.interest_rate_per_sec, interest_rate_per_sec);
 	}
 
 	add_write_off_group {
@@ -390,7 +390,7 @@ benchmarks! {
 		};
 	}:_(RawOrigin::Signed(risk_admin::<T>()), pool_id, write_off_group)
 	verify {
-		let index = 0u32;
+		let write_off_group_index = 0u32;
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WriteOffGroupAdded { pool_id, write_off_group_index }.into());
 	}
 
@@ -518,7 +518,7 @@ benchmarks! {
 	verify {
 		let index = (m-1).into();
 		let percentage = Rate::saturating_from_rational(100, 100).into();
-		let penalty = Rate::saturating_from_rational(100, 100).into();
+		let penalty_interest_rate_per_sec = Rate::saturating_from_rational(100, 100).into();
 		assert_last_event::<T, <T as LoanConfig>::Event>(LoanEvent::WrittenOff { pool_id, loan_id, percentage, penalty_interest_rate_per_sec, write_off_group_index: Some(index) }.into());
 		let active_loan = LoansPallet::<T>::get_active_loan(pool_id, loan_id).unwrap();
 		assert_eq!(active_loan.write_off_status, WriteOffStatus::WrittenOff{write_off_index: index})
@@ -554,16 +554,16 @@ benchmarks! {
 	repay_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		let mut asset = None;
+		let mut collateral = None;
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
 			let (loan_owner, new_asset) = create_asset::<T>(loan_id);
-			asset = Some(new_asset);
+			collateral = Some(new_asset);
 			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, new_asset).expect("loan issue should not fail");
 			activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner);
 
 		}
-		let asset = asset.unwrap();
+		let collateral = collateral.unwrap();
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
@@ -603,15 +603,15 @@ benchmarks! {
 	write_off_and_close {
 		let n in 1..T::MaxActiveLoansPerPool::get();
 		let (_pool_owner, pool_id, _loan_account, loan_class_id) = create_and_init_pool::<T>(true);
-		let mut asset = None;
+		let mut collateral = None;
 		for idx in 0..n {
 			let loan_id = (idx + 1).into();
-			let (loan_owner, new_asset) = create_asset::<T>(loan_id);
-			asset = Some(new_asset);
-			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, new_asset).expect("loan issue should not fail");
+			let (loan_owner, new_collateral) = create_asset::<T>(loan_id);
+			collateral = Some(new_collateral);
+			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, new_collateral).expect("loan issue should not fail");
 			activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner);
 		}
-		let asset = asset.unwrap();
+		let collateral = collateral.unwrap();
 		let loan_owner = borrower::<T>();
 		let loan_id = n.into();
 		let amount = (100 * CURRENCY).into();
