@@ -207,7 +207,7 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 				interior: X1(GeneralKey(key)),
 			} => match &key[..] {
 				parachains::polkadot::centrifuge::CFG_KEY => Ok(CurrencyId::Native),
-				_ => Err(location.clone()),
+				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 			},
 			MultiLocation {
 				parents: 1,
@@ -215,12 +215,12 @@ impl xcm_executor::traits::Convert<MultiLocation, CurrencyId> for CurrencyIdConv
 			} => match para_id {
 				parachains::polkadot::acala::ID => match &key[..] {
 					parachains::polkadot::acala::AUSD_KEY => Ok(CurrencyId::AUSD),
-					_ => Err(location.clone()),
+					_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 				},
 
 				id if id == u32::from(ParachainInfo::get()) => match &key[..] {
 					parachains::polkadot::centrifuge::CFG_KEY => Ok(CurrencyId::Native),
-					_ => Err(location.clone()),
+					_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),
 				},
 
 				_ => OrmlAssetRegistry::location_to_asset_id(location.clone()).ok_or(location),

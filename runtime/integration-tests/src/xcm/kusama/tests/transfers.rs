@@ -28,6 +28,7 @@ use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use sp_runtime::DispatchError::BadOrigin;
 
 use crate::xcm::kusama::setup::{
 	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId, ALICE,
@@ -409,6 +410,92 @@ fn transfer_foreign_sibling_to_altair() {
 		);
 		// Sanity check to ensure the calculated is what is expected
 		assert_eq!(bob_balance, 993264000000000000);
+	});
+}
+
+#[test]
+fn transfer_wormhole_usdc_karura_to_altair() {
+	TestNet::reset();
+
+	let usdc_asset_id = CurrencyId::ForeignAsset(39);
+	let asset_location = MultiLocation::new(
+		1,
+		X2(
+			Parachain(parachains::kusama::karura::ID),
+			GeneralKey("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
+		),
+	);
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 6,
+		name: "Wormhole USDC".into(),
+		symbol: "WUSDC".into(),
+		existential_deposit: 1,
+		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		additional: CustomMetadata::default(),
+	};
+	let transfer_amount = foreign(12, meta.decimals);
+	let alice_initial_balance = transfer_amount * 100;
+
+	Karura::execute_with(|| {
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta.clone(),
+			Some(usdc_asset_id)
+		));
+		assert_ok!(OrmlTokens::deposit(
+			usdc_asset_id,
+			&ALICE.into(),
+			alice_initial_balance
+		));
+		assert_eq!(
+			OrmlTokens::free_balance(usdc_asset_id, &ALICE.into()),
+			alice_initial_balance
+		);
+		assert_eq!(Balances::free_balance(&ALICE.into()), air(10));
+	});
+
+	Altair::execute_with(|| {
+		// First, register the asset in centrifuge
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta.clone(),
+			Some(usdc_asset_id)
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			usdc_asset_id,
+			transfer_amount,
+			Box::new(
+				MultiLocation::new(
+					1,
+					X2(
+						Parachain(parachains::kusama::altair::ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8000000000,
+		));
+
+		// Confirm that Alice's balance is initial balance - amount transferred
+		assert_eq!(
+			OrmlTokens::free_balance(usdc_asset_id, &ALICE.into()),
+			alice_initial_balance - transfer_amount
+		);
+	});
+
+	Altair::execute_with(|| {
+		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
+
+		// Sanity check to ensure the calculated is what is expected
+		assert_eq!(bob_balance, 11990676);
 	});
 }
 

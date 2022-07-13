@@ -35,6 +35,7 @@ use frame_support::assert_ok;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use sp_runtime::traits::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
@@ -420,98 +421,88 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	});
 }
 
-pub mod asset_registry {
-	use super::{assert_ok, parachains, GeneralKey, MultiLocation, X1};
-	use crate::xcm::polkadot::test_net::{Centrifuge, TestNet};
-	use centrifuge_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
-	use frame_support::assert_noop;
-	use orml_traits::asset_registry::AssetMetadata;
-	use orml_traits::currency::MultiCurrency;
-	use sp_runtime::traits::BadOrigin;
-	use xcm::prelude::{Parachain, X2};
-	use xcm::VersionedMultiLocation;
-	use xcm_emulator::TestExt;
+#[test]
+fn transfer_wormhole_usdc_acala_to_centrifuge() {
+	TestNet::reset();
 
-	#[test]
-	fn register_cfg_works() {
-		Centrifuge::execute_with(|| {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-				decimals: 18,
-				name: "Centrifuge".into(),
-				symbol: "CFG".into(),
-				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
-					0,
-					X1(GeneralKey(
-						parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
-					)),
-				))),
-				additional: CustomMetadata::default(),
-			};
+	let usdc_asset_id = CurrencyId::ForeignAsset(39);
+	let asset_location = MultiLocation::new(
+		1,
+		X2(
+			Parachain(parachains::polkadot::acala::ID),
+			GeneralKey("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
+		),
+	);
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 6,
+		name: "Wormhole USDC".into(),
+		symbol: "WUSDC".into(),
+		existential_deposit: 1,
+		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		additional: CustomMetadata::default(),
+	};
+	let transfer_amount = foreign(12, meta.decimals);
+	let alice_initial_balance = transfer_amount * 100;
 
-			assert_ok!(OrmlAssetRegistry::register_asset(
-				Origin::root(),
-				meta,
-				Some(CurrencyId::Native)
-			));
-		});
-	}
+	Acala::execute_with(|| {
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta.clone(),
+			Some(usdc_asset_id)
+		));
+		assert_ok!(OrmlTokens::deposit(
+			usdc_asset_id,
+			&ALICE.into(),
+			alice_initial_balance
+		));
+		assert_eq!(
+			OrmlTokens::free_balance(usdc_asset_id, &ALICE.into()),
+			alice_initial_balance
+		);
+		assert_eq!(Balances::free_balance(&ALICE.into()), cfg(10));
+	});
 
-	#[test]
-	fn register_foreign_asset_works() {
-		Centrifuge::execute_with(|| {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-				decimals: 12,
-				name: "Acala Dollar".into(),
-				symbol: "AUSD".into(),
-				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+	Centrifuge::execute_with(|| {
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta.clone(),
+			Some(usdc_asset_id)
+		));
+	});
+
+	Acala::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			usdc_asset_id,
+			transfer_amount,
+			Box::new(
+				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
-						GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
-					),
-				))),
-				additional: CustomMetadata::default(),
-			};
+						Parachain(parachains::polkadot::centrifuge::ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8_000_000_000,
+		));
+		// Confirm that Alice's balance is initial balance - amount transferred
+		assert_eq!(
+			OrmlTokens::free_balance(usdc_asset_id, &ALICE.into()),
+			alice_initial_balance - transfer_amount
+		);
+	});
 
-			assert_ok!(OrmlAssetRegistry::register_asset(
-				Origin::root(),
-				meta,
-				Some(CurrencyId::ForeignAsset(42))
-			));
-		});
-	}
+	Centrifuge::execute_with(|| {
+		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
-	#[test]
-	// Verify that registering tranche tokens is not allowed through extrinsics
-	fn register_tranche_asset_blocked() {
-		Centrifuge::execute_with(|| {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-				decimals: 12,
-				name: "Tranche Token 1".into(),
-				symbol: "TRNCH".into(),
-				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
-					1,
-					X2(Parachain(2000), GeneralKey(vec![42])),
-				))),
-				additional: CustomMetadata::default(),
-			};
-
-			// It fails with `BadOrigin` even when submitted with `Origin::root` since we only
-			// allow for tranche tokens to be registered through the pools pallet.
-			let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
-			assert_noop!(
-				OrmlAssetRegistry::register_asset(
-					Origin::root(),
-					meta.clone(),
-					Some(asset_id.clone())
-				),
-				BadOrigin
-			);
-		});
-	}
+		// Sanity check to ensure the calculated is what is expected
+		assert_eq!(bob_balance, 11990676);
+	});
 }
 
 #[test]
@@ -519,123 +510,6 @@ fn test_total_fee() {
 	assert_eq!(cfg_fee(), 9324000000000000);
 	assert_eq!(fee(decimals::AUSD), 9324000000);
 	assert_eq!(fee(decimals::KSM), 9324000000);
-}
-
-pub mod currency_id_convert {
-	use super::*;
-	use centrifuge_runtime::CurrencyIdConvert;
-	use sp_runtime::traits::Convert as C2;
-	use xcm::VersionedMultiLocation;
-	use xcm_executor::traits::Convert as C1;
-
-	#[test]
-	fn convert_cfg() {
-		assert_eq!(
-			parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
-			vec![0, 1]
-		);
-
-		// The way CFG is represented relative within the Centrifuge runtime
-		let cfg_location_inner: MultiLocation = MultiLocation::new(
-			0,
-			X1(GeneralKey(
-				parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
-			)),
-		);
-
-		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(cfg_location_inner),
-			Ok(CurrencyId::Native),
-		);
-
-		// The canonical way CFG is represented out in the wild
-		let cfg_location_canonical: MultiLocation = MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::polkadot::centrifuge::ID),
-				GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
-			),
-		);
-
-		Centrifuge::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-				Some(cfg_location_canonical)
-			)
-		});
-	}
-
-	#[test]
-	fn convert_ausd() {
-		assert_eq!(parachains::polkadot::acala::AUSD_KEY.to_vec(), vec![0, 1]);
-
-		let ausd_location: MultiLocation = MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::polkadot::acala::ID),
-				GeneralKey(parachains::polkadot::acala::AUSD_KEY.to_vec()),
-			),
-		);
-
-		Centrifuge::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-				Ok(CurrencyId::AUSD),
-			);
-
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::AUSD),
-				Some(ausd_location)
-			)
-		});
-	}
-
-	#[test]
-	fn convert_dot() {
-		let dot_location: MultiLocation = MultiLocation::parent().into();
-
-		Centrifuge::execute_with(|| {
-			register_dot();
-
-			assert_eq!(
-				<CurrencyIdConvert as C1<_, _>>::convert(dot_location.clone()),
-				Ok(DOT_ASSET_ID),
-			);
-
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(DOT_ASSET_ID),
-				Some(dot_location)
-			)
-		});
-	}
-
-	#[test]
-	fn convert_unkown_multilocation() {
-		let unknown_location: MultiLocation = MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::polkadot::centrifuge::ID),
-				GeneralKey([42].to_vec()),
-			),
-		);
-
-		Centrifuge::execute_with(|| {
-			assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
-		});
-	}
-
-	#[test]
-	fn convert_unsupported_currency() {
-		Centrifuge::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Tranche(
-					0,
-					[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-				)),
-				None
-			)
-		});
-	}
 }
 
 fn cfg_fee() -> Balance {
