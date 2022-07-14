@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.com/centrifuge/centrifuge-chain.svg?branch=master)](https://travis-ci.com/centrifuge/centrifuge-chain)
 [![codecov](https://codecov.io/gh/centrifuge/centrifuge-chain/branch/master/graph/badge.svg)](https://codecov.io/gh/centrifuge/centrifuge-chain)
 
-Centrifuge Chain is [Centrifuge](https://centrifuge.io)'s [substrate](https://github.com/paritytech/substrate) based chain.
+The Centrifuge Chain is [Centrifuge](https://centrifuge.io)'s [Substrate](https://github.com/paritytech/substrate)-based chain.
 
 ## Build
 
@@ -33,7 +33,7 @@ and another one to verify how it works in a more real environment as a parachain
 The following command will the unit and the integration tests:
 
 ```bash
-cargo test -p centrifuge-runtime --release
+cargo +nightly test --workspace --release --features test-benchmarks,try-runtime
 ```
 
 ### Environment tests
@@ -61,11 +61,18 @@ It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     ./scripts/init.sh start-parachain
     ```
     *Note: the command above will show logs and block until the parachain is stopped.
-    Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
     If you had a previous state, you can reset the node using `purge` after the command.*
 
-    Similar to the relay chain, you can explore the *Centrifuge Chain* using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
+    Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
     You will see the block production frozen until you connect it to the relay chain.
+
+    By default, the initialized parachain will have the id `2000`.
+    If you need more than one parachain or choose other chain specifications,
+    you can set `PARA_ID` or `PARA_CHAIN_SPEC`, example:
+    ```bash
+    PARA_ID=2001 ./scripts/init.sh start-parachain
+    ```
+    The different `PARA_CHAIN_SPEC` values can be found at [`src/command.rs`](src/command.rs) under the `load_spec()` function.
 
 3. Onboard the parachain
     This step will have the targeted parachain onboarded in the relay chain. The parachain will NOT produce blocks until this step is completed successfully.
@@ -77,7 +84,7 @@ It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
     Once onboarded, block production should start soon after in the parachain.
 
 That's all! The environment is set.
-You can play with it from the *Centrifuge Chain* client, make transfers, inspect events, etc.
+You can play with it from the parachain client, make transfers, inspect events, etc.
 
 ## Linting
 
