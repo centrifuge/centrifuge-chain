@@ -3,15 +3,11 @@
 [![Build Status](https://travis-ci.com/centrifuge/centrifuge-chain.svg?branch=master)](https://travis-ci.com/centrifuge/centrifuge-chain)
 [![codecov](https://codecov.io/gh/centrifuge/centrifuge-chain/branch/master/graph/badge.svg)](https://codecov.io/gh/centrifuge/centrifuge-chain)
 
-Centrifuge Chain is [Centrifuge](https://centrifuge.io)'s [substrate](https://github.com/paritytech/substrate) based chain.
+The Centrifuge Chain is [Centrifuge](https://centrifuge.io)'s [Substrate](https://github.com/paritytech/substrate)-based chain.
 
 ## Build
 
-Install Rust:
-
-```bash
-curl https://sh.rustup.rs -sSf | sh
-```
+Install [Rust](https://www.rust-lang.org/tools/install):
 
 Initialize your Wasm Build environment:
 
@@ -25,37 +21,70 @@ Build Wasm and native code:
 cargo build --release
 ```
 
-## Run
+Great! You have already compile the Centrifuge Chain!
 
-### Tests
+## Tests
+
+There are two kinds of tests, one related to how the *Centrifuge Chain* works itself
+and another one to verify how it works in a more real environment as a parachain.
+
+### Chain tests
+
+The following command will the unit and the integration tests:
 
 ```bash
-cargo test -p centrifuge-runtime --release
+cargo +nightly test --workspace --release --features test-benchmarks,try-runtime
 ```
 
-### Start local Relay chain(alice and bob) and Parachain(alice)
+### Environment tests
 
-Prerequisites:
-- [docker](https://docs.docker.com/get-docker/)
-- [*jd*](https://stedolan.github.io/jq/)
+You can deploy a relay chain and connect a Centrifuge Chain node as parachain
+to it to verify how it behaves in the entire environment (end-to-end).
 
-Start relay chain
-```bash
-./scripts/init.sh start-relay-chain
-```
+0. Prerequisites. You must install these tools before:
+    - [docker](https://docs.docker.com/get-docker/)
+    - [*jd*](https://stedolan.github.io/jq/)
 
-Start  centrifuge-chain as parachain
-```bash
-./scripts/init.sh start-parachain
-```
+1. Start a local [relay chain](https://wiki.polkadot.network/docs/learn-architecture#relay-chain).
+It contains two [validator](https://wiki.polkadot.network/docs/learn-validator) nodes
+    (Alice and Bob):
+    ```bash
+    ./scripts/init.sh start-relay-chain
+    ```
+    After a few seconds you can see the block production of the relay chain using the [polkadot.js (on localhost:9944)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A9944#/explorer) client.
 
-Note: the command above will show logs and block until the parachain is stopped
-Detailed logs may be shown by running the node with the following environment variables set: `RUST_LOG=debug RUST_BACKTRACE=1`.
+    *Note: You can stop the relay chain using `./scripts/init.sh stop-relay-chain`*
 
-Onboard parachain to Relay chain
-```bash
-./scripts/init.sh onboard-parachain
-```
+2. Start a *Centrifuge Chain* as [parachain](https://wiki.polkadot.network/docs/learn-parachains).
+It run a [collator](https://wiki.polkadot.network/docs/learn-collator) node:
+    ```bash
+    ./scripts/init.sh start-parachain
+    ```
+    *Note: the command above will show logs and block until the parachain is stopped.
+    If you had a previous state, you can reset the node using `purge` after the command.*
+
+    Similar to the relay chain, you can explore the parachain using the [polkadot.js (on localhost:11946)](https://polkadot.js.org/apps/?rpc=ws%3A%2F%2Flocalhost%3A11946#/explorer) client.
+    You will see the block production frozen until you connect it to the relay chain.
+
+    By default, the initialized parachain will have the id `2000`.
+    If you need more than one parachain or choose other chain specifications,
+    you can set `PARA_ID` or `PARA_CHAIN_SPEC`, example:
+    ```bash
+    PARA_ID=2001 ./scripts/init.sh start-parachain
+    ```
+    The different `PARA_CHAIN_SPEC` values can be found at [`src/command.rs`](src/command.rs) under the `load_spec()` function.
+
+3. Onboard the parachain
+    This step will have the targeted parachain onboarded in the relay chain. The parachain will NOT produce blocks until this step is completed successfully.
+    ```bash
+    ./scripts/init.sh onboard-parachain
+    ```
+    When you have run the command, you should see in the relay-chain dashboard that there is a parachain
+    that will be onboarded in one/two minutes.
+    Once onboarded, block production should start soon after in the parachain.
+
+That's all! The environment is set.
+You can play with it from the parachain client, make transfers, inspect events, etc.
 
 ## Linting
 
