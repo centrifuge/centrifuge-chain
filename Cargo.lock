@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "altair-runtime"
-version = "0.10.17"
+version = "0.10.18"
 dependencies = [
  "common-traits",
  "common-types",
@@ -1012,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-chain"
-version = "0.10.17"
+version = "0.10.18"
 dependencies = [
  "altair-runtime",
  "centrifuge-runtime",
@@ -1109,9 +1109,11 @@ dependencies = [
 
 [[package]]
 name = "centrifuge-runtime"
-version = "0.10.7"
+version = "0.10.9"
 dependencies = [
  "chainbridge",
+ "common-traits",
+ "common-types",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-dmp-queue",
  "cumulus-pallet-parachain-system",
@@ -1130,6 +1132,11 @@ dependencies = [
  "hex-literal 0.2.2",
  "integer-sqrt",
  "node-primitives",
+ "orml-asset-registry",
+ "orml-tokens",
+ "orml-traits",
+ "orml-xcm-support",
+ "orml-xtokens",
  "pallet-anchors",
  "pallet-aura",
  "pallet-authority-discovery",
@@ -1156,6 +1163,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-proxy",
  "pallet-randomness-collective-flip",
+ "pallet-restricted-tokens",
  "pallet-scheduler",
  "pallet-session",
  "pallet-session-benchmarking",

@@ -297,14 +297,29 @@ pub mod constants {
 /// never change once defined since they help define the canonical id
 /// of said tokens in the network, which is relevant for XCM transfers.
 pub mod parachains {
-	pub mod karura {
-		pub const ID: u32 = 2000;
-		pub const AUSD_KEY: &[u8] = &[0, 129];
+
+	pub mod kusama {
+		pub mod karura {
+			pub const ID: u32 = 2000;
+			pub const AUSD_KEY: &[u8] = &[0, 129];
+		}
+
+		pub mod altair {
+			pub const ID: u32 = 2088;
+			pub const AIR_KEY: &[u8] = &[0, 1];
+		}
 	}
 
-	pub mod altair {
-		pub const ID: u32 = 2088;
-		pub const AIR_KEY: &[u8] = &[0, 1];
+	pub mod polkadot {
+		pub mod acala {
+			pub const ID: u32 = 2000;
+			pub const AUSD_KEY: &[u8] = &[0, 1];
+		}
+
+		pub mod centrifuge {
+			pub const ID: u32 = 2031;
+			pub const CFG_KEY: &[u8] = &[0, 1];
+		}
 	}
 }
 

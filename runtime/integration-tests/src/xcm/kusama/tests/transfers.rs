@@ -28,12 +28,13 @@ use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
+use sp_runtime::DispatchError::BadOrigin;
 
-use crate::xcm::setup::{
+use crate::xcm::kusama::setup::{
 	air, altair_account, ausd, foreign, karura_account, ksm, sibling_account, CurrencyId, ALICE,
 	BOB, PARA_ID_SIBLING,
 };
-use crate::xcm::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
+use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
@@ -69,8 +70,8 @@ fn transfer_air_to_sibling() {
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				1,
 				X2(
-					Parachain(parachains::altair::ID),
-					GeneralKey(parachains::altair::AIR_KEY.to_vec()),
+					Parachain(parachains::kusama::altair::ID),
+					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -160,7 +161,7 @@ fn transfer_air_sibling_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::altair::ID),
+						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: ALICE.into(),
@@ -236,7 +237,7 @@ fn transfer_ausd_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::altair::ID),
+						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -282,7 +283,7 @@ fn transfer_ksm_from_relay_chain() {
 	KusamaNet::execute_with(|| {
 		assert_ok!(kusama_runtime::XcmPallet::reserve_transfer_assets(
 			kusama_runtime::Origin::signed(ALICE.into()),
-			Box::new(Parachain(parachains::altair::ID).into().into()),
+			Box::new(Parachain(parachains::kusama::altair::ID).into().into()),
 			Box::new(
 				Junction::AccountId32 {
 					network: NetworkId::Any,
@@ -380,7 +381,7 @@ fn transfer_foreign_sibling_to_altair() {
 				MultiLocation::new(
 					1,
 					X2(
-						Parachain(parachains::altair::ID),
+						Parachain(parachains::kusama::altair::ID),
 						Junction::AccountId32 {
 							network: NetworkId::Any,
 							id: BOB.into(),
@@ -412,96 +413,90 @@ fn transfer_foreign_sibling_to_altair() {
 	});
 }
 
-pub mod asset_registry {
-	use super::{assert_ok, parachains, GeneralKey, MultiLocation, X1};
-	use crate::xcm::test_net::{Altair, TestNet};
-	use altair_runtime::{Balance, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry};
-	use frame_support::assert_noop;
-	use orml_traits::asset_registry::AssetMetadata;
-	use orml_traits::currency::MultiCurrency;
-	use sp_runtime::traits::BadOrigin;
-	use xcm::prelude::{Parachain, X2};
-	use xcm::VersionedMultiLocation;
-	use xcm_emulator::TestExt;
+#[test]
+fn transfer_wormhole_usdc_karura_to_altair() {
+	TestNet::reset();
 
-	#[test]
-	fn register_air_works() {
-		Altair::execute_with(|| {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-				decimals: 18,
-				name: "Altair".into(),
-				symbol: "AIR".into(),
-				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
-					0,
-					X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())),
-				))),
-				additional: CustomMetadata::default(),
-			};
+	let usdc_asset_id = CurrencyId::ForeignAsset(39);
+	let asset_location = MultiLocation::new(
+		1,
+		X2(
+			Parachain(parachains::kusama::karura::ID),
+			GeneralKey("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
+		),
+	);
+	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
+		decimals: 6,
+		name: "Wormhole USDC".into(),
+		symbol: "WUSDC".into(),
+		existential_deposit: 1,
+		location: Some(VersionedMultiLocation::V1(asset_location.clone())),
+		additional: CustomMetadata::default(),
+	};
+	let transfer_amount = foreign(12, meta.decimals);
+	let alice_initial_balance = transfer_amount * 100;
 
-			assert_ok!(OrmlAssetRegistry::register_asset(
-				Origin::root(),
-				meta,
-				Some(CurrencyId::Native)
-			));
-		});
-	}
+	Karura::execute_with(|| {
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta.clone(),
+			Some(usdc_asset_id)
+		));
+		assert_ok!(OrmlTokens::deposit(
+			usdc_asset_id,
+			&ALICE.into(),
+			alice_initial_balance
+		));
+		assert_eq!(
+			OrmlTokens::free_balance(usdc_asset_id, &ALICE.into()),
+			alice_initial_balance
+		);
+		assert_eq!(Balances::free_balance(&ALICE.into()), air(10));
+	});
 
-	#[test]
-	fn register_foreign_asset_works() {
-		Altair::execute_with(|| {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-				decimals: 12,
-				name: "Acala Dollar".into(),
-				symbol: "AUSD".into(),
-				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
+	Altair::execute_with(|| {
+		// First, register the asset in centrifuge
+		assert_ok!(OrmlAssetRegistry::register_asset(
+			Origin::root(),
+			meta.clone(),
+			Some(usdc_asset_id)
+		));
+	});
+
+	Karura::execute_with(|| {
+		assert_ok!(XTokens::transfer(
+			Origin::signed(ALICE.into()),
+			usdc_asset_id,
+			transfer_amount,
+			Box::new(
+				MultiLocation::new(
 					1,
 					X2(
-						Parachain(2000),
-						GeneralKey(parachains::altair::AIR_KEY.to_vec()),
-					),
-				))),
-				additional: CustomMetadata::default(),
-			};
+						Parachain(parachains::kusama::altair::ID),
+						Junction::AccountId32 {
+							network: NetworkId::Any,
+							id: BOB.into(),
+						}
+					)
+				)
+				.into()
+			),
+			8000000000,
+		));
 
-			assert_ok!(OrmlAssetRegistry::register_asset(
-				Origin::root(),
-				meta,
-				Some(CurrencyId::ForeignAsset(42))
-			));
-		});
-	}
+		// Confirm that Alice's balance is initial balance - amount transferred
+		assert_eq!(
+			OrmlTokens::free_balance(usdc_asset_id, &ALICE.into()),
+			alice_initial_balance - transfer_amount
+		);
+	});
 
-	#[test]
-	// Verify that registering tranche tokens is not allowed through extrinsics
-	fn register_tranche_asset_blocked() {
-		Altair::execute_with(|| {
-			let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
-				decimals: 12,
-				name: "Tranche Token 1".into(),
-				symbol: "TRNCH".into(),
-				existential_deposit: 1_000_000_000_000,
-				location: Some(VersionedMultiLocation::V1(MultiLocation::new(
-					1,
-					X2(Parachain(2000), GeneralKey(vec![42])),
-				))),
-				additional: CustomMetadata::default(),
-			};
+	Altair::execute_with(|| {
+		let bob_balance = OrmlTokens::free_balance(usdc_asset_id, &BOB.into());
 
-			// It fails with `BadOrigin` even when submitted with `Origin::root` since we only
-			// allow for tranche tokens to be registered through the pools pallet.
-			let asset_id = CurrencyId::Tranche(42, [42u8; 16]);
-			assert_noop!(
-				OrmlAssetRegistry::register_asset(
-					Origin::root(),
-					meta.clone(),
-					Some(asset_id.clone())
-				),
-				BadOrigin
-			);
-		});
-	}
+		// Sanity check to ensure the calculated is what is expected
+		assert_eq!(bob_balance, 11990676);
+	});
 }
 
 #[test]
@@ -509,111 +504,6 @@ fn test_total_fee() {
 	assert_eq!(air_fee(), 9324000000000000);
 	assert_eq!(fee(decimals::AUSD), 9324000000);
 	assert_eq!(fee(decimals::KSM), 9324000000);
-}
-
-pub mod currency_id_convert {
-	use super::*;
-	use altair_runtime::CurrencyIdConvert;
-	use sp_runtime::traits::Convert as C2;
-	use xcm::VersionedMultiLocation;
-	use xcm_executor::traits::Convert as C1;
-
-	#[test]
-	fn convert_air() {
-		assert_eq!(parachains::altair::AIR_KEY.to_vec(), vec![0, 1]);
-
-		// The way AIR is represented relative within the Altair runtime
-		let air_location_inner: MultiLocation =
-			MultiLocation::new(0, X1(GeneralKey(parachains::altair::AIR_KEY.to_vec())));
-
-		assert_eq!(
-			<CurrencyIdConvert as C1<_, _>>::convert(air_location_inner),
-			Ok(CurrencyId::Native),
-		);
-
-		// The canonical way AIR is represented out in the wild
-		let air_location_canonical: MultiLocation = MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::altair::ID),
-				GeneralKey(parachains::altair::AIR_KEY.to_vec()),
-			),
-		);
-
-		Altair::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Native),
-				Some(air_location_canonical)
-			)
-		});
-	}
-
-	#[test]
-	fn convert_ausd() {
-		assert_eq!(parachains::karura::AUSD_KEY.to_vec(), vec![0, 129]);
-
-		let ausd_location: MultiLocation = MultiLocation::new(
-			1,
-			X2(
-				Parachain(parachains::karura::ID),
-				GeneralKey(parachains::karura::AUSD_KEY.to_vec()),
-			),
-		);
-
-		Altair::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C1<_, _>>::convert(ausd_location.clone()),
-				Ok(CurrencyId::AUSD),
-			);
-
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::AUSD),
-				Some(ausd_location)
-			)
-		});
-	}
-
-	#[test]
-	fn convert_ksm() {
-		let ksm_location: MultiLocation = MultiLocation::parent().into();
-
-		Altair::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C1<_, _>>::convert(ksm_location.clone()),
-				Ok(CurrencyId::KSM),
-			);
-
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::KSM),
-				Some(ksm_location)
-			)
-		});
-	}
-
-	#[test]
-	fn convert_unkown_multilocation() {
-		let unknown_location: MultiLocation = MultiLocation::new(
-			1,
-			X2(Parachain(parachains::altair::ID), GeneralKey([42].to_vec())),
-		);
-
-		Altair::execute_with(|| {
-			assert!(<CurrencyIdConvert as C1<_, _>>::convert(unknown_location.clone()).is_err());
-		});
-	}
-
-	#[test]
-	fn convert_unsupported_currency() {
-		Altair::execute_with(|| {
-			assert_eq!(
-				<CurrencyIdConvert as C2<_, _>>::convert(CurrencyId::Tranche(
-					0,
-					[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-				)),
-				None
-			)
-		});
-	}
 }
 
 fn air_fee() -> Balance {
@@ -635,7 +525,7 @@ fn ksm_fee() -> Balance {
 
 fn calc_fee(fee_per_second: Balance) -> Balance {
 	// We divide the fee to align its unit and multiply by 4 as that seems to be the unit of
-	// time the transfers take.
+	// time the tests take.
 	// NOTE: it is possible that in different machines this value may differ. We shall see.
 	fee_per_second.div_euclid(10_000) * 8
 }
