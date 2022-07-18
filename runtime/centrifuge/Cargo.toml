@@ -1,6 +1,6 @@
 [package]
 name = "centrifuge-runtime"
-version = "0.10.8"
+version = "0.10.9"
 authors = ["Centrifuge <admin@centrifuge.io>"]
 edition = "2021"
 build = "build.rs"
