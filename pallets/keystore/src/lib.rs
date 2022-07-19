@@ -129,11 +129,20 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub (super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A key was added.
-		KeyAdded(T::AccountId, T::Hash, KeyPurpose, KeyType),
+		KeyAdded {
+			account_id: T::AccountId,
+			key: T::Hash,
+			purpose: KeyPurpose,
+			key_type: KeyType,
+		},
 		/// A key was revoked.
-		KeyRevoked(T::AccountId, T::Hash, T::BlockNumber),
+		KeyRevoked {
+			account_id: T::AccountId,
+			key: T::Hash,
+			block_number: T::BlockNumber,
+		},
 		/// A deposit was set.
-		DepositSet(T::Balance),
+		DepositSet { new_deposit: T::Balance },
 	}
 
 	#[pallet::error]
@@ -201,7 +210,7 @@ pub mod pallet {
 
 			<KeyDeposit<T>>::set(new_deposit);
 
-			Self::deposit_event(Event::DepositSet(new_deposit));
+			Self::deposit_event(Event::DepositSet { new_deposit });
 
 			Ok(())
 		}
@@ -249,12 +258,12 @@ pub mod pallet {
 				add_key.key.clone(),
 			);
 
-			Self::deposit_event(Event::KeyAdded(
-				account_id.clone(),
-				add_key.key.clone(),
-				add_key.purpose.clone(),
-				add_key.key_type.clone(),
-			));
+			Self::deposit_event(Event::KeyAdded {
+				account_id,
+				key: add_key.key,
+				purpose: add_key.purpose,
+				key_type: add_key.key_type,
+			});
 
 			Ok(())
 		}
@@ -281,11 +290,11 @@ pub mod pallet {
 							let block_number = <frame_system::Pallet<T>>::block_number();
 							storage_key.revoked_at = Some(block_number.clone());
 
-							Self::deposit_event(Event::KeyRevoked(
-								account_id.clone(),
-								key.clone(),
+							Self::deposit_event(Event::KeyRevoked {
+								account_id,
+								key,
 								block_number,
-							));
+							});
 
 							Ok(())
 						}
