@@ -43,13 +43,13 @@ fn add_keys() {
 		);
 
 		event_exists(CrateEvent::<MockRuntime>::KeyAdded {
-			account_id: origin,
+			owner: origin,
 			key: keys[0].key.clone(),
 			purpose: keys[0].purpose.clone(),
 			key_type: keys[0].key_type.clone(),
 		});
 		event_exists(CrateEvent::<MockRuntime>::KeyAdded {
-			account_id: origin,
+			owner: origin,
 			key: keys[1].key.clone(),
 			purpose: keys[1].purpose.clone(),
 			key_type: keys[1].key_type.clone(),
@@ -174,12 +174,12 @@ fn revoke_keys() {
 		);
 
 		event_exists(CrateEvent::<MockRuntime>::KeyRevoked {
-			account_id: origin,
+			owner: origin,
 			key: keys[0].key.clone(),
 			block_number: 1,
 		});
 		event_exists(CrateEvent::<MockRuntime>::KeyRevoked {
-			account_id: origin,
+			owner: origin,
 			key: keys[1].key.clone(),
 			block_number: 1,
 		});

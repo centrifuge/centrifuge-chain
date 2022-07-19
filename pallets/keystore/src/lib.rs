@@ -130,14 +130,14 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A key was added.
 		KeyAdded {
-			account_id: T::AccountId,
+			owner: T::AccountId,
 			key: T::Hash,
 			purpose: KeyPurpose,
 			key_type: KeyType,
 		},
 		/// A key was revoked.
 		KeyRevoked {
-			account_id: T::AccountId,
+			owner: T::AccountId,
 			key: T::Hash,
 			block_number: T::BlockNumber,
 		},
@@ -259,7 +259,7 @@ pub mod pallet {
 			);
 
 			Self::deposit_event(Event::KeyAdded {
-				account_id,
+				owner: account_id,
 				key: add_key.key,
 				purpose: add_key.purpose,
 				key_type: add_key.key_type,
@@ -291,7 +291,7 @@ pub mod pallet {
 							storage_key.revoked_at = Some(block_number.clone());
 
 							Self::deposit_event(Event::KeyRevoked {
-								account_id,
+								owner: account_id,
 								key,
 								block_number,
 							});
