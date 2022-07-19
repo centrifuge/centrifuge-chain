@@ -81,9 +81,20 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Added(T::AccountId, T::Scope, T::Role),
-		Removed(T::AccountId, T::Scope, T::Role),
-		Purged(T::AccountId, T::Scope),
+		Added {
+			to: T::AccountId,
+			scope: T::Scope,
+			role: T::Role,
+		},
+		Removed {
+			from: T::AccountId,
+			scope: T::Scope,
+			role: T::Role,
+		},
+		Purged {
+			from: T::AccountId,
+			scope: T::Scope,
+		},
 	}
 
 	// Errors inform users that something went wrong.
@@ -110,7 +121,7 @@ pub mod pallet {
 			let who = Self::ensure_admin_or_editor(origin, with_role, scope.clone(), role.clone())?;
 
 			Pallet::<T>::do_add(scope.clone(), to.clone(), role.clone())
-				.map(|_| Self::deposit_event(Event::<T>::Added(to, scope, role)))?;
+				.map(|_| Self::deposit_event(Event::<T>::Added { to, scope, role }))?;
 
 			match who {
 				Who::Editor => Ok(Some(T::WeightInfo::add_as_editor()).into()),
@@ -129,7 +140,7 @@ pub mod pallet {
 			let who = Self::ensure_admin_or_editor(origin, with_role, scope.clone(), role.clone())?;
 
 			Pallet::<T>::do_remove(scope.clone(), from.clone(), role.clone())
-				.map(|_| Self::deposit_event(Event::<T>::Removed(from, scope, role)))?;
+				.map(|_| Self::deposit_event(Event::<T>::Removed { from, scope, role }))?;
 
 			match who {
 				Who::Editor => Ok(Some(T::WeightInfo::remove_as_editor()).into()),
@@ -148,7 +159,7 @@ pub mod pallet {
 
 			Permission::<T>::remove(from.clone(), scope.clone());
 
-			Self::deposit_event(Event::<T>::Purged(from, scope));
+			Self::deposit_event(Event::<T>::Purged { from, scope });
 
 			Ok(())
 		}
@@ -168,7 +179,7 @@ pub mod pallet {
 
 			Permission::<T>::remove(from.clone(), scope.clone());
 
-			Self::deposit_event(Event::<T>::Purged(from, scope));
+			Self::deposit_event(Event::<T>::Purged { from, scope });
 
 			Ok(())
 		}
