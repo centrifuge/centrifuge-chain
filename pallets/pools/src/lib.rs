@@ -1115,6 +1115,11 @@ pub mod pallet {
 					Error::<T>::WipedOut
 				);
 
+				Self::deposit_event(Event::EpochClosed {
+					pool_id,
+					epoch_id: submission_period_epoch,
+				});
+
 				if pool.tranches.acc_outstanding_investments()?.is_zero()
 					&& pool.tranches.acc_outstanding_redemptions()?.is_zero()
 				{
@@ -1188,11 +1193,6 @@ pub mod pallet {
 					best_submission: None,
 					challenge_period_end: None,
 				};
-
-				Self::deposit_event(Event::EpochClosed {
-					pool_id,
-					epoch_id: submission_period_epoch,
-				});
 
 				let full_execution_solution = pool.tranches.combine_residual_top(|_| {
 					Ok(TrancheSolution {
