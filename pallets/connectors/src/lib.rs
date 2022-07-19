@@ -5,16 +5,10 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode, HasCompact};
-use frame_support::{
-	dispatch::DispatchResult,
-	traits::{
-		fungibles::{self, Transfer as FungiblesTransfer},
-		tokens::nonfungibles::{self, Inspect as _, Transfer as _},
-	},
-};
+use frame_support::dispatch::DispatchResult;
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
-use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
+use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_std::convert::TryInto;
 
 pub use pallet::*;
@@ -28,19 +22,11 @@ pub use message::*;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type PoolIdOf<T> = <T as pallet::Config>::PoolId;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct Price<CurrencyId, Balance> {
-	pub currency: CurrencyId,
-	pub amount: Balance,
-}
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
-	use frame_support::{transactional, PalletId};
 	use frame_system::pallet_prelude::*;
 	use frame_system::RawOrigin;
 	use sp_std::collections::btree_map::BTreeMap;
@@ -95,7 +81,10 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A pool was added to the domain
-		AddedPool { pool_id: T::PoolId, domain: Domain },
+		MessageSent {
+			domain: Domain,
+			message: Message<T::PoolId>,
+		},
 	}
 
 	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
