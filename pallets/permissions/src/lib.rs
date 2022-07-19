@@ -59,6 +59,7 @@ pub mod pallet {
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
+		#[pallet::constant]
 		type MaxRolesPerScope: Get<u32>;
 
 		type WeightInfo: WeightInfo;
