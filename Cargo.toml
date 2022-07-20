@@ -144,10 +144,10 @@ cumulus-primitives-parachain-inherent = {git = "https://github.com/paritytech/cu
 cumulus-client-cli = {git = "https://github.com/paritytech/cumulus", branch = "polkadot-v0.9.26" }
 
 # Polkadot dependencies
-polkadot-parachain = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.25" }
-polkadot-primitives = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.25" }
-polkadot-service = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.25" }
-polkadot-cli = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.25" }
+polkadot-parachain = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
+polkadot-primitives = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
+polkadot-service = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
+polkadot-cli = {git = "https://github.com/paritytech/polkadot", branch = "release-v0.9.26" }
 
 # node-specific dependencies
 altair-runtime = { path = "runtime/altair" }
