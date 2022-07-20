@@ -32,6 +32,7 @@ use runtime_common::{
 	xcm_fees::{default_per_second, native_per_second},
 	CurrencyId,
 };
+use runtime_common::xcm::general_key;
 
 /// The main XCM config
 /// This is where we configure the core of our XCM integrations: how tokens are transferred,
@@ -73,7 +74,7 @@ parameter_types! {
 	pub CanonicalCfgPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			0,
-			X1(GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec())),
+			X1(general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 		).into(),
 		native_per_second(),
 	);
@@ -81,7 +82,7 @@ parameter_types! {
 	pub CfgPerSecond: (AssetId, u128) = (
 		MultiLocation::new(
 			1,
-			X2(Parachain(ParachainInfo::parachain_id().into()), GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec())),
+			X2(Parachain(ParachainInfo::parachain_id().into()), general_key(parachains::polkadot::centrifuge::CFG_KEY)),
 		).into(),
 		native_per_second(),
 	);
@@ -91,7 +92,7 @@ parameter_types! {
 			1,
 			X2(
 				Parachain(parachains::polkadot::acala::ID),
-				GeneralKey(parachains::polkadot::acala::AUSD_KEY.to_vec())
+				general_key(parachains::polkadot::acala::AUSD_KEY)
 			)
 		).into(),
 		default_per_second(decimals::AUSD)
@@ -180,14 +181,14 @@ impl Convert<CurrencyId, Option<MultiLocation>> for CurrencyIdConvert {
 				1,
 				X2(
 					Parachain(parachains::polkadot::acala::ID),
-					GeneralKey(parachains::polkadot::acala::AUSD_KEY.into()),
+					general_key(parachains::polkadot::acala::AUSD_KEY),
 				),
 			)),
 			CurrencyId::Native => Some(MultiLocation::new(
 				1,
 				X2(
 					Parachain(ParachainInfo::get().into()),
-					GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
+					general_key(parachains::polkadot::centrifuge::CFG_KEY),
 				),
 			)),
 			CurrencyId::ForeignAsset(_) => OrmlAssetRegistry::multilocation(&id).ok()?,

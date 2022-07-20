@@ -20,7 +20,8 @@
 
 use codec::{CompactAs, Decode, Encode};
 use sp_arithmetic::{
-	helpers_128bit::multiply_by_rational,
+	Rounding,
+	helpers_128bit::{multiply_by_rational_with_rounding},
 	traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, One, Saturating, Zero},
 	FixedPointNumber, FixedPointOperand,
 };
@@ -254,8 +255,8 @@ macro_rules! implement_fixed {
 				let rhs: I129 = other.0.into();
 				let negative = lhs.negative != rhs.negative;
 
-				multiply_by_rational(lhs.value, Self::DIV as u128, rhs.value)
-					.ok()
+				//todo(nuno): check with runtime if this rounding is fine
+				multiply_by_rational_with_rounding(lhs.value, Self::DIV as u128, rhs.value, Rounding::NearestPrefDown)
 					.and_then(|value| from_i129(I129 { value, negative }))
 					.map(Self)
 			}
@@ -267,8 +268,8 @@ macro_rules! implement_fixed {
 				let rhs: I129 = other.0.into();
 				let negative = lhs.negative != rhs.negative;
 
-				multiply_by_rational(lhs.value, rhs.value, Self::DIV as u128)
-					.ok()
+				//todo(nuno): check with runtime if this rounding is fine
+				multiply_by_rational_with_rounding(lhs.value, rhs.value, Self::DIV as u128, Rounding::NearestPrefDown)
 					.and_then(|value| from_i129(I129 { value, negative }))
 					.map(Self)
 			}

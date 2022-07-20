@@ -255,6 +255,9 @@ pub mod xcm {
 	use common_types::CurrencyId;
 	use frame_support::sp_std::marker::PhantomData;
 	use xcm::latest::MultiLocation;
+	use sp_runtime::traits::ConstU32;
+	use sp_runtime::WeakBoundedVec;
+	use xcm::latest::Junction::{self, GeneralKey};
 
 	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
 	/// the asset registry that were not already handled by native Trader rules.
@@ -276,6 +279,10 @@ pub mod xcm {
 				.fee_per_second
 				.or_else(|| Some(default_per_second(metadata.decimals)))
 		}
+	}
+
+	pub fn general_key(key: &[u8]) -> xcm::latest::Junction {
+		GeneralKey(WeakBoundedVec::<u8, ConstU32<32>>::force_from(key.into(), None))
 	}
 }
 

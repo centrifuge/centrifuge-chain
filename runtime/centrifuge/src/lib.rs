@@ -189,6 +189,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type OutboundXcmpMessageSource = XcmpQueue;
 	type XcmpMessageHandler = XcmpQueue;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type CheckAssociatedRelayNumber = cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 }
 
 // XCM
@@ -309,6 +310,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type WeightToFee = WeightToFee;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
+	type Event = Event;
 }
 
 parameter_types! {
@@ -743,6 +745,7 @@ impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureRootOr<HalfOfCouncil>;
 	// either democracy or more than 50% council votes
 	type RejectOrigin = EnsureRootOr<HalfOfCouncil>;
+	type SpendOrigin = frame_support::traits::NeverEnsureOrigin<Balance>;
 	type Event = Event;
 	// slashed amount goes to treasury account
 	type OnSlash = Treasury;

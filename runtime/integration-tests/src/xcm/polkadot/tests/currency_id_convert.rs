@@ -41,19 +41,20 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
+use runtime_common::xcm::general_key;
 
 #[test]
 fn convert_cfg() {
 	assert_eq!(
-		parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
+		parachains::polkadot::centrifuge::CFG_KEY.to_vec().into(),
 		vec![0, 1]
 	);
 
 	// The way CFG is represented relative within the Centrifuge runtime
 	let cfg_location_inner: MultiLocation = MultiLocation::new(
 		0,
-		X1(GeneralKey(
-			parachains::polkadot::centrifuge::CFG_KEY.to_vec(),
+		X1(general_key(
+			parachains::polkadot::centrifuge::CFG_KEY,
 		)),
 	);
 
@@ -67,7 +68,7 @@ fn convert_cfg() {
 		1,
 		X2(
 			Parachain(parachains::polkadot::centrifuge::ID),
-			GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
+			general_key(parachains::polkadot::centrifuge::CFG_KEY),
 		),
 	);
 
@@ -81,13 +82,13 @@ fn convert_cfg() {
 
 #[test]
 fn convert_ausd() {
-	assert_eq!(parachains::polkadot::acala::AUSD_KEY.to_vec(), vec![0, 1]);
+	assert_eq!(parachains::polkadot::acala::AUSD_KEY.to_vec().into(), vec![0, 1]);
 
 	let ausd_location: MultiLocation = MultiLocation::new(
 		1,
 		X2(
 			Parachain(parachains::polkadot::acala::ID),
-			GeneralKey(parachains::polkadot::acala::AUSD_KEY.to_vec()),
+			general_key(parachains::polkadot::acala::AUSD_KEY),
 		),
 	);
 
@@ -129,7 +130,7 @@ fn convert_unkown_multilocation() {
 		1,
 		X2(
 			Parachain(parachains::polkadot::centrifuge::ID),
-			GeneralKey([42].to_vec()),
+			general_key(&[42].to_vec()),
 		),
 	);
 

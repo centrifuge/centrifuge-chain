@@ -39,6 +39,7 @@ use sp_runtime::traits::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
+use runtime_common::xcm::general_key;
 
 #[test]
 fn transfer_cfg_to_sibling() {
@@ -71,7 +72,7 @@ fn transfer_cfg_to_sibling() {
 				1,
 				X2(
 					Parachain(parachains::polkadot::centrifuge::ID),
-					GeneralKey(parachains::polkadot::centrifuge::CFG_KEY.to_vec()),
+					general_key(parachains::polkadot::centrifuge::CFG_KEY),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -349,7 +350,7 @@ fn transfer_foreign_sibling_to_centrifuge() {
 	let alice_initial_balance = cfg(10);
 	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
-		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), GeneralKey(vec![0, 1])));
+		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), general_key(&vec![0, 1])));
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 18,
 		name: "Sibling Native Token".into(),
@@ -430,7 +431,7 @@ fn transfer_wormhole_usdc_acala_to_centrifuge() {
 		1,
 		X2(
 			Parachain(parachains::polkadot::acala::ID),
-			GeneralKey("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
+			general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
 		),
 	);
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {

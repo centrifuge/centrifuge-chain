@@ -39,6 +39,7 @@ use crate::xcm::kusama::test_net::{Altair, Karura, KusamaNet, Sibling, TestNet};
 use altair_runtime::{Balances, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens, XTokens};
 use runtime_common::xcm_fees::{default_per_second, ksm_per_second};
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
+use runtime_common::xcm::general_key;
 
 #[test]
 fn transfer_air_to_sibling() {
@@ -71,7 +72,7 @@ fn transfer_air_to_sibling() {
 				1,
 				X2(
 					Parachain(parachains::kusama::altair::ID),
-					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -341,7 +342,7 @@ fn transfer_foreign_sibling_to_altair() {
 	let alice_initial_balance = air(10);
 	let sibling_asset_id = CurrencyId::ForeignAsset(1);
 	let asset_location =
-		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), GeneralKey(vec![0, 1])));
+		MultiLocation::new(1, X2(Parachain(PARA_ID_SIBLING), general_key(vec![0, 1])));
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {
 		decimals: 18,
 		name: "Sibling Native Token".into(),
@@ -422,7 +423,7 @@ fn transfer_wormhole_usdc_karura_to_altair() {
 		1,
 		X2(
 			Parachain(parachains::kusama::karura::ID),
-			GeneralKey("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
+			general_key("0x02f3a00dd12f644daec907013b16eb6d14bf1c4cb4".into()),
 		),
 	);
 	let meta: AssetMetadata<Balance, CustomMetadata> = AssetMetadata {

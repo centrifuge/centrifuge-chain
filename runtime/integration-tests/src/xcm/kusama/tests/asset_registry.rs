@@ -40,6 +40,7 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use xcm::prelude::{Parachain, X2};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
+use runtime_common::xcm::general_key;
 
 #[test]
 fn register_air_works() {
@@ -51,7 +52,7 @@ fn register_air_works() {
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				0,
-				X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+				X1(general_key(parachains::kusama::altair::AIR_KEY)),
 			))),
 			additional: CustomMetadata::default(),
 		};
@@ -76,7 +77,7 @@ fn register_foreign_asset_works() {
 				1,
 				X2(
 					Parachain(2000),
-					GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+					general_key(parachains::kusama::altair::AIR_KEY),
 				),
 			))),
 			additional: CustomMetadata::default(),
@@ -101,7 +102,7 @@ fn register_tranche_asset_blocked() {
 			existential_deposit: 1_000_000_000_000,
 			location: Some(VersionedMultiLocation::V1(MultiLocation::new(
 				1,
-				X2(Parachain(2000), GeneralKey(vec![42])),
+				X2(Parachain(2000), general_key(vec![42])),
 			))),
 			additional: CustomMetadata::default(),
 		};

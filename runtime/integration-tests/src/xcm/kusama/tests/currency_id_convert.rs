@@ -38,15 +38,16 @@ use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId}
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 use xcm_executor::traits::Convert as C1;
+use runtime_common::xcm::general_key;
 
 #[test]
 fn convert_air() {
-	assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec(), vec![0, 1]);
+	assert_eq!(parachains::kusama::altair::AIR_KEY.to_vec().into(), vec![0, 1]);
 
 	// The way AIR is represented relative within the Altair runtime
 	let air_location_inner: MultiLocation = MultiLocation::new(
 		0,
-		X1(GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec())),
+		X1(general_key(parachains::kusama::altair::AIR_KEY)),
 	);
 
 	assert_eq!(
@@ -59,7 +60,7 @@ fn convert_air() {
 		1,
 		X2(
 			Parachain(parachains::kusama::altair::ID),
-			GeneralKey(parachains::kusama::altair::AIR_KEY.to_vec()),
+			general_key(parachains::kusama::altair::AIR_KEY),
 		),
 	);
 
@@ -73,13 +74,13 @@ fn convert_air() {
 
 #[test]
 fn convert_ausd() {
-	assert_eq!(parachains::kusama::karura::AUSD_KEY.to_vec(), vec![0, 129]);
+	assert_eq!(parachains::kusama::karura::AUSD_KEY.to_vec().into(), vec![0, 129]);
 
 	let ausd_location: MultiLocation = MultiLocation::new(
 		1,
 		X2(
 			Parachain(parachains::kusama::karura::ID),
-			GeneralKey(parachains::kusama::karura::AUSD_KEY.to_vec()),
+			general_key(parachains::kusama::karura::AUSD_KEY),
 		),
 	);
 
@@ -119,7 +120,7 @@ fn convert_unkown_multilocation() {
 		1,
 		X2(
 			Parachain(parachains::kusama::altair::ID),
-			GeneralKey([42].to_vec()),
+			general_key([42].to_vec()),
 		),
 	);
 
