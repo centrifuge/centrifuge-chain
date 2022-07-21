@@ -951,33 +951,34 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 				let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
 
 				// Get cached nav as calculating current nav would be too computationally expensive
-				let nav = <pallet_loans::Pallet<Runtime> as PoolNAV<PoolId, Balance>>::nav(pool_id);
-				if nav.is_none() {
-					return None;
-				}
+				if let Some((nav, nav_last_updated)) =
+					<pallet_loans::Pallet<Runtime> as PoolNAV<PoolId, Balance>>::nav(pool_id)
+				{
+					let total_assets = pool.reserve.total.saturating_add(nav);
 
-				let total_assets = pool.reserve.total.saturating_add(nav.0);
+					let tranche_index: usize = pool
+						.tranches
+						.tranche_index(&TrancheLoc::Id(tranche_id))?
+						.try_into()
+						.ok()?;
+					let prices = pool
+						.tranches
+						.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
+						.ok()?;
 
-				let tranche_index: usize = pool
-					.tranches
-					.tranche_index(&TrancheLoc::Id(tranche_id))?
-					.try_into()
-					.ok()?;
-				let prices = pool
-					.tranches
-					.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
-					.ok()?;
-
-				match prices.get(tranche_index).map(|rate: &Rate| rate.clone()) {
-					Some(price) => Some(PriceValue {
-						pair: CurrencyPair {
-							base,
-							quote: pool.currency,
-						},
-						price,
-						last_updated: nav.1,
-					}),
-					None => None,
+					match prices.get(tranche_index).map(|rate: &Rate| rate.clone()) {
+						Some(price) => Some(PriceValue {
+							pair: CurrencyPair {
+								base,
+								quote: pool.currency,
+							},
+							price,
+							last_updated: nav_last_updated,
+						}),
+						None => None,
+					}
+				} else {
+					None
 				}
 			}
 			_ => None,
