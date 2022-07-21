@@ -116,8 +116,10 @@ pub mod pallet {
 		/// Currency as viewed from this pallet
 		type Currency: ReservableCurrency<Self::AccountId>;
 
+		/// Amount of funds reserved in a [`Pallet::pre_commit()`] call.
+		/// These funds will be refunded once the user call [`Pallet::evict_pre_commits()`]
 		#[pallet::constant]
-		type PrecommitDepositAmount: Get<BalanceOf<Self>>;
+		type PreCommitDeposit: Get<BalanceOf<Self>>;
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -238,7 +240,7 @@ pub mod pallet {
 				Error::<T>::PreCommitAlreadyExists
 			);
 
-			<T as pallet::Config>::Currency::reserve(&who, T::PrecommitDepositAmount::get())?;
+			<T as pallet::Config>::Currency::reserve(&who, T::PreCommitDeposit::get())?;
 
 			let expiration_block = <frame_system::Pallet<T>>::block_number()
 				.checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
@@ -253,7 +255,6 @@ pub mod pallet {
 			);
 
 			Self::put_pre_commit_into_eviction_bucket(anchor_id, expiration_block)?;
-
 			Ok(())
 		}
 
@@ -373,7 +374,7 @@ pub mod pallet {
 
 				<PreCommitEvictionBuckets<T>>::remove((evict_bucket, idx));
 
-				<T as pallet::Config>::Currency::unreserve(&who, T::PrecommitDepositAmount::get());
+				<T as pallet::Config>::Currency::unreserve(&who, T::PreCommitDeposit::get());
 
 				// decreases the evict bucket item count or remove index completely if empty
 				if idx == 0 {
