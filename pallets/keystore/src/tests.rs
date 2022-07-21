@@ -42,18 +42,18 @@ fn add_keys() {
 			"keys should be in storage"
 		);
 
-		event_exists(CrateEvent::<MockRuntime>::KeyAdded(
-			origin,
-			keys[0].key.clone(),
-			keys[0].purpose.clone(),
-			keys[0].key_type.clone(),
-		));
-		event_exists(CrateEvent::<MockRuntime>::KeyAdded(
-			origin,
-			keys[1].key.clone(),
-			keys[1].purpose.clone(),
-			keys[1].key_type.clone(),
-		));
+		event_exists(CrateEvent::<MockRuntime>::KeyAdded {
+			owner: origin,
+			key: keys[0].key.clone(),
+			purpose: keys[0].purpose.clone(),
+			key_type: keys[0].key_type.clone(),
+		});
+		event_exists(CrateEvent::<MockRuntime>::KeyAdded {
+			owner: origin,
+			key: keys[1].key.clone(),
+			purpose: keys[1].purpose.clone(),
+			key_type: keys[1].key_type.clone(),
+		});
 
 		keys_are_in_storage(origin, keys.clone()).unwrap();
 
@@ -173,16 +173,16 @@ fn revoke_keys() {
 			"keys should still be in storage"
 		);
 
-		event_exists(CrateEvent::<MockRuntime>::KeyRevoked(
-			origin,
-			keys[0].key.clone(),
-			1,
-		));
-		event_exists(CrateEvent::<MockRuntime>::KeyRevoked(
-			origin,
-			keys[1].key.clone(),
-			1,
-		));
+		event_exists(CrateEvent::<MockRuntime>::KeyRevoked {
+			owner: origin,
+			key: keys[0].key.clone(),
+			block_number: 1,
+		});
+		event_exists(CrateEvent::<MockRuntime>::KeyRevoked {
+			owner: origin,
+			key: keys[1].key.clone(),
+			block_number: 1,
+		});
 	});
 }
 
@@ -300,7 +300,7 @@ fn set_deposit() {
 			"new deposit should match"
 		);
 
-		event_exists(CrateEvent::<MockRuntime>::DepositSet(new_deposit));
+		event_exists(CrateEvent::<MockRuntime>::DepositSet { new_deposit });
 	});
 }
 

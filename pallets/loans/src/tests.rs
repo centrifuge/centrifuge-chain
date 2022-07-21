@@ -115,7 +115,12 @@ where
 
 	// event should be emitted
 	assert_last_event::<MockRuntime, <MockRuntime as pallet_loans::Config>::Event>(
-		LoanEvent::Created(pool_id, loan_id, collateral).into(),
+		LoanEvent::Created {
+			pool_id,
+			loan_id,
+			collateral,
+		}
+		.into(),
 	);
 	let loan = Loans::get_loan(pool_id, loan_id).expect("LoanDetails should be present");
 
@@ -193,7 +198,9 @@ fn price_test_loan<T>(
 	assert_ok!(res);
 	let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 	let (got_pool_id, got_loan_id) = match loan_event {
-		LoanEvent::Priced(pool_id, loan_id, _, _) => Some((pool_id, loan_id)),
+		LoanEvent::Priced {
+			pool_id, loan_id, ..
+		} => Some((pool_id, loan_id)),
 		_ => None,
 	}
 	.expect("must be a Loan issue priced event");
@@ -280,7 +287,11 @@ fn close_test_loan<T>(
 
 	let (got_pool_id, got_loan_id, got_collateral) =
 		match fetch_loan_event(last_event()).expect("should be a loan event") {
-			LoanEvent::Closed(pool_id, loan_id, collateral) => Some((pool_id, loan_id, collateral)),
+			LoanEvent::Closed {
+				pool_id,
+				loan_id,
+				collateral,
+			} => Some((pool_id, loan_id, collateral)),
 			_ => None,
 		}
 		.expect("must be a Loan close event");
@@ -1140,9 +1151,11 @@ macro_rules! test_pool_nav {
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (got_pool_id, updated_nav, exact) = match loan_event {
-					LoanEvent::NAVUpdated(pool_id, update_nav, exact) => {
-						Some((pool_id, update_nav, exact))
-					}
+					LoanEvent::NAVUpdated {
+						pool_id,
+						nav: update_nav,
+						update_type: exact,
+					} => Some((pool_id, update_nav, exact)),
 					_ => None,
 				}
 				.expect("must be a Nav updated event");
@@ -1195,9 +1208,12 @@ macro_rules! test_pool_nav {
 				};
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
-						Some((pool_id, loan_id, write_off_index))
-					}
+					LoanEvent::WrittenOff {
+						pool_id,
+						loan_id,
+						write_off_group_index,
+						..
+					} => Some((pool_id, loan_id, write_off_group_index)),
 					_ => None,
 				}
 				.expect("must be a loan written off event");
@@ -1213,9 +1229,11 @@ macro_rules! test_pool_nav {
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, updated_nav, exact) = match loan_event {
-					LoanEvent::NAVUpdated(pool_id, update_nav, exact) => {
-						Some((pool_id, update_nav, exact))
-					}
+					LoanEvent::NAVUpdated {
+						pool_id,
+						nav: update_nav,
+						update_type: exact,
+					} => Some((pool_id, update_nav, exact)),
 					_ => None,
 				}
 				.expect("must be a Nav updated event");
@@ -1320,15 +1338,19 @@ fn test_add_write_off_groups() {
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, index) = match loan_event {
-					LoanEvent::WriteOffGroupAdded(pool_id, index) => Some((pool_id, index)),
+					LoanEvent::WriteOffGroupAdded {
+						pool_id,
+						write_off_group_index,
+					} => Some((pool_id, Some(write_off_group_index))),
 					_ => None,
 				}
 				.expect("must be a write off group added event");
 
 				// check if the write off group is added
+				let write_off_group_index = index.expect("must be some");
 				let groups = PoolWriteOffGroups::<MockRuntime>::get(pool_id);
-				assert_eq!(groups[index as usize], group);
-				assert_eq!(groups.len() - 1, index as usize);
+				assert_eq!(groups[write_off_group_index as usize], group);
+				assert_eq!(groups.len() - 1, write_off_group_index as usize);
 			}
 
 			// invalid write off group
@@ -1422,9 +1444,12 @@ macro_rules! test_write_off_maturity_loan {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
-							Some((pool_id, loan_id, write_off_index))
-						}
+						LoanEvent::WrittenOff {
+							pool_id,
+							loan_id,
+							write_off_group_index,
+							..
+						} => Some((pool_id, loan_id, write_off_group_index)),
 						_ => None,
 					}
 					.expect("must be a Loan issue event");
@@ -1531,9 +1556,12 @@ macro_rules! test_admin_write_off_loan_type {
 						let loan_event =
 							fetch_loan_event(last_event()).expect("should be a loan event");
 						let (_pool_id, _loan_id, write_off_index) = match loan_event {
-							LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
-								Some((pool_id, loan_id, write_off_index))
-							}
+							LoanEvent::WrittenOff {
+								pool_id,
+								loan_id,
+								write_off_group_index,
+								..
+							} => Some((pool_id, loan_id, write_off_group_index)),
 							_ => None,
 						}
 						.expect("must be a Loan issue event");
@@ -1643,9 +1671,12 @@ macro_rules! test_close_written_off_loan_type {
 					let loan_event =
 						fetch_loan_event(last_event()).expect("should be a loan event");
 					let (_pool_id, _loan_id, write_off_index) = match loan_event {
-						LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
-							Some((pool_id, loan_id, write_off_index))
-						}
+						LoanEvent::WrittenOff {
+							pool_id,
+							loan_id,
+							write_off_group_index,
+							..
+						} => Some((pool_id, loan_id, write_off_group_index)),
 						_ => None,
 					}
 					.expect("must be a Loan issue event");
@@ -1673,9 +1704,12 @@ macro_rules! test_close_written_off_loan_type {
 
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (_pool_id, _loan_id, write_off_index) = match loan_event {
-					LoanEvent::WrittenOff(pool_id, loan_id, .., write_off_index) => {
-						Some((pool_id, loan_id, write_off_index))
-					}
+					LoanEvent::WrittenOff {
+						pool_id,
+						loan_id,
+						write_off_group_index,
+						..
+					} => Some((pool_id, loan_id, write_off_group_index)),
 					_ => None,
 				}
 				.expect("must be a Loan written off event");
@@ -1690,9 +1724,11 @@ macro_rules! test_close_written_off_loan_type {
 				assert_ok!(res);
 				let loan_event = fetch_loan_event(last_event()).expect("should be a loan event");
 				let (got_pool_id, updated_nav, exact) = match loan_event {
-					LoanEvent::NAVUpdated(pool_id, update_nav, exact) => {
-						Some((pool_id, update_nav, exact))
-					}
+					LoanEvent::NAVUpdated {
+						pool_id,
+						nav: update_nav,
+						update_type: exact,
+					} => Some((pool_id, update_nav, exact)),
 					_ => None,
 				}
 				.expect("must be a Nav updated event");

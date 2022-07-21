@@ -1105,8 +1105,13 @@ impl
 		let (_editor, maybe_role, _scope, role) = t;
 		if let Some(with_role) = maybe_role {
 			match *with_role {
-				Role::PoolRole(PoolRole::PoolAdmin) => true,
+				Role::PoolRole(PoolRole::PoolAdmin) => match *role {
+					// PoolAdmins can manage all other admins, but not tranche investors
+					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => false,
+					_ => true,
+				},
 				Role::PoolRole(PoolRole::MemberListAdmin) => match *role {
+					// MemberlistAdmins can manage tranche investors
 					Role::PoolRole(PoolRole::TrancheInvestor(_, _)) => true,
 					_ => false,
 				},

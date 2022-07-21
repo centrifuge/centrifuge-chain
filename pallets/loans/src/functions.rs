@@ -410,11 +410,11 @@ impl<T: Config> Pallet<T> {
 			}?;
 			nav.latest = new_nav;
 			*maybe_nav_details = Some(nav);
-			Self::deposit_event(Event::<T>::NAVUpdated(
+			Self::deposit_event(Event::<T>::NAVUpdated {
 				pool_id,
-				new_nav,
-				NAVUpdateType::Inexact,
-			));
+				nav: new_nav,
+				update_type: NAVUpdateType::Inexact,
+			});
 			Ok(())
 		})
 	}
