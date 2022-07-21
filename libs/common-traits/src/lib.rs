@@ -127,6 +127,30 @@ pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
 	fn deposit(pool_id: Self::PoolId, from: AccountId, amount: Self::Balance) -> DispatchResult;
 }
 
+/// A trait that can be used to retrieve the current price for a currency
+pub struct CurrencyPair<CurrencyId> {
+	pub base: CurrencyId,
+	pub quote: CurrencyId,
+}
+
+pub struct PriceValue<CurrencyId, Rate, Moment> {
+	pub pair: CurrencyPair<CurrencyId>,
+	pub price: Rate,
+	pub last_updated: Moment,
+}
+
+pub trait CurrencyPrice<CurrencyId> {
+	type Rate;
+	type Moment;
+
+	/// Retrieve the latest price of `base` currency, denominated in the `quote` currency
+	/// If `quote` currency is not passed, then the default `quote` currency is used (when possible)
+	fn get_latest(
+		base: CurrencyId,
+		quote: Option<CurrencyId>,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
+}
+
 /// A trait that can be used to calculate interest accrual for debt
 pub trait InterestAccrual<InterestRate, Balance, Adjustment> {
 	type NormalizedDebt: Member + Parameter + MaxEncodedLen + TypeInfo + Copy + Zero;
