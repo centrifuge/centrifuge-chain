@@ -519,15 +519,15 @@ impl<T: Config> Pallet<T> {
 			.take(MAX_LOOP_IN_TX as usize)
 			// get eviction date of the anchor given by index
 			.filter_map(|idx| {
-				let anchor_index = <AnchorIndexes<T>>::get(idx)?;
-				let eviction_date = <AnchorEvictDates<T>>::get(anchor_index).unwrap_or_default();
-				Some((idx, anchor_index, eviction_date))
+				let anchor_id = <AnchorIndexes<T>>::get(idx)?;
+				let eviction_date = <AnchorEvictDates<T>>::get(anchor_id).unwrap_or_default();
+				Some((idx, anchor_id, eviction_date))
 			})
 			// filter out evictable anchors, anchor_evict_date can be 0 when evicting before any anchors are created
 			.filter(|(_, _, anchor_evict_date)| anchor_evict_date <= &yesterday)
 			// remove indexes
-			.map(|(idx, anchor_index, _)| {
-				<AnchorEvictDates<T>>::remove(anchor_index);
+			.map(|(idx, anchor_id, _)| {
+				<AnchorEvictDates<T>>::remove(anchor_id);
 				<AnchorIndexes<T>>::remove(idx);
 				<LatestEvictedAnchorIndex<T>>::put(idx);
 			})
