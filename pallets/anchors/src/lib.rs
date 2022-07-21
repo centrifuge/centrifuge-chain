@@ -21,8 +21,10 @@ use common_traits::fees::{Fee, Fees};
 use frame_support::{
 	dispatch::{DispatchError, DispatchResult},
 	storage::child,
+	traits::Currency,
 	RuntimeDebug, StateVersion,
 };
+
 use scale_info::TypeInfo;
 use sp_arithmetic::traits::{CheckedAdd, CheckedMul};
 use sp_runtime::{traits::Hash, ArithmeticError};
@@ -42,6 +44,9 @@ mod mock;
 mod tests;
 
 mod common;
+
+type BalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// Expiration duration in blocks of a pre-commit
 /// This is the maximum expected time for document consensus to take place between a pre-commit of an anchor and a
@@ -85,6 +90,7 @@ pub mod pallet {
 	// Import various types used to declare pallet in scope.
 	use super::*;
 	use frame_support::pallet_prelude::*;
+	use frame_support::traits::ReservableCurrency;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::Hash;
 	use sp_std::vec::Vec;
@@ -106,6 +112,12 @@ pub mod pallet {
 
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
+
+		/// Currency as viewed from this pallet
+		type Currency: ReservableCurrency<Self::AccountId>;
+
+		#[pallet::constant]
+		type PrecommitDepositAmount: Get<BalanceOf<Self>>;
 	}
 
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
@@ -226,6 +238,8 @@ pub mod pallet {
 				Error::<T>::PreCommitAlreadyExists
 			);
 
+			<T as pallet::Config>::Currency::reserve(&who, T::PrecommitDepositAmount::get())?;
+
 			let expiration_block = <frame_system::Pallet<T>>::block_number()
 				.checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
 				.ok_or(ArithmeticError::Overflow)?;
@@ -239,6 +253,7 @@ pub mod pallet {
 			);
 
 			Self::put_pre_commit_into_eviction_bucket(anchor_id, expiration_block)?;
+
 			Ok(())
 		}
 
@@ -340,7 +355,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			evict_bucket: T::BlockNumber,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			let who = ensure_signed(origin)?;
 			ensure!(
 				<frame_system::Pallet<T>>::block_number() >= evict_bucket,
 				Error::<T>::EvictionNotPossible
@@ -357,6 +372,8 @@ pub mod pallet {
 					.map(|pre_commit_id| <PreCommits<T>>::remove(pre_commit_id));
 
 				<PreCommitEvictionBuckets<T>>::remove((evict_bucket, idx));
+
+				<T as pallet::Config>::Currency::unreserve(&who, T::PrecommitDepositAmount::get());
 
 				// decreases the evict bucket item count or remove index completely if empty
 				if idx == 0 {
