@@ -166,7 +166,7 @@ pub mod pallet {
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
 			let router = <Routers<T>>::get(domain.clone()).ok_or(Error::<T>::InvalidDomain)?;
 			router
-				.send(domain, message)
+				.send(message, domain)
 				.map_err(|_| Error::<T>::SendFailure)
 		}
 	}

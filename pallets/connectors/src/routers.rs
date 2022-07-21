@@ -8,7 +8,7 @@ pub trait ConnectorRouter<Message>
 where
 	Message: Encode + Decode,
 {
-	fn send(&self, target: Domain, message: Message) -> DispatchResult;
+	fn send(&self, message: Message, domain: Domain) -> DispatchResult;
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
@@ -22,10 +22,10 @@ impl<Message> ConnectorRouter<Message> for Router
 where
 	Message: Encode + Decode,
 {
-	fn send(&self, domain: Domain, message: Message) -> DispatchResult {
+	fn send(&self, message: Message, domain: Domain) -> DispatchResult {
 		match self {
-			Router::XCM(xcm_router) => xcm_router.send(domain, message),
-			Router::Nomad(nomad_router) => nomad_router.send(domain, message),
+			Router::XCM(xcm_router) => xcm_router.send(message, domain),
+			Router::Nomad(nomad_router) => nomad_router.send(message, domain),
 		}
 	}
 }
@@ -41,7 +41,7 @@ impl<Message> ConnectorRouter<Message> for XCMRouter
 where
 	Message: Encode + Decode,
 {
-	fn send(&self, target: Domain, message: Message) -> DispatchResult {
+	fn send(&self, message: Message, domain: Domain) -> DispatchResult {
 		let Self { multi_location } = self;
 		todo!()
 	}
@@ -57,7 +57,7 @@ impl<Message> ConnectorRouter<Message> for NomadRouter
 where
 	Message: Encode + Decode,
 {
-	fn send(&self, target: Domain, message: Message) -> DispatchResult {
+	fn send(&self, message: Message, domain: Domain) -> DispatchResult {
 		todo!()
 	}
 }
