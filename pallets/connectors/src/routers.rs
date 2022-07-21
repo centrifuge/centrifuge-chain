@@ -2,12 +2,13 @@ use crate::{Domain, Message};
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 use sp_runtime::DispatchResult;
+use xcm::VersionedMultiLocation;
 
 pub trait ConnectorRouter<Message>
 where
 	Message: Encode + Decode,
 {
-	fn send(target: Domain, message: Message) -> DispatchResult;
+	fn send(&self, target: Domain, message: Message) -> DispatchResult;
 }
 
 #[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
@@ -17,45 +18,46 @@ pub enum Router {
 	XCM(XCMRouter),
 }
 
-impl Router {
-	pub fn send<Message: Encode + Decode>(
-		&self,
-		domain: Domain,
-		message: Message,
-	) -> DispatchResult {
+impl<Message> ConnectorRouter<Message> for Router
+where
+	Message: Encode + Decode,
+{
+	fn send(&self, domain: Domain, message: Message) -> DispatchResult {
 		match self {
-			Router::XCM(xcm_router) => XCMRouter::send(domain, message),
-			Router::Nomad(nomad_router) => NomadRouter::send(domain, message),
+			Router::XCM(xcm_router) => xcm_router.send(domain, message),
+			Router::Nomad(nomad_router) => nomad_router.send(domain, message),
 		}
 	}
 }
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct NomadRouter {
-	forwarding_contract: String, // TODO(nuno): make it a MultiLocation
-}
-
-impl<Message> ConnectorRouter<Message> for NomadRouter
-where
-	Message: Encode + Decode,
-{
-	fn send(target: Domain, message: Message) -> DispatchResult {
-		todo!()
-	}
-}
-
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct XCMRouter {
-	multilocations: (), // TODO(nuno): make it a Map<Domain, MultiLocation>
+	// TODO(nuno): make it a Map<Domain, MultiLocation>
+	pub multi_location: VersionedMultiLocation,
 }
 
 impl<Message> ConnectorRouter<Message> for XCMRouter
 where
 	Message: Encode + Decode,
 {
-	fn send(target: Domain, message: Message) -> DispatchResult {
+	fn send(&self, target: Domain, message: Message) -> DispatchResult {
+		let Self { multi_location } = self;
+		todo!()
+	}
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct NomadRouter {
+	forwarding_contract: VersionedMultiLocation,
+}
+
+impl<Message> ConnectorRouter<Message> for NomadRouter
+where
+	Message: Encode + Decode,
+{
+	fn send(&self, target: Domain, message: Message) -> DispatchResult {
 		todo!()
 	}
 }
