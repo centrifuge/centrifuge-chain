@@ -59,7 +59,10 @@ pub mod pallet {
 			+ Copy
 			+ HasCompact
 			+ MaxEncodedLen
-			+ core::fmt::Debug;
+			+ core::fmt::Debug
+			+ Encode
+			+ Decode
+			+ Into<u64>;
 
 		type TrancheId: Member
 			+ Parameter

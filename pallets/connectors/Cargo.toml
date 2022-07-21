@@ -31,6 +31,7 @@ common-types = { path = "../../libs/common-types", default-features = false, opt
 runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
 
 [dev-dependencies]
+hex = "0.4.3"
 # Substrate crates & pallets
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }

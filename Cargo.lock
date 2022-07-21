@@ -5953,6 +5953,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex",
  "orml-tokens",
  "orml-traits",
  "pallet-balances",
