@@ -126,10 +126,16 @@ impl_mock_fees_state!(
 	Balance
 );
 
+parameter_types! {
+	pub const PreCommitDeposit: Balance = 1;
+}
+
 impl Config for Test {
 	type WeightInfo = ();
 	type Fees = MockFees<Self::AccountId, Balance, u8, MockFeesState>;
 	type CommitAnchorFeeKey = ConstU8<1>;
+	type PreCommitDeposit = PreCommitDeposit;
+	type Currency = Balances;
 }
 
 impl Test {

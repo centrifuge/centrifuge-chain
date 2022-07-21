@@ -776,12 +776,15 @@ impl pallet_fees::Config for Runtime {
 
 parameter_types! {
 	pub const CommitAnchorFeeKey: FeeKey = FeeKey::CommitAnchor;
+	pub const PreCommitDeposit: Balance = 100 * CFG;
 }
 
 impl pallet_anchors::Config for Runtime {
 	type Fees = Fees;
 	type CommitAnchorFeeKey = CommitAnchorFeeKey;
 	type WeightInfo = ();
+	type Currency = Balances;
+	type PreCommitDeposit = PreCommitDeposit;
 }
 
 parameter_types! {
