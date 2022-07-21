@@ -25,7 +25,9 @@ pub use routers::*;
 // Type aliases
 pub type PoolIdOf<T> =
 	<<T as Config>::PoolInspect as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
-pub type MessageOf<T> = Message<PoolIdOf<T>>;
+pub type TrancheIdOf<T> =
+	<<T as Config>::PoolInspect as PoolInspect<<T as frame_system::Config>::AccountId>>::TrancheId;
+pub type MessageOf<T> = Message<PoolIdOf<T>, TrancheIdOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -57,14 +59,6 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
-		type TrancheId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ MaxEncodedLen
-			+ TypeInfo
-			+ From<[u8; 16]>;
-
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
 		//TODO(nuno)
@@ -80,7 +74,7 @@ pub mod pallet {
 		/// A pool was added to the domain
 		MessageSent {
 			domain: Domain,
-			message: Message<PoolIdOf<T>>,
+			message: Message<PoolIdOf<T>, TrancheIdOf<T>>,
 		},
 	}
 
@@ -129,6 +123,9 @@ pub mod pallet {
 		/// A pool could not be found
 		PoolNotFound,
 
+		/// A tranche could not be found
+		TrancheNotFound,
+
 		/// The specified domain has no associated router
 		InvalidDomain,
 
@@ -155,6 +152,34 @@ pub mod pallet {
 
 			// Send the message through the router
 			Self::do_send_message(Message::AddPool { pool_id }, domain)?;
+
+			Ok(())
+		}
+
+		/// Add a tranche to a given domain
+		#[pallet::weight(<T as Config>::WeightInfo::add_tranche())]
+		pub fn add_tranche(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
+			domain: Domain,
+		) -> DispatchResult {
+			ensure_signed(origin.clone())?;
+
+			// Check the tranche exists
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			// Send the message through the router
+			Self::do_send_message(
+				Message::AddTranche {
+					pool_id,
+					tranche_id,
+				},
+				domain,
+			)?;
 
 			Ok(())
 		}
