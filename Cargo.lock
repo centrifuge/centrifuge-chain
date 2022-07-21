@@ -5949,6 +5949,7 @@ dependencies = [
 name = "pallet-connectors"
 version = "0.0.1"
 dependencies = [
+ "common-traits",
  "common-types",
  "frame-benchmarking",
  "frame-support",

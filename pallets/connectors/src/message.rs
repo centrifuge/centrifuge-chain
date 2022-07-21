@@ -2,7 +2,10 @@ use crate::*;
 
 #[derive(Decode, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub enum Message<PoolId> where PoolId: Encode + Decode {
+pub enum Message<PoolId>
+where
+	PoolId: Encode + Decode,
+{
 	Invalid,
 	AddPool { pool_id: PoolId }, // More to come...
 }
@@ -11,7 +14,7 @@ impl<PoolId: Encode + Decode> Message<PoolId> {
 	fn call_type(&self) -> u8 {
 		match self {
 			Self::Invalid => 0,
-			Self::AddPool { .. }  => 1,
+			Self::AddPool { .. } => 1,
 		}
 	}
 }

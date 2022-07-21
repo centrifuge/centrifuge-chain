@@ -5,6 +5,7 @@
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
 use codec::{Decode, Encode, HasCompact};
+use common_traits::PoolInspect;
 use frame_support::dispatch::DispatchResult;
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
@@ -22,12 +23,16 @@ mod routers;
 pub use routers::*;
 
 // Type aliases
-type PoolIdOf<T> = <T as pallet::Config>::PoolId;
+pub type PoolIdOf<T> =
+	<<T as Config>::PoolInspect as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
+pub type MessageOf<T> =
+	Message<PoolIdOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
+	use common_traits::PoolInspect;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_core::TypeId;
@@ -53,17 +58,6 @@ pub mod pallet {
 
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
-		type PoolId: Member
-			+ Parameter
-			+ Default
-			+ Copy
-			+ HasCompact
-			+ MaxEncodedLen
-			+ core::fmt::Debug
-			+ Encode
-			+ Decode
-			+ Into<u64>;
-
 		type TrancheId: Member
 			+ Parameter
 			+ Default
@@ -78,7 +72,7 @@ pub mod pallet {
 		type Permissions: Member;
 
 		//TODO(nuno)
-		type PoolInspect: Member;
+		type PoolInspect: PoolInspect<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -87,7 +81,7 @@ pub mod pallet {
 		/// A pool was added to the domain
 		MessageSent {
 			domain: Domain,
-			message: Message<T::PoolId>,
+			message: Message<PoolIdOf<T>>,
 		},
 	}
 
@@ -133,7 +127,8 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
-		ToDo,
+		/// A pool could not be found
+		PoolNotFound,
 	}
 
 	#[pallet::call]
@@ -142,12 +137,19 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::add_pool())]
 		pub fn add_pool(
 			origin: OriginFor<T>,
-			_pool_id: T::PoolId,
-			_domain: Domain,
+			pool_id: PoolIdOf<T>,
+			domain: Domain,
 		) -> DispatchResult {
-			let _who = ensure_signed(origin.clone())?;
+			ensure_signed(origin.clone())?;
 
-			//TODO(nuno)
+			// Check the pool exists
+			ensure!(
+				T::PoolInspect::pool_exists(pool_id),
+				Error::<T>::PoolNotFound
+			);
+
+			// Send the message through the router
+			Self::do_send_message(Message::AddPool { pool_id }, domain)?;
 
 			Ok(())
 		}
@@ -155,5 +157,9 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		// skeleton
+
+		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
+			todo!("nuno")
+		}
 	}
 }
