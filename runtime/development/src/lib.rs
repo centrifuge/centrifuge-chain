@@ -951,11 +951,12 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 				let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
 
 				// Get cached nav as calculating current nav would be too computationally expensive
-				// TODO: check that it's fine to assume in this case that nav = 0
-				let (nav, nav_last_updated) =
-					<pallet_loans::Pallet<Runtime> as PoolNAV<PoolId, Balance>>::nav(pool_id)
-						.unwrap_or((0, now));
-				let total_assets = pool.reserve.total.saturating_add(nav);
+				let nav = <pallet_loans::Pallet<Runtime> as PoolNAV<PoolId, Balance>>::nav(pool_id);
+				if nav.is_none() {
+					return None;
+				}
+
+				let total_assets = pool.reserve.total.saturating_add(nav.0);
 
 				let tranche_index: usize = pool
 					.tranches
@@ -974,7 +975,7 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 							quote: pool.currency,
 						},
 						price,
-						last_updated: nav_last_updated,
+						last_updated: nav.1,
 					}),
 					None => None,
 				}
