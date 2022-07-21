@@ -30,6 +30,7 @@ pub mod pallet {
 	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sp_core::TypeId;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -97,6 +98,15 @@ pub mod pallet {
 		Gnosis,
 	}
 
+	#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+	pub struct DomainLocator<Domain> {
+		pub domain: Domain,
+	}
+
+	impl<Domain> TypeId for DomainLocator<Domain> {
+		const TYPE_ID: [u8; 4] = *b"domn";
+	}
+
 	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct DomainAddress(pub [u8; 32]);
@@ -129,10 +139,10 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::add_pool())]
 		pub fn add_pool(
 			origin: OriginFor<T>,
-			pool_id: T::PoolId,
-			domain: Domain,
+			_pool_id: T::PoolId,
+			_domain: Domain,
 		) -> DispatchResult {
-			let who = ensure_signed(origin.clone())?;
+			let _who = ensure_signed(origin.clone())?;
 
 			//TODO(nuno)
 

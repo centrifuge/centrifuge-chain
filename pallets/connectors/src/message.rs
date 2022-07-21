@@ -11,7 +11,7 @@ impl<PoolId> Encode for Message<PoolId> {
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			Message::Invalid => vec![0u8],
-			Message::AddPool { pool_id } => {
+			Message::AddPool { pool_id: _ } => {
 				let mut message: Vec<u8> = vec![0u8];
 				message.append(&mut vec![1, 2, 3]); //todo(nuno): &mut pool_id.as_bytes().to_vec());
 				message
