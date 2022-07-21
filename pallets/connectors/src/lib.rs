@@ -173,10 +173,14 @@ pub mod pallet {
 			);
 
 			// Send the message through the router
+			// TODO: retrieve token name and symbol from asset-registry
+			// Depends on https://github.com/centrifuge/centrifuge-chain/issues/842
 			Self::do_send_message(
 				Message::AddTranche {
 					pool_id,
 					tranche_id,
+					token_name: [0; 32],
+					token_symbol: [0; 32],
 				},
 				domain,
 			)?;

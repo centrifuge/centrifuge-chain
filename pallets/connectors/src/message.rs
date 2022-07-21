@@ -1,3 +1,5 @@
+use frame_support::BoundedVec;
+
 use crate::*;
 
 #[derive(Decode, Clone, PartialEq, TypeInfo)]
@@ -14,6 +16,8 @@ where
 	AddTranche {
 		pool_id: PoolId,
 		tranche_id: TrancheId,
+		token_name: [u8; 32],
+		token_symbol: [u8; 32],
 	}, // More to come...
 }
 
@@ -44,6 +48,8 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Encode for Message<Poo
 			Message::AddTranche {
 				pool_id,
 				tranche_id,
+				token_name,
+				token_symbol,
 			} => {
 				let mut message: Vec<u8> = vec![];
 				message.push(self.call_type());
@@ -53,6 +59,8 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Encode for Message<Poo
 				message.append(&mut encoded_pool_id);
 
 				message.append(&mut tranche_id.encode());
+				message.append(&mut token_name.encode());
+				message.append(&mut token_symbol.encode());
 
 				message
 			}
@@ -105,11 +113,13 @@ mod tests {
 			let msg = Message::<PoolId, TrancheId>::AddTranche {
 				pool_id: 1,
 				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+				token_name: [0; 32],
+				token_symbol: [0; 32],
 			};
 			let encoded = msg.encode();
 
-			let input = "02000000000000000100000000000000000000000000000001";
-			let expected = <[u8; 25]>::from_hex(input).expect("Decoding failed");
+			let input = "0200000000000000010000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+			let expected = <[u8; 89]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 	}
