@@ -18,8 +18,10 @@ pub mod weights;
 mod message;
 pub use message::*;
 
+mod routers;
+pub use routers::*;
+
 // Type aliases
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type PoolIdOf<T> = <T as pallet::Config>::PoolId;
 
 #[frame_support::pallet]
@@ -28,8 +30,6 @@ pub mod pallet {
 	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use frame_system::RawOrigin;
-	use sp_std::collections::btree_map::BTreeMap;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -101,25 +101,6 @@ pub mod pallet {
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct DomainAddress(pub [u8; 32]);
 
-	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Debug))]
-	pub enum Router {
-		Nomad(NomadRouter),
-		XCM(XCMRouter),
-	}
-
-	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Debug))]
-	pub struct NomadRouter {
-		forwarding_contract: String, // TODO(nuno): make it a MultiLocation
-	}
-
-	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Debug))]
-	pub struct XCMRouter {
-		multilocations: (), // TODO(nuno): make it a Map<Domain, MultiLocation>
-	}
-
 	#[pallet::storage]
 	pub(crate) type Routers<T: Config> = StorageMap<_, Blake2_128Concat, Domain, Router>;
 
@@ -136,16 +117,6 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type LinkedAddresses<T: Config> =
 		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, bool>;
-
-	#[pallet::storage]
-	pub(crate) type DomainBalances<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		Domain,
-		Blake2_128Concat,
-		T::CurrencyId, // future proof to make it work for non tranche tokens
-		T::Balance,
-	>;
 
 	#[pallet::error]
 	pub enum Error<T> {
