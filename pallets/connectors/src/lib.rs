@@ -25,8 +25,7 @@ pub use routers::*;
 // Type aliases
 pub type PoolIdOf<T> =
 	<<T as Config>::PoolInspect as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
-pub type MessageOf<T> =
-	Message<PoolIdOf<T>>;
+pub type MessageOf<T> = Message<PoolIdOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -129,6 +128,12 @@ pub mod pallet {
 	pub enum Error<T> {
 		/// A pool could not be found
 		PoolNotFound,
+
+		/// The specified domain has no associated router
+		InvalidDomain,
+
+		/// Failed to send a message
+		SendFailure,
 	}
 
 	#[pallet::call]
@@ -159,7 +164,10 @@ pub mod pallet {
 		// skeleton
 
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
-			todo!("nuno")
+			let router = <Routers<T>>::get(domain.clone()).ok_or(Error::<T>::InvalidDomain)?;
+			router
+				.send(domain, message)
+				.map_err(|_| Error::<T>::SendFailure)
 		}
 	}
 }
