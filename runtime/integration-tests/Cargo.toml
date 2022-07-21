@@ -14,7 +14,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 tokio = { version = "1.15", features = ["macros"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false, features = ["derive"] }
 lazy_static = "1.4.0"
 
 # Substrate

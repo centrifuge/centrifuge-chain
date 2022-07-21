@@ -10,7 +10,7 @@ repository = "https://github.com/centrifuge/centrifuge-chain"
 [dependencies]
 # third-party dependencies
 serde = { version = "1.0.102", optional = true }
-smallvec = "1.4.0"
+smallvec = "1.6.1"
 
 # Substrate dependencies
 codec = { package = 'parity-scale-codec', version = '3.0.0', default-features = false, features = ['derive'] }

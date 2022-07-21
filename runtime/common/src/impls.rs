@@ -257,7 +257,7 @@ pub mod xcm {
 	use xcm::latest::MultiLocation;
 	use sp_runtime::traits::ConstU32;
 	use sp_runtime::WeakBoundedVec;
-	use xcm::latest::Junction::{self, GeneralKey};
+	use xcm::latest::Junction::GeneralKey;
 
 	/// Our FixedConversionRateProvider, used to charge XCM-related fees for tokens registered in
 	/// the asset registry that were not already handled by native Trader rules.

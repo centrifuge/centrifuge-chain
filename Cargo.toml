@@ -55,7 +55,7 @@ members = [
 
 [dependencies]
 # third-party dependencies
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 serde = { version = "1.0.106", features = ["derive"] }
 futures = { version = "0.3.21", features = ["compat"] }
 jsonrpsee = { version = "0.13.0", features = ["server", "macros"] }

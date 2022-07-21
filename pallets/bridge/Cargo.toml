@@ -13,7 +13,7 @@ targets = ['x86_64-unknown-linux-gnu']
 
 [dependencies]
 # Substrate basic primitives
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "3.0", default-features = false }
 scale-info = { version = "2.0", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.26" }
