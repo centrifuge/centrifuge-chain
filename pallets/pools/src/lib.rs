@@ -2107,9 +2107,22 @@ pub mod pallet {
 
 impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
 	type PoolId = T::PoolId;
+	type TrancheId = T::TrancheId;
 
 	fn pool_exists(pool_id: Self::PoolId) -> bool {
 		Pool::<T>::contains_key(pool_id)
+	}
+
+	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool {
+		let pool = Pool::<T>::get(pool_id);
+		if pool.is_none() {
+			return false;
+		}
+
+		pool.unwrap()
+			.tranches
+			.get_tranche(TrancheLoc::Id(tranche_id))
+			.is_some()
 	}
 }
 
