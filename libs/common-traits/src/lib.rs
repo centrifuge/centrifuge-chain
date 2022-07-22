@@ -109,17 +109,23 @@ pub trait PoolNAV<PoolId, Amount> {
 }
 
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
-pub trait PoolInspect<AccountId> {
+pub trait PoolInspect<AccountId, CurrencyId> {
 	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo;
 	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo;
+	type Rate;
+	type Moment;
 
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
 	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
+	fn get_tranche_token_price(
+		pool_id: Self::PoolId,
+		tranche_id: Self::TrancheId,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>>;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
-pub trait PoolReserve<AccountId>: PoolInspect<AccountId> {
+pub trait PoolReserve<AccountId, CurrencyId>: PoolInspect<AccountId, CurrencyId> {
 	type Balance;
 
 	/// Withdraw `amount` from the reserve to the `to` account.

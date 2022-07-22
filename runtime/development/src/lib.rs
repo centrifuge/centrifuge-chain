@@ -48,7 +48,9 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use common_traits::{CurrencyPair, CurrencyPrice, PoolUpdateGuard, PreConditions, PriceValue};
+use common_traits::{
+	CurrencyPair, CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue,
+};
 use common_traits::{Permissions as PermissionsT, PoolNAV};
 pub use common_types::CurrencyId;
 use common_types::{
@@ -947,39 +949,10 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
 		match base {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				let now = <pallet_timestamp::Pallet<Runtime> as UnixTime>::now().as_secs();
-				let mut pool = pallet_pools::Pool::<Runtime>::get(pool_id)?;
-
-				// Get cached nav as calculating current nav would be too computationally expensive
-				if let Some((nav, nav_last_updated)) =
-					<pallet_loans::Pallet<Runtime> as PoolNAV<PoolId, Balance>>::nav(pool_id)
-				{
-					let total_assets = pool.reserve.total.saturating_add(nav);
-
-					let tranche_index: usize = pool
-						.tranches
-						.tranche_index(&TrancheLoc::Id(tranche_id))?
-						.try_into()
-						.ok()?;
-					let prices = pool
-						.tranches
-						.calculate_prices::<_, OrmlTokens, _>(total_assets, now)
-						.ok()?;
-
-					match prices.get(tranche_index).map(|rate: &Rate| rate.clone()) {
-						Some(price) => Some(PriceValue {
-							pair: CurrencyPair {
-								base,
-								quote: pool.currency,
-							},
-							price,
-							last_updated: nav_last_updated,
-						}),
-						None => None,
-					}
-				} else {
-					None
-				}
+				<pallet_pools::Pallet<Runtime> as PoolInspect<
+					AccountId,
+					CurrencyId,
+				>>::get_tranche_token_price(pool_id, tranche_id)
 			}
 			_ => None,
 		}
