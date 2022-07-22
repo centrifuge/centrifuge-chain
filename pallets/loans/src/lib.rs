@@ -510,7 +510,7 @@ pub mod pallet {
 
 		/// Set pricing for the loan with loan specific details like Rate, Loan type
 		///
-		/// LoanStatus must be in Created state.
+		/// LoanStatus must be in Created or Active state.
 		/// Once activated, loan owner can start loan related functions like Borrow, Repay, Close
 		#[pallet::weight(<T as Config>::WeightInfo::price(T::MaxActiveLoansPerPool::get()))]
 		pub fn price(
@@ -522,32 +522,34 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin)?;
 
-			//ensure_role!(pool_id, origin, PoolRole::PricingAdmin);
 			let active_count =
 				Loan::<T>::try_mutate(pool_id, loan_id, |loan| -> Result<u32, DispatchError> {
 					let loan = loan.as_mut().ok_or(Error::<T>::MissingLoan)?;
 
-					let active_count = match loan.status {
-						LoanStatus::Created => Self::price_created_loan(
-							pool_id,
-							loan_id,
-							owner,
-							interest_rate_per_sec,
-							loan_type,
-						),
-						LoanStatus::Active => Self::price_active_loan(
-							pool_id,
-							loan_id,
-							owner,
-							interest_rate_per_sec,
-							loan_type,
-						),
+					match loan.status {
+						LoanStatus::Created => {
+							ensure_role!(pool_id, owner, PoolRole::PricingAdmin);
+							let active_count = Self::price_created_loan(
+								pool_id,
+								loan_id,
+								interest_rate_per_sec,
+								loan_type,
+							);
+
+							loan.status = LoanStatus::Active;
+							active_count
+						}
+						LoanStatus::Active => {
+							ensure_role!(pool_id, owner, PoolRole::LoanAdmin);
+							Self::price_active_loan(
+								pool_id,
+								loan_id,
+								interest_rate_per_sec,
+								loan_type,
+							)
+						}
 						LoanStatus::Closed { .. } => Err(Error::<T>::LoanIsActive)?,
-					};
-
-					loan.status = LoanStatus::Active;
-
-					active_count
+					}
 				})?;
 
 			Self::deposit_event(Event::<T>::Priced {
