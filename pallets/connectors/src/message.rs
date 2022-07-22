@@ -64,7 +64,6 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Encode for Message<Poo
 
 				message
 			}
-			Message::AddTranche { .. } => vec![self.call_type()],
 		}
 	}
 }
@@ -72,7 +71,7 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode> Encode for Message<Poo
 #[cfg(test)]
 mod tests {
 	use crate::Message;
-	use codec::Encode;
+	use codec::{Decode, Encode};
 	use hex::FromHex;
 
 	type PoolId = u64;
@@ -89,12 +88,12 @@ mod tests {
 		}
 
 		#[test]
-		fn add_pool_0() {
+		fn add_pool_zero() {
 			let msg = Message::<PoolId, TrancheId>::AddPool { pool_id: 0 };
 			let encoded = msg.encode();
 
-			let input = "010000000000000000";
-			let expected = <[u8; 9]>::from_hex(input).expect("Decoding failed");
+			let expected_hex = "010000000000000000";
+			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 
@@ -103,8 +102,8 @@ mod tests {
 			let msg = Message::<PoolId, TrancheId>::AddPool { pool_id: 12378532 };
 			let encoded = msg.encode();
 
-			let input = "010000000000bce1a4";
-			let expected = <[u8; 9]>::from_hex(input).expect("Decoding failed");
+			let expected_hex = "010000000000bce1a4";
+			let expected = <[u8; 9]>::from_hex(expected_hex).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 
@@ -118,8 +117,8 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let input = "0200000000000000010000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-			let expected = <[u8; 89]>::from_hex(input).expect("Decoding failed");
+			let expected_hex = "0200000000000000010000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+			let expected = <[u8; 89]>::from_hex(expected_hex).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 	}

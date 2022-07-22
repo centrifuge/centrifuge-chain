@@ -36,6 +36,7 @@ xcm = { git = "https://github.com/paritytech/polkadot", default-features = false
 
 [dev-dependencies]
 hex = "0.4.3"
+
 # Substrate crates & pallets
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
