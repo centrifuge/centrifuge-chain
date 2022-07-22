@@ -111,9 +111,11 @@ pub trait PoolNAV<PoolId, Amount> {
 /// A trait that support pool inspection operations such as pool existence checks and pool admin of permission set.
 pub trait PoolInspect<AccountId> {
 	type PoolId: Parameter + Member + Debug + Copy + Default + TypeInfo + Encode + Decode;
+	type TrancheId: Parameter + Member + Debug + Copy + Default + TypeInfo;
 
 	/// check if the pool exists
 	fn pool_exists(pool_id: Self::PoolId) -> bool;
+	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool;
 }
 
 /// A trait that support pool reserve operations such as withdraw and deposit
