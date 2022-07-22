@@ -141,6 +141,26 @@ impl<T: Config> Pallet<T> {
 		Ok(loan_id)
 	}
 
+	pub(crate) fn price_created_loan(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+		owner: T::AccountId,
+		interest_rate_per_sec: T::Rate,
+		loan_type: LoanType<T::Rate, T::Balance>,
+	) -> Result<u32, DispatchError> {
+		todo!()
+	}
+
+	pub(crate) fn price_active_loan(
+		pool_id: PoolIdOf<T>,
+		loan_id: T::LoanId,
+		owner: T::AccountId,
+		interest_rate_per_sec: T::Rate,
+		loan_type: LoanType<T::Rate, T::Balance>,
+	) -> Result<u32, DispatchError> {
+		todo!()
+	}
+
 	pub(crate) fn price_loan(
 		pool_id: PoolIdOf<T>,
 		loan_id: T::LoanId,
