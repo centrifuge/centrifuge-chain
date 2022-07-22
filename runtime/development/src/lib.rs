@@ -48,10 +48,8 @@ use sp_version::RuntimeVersion;
 use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
-use common_traits::{
-	CurrencyPair, CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue,
-};
-use common_traits::{Permissions as PermissionsT, PoolNAV};
+use common_traits::Permissions as PermissionsT;
+use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
@@ -945,7 +943,7 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 
 	fn get_latest(
 		base: CurrencyId,
-		quote: Option<CurrencyId>,
+		_quote: Option<CurrencyId>,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
 		match base {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
