@@ -11,7 +11,6 @@
 // GNU General Public License for more details.
 
 use common_traits::{CurrencyPair, PriceValue};
-use common_types::CurrencyId;
 
 use super::*;
 
@@ -39,38 +38,31 @@ impl<T: Config> PoolInspect<T::AccountId, T::CurrencyId> for Pallet<T> {
 		let mut pool = Pool::<T>::get(pool_id)?;
 
 		// Get cached nav as calculating current nav would be too computationally expensive
-		if let Some((nav, nav_last_updated)) = T::NAV::nav(pool_id) {
-			let total_assets = pool.reserve.total.saturating_add(nav);
+		let (nav, nav_last_updated) = T::NAV::nav(pool_id)?;
+		let total_assets = pool.reserve.total.saturating_add(nav);
 
-			let tranche_index: usize = pool
-				.tranches
-				.tranche_index(&TrancheLoc::Id(tranche_id))?
-				.try_into()
-				.ok()?;
-			let prices = pool
-				.tranches
-				.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
-				.ok()?;
+		let tranche_index: usize = pool
+			.tranches
+			.tranche_index(&TrancheLoc::Id(tranche_id))?
+			.try_into()
+			.ok()?;
+		let prices = pool
+			.tranches
+			.calculate_prices::<T::BalanceRatio, T::Tokens, _>(total_assets, now)
+			.ok()?;
 
-			let base = pool.tranches.tranche_currency(TrancheLoc::Id(tranche_id))?;
+		let base = pool.tranches.tranche_currency(TrancheLoc::Id(tranche_id))?;
 
-			match prices
-				.get(tranche_index)
-				.map(|rate: &T::BalanceRatio| rate.clone())
-			{
-				Some(price) => Some(PriceValue {
-					pair: CurrencyPair {
-						base,
-						quote: pool.currency,
-					},
-					price,
-					last_updated: nav_last_updated,
-				}),
-				None => None,
-			}
-		} else {
-			None
-		}
+		let price = prices.get(tranche_index).cloned()?;
+
+		Some(PriceValue {
+			pair: CurrencyPair {
+				base,
+				quote: pool.currency,
+			},
+			price,
+			last_updated: nav_last_updated,
+		})
 	}
 }
 
