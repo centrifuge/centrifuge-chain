@@ -14,12 +14,22 @@
 //! Module provides loan related functions
 use super::*;
 use common_types::{Adjustment, PoolLocator};
-use sp_runtime::ArithmeticError;
+use sp_runtime::{traits::BadOrigin, ArithmeticError};
 
 impl<T: Config> Pallet<T> {
 	/// returns the account_id of the loan pallet
 	pub fn account_id() -> T::AccountId {
 		T::LoansPalletId::get().into_account_truncating()
+	}
+
+	pub fn ensure_role(
+		pool_id: PoolIdOf<T>,
+		sender: T::AccountId,
+		role: PoolRole,
+	) -> Result<(), BadOrigin> {
+		T::Permission::has(PermissionScope::Pool(pool_id), sender, Role::PoolRole(role))
+			.then_some(())
+			.ok_or(BadOrigin)
 	}
 
 	/// check if the given loan belongs to the owner provided

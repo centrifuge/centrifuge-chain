@@ -69,7 +69,6 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_arithmetic::FixedPointNumber;
-	use sp_runtime::traits::BadOrigin;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -353,7 +352,7 @@ pub mod pallet {
 			loan_nft_class_id: T::ClassId,
 		) -> DispatchResult {
 			// ensure the sender has the pool admin role
-			ensure_role!(pool_id, ensure_signed(origin)?, PoolRole::PoolAdmin);
+			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::PoolAdmin)?;
 
 			// ensure pool exists
 			ensure!(T::Pool::pool_exists(pool_id), Error::<T>::PoolMissing);
@@ -394,7 +393,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// ensure borrower is whitelisted.
 			let owner = ensure_signed(origin)?;
-			ensure_role!(pool_id, owner, PoolRole::Borrower);
+			Self::ensure_role(pool_id, owner.clone(), PoolRole::Borrower)?;
 			let loan_id = Self::create_loan(pool_id, owner, collateral)?;
 			Self::deposit_event(Event::<T>::Created {
 				pool_id,
@@ -528,7 +527,7 @@ pub mod pallet {
 
 					match loan.status {
 						LoanStatus::Created => {
-							ensure_role!(pool_id, owner, PoolRole::PricingAdmin);
+							Self::ensure_role(pool_id, owner, PoolRole::PricingAdmin)?;
 							let active_count = Self::price_created_loan(
 								pool_id,
 								loan_id,
@@ -540,7 +539,7 @@ pub mod pallet {
 							active_count
 						}
 						LoanStatus::Active => {
-							ensure_role!(pool_id, owner, PoolRole::LoanAdmin);
+							Self::ensure_role(pool_id, owner, PoolRole::LoanAdmin)?;
 							Self::price_active_loan(
 								pool_id,
 								loan_id,
@@ -600,7 +599,7 @@ pub mod pallet {
 			group: WriteOffGroup<T::Rate>,
 		) -> DispatchResult {
 			// ensure sender has the risk admin role in the pool
-			ensure_role!(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin);
+			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 			let write_off_group_index = Self::add_write_off_group_to_pool(pool_id, group)?;
 			Self::deposit_event(Event::<T>::WriteOffGroupAdded {
 				pool_id,
@@ -664,7 +663,7 @@ pub mod pallet {
 			penalty_interest_rate_per_sec: T::Rate,
 		) -> DispatchResultWithPostInfo {
 			// ensure this is a call from risk admin
-			ensure_role!(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin);
+			Self::ensure_role(pool_id, ensure_signed(origin)?, PoolRole::LoanAdmin)?;
 
 			// try to write off
 			let (active_count, (.., percentage, penalty_interest_rate_per_sec)) =
@@ -722,18 +721,4 @@ impl<T: Config> TPoolNav<PoolIdOf<T>, T::Balance> for Pallet<T> {
 	) -> DispatchResult {
 		Self::initialise_pool(origin, pool_id, class_id)
 	}
-}
-
-#[macro_export]
-macro_rules! ensure_role {
-	( $pool_id:expr, $sender:expr, $role:expr $(,)? ) => {{
-		ensure!(
-			T::Permission::has(
-				PermissionScope::Pool($pool_id),
-				$sender.clone(),
-				Role::PoolRole($role)
-			),
-			BadOrigin
-		);
-	}};
 }
