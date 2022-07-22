@@ -74,7 +74,7 @@ pub mod pallet {
 		/// A pool was added to the domain
 		MessageSent {
 			domain: Domain,
-			message: Message<PoolIdOf<T>, TrancheIdOf<T>>,
+			message: MessageOf<T>,
 		},
 	}
 
