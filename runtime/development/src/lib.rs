@@ -943,14 +943,19 @@ impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
 
 	fn get_latest(
 		base: CurrencyId,
-		_quote: Option<CurrencyId>,
+		quote: Option<CurrencyId>,
 	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
 		match base {
 			CurrencyId::Tranche(pool_id, tranche_id) => {
-				<pallet_pools::Pallet<Runtime> as PoolInspect<
-					AccountId,
-					CurrencyId,
-				>>::get_tranche_token_price(pool_id, tranche_id)
+				match <pallet_pools::Pallet<Runtime> as PoolInspect<
+				AccountId,
+				CurrencyId,
+			>>::get_tranche_token_price(pool_id, tranche_id) {
+					// If a specific quote is requested, this needs to match the actual quote.
+					Some(price) if Some(price.pair.quote) != quote => None,
+					Some(price) => Some(price),
+					None => None,
+				}
 			}
 			_ => None,
 		}
