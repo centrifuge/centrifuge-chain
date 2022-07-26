@@ -356,7 +356,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			evict_bucket: T::BlockNumber,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 			ensure!(
 				<frame_system::Pallet<T>>::block_number() >= evict_bucket,
 				Error::<T>::EvictionNotPossible
@@ -370,11 +370,16 @@ pub mod pallet {
 				}
 
 				Self::get_pre_commit_in_evict_bucket_by_index((evict_bucket, idx))
-					.map(|pre_commit_id| <PreCommits<T>>::remove(pre_commit_id));
+					.map(|pre_commit_id| <PreCommits<T>>::take(pre_commit_id))
+					.flatten()
+					.map(|pre_commit_data| {
+						<T as pallet::Config>::Currency::unreserve(
+							&pre_commit_data.identity,
+							T::PreCommitDeposit::get(),
+						);
+					});
 
 				<PreCommitEvictionBuckets<T>>::remove((evict_bucket, idx));
-
-				<T as pallet::Config>::Currency::unreserve(&who, T::PreCommitDeposit::get());
 
 				// decreases the evict bucket item count or remove index completely if empty
 				if idx == 0 {
