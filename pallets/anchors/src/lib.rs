@@ -70,10 +70,11 @@ const ANCHOR_PREFIX: &[u8; 6] = b"anchor";
 /// The data structure for storing pre-committed anchors.
 #[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub struct PreCommitData<Hash, AccountId, BlockNumber> {
+pub struct PreCommitData<Hash, AccountId, BlockNumber, Balance> {
 	signing_root: Hash,
 	identity: AccountId,
 	expiration_block: BlockNumber,
+	deposit: Balance,
 }
 
 /// The data structure for storing committed anchors.
@@ -125,8 +126,12 @@ pub mod pallet {
 	/// PreCommits store the map of anchor Id to the pre-commit, which is a lock on an anchor id to be committed later
 	#[pallet::storage]
 	#[pallet::getter(fn get_pre_commit)]
-	pub(super) type PreCommits<T: Config> =
-		StorageMap<_, Blake2_256, T::Hash, PreCommitData<T::Hash, T::AccountId, T::BlockNumber>>;
+	pub(super) type PreCommits<T: Config> = StorageMap<
+		_,
+		Blake2_256,
+		T::Hash,
+		PreCommitData<T::Hash, T::AccountId, T::BlockNumber, BalanceOf<T>>,
+	>;
 
 	/// Pre-commit eviction buckets maps block number and bucketID to PreCommit Hash
 	#[pallet::storage]
@@ -240,17 +245,20 @@ pub mod pallet {
 				Error::<T>::PreCommitAlreadyExists
 			);
 
-			<T as pallet::Config>::Currency::reserve(&who, T::PreCommitDeposit::get())?;
-
 			let expiration_block = <frame_system::Pallet<T>>::block_number()
 				.checked_add(&T::BlockNumber::from(PRE_COMMIT_EXPIRATION_DURATION_BLOCKS))
 				.ok_or(ArithmeticError::Overflow)?;
+
+			let deposit = T::PreCommitDeposit::get();
+			<T as pallet::Config>::Currency::reserve(&who, deposit)?;
+
 			<PreCommits<T>>::insert(
 				anchor_id,
 				PreCommitData {
 					signing_root,
 					identity: who.clone(),
 					expiration_block,
+					deposit,
 				},
 			);
 
@@ -375,7 +383,7 @@ pub mod pallet {
 					.map(|pre_commit_data| {
 						<T as pallet::Config>::Currency::unreserve(
 							&pre_commit_data.identity,
-							T::PreCommitDeposit::get(),
+							pre_commit_data.deposit,
 						);
 					});
 
