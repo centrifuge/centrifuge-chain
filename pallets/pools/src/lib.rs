@@ -38,6 +38,7 @@ use sp_runtime::{
 use sp_std::cmp::Ordering;
 use sp_std::vec::Vec;
 
+pub use impls::*;
 pub use pallet::*;
 pub use solution::*;
 pub use tranche::*;
@@ -45,6 +46,7 @@ pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod impls;
 #[cfg(test)]
 mod mock;
 mod solution;
@@ -2115,32 +2117,5 @@ pub mod pallet {
 			PoolDeposit::<T>::insert(pool, PoolDepositOf::<T> { deposit, depositor });
 			Ok(())
 		}
-	}
-}
-
-impl<T: Config> PoolInspect<T::AccountId> for Pallet<T> {
-	type PoolId = T::PoolId;
-	type TrancheId = T::TrancheId;
-
-	fn pool_exists(pool_id: Self::PoolId) -> bool {
-		Pool::<T>::contains_key(pool_id)
-	}
-
-	fn tranche_exists(pool_id: Self::PoolId, tranche_id: Self::TrancheId) -> bool {
-		Pool::<T>::get(pool_id)
-			.and_then(|pool| pool.tranches.tranche_index(&TrancheLoc::Id(tranche_id)))
-			.is_some()
-	}
-}
-
-impl<T: Config> PoolReserve<T::AccountId> for Pallet<T> {
-	type Balance = T::Balance;
-
-	fn withdraw(pool_id: Self::PoolId, to: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_withdraw(to, pool_id, amount)
-	}
-
-	fn deposit(pool_id: Self::PoolId, from: T::AccountId, amount: Self::Balance) -> DispatchResult {
-		Self::do_deposit(from, pool_id, amount)
 	}
 }

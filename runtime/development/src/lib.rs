@@ -49,7 +49,7 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
-use common_traits::{PoolUpdateGuard, PreConditions};
+use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
@@ -933,6 +933,32 @@ impl PoolUpdateGuard for UpdateGuard {
 		}
 
 		return true;
+	}
+}
+
+pub struct CurrencyPriceSource;
+impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
+	type Rate = Rate;
+	type Moment = Moment;
+
+	fn get_latest(
+		base: CurrencyId,
+		quote: Option<CurrencyId>,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
+		match base {
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				match <pallet_pools::Pallet<Runtime> as PoolInspect<
+				AccountId,
+				CurrencyId,
+			>>::get_tranche_token_price(pool_id, tranche_id) {
+					// If a specific quote is requested, this needs to match the actual quote.
+					Some(price) if Some(price.pair.quote) != quote => None,
+					Some(price) => Some(price),
+					None => None,
+				}
+			}
+			_ => None,
+		}
 	}
 }
 

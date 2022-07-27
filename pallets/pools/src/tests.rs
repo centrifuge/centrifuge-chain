@@ -484,6 +484,16 @@ fn epoch() {
 			}
 		));
 
+		assert_eq!(
+			<Pools as PoolInspect<
+				<Test as frame_system::Config>::AccountId,
+				<Test as Config>::CurrencyId,
+			>>::get_tranche_token_price(0, SeniorTrancheId::get())
+			.unwrap()
+			.price,
+			Rate::one()
+		);
+
 		assert_err!(
 			Pools::close_epoch(pool_owner_origin.clone(), 0),
 			Error::<Test>::MinEpochTimeHasNotPassed
@@ -649,6 +659,15 @@ fn epoch() {
 		assert_eq!(
 			pool.reserve.total + senior_epoch.token_price.saturating_mul_int(250 * CURRENCY),
 			1010 * CURRENCY
+		);
+
+		assert!(
+			<Pools as PoolInspect<
+				<Test as frame_system::Config>::AccountId,
+				<Test as Config>::CurrencyId,
+			>>::get_tranche_token_price(0, SeniorTrancheId::get())
+			.unwrap()
+			.price > Rate::one()
 		);
 	});
 }

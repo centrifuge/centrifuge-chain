@@ -125,7 +125,7 @@ pub mod pallet {
 		type LoansPalletId: Get<PalletId>;
 
 		/// Pool reserve type
-		type Pool: PoolReserve<Self::AccountId, Balance = Self::Balance>;
+		type Pool: PoolReserve<Self::AccountId, Self::CurrencyId, Balance = Self::Balance>;
 
 		type CurrencyId: Parameter + Copy;
 

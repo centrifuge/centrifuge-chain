@@ -38,7 +38,7 @@ type PermissionsOf<T> = <T as pallet_loans::Config>::Permission;
 
 pub(crate) fn set_role<T: pallet_loans::Config>(
 	scope: PermissionScope<
-		<T::Pool as common_traits::PoolInspect<T::AccountId>>::PoolId,
+		<T::Pool as common_traits::PoolInspect<T::AccountId, T::CurrencyId>>::PoolId,
 		<T as pallet_loans::Config>::CurrencyId,
 	>,
 	who: T::AccountId,
