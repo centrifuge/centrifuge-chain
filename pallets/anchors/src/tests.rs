@@ -13,11 +13,13 @@
 
 use super::*;
 use crate::common;
+use crate::{self as pallet_anchors};
 use crate::{mock::*, PRE_COMMIT_EXPIRATION_DURATION_BLOCKS};
 use codec::Encode;
 use frame_support::pallet_prelude::Hooks;
 use frame_support::traits::Randomness;
 use frame_support::{assert_noop, assert_ok};
+use frame_system::ensure_signed;
 use sp_core::H256;
 use sp_runtime::traits::{BadOrigin, Hash, Header};
 use std::time::Instant;
@@ -47,12 +49,17 @@ fn basic_pre_commit() {
 			BadOrigin
 		);
 
+		let origin = Origin::signed(1);
+
 		// happy
-		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
-			anchor_id,
-			signing_root
-		));
+		assert_ok!(Anchors::pre_commit(origin.clone(), anchor_id, signing_root));
+
+		assert_eq!(
+			<Test as pallet_anchors::Config>::Currency::reserved_balance(
+				ensure_signed(origin).unwrap()
+			),
+			42,
+		);
 
 		// asserting that the stored pre-commit has the intended values set
 		let a = Anchors::get_pre_commit(anchor_id).unwrap();
@@ -646,26 +653,34 @@ fn pre_commit_and_then_evict() {
 		let block_height_2 =
 			Anchors::determine_pre_commit_eviction_bucket(block_height_1).unwrap() + block_height_0;
 
+		let origin = Origin::signed(1);
+		let account_id = ensure_signed(origin.clone()).unwrap();
+
 		// ------ Register the pre-commits ------
 		// register anchor_id_0 into block_height_0
 		System::set_block_number(block_height_0);
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			origin.clone(),
 			anchor_id_0,
 			signing_root
 		));
 
 		System::set_block_number(block_height_1);
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			origin.clone(),
 			anchor_id_1,
 			signing_root
 		));
 		assert_ok!(Anchors::pre_commit(
-			Origin::signed(1),
+			origin.clone(),
 			anchor_id_2,
 			signing_root
 		));
+
+		assert_eq!(
+			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			42 * 3,
+		);
 
 		// eviction fails within the "non evict time"
 		System::set_block_number(
@@ -673,10 +688,15 @@ fn pre_commit_and_then_evict() {
 		);
 		assert_noop!(
 			Anchors::evict_pre_commits(
-				Origin::signed(1),
+				origin.clone(),
 				Anchors::determine_pre_commit_eviction_bucket(block_height_0).unwrap()
 			),
 			Error::<Test>::EvictionNotPossible
+		);
+
+		assert_eq!(
+			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			42 * 3,
 		);
 
 		// test that eviction works after expiration time
@@ -693,10 +713,15 @@ fn pre_commit_and_then_evict() {
 			Anchors::get_pre_commits_count_in_evict_bucket(bucket_1).unwrap(),
 			1
 		);
-		assert_ok!(Anchors::evict_pre_commits(Origin::signed(1), bucket_1));
+		assert_ok!(Anchors::evict_pre_commits(origin.clone(), bucket_1));
 		assert_eq!(
 			Anchors::get_pre_commits_count_in_evict_bucket(bucket_1).unwrap_or_default(),
 			0
+		);
+
+		assert_eq!(
+			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			42 * 2,
 		);
 
 		// after eviction, the pre-commit data not findable
@@ -709,10 +734,15 @@ fn pre_commit_and_then_evict() {
 			Anchors::get_pre_commits_count_in_evict_bucket(bucket_2).unwrap(),
 			2
 		);
-		assert_ok!(Anchors::evict_pre_commits(Origin::signed(1), bucket_2));
+		assert_ok!(Anchors::evict_pre_commits(origin.clone(), bucket_2));
 		assert_eq!(
 			Anchors::get_pre_commits_count_in_evict_bucket(bucket_2).unwrap_or_default(),
 			0
+		);
+
+		assert_eq!(
+			<Test as pallet_anchors::Config>::Currency::reserved_balance(account_id),
+			0,
 		);
 	});
 }
