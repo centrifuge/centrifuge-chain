@@ -132,7 +132,7 @@ impl pallet_migration_manager::Config for Runtime {
 
 // system support impls
 impl frame_system::Config for Runtime {
-	type BaseCallFilter = Everything;
+	type BaseCallFilter = BaseCallFilter;
 	type BlockWeights = RuntimeBlockWeights;
 	type BlockLength = RuntimeBlockLength;
 	/// The ubiquitous origin type.
@@ -887,6 +887,60 @@ impl pallet_crowdloan_claim::Config for Runtime {
 	type RewardMechanism = CrowdloanReward;
 }
 
+/// Base Call Filter
+/// We block any call that could lead for tranche tokens to be transferred through XCM.
+pub struct BaseCallFilter;
+impl Contains<Call> for BaseCallFilter {
+	fn contains(c: &Call) -> bool {
+		match c {
+			Call::PolkadotXcm(method) => match method {
+				// We disable all PolkadotXcm extrinsics that allow users to build XCM messages
+				// from scratch, which could have them transferring Tranche tokens.
+				// To transfer tokens, use XTokens, for which we have specific filters
+				// blocking tranche transfers.
+				// To send a raw XCM message, use orml_xcm, which ensures the origin of
+				// such call to be root or majority of the collective.
+				pallet_xcm::Call::send { .. }
+				| pallet_xcm::Call::execute { .. }
+				| pallet_xcm::Call::teleport_assets { .. }
+				| pallet_xcm::Call::reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_reserve_transfer_assets { .. }
+				| pallet_xcm::Call::limited_teleport_assets { .. } => {
+					return false;
+				}
+				pallet_xcm::Call::force_xcm_version { .. }
+				| pallet_xcm::Call::force_default_xcm_version { .. }
+				| pallet_xcm::Call::force_subscribe_version_notify { .. }
+				| pallet_xcm::Call::force_unsubscribe_version_notify { .. } => {
+					return true;
+				}
+				pallet_xcm::Call::__Ignore { .. } => {
+					unimplemented!()
+				}
+			},
+			Call::XTokens(method) => match method {
+				orml_xtokens::Call::transfer {
+					currency_id: CurrencyId::Tranche(_, _),
+					..
+				}
+				| orml_xtokens::Call::transfer_with_fee {
+					currency_id: CurrencyId::Tranche(_, _),
+					..
+				}
+				// We preemptively disable this as we haven't encountered a use case for it.
+				// Shall some user or use case require it, we will make it more fine-grained.
+				| orml_xtokens::Call::transfer_multiasset { .. }
+				| orml_xtokens::Call::transfer_multiasset_with_fee { .. }
+				| orml_xtokens::Call::transfer_multiassets { .. }
+				| orml_xtokens::Call::transfer_multicurrencies { .. } => false,
+				// Any other XTokens call is good to go
+				_ => true,
+			},
+			_ => true,
+		}
+	}
+}
+
 // Frame Order in this block dictates the index of each one in the metadata
 // Any addition should be done at the bottom
 // Any deletion affects the following frames during runtime upgrades
@@ -948,6 +1002,7 @@ construct_runtime!(
 		ChainBridge: chainbridge::{Pallet, Call, Storage, Event<T>} = 150,
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 151,
 		OrmlAssetRegistry: orml_asset_registry::{Pallet, Storage, Call, Event<T>, Config<T>} = 152,
+		OrmlXcm: orml_xcm::{Pallet, Storage, Call, Event<T>} = 153,
 	}
 );
 
