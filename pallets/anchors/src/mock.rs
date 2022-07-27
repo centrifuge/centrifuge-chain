@@ -11,7 +11,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
-use crate::{self as pallet_anchors, *};
+use crate::{self as pallet_anchors, Config};
 
 use common_traits::{fees::test_util::MockFees, impl_mock_fees_state};
 
@@ -127,7 +127,7 @@ impl_mock_fees_state!(
 );
 
 parameter_types! {
-	pub const PreCommitDeposit: Balance = 1;
+	pub const PreCommitDeposit: Balance = 42;
 }
 
 impl Config for Test {
