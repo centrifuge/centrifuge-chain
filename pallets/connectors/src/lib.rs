@@ -1,6 +1,6 @@
 //! Centrifuge Connectors pallet
 //!
-//! TODO(nuno): add rich description
+//! TODO(nuno): add description
 //!
 //!
 #![cfg_attr(not(feature = "std"), no_std)]

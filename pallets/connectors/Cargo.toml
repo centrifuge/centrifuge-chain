@@ -34,8 +34,11 @@ runtime-common = { path = "../../runtime/common", default-features = false, opti
 # Polkadot
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.24" }
 
+pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "master" }
+
 [dev-dependencies]
 hex = "0.4.3"
+
 # Substrate crates & pallets
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false , branch = "polkadot-v0.9.24" }
@@ -72,4 +75,5 @@ std = [
     'pallet-balances/std',
     'runtime-common/std',
     'xcm/std',
+    'pallet-xcm-transactor/std',
 ]
