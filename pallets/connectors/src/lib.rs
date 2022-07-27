@@ -10,6 +10,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
 use sp_runtime::traits::AtLeast32BitUnsigned;
+use sp_runtime::FixedPointNumber;
 use sp_std::convert::TryInto;
 
 pub use pallet::*;
@@ -23,17 +24,22 @@ mod routers;
 pub use routers::*;
 
 // Type aliases
-pub type PoolIdOf<T> =
-	<<T as Config>::PoolInspect as PoolInspect<<T as frame_system::Config>::AccountId>>::PoolId;
-pub type TrancheIdOf<T> =
-	<<T as Config>::PoolInspect as PoolInspect<<T as frame_system::Config>::AccountId>>::TrancheId;
-pub type MessageOf<T> = Message<PoolIdOf<T>, TrancheIdOf<T>>;
+pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::CurrencyId,
+>>::PoolId;
+pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
+	<T as frame_system::Config>::AccountId,
+	<T as Config>::CurrencyId,
+>>::TrancheId;
+pub type MessageOf<T> = Message<PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Rate>;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
-	use common_traits::PoolInspect;
+	use common_traits::{CurrencyPrice, PoolInspect};
+	use common_types::CurrencyId;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_core::TypeId;
@@ -57,6 +63,8 @@ pub mod pallet {
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen;
 
+		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
+
 		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
@@ -64,8 +72,9 @@ pub mod pallet {
 		//TODO(nuno)
 		type Permissions: Member;
 
-		//TODO(nuno)
-		type PoolInspect: PoolInspect<Self::AccountId>;
+		type PoolInspect: PoolInspect<Self::AccountId, Self::CurrencyId>;
+
+		type CurrencyPrice: CurrencyPrice<Self::CurrencyId>;
 	}
 
 	#[pallet::event]
@@ -181,6 +190,41 @@ pub mod pallet {
 					tranche_id,
 					token_name: [0; 32],
 					token_symbol: [0; 32],
+				},
+				domain,
+			)?;
+
+			Ok(())
+		}
+
+		/// Update a token price
+		#[pallet::weight(<T as Config>::WeightInfo::add_tranche())]
+		pub fn update_token_price(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
+			domain: Domain,
+		) -> DispatchResult {
+			ensure_signed(origin.clone())?;
+
+			// Check the tranche exists
+			ensure!(
+				T::PoolInspect::tranche_exists(pool_id, tranche_id),
+				Error::<T>::TrancheNotFound
+			);
+
+			// Get the current price
+			let latest_price = T::CurrencyPrice::get_latest(CurrencyId::Tranche(
+				pool_id.into(),
+				tranche_id.into(),
+			))?;
+
+			// Send the message through the router
+			Self::do_send_message(
+				Message::UpdateTokenPrice {
+					pool_id,
+					tranche_id,
+					price: latest_price.price,
 				},
 				domain,
 			)?;
