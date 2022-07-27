@@ -175,9 +175,7 @@ where
 		(500 * CURRENCY).into(),
 	);
 
-	// add borrower role and price admin and risk admin role
 	make_free_cfg_balance::<T>(borrower::<T>());
-	make_free_cfg_balance::<T>(risk_admin::<T>());
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		borrower::<T>(),
@@ -188,6 +186,13 @@ where
 		borrower::<T>(),
 		Role::PoolRole(PoolRole::PricingAdmin)
 	));
+	assert_ok!(<T as pallet_pools::Config>::Permission::add(
+		PermissionScope::Pool(pool_id.into()),
+		borrower::<T>(),
+		Role::PoolRole(PoolRole::LoanAdmin)
+	));
+
+	make_free_cfg_balance::<T>(risk_admin::<T>());
 	assert_ok!(<T as pallet_pools::Config>::Permission::add(
 		PermissionScope::Pool(pool_id.into()),
 		risk_admin::<T>(),
@@ -461,6 +466,7 @@ benchmarks! {
 			let loan_id = (idx + 1).into();
 			let (loan_owner, asset) = create_asset::<T>(loan_id);
 			LoansPallet::<T>::create(RawOrigin::Signed(loan_owner.clone()).into(), pool_id, asset).expect("loan issue should not fail");
+			// (Remove this comment) Maybe an issue here.
 			activate_test_loan_with_defaults::<T>(pool_id, loan_id, loan_owner);
 		}
 		let loan_owner = borrower::<T>();
