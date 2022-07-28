@@ -7,8 +7,10 @@
 use codec::{Decode, Encode, HasCompact};
 use common_traits::PoolInspect;
 use frame_support::dispatch::DispatchResult;
+use frame_support::traits::fungibles::{Inspect, Mutate, Transfer};
 use frame_system::ensure_signed;
 use scale_info::TypeInfo;
+use sp_core::TypeId;
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::FixedPointNumber;
 use sp_std::convert::TryInto;
@@ -23,6 +25,36 @@ pub use message::*;
 mod routers;
 pub use routers::*;
 
+#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub enum Domain {
+	Centrifuge,
+	Moonbeam,
+	Ethereum,
+	Avalanche,
+	Gnosis,
+}
+
+#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+pub struct DomainLocator<Domain> {
+	pub domain: Domain,
+}
+
+impl<Domain> TypeId for DomainLocator<Domain> {
+	const TYPE_ID: [u8; 4] = *b"domn";
+}
+
+#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
+#[cfg_attr(feature = "std", derive(Debug))]
+pub struct DomainAddress<Domain> {
+	pub domain: Domain,
+	pub address: [u8; 32],
+}
+
+impl<Domain> TypeId for DomainAddress<Domain> {
+	const TYPE_ID: [u8; 4] = *b"dadr";
+}
+
 // Type aliases
 pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
@@ -32,7 +64,8 @@ pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 >>::TrancheId;
-pub type MessageOf<T> = Message<PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Rate>;
+pub type MessageOf<T> =
+	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -42,8 +75,8 @@ pub mod pallet {
 	use common_types::{CurrencyId, PermissionScope, PoolRole, Role};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
-	use sp_core::TypeId;
 	use sp_runtime::traits::AccountIdConversion;
+	use sp_runtime::traits::Zero;
 	use xcm::v0::MultiLocation;
 	use xcm::VersionedMultiLocation;
 
@@ -86,6 +119,13 @@ pub mod pallet {
 		>;
 
 		type Time: UnixTime;
+
+		type Tokens: Mutate<Self::AccountId>
+			+ Inspect<
+				Self::AccountId,
+				AssetId = <Self as pallet::Config>::CurrencyId,
+				Balance = <Self as pallet::Config>::Balance,
+			> + Transfer<Self::AccountId>;
 	}
 
 	#[pallet::event]
@@ -96,36 +136,6 @@ pub mod pallet {
 			domain: Domain,
 			message: MessageOf<T>,
 		},
-	}
-
-	#[derive(Encode, Decode, Clone, PartialEq, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Debug))]
-	pub enum Domain {
-		Centrifuge,
-		Moonbeam,
-		Ethereum,
-		Avalanche,
-		Gnosis,
-	}
-
-	#[derive(Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo)]
-	pub struct DomainLocator<Domain> {
-		pub domain: Domain,
-	}
-
-	impl<Domain> TypeId for DomainLocator<Domain> {
-		const TYPE_ID: [u8; 4] = *b"domn";
-	}
-
-	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(Debug))]
-	pub struct DomainAddress<Domain> {
-		pub domain: Domain,
-		pub address: [u8; 32],
-	}
-
-	impl<Domain> TypeId for DomainAddress<Domain> {
-		const TYPE_ID: [u8; 4] = *b"dadr";
 	}
 
 	#[pallet::storage]
@@ -147,6 +157,8 @@ pub mod pallet {
 		MissingRouter,
 		/// The selected domain is not yet supported
 		UnsupportedDomain,
+		/// Transfer amount must be non-zero
+		InvalidTransferAmount,
 	}
 
 	#[pallet::call]
@@ -279,6 +291,57 @@ pub mod pallet {
 					tranche_id,
 					valid_until,
 					address: address.address,
+				},
+				address.domain,
+			)?;
+
+			Ok(())
+		}
+
+		/// Update a member
+		#[pallet::weight(<T as Config>::WeightInfo::transfer())]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
+			address: DomainAddress<Domain>,
+			amount: <T as pallet::Config>::Balance,
+		) -> DispatchResult {
+			let who = ensure_signed(origin.clone())?;
+
+			// Check that the destination is a member of this tranche token
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					address.into_account_truncating(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+				),
+				BadOrigin
+			);
+
+			// Check whether amount > 0
+			ensure!(!amount.is_zero(), Error::<T>::InvalidTransferAmount);
+
+			// TODO: Transfer to the domain account for bookkeeping
+			// T::Tokens::transfer(
+			// 	T::CurrencyId::Native,
+			// 	&who,
+			// 	&DomainLocator {
+			// 		domain: address.domain,
+			// 	}
+			// 	.into_account_truncating(),
+			// 	amount,
+			// 	false,
+			// )?;
+
+			// Send the message through the router
+			Self::do_send_message(
+				Message::Transfer {
+					pool_id,
+					tranche_id,
+					amount,
+					domain: address.clone().domain,
+					destination: address.clone().address,
 				},
 				address.domain,
 			)?;

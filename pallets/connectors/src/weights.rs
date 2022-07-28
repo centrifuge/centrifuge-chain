@@ -33,6 +33,7 @@ pub trait WeightInfo {
 	fn add_tranche() -> Weight;
 	fn update_token_price() -> Weight;
 	fn update_member() -> Weight;
+	fn transfer() -> Weight;
 }
 
 /// Weights for pallet_connectors using the Substrate node and recommended hardware.
@@ -58,6 +59,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
+	fn transfer() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+	}
 }
 
 // For backwards compatibility and tests
@@ -78,6 +84,11 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
 	}
 	fn update_member() -> Weight {
+		(32_000_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+	}
+	fn transfer() -> Weight {
 		(32_000_000 as Weight)
 			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
