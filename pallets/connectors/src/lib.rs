@@ -91,7 +91,7 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A pool was added to the domain
+		/// A message was sent to a domain
 		MessageSent {
 			domain: Domain,
 			message: MessageOf<T>,
@@ -130,26 +130,6 @@ pub mod pallet {
 
 	#[pallet::storage]
 	pub(crate) type DomainRouter<T: Config> = StorageMap<_, Blake2_128Concat, Domain, Router>;
-
-	#[pallet::storage]
-	pub(crate) type LinkedAddressesByAccount<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		Domain,
-		DomainAddress<Domain>,
-	>;
-
-	#[pallet::storage]
-	pub(crate) type LinkedAddresses<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		Domain,
-		Blake2_128Concat,
-		DomainAddress<Domain>,
-		bool,
-	>;
 
 	#[pallet::error]
 	pub enum Error<T> {
@@ -315,10 +295,13 @@ pub mod pallet {
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
 			let router = <DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			match router {
+			let result = match router {
 				Router::Xcm { location } => Self::send_through_xcm(&message, location),
 				_ => Err(Error::<T>::UnsupportedDomain.into()),
-			}
+			}?;
+
+			Self::deposit_event(Event::MessageSent { message, domain });
+			Ok(())
 		}
 
 		fn send_through_xcm(
