@@ -1264,7 +1264,7 @@ impl pallet_connectors::Config for Runtime {
 	type Balance = Balance;
 	type Rate = Rate;
 	type CurrencyId = CurrencyId;
-	type AdminOrigin = EnsureRoot;
+	type AdminOrigin = EnsureRoot<AccountId>;
 	type Permission = Permissions;
 	type PoolInspect = Pools;
 	type Time = Timestamp;
