@@ -44,7 +44,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_xcm_transactor::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		type WeightInfo: WeightInfo;
@@ -194,6 +194,18 @@ pub mod pallet {
 
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
 			let router = <Routers<T>>::get(domain.clone()).ok_or(Error::<T>::InvalidDomain)?;
+
+			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
+				Origin::root(),
+				//TODO(nuno): pass these arguments and pass move this to routers?
+				// Domain to MultiLocation,
+				// fee_payer,
+				// fee_location,
+				// dest_weight,
+				// call (hex-encoded),
+				// origin_kind,
+			)?;
+
 			router
 				.send(message, domain)
 				.map_err(|_| Error::<T>::SendFailure)
