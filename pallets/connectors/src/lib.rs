@@ -1,6 +1,6 @@
 //! Centrifuge Connectors pallet
 //!
-//! TODO(nuno): add description
+//! TODO(nuno): add rich description
 //!
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -38,11 +38,12 @@ pub type MessageOf<T> = Message<PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Rate
 pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
-	use common_traits::{CurrencyPrice, PoolInspect};
-	use common_types::CurrencyId;
-	use frame_support::pallet_prelude::*;
+	use common_traits::{CurrencyPrice, Moment, Permissions, PoolInspect};
+	use common_types::{CurrencyId, PermissionScope, PoolRole, Role};
+	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
 	use sp_core::TypeId;
+	use sp_runtime::traits::AccountIdConversion;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -65,7 +66,7 @@ pub mod pallet {
 
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		type CurrencyId: Parameter + Member + Copy + MaybeSerializeDeserialize + Ord + TypeInfo;
+		type CurrencyId: Parameter + Copy;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
@@ -74,7 +75,16 @@ pub mod pallet {
 
 		type PoolInspect: PoolInspect<Self::AccountId, Self::CurrencyId>;
 
-		type CurrencyPrice: CurrencyPrice<Self::CurrencyId>;
+		type CurrencyPrice: CurrencyPrice<Self::CurrencyId, Rate = Self::Rate>;
+
+		type Permission: Permissions<
+			Self::AccountId,
+			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
+			Role = Role<TrancheIdOf<Self>, Moment>,
+			Error = DispatchError,
+		>;
+
+		type Time: UnixTime;
 	}
 
 	#[pallet::event]
@@ -108,7 +118,14 @@ pub mod pallet {
 
 	#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(Debug))]
-	pub struct DomainAddress(pub [u8; 32]);
+	pub struct DomainAddress<Domain> {
+		pub domain: Domain,
+		pub address: [u8; 32],
+	}
+
+	impl<Domain> TypeId for DomainAddress<Domain> {
+		const TYPE_ID: [u8; 4] = *b"dadr";
+	}
 
 	#[pallet::storage]
 	pub(crate) type Routers<T: Config> = StorageMap<_, Blake2_128Concat, Domain, Router>;
@@ -120,26 +137,31 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		Domain,
-		DomainAddress,
+		DomainAddress<Domain>,
 	>;
 
 	#[pallet::storage]
-	pub(crate) type LinkedAddresses<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, Domain, Blake2_128Concat, DomainAddress, bool>;
+	pub(crate) type LinkedAddresses<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		Domain,
+		Blake2_128Concat,
+		DomainAddress<Domain>,
+		bool,
+	>;
 
 	#[pallet::error]
 	pub enum Error<T> {
 		/// A pool could not be found
 		PoolNotFound,
-
 		/// A tranche could not be found
 		TrancheNotFound,
-
 		/// The specified domain has no associated router
 		InvalidDomain,
-
 		/// Failed to send a message
 		SendFailure,
+		/// Token price is not set
+		MissingPrice,
 	}
 
 	#[pallet::call]
@@ -198,7 +220,7 @@ pub mod pallet {
 		}
 
 		/// Update a token price
-		#[pallet::weight(<T as Config>::WeightInfo::add_tranche())]
+		#[pallet::weight(<T as Config>::WeightInfo::update_token_price())]
 		pub fn update_token_price(
 			origin: OriginFor<T>,
 			pool_id: PoolIdOf<T>,
@@ -214,10 +236,9 @@ pub mod pallet {
 			);
 
 			// Get the current price
-			let latest_price = T::CurrencyPrice::get_latest(CurrencyId::Tranche(
-				pool_id.into(),
-				tranche_id.into(),
-			))?;
+			let latest_price =
+				T::CurrencyPrice::get_latest(T::CurrencyId::Tranche(pool_id, tranche_id), None)
+					.ok_or(Error::<T>::MissingPrice)?;
 
 			// Send the message through the router
 			Self::do_send_message(
@@ -231,10 +252,75 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		/// Update a member
+		#[pallet::weight(<T as Config>::WeightInfo::update_member())]
+		pub fn update_member(
+			origin: OriginFor<T>,
+			address: DomainAddress<Domain>,
+			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
+		) -> DispatchResult {
+			ensure_signed(origin.clone())?;
+
+			// Check that the address is a member of the tranche token, and the valid until date is in the future.
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					address.into_account_truncating(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+				),
+				BadOrigin
+			);
+
+			// Send the message through the router
+			Self::do_send_message(
+				Message::UpdateMember {
+					pool_id,
+					tranche_id,
+					address: address.address,
+					valid_until: Self::now(), // TOOD: get from permissions trait
+				},
+				address.domain,
+			)?;
+
+			Ok(())
+		}
+
+		/// Link an address on another domain
+		#[pallet::weight(<T as Config>::WeightInfo::link_address())]
+		pub fn link_address(
+			origin: OriginFor<T>,
+			pool_id: PoolIdOf<T>,
+			tranche_id: TrancheIdOf<T>,
+			address: DomainAddress<Domain>,
+			valid_until: Moment,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			ensure!(
+				T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+				),
+				BadOrigin
+			);
+
+			T::Permission::add(
+				PermissionScope::Pool(pool_id),
+				address.into_account_truncating(),
+				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
+			)?;
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
-		// skeleton
+		pub(crate) fn now() -> Moment {
+			T::Time::now().as_secs()
+		}
 
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
 			let router = <Routers<T>>::get(domain.clone()).ok_or(Error::<T>::InvalidDomain)?;

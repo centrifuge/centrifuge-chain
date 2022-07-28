@@ -1,3 +1,4 @@
+use common_traits::Moment;
 use frame_support::BoundedVec;
 
 use crate::*;
@@ -24,6 +25,12 @@ where
 		pool_id: PoolId,
 		tranche_id: TrancheId,
 		price: Rate,
+	},
+	UpdateMember {
+		pool_id: PoolId,
+		tranche_id: TrancheId,
+		address: [u8; 32],
+		valid_until: Moment,
 	}, // More to come...
 }
 
@@ -36,6 +43,7 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode, Rate: Encode + Decode>
 			Self::AddPool { .. } => 1,
 			Self::AddTranche { .. } => 2,
 			Self::UpdateTokenPrice { .. } => 3,
+			Self::UpdateMember { .. } => 4,
 		}
 	}
 }
@@ -89,6 +97,25 @@ impl<PoolId: Encode + Decode, TrancheId: Encode + Decode, Rate: Encode + Decode>
 
 				message.append(&mut tranche_id.encode());
 				message.append(&mut price.encode());
+
+				message
+			}
+			Message::UpdateMember {
+				pool_id,
+				tranche_id,
+				address,
+				valid_until,
+			} => {
+				let mut message: Vec<u8> = vec![];
+				message.push(self.call_type());
+
+				let mut encoded_pool_id = pool_id.encode();
+				encoded_pool_id.reverse();
+				message.append(&mut encoded_pool_id);
+
+				message.append(&mut tranche_id.encode());
+				message.append(&mut address.encode());
+				message.append(&mut valid_until.encode());
 
 				message
 			}
