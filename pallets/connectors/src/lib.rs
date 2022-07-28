@@ -324,7 +324,7 @@ pub mod pallet {
 
 			// TODO: Transfer to the domain account for bookkeeping
 			// T::Tokens::transfer(
-			// 	T::CurrencyId::Native,
+			// 	T::CurrencyId::Tranche(pool_id, tranche_id),
 			// 	&who,
 			// 	&DomainLocator {
 			// 		domain: address.domain,

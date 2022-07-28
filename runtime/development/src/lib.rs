@@ -1268,6 +1268,7 @@ impl pallet_connectors::Config for Runtime {
 	type Permission = Permissions;
 	type PoolInspect = Pools;
 	type Time = Timestamp;
+	type Tokens = Tokens;
 }
 
 parameter_types! {
