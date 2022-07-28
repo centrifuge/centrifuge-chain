@@ -268,49 +268,20 @@ pub mod pallet {
 			address: DomainAddress<Domain>,
 			pool_id: PoolIdOf<T>,
 			tranche_id: TrancheIdOf<T>,
-		) -> DispatchResult {
-			ensure_signed(origin.clone())?;
-
-			// Check that the address is a member of the tranche token, and the valid until date is in the future.
-			ensure!(
-				T::Permission::has(
-					PermissionScope::Pool(pool_id),
-					address.into_account_truncating(),
-					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
-				),
-				BadOrigin
-			);
-
-			// Send the message through the router
-			Self::do_send_message(
-				Message::UpdateMember {
-					pool_id,
-					tranche_id,
-					address: address.address,
-					valid_until: Self::now(), // TOOD: get from permissions trait
-				},
-				address.domain,
-			)?;
-
-			Ok(())
-		}
-
-		/// Link an address on another domain
-		#[pallet::weight(<T as Config>::WeightInfo::link_address())]
-		pub fn link_address(
-			origin: OriginFor<T>,
-			pool_id: PoolIdOf<T>,
-			tranche_id: TrancheIdOf<T>,
-			address: DomainAddress<Domain>,
 			valid_until: Moment,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			let who = ensure_signed(origin.clone())?;
 
+			// Check that the origin is a member of this tranche token or is a memberlist admin and thus allowed to add other members.
 			ensure!(
 				T::Permission::has(
 					PermissionScope::Pool(pool_id),
 					who.clone(),
 					Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, Self::now()))
+				) || T::Permission::has(
+					PermissionScope::Pool(pool_id),
+					who.clone(),
+					Role::PoolRole(PoolRole::MemberListAdmin)
 				),
 				BadOrigin
 			);
@@ -319,6 +290,17 @@ pub mod pallet {
 				PermissionScope::Pool(pool_id),
 				address.into_account_truncating(),
 				Role::PoolRole(PoolRole::TrancheInvestor(tranche_id, valid_until)),
+			)?;
+
+			// Send the message through the router
+			Self::do_send_message(
+				Message::UpdateMember {
+					pool_id,
+					tranche_id,
+					valid_until,
+					address: address.address,
+				},
+				address.domain,
 			)?;
 
 			Ok(())
