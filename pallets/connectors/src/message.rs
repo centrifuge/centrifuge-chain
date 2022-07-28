@@ -188,8 +188,23 @@ mod tests {
 			};
 			let encoded = msg.encode();
 
-			let input = "0200000000000000010000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-			let expected = <[u8; 89]>::from_hex(input).expect("Decoding failed");
+			let input = "03000000000000000100000000000000000000000000000001000000e83c80d09f3c2e3b0300000000";
+			let expected = <[u8; 41]>::from_hex(input).expect("Decoding failed");
+			assert_eq!(encoded, expected);
+		}
+
+		#[test]
+		fn update_member() {
+			let msg = Message::<PoolId, TrancheId, Rate>::UpdateMember {
+				pool_id: 1,
+				tranche_id: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+				address: [1; 32],
+				valid_until: 100,
+			};
+			let encoded = msg.encode();
+
+			let input = "0400000000000000010000000000000000000000000000000101010101010101010101010101010101010101010101010101010101010101016400000000000000";
+			let expected = <[u8; 65]>::from_hex(input).expect("Decoding failed");
 			assert_eq!(encoded, expected);
 		}
 	}

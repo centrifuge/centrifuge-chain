@@ -38,7 +38,7 @@ pub type MessageOf<T> = Message<PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Rate
 pub mod pallet {
 	use super::*;
 	use crate::weights::WeightInfo;
-	use common_traits::{CurrencyPrice, Moment, Permissions, PoolInspect};
+	use common_traits::{Moment, Permissions, PoolInspect};
 	use common_types::{CurrencyId, PermissionScope, PoolRole, Role};
 	use frame_support::{error::BadOrigin, pallet_prelude::*, traits::UnixTime};
 	use frame_system::pallet_prelude::*;
@@ -75,13 +75,15 @@ pub mod pallet {
 		//TODO(nuno)
 		type Permissions: Member;
 
-		type PoolInspect: PoolInspect<Self::AccountId, Self::CurrencyId>;
-
-		type CurrencyPrice: CurrencyPrice<Self::CurrencyId, Rate = Self::Rate>;
+		type PoolInspect: PoolInspect<
+			Self::AccountId,
+			<Self as pallet::Config>::CurrencyId,
+			Rate = Self::Rate,
+		>;
 
 		type Permission: Permissions<
 			Self::AccountId,
-			Scope = PermissionScope<PoolIdOf<Self>, Self::CurrencyId>,
+			Scope = PermissionScope<PoolIdOf<Self>, <Self as pallet::Config>::CurrencyId>,
 			Role = Role<TrancheIdOf<Self>, Moment>,
 			Error = DispatchError,
 		>;
@@ -210,8 +212,12 @@ pub mod pallet {
 			);
 
 			// Send the message through the router
+			//
 			// TODO: retrieve token name and symbol from asset-registry
 			// Depends on https://github.com/centrifuge/centrifuge-chain/issues/842
+			//
+			// TODO: only allow calling add_tranche when
+			// both the name and symbol are non-zero values.
 			Self::do_send_message(
 				Message::AddTranche {
 					pool_id,
@@ -242,9 +248,8 @@ pub mod pallet {
 			);
 
 			// Get the current price
-			let latest_price =
-				T::CurrencyPrice::get_latest(T::CurrencyId::Tranche(pool_id, tranche_id), None)
-					.ok_or(Error::<T>::MissingPrice)?;
+			let latest_price = T::PoolInspect::get_tranche_token_price(pool_id, tranche_id)
+				.ok_or(Error::<T>::MissingPrice)?;
 
 			// Send the message through the router
 			Self::do_send_message(
