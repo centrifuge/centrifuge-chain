@@ -1,6 +1,6 @@
 //! Centrifuge Connectors pallet
 //!
-//! TODO(nuno): add rich description
+//! TODO(nuno): add description
 //!
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -295,7 +295,7 @@ pub mod pallet {
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
 			let router = <DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			let result = match router {
+			match router {
 				Router::Xcm { location } => Self::send_through_xcm(&message, location),
 				_ => Err(Error::<T>::UnsupportedDomain.into()),
 			}?;
