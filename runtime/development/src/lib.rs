@@ -1258,6 +1258,18 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Time = Timestamp;
 }
 
+impl pallet_connectors::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Balance = Balance;
+	type Rate = Rate;
+	type CurrencyId = CurrencyId;
+	type AdminOrigin = EnsureRoot;
+	type Permission = Permissions;
+	type PoolInspect = Pools;
+	type Time = Timestamp;
+}
+
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
@@ -1392,6 +1404,7 @@ construct_runtime!(
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
+		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 105,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,

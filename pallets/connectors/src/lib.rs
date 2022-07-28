@@ -72,9 +72,6 @@ pub mod pallet {
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
-		//TODO(nuno)
-		type Permissions: Member;
-
 		type PoolInspect: PoolInspect<
 			Self::AccountId,
 			<Self as pallet::Config>::CurrencyId,

@@ -2322,6 +2322,7 @@ dependencies = [
  "pallet-collator-allowlist",
  "pallet-collator-selection",
  "pallet-collective",
+ "pallet-connectors",
  "pallet-crowdloan-claim",
  "pallet-crowdloan-reward",
  "pallet-democracy",
