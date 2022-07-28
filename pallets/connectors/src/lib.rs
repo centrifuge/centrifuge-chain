@@ -37,6 +37,8 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_core::TypeId;
+	use xcm::v0::MultiLocation;
+	use xcm::VersionedMultiLocation;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub (super) trait Store)]
@@ -102,7 +104,7 @@ pub mod pallet {
 	pub struct DomainAddress(pub [u8; 32]);
 
 	#[pallet::storage]
-	pub(crate) type Routers<T: Config> = StorageMap<_, Blake2_128Concat, Domain, Router>;
+	pub(crate) type DomainRouter<T: Config> = StorageMap<_, Blake2_128Concat, Domain, Router>;
 
 	#[pallet::storage]
 	pub(crate) type LinkedAddressesByAccount<T: Config> = StorageDoubleMap<
@@ -127,10 +129,13 @@ pub mod pallet {
 		TrancheNotFound,
 
 		/// The specified domain has no associated router
-		InvalidDomain,
+		MissingRouter,
 
 		/// Failed to send a message
 		SendFailure,
+
+		/// The selected domain is not yet supported
+		UnsupportedDomain,
 	}
 
 	#[pallet::call]
@@ -193,22 +198,28 @@ pub mod pallet {
 		// skeleton
 
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
-			let router = <Routers<T>>::get(domain.clone()).ok_or(Error::<T>::InvalidDomain)?;
+			let router = <DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
-			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-				Origin::root(),
-				//TODO(nuno): pass these arguments and pass move this to routers?
-				// Domain to MultiLocation,
-				// fee_payer,
-				// fee_location,
-				// dest_weight,
-				// call (hex-encoded),
-				// origin_kind,
-			)?;
+			match router {
+				Router::Xcm { location } => Self::send_through_xcm(&message, location),
+				_ => Err(Error::<T>::UnsupportedDomain.into()),
+			}
+		}
 
-			router
-				.send(message, domain)
-				.map_err(|_| Error::<T>::SendFailure)
+		fn send_through_xcm(
+			message: &MessageOf<T>,
+			dest_location: VersionedMultiLocation,
+		) -> Result<(), Error<T>> {
+			// pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
+			// 	Origin::root(),
+			// 	Box::new(dest_location),
+			// 	// fee_payer,
+			// 	// fee_location,
+			// 	// dest_weight,
+			// 	// call (hex-encoded),
+			// 	// origin_kind,
+			// ).map_err(|_| Error::<T>::SendFailure);
+			todo!("nuno")
 		}
 	}
 }
