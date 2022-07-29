@@ -1095,8 +1095,7 @@ impl pallet_xcm_transactor::Config for Runtime {
 	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
 	type CurrencyId = CurrencyId;
 	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
-	type CurrencyIdToMultiLocation =
-	 xcm::CurrencyIdConvert;
+	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
 	type SelfLocation = SelfLocation;
 	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
 	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;

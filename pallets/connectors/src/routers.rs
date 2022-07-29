@@ -8,7 +8,11 @@ use xcm::VersionedMultiLocation;
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum Router {
 	// The router for a domain that is to be routed through Nomad
-	Nomad { forwarding_contract: VersionedMultiLocation },
+	Nomad {
+		forwarding_contract: VersionedMultiLocation,
+	},
 	// The router for a domain that is to be routed through XCM
-	Xcm { location: VersionedMultiLocation },
+	Xcm {
+		location: VersionedMultiLocation,
+	},
 }
