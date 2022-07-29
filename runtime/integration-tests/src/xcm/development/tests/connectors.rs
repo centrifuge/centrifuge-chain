@@ -34,12 +34,13 @@ use pallet_connectors::{Domain, Message, Router};
 
 use frame_support::assert_noop;
 use frame_support::assert_ok;
+use frame_support::dispatch::Weight;
 use orml_traits::{asset_registry::AssetMetadata, FixedConversionRateProvider, MultiCurrency};
 use runtime_common::xcm_fees::default_per_second;
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use sp_runtime::traits::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::prelude::{Parachain, X2, X1};
+use xcm::prelude::{Parachain, X1, X2};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 
@@ -53,11 +54,44 @@ fn add_pool_works() {
 	// Moonbeam and verify that it works but that's probably not feasible here.
 	// We can start by first checking that we are able to send a transact message
 	// to Moonbeam through XcmTransactor.
-	let moonbeam_location = MultiLocation { parents: 1, interior: X1(Parachain(PARA_ID_MOONBEAM))};
-	let moonbeam_native_token = MultiLocation { parents: 1, interior: X2(Parachain(PARA_ID_MOONBEAM), GeneralKey(vec![0, 1]))};
+	let moonbeam_location = MultiLocation {
+		parents: 1,
+		interior: X1(Parachain(PARA_ID_MOONBEAM)),
+	};
+	let moonbeam_native_token = MultiLocation {
+		parents: 1,
+		interior: X2(Parachain(PARA_ID_MOONBEAM), GeneralKey(vec![0, 1])),
+	};
 
 	Development::execute_with(|| {
-		Connectors::do_set_router(Domain::Moonbeam, Router::Xcm { location: moonbeam_location.clone().try_into().expect("Bad xcm version") });
+		// We need to set the Transact info for Moonbeam in the XcmTransact pallet
+		assert_ok!(XcmTransactor::set_transact_info(
+			Origin::root(),
+			Box::new(VersionedMultiLocation::V1(moonbeam_location.clone())),
+			1,
+			8_000_000_000_000_000,
+			Some(3)
+		));
+		assert_ok!(XcmTransactor::set_fee_per_second(
+			Origin::root(),
+			Box::new(VersionedMultiLocation::V1(moonbeam_native_token.clone())),
+			default_per_second(18),
+		));
+		//TODO(nuno): Failing with `UnableToWithdrawAsset` because we don't handle
+		// "Moonbeam's native token" locally.
+		// Register `moonbeam_native_token` in the asset-registry so that
+		// it can be withdrawn when sending the transact message. That expects us
+		// to set that balance for when setting up the emulated environment.
+
+		Connectors::do_set_router(
+			Domain::Moonbeam,
+			Router::Xcm {
+				location: moonbeam_location
+					.clone()
+					.try_into()
+					.expect("Bad xcm version"),
+			},
+		);
 
 		assert_ok!(Connectors::send_through_xcm_tests(
 			&Message::AddPool { pool_id: 42 },
@@ -66,7 +100,6 @@ fn add_pool_works() {
 			ALICE.into(),
 		));
 	});
-
 
 	// message: &MessageOf<T>,
 	// dest_location: VersionedMultiLocation,

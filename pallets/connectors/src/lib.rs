@@ -71,7 +71,6 @@ pub type MessageOf<T> =
 
 pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
 
-
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
