@@ -60,12 +60,17 @@ pub type PoolIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 >>::PoolId;
+
 pub type TrancheIdOf<T> = <<T as Config>::PoolInspect as PoolInspect<
 	<T as frame_system::Config>::AccountId,
 	<T as Config>::CurrencyId,
 >>::TrancheId;
+
 pub type MessageOf<T> =
 	Message<Domain, PoolIdOf<T>, TrancheIdOf<T>, <T as Config>::Balance, <T as Config>::Rate>;
+
+pub type CurrencyIdOf<T> = <T as pallet_xcm_transactor::Config>::CurrencyId;
+
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -78,6 +83,7 @@ pub mod pallet {
 	use sp_runtime::traits::AccountIdConversion;
 	use sp_runtime::traits::Zero;
 	use xcm::v0::MultiLocation;
+	use xcm::v2::OriginKind;
 	use xcm::VersionedMultiLocation;
 
 	#[pallet::pallet]
@@ -101,7 +107,11 @@ pub mod pallet {
 
 		type Rate: Parameter + Member + MaybeSerializeDeserialize + FixedPointNumber + TypeInfo;
 
-		type CurrencyId: Parameter + Copy;
+		type CurrencyId: Parameter
+			+ Copy
+			// TODO(nuno): remove Default is not needed after MVP tests
+			+ Default
+			+ IsType<<Self as pallet_xcm_transactor::Config>::CurrencyId>;
 
 		type AdminOrigin: EnsureOrigin<Self::Origin>;
 
@@ -355,6 +365,11 @@ pub mod pallet {
 			T::Time::now().as_secs()
 		}
 
+		pub fn do_set_router(domain: Domain, router: Router) -> DispatchResult {
+			<DomainRouter<T>>::insert(domain.clone(), router);
+			Ok(())
+		}
+
 		pub fn do_send_message(message: MessageOf<T>, domain: Domain) -> Result<(), Error<T>> {
 			let router = <DomainRouter<T>>::get(domain.clone()).ok_or(Error::<T>::MissingRouter)?;
 
@@ -371,16 +386,33 @@ pub mod pallet {
 			message: &MessageOf<T>,
 			dest_location: VersionedMultiLocation,
 		) -> Result<(), Error<T>> {
-			// pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
-			// 	Origin::root(),
-			// 	Box::new(dest_location),
-			// 	// fee_payer,
-			// 	// fee_location,
-			// 	// dest_weight,
-			// 	// call (hex-encoded),
-			// 	// origin_kind,
-			// ).map_err(|_| Error::<T>::SendFailure);
-			todo!("nuno")
+			use codec::Encode;
+			use frame_support::traits::OriginTrait;
+			use Default;
+
+			todo!()
+		}
+
+		//TODO(nuno): this is just for testing purposes for now.
+		pub fn send_through_xcm_tests(
+			message: &MessageOf<T>,
+			dest_location: VersionedMultiLocation,
+			fees_location: VersionedMultiLocation,
+			fee_payer: T::AccountId,
+		) -> DispatchResult {
+			use codec::Encode;
+			use frame_support::traits::OriginTrait;
+			use sp_std::boxed::Box;
+
+			pallet_xcm_transactor::Pallet::<T>::transact_through_sovereign(
+				T::Origin::root(),
+				Box::new(dest_location),
+				fee_payer,
+				Box::new(fees_location),
+				8_000_000_000_000,
+				(*message).encode().to_vec(),
+				OriginKind::SovereignAccount,
+			)
 		}
 	}
 }

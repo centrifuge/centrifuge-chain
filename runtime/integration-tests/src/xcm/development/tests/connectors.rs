@@ -30,7 +30,7 @@ use development_runtime::{
 	Balances, Connectors, CurrencyId, CustomMetadata, Origin, OrmlAssetRegistry, OrmlTokens,
 	XTokens, XcmTransactor,
 };
-use pallet_connectors::Domain;
+use pallet_connectors::{Domain, Message, Router};
 
 use frame_support::assert_noop;
 use frame_support::assert_ok;
@@ -39,12 +39,11 @@ use runtime_common::xcm_fees::default_per_second;
 use runtime_common::{decimals, parachains, Balance, XcmMetadata};
 use sp_runtime::traits::BadOrigin;
 use xcm::latest::{Junction, Junction::*, Junctions::*, MultiLocation, NetworkId};
-use xcm::prelude::{Parachain, X2};
+use xcm::prelude::{Parachain, X2, X1};
 use xcm::VersionedMultiLocation;
 use xcm_emulator::TestExt;
 
 #[test]
-#[ignore] //TODO(nuno)
 fn add_pool_works() {
 	TestNet::reset();
 
@@ -54,14 +53,25 @@ fn add_pool_works() {
 	// Moonbeam and verify that it works but that's probably not feasible here.
 	// We can start by first checking that we are able to send a transact message
 	// to Moonbeam through XcmTransactor.
+	let moonbeam_location = MultiLocation { parents: 1, interior: X1(Parachain(PARA_ID_MOONBEAM))};
+	let moonbeam_native_token = MultiLocation { parents: 1, interior: X2(Parachain(PARA_ID_MOONBEAM), GeneralKey(vec![0, 1]))};
 
 	Development::execute_with(|| {
-		assert_ok!(Connectors::add_pool(
-			Origin::signed(ALICE.into()),
-			42,
-			Domain::Moonbeam
+		Connectors::do_set_router(Domain::Moonbeam, Router::Xcm { location: moonbeam_location.clone().try_into().expect("Bad xcm version") });
+
+		assert_ok!(Connectors::send_through_xcm_tests(
+			&Message::AddPool { pool_id: 42 },
+			VersionedMultiLocation::V1(moonbeam_location),
+			VersionedMultiLocation::V1(moonbeam_native_token),
+			ALICE.into(),
 		));
 	});
+
+
+	// message: &MessageOf<T>,
+	// dest_location: VersionedMultiLocation,
+	// fees_location: VersionedMultiLocation,
+	// fee_payer: T::AccountId,
 
 	Moonbeam::execute_with(|| {
 		assert_eq!(Balances::free_balance(&ALICE.into()), cfg(10));
