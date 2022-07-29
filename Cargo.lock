@@ -9164,6 +9164,7 @@ dependencies = [
  "pallet-asset-tx-payment",
  "pallet-babe",
  "pallet-balances",
+ "pallet-connectors",
  "pallet-loans",
  "pallet-permissions",
  "pallet-pools",

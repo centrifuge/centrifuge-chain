@@ -84,6 +84,7 @@ common-types = { path = "../../libs/common-types" }
 pallet-pools = { path = "../../pallets/pools" }
 pallet-loans = { path = "../../pallets/loans" }
 pallet-permissions = { path = "../../pallets/permissions" }
+pallet-connectors = { path = "../../pallets/connectors" }
 
 [features]
 default = [ "runtime-development" ]
