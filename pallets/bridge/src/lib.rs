@@ -348,9 +348,9 @@ pub mod pallet {
 			);
 
 			// Burn additional fees
-			<pallet_fees::Pallet<T>>::burn_fee(
+			<pallet_fees::Pallet<T>>::fee_to_burn(
 				&source,
-				NativeTokenTransferFee::<T>::get().saturated_into(),
+				pallet_fees::Fee::Balance(NativeTokenTransferFee::<T>::get().saturated_into()),
 			)?;
 
 			let bridge_id = <chainbridge::Pallet<T>>::account_id();

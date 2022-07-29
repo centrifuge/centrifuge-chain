@@ -1,11 +1,13 @@
 //! # Fees pallet for runtime
 //!
-//! This pallet provides functionality for setting and getting fees associated with an Hash key..
-//! Fees are set by FeeOrigin or RootOrigin
+//! This pallet provides a storing functionality for setting and getting fees associated with an Hash key.
+//! Fees can only be set by FeeOrigin or RootOrigin
+//!
+//! Also, for its internal usage from the runtime or other pallets,
+//! it offers some utilities to transfer the fees to the author, the treasury or burn it.
 #![cfg_attr(not(feature = "std"), no_std)]
-use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::DispatchResult,
+	dispatch::{DispatchError, DispatchResult},
 	traits::{Currency, EnsureOrigin, ExistenceRequirement, WithdrawReasons},
 };
 use frame_system::ensure_root;
@@ -24,15 +26,16 @@ pub mod weights;
 use scale_info::TypeInfo;
 pub use weights::*;
 
-#[derive(Encode, Decode, Default, Clone, PartialEq, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
-pub struct Fee<Hash, Balance> {
-	key: Hash,
-	price: Balance,
-}
-
 pub type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+/// A way to identify a fee value.
+pub enum Fee<T: Config> {
+	/// The fee value itself.
+	Balance(BalanceOf<T>),
+	/// The fee value is already stored in the pallet fee by a key.
+	Key(T::Hash),
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -83,8 +86,8 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			for fee in self.initial_fees.iter() {
-				<Pallet<T>>::change_fee(fee.0, fee.1);
+			for (key, fee) in self.initial_fees.iter() {
+				<Fees<T>>::insert(key, fee);
 			}
 		}
 	}
@@ -92,8 +95,7 @@ pub mod pallet {
 	/// Stores the Fees associated with a Hash identifier
 	#[pallet::storage]
 	#[pallet::getter(fn fee)]
-	pub(super) type Fees<T: Config> =
-		StorageMap<_, Blake2_256, T::Hash, Fee<T::Hash, BalanceOf<T>>>;
+	pub(super) type Fees<T: Config> = StorageMap<_, Blake2_256, T::Hash, BalanceOf<T>>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -113,76 +115,55 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Set the given fee for the key
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::set_fee())]
-		pub fn set_fee(
-			origin: OriginFor<T>,
-			key: T::Hash,
-			new_price: BalanceOf<T>,
-		) -> DispatchResult {
-			Self::can_change_fee(origin)?;
-			Self::change_fee(key, new_price);
-			Self::deposit_event(Event::FeeChanged(key, new_price));
+		pub fn set_fee(origin: OriginFor<T>, key: T::Hash, fee: BalanceOf<T>) -> DispatchResult {
+			T::FeeChangeOrigin::try_origin(origin)
+				.map(|_| ())
+				.or_else(ensure_root)?;
+
+			<Fees<T>>::insert(key, fee);
+			Self::deposit_event(Event::FeeChanged(key, fee));
 			Ok(())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
-	/// Called by any other module who wants to trigger a fee payment for a given account.
-	/// The current fee price can be retrieved via Fees::price_of()
-	pub fn pay_fee(from: T::AccountId, key: T::Hash) -> DispatchResult {
-		let fee = <Fees<T>>::get(key).ok_or(Error::<T>::FeeNotFoundForKey)?;
-		Self::pay_fee_to_author(from, fee.price)?;
-		Ok(())
-	}
-
-	/// Burns Fee from account
-	pub fn burn_fee(from: &T::AccountId, fee: BalanceOf<T>) -> DispatchResult {
-		let _ = T::Currency::withdraw(
-			from,
-			fee,
-			WithdrawReasons::FEE.into(),
-			ExistenceRequirement::KeepAlive,
-		)?;
-
-		Ok(())
-	}
-
-	/// Pay the given fee
-	pub fn pay_fee_to_author(from: T::AccountId, fee: BalanceOf<T>) -> DispatchResult {
-		let value = T::Currency::withdraw(
-			&from,
-			fee,
-			WithdrawReasons::FEE.into(),
-			ExistenceRequirement::KeepAlive,
-		)?;
-
+	/// Pay the fees to the block author.
+	/// If the `from` account has not enough balance or the author is invalid the fees are not
+	/// paid.
+	pub fn fee_to_author(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
 		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
-		T::Currency::resolve_creating(&author, value);
+		let fee = Self::withdraw_fee(from, fee)?;
+		T::Currency::resolve_creating(&author, fee);
 		Ok(())
 	}
 
-	/// Returns the current fee for the key
-	pub fn price_of(key: T::Hash) -> Option<BalanceOf<T>> {
-		//why this has been hashed again after passing to the function? sp_io::print(key.as_ref());
-		let fee = <Fees<T>>::get(key)?;
-		Some(fee.price)
+	/// Burn the fees.
+	/// If the `from` account has not enough balance the fees are not paid.
+	pub fn fee_to_burn(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
+		Self::withdraw_fee(from, fee).map(|_| ())
 	}
 
-	/// Returns true if the given origin can change the fee
-	fn can_change_fee(origin: T::Origin) -> DispatchResult {
-		T::FeeChangeOrigin::try_origin(origin)
-			.map(|_| ())
-			.or_else(ensure_root)?;
-
-		Ok(())
+	/// Transfer the fees to the treasury.
+	/// If the `from` account has not enough balance the fees are not paid.
+	pub fn fee_to_treasury(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
+		todo!()
 	}
 
-	/// Change the fee for the given key
-	fn change_fee(key: T::Hash, fee: BalanceOf<T>) {
-		let new_fee = Fee {
-			key: key.clone(),
-			price: fee,
+	fn withdraw_fee(
+		from: &T::AccountId,
+		fee: Fee<T>,
+	) -> Result<<T::Currency as Currency<T::AccountId>>::NegativeImbalance, DispatchError> {
+		let balance = match fee {
+			Fee::Balance(balance) => balance,
+			Fee::Key(key) => <Fees<T>>::get(key).ok_or(Error::<T>::FeeNotFoundForKey)?,
 		};
-		<Fees<T>>::insert(key, new_fee);
+
+		T::Currency::withdraw(
+			&from,
+			balance,
+			WithdrawReasons::FEE.into(),
+			ExistenceRequirement::KeepAlive,
+		)
 	}
 }
