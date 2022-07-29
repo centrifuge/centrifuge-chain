@@ -129,6 +129,10 @@ pallet-bridge = { path = "../../pallets/bridge", default-features = false }
 pallet-nft = { path = "../../pallets/nft", default-features = false }
 pallet-interest-accrual = { path = "../../pallets/interest-accrual", default-features = false }
 pallet-keystore = { path = "../../pallets/keystore", default-features = false }
+pallet-connectors = { path = "../../pallets/connectors", default-features = false }
+
+xcm-primitives = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "d288eb94a136b92566d73e7d546e64f57145539e" }
+pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "d288eb94a136b92566d73e7d546e64f57145539e" }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.24" }
@@ -223,6 +227,9 @@ std = [
     "pallet-nft/std",
     "pallet-bridge/std",
     "pallet-keystore/std",
+    "pallet-connectors/std",
+    "pallet-xcm-transactor/std",
+    "xcm-primitives/std",
 ]
 
 runtime-benchmarks = [

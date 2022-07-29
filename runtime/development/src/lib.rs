@@ -4,6 +4,9 @@
 // `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
 #![recursion_limit = "256"]
 
+use ::xcm::prelude::X1;
+use ::xcm::v1::prelude::Parachain;
+use ::xcm::v2::MultiLocation;
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::sp_std::marker::PhantomData;
 use frame_support::{
@@ -49,7 +52,7 @@ use static_assertions::const_assert;
 use xcm_executor::XcmExecutor;
 
 use common_traits::Permissions as PermissionsT;
-use common_traits::{PoolUpdateGuard, PreConditions};
+use common_traits::{CurrencyPrice, PoolInspect, PoolUpdateGuard, PreConditions, PriceValue};
 pub use common_types::CurrencyId;
 use common_types::{
 	PermissionRoles, PermissionScope, PermissionedCurrencyRole, PoolId, PoolRole, Role,
@@ -66,6 +69,7 @@ use pallet_restricted_tokens::{
 pub use runtime_common::{Index, *};
 
 use chainbridge::constants::DEFAULT_RELAYER_VOTE_THRESHOLD;
+use xcm_primitives::{UtilityAvailableCalls, UtilityEncodeCall};
 
 pub mod xcm;
 pub use crate::xcm::*;
@@ -936,6 +940,32 @@ impl PoolUpdateGuard for UpdateGuard {
 	}
 }
 
+pub struct CurrencyPriceSource;
+impl CurrencyPrice<CurrencyId> for CurrencyPriceSource {
+	type Rate = Rate;
+	type Moment = Moment;
+
+	fn get_latest(
+		base: CurrencyId,
+		quote: Option<CurrencyId>,
+	) -> Option<PriceValue<CurrencyId, Self::Rate, Self::Moment>> {
+		match base {
+			CurrencyId::Tranche(pool_id, tranche_id) => {
+				match <pallet_pools::Pallet<Runtime> as PoolInspect<
+				AccountId,
+				CurrencyId,
+			>>::get_tranche_token_price(pool_id, tranche_id) {
+					// If a specific quote is requested, this needs to match the actual quote.
+					Some(price) if Some(price.pair.quote) != quote => None,
+					Some(price) => Some(price),
+					None => None,
+				}
+			}
+			_ => None,
+		}
+	}
+}
+
 parameter_types! {
 	pub const MigrationMaxAccounts: u32 = 100;
 	pub const MigrationMaxVestings: u32 = 10;
@@ -1036,6 +1066,44 @@ impl pallet_collator_selection::Config for Runtime {
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
 	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
+}
+
+#[derive(Clone, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+pub enum DestTransactors {
+	Moonbeam,
+}
+
+impl UtilityEncodeCall for DestTransactors {
+	fn encode_call(self, call: UtilityAvailableCalls) -> Vec<u8> {
+		todo!("hello darkness / my old friend")
+	}
+}
+
+impl xcm_primitives::XcmTransact for DestTransactors {
+	fn destination(self) -> MultiLocation {
+		match self {
+			DestTransactors::Moonbeam => MultiLocation::new(1, X1(Parachain(2023))),
+		}
+	}
+}
+
+impl pallet_xcm_transactor::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Transactor = DestTransactors;
+	type DerivativeAddressRegistrationOrigin = EnsureRoot<AccountId>;
+	type SovereignAccountDispatcherOrigin = EnsureRoot<AccountId>;
+	type CurrencyId = CurrencyId;
+	type AccountIdToMultiLocation = xcm::AccountIdToMultiLocation;
+	type CurrencyIdToMultiLocation = xcm::CurrencyIdConvert;
+	type SelfLocation = SelfLocation;
+	type Weigher = xcm_builder::FixedWeightBounds<UnitWeightCost, Call, MaxInstructions>;
+	type LocationInverter = xcm_builder::LocationInverter<Ancestry>;
+	type XcmSender = XcmRouter;
+	type BaseXcmWeight = BaseXcmWeight;
+	type AssetTransactor = xcm::FungiblesTransactor;
+	type ReserveProvider = xcm_primitives::AbsoluteAndRelativeReserve<SelfLocation>;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -1232,6 +1300,19 @@ impl pallet_interest_accrual::Config for Runtime {
 	type Time = Timestamp;
 }
 
+impl pallet_connectors::Config for Runtime {
+	type Event = Event;
+	type WeightInfo = ();
+	type Balance = Balance;
+	type Rate = Rate;
+	type CurrencyId = CurrencyId;
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type Permission = Permissions;
+	type PoolInspect = Pools;
+	type Time = Timestamp;
+	type Tokens = Tokens;
+}
+
 parameter_types! {
 	pub const BridgePalletId: PalletId = PalletId(*b"c/bridge");
 	pub HashId: chainbridge::ResourceId = chainbridge::derive_resource_id(1, &sp_io::hashing::blake2_128(b"cent_nft_hash"));
@@ -1366,6 +1447,7 @@ construct_runtime!(
 		Bridge: pallet_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 101,
 		InterestAccrual: pallet_interest_accrual::{Pallet, Storage, Event<T>} = 102,
 		Keystore: pallet_keystore::{Pallet, Call, Storage, Event<T>} = 104,
+		Connectors: pallet_connectors::{Pallet, Call, Storage, Event<T>} = 105,
 
 		// XCM
 		XcmpQueue: cumulus_pallet_xcmp_queue::{Pallet, Call, Storage, Event<T>} = 120,
@@ -1373,6 +1455,7 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 122,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 123,
 		XTokens: orml_xtokens::{Pallet, Storage, Call, Event<T>} = 124,
+		XcmTransactor: pallet_xcm_transactor::{Pallet, Call, Storage, Event<T>} = 125,
 
 		// 3rd party pallets
 		OrmlTokens: orml_tokens::{Pallet, Storage, Event<T>, Config<T>} = 150,
