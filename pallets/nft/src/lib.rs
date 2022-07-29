@@ -280,9 +280,9 @@ pub mod pallet {
 			let metadata = bundled_hash.as_ref().to_vec();
 
 			// Burn additional fees from the calling account
-			<pallet_fees::Pallet<T>>::burn_fee(
+			<pallet_fees::Pallet<T>>::fee_to_burn(
 				&who,
-				T::NftProofValidationFee::get().saturated_into(),
+				pallet_fees::Fee::Balance(T::NftProofValidationFee::get().saturated_into()),
 			)?;
 
 			let resource_id: ResourceId = T::HashId::get().into();

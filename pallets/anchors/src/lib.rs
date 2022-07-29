@@ -300,8 +300,9 @@ pub mod pallet {
 
 			// TODO(dev): move the fee to treasury account once its integrated instead of burning fee
 			// we use the fee config setup on genesis for anchoring to calculate the state rent
-			let base_fee =
-				<pallet_fees::Pallet<T>>::price_of(Self::fee_key()).ok_or(Error::<T>::FeeNotSet)?;
+			let base_fee = <pallet_fees::Pallet<T>>::fee(Self::commit_fee_key())
+				.ok_or(Error::<T>::FeeNotSet)?;
+
 			let multiplier = stored_until_date_from_epoch
 				.checked_sub(today_in_days_from_epoch)
 				.ok_or(ArithmeticError::Underflow)?;
@@ -311,7 +312,7 @@ pub mod pallet {
 				.ok_or(ArithmeticError::Overflow)?;
 
 			// pay state rent to block author
-			<pallet_fees::Pallet<T>>::pay_fee_to_author(who, fee)?;
+			<pallet_fees::Pallet<T>>::fee_to_author(&who, pallet_fees::Fee::Balance(fee))?;
 
 			let anchored_block = <frame_system::Pallet<T>>::block_number();
 			let anchor_data = AnchorData {
@@ -573,7 +574,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	fn fee_key() -> <T as frame_system::Config>::Hash {
+	fn commit_fee_key() -> <T as frame_system::Config>::Hash {
 		<T as frame_system::Config>::Hashing::hash_of(&0)
 	}
 }
