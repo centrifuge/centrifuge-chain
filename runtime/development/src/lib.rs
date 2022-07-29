@@ -364,6 +364,7 @@ pub enum ProxyType {
 	NFTMint,
 	NFTTransfer,
 	NFTManagement,
+	AnchorManagement,
 }
 impl Default for ProxyType {
 	fn default() -> Self {
@@ -432,6 +433,7 @@ impl InstanceFilter<Call> for ProxyType {
 				matches!(c, Call::Uniques(pallet_uniques::Call::transfer { .. }))
 			}
 			ProxyType::NFTManagement => matches!(c, Call::Uniques(..)),
+			ProxyType::AnchorManagement => matches!(c, Call::Anchor(..)),
 		}
 	}
 
