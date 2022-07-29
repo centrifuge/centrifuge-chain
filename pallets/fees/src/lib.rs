@@ -133,8 +133,8 @@ impl<T: Config> Pallet<T> {
 	/// paid.
 	pub fn fee_to_author(from: &T::AccountId, fee: Fee<T>) -> DispatchResult {
 		let author = <pallet_authorship::Pallet<T>>::author().ok_or(Error::<T>::InvalidAuthor)?;
-		let fee = Self::withdraw_fee(from, fee)?;
-		T::Currency::resolve_creating(&author, fee);
+		let balance = Self::withdraw_fee(from, fee)?;
+		T::Currency::resolve_creating(&author, balance);
 		Ok(())
 	}
 
