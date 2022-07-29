@@ -27,14 +27,16 @@ pallet-balances = { git = "https://github.com/paritytech/substrate",  default-fe
 pallet-uniques = { git = "https://github.com/paritytech/substrate",  default-features = false , optional = true, branch = "polkadot-v0.9.24" }
 orml-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
 orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library", default-features = false, optional = true, branch = "polkadot-v0.9.24" }
-common-types = { path = "../../libs/common-types", default-features = false, optional = true }
-common-traits = { path = "../../libs/common-traits", default-features = false, optional = true }
-runtime-common = { path = "../../runtime/common", default-features = false, optional = true }
+
+# Our custom pallets
+common-types = { path = "../../libs/common-types", default-features = false }
+common-traits = { path = "../../libs/common-traits", default-features = false }
+runtime-common = { path = "../../runtime/common", default-features = false }
 
 # Polkadot
 xcm = { git = "https://github.com/paritytech/polkadot", default-features = false , branch = "release-v0.9.24" }
 
-pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, branch = "master" }
+pallet-xcm-transactor = { git = "https://github.com/NunoAlexandre/moonbeam", default-features = false, rev = "d288eb94a136b92566d73e7d546e64f57145539e" }
 
 [dev-dependencies]
 hex = "0.4.3"
@@ -56,9 +58,9 @@ default = ['std']
 runtime-benchmarks = [
     "frame-benchmarking",
     "pallet-balances",
-    "common-types",
-    "common-traits",
-    "runtime-common",
+#    "common-types",
+#    "common-traits",
+#    "runtime-common",
     "orml-tokens",
     "orml-traits",
 ]

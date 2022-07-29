@@ -224,6 +224,7 @@ std = [
     "pallet-nft/std",
     "pallet-bridge/std",
     "pallet-keystore/std",
+    "pallet-connectors/std",
 ]
 
 runtime-benchmarks = [

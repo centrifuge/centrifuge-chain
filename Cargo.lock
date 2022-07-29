@@ -6896,7 +6896,7 @@ dependencies = [
 [[package]]
 name = "pallet-xcm-transactor"
 version = "0.1.0"
-source = "git+https://github.com/NunoAlexandre/moonbeam?branch=master#409800ebdc9eb653a9c8ee9c53a42ec7afadf624"
+source = "git+https://github.com/NunoAlexandre/moonbeam?rev=d288eb94a136b92566d73e7d546e64f57145539e#d288eb94a136b92566d73e7d546e64f57145539e"
 dependencies = [
  "cumulus-primitives-core",
  "frame-benchmarking",
@@ -13182,7 +13182,7 @@ dependencies = [
 [[package]]
 name = "xcm-primitives"
 version = "0.1.0"
-source = "git+https://github.com/NunoAlexandre/moonbeam?branch=master#409800ebdc9eb653a9c8ee9c53a42ec7afadf624"
+source = "git+https://github.com/NunoAlexandre/moonbeam?rev=d288eb94a136b92566d73e7d546e64f57145539e#d288eb94a136b92566d73e7d546e64f57145539e"
 dependencies = [
  "ethereum",
  "ethereum-types",
