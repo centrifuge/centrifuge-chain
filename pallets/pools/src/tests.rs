@@ -452,7 +452,8 @@ fn epoch() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 		assert_ok!(Pools::set_metadata(
 			pool_owner_origin.clone(),
@@ -714,7 +715,8 @@ fn submission_period() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 		assert_ok!(Pools::update_invest_order(
 			junior_investor.clone(),
@@ -920,7 +922,8 @@ fn execute_info_removed_after_epoch_execute() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1023,7 +1026,8 @@ fn collect_tranche_tokens() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		// Nothing invested yet
@@ -1132,7 +1136,8 @@ fn invalid_tranche_id_is_err() {
 			0,
 			vec![(TrancheType::Residual, None)],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		assert_noop!(
@@ -1176,7 +1181,8 @@ fn updating_with_same_amount_is_err() {
 			0,
 			vec![(TrancheType::Residual, None)],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		assert_ok!(Pools::update_invest_order(
@@ -1213,7 +1219,8 @@ fn pool_updates_should_be_constrained() {
 			pool_id,
 			vec![(TrancheType::Residual, None)],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		<<Test as Config>::Permission as PermissionsT<u64>>::add(
@@ -1346,7 +1353,8 @@ fn updating_orders_updates_epoch() {
 			pool_id,
 			vec![(TrancheType::Residual, None)],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		next_block();
@@ -1396,7 +1404,8 @@ fn no_order_is_err() {
 			pool_id,
 			vec![(TrancheType::Residual, None)],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		next_block();
@@ -1438,7 +1447,8 @@ fn collecting_over_last_exec_epoch_is_err() {
 			pool_id,
 			vec![(TrancheType::Residual, None)],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		next_block();
@@ -1521,7 +1531,8 @@ fn tranche_ids_are_unique() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		assert_ok!(Pools::create(
@@ -1553,7 +1564,8 @@ fn tranche_ids_are_unique() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		let pool_ids_0 = Pools::pool(pool_id_0).unwrap().tranches.ids_residual_top();
@@ -1578,7 +1590,8 @@ fn same_pool_id_not_possible() {
 			pool_id_1,
 			vec![(TrancheType::Residual, None),],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		assert_noop!(
@@ -1588,7 +1601,8 @@ fn same_pool_id_not_possible() {
 				pool_id_1,
 				vec![(TrancheType::Residual, None),],
 				CurrencyId::AUSD,
-				10_000 * CURRENCY
+				10_000 * CURRENCY,
+				None
 			),
 			Error::<Test>::PoolInUse
 		);
@@ -1634,7 +1648,8 @@ fn valid_tranche_structure_is_enforced() {
 					)
 				],
 				CurrencyId::AUSD,
-				10_000 * CURRENCY
+				10_000 * CURRENCY,
+				None
 			),
 			Error::<Test>::InvalidTrancheStructure
 		);
@@ -1670,7 +1685,8 @@ fn valid_tranche_structure_is_enforced() {
 					)
 				],
 				CurrencyId::AUSD,
-				10_000 * CURRENCY
+				10_000 * CURRENCY,
+				None
 			),
 			Error::<Test>::InvalidTrancheStructure
 		);
@@ -1705,7 +1721,8 @@ fn valid_tranche_structure_is_enforced() {
 					)
 				],
 				CurrencyId::AUSD,
-				10_000 * CURRENCY
+				10_000 * CURRENCY,
+				None
 			),
 			Error::<Test>::InvalidJuniorTranche
 		);
@@ -1734,7 +1751,8 @@ fn valid_tranche_structure_is_enforced() {
 					),
 				],
 				CurrencyId::AUSD,
-				10_000 * CURRENCY
+				10_000 * CURRENCY,
+				None
 			),
 			Error::<Test>::InvalidTrancheStructure
 		);
@@ -1784,7 +1802,8 @@ fn triger_challange_period_with_zero_solution() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -1893,7 +1912,8 @@ fn min_challenge_time_is_respected() {
 				)
 			],
 			CurrencyId::AUSD,
-			10_000 * CURRENCY
+			10_000 * CURRENCY,
+			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2005,7 +2025,8 @@ fn only_zero_solution_is_accepted_max_reserve_violated() {
 				)
 			],
 			CurrencyId::AUSD,
-			200 * CURRENCY
+			200 * CURRENCY,
+			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2222,7 +2243,8 @@ fn only_zero_solution_is_accepted_when_risk_buff_violated_else() {
 				)
 			],
 			CurrencyId::AUSD,
-			200 * CURRENCY
+			200 * CURRENCY,
+			None
 		));
 
 		// Force min_epoch_time to 0 without using update
@@ -2415,7 +2437,8 @@ fn only_usd_as_pool_currency_allowed() {
 					)
 				],
 				CurrencyId::Native,
-				200 * CURRENCY
+				200 * CURRENCY,
+				None
 			),
 			Error::<Test>::InvalidCurrency
 		);
@@ -2436,7 +2459,8 @@ fn only_usd_as_pool_currency_allowed() {
 					)
 				],
 				CurrencyId::Tranche(0, [0u8; 16]),
-				200 * CURRENCY
+				200 * CURRENCY,
+				None
 			),
 			Error::<Test>::InvalidCurrency
 		);
@@ -2456,7 +2480,8 @@ fn only_usd_as_pool_currency_allowed() {
 				)
 			],
 			CurrencyId::AUSD,
-			200 * CURRENCY
+			200 * CURRENCY,
+			None
 		));
 	});
 }
@@ -2489,7 +2514,8 @@ fn creation_takes_deposit() {
 				)
 			],
 			CurrencyId::AUSD,
-			200 * CURRENCY
+			200 * CURRENCY,
+			None
 		));
 		let pool = crate::PoolDeposit::<Test>::get(0).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2515,7 +2541,8 @@ fn creation_takes_deposit() {
 				)
 			],
 			CurrencyId::AUSD,
-			200 * CURRENCY
+			200 * CURRENCY,
+			None
 		));
 		let pool = crate::PoolDeposit::<Test>::get(1).unwrap();
 		assert_eq!(pool.depositor, pool_owner);
@@ -2543,7 +2570,8 @@ fn creation_takes_deposit() {
 				)
 			],
 			CurrencyId::AUSD,
-			200 * CURRENCY
+			200 * CURRENCY,
+			None
 		));
 
 		let pool = crate::PoolDeposit::<Test>::get(2).unwrap();
