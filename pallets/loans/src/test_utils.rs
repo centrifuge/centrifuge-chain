@@ -155,6 +155,7 @@ pub(crate) fn create<T>(
 		],
 		currency_id.into(),
 		(100_000 * CURRENCY).into(),
+		None
 	));
 
 	set_role::<T>(

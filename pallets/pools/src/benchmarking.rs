@@ -54,7 +54,7 @@ benchmarks! {
 		let caller: T::AccountId = create_admin::<T>(0);
 		let tranches = build_bench_tranches::<T>(n);
 		let origin = RawOrigin::Signed(caller.clone());
-	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE)
+	}: create(origin, caller, POOL, tranches.clone(), CurrencyId::AUSD, MAX_RESERVE, None)
 	verify {
 		let pool = get_pool::<T>();
 		assert_tranches_match::<T>(pool.tranches.residual_top_slice(), &tranches);
@@ -454,6 +454,7 @@ fn create_pool<T: Config<PoolId = u64, Balance = u128, CurrencyId = CurrencyId>>
 		tranches,
 		CurrencyId::AUSD,
 		MAX_RESERVE,
+		None,
 	)
 }
 
